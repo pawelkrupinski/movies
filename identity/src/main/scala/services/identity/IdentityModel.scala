@@ -41,8 +41,11 @@ final case class Listing(
    *  nothing — the model holds the re-published listing in its place all the same ([[Listing.movedOutsideEquality]]). */
   poster:        Option[String] = None,
   /** The days the venue screens it. OUTSIDE the listing's equality and hash, as the poster is: a venue adding a
-   *  showtime re-resolves nothing. Only the season they place a stage relay in ([[broadcastSeason]]) is the model's;
-   *  the days themselves are read after it, by the broadcast take ([[agreement.Broadcast]]). */
+   *  showtime re-resolves nothing. Only the season they place a stage relay in ([[broadcastSeason]]) is the model's, and
+   *  the days of a relay whose air day decides its record ([[airDays]], in the equality: a venue adding the air day of
+   *  UK Flicks' stale-season "Royal Ballet & Opera 2024-25: Romeo and Juliet" must resolve it again, or the incremental
+   *  model keeps a take a whole resolve no longer makes); every other listing's days are read after it, by the
+   *  broadcast take ([[agreement.Broadcast]]). */
   screenings:    ScreeningDays = ScreeningDays.None,
   /** The people the venue's own synopsis and cast field name ([[VenueNames]]): what the cast evidence reads
    *  ([[CastEvidence]]) — none for a listing whose facts a feed catalogue states ([[factsFromCatalogue]]), whose text
@@ -167,7 +170,7 @@ final case class Listing(
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
       screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate &&
       yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && anniversaryScreeningYear == that.anniversaryScreeningYear &&
-      kept == that.kept)
+      airDays == that.airDays && kept == that.kept)
     case _ => false
   }
   override def hashCode: Int = {

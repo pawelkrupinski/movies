@@ -54,4 +54,19 @@ class ListingScreeningsSpec extends AnyFlatSpec with Matchers {
     listing("Lalka", "2026-12-05T18:00") shouldBe listing("Lalka", "2027-12-05T18:00")
     listing("Samson i Dalila", "2026-12-05T18:55") should not be listing("Samson i Dalila", "2027-12-05T18:55")
   }
+
+  it should "hold the days the model reads off a relay, its air days" in {
+    // UK Flicks' "Royal Ballet & Opera 2024-25: Romeo and Juliet": its days decide whether it is the house's 2026/27 relay
+    // (aired 25 May 2027) or the stale season's capture. Left out of equality, a venue adding the air day re-resolved
+    // nothing, and the incremental model kept the take a whole resolve of the same listing no longer makes.
+    val stale = "Royal Ballet & Opera 2024-25: Romeo and Juliet"
+    listing(stale, "2027-01-10T19:00").airDays should not be empty
+    listing(stale, "2027-01-10T19:00") should not be listing(stale, "2027-01-10T19:00", "2027-05-25T19:15")
+    // so is a relay whose bracketed year may date its staging (Ilkley's "The Royal Ballet: The Nutcracker (2025)")
+    val dated = "The Royal Ballet: The Nutcracker (2025)"
+    listing(dated, "2026-12-01T19:00").airDays should not be empty
+    listing(dated, "2026-12-01T19:00") should not be listing(dated, "2026-12-01T19:00", "2026-12-09T19:15")
+    // and a relay reading no air day keeps its equality over its days
+    listing("Met Opera 2026-27: Manon", "2027-04-03T18:00") shouldBe listing("Met Opera 2026-27: Manon", "2027-04-03T18:00", "2027-04-09T18:00")
+  }
 }
