@@ -61,16 +61,16 @@ class QueueEnrichmentRetrigger(
     if (dropped.nonEmpty)
       logger.info(s"Dropping ${dropped.map(_.toString).toSeq.sorted.mkString(", ")} retrigger for " +
         s"'${key.cleanTitle}' — source not enabled in ${country.code}")
-    applicable.foreach {
-      case RetriggerKind.ResolveImdbId =>
-        queue.enqueue(
-          TaskType.ResolveImdbId,
-          EnrichTaskKeys.resolveImdbIdDedup(key.cleanTitle, key.year),
-          EnrichTaskKeys.resolveImdbIdPayload(key.cleanTitle, key.year, searchTitleOf(key, record)),
-          submittedAt = clock.instant())
-      case rating =>
-        val (taskType, kind) = QueueEnrichmentRetrigger.ratingOf(rating)
-        refreshRating(key, record, taskType, kind)
+    applicable.foreach { kind =>
+      QueueEnrichmentRetrigger.ratingTaskOf(kind) match {
+        case Some((taskType, freshness)) => refreshRating(key, record, taskType, freshness)
+        case None =>
+          queue.enqueue(
+            TaskType.ResolveImdbId,
+            EnrichTaskKeys.resolveImdbIdDedup(key.cleanTitle, key.year),
+            EnrichTaskKeys.resolveImdbIdPayload(key.cleanTitle, key.year, searchTitleOf(key, record)),
+            submittedAt = clock.instant())
+      }
     }
     if (applicable.nonEmpty)
       logger.info(s"Merge retrigger for '${key.cleanTitle}' (${key.year.getOrElse("—")}): ${applicable.map(_.toString).toSeq.sorted.mkString(", ")}")
@@ -92,9 +92,15 @@ class QueueEnrichmentRetrigger(
 object QueueEnrichmentRetrigger {
   /** The task a rating retrigger kind enqueues and the freshness stamp its handler writes on each ask. The
    *  non-rating kind (IMDb-id resolve) applies in every country, is not freshness-gated, and isn't listed. */
-  val ratingOf: Map[RetriggerKind, (TaskType, FreshnessKind)] = Map(
-    RetriggerKind.ImdbRating    -> (TaskType.ImdbRating,    FreshnessKind.ImdbRating),
-    RetriggerKind.FilmwebRating -> (TaskType.FilmwebRating, FreshnessKind.FilmwebRating),
-    RetriggerKind.RtRating      -> (TaskType.RtRating,      FreshnessKind.RtRating),
-    RetriggerKind.McRating      -> (TaskType.McRating,      FreshnessKind.McRating))
+  val ratingOf: Map[RetriggerKind, (TaskType, FreshnessKind)] =
+    RetriggerKind.all.flatMap(kind => ratingTaskOf(kind).map(kind -> _)).toMap
+
+  /** [[ratingOf]] as a match the compiler checks whole: a new kind must say which task it is, or none. */
+  def ratingTaskOf(kind: RetriggerKind): Option[(TaskType, FreshnessKind)] = kind match {
+    case RetriggerKind.ResolveImdbId => None
+    case RetriggerKind.ImdbRating    => Some((TaskType.ImdbRating,    FreshnessKind.ImdbRating))
+    case RetriggerKind.FilmwebRating => Some((TaskType.FilmwebRating, FreshnessKind.FilmwebRating))
+    case RetriggerKind.RtRating      => Some((TaskType.RtRating,      FreshnessKind.RtRating))
+    case RetriggerKind.McRating      => Some((TaskType.McRating,      FreshnessKind.McRating))
+  }
 }
