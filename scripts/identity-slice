@@ -563,7 +563,7 @@ if [ "$emit_drift" = 1 ]; then
     (cd "$repo" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.PopulationMonotonicitySpec "${dir#"$repo"/}") > "$work/population.out" 2> "$work/population.log" || rc=$?
     jvm_slot_release
     if [ "$rc" != 0 ] || ! filed=$(python3 -I "$repo/scripts/ci/population_walk_diff.py" rows --into "$backlog" < "$work/population.out"); then
-      tail -20 "$work/population.log" "$work/population.out" >&2
+      tail -n 20 "$work/population.log" "$work/population.out" >&2
       identity_log "$dir: the population walk failed or breached the rule contract (above): no backlog row filed -- PopulationMonotonicitySpec fails the slice on main"; exit 6
     fi
     if [ -n "$filed" ]; then

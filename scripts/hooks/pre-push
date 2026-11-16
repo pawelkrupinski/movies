@@ -1626,7 +1626,7 @@ check_flipbacklog() {
     need_jvm flipbacklog || return 1
     log "flipbacklog: ${#dirs[@]} slice(s) the change brings, walked (PopulationMonotonicitySpec)"
     if ! scripts/sbt-warm "worker/Test/runMain services.identity.PopulationMonotonicitySpec ${dirs[*]}" > "$tmp/flipbacklog.log" 2>&1; then
-        tail -20 "$tmp/flipbacklog.log" >&2; warn "flipbacklog: the walk did not run (full log: $tmp/flipbacklog.log)"; return 1
+        tail -n 20 "$tmp/flipbacklog.log" >&2; warn "flipbacklog: the walk did not run (full log: $tmp/flipbacklog.log)"; return 1
     fi
     sed -nE 's/^\[info\] //; /^(# )?(drift|identity)-slices\//p' "$tmp/flipbacklog.log" > "$tmp/flipbacklog.walk"
     python3 scripts/ci/population_walk_diff.py judge-walk "$tmp/flipbacklog.walk"
