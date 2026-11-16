@@ -67,6 +67,27 @@ class AddressFailoverSpec extends AnyFlatSpec with Matchers {
     failover.lookup("tickets.ocinegavarres.es", policy, both) shouldBe Seq(dead, live)
   }
 
+  // Every host the JVM ever resolved was held for the process's life, expired lookups included: the worker's venue and
+  // poster hosts, thousands over a week between deploys.
+  "the lookups held" should "let go of a host nothing asked for within the time a failure is remembered" in {
+    val clock    = new MutableClock(t0)
+    val failover = new AddressFailover(clock, active = true)
+    (1 to 50).foreach(i => failover.lookup(s"host$i.example", policy, both))
+    failover.heldLookups shouldBe 50
+    clock.setTo(t0.plus(AddressFailover.Remember).plusSeconds(1))
+    failover.lookup("tickets.ocinegavarres.es", policy, both)
+    failover.heldLookups shouldBe 1
+  }
+
+  it should "still fail a connect over to the next address once its lookup is past its cache time" in {
+    val clock    = new MutableClock(t0)
+    val failover = new AddressFailover(clock, active = true)
+    failover.lookup("tickets.ocinegavarres.es", policy, both)
+    clock.setTo(t0.plus(AddressFailover.CacheFor).plusSeconds(20)) // a slow connect, begun on the lookup's last second
+    failover.connectFailed("tickets.ocinegavarres.es", t0.plus(AddressFailover.CacheFor).minusSeconds(1)) shouldBe true
+    failover.lookup("tickets.ocinegavarres.es", policy, both) shouldBe Seq(live, dead)
+  }
+
   "jvmCachesLookups" should "read the JDK's cache TTL as the JDK does: the security property, else the system one, else 30 s" in {
     AddressFailover.jvmCachesLookups(_ => None, _ => None) shouldBe true
     AddressFailover.jvmCachesLookups(Map("networkaddress.cache.ttl" -> "0").get, _ => None) shouldBe false

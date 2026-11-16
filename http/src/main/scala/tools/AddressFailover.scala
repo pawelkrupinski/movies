@@ -27,11 +27,25 @@ import scala.jdk.CollectionConverters._
 final class AddressFailover(clock: Clock, val active: Boolean, remember: Duration = AddressFailover.Remember,
                             cacheFor: Duration = AddressFailover.CacheFor) {
   private final case class Resolved(addresses: Seq[InetAddress], until: Instant)
-  private val resolved    = new ConcurrentHashMap[(String, Int), Resolved]()
+  /** Each lookup, by (host, policy): handed out for [[cacheFor]], and kept [[remember]] past its write for
+   *  [[connectFailed]], which reads the addresses a connect began from however long ago it resolved them. Every host the
+   *  JVM ever connected to was held for its life, the worker's poster and venue hosts by the thousand; now a host not
+   *  asked for within [[remember]] is let go, and at most [[AddressFailover.MostHostsHeld]] are held at once. */
+  private val lookups     = held[(String, Int), Resolved]
+  private val resolved    = lookups.asMap()
   /** The addresses whose connect failed, and when (the latest failure). */
   private val unreachable = new ConcurrentHashMap[InetAddress, Instant]()
-  /** When an address was last found unreachable, by host — what [[connectFailed]] reads to tell a stale failure apart. */
-  private val lastMoved   = new ConcurrentHashMap[String, Instant]()
+  /** When an address was last found unreachable, by host — what [[connectFailed]] reads to tell a stale failure apart:
+   *  a connect older than [[remember]] is none, so the entry is let go after it, as a lookup is. */
+  private val lastMoved   = held[String, Instant].asMap()
+
+  private def held[K, V]: com.github.benmanes.caffeine.cache.Cache[K, V] =
+    BoundedCache.ofSize(AddressFailover.MostHostsHeld)
+      .expireAfterWrite(if (remember.compareTo(cacheFor) >= 0) remember else cacheFor)
+      .ticker(() => clock.millis() * 1000000L).build[K, V]()
+
+  /** How many lookups are held, the expired let go first: what bounds the failover's memory. */
+  private[tools] def heldLookups: Long = { lookups.cleanUp(); lookups.estimatedSize() }
 
   def now(): Instant = clock.instant()
 
@@ -81,6 +95,9 @@ object AddressFailover {
   /** The most addresses one request is sent to (the first and two more): a host down at every address fails after
    *  its own, and a round-robin set of dozens costs no more than three connect budgets. */
   val MostAddressesTried: Int = 3
+  /** The most hosts whose lookups (and last failure) are held at once: well past the hosts a worker connects to within
+   *  [[Remember]] (every venue of its country and their poster hosts, some hundreds), so only a burst beyond it evicts. */
+  val MostHostsHeld: Long = 10000
 
   /** Whether the JVM keeps lookups itself: `networkaddress.cache.ttl` (else `sun.net.inetaddr.ttl`) anything but 0,
    *  its default 30 s included — read as `sun.net.InetAddressCachePolicy` reads them. */
