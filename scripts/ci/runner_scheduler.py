@@ -40,15 +40,20 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
       - CPU: the busy cores over `cpu_window_seconds` (/proc/stat) OF THE CPUS THE CLASS'S SLICE RUNS ON (its
         cpuset.cpus.effective; unread, the host's), up to `cpu_start_below` of them (`light_cpu_start_below` for a
         light job), must hold a job of the class at the cores it CAN BURN, `job_cpus` (the JVM's
-        ActiveProcessorCount=4 of a check or measurement container; 1 for a light job) -- and every runner of ours
-        on those CPUs is charged the same cap, of which the busy reading already holds what its container showed
-        (cpu.stat: over the window when settled, its CPU time over the window's span while settling). So a job
-        reading below its cap (a slow phase, or a contended cpuset) still owes the rest: "cap = charge", as for
-        memory. Charging what jobs USED (their median, 2026-11-07..09) fed back on itself: on 11-09 20:32-20:34Z
-        a burst of drift rows was charged the 1.3 cores contended measurements had shown, six started beside
-        ~11 cores of other load on the measure cpuset's 20, the CPUs read 20/20 within six minutes, and a UK drift
-        row took 900 s (527 s on a quiet ci-runner, 375 s hosted). At the cap that burst starts one. On a
-        saturated host another job only slows every job, bitcashier's included, for no throughput. Per cpuset, not
+        ActiveProcessorCount=4 of a check or measurement container; 1 for a light job) -- and every SETTLING runner
+        of ours on those CPUs is charged the same cap, less what the busy reading already holds of it (cpu.stat: its
+        CPU time over the window's span). Charging new jobs what jobs USED (their median, 2026-11-07..09) fed back
+        on itself: on 11-09 20:32-20:34Z a burst of drift rows was charged the 1.3 cores contended measurements had
+        shown, six started beside ~11 cores of other load on the measure cpuset's 20, the CPUs read 20/20 within six
+        minutes, and a UK drift row took 900 s (527 s on a quiet ci-runner, 375 s hosted). At the cap that burst
+        starts one. A SETTLED runner is in the reading (its window's cores); of the settled ones only the largest
+        rest of a cap is charged on top, for one job ramping up between readings (cpu_owed). Charging every settled
+        job its whole cap (2026-11-10..16) held checks at 2 and measurements at 3-4 while their cpusets read half
+        idle (2026-11-15/16: checks 2.8 cores at the median, measurements 2.2, the measure cpuset never past 15 of
+        20) -- the owner, 2026-11-16: "allow even more in parallel as long as mem and cpu are not maxed out". CPU,
+        unlike memory, is not cap = charge: an overcommitted core slows movies' jobs (bitcashier's slices outweigh
+        ours), it kills none. On a saturated host another job only slows every job for no throughput, so nothing
+        starts past cpu_start_below of the live reading. Per cpuset, not
         per host (the owner, 2026-11-08): measurements run on CCD1 and two CCD0 cores, checks on the rest of CCD0
         (bitcashier infra), and the host-wide reading both packed nine and ten measurements onto CCD1's 16 threads
         beside an idle CCD0 (2026-11-08 04:36-06:00Z, ~1.8 cores each: Germany's drift rows 36-51 min, 14-15 with
@@ -56,7 +61,7 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
         spend each other's cores, so the check lane's cores are kept from measurements only where they share CPUs.
     A runner of ours that has not fully shown its memory and CPU yet -- one waiting for its job, or started within
     `settle_seconds` -- is charged what it has NOT shown yet: its class's expected size less its container's working
-    set (and, like every runner of ours, its cores' cap less what it showed). So a queue never starts a burst into memory
+    set (and its cores' cap less what it showed). So a queue never starts a burst into memory
     that only looked free, and what a young runner already holds is not counted twice (15:46Z: three runners 3-4 min
     old were charged 11 GiB and 4 cores each beside what the readings already had of them: room 0 on 13 of 32
     cores). The memory margin is each reading's once, never per job. The log line names each term (`held by`).
@@ -305,15 +310,30 @@ def memory_charge(cfg: Config, inst: Instance) -> float:
 
 
 def cpu_charge(cfg: Config, r: Readings, inst: Instance, now: float) -> float:
-    """What a runner of ours still owes the CPU reading: the cores its job can burn (job_cpus) less what the reading
-    already holds of it -- settled, the cores its container used over the window; settling, its CPU time over the
+    """The cores a runner of ours may still grow by past what the CPU reading holds of it: its job's cap (job_cpus)
+    less what it showed -- settled, the cores its container used over the window; settling, its CPU time over the
     span the busy cores average (all of it fell inside: it started within settle_seconds). Never below 0: a job past
-    its cap is all in the reading."""
+    its cap is all in the reading. cpu_owed says how much of it admission charges."""
     if settling(cfg, inst, now):
         shown = inst.cpu_seconds / r.cpu_span_seconds if inst.cpu_seconds is not None and r.cpu_span_seconds else 0.0
     else:
         shown = inst.cpu_cores or 0.0
     return max(0.0, cfg.job_cpus[inst.cls] - shown)
+
+
+def cpu_owed(cfg: Config, r: Readings, runners: list, now: float) -> float:
+    """What `runners` (ours, on one cpuset) are charged past the CPU reading: every settling one the whole rest of its
+    cap (a burst of young runners never starts into cores that only looked free: DriftBurstTest), and of the settled
+    ones only the largest such rest -- ONE settled job ramping up between readings, not all of them at once.
+    Charging every settled job its cap (2026-11-10..16) held checks at 2 on 12 threads with 5-6 busy and measurements
+    at 3-4 on 20 with 4-7 busy: 2026-11-15/16, 24 h of ci-runner's journal, a settled check used 2.8 cores at the
+    median, a measurement 2.2, and the measure cpuset never read more than 15 of its 20 threads busy while 1569 ticks
+    had measurements queued and 1183 of them were held by the CPU. A settled job's later growth is in the next
+    readings, which stop further starts at cpu_start_below; past that, CPU contention slows movies' own jobs only
+    (bitcashier's slices outweigh ci-movies.slice 15-50 to 1) and kills nothing -- unlike memory, where cap = charge
+    stays (an overcommitted slice's OOM killer takes jobs)."""
+    young = sum(cpu_charge(cfg, r, i, now) for i in runners if settling(cfg, i, now))
+    return young + max((cpu_charge(cfg, r, i, now) for i in runners if not settling(cfg, i, now)), default=0.0)
 
 
 def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> list:
@@ -344,10 +364,10 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
     pending = [i for i in alive if settling(cfg, i, now)]
-    owed_cpus = sum(cpu_charge(cfg, r, i, now) for i in alive)
+    owed_cpus = cpu_owed(cfg, r, alive, now)
     memory = memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in pending))
-    # each class's spare cores on its own CPUs, less what our runners there still owe of their caps
-    cpu = {cls: cpu_spare(cfg, r, sum(cpu_charge(cfg, r, i, now) for i in alive if share_cpus(r, cls, i.cls)),
+    # each class's spare cores on its own CPUs, less what our runners there are charged past the reading (cpu_owed)
+    cpu = {cls: cpu_spare(cfg, r, cpu_owed(cfg, r, [i for i in alive if share_cpus(r, cls, i.cls)], now),
                           cfg.light_cpu_start_below if cls == "light" else cfg.cpu_start_below, cls)
            for cls in CLASSES}
     # the check lane's cores are kept from measurements only where checks could run on them
@@ -376,7 +396,14 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
               "slots": max(0, len(heavy_slots) - lane_slots),
               "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB",
               "owed_cores": round(owed_cpus, 1),
-              "check_lane": f"{lane_slots} x {cfg.job_expected_gib['check']} GiB {cfg.job_cpus['check']} cores"}
+              "check_lane": f"{lane_slots} x {cfg.job_expected_gib['check']} GiB {cfg.job_cpus['check']} cores",
+              # a landing check's own terms (no lane kept from it; inside the lane the CPU never holds it), so a
+              # starved check names its own cause, not a measurement's (2026-11-15/16: 483 "held by nothing named")
+              "check": {"memory": _whole_jobs(memory, cfg.job_expected_gib["check"]),
+                        "slice": None if held["check"] is None else _whole_jobs(held["check"], cfg.job_expected_gib["check"]),
+                        "caps": caps.get("check"),
+                        "cpu": None if lane_slots else _whole_jobs(cpu["check"], cfg.job_cpus["check"]),
+                        "slots": len(heavy_slots)}}
 
     def admit(cls: str, slots: list) -> None:
         nonlocal memory
@@ -443,11 +470,15 @@ def oldest_waits(jobs: list, now: float) -> dict:
 
 def starved(cfg: Config, d: Decision, demand: dict, waits: dict) -> list:
     """A line per class queued past `starve_report_seconds` with none of it starting this tick: how many, how long the
-    oldest waited, and what holds it -- bitcashier saturated, or each admission limit at zero (ADMISSION_LIMITS)."""
-    holding = ["bitcashier saturated"] if d.saturated else \
-        [k for k in ADMISSION_LIMITS if d.limits.get(k) is not None and d.limits[k] <= 0]
+    oldest waited, and what holds it -- bitcashier saturated, or each of the class's admission limits at zero
+    (ADMISSION_LIMITS: a measurement's in d.limits, a landing check's in d.limits["check"])."""
+    def holding(cls: str) -> list:
+        if d.saturated and cls != "light":
+            return ["bitcashier saturated"]
+        terms = d.limits.get("check", {}) if cls == "check" else d.limits
+        return [k for k in ADMISSION_LIMITS if terms.get(k) is not None and terms[k] <= 0]
     started = {cls for _, cls in d.starts}
-    return [f"STARVED {cls}: {demand[cls]} queued, the oldest {waits[cls] // 60} min, held by {', '.join(holding) or 'nothing named'}"
+    return [f"STARVED {cls}: {demand[cls]} queued, the oldest {waits[cls] // 60} min, held by {', '.join(holding(cls)) or 'nothing named'}"
             for cls in CLASSES if demand.get(cls) and cls not in started and waits.get(cls, 0) >= cfg.starve_report_seconds]
 
 

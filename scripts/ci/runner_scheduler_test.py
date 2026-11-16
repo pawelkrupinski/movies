@@ -194,12 +194,12 @@ class RecordedReadingsTest(unittest.TestCase):
         r = rs.Readings(95, 88, {"measure": measure_slice_gib - 24}, 13, CORES, (), 300)
         return rs.decide(NO_LANE, rs.Bitcashier(0, 0), queued(measure=15), settled + settling, NOW, r)
 
-    def test_1546_every_runner_is_charged_its_cap_less_what_it_has_shown(self):
+    def test_1546_every_settling_runner_is_charged_its_cap_less_what_it_has_shown(self):
         d = self.at_1546(measure_slice_gib=80)
-        # settling: 3 x (11 - 3.3) GiB still owed; CPU: each runner its 4-core cap less what the reading holds of it --
-        # the settled 2 x (4 - 2.6), the settling 3 x (4 - 520 / 300): 9.6 owed
-        # host: 88 - 22 reserved - 6 - 23.1 = 36.9 -> 3; CPU: (27.2 - 13 - 9.6) // 4 = 1
-        self.assertEqual(d.limits["owed_cores"], 9.6)
+        # settling: 3 x (11 - 3.3) GiB still owed; CPU: each settling runner its 4-core cap less what the reading holds
+        # of it, 3 x (4 - 520 / 300), and the settled ones the largest rest of a cap, 4 - 2.6: 8.2 owed
+        # host: 88 - 22 reserved - 6 - 23.1 = 36.9 -> 3; CPU: (27.2 - 13 - 8.2) // 4 = 1
+        self.assertEqual(d.limits["owed_cores"], 8.2)
         self.assertEqual((d.limits["memory"], d.limits["cpu"]), (3, 1))
         # and the 80 GiB slice: 56 - 6 - 23.1 = 26.9 -> 2; the CPU binds first
         self.assertEqual((d.limits["slice"], d.room), (2, 1))
@@ -345,6 +345,57 @@ class AfterTheCpusetDeployTest(unittest.TestCase):
         self.assertNotIn("check", [c for _, c in d.starts])
 
 
+class HalfIdleCpusetsTest(unittest.TestCase):
+    """2026-11-15/16, 24 h of ci-runner's journal: measurements queued on 1569 ticks, 1183 of them held by the CPU,
+    while the measure cpuset read 4-10 of its 20 threads busy (p10-p90; never past 15) and memory held 2-6 more. Every
+    settled runner was charged its whole 4-core cap though a settled measurement used 2.2 cores at the median and a
+    check 2.8 (the owner: "allow even more in parallel as long as mem and cpu are not maxed out"). A settled runner is
+    in the reading; only one of them ramping up is charged past it."""
+
+    def at(self, check_busy, measure_busy, available, ci_free, measure_free, ours, demand, bc=0):
+        r = rs.Readings(available, ci_free, {"measure": measure_free}, check_busy + measure_busy, CORES, (4.0,) * bc,
+                        300, on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
+        return rs.decide(CFG, rs.Bitcashier(bc, 0), demand, ours, NOW, r)
+
+    @staticmethod
+    def settled(slot, cls, mem, cores):
+        return rs.Instance(slot, cls, True, NOW, NOW - 900, mem_gib=mem, cpu_cores=cores, cpu_seconds=cores * 900)
+
+    def test_023235_a_fifth_measurement_starts_on_a_half_idle_cpuset(self):
+        # 02:32:35Z: bitcashier idle, 56 measurements queued, two checks (4.4, 3.4 cores) and four measurements (1.5,
+        # 2.7, 2.7, 1.6) all settled; check CPUs 8/12, measure CPUs 9/20. Was: 17 - 9 - (2.5 + 1.3 + 1.3 + 2.4) < 4,
+        # 'cpu': 0 -- now 17 - 9 - 2.5 = 5.5 holds one more, and the slice's caps (96 // 16 - 4) a second
+        ours = [self.settled(1, "check", 7, 4.4), self.settled(2, "check", 6, 3.4),
+                *(self.settled(s, "measure", m, c) for s, m, c in ((3, 2, 1.5), (4, 4, 2.7), (5, 4, 2.7), (6, 3, 1.6)))]
+        d = self.at(8, 9, 95, 82, 83, ours, queued(measure=56))
+        self.assertEqual((d.limits["cpu"], d.limits["caps"]), (1, 2))
+        self.assertEqual(d.starts, ((7, "measure"),))
+
+    def test_the_new_one_holds_the_next_back_until_it_shows(self):
+        # the tick after: the fifth one is settling and owes its whole cap, 17 - 9.2 - 4 - 2.5 < 4
+        ours = [self.settled(s, "measure", 4, 2.2) for s in (3, 4, 5, 6)] + \
+               [rs.Instance(7, "measure", True, NOW, NOW - 30, mem_gib=1, cpu_cores=0.5, cpu_seconds=15)]
+        d = self.at(4, 9.2, 95, 82, 70, ours, queued(measure=55))
+        self.assertEqual(d.starts, ())
+
+    def test_124239_checks_past_their_cap_on_a_full_cpuset_still_hold_a_third(self):
+        # 12:42:39Z: two settled checks at 5.2 cores each, the check CPUs 11 of 12 busy: saturated, nothing starts
+        ours = [self.settled(1, "check", 6, 5.2), self.settled(3, "check", 6, 5.2),
+                *(self.settled(s, "measure", 8, 2.2) for s in (2, 4, 5))]
+        d = self.at(11, 8, 79, 64, 66, ours, queued(check=5), bc=1)
+        self.assertEqual(d.starts, ())
+        self.assertEqual(rs.starved(CFG, d, queued(check=5), {"check": 1200}),
+                         ["STARVED check: 5 queued, the oldest 20 min, held by cpu"])
+
+    def test_a_starved_check_names_its_own_cpus_not_the_idle_measure_ones(self):
+        # 483 ticks of 2026-11-15/16 said "STARVED check: ... held by nothing named": the cause named was a
+        # measurement's terms, and the measure cpuset had room while the check one was full
+        ours = [self.settled(1, "check", 6, 5.0), self.settled(2, "check", 6, 5.0)]
+        d = self.at(11, 2, 100, 95, 90, ours, queued(check=3))
+        self.assertEqual(rs.starved(CFG, d, queued(check=3), {"check": 1500}),
+                         ["STARVED check: 3 queued, the oldest 25 min, held by cpu"])
+
+
 class DriftBurstTest(unittest.TestCase):
     """2026-11-09 20:32-20:34Z, ci-runner's journal: two dispatches queued 12 identity drift rows for the measure
     cpuset (20 threads, ~11-12 of them busy with other load). Each row's JVM may burn 4 cores (ActiveProcessorCount=4)
@@ -375,12 +426,14 @@ class DriftBurstTest(unittest.TestCase):
         d = self.at(10, 107, 100, 90, check_busy=5, measure_busy=8, ours=ours, measure_queued=7)
         self.assertEqual(d.starts, ())
 
-    def test_settled_rows_reading_below_their_cap_still_owe_the_rest(self):
-        # three rows past settle_seconds at 1.3 cores each on 10 of 20: 17 - 10 - 3 x 2.7 < 4 (was: (17 - 10) // 1.3 = 5)
+    def test_settled_rows_reading_below_their_cap_owe_one_of_them_ramping_up(self):
+        # three rows past settle_seconds at 1.3 cores each on 10 of 20: one may still ramp to its cap, 17 - 10 - 2.7 =
+        # 4.3 holds one more (was: every settled row its whole cap, 17 - 10 - 3 x 2.7 < 4: none) -- and a second
+        # waits for the first's 4 cores to show (was: (17 - 10) // 1.3 = 5 at the used median)
         ours = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=8, cpu_cores=1.3, cpu_seconds=1200)
                 for s in (1, 2, 3)]
         d = self.at(4, 100, 98, 60, check_busy=7, measure_busy=10, ours=ours, measure_queued=9)
-        self.assertEqual(d.starts, ())
+        self.assertEqual(d.starts, ((4, "measure"),))
 
 
 class SliceCapsTest(unittest.TestCase):

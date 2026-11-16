@@ -1162,3 +1162,33 @@ the key unchanged.
 
 **CPU variance: noted, no action.** Hosted runners' CPU type alone moves a drift replay about 2x (above). The rows
 are not pinned to a CPU type.
+
+## 17. ci-runner's cpusets read half idle while movies queued (2026-11-16)
+
+The owner: "maybe we should allow even more in parallel as long as mem and cpu are not maxed out? investigate".
+ci-runner's scheduler journal, 24 h to 2026-11-16 00:53Z (2880 ticks, bitcashier never saturated, 0-1 builders busy on
+most ticks):
+
+| | checks queued | measurements queued |
+|---|---|---|
+| ticks | 2024 | 1569 |
+| held by the CPU term | 663 (+483 "nothing named": a check's starve line named a measurement's terms) | 1183 |
+| our runners | 2 checks on 1614 ticks | 2-4 measurements |
+| check cpuset busy (of 12), p10/p50/p90 | 4 / 6 / 9 | |
+| measure cpuset busy (of 20), p10/p50/p90, max | | 4 / 7 / 10, 15 |
+| host MemAvailable, p50 | 107 GiB | 100 GiB |
+
+A settled check used 2.8 cores at the median (p90 5.2), a measurement 2.2 (p90 3.3). Memory never bound. The binding
+term was CPU "cap = charge": every runner of ours, settled or not, was charged its whole 4-core cap, so the measure
+cpuset held `0.85 x 20 / 4` = 4 measurements and the check cpuset 2 checks whatever they used.
+
+The change (runner_scheduler.py `cpu_owed`): a settling runner still owes its whole cap (the 11-09 drift burst), a
+settled one is charged what the reading shows, plus, once per cpuset, the largest rest of a settled job's cap (one
+job ramping up between readings). Memory keeps cap = charge: an overcommitted slice kills jobs, an overcommitted core
+only slows movies' own (bitcashier's slices outweigh ours). Replaying the 24 h of ticks through both rules, one tick at
+a time: measurement starts admitted 439 -> 665, check starts unchanged (the check cpuset's 12 threads at a 4-core
+charge for the new job still hold a third check only below ~5 threads busy). At a quiet bitcashier the measure lane
+now fills to its slice's caps (96 GiB / 16 = 6), checks stay at 2-3.
+
+Not changed, for the owner: checks could spill onto the measure cpuset when theirs is full (the scheduler writes
+`RUNNER_SLICE`), at the cost the 2026-11-03 split was made for -- a check's test phase 6 -> 16 min beside measurements.
