@@ -74,6 +74,20 @@ class ExpiredFixtureFallbackSpec extends AnyFlatSpec with Matchers with ScratchD
     }
   }
 
+  // A recording's wiring builds two chains over one tree (ArchiveReplayWiring's scrape-phase and enrichment-phase
+  // fetches), each with its own fallback: the one that did not move the page back found the shelf empty, remembered
+  // nothing of the other's move, and failed the way the site did.
+  it should "answer a failure with the response another chain's fallback over the same tree moved back" in {
+    withRecordedTree(ageInDays = 9) { (tree, _) =>
+      EnrichmentFreshness.prune(tree)
+      val scrape = new ExpiredFixtureFallback(new Scripted(down), EnrichmentFreshness.shelfOf(tree), tree)
+      val enrich = new ExpiredFixtureFallback(new Scripted(down), EnrichmentFreshness.shelfOf(tree), tree)
+
+      new String(scrape.getBytes(url), "UTF-8") shouldBe "<html>recorded</html>"
+      new String(enrich.getBytes(url), "UTF-8") shouldBe "<html>recorded</html>"
+    }
+  }
+
   it should "not answer from a tree file it did not move back" in {
     withRecordedTree(ageInDays = 1) { (tree, _) =>
       EnrichmentFreshness.prune(tree) shouldBe 0

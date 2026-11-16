@@ -2,7 +2,7 @@ package tools
 
 import settings.FixtureRoot
 
-import java.nio.file.{Files, Path, StandardCopyOption}
+import java.nio.file.{Files, NoSuchFileException, Path, StandardCopyOption}
 import scala.util.control.NonFatal
 
 /**
@@ -21,8 +21,6 @@ final class ExpiredFixtureFallback(live: HttpFetch, shelf: Path, tree: Path) ext
     root = FixtureRoot(shelf.toAbsolutePath.getParent))
   private val inTree  = new clients.tools.FakeHttpFetch(tree.getFileName.toString, strict = true, foldYear = false,
     root = FixtureRoot(tree.toAbsolutePath.getParent))
-  /** The tree files this fallback moved back, so a later failure of the same request reads the one already restored. */
-  private val restored = scala.collection.mutable.Set.empty[Path]
 
   override def get(url: String): String = new String(getBytes(url), "UTF-8")
 
@@ -40,18 +38,19 @@ final class ExpiredFixtureFallback(live: HttpFetch, shelf: Path, tree: Path) ext
       case NonFatal(failure) => kept(url, body).map(Files.readAllBytes).getOrElse(throw failure)
     }
 
-  /** The request's previous answer, in the tree: the shelved file moved back (a move keeps its mtime), or the one an
-   *  earlier failure of it already moved back. Two passes failing the same request -- at once, or one after the other
-   *  before the recorder above has written the tree -- both read it: the shelf no longer holds it for the second. */
+  /** The request's previous answer, in the tree: the shelved file moved back (a move keeps its mtime), or one an
+   *  earlier failure of it already moved back. Two passes failing the same request -- at once, one after the other
+   *  before the recorder above has written the tree, or in the other chain a wiring builds over the same tree -- both
+   *  read it: the shelf no longer holds it for the second. Which tree file a fallback moved back is told by the file
+   *  itself, not remembered: a restored file keeps its expired mtime, and [[EnrichmentFreshness.prune]] left no other
+   *  expired file in the tree (a fresh one is the fixtures leg's to answer, never this). */
   private def kept(url: String, body: Option[String]): Option[Path] = synchronized {
-    shelved.fileFor(url, body).map { file =>
+    shelved.fileFor(url, body).flatMap { file =>
       val target = tree.resolve(shelf.toAbsolutePath.toRealPath().relativize(file.toAbsolutePath))
       Files.createDirectories(target.getParent)
-      Files.move(file, target, StandardCopyOption.ATOMIC_MOVE)
-      restored += canonical(target)
-      target
-    }.orElse(inTree.fileFor(url, body).filter(file => restored(canonical(file))))
+      try Files.move(file, target, StandardCopyOption.ATOMIC_MOVE)
+      catch { case _: NoSuchFileException => () } // the other chain's fallback moved it first
+      Option.when(Files.exists(target))(target)
+    }.orElse(inTree.fileFor(url, body).filter(file => EnrichmentFreshness.expired(tree.toRealPath(), file.toRealPath())))
   }
-
-  private def canonical(file: Path): Path = file.toRealPath()
 }

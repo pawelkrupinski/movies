@@ -74,6 +74,13 @@ object EnrichmentFreshness extends Logging {
   /** Where [[prune]] puts a tree's expired responses: beside the tree, never in it, so nothing packs or replays it. */
   def shelfOf(root: Path): Path = root.toAbsolutePath.resolveSibling(s"${root.getFileName}.expired")
 
+  /** Whether the recorded response at `path` (in the tree at `root`) is past its lifetime ([[lifetimeOf]]), aged against
+   *  the wall clock its mtime was stamped by: what [[prune]] shelves, and so what a tree file restored from the shelf
+   *  still is ([[ExpiredFixtureFallback]]). */
+  def expired(root: Path, path: Path, ttl: FiniteDuration = Ttl, now: Long = System.currentTimeMillis()): Boolean =
+    Try(Files.getLastModifiedTime(path).toMillis).getOrElse(Long.MaxValue) <
+      now - lifetimeOf(root.toAbsolutePath.relativize(path.toAbsolutePath), ttl).toMillis
+
   def prune(root: Path, ttl: FiniteDuration = Ttl): Int =
     if (!Files.isDirectory(root)) 0
     else {
@@ -85,8 +92,7 @@ object EnrichmentFreshness extends Logging {
         walk.iterator().asScala
           .filter(Files.isRegularFile(_))
           .filterNot(_.startsWith(root.resolve(FileEnrichmentCacheStore.CacheDirectoryName)))
-          .filter(path => Try(Files.getLastModifiedTime(path).toMillis).getOrElse(Long.MaxValue) <
-                          now - lifetimeOf(root.relativize(path), ttl).toMillis)
+          .filter(expired(root, _, ttl, now))
           .toList
       }.getOrElse {
         logger.warn(s"Could not scan $root for stale enrichment fixtures — leaving it as it is")
