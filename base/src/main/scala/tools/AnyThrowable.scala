@@ -25,9 +25,15 @@ object AnyThrowable {
     try body
     catch { case thrown: Throwable => onThrow(thrown); throw thrown }
 
-  /** `body`'s value, or whatever it threw, fatal or not. */
+  /** `body`'s value, or whatever it threw, fatal or not. An interrupt it captures keeps its flag on this thread for
+   *  whoever owns it: captured, it would otherwise be lost (the worker's shutdown drain steps, a change-stream
+   *  callback), and a later wait on the thread would not know it was asked to stop. */
   @nowarn("id=E235")
   def captured[A](body: => A): Either[Throwable, A] =
     try Right(body)
-    catch { case thrown: Throwable => Left(thrown) }
+    catch {
+      case thrown: Throwable =>
+        if (thrown.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
+        Left(thrown)
+    }
 }

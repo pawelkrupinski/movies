@@ -185,11 +185,9 @@ object WorkerMain extends Logging {
     logger.info("Worker received shutdown signal — draining the enrichment cascade…")
     drainStep("Metrics stop")(shared.metrics.stop()) // process-level samplers, once
     wirings.foreach(w => drainStep("Drain")(w.stop()))
-    try drainStep("Mongo client close")(shared.client.foreach(_.close()))
-    finally {
-      health.stop(0)
-      done.countDown()
-    }
+    drainStep("Mongo client close")(shared.client.foreach(_.close()))
+    health.stop(0)
+    done.countDown()
   }
 
   /** Why this worker must NOT boot with the countries it was given, or None when

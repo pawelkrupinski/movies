@@ -6,13 +6,10 @@ package services.movies
  * (which logs it) and goes no further, a fatal error included -- the one place outside `tools.AnyThrowable` that
  * means to stop one: a cursor ended by it leaves every later change unseen until a reload or a restart, while the
  * process (`-XX:+ExitOnOutOfMemoryError`) still ends on an OutOfMemoryError by itself. An interrupt keeps its flag
- * for whoever owns the thread.
+ * for whoever owns the thread (`captured` restores it).
  */
 object ChangeStreamCallback {
 
   def guarded(failed: Throwable => Unit)(work: => Unit): Unit =
-    tools.AnyThrowable.captured(work).left.foreach { thrown =>
-      if (thrown.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
-      failed(thrown)
-    }
+    tools.AnyThrowable.captured(work).left.foreach(failed)
 }

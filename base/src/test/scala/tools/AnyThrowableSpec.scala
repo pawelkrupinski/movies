@@ -25,7 +25,19 @@ class AnyThrowableSpec extends AnyFlatSpec with Matchers {
   }
 
   "captured" should "answer whatever the block threw, fatal or not, or its value" in {
-    fatal.foreach(thrown => AnyThrowable.captured[Int](throw thrown).left.map(_ eq thrown) shouldBe Left(true))
+    try fatal.foreach(thrown => AnyThrowable.captured[Int](throw thrown).left.map(_ eq thrown) shouldBe Left(true))
+    finally { Thread.interrupted(); () }   // the captured interrupt's flag, kept (below), is not the next test's
     AnyThrowable.captured("value") shouldBe Right("value")
+  }
+
+  // The worker's shutdown drain captured an interrupt and dropped it: the steps after it, and the thread's owner, no
+  // longer knew they had been asked to stop. ChangeStreamCallback restored it by hand; every capture does now.
+  it should "keep an interrupt's flag on the thread that captured it" in {
+    try {
+      AnyThrowable.captured[Int](throw new InterruptedException("stopping")).isLeft shouldBe true
+      Thread.currentThread().isInterrupted shouldBe true
+    } finally { Thread.interrupted(); () }
+    AnyThrowable.captured[Int](throw new RuntimeException("plain")).isLeft shouldBe true
+    Thread.currentThread().isInterrupted shouldBe false
   }
 }
