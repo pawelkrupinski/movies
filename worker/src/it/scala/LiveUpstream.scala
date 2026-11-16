@@ -71,6 +71,15 @@ object LiveUpstream {
           s"${Option(transport.getMessage).getOrElse("")}) — cancelled rather than failed, because a " +
           "request that never got a response cannot tell us whether the contract changed.",
           transport)
+      // A RATE LIMIT the call under test answered is as unambiguous: the endpoint said "slow down", which is no
+      // contract change, and a probe of the site root answering 2xx says nothing about it. Landing check #933
+      // (2026-11-15) went red on exactly this: IMDb's GraphQL endpoint 429'd the pipeline case's rating lookup while
+      // `imdb.com/` answered the probe.
+      case limited: _root_.tools.HttpStatusException if _root_.tools.HttpStatusException.isRateLimit(limited) =>
+        cancel(
+          s"$upstream rate-limited the call under test (${limited.getMessage}) — cancelled rather than failed, " +
+          "because a throttle cannot tell us whether the contract changed.",
+          limited)
       case failure: Throwable =>
         Try(probe()) match {
           case Success(_) => throw failure

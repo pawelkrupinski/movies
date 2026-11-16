@@ -57,6 +57,28 @@ class LiveUpstreamSpec extends AnyFlatSpec with Matchers {
       probed shouldBe 0)
   }
 
+  /** The shape that failed landing check #933 (2026-11-15): IMDb's GraphQL endpoint answered the pipeline case's
+   *  rating lookup 429, `ImdbClient.lookup` threw it typed, and `https://www.imdb.com/` answered the probe 2xx, so the
+   *  throttle was rethrown as a regression. The endpoint under test SAID "slow down": that is no contract change,
+   *  whatever its site root says. */
+  it should "cancel a rate limit the call under test answered, without asking the probe" in {
+    var probed = 0
+    val cancelled = intercept[TestCanceledException] {
+      fast(() => probed += 1)(throw new tools.HttpStatusException(429, "POST", "https://caching.graphql.imdb.com/", None))
+    }
+    cancelled.getMessage should include ("rate-limited")
+    cancelled.getMessage should include ("HTTP 429")
+    probed shouldBe 0
+  }
+
+  it should "still probe, and still fail, for a status that is no rate limit on a reachable upstream" in {
+    var probed = 0
+    intercept[tools.HttpStatusException] {
+      fast(() => probed += 1)(throw new tools.HttpStatusException(400, "POST", "https://caching.graphql.imdb.com/", None))
+    }
+    probed should be > 0
+  }
+
   /** …and the distinction still holds in the other direction: a failure the CLIENT
    *  swallowed arrives as an ordinary assertion failure, which is exactly the case the
    *  probe exists to judge. */
