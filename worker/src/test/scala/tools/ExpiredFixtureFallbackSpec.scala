@@ -61,6 +61,27 @@ class ExpiredFixtureFallbackSpec extends AnyFlatSpec with Matchers with ScratchD
     }
   }
 
+  // A recording asks with several threads: two asking the same failed page each find it shelved, and the first's move
+  // took it off the shelf, so the second failed the way the site did though the answer lay restored in the tree.
+  it should "answer a second failure of the same request with the response the first moved back" in {
+    withRecordedTree(ageInDays = 9) { (tree, page) =>
+      EnrichmentFreshness.prune(tree)
+      val fetch = new ExpiredFixtureFallback(new Scripted(down), EnrichmentFreshness.shelfOf(tree), tree)
+
+      new String(fetch.getBytes(url), "UTF-8") shouldBe "<html>recorded</html>"
+      new String(fetch.getBytes(url), "UTF-8") shouldBe "<html>recorded</html>"
+      Files.readString(page) shouldBe "<html>recorded</html>"
+    }
+  }
+
+  it should "not answer from a tree file it did not move back" in {
+    withRecordedTree(ageInDays = 1) { (tree, _) =>
+      EnrichmentFreshness.prune(tree) shouldBe 0
+      val fetch = new ExpiredFixtureFallback(new Scripted(down), EnrichmentFreshness.shelfOf(tree), tree)
+      an[RuntimeException] should be thrownBy fetch.getBytes(url)
+    }
+  }
+
   it should "be what a recording's chain answers with, and then the tree, the site asked once" in {
     withRecordedTree(ageInDays = 9) { (tree, _) =>
       EnrichmentFreshness.prune(tree)
