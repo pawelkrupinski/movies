@@ -160,13 +160,28 @@ check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/
 # The plan modes never read the root checkout's state: its full `git status` made each plan call cost a whole-tree rehash
 # in a Linux container's bind mount (pre-push-test.sh ran past its 600 s bound there, 2026-10-18).
 printf '\033[36m▸\033[0m pre-push plan modes\n'
+# agentctl's combined-tree verification (--verify-only): the unit tests of every module the paths touch
+printf '\033[36m▸\033[0m pre-push --unit-plan\n'
+units() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --unit-plan | tr '\n' '|' | sed 's/|$//'; }
+check "a common source runs common's unit tests alone (the compile covers its dependents)" "common/Test/test" \
+  "$(units common/src/main/scala/A.scala)"
+check "a worker test file runs the worker's rest unit row, never its heavy rows" \
+  "worker/testOnly * -services.identity.* -scripts.* -tools.*" "$(units worker/src/test/scala/services/ASpec.scala)"
+check "a worker identity-row spec the paths change runs by name" \
+  "worker/testOnly * -services.identity.* -scripts.* -tools.*|worker/testOnly services.identity.XSpec scripts.YSpec" \
+  "$(units worker/src/test/scala/services/identity/XSpec.scala worker/src/test/scala/scripts/YSpec.scala)"
+check "a resource counts, each module once, in dependency order" "scrapers/Test/test|web/Test/test" \
+  "$(units web/src/main/A.scala scrapers/src/test/resources/x.json web/src/test/scala/B.scala)"
+check "no module path, no unit tests (e2e is the heavy rows')" "" \
+  "$(units docs/a.md scripts/x.sh e2e/src/test/scala/A.scala geodata/src/main/scala/G.scala worker/README.md)"
+
 planrepo="$testroot/planrepo"; mkdir -p "$planrepo/scripts/hooks"
 scratch_repo "$planrepo"
 for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$planrepo/scripts/$f"; done
 printf '#!/usr/bin/env bash\necho checked >> "%s/root-checked"\n' "$planrepo" > "$planrepo/scripts/root-checkout-check"
 chmod +x "$planrepo/scripts/root-checkout-check"
 scratch_git "$planrepo" add -A; scratch_git "$planrepo" commit -qm base
-for mode in --plan --compile-plan --lint-plan; do
+for mode in --plan --compile-plan --unit-plan --lint-plan; do
   (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
 done
 check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
@@ -239,6 +254,12 @@ if command -v shellcheck >/dev/null; then
     "worker/Test/compile worker/It/compile e2e/Test/compile" \
     "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
+  check "...and runs no unit tests (the landing check's are its areas')" "0" \
+    "$(grep -c '^worker/testOnly \* -services' "$scratch/sbt-args" 2>/dev/null)"
+  rm -f "$scratch/sbt-args"
+  (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --verify-only "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "--verify-only (agentctl's combined tree) compiles the same and runs the worker's unit row in that one run" "1 1" \
+    "$(grep -c '^worker/It/compile$' "$scratch/sbt-args" 2>/dev/null) $(grep -cx 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\*' "$scratch/sbt-args" 2>/dev/null)"
   # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (GitHub
   # unreachable), the push is blocked, never checked against a stale checkout.
   mkdir -p "$repo/worker/src/test/scala/deploy" "$repo/infra/bin"

@@ -182,7 +182,12 @@
 # and only the `sbt` check runs -- every test config compiled, the lint specs, and local-tests.txt's `fast` set instead
 # of `basic`; no area tests -- with the touched files' shellcheck and actionlint checks, and the checks a touched
 # union-merged file selects (THE COMBINED FILES: the rebase wrote it, no member checked it; e.g. `judgements`). Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
-# batch push) of the same tree on the same base reuses it after judging the red gate. `--checks-only A..B` is `--range A..B` without
+# batch push) of the same tree on the same base reuses it after judging the red gate. `--verify-only A..B` is agentctl's
+# COMBINED-TREE VERIFICATION (the owner, 2026-11-16, "but always recompile and unit test"): a change fully checked on an
+# older main A, rebased onto a main that moved with no file overlap, so A..B is what landed since plus the change --
+# the --fast-only set over those paths, plus the unit tests of every module they touch (`--unit-plan < paths` prints
+# them; the worker's are its `rest` unit row -- its identity row is the `identity` area's, its heavy rows no unit
+# stage's -- and any worker identity-row spec the paths change, by name). `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
@@ -202,7 +207,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
 # the dry runs (--plan, --compile-plan, --range, --checks-only), which name the file they mean.
 case "${1:-}" in
-    --plan|--compile-plan|--range|--checks-only|--fast-only|--failure-summary) ;;
+    --plan|--compile-plan|--unit-plan|--range|--checks-only|--fast-only|--verify-only|--failure-summary) ;;
     *)
         if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
             hooks_path="$(git config --get core.hooksPath || true)"
@@ -246,7 +251,7 @@ root_warning=""
 # A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
 # `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
 # stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
-case "${1:-}" in --plan|--compile-plan|--lint-plan|--failure-summary) root_check="" ;; esac
+case "${1:-}" in --plan|--compile-plan|--unit-plan|--lint-plan|--failure-summary) root_check="" ;; esac
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
 tree="" area_tests=""
@@ -510,6 +515,33 @@ compile_plan() {
     return 0
 }
 
+# ── Which unit tests the combined-tree verification runs (--verify-only) ────────────────────────
+# One line per path on stdin; prints sbt test commands, one per line: `<module>/Test/test` for every module with a
+# path under its src/ (base, http, common, identity, testkit, scrapers, web; e2e is the heavy rows', geodata has
+# none), the worker's `rest` unit row (build.sbt's WORKER_ROW: every suite outside services.identity., scripts. and
+# tools., which are its identity row -- the `identity` area's -- and its heavy rows, no unit stage's), and the worker
+# identity-row specs the paths change, by name.
+unit_plan() {
+    local path module modules=" " specs="" spec
+    while IFS= read -r path; do
+        module="${path%%/*}"
+        case "$module" in base|http|common|identity|testkit|scrapers|web|worker) ;; *) continue ;; esac
+        case "$path" in "$module"/src/*) ;; *) continue ;; esac
+        case "$modules" in *" $module "*) ;; *) modules+="$module " ;; esac
+        case "$path" in
+            worker/src/test/scala/services/identity/*Spec.scala|worker/src/test/scala/scripts/*Spec.scala|worker/src/test/scala/tools/*Spec.scala)
+                spec="${path#worker/src/test/scala/}"; spec="${spec%.scala}"; specs+=" ${spec//\//.}" ;;
+        esac
+    done
+    for module in base http common identity testkit scrapers web worker; do
+        case "$modules" in *" $module "*) ;; *) continue ;; esac
+        if [ "$module" = worker ]; then echo 'worker/testOnly * -services.identity.* -scripts.* -tools.*'
+        else echo "$module/Test/test"; fi
+    done
+    if [ -n "$specs" ]; then echo "worker/testOnly$specs"; fi
+    return 0
+}
+
 # ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
 # One line per path on stdin; prints `<module>:<spec>`, one per line, read off THE LINT REGISTRY
 # (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
@@ -603,6 +635,7 @@ failure_summary() { # <log>
 case "${1:-}" in
     --plan)         plan; exit 0 ;;
     --compile-plan) compile_plan; exit 0 ;;
+    --unit-plan)    unit_plan; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
     --failure-summary) failure_summary "$2"; exit 0 ;;
 esac
@@ -894,10 +927,11 @@ to_main=0
 # A TAG (refs/tags/*, e.g. experiment/<name> keeping a dropped experiment's code) is the same: it moves nothing main
 # builds, so a tag-only push runs no code check (it once ran 3759 s of scripttests, page and sbt and blocked on them).
 measure_only="" other="" tag_only=""
-checks_only="" fast_only=""
-if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ]; then
+checks_only="" fast_only="" verify_only=""
+if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ] || [ "${1:-}" = "--verify-only" ]; then
     [ "$1" = "--checks-only" ] && checks_only=1
     [ "$1" = "--fast-only" ] && checks_only=1 fast_only=1
+    [ "$1" = "--verify-only" ] && checks_only=1 fast_only=1 verify_only=1
     ranges+=("${2:?$1 A..B}")
     to_main=1   # a dry run is judged as a push to main
 else
@@ -932,6 +966,8 @@ if [ "$to_main" = 1 ]; then
     else check_stranded_trailers "${ranges[@]}" || exit 1
     fi
     if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
+    elif [ -n "$verify_only" ]; then log "--verify-only: the red gate is not judged (it is when the change is pushed)" >&2
+        gate_state="verify-only"
     elif [ -n "$fast_only" ]; then log "--fast-only: the red gate is not judged (it is when the batch is pushed)" >&2
         gate_state="fast-only"
     elif [ -n "$checks_only" ]; then log "--checks-only: the red gate is not judged (it is when these commits are pushed)" >&2
@@ -1002,6 +1038,10 @@ fast_select() { # stdin: the checks the paths select -> those --fast-only runs, 
     done
 }
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | fast_select)"
+# --verify-only: the touched modules' unit tests ride the sbt check, which runs whenever there are any
+if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! printf '%s\n' "$checks" | grep -qx sbt; then
+    checks="sbt${checks:+$'\n'$checks}"
+fi
 # THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: the slice rule reads the message (`Fixes-Red:` and drift/flips), and
 # CI's commit rules judge every pushed commit, so a commit claiming a fix is judged here too, in a third of a second: a
 # scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
@@ -1348,6 +1388,9 @@ check_sbt() {
     local set=basic
     [ -n "$fast_only" ] && set=fast
     while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt)
+    if [ -n "$verify_only" ]; then
+        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(printf '%s\n' "$changed" | unit_plan)
+    fi
     local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
     if [ "$sbt_client" = 1 ]; then
         local line

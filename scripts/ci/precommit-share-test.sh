@@ -37,6 +37,17 @@ check "...an identity shard's" "PREPUSH_ONLY=identity" "$(share env identity | t
 check "a batch's fast check: everything is the rest's, its fast set" "sbt|" "$(REF=check/fast-ab12 share checks rest)|$(REF=check/fast-ab12 share checks identity)"
 check "...and its rest leaves identity to nobody (the fast set has none)" "PREPUSH_ELSEWHERE=page oldrefs" \
     "$(REF=check/fast-ab12 share env rest | tail -1)"
+full="$(g rev-parse origin/main)"
+g update-ref refs/remotes/origin/main HEAD # main moved: the identity change landed
+change worker/src/test/resources/fixture.json
+check "a change's combined-tree verification: the rest's, the sbt check (its unit tests) for a resource alone" "sbt|" \
+    "$(REF="check/verify-$full-x" share checks rest)|$(REF="check/verify-$full-x" share checks identity)"
+check "...over what landed since its full check and the change, together" \
+    "PREPUSH_MODE=--verify-only PREPUSH_RANGE=$full..HEAD PREPUSH_ELSEWHERE=page oldrefs" \
+    "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ' | sed 's/ $//')"
+check "...a branch naming no commit fails" "1" \
+    "$( (cd "$repo" && GITHUB_REF_NAME="check/verify-$(printf '0%.0s' $(seq 40))-x" bash scripts/ci/precommit-share.sh env rest > /dev/null 2>&1); echo $?)"
+g update-ref refs/remotes/origin/main "$full"
 change web/src/main/twirl/views/x.scala.html
 check "a page change: the page share" "page" "$(share checks page)"
 check "...and no identity share" "" "$(share checks identity)"
