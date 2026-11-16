@@ -384,13 +384,13 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   "a breaker built after a restart" should "start a host the last one saw fail and never answer half-open" in {
     val memory   = new InMemoryUnrecoveredHosts
     val clock    = new MutableClock(Instant.parse("2026-11-12T13:50:00Z"))
-    val before   = new HostCircuitBreakerHttpFetch(new RecordingHttpFetch(timeout), clock = clock, remembered = memory)
+    val before   = new HostCircuitBreakerHttpFetch(new RequestLoggingHttpFetch(timeout), clock = clock, remembered = memory)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy before.get(urlA))
     memory.load().map(_.host) shouldBe Seq(hostA)
     memory.load().head.lastFailure.value should include("HttpTimeoutException")
 
     clock.advanceSeconds(180) // the deploy
-    val wire  = new RecordingHttpFetch(timeout)
+    val wire  = new RequestLoggingHttpFetch(timeout)
     val after = new HostCircuitBreakerHttpFetch(wire, clock = clock, remembered = memory)
     after.unrecoveredHosts shouldBe Seq(hostA)          // the outage's series carries on through the boot
     a[HttpTimeoutException] should be thrownBy after.get(urlA)
@@ -410,7 +410,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     val clock  = new MutableClock(Instant.parse("2026-11-12T13:50:00Z"))
     memory.failed(UnrecoveredHosts.Host(hostA, Some("SSLHandshakeException"),
       clock.instant().minusMillis(HostCircuitBreakerHttpFetch.RememberFor.toMillis + 1000)))
-    val cb = new HostCircuitBreakerHttpFetch(new RecordingHttpFetch(), clock = clock, remembered = memory)
+    val cb = new HostCircuitBreakerHttpFetch(new RequestLoggingHttpFetch(), clock = clock, remembered = memory)
     cb.unrecoveredHosts shouldBe empty
     memory.load() shouldBe empty
   }
@@ -421,7 +421,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
       def failed(host: UnrecoveredHosts.Host): Unit   = throw new IllegalStateException("no database")
       def recovered(host: String): Unit               = ()
     }
-    val cb = new HostCircuitBreakerHttpFetch(new RecordingHttpFetch(timeout), failureThreshold = 4,
+    val cb = new HostCircuitBreakerHttpFetch(new RequestLoggingHttpFetch(timeout), failureThreshold = 4,
       clock = new MutableClock(Instant.parse("2026-11-12T13:50:00Z")), remembered = unreadable)
     cb.unrecoveredHosts shouldBe empty
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA)) // a failed write is not the request's
