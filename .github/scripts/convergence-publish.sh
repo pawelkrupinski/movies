@@ -43,6 +43,8 @@ set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE="$here/../../scripts/ci/gh-release.sh"
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/../../scripts/tool-conventions.sh" # bounded
 
 # Replaces the country's asset IN PLACE: one copy per country, never a history.
 publish_tree() {
@@ -106,11 +108,15 @@ archive_corpus() { # <code> <recording run> <corpus file>
 
 # THE PIN GUARD -- see the header. A country is pinned only on proof: a verify that did not succeed, diagnostics that do
 # not show the served-corpus check ran, any finding in them, or no pinned copy of the recording's tree is a refusal.
+# ONE DEADLINE, VERIFIED_PIN_SECONDS (default 1200) from the start, kept under the pin step's `timeout-minutes`: the
+# corpus downloads ran one after another, each allowed 600 s, for up to five countries inside a 10-minute job. Each
+# download now gets what is left of it (600 s at most), and a country with none left is refused: its pair stays.
 verified_pin() {
-    local run="$1" codes="$2" verdict="$3" dir="$4" code file files found refused=0 names tree latest recorded corpus present
+    local run="$1" countries="$2" verdict="$3" dir="$4" code file files found refused=0 names tree latest recorded corpus present
+    local deadline=$(( $(date +%s) + ${VERIFIED_PIN_SECONDS:-1200} )) left
     names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name') || {
         echo "::error::could not list release $FIXTURE_RELEASE_TAG -- no pair pinned"; return 1; }
-    for code in ${codes//,/ }; do
+    for code in ${countries//,/ }; do
         if [ "$verdict" != success ]; then
             echo "::error::$code: recording $run's verify ended $verdict, not success -- $code's pair stays as it was"
             refused=1; continue
@@ -134,9 +140,16 @@ verified_pin() {
             refused=1; continue
         fi
         # The corpus half outlives the recording's 14-day artifact: archived for good first, or no pin.
+        left=$(( deadline - $(date +%s) ))
+        if [ "$left" -le 0 ]; then
+            echo "::error::$code: the pin's deadline (VERIFIED_PIN_SECONDS=${VERIFIED_PIN_SECONDS:-1200}) passed before its corpus was archived -- $code's pair stays as it was"
+            refused=1; continue
+        fi
+        [ "$left" -le 600 ] || left=600
         corpus=$(mktemp -d)
-        present=$(GH_OPTIONAL_TIMEOUT=600 "$here/../../scripts/ci/gh-optional.sh" run download "$run" --name "scrape-fixtures-$code" \
-                    --dir "$corpus") || present=failed
+        # bounded as a whole: gh-optional's own bound is per attempt, and it asks again on a transient answer
+        present=$(GH_OPTIONAL_TIMEOUT=$left bounded "$left" "$here/../../scripts/ci/gh-optional.sh" run download "$run" \
+                    --name "scrape-fixtures-$code" --dir "$corpus") || present="failed or past the pin's deadline"
         if [ "$present" != present ] || ! archive_corpus "$code" "$run" "$corpus/scrapes-$code.tar.gz"; then
             echo "::error::$code: recording $run's corpus (artifact scrape-fixtures-$code: $present) could not be archived -- $code's pair stays as it was"
             rm -rf "$corpus"; refused=1; continue

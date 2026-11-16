@@ -285,7 +285,8 @@ jobs:
         needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]
         if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.preflight.outputs.pin-hermetic == 'true' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
-        timeout-minutes: 10
+        # the pin step's 25 minutes, plus the checkout and the diagnostics download before it
+        timeout-minutes: 35
         permissions:
             contents: write
             actions: read
@@ -301,15 +302,25 @@ jobs:
               with:
                   pattern: convergence-diagnostics-*
                   path: ${{ runner.temp }}/verify-diagnostics
+            # ONE BOUND FOR EVERY COUNTRY: the pin's deadline (VERIFIED_PIN_SECONDS, 20 min) covers each corpus download
+            # (600 s at most, one after another for up to five countries) and the step's 25 minutes cover the archive
+            # uploads and pruning after the last one (convergence-publish.sh verified_pin).
             - name: Pin each verified country's recording as the hermetic pair
+              timeout-minutes: 25
               env:
+                  VERIFIED_PIN_SECONDS: 1200
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
                   # Every leg and comparison succeeded (an order comparison a country has none of is skipped), or nothing pins.
                   VERDICT: ${{ needs.leg.result == 'success' && needs.order-independence-p01.result != 'failure' && needs.order-independence-p12.result != 'failure' && needs.order-independence-p01.result != 'cancelled' && needs.order-independence-p12.result != 'cancelled' && 'success' || 'failure' }}
-              run: >-
-                  .github/scripts/convergence-publish.sh verified-pin "${{ needs.preflight.outputs.recording }}"
-                  "${{ needs.preflight.outputs.countries }}" "$VERDICT" "$RUNNER_TEMP/verify-diagnostics"
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  .github/scripts/convergence-publish.sh verified-pin "${{ needs.preflight.outputs.recording }}" \
+                    "${{ needs.preflight.outputs.countries }}" "$VERDICT" "$RUNNER_TEMP/verify-diagnostics"
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:

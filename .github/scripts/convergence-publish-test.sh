@@ -24,6 +24,7 @@ if [ "$1" = run ]; then
   run=$3; shift 3
   while [ "$#" -gt 0 ]; do case "$1" in --name) name=$2; shift ;; --dir) dir=$2; shift ;; esac; shift; done
   [ -d "$root/artifacts/$run/$name" ] || { echo "no valid artifacts found to download" >&2; exit 1; }
+  [ -z "${STUB_RUN_DOWNLOAD_SECONDS:-}" ] || sleep "$STUB_RUN_DOWNLOAD_SECONDS" # a slow artifact storage
   mkdir -p "$dir"; cp "$root/artifacts/$run/$name"/* "$dir/"; exit 0
 fi
 [ "$1" = release ] || exit 1
@@ -203,6 +204,14 @@ printf '# corpus-run 901\n' > "$diag/convergence-diagnostics-de-convergence/de-s
 check "a recording with no pinned copy of its tree is refused" "1 573" \
   "$(run bash "$publish" verified-pin 901 de success "$diag") $(cut -d' ' -f1 "$work/release/hermetic-de.txt")"
 printf '# corpus-run 900\n' > "$diag/convergence-diagnostics-de-convergence/de-served-served.txt"
+# ONE DEADLINE FOR THE PIN (VERIFIED_PIN_SECONDS), under its step's `timeout-minutes`: each corpus download was allowed
+# 600 s, one after another for up to five countries, inside a 10-minute job. A download still running at the deadline
+# is ended and its country refused, and a country left with no time is refused before it starts.
+started=$(date +%s)
+check "a pin out of time refuses each country left, its pair staying as it was" "1 900 573" \
+  "$(run env VERIFIED_PIN_SECONDS=2 STUB_RUN_DOWNLOAD_SECONDS=6 bash "$publish" verified-pin 900 pl,de success "$diag") $(cut -d' ' -f1 "$work/release/hermetic-pl.txt") $(cut -d' ' -f1 "$work/release/hermetic-de.txt")"
+check "...within its deadline, not each download's" "yes" "$([ $(( $(date +%s) - started )) -lt 6 ] && echo yes || echo no)"
+check "...naming the deadline for each" "2" "$(grep -c "pin's deadline" "$work/out")"
 check "a clean country is pinned, timed by the run's start when prod-latest names another recording" \
   "0 900 2026-11-14T23:31:00Z enrichment-de-900.tar.zst" \
   "$(run bash "$publish" verified-pin 900 de success "$diag") $(cat "$work/release/hermetic-de.txt")"
