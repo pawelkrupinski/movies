@@ -71,4 +71,18 @@ class ResolutionKeysSpec extends AnyFlatSpec with Matchers {
   it should "never match on an empty title" in {
     ResolutionKeys.belongsTo("mc|theodyssey||2026", "", titleNormalizer) shouldBe false
   }
+
+  // A rating link is keyed by the title the site is ASKED for -- the cinema title with its programme decoration
+  // stripped (`searchQuery`: RatingSiteTitles for Metacritic / RT, FilmwebRatings for Filmweb) -- never the row's
+  // decorated cache-key title, so forgetting by that title alone missed the link and an operator's refresh replayed
+  // the very answer it exists to re-check.
+  it should "match a rating link keyed by the title stripped of its programme decoration" in {
+    val title  = "Kino bez barier: Arco (AD)"
+    val row    = models.MovieRecord(tmdbId = Some(1))
+    val titles = services.enrichment.RatingSiteTitles.derive(services.movies.CacheKey(title, Some(2025), titleNormalizer), row, None, titleNormalizer)
+    titles.linkTitle shouldBe "Arco"
+    ResolutionKeys.belongsTo(ResolutionKeys.rt(titles.linkTitle, titles.fallback, titles.year, titleNormalizer), title, titleNormalizer) shouldBe true
+    ResolutionKeys.belongsTo(ResolutionKeys.mc(titles.linkTitle, titles.fallback, titles.year, titleNormalizer), title, titleNormalizer) shouldBe true
+    ResolutionKeys.belongsTo(ResolutionKeys.filmweb(titleNormalizer.searchQuery(title), Some(2025), None, Nil, titleNormalizer), title, titleNormalizer) shouldBe true
+  }
 }

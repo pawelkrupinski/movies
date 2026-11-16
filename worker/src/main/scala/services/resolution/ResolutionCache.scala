@@ -75,7 +75,7 @@ object UnresolvedPolicy {
    *  Metacritic resolutions in production), and "this site has no page for this
    *  film" is stable — a day-late rating badge costs nothing.
    *
-   *  Untouched by this: an operator's forced re-enrich, which goes through
+   *  Untouched by this: an operator's refresh, which goes through
    *  `forget`/`forgetAll` and drops remembered misses along with the hits, so
    *  the escape hatch still genuinely re-probes. */
   case object Remember extends UnresolvedPolicy

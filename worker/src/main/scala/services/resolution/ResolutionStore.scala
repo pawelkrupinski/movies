@@ -43,11 +43,11 @@ trait ResolutionStore {
   /** Forget every memoised resolution for the film titled `cleanTitle`,
    *  returning how many were dropped.
    *
-   *  The operator's forced re-enrich calls this. Without it, forcing is far less
-   *  fresh than it looks: the row's URLs and ids are cleared, and the
-   *  re-resolve then replays THIS cache instead of re-probing, so a wrong answer
-   *  comes straight back (prod: Nolan's "Odyseja" re-resolved to the memoised
-   *  Cousteau-biopic Metacritic URL for the whole 24h TTL). */
+   *  An operator's refresh of given films calls this (`ResolutionCache.forget`, from
+   *  `services.refresh.RatingRefreshSource`). Without it the refresh is far less fresh
+   *  than it looks: re-deriving the rows' links replays THIS cache instead of
+   *  re-probing, so a wrong answer comes straight back (prod: Nolan's "Odyseja"
+   *  re-resolved to the memoised Cousteau-biopic Metacritic URL for the whole 24h TTL). */
   def removeForFilm(cleanTitle: String): Int
 
   /** Forget EVERY memoised resolution for this source, returning how many were

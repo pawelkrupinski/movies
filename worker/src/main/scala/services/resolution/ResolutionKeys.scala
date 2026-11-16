@@ -49,7 +49,12 @@ object ResolutionKeys {
     Seq("mc", norm(title, normalizer), opt(fallback, normalizer), this.year(year)).mkString(Sep)
 
   /** True when `hintKey` was built for the film whose cache key title is
-   *  `cleanTitle` — i.e. that title appears as one of the key's fields.
+   *  `cleanTitle` — i.e. that title, or the title the rating sites are asked it
+   *  under (`searchQuery`: its programme decoration stripped, the field
+   *  `RatingSiteTitles` and `FilmwebRatings` key their links by), appears as one
+   *  of the key's fields. Matching the cache-key title alone missed every link of
+   *  a decorated row ("Kino bez barier: Arco (AD)" is keyed `rt|arco||2025`), so
+   *  an operator's refresh replayed the very answer it re-checks.
    *
    *  Every builder above places the film's sanitized title in SOME field, but
    *  not the same one: `tmdb`/`imdb`/`filmweb` lead with it, while `mc`/`rt` lead
@@ -60,13 +65,13 @@ object ResolutionKeys {
    *
    *  Deliberately NOT year-scoped. The year in a key is the resolver's (TMDB's
    *  release year), which can differ from the row's cache-key year, so filtering
-   *  on it would silently miss the entry we most want gone. A forced re-enrich
+   *  on it would silently miss the entry we most want gone. An operator's refresh
    *  means "forget what we concluded about this title", and clearing a same-title
    *  remake's entry too is harmless — it re-resolves on its next pass. */
   def belongsTo(hintKey: String, cleanTitle: String, normalizer: TitleNormalizer): Boolean = {
-    val title = norm(cleanTitle, normalizer)
+    val titles = Set(norm(cleanTitle, normalizer), norm(normalizer.searchQuery(cleanTitle), normalizer)).filter(_.nonEmpty)
     // -1 keeps trailing empty fields (an absent fallback / year), so a key ending
     // in a blank field still splits into the full field list.
-    title.nonEmpty && hintKey.split("\\|", -1).contains(title)
+    titles.nonEmpty && hintKey.split("\\|", -1).exists(titles)
   }
 }

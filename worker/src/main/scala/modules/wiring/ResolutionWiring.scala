@@ -10,13 +10,14 @@ import services.tasks.SettleReaper
 
 
 /** A film's TMDB side once the identity model has named it (`MovieService`), IMDb-id recovery, the
- *  per-source resolution caches a forced re-enrich clears, and the projection's own schedule. */
+ *  per-source resolution caches an operator's refresh forgets, and the projection's own schedule. */
 trait ResolutionWiring { self: WorkerWiring =>
 
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
-  // Named (not inline) so the forced re-enrich can reach every one of them to
-  // forget a film's memoised resolutions — and so each is ONE instance rather
-  // than a fresh Caffeine per call site.
+  // Named (not inline) so the operator's refreshes (the /tasks forget-all, a
+  // RefreshSource's per-film forget: OperatorWiring) reach the very instance the
+  // rating source resolves through — ONE instance rather than a fresh Caffeine per
+  // call site, or a forget would clear a layer nobody reads.
   //
   // The three rating-LINK caches remember empty answers as well as hits: "this
   // site has no page for this film" is the common outcome and a stable one, and
@@ -26,9 +27,6 @@ trait ResolutionWiring { self: WorkerWiring =>
   lazy val rtLinkCache: ResolutionCache      = resolutionCache("resolve_rt",      UnresolvedPolicy.Remember)
   lazy val mcLinkCache: ResolutionCache      = resolutionCache("resolve_mc",      UnresolvedPolicy.Remember)
   lazy val filmwebLinkCache: ResolutionCache = resolutionCache("resolve_filmweb", UnresolvedPolicy.Remember)
-  /** Every per-source resolution cache — what a forced re-enrich clears. */
-  lazy val resolutionCaches: Seq[ResolutionCache] =
-    Seq(imdbIdCache, rtLinkCache, mcLinkCache, filmwebLinkCache)
   lazy val imdbIdResolver = managedResources.stopping(new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
     wikidata = Some(wikidataClient),
