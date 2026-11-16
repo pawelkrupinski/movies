@@ -68,15 +68,29 @@ abstract class CacheRefresher(
   def refreshOneSync(title: String, year: Option[Int]): Option[String] =
     refreshOneSync(cache.keyOf(title, year))
 
-  /** The per-row refresh an operator asks for outside the queue (`services.refresh.RatingRefreshSource`):
-   *  [[refreshOneSync]], with a displayed value it moved reported to the adaptive cadence under the row's
-   *  `tmdbId`, as the full-corpus walk reports one. The queue's `RatingHandler` reports through its task; this
-   *  path has none, and a move the cadence never heard of is the gap a later per-row refresh mis-reads as a
-   *  fresh change. */
-  private[services] def refreshOneReported(key: CacheKey, tmdbId: Option[Int]): Option[String] = {
-    val moved = refreshOneSync(key)
-    moved.foreach(value => recordCadenceChange(key, tmdbId, Some(value)))
-    moved
+  /** The re-check an operator asks for, for given rows, outside the queue (`services.refresh.RatingRefreshSource`):
+   *  what the full-corpus walk ([[refreshAll]]) does to each row, for these rows alone. This default is
+   *  [[refreshOneSync]] per row, a displayed value it moved reported to the adaptive cadence under the row's
+   *  `tmdbId` as the full-corpus walk reports one (the queue's `RatingHandler` reports through its task; this path
+   *  has none, and a move the cadence never heard of is the gap a later per-row refresh mis-reads as a fresh
+   *  change), and a row whose refresh throws (the site down for it, a page that will not parse) counted as failed
+   *  while the rest are still asked. A URL-keyed source walks the rows as its full-corpus walk does
+   *  ([[refreshAllUrlThenScore]]): its per-row refresh trusts the stored URL, so a re-check through it could never
+   *  correct a wrong one. */
+  private[services] def recheck(rows: Seq[(CacheKey, MovieRecord)]): BulkRefreshResult = {
+    val outcomes = rows.map { case (key, record) =>
+      Try(refreshOneSync(key)) match {
+        case Success(moved) =>
+          moved.foreach(value => recordCadenceChange(key, record.tmdbId, Some(value)))
+          Some(moved.isDefined)
+        case Failure(exception) =>
+          logger.warn(s"$sourceName: re-check of '${key.cleanTitle}' (${key.year.getOrElse("?")}) failed: ${exception.getMessage}")
+          None
+      }
+    }
+    val (changed, failed) = (outcomes.count(_.contains(true)), outcomes.count(_.isEmpty))
+    BulkRefreshResult.counts(walked = rows.size, changed = changed, discovered = 0, failed = failed,
+      message = s"$changed of ${rows.size} row(s) changed, $failed failed")
   }
 
   /** Subclass hook: the per-row work. Returns the new displayed value if it moved. */
@@ -114,7 +128,8 @@ abstract class CacheRefresher(
    *  soft-blocks under load (Filmweb). */
   protected def refreshConcurrency: Int = 8
 
-  /** The full-corpus walk of a URL-keyed source (Metacritic, RT, Filmweb): ONE
+  /** The walk of a URL-keyed source (Metacritic, RT, Filmweb) over `rows` -- the
+   *  whole cache for the full-corpus walk, an operator's films for [[recheck]]: ONE
    *  pass, two steps per row — re-derive the row's URL, then re-read the score
    *  off whatever URL the row NOW holds.
    *
@@ -131,11 +146,12 @@ abstract class CacheRefresher(
    *
    *  Each score write goes through `cache.putIfPresent` (the per-title lock),
    *  and a moved score is reported to the adaptive cadence under the SNAPSHOT
-   *  row's tmdbId. A failed step — a `rediscoverUrl` that answers `Failure`, a
-   *  `fetchScore` that throws — counts the row as failed and leaves what the
+   *  row's tmdbId. A failed step — a `rediscoverUrl` that answers `Failure` or
+   *  throws, a `fetchScore` that throws — counts the row as failed and leaves what the
    *  row holds alone; a row whose re-resolution failed still refreshes its
    *  score off the URL it already had.
    *
+   *  @param rows          the rows walked, as the cache held them when it began.
    *  @param walkLabel     log prefix ("RT refresh"); also names the pool.
    *  @param urlOf         the row's stored URL for this source.
    *  @param scoreOf       the row's stored score for this source.
@@ -152,6 +168,7 @@ abstract class CacheRefresher(
    *  @param changedNoun   what the summary line counts as changed.
    */
   protected def refreshAllUrlThenScore[A](
+    rows:          Seq[(CacheKey, MovieRecord)],
     walkLabel:     String,
     urlOf:         MovieRecord => Option[String],
     scoreOf:       MovieRecord => Option[A],
@@ -161,7 +178,7 @@ abstract class CacheRefresher(
     badge:         A => String,
     changedNoun:   String = "score(s)"
   ): BulkRefreshResult = {
-    val snapshot  = cache.entries
+    val snapshot  = rows
     val startedAt = tools.Stopwatch.start()
     val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"$walkLabel: starting tick over ${snapshot.size} cached row(s) " +
@@ -173,7 +190,10 @@ abstract class CacheRefresher(
     BoundedParallel.foreach(walkLabel.replace(' ', '-'), snapshot, refreshConcurrency) { case (key, enrichment) =>
       // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
       //    better match replaces the stored one; a failure leaves it be.
-      if (enrichment.tmdbId.isDefined) rediscoverUrl(key, enrichment) match {
+      //    A re-derivation that THROWS (a failed read propagates: tools.ReadOutcome)
+      //    is that row's failure too, never the walk's: BoundedParallel loses the
+      //    whole batch to one throwing row.
+      if (enrichment.tmdbId.isDefined) Try(rediscoverUrl(key, enrichment)).flatten match {
         case Success(true)  => urlDiscovered.incrementAndGet()
         case Success(false) => ()
         case Failure(exception) =>

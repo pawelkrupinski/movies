@@ -50,6 +50,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
 
     private[services] def refreshAll(): BulkRefreshResult =
       refreshAllUrlThenScore[Int](
+        rows          = cache.entries,
         walkLabel     = "Fake refresh",
         urlOf         = _.metacriticUrl,
         scoreOf       = _.metascore,

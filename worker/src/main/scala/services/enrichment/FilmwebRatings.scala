@@ -298,8 +298,12 @@ class FilmwebRatings(
   /** Walk every cached row: re-run the full lookup for every row with a tmdbId
    *  (a Filmweb soft-block or network blip counts the row as failed rather than
    *  aborting the walk), then refresh the rating off whatever URL the row holds. */
-  private[services] def refreshAll(): BulkRefreshResult =
+  private[services] def refreshAll(): BulkRefreshResult = recheck(cache.entries)
+
+  /** The walk above over `rows` alone: an operator's re-check of given films re-resolves their URL too. */
+  override private[services] def recheck(rows: Seq[(CacheKey, models.MovieRecord)]): BulkRefreshResult =
     refreshAllUrlThenScore[Double](
+      rows          = rows,
       walkLabel     = "Filmweb refresh",
       urlOf         = _.filmwebUrl,
       scoreOf       = _.filmwebRating,

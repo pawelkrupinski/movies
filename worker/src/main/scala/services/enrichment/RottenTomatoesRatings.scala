@@ -132,8 +132,12 @@ class RottenTomatoesRatings(
 
   /** Walk every cached row: re-resolve the URL of every row with a tmdbId, then
    *  refresh the Tomatometer off whatever URL the row holds. */
-  private[services] def refreshAll(): BulkRefreshResult =
+  private[services] def refreshAll(): BulkRefreshResult = recheck(cache.entries)
+
+  /** The walk above over `rows` alone: an operator's re-check of given films re-resolves their URL too. */
+  override private[services] def recheck(rows: Seq[(CacheKey, models.MovieRecord)]): BulkRefreshResult =
     refreshAllUrlThenScore[Int](
+      rows          = rows,
       walkLabel     = "RT refresh",
       urlOf         = _.rottenTomatoesUrl,
       scoreOf       = _.rottenTomatoes,

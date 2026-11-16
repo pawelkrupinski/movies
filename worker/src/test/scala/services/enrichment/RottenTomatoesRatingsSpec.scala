@@ -353,4 +353,22 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
     cache.get(cache.keyOf("A", None)).flatMap(_.rottenTomatoes) shouldBe Some(74)
   }
+
+  // RT's and Metacritic's URL step answered `Success(resolveAndPersistUrl(...))`, so a probe whose read FAILED (an
+  // RT 503 propagates, tools.ReadOutcome) threw out of the row and out of the walk: BoundedParallel lost every other
+  // row of the operator's corpus refresh, and the task reported nothing of the scores it had moved.
+  "refreshAll" should "count a row whose URL re-derivation throws as failed and still refresh the rest" in {
+    val url = "https://www.rottentomatoes.com/m/b"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Oczy Ghany", Some(2025), MovieRecord(tmdbId = Some(1))),
+      ("B", Some(2025), MovieRecord(tmdbId = Some(2), rottenTomatoes = Some(50), rottenTomatoesUrl = Some(url)))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val client = new RottenTomatoesClient(http = new ScriptedByUrlHttpFetch(asked =>
+      if (asked == url) pageWithScore(74)
+      else if (asked.contains("oczy")) throw new RuntimeException("RT answered 503")
+      else UpstreamNotFound(asked)))
+    val result = new RottenTomatoesRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), client).refreshAll()
+    cache.get(cache.keyOf("B", Some(2025))).flatMap(_.rottenTomatoes) shouldBe Some(74)
+    result.failed shouldBe Some(1)
+  }
 }

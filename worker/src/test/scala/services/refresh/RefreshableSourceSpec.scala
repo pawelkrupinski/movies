@@ -127,4 +127,20 @@ class RefreshableSourceSpec extends AnyFlatSpec with Matchers {
     (result.walked, result.changed, result.failed) shouldBe (Some(2), Some(1), Some(1))
     result.message should include("1 failed")
   }
+
+  // The operator's refresh of given films exists to correct them, as the /tasks button corrects the whole corpus. It
+  // re-read the score off the row's stored URL alone (the per-row path the queue takes), so a row on another film's page
+  // stayed there however often it was refreshed, though its memoised links were forgotten for it.
+  it should "derive a URL-keyed source's link again for a row that already holds one, as the full-corpus walk does" in {
+    val stored = "https://www.rottentomatoes.com/m/the_odyssey"
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+      ("The Odyssey", Some(2026), MovieRecord(tmdbId = Some(1368337), rottenTomatoesUrl = Some(stored)))), normalizer = normalizer),
+      normalizer = normalizer, clock = tools.SpecClock.Pinned)
+    val asked = mutable.Set.empty[String]
+    val rt = new services.enrichment.RottenTomatoesRatings(cache, new clients.TmdbClient(clients.tools.FailingHttpFetch.Unexpected, apiKey = None),
+      new services.enrichment.RottenTomatoesClient(http = new clients.tools.ScriptedByUrlHttpFetch(url => { asked += url; tools.UpstreamNotFound(url) })))(using tools.SpecClock.latestTitleYear)
+    new RatingRefreshSource("rt", rt, cache, new Links).refresh(Seq("1368337"))
+    asked should contain("https://www.rottentomatoes.com/m/theodyssey")   // the link derived again
+    asked should contain(stored)                                           // and the score still read off the row's URL
+  }
 }
