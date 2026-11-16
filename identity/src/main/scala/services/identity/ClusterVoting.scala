@@ -104,8 +104,8 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  title must-link of round A joins it to ([[familyMajority]]'s) that publish a fact of their own (a year, a director,
    *  a runtime) and took a film ALONE on it (`accepted`), a season's billing apart. Empty for a cluster publishing a
    *  fact: its own evidence decides. What the flip-unification design (docs/investigations/2026-11-01-flip-unification.md,
-   *  stage 5) calls a CONTESTED family when it names two films or more: [[familyMajority]] lends such a family's film
-   *  only past [[ContestedMajority]], and the population report counts its bare listings ([[Resolution.contested]]). */
+   *  stage 5) calls a CONTESTED family when it names two films or more: the population report counts its bare listings
+   *  ([[Resolution.contested]]), and [[contested]] decides which of them take no film. */
   def ownBacked(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
                 titleEdges: Seq[ResolverEdge]): Map[Int, Set[String]] =
     if (cluster.exists(_.evidence.measured.publishesAFact)) Map.empty
@@ -130,12 +130,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  evidence as before: 78 Cineworld venues' bare "The Omen" beside 2 venues' credited 1976 film and 4 venues' 2006 one
    *  is the 50th-anniversary re-release, and 4 of 84 is no majority.
    *
-   *  When siblings back two films or more by their OWN statements ([[ownBacked]]: a CONTESTED family), the majority film
-   *  is lent only when its bound clears one half ([[ContestedMajority]]), not the cut alone: a family split near even
-   *  has no majority, and the cluster votes on its own pooled evidence instead, whichever film's siblings arrived last.
-   *  DE Burgtheater Ratzeburg's bare "Adventskino: Der Grinch" beside 17 of 32 venues stating Howard's 2000 film and
-   *  15 stating the 2018 one took the film each arriving sibling tipped the bound to, six flips in a day (2026-11-10;
-   *  flip-unification stage 5, docs/investigations/2026-11-01-flip-unification.md).
+   *  A cluster of a CONTESTED family ([[contested]]) is never asked: it borrows no film from its family, and votes none.
    *
    *  When they all took ONE film, the family is unanimous ([[unanimous]]), and the cluster takes it only where the
    *  siblings' titles carry its own title as a delimited piece: DE "Mein Sommer mit Nonna" beside eleven venues'
@@ -209,12 +204,19 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
     }
   }
 
-  /** Is a facts-free cluster's title family CONTESTED: do its siblings back two films or more by their own statements
-   *  ([[ownBacked]]), each at [[ContestedVenues]] venues or more? Such a cluster takes no film, neither a majority nor
-   *  its own vote: nothing it publishes says which of the films it is. Counts only grow as listings arrive, so a cluster
-   *  goes from a film to none once, never back. */
-  def contested(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int], titleEdges: Seq[ResolverEdge]): Boolean =
-    ownBacked(cluster, members, accepted, titleEdges).count(_._2.sizeIs >= ContestedVenues) >= 2
+  /** Is a facts-free cluster's title family CONTESTED (flip-unification stage 5, docs/investigations/2026-11-01-flip-unification.md):
+   *  do its siblings back two films or more by their own statements ([[ownBacked]]), each at [[ContestedVenues]] venues
+   *  or more and at no fewer venues than the cluster's own? Such a cluster takes NO film -- neither its family's
+   *  majority nor its own vote, whose pooled scoring reads the siblings' venues too: nothing it publishes says which of
+   *  the films it is, and unmatched beats wrong. DE Burgtheater Ratzeburg's bare "Adventskino: Der Grinch" beside
+   *  siblings stating Howard's 2000 film and the 2018 one near 50/50 took the film each arriving sibling tipped the
+   *  majority's bound (or the vote's) to, six flips in a day (2026-11-10). A film one venue backs (PL "Lalka" beside
+   *  186 venues' current release) contests nothing, nor siblings fewer than the cluster's own venues: 78 Cineworld
+   *  venues' bare "The Omen" beside 2 venues' 1976 film and 4 venues' 2006 one are the re-release's own say. */
+  def contested(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int], titleEdges: Seq[ResolverEdge]): Boolean = {
+    val own = cluster.flatMap(_.venues).toSet.size
+    ownBacked(cluster, members, accepted, titleEdges).count(_._2.sizeIs >= math.max(ContestedVenues, own)) >= 2
+  }
 
   /** The venues a film's own-statement backing needs to contest a family ([[contested]]): one venue's say is one venue's. */
   private val ContestedVenues = 2

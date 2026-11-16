@@ -935,8 +935,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "not follow a family its siblings contest by their own statements, whichever film's siblings arrive next" in {
     // DE Burgtheater Ratzeburg's bare "Adventskino: Der Grinch" (prod, 2026-11-10: six flips between 8871 and 360920):
     // the siblings stating "(2000)" and "(2018)" were near 50/50 by venue, and each arriving sibling tipped which film
-    // the majority's bound lent it. Neither side is a majority of a family split so: the bare listing decides on its
-    // own evidence, the same whichever siblings are present.
+    // the majority's bound lent it. A family whose siblings back both films by their own statements is contested: the
+    // bare listing, publishing nothing that says which, takes no film, whichever siblings are present.
     val films  = Seq(F(8871, "Der Grinch", 2000, "Ron Howard", 104, 20), F(360920, "Der Grinch", 2018, "Yarrow Cheney", 86, 15))
     val venues = models.Cinema.all.distinctBy(_.displayName).filterNot(_.displayName == KinoMuza.displayName)
     val howard = venues.take(30).map(listing(_, "Der Grinch", Some(2000), Some("Ron Howard")))
@@ -949,7 +949,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       r.decisionOf(cheney.head.key).film shouldBe Some(360920)
       r.decisionOf(bare.key)
     }
-    withClue(takes.map(_.render).mkString("\n"))(takes.map(_.film).distinct should have size 1)
+    withClue(takes.map(_.render).mkString("\n"))(takes.map(_.film).distinct shouldBe Seq(None))
   }
 
   it should "take the one film a unanimous family's titles carry it as a delimited piece of, at two venues or more" in {

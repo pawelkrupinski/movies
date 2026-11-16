@@ -87,7 +87,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // The title family: the round's title must-links (same title, search form, original title, segment), however the
     // solver then split the nodes they join.
     private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
-    // a facts-free cluster of a CONTESTED family borrows no majority; it votes on its own evidence
+    // a facts-free cluster of a CONTESTED family takes no film, neither its family's majority nor its own vote
     // (`ClusterVoting.contested`: flip-unification stage 5)
     private val borrowing = unaccepted.filterNot(cluster => voting.contested(cluster, members, accepted, titleEdges))
     private val familyTaken: Map[String, (Int, Double, String)] =
@@ -101,7 +101,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     }
     private val votes: Map[String, ResolverDecisions.Vote] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap { cluster =>
+      else borrowing.flatMap { cluster =>
         if (cluster.exists(node => familyTaken.contains(node.id)))
           cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
         else voting.vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
