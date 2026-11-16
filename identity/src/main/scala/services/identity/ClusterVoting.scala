@@ -157,8 +157,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
         val (film, venues) = venuesOf.toSeq.minBy { case (filmId, filmVenues) => (-filmVenues.size, filmId) }
         val total = (venuesOf.values.flatten ++ (own -- venues)).toSet.size
         val bound = RateBounds.lower95(venues.size, total)
-        val contested = ownBacked(cluster, members, accepted, titleEdges).sizeIs >= 2 && bound < ContestedMajority
-        Option.when(calibration.showsRatings(bound) && !contested && !cluster.exists(families.denies(_, film)))(
+        Option.when(calibration.showsRatings(bound) && !cluster.exists(families.denies(_, film)))(
           (film, bound, s"title family's majority film $film: ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
       } else unanimous(cluster, members, accepted, linked, own)
     }.flatten
@@ -210,9 +209,15 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
     }
   }
 
-  /** The share of a CONTESTED family's venues ([[ownBacked]] names two films or more) whose lower bound a majority film
-   *  must clear to be lent ([[familyMajority]]): more than half of them, not only the rating cut. */
-  private val ContestedMajority = 0.5
+  /** Is a facts-free cluster's title family CONTESTED: do its siblings back two films or more by their own statements
+   *  ([[ownBacked]]), each at [[ContestedVenues]] venues or more? Such a cluster takes no film, neither a majority nor
+   *  its own vote: nothing it publishes says which of the films it is. Counts only grow as listings arrive, so a cluster
+   *  goes from a film to none once, never back. */
+  def contested(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int], titleEdges: Seq[ResolverEdge]): Boolean =
+    ownBacked(cluster, members, accepted, titleEdges).count(_._2.sizeIs >= ContestedVenues) >= 2
+
+  /** The venues a film's own-statement backing needs to contest a family ([[contested]]): one venue's say is one venue's. */
+  private val ContestedVenues = 2
 
   /** The title relations under which a one-word title IS the film's title, whole ([[unanimous]]). */
   private val UnanimousTitles: Set[String] = Set("exact", "original", "alternative")

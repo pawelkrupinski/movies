@@ -87,9 +87,12 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // The title family: the round's title must-links (same title, search form, original title, segment), however the
     // solver then split the nodes they join.
     private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
+    // a facts-free cluster of a CONTESTED family borrows no majority; it votes on its own evidence
+    // (`ClusterVoting.contested`: flip-unification stage 5)
+    private val borrowing = unaccepted.filterNot(cluster => voting.contested(cluster, members, accepted, titleEdges))
     private val familyTaken: Map[String, (Int, Double, String)] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
+      else borrowing.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
     /** Each listing of a facts-free cluster whose title family backs two films or more by its siblings' own statements
      *  ([[ClusterVoting.ownBacked]]), with those films and their venues: report only. */
     def contested: Seq[(ListingKey, Map[Int, Set[String]])] = unaccepted.flatMap { cluster =>
