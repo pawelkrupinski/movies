@@ -168,13 +168,14 @@ object SpektrixClient {
 
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val event = group.head.event
+      val (director, year) = directorAndYear(attribute(event, DirectorAttribute), attribute(event, YearAttribute))
       CinemaMovie(
         movie = Movie(
           title          = title,
           rawTitle       = jsonText(event \ "name").filterNot(_ == title),
           runtimeMinutes = attribute(event, RuntimeAttribute).flatMap(runtimeIn)
                              .orElse((event \ "duration").asOpt[Int].filter(_ > 0)),
-          releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn),
+          releaseYear    = year.flatMap(ScraperParse.yearIn),
           countries      = attribute(event, CountryAttribute).toSeq.flatMap(ScraperParse.listItems),
           originalTitle  = attribute(event, OriginalTitleAttribute).map(_.collapsedSpaces)
                              .filterNot(_.equalsIgnoreCase(title))
@@ -184,7 +185,7 @@ object SpektrixClient {
         filmUrl     = webUrl(event),
         synopsis    = jsonText(event \ "description").flatMap(synopsisOf),
         cast        = names(attribute(event, CastAttribute)),
-        director    = names(attribute(event, DirectorAttribute)),
+        director    = names(director),
         showtimes   = showtimes,
         externalIds = (event \ "id").asOpt[String].map("spektrix" -> _).toMap,
         ageRating   = attributes(event, RatingAttribute).flatMap(Bbfc.findFirstIn).headOption.map(_.toUpperCase(Locale.ROOT))
@@ -241,6 +242,15 @@ object SpektrixClient {
     else Some(lines.drop(if (heading >= 0) heading + 1 else sheet.size).mkString("\n").replace(' ', ' ').trim)
       .filter(_.nonEmpty)
   }
+
+  private val BareYear = """\s*(?:18|19|20)\d{2}\s*""".r
+
+  /** The director and year attributes, each read by what it holds: BEAM Hertford types Dune's a field over —
+   *  `attribute_Director: "2021"`, `attribute_YearOfRelease: "Denis Villeneuve"` (2026-11-16) — so a director that
+   *  is a bare year beside a year that holds none is read the other way round, and a bare year names no director. */
+  private def directorAndYear(director: Option[String], year: Option[String]): (Option[String], Option[String]) =
+    if (director.exists(BareYear.matches) && !year.exists(ScraperParse.yearIn(_).isDefined)) (year, director)
+    else (director.filterNot(BareYear.matches), year)
 
   private def attributes(o: JsObject, key: Regex): Seq[String] =
     o.fields.collect { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }.toSeq

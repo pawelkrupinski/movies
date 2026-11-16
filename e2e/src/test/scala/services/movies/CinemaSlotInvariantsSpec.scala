@@ -43,7 +43,13 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       s"a facts sheet heading the description, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SpektrixClient reads the synopsis past it)",
     AllowedListing("Teatr Ziemi Rybnickiej", "Trzy pożegnania") -> (
       s"the 'Scenariusz:' credit as the synopsis, 2026-10-14 (run 38498856157): $RecordedBeforeFix (TeatrZiemiRybnickiejClient " +
-        "no longer reads the 'zł' of 'złe samopoczucie' as a price row, and reads 'Scenariusz' as a credit label)")) ++
+        "no longer reads the 'zł' of 'złe samopoczucie' as a price row, and reads 'Scenariusz' as a credit label)"),
+    AllowedListing("BEAM (Hertford Theatre)", "Dune") -> (
+      s"director '2021', the year and director typed into each other's attribute, 2026-11-16 (run 43776576498): $RecordedBeforeFix " +
+        "(SpektrixClient reads a bare-year director beside a yearless year the other way round)"),
+    AllowedListing("The Ritz Cinema Workington", "Cinemini: Home Alone") -> (
+      s"a 'Director : …    Writer: …    Stars: …' credits line heading the synopsis, 2026-11-16 (run 43776576498): $RecordedBeforeFix " +
+        "(SavoyClient reads the synopsis past it)")) ++
     Seq("Bad Apples", "Derek vs Derek", "FFS-Everybody Digs Bill Evans", "FFS-Everybody to Kenmure Street", "FFS-Kontinental 25",
       "FFS-Resurrection", "FFS-Two Prosecutors", "Practical Magic 2", "Pressure", "Sense and Sensibility.",
       "Shaun The Sheep: The Beast of Mossy Bottom").map { listing =>

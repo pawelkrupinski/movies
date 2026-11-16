@@ -108,6 +108,18 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     films.flatMap(f => f.cast ++ f.director).filter(_.matches("""\d{4}""")) shouldBe empty
   }
 
+  // Replays a 2026-11-16 capture of https://theritzcinema.co.uk/TheRitzWorkington.dll/WhatsOn: Cinemini: Home Alone's
+  // "Synopsis" opens with an IMDb-style credits line, "Director : Chris Columbus    Writer: John Hughes    Stars: …"
+  // (a space before the first colon), which the UK recording of run 43776576498 carried as the synopsis.
+  "SavoyClient.fetch (The Ritz Workington)" should "read the synopsis past the credits line heading it" in {
+    val ritz = new SavoyClient(new FakeHttpFetch("savoy"), "https://theritzcinema.co.uk/TheRitzWorkington.dll/",
+      UkRoster("TheRitzCinemaWorkington"), LocalDate.of(2026, 11, 16)).fetch().map(cm => cm.movie.title -> cm).toMap
+    val homeAlone = ritz("Cinemini: Home Alone")
+    homeAlone.synopsis.value should startWith ("An eight-year-old troublemaker must protect his house")
+    homeAlone.director shouldBe Seq("Chris Columbus")
+    ritz.values.flatMap(_.synopsis).filter(_.matches("""(?s)(?i)\s*(director|writers?|stars|cast)\s*:.*""")) shouldBe empty
+  }
+
   "SavoyClient.fetch (Phoenix East Finchley)" should "leave the credits of a venue that keys them right where they are" in {
     val pressure = byTitle("Pressure")
     pressure.director shouldBe Seq("Anthony Maras")

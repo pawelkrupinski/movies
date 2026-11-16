@@ -175,7 +175,7 @@ object SavoyClient {
         cinema      = cinema,
         posterUrl   = text("ImageURL"),
         filmUrl     = text("URL"),
-        synopsis    = text("Synopsis"),
+        synopsis    = text("Synopsis").flatMap(synopsisPastCredits),
         cast        = credits.cast,
         director    = credits.director,
         showtimes   = showtimes,
@@ -212,6 +212,16 @@ object SavoyClient {
       byField.copy(director = directors, cast = people, year = (directorYears ++ castYears).headOption.map(_.toInt))
     }
   }
+
+  /** An IMDb-style credits line heading a synopsis, its labels set apart by runs of spaces: The Ritz Workington's
+   *  "Director : Chris Columbus    Writer: John Hughes    Stars: Macaulay Culkin, …    An eight-year-old…"
+   *  (2026-11-16). The event's own Director and Cast fields carry the same credits. */
+  private val CreditsHeading =
+    """(?iu)^\s*(?:(?:directors?|directed\s+by|writers?|stars|starring|cast)\s*:[^\n]*?(?:\s{3,}|\n))+""".r
+
+  /** The synopsis without the credits line heading it; none when nothing else is left. */
+  private def synopsisPastCredits(synopsis: String): Option[String] =
+    Some(CreditsHeading.replaceFirstIn(synopsis, "").trim).filter(_.nonEmpty)
 
   /** "Monday 12 Oct 2026" — the weekday is ignored. */
   private val RowDate = """(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})""".r

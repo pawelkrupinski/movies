@@ -216,6 +216,19 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     films.values.count(_.ageRating.isDefined) should be > 60
   }
 
+  // Replays a 2026-11-16 capture of BEAM Hertford's Spektrix events and instances (`beamhertford`): its Dune (2021)
+  // is typed a field over — `attribute_Director: "2021"`, `attribute_YearOfRelease: "Denis Villeneuve"` — which the
+  // UK recording of run 43776576498 carried as the film's director.
+  "SpektrixClient.fetch (BEAM Hertford)" should "read a director and year the box office typed into each other's field" in {
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "beamhertford", UkRoster("BEAMHertfordTheatre"),
+      LocalDate.of(2026, 11, 16)).fetch().map(cm => cm.movie.title -> cm).toMap
+    films("Dune").director shouldBe Seq("Denis Villeneuve")
+    films("Dune").movie.releaseYear shouldBe Some(2021)
+    films("Dune: Part Two").director shouldBe Seq("Denis Villeneuve")
+    films("Dune: Part Two").movie.releaseYear shouldBe Some(2024)
+    films.values.flatMap(_.director).filter(_.matches("""[\d\s./:-]+""")) shouldBe empty
+  }
+
   "SpektrixClient.parse" should "read the production country a box office files as `attribute_Country`" in {
     // MAC Birmingham files `attribute_Country: "Switzerland"`.
     val events    = Json.arr(Json.obj("id" -> "1", "name" -> "A Talent For Murder", "duration" -> 121,
