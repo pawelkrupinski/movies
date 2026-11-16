@@ -107,13 +107,13 @@ object IdentityLiveDrift {
     def byKind: Map[String, Int] = drifted.groupMapReduce(_.kind)(_ => 1)(_ + _)
   }
 
-  /** Every listing (with its slot keys) joined to prod's film and compared with the whole resolve's — see the header for
-   *  what is left out. */
   /** The decisions prod's projection serves of `resolution`: each take a hand judgement in `judged` calls wrong withdrawn,
    *  the projection's own last step (`TakeJudgements.withdraw` over `BundledJudgements`, IdentityProjectionWiring). */
   def asServed(resolution: Resolution, judged: TakeJudgements.Index): Map[ListingKey, ResolverDecision] =
     TakeJudgements.withdraw(resolution, judged).decisionOf
 
+  /** Every listing (with its slot keys) joined to prod's film and compared with the whole resolve's — see the header for
+   *  what is left out. */
   def compare(listings: Seq[(ListingKey, Seq[String])], live: Map[String, Option[Int]], whole: Map[ListingKey, ResolverDecision]): Report = {
     val joined = listings.flatMap { case (key, slots) =>
       for { slot <- slots.find(live.contains); decision <- whole.get(key) } yield (key, slot, decision)
