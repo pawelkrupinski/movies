@@ -522,6 +522,26 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPAC
 check "...and none at all when it reaches no identity spec, said" "0 0 1" \
   "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
 check "...and no population walk against the base while no slice is a candidate" "0" "$(calls population-walk-diff)"
+# --verify-only (agentctl's combined tree) through the checkout's KEPT server: the touched modules' unit tests narrowed by
+# the same selection -- the worker's whole rest row cost a worker-touching verification ~70-90 s for the few specs the
+# change reaches. A process standing in for the kept server (its cwd the checkout, `--detach-stdio` in its arguments).
+cp "$REPO_ROOT/build.sbt" "$area/build.sbt"; scratch_git "$area" add build.sbt; scratch_git "$area" commit -qm "the build"
+(cd "$area" && exec -a "xsbt.boot.Boot --detach-stdio" sleep 600) & kept_server=$!
+verify_push() { # [env...]: a worker change verified as agentctl's combined tree; prints the exit code
+  echo "x $RANDOM" >> "$area/worker/src/main/scala/services/movies/V.scala"
+  scratch_git "$area" add -A; scratch_git "$area" commit -qm "touches the worker"
+  : > "$AREA_CALLS"
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+     bash scripts/hooks/pre-push --verify-only HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
+}
+code="$(verify_push IMPACT_LINES='worker modules.VSpec\nworker services.identity.ElsewhereSpec\nweb services.movies.WebSpec\n')"
+check "--verify-only through the kept server: the worker's unit row narrowed to the classes the change reaches" "0 1 0 0" \
+  "$code $(calls 'worker/testOnly modules.VSpec') $(calls 'worker/testOnly \* -services') $(calls 'ElsewhereSpec\|WebSpec')"
+code="$(verify_push)"
+check "...and with no selection, the whole rest row, said" "0 1 1" \
+  "$code $(calls 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\*') $(grep -c 'no test-impact selection' "$testroot/area-out")"
+kill "$kept_server" 2> /dev/null; wait "$kept_server" 2> /dev/null
+scratch_git "$area" rm -q build.sbt; scratch_git "$area" commit -qm "the build, gone"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_CANDIDATE='slice\tdrift-slices/uk/x\n')"
 check "THE POPULATION WALK: a candidate slice is judged against the base, and passes when it adds nothing" "0 1" \
   "$code $(calls 'population-walk-diff \[s.tsv\]')"

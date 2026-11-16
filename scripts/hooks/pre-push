@@ -1474,7 +1474,19 @@ check_sbt() {
     [ -n "$fast_only" ] && set=fast
     while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt)
     if [ -n "$verify_only" ]; then
-        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(printf '%s\n' "$changed" | unit_plan)
+        # THE COMBINED TREE'S UNIT TESTS, NARROWED TO WHAT THE CHANGE REACHES (TEST-IMPACT SELECTION, as the identity
+        # area's): the worker's whole rest row cost every worker-touching verification ~70-90 s for the few specs the
+        # change can reach. Through the kept server only (one more call to the warm compiler that runs the check); a
+        # cold `sbt -batch` check, or no answer, runs every touched module's unit tests, as before.
+        printf '%s\n' "$changed" | unit_plan > "$tmp/unit.plan"
+        if [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ] && test_impact unit > "$tmp/unit.select.log" 2>&1 \
+                && python3 scripts/ci/identity_impact.py plan --impact "$tmp/unit.impact" < "$tmp/unit.plan" > "$tmp/unit.narrowed"; then
+            log "verify: the unit tests the combined change reaches: $(grep -c . "$tmp/unit.narrowed" | tr -d ' ') sbt line(s)$(grep -m1 '^ALL' "$tmp/unit.impact" | sed 's/^ALL/, every one:/')" >&2
+            mv "$tmp/unit.narrowed" "$tmp/unit.plan"
+        elif [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ]; then
+            warn "verify: no test-impact selection ($(tail -1 "$tmp/unit.select.log")) -- every touched module's unit tests"
+        fi
+        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < "$tmp/unit.plan"
     fi
     local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
     if [ "$sbt_client" = 1 ]; then
@@ -1610,13 +1622,20 @@ population_walk_rows() { # <the check asking>
 # country-scoped ones (tools.CountryScope) over the countries it can reach. Every path the range changed counts,
 # deletions too (a deleted source selects every test); one range only -- several, and every test runs. Prints the sbt
 # lines to run (none: no spec reached), or fails (every test runs).
-select_identity_tests() { # <the set's sbt lines>...
-    local mb countries
+# test_impact <name>: the range's changed paths to $tmp/<name>.changed and the classes they reach (identityImpact's
+# `<module> <class>` lines, or `ALL <why>`) to $tmp/<name>.impact, through the checkout's kept sbt server; says why not.
+test_impact() {
+    local mb
     [ "${#ranges[@]}" -eq 1 ] || { echo "the push holds ${#ranges[@]} ranges"; return 1; }
     mb="$(git merge-base "$base_sha" "$head_sha")" || { echo "no merge base of ${base_sha:0:9} and ${head_sha:0:9}"; return 1; }
-    git diff --name-only --no-renames "$mb" "$head_sha" > "$tmp/identity.changed" || return 1
-    scripts/sbt-warm "identityImpact $tmp/identity.changed $tmp/identity.impact" > "$tmp/identity.impact.log" 2>&1 \
-        || { tail -20 "$tmp/identity.impact.log"; echo "sbt identityImpact failed"; return 1; }
+    git diff --name-only --no-renames "$mb" "$head_sha" > "$tmp/$1.changed" || return 1
+    scripts/sbt-warm "identityImpact $tmp/$1.changed $tmp/$1.impact" > "$tmp/$1.impact.log" 2>&1 \
+        || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact failed"; return 1; }
+}
+select_identity_tests() { # <the set's sbt lines>...
+    local mb countries
+    test_impact identity || return 1
+    mb="$(git merge-base "$base_sha" "$head_sha")" || return 1
     countries="$(python3 scripts/ci/identity_impact.py countries "$mb" "$head_sha" < "$tmp/identity.changed")" \
         || { echo "the countries could not be read"; return 1; }
     printf '%s\n' "$@" | python3 scripts/ci/identity_impact.py plan --impact "$tmp/identity.impact" --countries "$countries" \

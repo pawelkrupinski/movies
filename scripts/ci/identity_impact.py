@@ -272,7 +272,8 @@ def read_impact(path):
 
 
 def universe(line, modules):
-    """(module, globs) pairs a set line runs, or None for a line that is no test run of classes."""
+    """(module, globs) pairs a set line runs, or None for a line that is no test run of classes. A glob may exclude
+    (`-services.identity.*`, as sbt's testOnly reads it): see `runs`."""
     words = line.split()
     if not words or "--" in words:
         return None
@@ -299,7 +300,7 @@ def plan(lines, why, tests, scope):
             continue
         for module, globs in pairs:
             for cls in tests.get(module, ()):
-                if any(fnmatch.fnmatchcase(cls, g) for g in globs):
+                if runs(cls, globs):
                     chosen.setdefault(module, set()).add(cls)
     out = []
     for m in sorted(chosen):
@@ -308,6 +309,12 @@ def plan(lines, why, tests, scope):
             groups.setdefault(fork_group(m, cls, scope), []).append(cls)
         out += [f"{m}/testOnly {' '.join(groups[g])}{suffix}" for g in sorted(groups)]
     return rest + out
+
+
+def runs(cls, globs):
+    """Whether a testOnly of `globs` runs `cls`: a glob it matches, and no excluding (`-`) one."""
+    return any(fnmatch.fnmatchcase(cls, g) for g in globs if not g.startswith("-")) and \
+        not any(fnmatch.fnmatchcase(cls, g[1:]) for g in globs if g.startswith("-"))
 
 
 def fork_group(module, cls, scope):

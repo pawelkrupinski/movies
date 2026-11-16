@@ -179,6 +179,15 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(ii.plan(SET, ["the build changed"], {}, ["uk"]),
                          ["identity/test", "testOnly services.identity.* scripts.* -- -Didentity.countries=uk"])
 
+    def test_an_excluding_glob_keeps_its_classes_out(self):
+        # the worker's rest unit row (pre-push --unit-plan, build.sbt's WORKER_ROW) is `* -<identity prefixes>`: narrowed
+        # for the combined-tree verification, the excluded rows' specs stayed in, the `-` glob read as one no class matched
+        tests = {"worker": {"services.identity.A", "scripts.B", "modules.C"}}
+        self.assertEqual(ii.plan(["worker/testOnly * -services.identity.* -scripts.*"], [], tests, None),
+                         ["worker/testOnly modules.C"])
+        self.assertEqual(ii.plan(["worker/testOnly * -services.identity.* -scripts.*", "worker/testOnly scripts.B"], [],
+                                 tests, None), ["worker/testOnly modules.C scripts.B"])
+
     def test_a_line_that_runs_no_classes_is_kept(self):
         self.assertEqual(ii.plan(["Test/compile"] + SET, [], {}, None), ["Test/compile"])
 
