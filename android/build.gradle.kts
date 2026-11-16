@@ -15,5 +15,5 @@ plugins {
     // GPP release line that supports AGP 9 (verified applying cleanly here even
     // though this project drops the standalone Kotlin plugin — the AGP-9.0-alpha
     // `BaseAppModuleExtension` breakage in GPP issue #1185 is gone by AGP 9.2).
-    id("com.github.triplet.play") version "4.1.1" apply false
+    id("com.github.triplet.play") version "4.1.2" apply false
 }
