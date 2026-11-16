@@ -38,9 +38,12 @@
 // Every third-party artifact + its version lives in project/Dependencies.scala;
 // the modules below reference those vals so no version string is repeated here.
 import Dependencies._
+import ImageInputs.{imageInputs, imageRepoFiles}
 
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
+// Each deployable's image inputs, which its publish gate in main.yml must cover (project/ImageInputs.scala)
+ImageInputs.buildSettings
 ThisBuild / scalaVersion := "3.10.1"
 
 // Compiler options shared by every module. Play's sbt plugin adds -unchecked on top
@@ -114,18 +117,21 @@ lazy val noApiDocs = Seq(
 // Dockerfile CMD runs it before the JVM starts (prune this pod's dump directory, then name a
 // unique -XX:HeapDumpPath file for this start). It lives under infra/ because the node's
 // systemd timer runs the SAME file and the Nix flake root is infra/ -- one copy, two callers.
+lazy val heapDumpScriptFile = Def.setting((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh")
 lazy val heapDumpScript = Seq(
-  Universal / mappings +=
-    ((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh",
+  imageRepoFiles += heapDumpScriptFile.value,
+  Universal / mappings += heapDumpScriptFile.value -> "bin/heap-dumps.sh",
 )
 
 // JVM options baked into each dist's conf/application.ini. The start script puts them AFTER the
 // overlay's JAVA_OPTS on the java command line, so for a flag both name these win: each tier's
 // collector and JIT shape (worker.options, web.options), which the image's AOT cache is trained under.
 // LauncherJvmFlagsSpec reads back the flags a JVM runs under them.
+def launcherOptionFiles(files: Seq[String]) = Def.setting(files.map((LocalRootProject / baseDirectory).value / "infra" / "jvm" / _))
 def launcherOptions(files: String*) = Seq(
-  Universal / javaOptions ++= files.flatMap { name =>
-    IO.readLines((LocalRootProject / baseDirectory).value / "infra" / "jvm" / name)
+  imageRepoFiles ++= launcherOptionFiles(files).value,
+  Universal / javaOptions ++= launcherOptionFiles(files).value.flatMap { file =>
+    IO.readLines(file)
       .map(_.trim)
       .filterNot(line => line.isEmpty || line.startsWith("#"))
       .map("-J" + _)
@@ -474,6 +480,7 @@ lazy val scrapers = (project in file("scrapers"))
 // the `extends App` init-order hazards with Mongo/Sentry. It writes through
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
+lazy val identityJudgementsFile = Def.setting((LocalRootProject / baseDirectory).value / "test" / "resources" / "fixtures" / "identity-judgements.tsv")
 lazy val worker = (project in file("worker"))
   // The identity-slice tool files (`OlderRefsPackage`) import the identity adapters from both packages a ref may keep
   // them in, under `@nowarn("msg=unused import")`. At this ref neither import is unused, so that `@nowarn` suppresses
@@ -493,10 +500,12 @@ lazy val worker = (project in file("worker"))
     // standard sbt layout: src/main/scala, src/test/scala
     Compile / mainClass := Some("modules.WorkerMain"),
     // the hand judgements of takes, bundled as `/identity-judgements.tsv`: the suspect-take count leaves out the judged
-    // ones and counts the takes judged wrong apart (services.identity.TakeJudgements)
+    // ones and counts the takes judged wrong apart (services.identity.TakeJudgements). Declared as an image input, so
+    // the worker's publish gate must cover it (ImagePathGateSpec).
+    imageRepoFiles += identityJudgementsFile.value,
     Compile / resourceGenerators += Def.task {
       val bundled = (Compile / resourceManaged).value / "identity-judgements.tsv"
-      IO.copyFile((ThisBuild / baseDirectory).value / "test" / "resources" / "fixtures" / "identity-judgements.tsv", bundled)
+      IO.copyFile(identityJudgementsFile.value, bundled)
       Seq(bundled)
     }.taskValue,
     // Integration tests (live scrape + Mongo) run under their own config so CI
@@ -562,6 +571,9 @@ lazy val worker = (project in file("worker"))
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
   .settings(launcherOptions("worker.options"))
+  .settings(ImageInputs.deployableSettings)
+  // the worker's and the web's image inputs, for ImagePathGateSpec
+  .settings(ImageInputs.staged(Test, LocalProject("worker"), LocalProject("web")))
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -660,6 +672,7 @@ lazy val web = (project in file("web"))
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
   .settings(launcherOptions("web.options"))
+  .settings(ImageInputs.deployableSettings)
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //

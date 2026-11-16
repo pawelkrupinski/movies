@@ -192,6 +192,9 @@ jobs:
                       scrapers/**
                       !scrapers/src/test/**
                       !scrapers/src/fixtures/**
+                      # bundled as the worker's /identity-judgements.tsv resource (build.sbt). Every path the image is
+                      # built from must be here: ImagePathGateSpec derives them from the build and fails on a miss.
+                      test/resources/fixtures/identity-judgements.tsv
                       build.sbt
                       project/**
                       Dockerfile

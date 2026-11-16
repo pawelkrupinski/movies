@@ -150,4 +150,34 @@ class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers with Sc
     matches(Seq("a/**", "!a/b.txt"), Seq("a/b.txt")) shouldBe false
     matches(Seq("!a/b/**"), Seq("x.txt")) shouldBe false
   }
+
+  /** ImagePathGateSpec reads each tier's filter with a Scala [[ChangedPathsFilter]], since a unit spec spawns no
+   *  process; here the action's own matcher must answer the same, one path at a time (`matches.sh` answers for a whole
+   *  push, any path matching), over the image inputs: one per directory (a pattern names a directory or an exact file),
+   *  and every one a pattern names exactly. All ~1,800 one at a time took two minutes. */
+  "the unit specs' reading of a filter" should "agree with matches.sh over the image inputs" in {
+    val inputs = (ImagePathGateSpec.imageInputs("worker") ++ ImagePathGateSpec.imageInputs("web")).distinct
+    val named  = (workerFilter ++ webFilter).map(_.stripPrefix("!")).filterNot(_.endsWith("/**")).toSet
+    val paths  = (inputs.groupBy(path => path.take(path.lastIndexOf('/') + 1)).values.map(_.min) ++
+      inputs.filter(named)).toVector.distinct.sorted
+    Seq("worker" -> workerFilter, "web" -> webFilter).foreach { case (tier, filter) =>
+      val patternsFile = tempFile("changed-paths-patterns", ".txt")
+      val pathsFile    = tempFile("changed-paths-each", ".txt")
+      try {
+        Files.writeString(patternsFile, filter.mkString("", "\n", "\n"))
+        Files.writeString(pathsFile, paths.mkString("", "\n", "\n"))
+        val perPath = """while IFS= read -r path; do printf '%s\n' "$path" | bash "$1" "$2"; done"""
+        val answers = (Seq("bash", "-c", perPath, "each", Matcher, patternsFile.toString) #< pathsFile.toFile).!!
+          .linesIterator.toVector
+        answers should have size paths.size.toLong
+        val disagreeing = paths.zip(answers).filter { case (path, answer) =>
+          answer != ChangedPathsFilter(filter).matches(path).toString
+        }
+        withClue(s"the $tier filter's Scala reading disagrees with matches.sh on: ")(disagreeing shouldBe empty)
+      } finally {
+        Files.deleteIfExists(patternsFile)
+        Files.deleteIfExists(pathsFile)
+      }
+    }
+  }
 }
