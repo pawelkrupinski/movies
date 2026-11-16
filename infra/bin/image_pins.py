@@ -15,9 +15,9 @@ OCI distribution API (anonymous bearer token, paginated) and decides by the pin'
 
 A pin may RESTATE some of its image's own env (`restate`): each file's `ENV <name>=<value>` line is set to the value
 the pinned digest's config carries (its linux/amd64 image), whenever the pin is written and whenever that line has
-drifted. The Dockerfile's runtime stage restates the jdk stage's JAVA_VERSION (ENV does not cross stages) and fails
-its build when `java --version` names another release: a digest moved alone to Temurin 27.0.1 left jdk-27+35 and
-failed every image build (Main #2547).
+gone stale. The Dockerfile's runtime stage restates the jdk stage's JAVA_VERSION (ENV does not cross stages) and fails
+its build unless it equals the one the jdk stage's image set (recorded beside the runtime it links): a digest moved
+alone to Temurin 27.0.1 left jdk-27+35 and failed every image build (Main #2547).
 
 TWO PULL REQUESTS, ONE PER REPOSITORY (both CLAUDE.md's sanctioned bot PRs). This checkout's pins are rewritten by
 infra/bin/nix-update into its weekly PR (nix-update/all). The pins in the movies-gitops checkout (infra/kubernetes,

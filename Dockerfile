@@ -37,7 +37,8 @@ FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:9d4c29a53a1a7a028416306
 RUN $JAVA_HOME/bin/jlink --output /opt/jre --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach \
  && sed -i 's/^#\{0,1\}networkaddress\.cache\.ttl=.*/networkaddress.cache.ttl=0/' /opt/jre/conf/security/java.security \
- && grep -qx 'networkaddress.cache.ttl=0' /opt/jre/conf/security/java.security
+ && grep -qx 'networkaddress.cache.ttl=0' /opt/jre/conf/security/java.security \
+ && printf '%s\n' "$JAVA_VERSION" > /opt/jre/image-java-version
 
 FROM mirror.gcr.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
 # The OS side of Temurin's own JRE image (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
@@ -45,8 +46,11 @@ FROM mirror.gcr.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e80
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH=$JAVA_HOME/bin:$PATH
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
-# The `jdk` stage's base sets JAVA_VERSION too, but ENV does not cross stages: restated here, and the
-# `grep` after `java --version` below fails the build when the linked runtime is another release.
+# The `jdk` stage's base sets JAVA_VERSION too, but ENV does not cross stages: restated here (infra/bin/image_pins.py sets
+# it from the pinned digest's config), and the build fails below when the runtime the `jdk` stage linked came from an
+# image that set another one -- that stage records its own JAVA_VERSION in image-java-version. Like with like: grepping
+# `java --version` for the value failed every build once Temurin 27.0.1 set jdk-27.0.1.0, a form the build string
+# does not carry (Main #2547, #2550; JdkVersionParitySpec).
 ENV JAVA_VERSION=jdk-27.0.1.0
 COPY --from=jdk /opt/jre /opt/java/openjdk
 RUN set -eux; \
@@ -59,7 +63,9 @@ RUN set -eux; \
     find "$JAVA_HOME/lib" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
     ldconfig; \
     java -Xshare:dump; \
-    java --version | grep -F "(build ${JAVA_VERSION#jdk-})"
+    java --version; \
+    [ "$(cat "$JAVA_HOME/image-java-version")" = "$JAVA_VERSION" ] \
+      || { echo "the linked runtime is $(cat "$JAVA_HOME/image-java-version"), the Dockerfile restates $JAVA_VERSION" >&2; exit 1; }
 ARG BIN=web
 ENV BIN=$BIN
 # libvips for the WORKER only: it shrinks share-card posters of any size in a capped subprocess

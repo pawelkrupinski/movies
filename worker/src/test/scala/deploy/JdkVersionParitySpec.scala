@@ -54,4 +54,20 @@ class JdkVersionParitySpec extends AnyFlatSpec with Matchers {
     for (download <- Seq("wget", "curl", ".tar.gz", "sha256sum", "temurin" + runtimeMajor + "-binaries"))
       withClue(s"the Dockerfile fetches a JDK by hand again ($download): ")(dockerfile should not include download)
   }
+
+  // Main #2547/#2550: the runtime stage grepped `java --version` for "(build ${JAVA_VERSION#jdk-})". Temurin 27.0.1's
+  // image sets JAVA_VERSION=jdk-27.0.1.0, a form its `java --version` build string does not carry, so every image build
+  // failed though the runtime was exactly the pinned image's. The check compares like with like instead: the jdk stage
+  // records its image's own JAVA_VERSION beside the runtime it links, and the runtime stage requires its restated ENV
+  // (infra/bin/image_pins.py keeps it equal to the pinned image's) to be that value.
+  "the runtime stage" should "check its restated JAVA_VERSION against the one its jdk stage's image set, not java --version's text" in {
+    val stages   = dockerfile.split("""(?m)^(?=FROM\s)""").toSeq.filter(_.startsWith("FROM"))
+    val jdkStage = stages.find(_.linesIterator.next().matches("""FROM\s+\S+\s+AS\s+jdk\s*""")).getOrElse(fail("no jdk stage"))
+    val runtime  = stages.last
+    jdkStage should include(s"""printf '%s\\n' "$$JAVA_VERSION" > /opt/jre/$RecordedJavaVersion""")
+    runtime should include(s"""[ "$$(cat "$$JAVA_HOME/$RecordedJavaVersion")" = "$$JAVA_VERSION" ]""")
+    withClue("the runtime stage greps java --version's text again: ")(runtime should not include "| grep -F \"(build")
+  }
+
+  private val RecordedJavaVersion = "image-java-version"
 }
