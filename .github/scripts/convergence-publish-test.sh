@@ -24,7 +24,8 @@ if [ "$1" = run ]; then
   run=$3; shift 3
   while [ "$#" -gt 0 ]; do case "$1" in --name) name=$2; shift ;; --dir) dir=$2; shift ;; esac; shift; done
   [ -d "$root/artifacts/$run/$name" ] || { echo "no valid artifacts found to download" >&2; exit 1; }
-  [ -z "${STUB_RUN_DOWNLOAD_SECONDS:-}" ] || sleep "$STUB_RUN_DOWNLOAD_SECONDS" # a slow artifact storage
+  # an artifact storage that never answers: the download blocks until the pin's deadline ends it (HUNG STUBS)
+  if [ -n "${STUB_RUN_DOWNLOAD_HANGS:-}" ]; then echo $$ >> "$STUB_RUN_DOWNLOAD_HANGS"; exec sleep 86400; fi
   mkdir -p "$dir"; cp "$root/artifacts/$run/$name"/* "$dir/"; exit 0
 fi
 [ "$1" = release ] || exit 1
@@ -57,8 +58,9 @@ case "$verb" in
 esac
 STUB
 chmod +x "$work/bin/gh"
-run() { (cd "$work/leg" && env PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures GITHUB_ENV="$work/github-env" \
-          GH_RELEASE_RETRY_DELAY=0 GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_PUBLIC=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=2 "$@" > "$work/out" 2>&1); echo $?; }
+# exported in run's own subshell, not by `env`: the command may be a function (spec_bounded)
+run() { (cd "$work/leg" && export PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures GITHUB_ENV="$work/github-env" \
+          GH_RELEASE_RETRY_DELAY=0 GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_PUBLIC=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=2 && "$@" > "$work/out" 2>&1); echo $?; }
 calls() { grep -c "^$1" "$work/calls" 2>/dev/null || echo 0; }
 assets() { (cd "$work/release" && ls | tr '\n' ' ' | sed 's/ $//'); }
 
@@ -207,11 +209,13 @@ printf '# corpus-run 900\n' > "$diag/convergence-diagnostics-de-convergence/de-s
 # ONE DEADLINE FOR THE PIN (VERIFIED_PIN_SECONDS), under its step's `timeout-minutes`: each corpus download was allowed
 # 600 s, one after another for up to five countries, inside a 10-minute job. A download still running at the deadline
 # is ended and its country refused, and a country left with no time is refused before it starts.
-started=$(date +%s)
+# The download never answers, so the pin gets past it only by its own deadline: that, said, and the stub gone prove it,
+# never elapsed wall time (shell-spec.sh's HUNG STUBS).
+hung="$work/hung-downloads"; : > "$hung"
 check "a pin out of time refuses each country left, its pair staying as it was" "1 900 573" \
-  "$(run env VERIFIED_PIN_SECONDS=2 STUB_RUN_DOWNLOAD_SECONDS=6 bash "$publish" verified-pin 900 pl,de success "$diag") $(cut -d' ' -f1 "$work/release/hermetic-pl.txt") $(cut -d' ' -f1 "$work/release/hermetic-de.txt")"
-check "...within its deadline, not each download's" "yes" "$([ $(( $(date +%s) - started )) -lt 6 ] && echo yes || echo no)"
+  "$(run spec_bounded env VERIFIED_PIN_SECONDS=2 STUB_RUN_DOWNLOAD_HANGS="$hung" bash "$publish" verified-pin 900 pl,de success "$diag") $(cut -d' ' -f1 "$work/release/hermetic-pl.txt") $(cut -d' ' -f1 "$work/release/hermetic-de.txt")"
 check "...naming the deadline for each" "2" "$(grep -c "pin's deadline" "$work/out")"
+check "...and the hung download is ended with it" "0" "$(spec_still_running "$hung")"
 check "a clean country is pinned, timed by the run's start when prod-latest names another recording" \
   "0 900 2026-11-14T23:31:00Z enrichment-de-900.tar.zst" \
   "$(run bash "$publish" verified-pin 900 de success "$diag") $(cat "$work/release/hermetic-de.txt")"
