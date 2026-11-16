@@ -35,7 +35,9 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
       jobs(job) should include("""timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
     }
     val share = RepoFile.read("scripts/ci/precommit-share.sh")
-    share should include("""elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"""")
+    // page and old refs are another job's in every mode; identity only for a change's own checks (--checks-only): the
+    // fast-only and verify-only sets carry no identity area, and verify-only's identity unit tests ride the rest's sbt
+    share should include("""elsewhere="page oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"""")
     share should include("PREPUSH_LIST=1")
     jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
     jobs("check-page") should include("needs: [ plan, check, check-identity, check-oldrefs, heavy ]")
