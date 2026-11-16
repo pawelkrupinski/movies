@@ -724,6 +724,55 @@ class DemandTest(unittest.TestCase):
         self.assertEqual(rs.decide(CFG, IDLE, demand, [], NOW, ROOMY).starts, ())
 
 
+def lane_runner(slot, label, busy=False, idle_for=0):
+    """A measure-slice runner registered with one of the measure lanes' labels (MEASURE_LANES)."""
+    return dataclasses.replace(inst(slot, "measure", busy=busy, idle_for=idle_for), label=label)
+
+
+class MeasureLanesTest(unittest.TestCase):
+    """2026-11-16 06:28-08:00Z: Main red (#2515-#2521), and its fix's pre-push drift check (Identity takes 43816825023,
+    10 drift rows on movies-measure) ran 1-3 rows at a time for 80+ min. The measure lane held 4-5 jobs and 14-27
+    queued measurement jobs shared it: an identity-measure run's 10 takes rows, another drift check, order-independence,
+    the build caches. GitHub hands a movies-measure runner to whichever queued movies-measure job it picks, so a
+    gate-red fix's landing check waited behind optional work. The lanes are labels the scheduler starts runners for,
+    the highest first: red fixes, then landing checks, then measurements -- same size, same slice, same admission."""
+
+    def test_the_lanes_are_served_red_fixes_first_then_landing_checks_then_measurements(self):
+        lanes = {"movies-red-fix": 1, "movies-landing": 1, "movies-measure": 3}
+        d = rs.decide(rs.Config(max_slots=2, check_lane_jobs=0), IDLE, queued(measure=5), [], NOW, ROOMY, lanes)
+        self.assertEqual(d.starts, ((1, "measure"), (2, "measure")))
+        self.assertEqual(dict(d.labels), {1: "movies-red-fix", 2: "movies-landing"})
+
+    def test_a_measurement_never_takes_a_runner_started_for_a_landing_check(self):
+        # the idle movies-measure runner waits for a measurement; the landing check gets one of its own
+        lanes = {"movies-landing": 1, "movies-measure": 1}
+        d = rs.decide(CFG, IDLE, queued(measure=2), [lane_runner(1, "movies-measure")], NOW, ROOMY, lanes)
+        self.assertEqual(dict(d.labels), {2: "movies-landing"})
+
+    def test_a_runner_waiting_in_a_lane_counts_against_that_lane_alone(self):
+        lanes = {"movies-landing": 1}
+        d = rs.decide(CFG, IDLE, queued(measure=1), [lane_runner(1, "movies-landing")], NOW, ROOMY, lanes)
+        self.assertEqual(d.starts, ())
+
+    def test_an_idle_runner_whose_lane_has_nothing_queued_gives_its_slot_back(self):
+        # a landing check queued is no reason to keep a movies-measure runner nobody asks for
+        stale = lane_runner(1, "movies-measure", idle_for=CFG.idle_stop_seconds)
+        d = rs.decide(CFG, IDLE, queued(measure=1), [stale], NOW, ROOMY, {"movies-landing": 1})
+        self.assertEqual(d.stops, (1,))
+        self.assertEqual(dict(d.labels), {2: "movies-landing"})
+
+    def test_without_lane_counts_every_measurement_is_the_measure_lanes(self):
+        d = rs.decide(CFG, IDLE, queued(measure=1), [], NOW, ROOMY)
+        self.assertEqual(dict(d.labels), {1: "movies-measure"})
+
+    def test_queued_jobs_count_by_lane_and_every_lane_is_a_measurement(self):
+        jobs = [{"status": "queued", "labels": ["movies-red-fix"]}, {"status": "queued", "labels": ["movies-landing"]},
+                {"status": "queued", "labels": ["movies-landing"]}, {"status": "queued", "labels": ["movies-measure"]},
+                {"status": "in_progress", "labels": ["movies-landing"]}, {"status": "queued", "labels": ["movies-check"]}]
+        self.assertEqual(rs.demand_of(jobs), queued(check=1, measure=4))
+        self.assertEqual(rs.lane_demand_of(jobs), {"movies-red-fix": 1, "movies-landing": 2, "movies-measure": 1})
+
+
 class StarvedTest(unittest.TestCase):
     """A class whose oldest queued job has waited past `starve_report_seconds` while nothing of it starts is said, with
     the limit that holds it -- Scala Steward #145 (2026-11-08) sat queued for an hour on movies-measure while every tick
@@ -890,6 +939,27 @@ class HostTest(unittest.TestCase):
             f.write("inactive_file 0\n")
         borrowed = next(i for i in host.instances(NOW) if i.slot == 5)
         self.assertEqual((borrowed.cls, borrowed.runs_in, borrowed.mem_gib), ("check", "measure", 3))
+
+    def test_a_lane_runner_registers_its_lanes_label_in_the_measure_slice_and_is_read_back_in_it(self):
+        host = self.host(FakeDocker(["Runner.Listener"]))
+        host.start(6, "measure", "", "movies-red-fix")
+        with open(os.path.join(host.cfg.state_dir, "6.env")) as f:
+            env = f.read()
+        self.assertIn("RUNNER_CLASS=measure\n", env)
+        self.assertIn("RUNNER_LABELS=movies-red-fix\n", env)
+        self.assertIn("RUNNER_SLICE=ci-movies-measure.slice\n", env)
+        lane = next(i for i in host.instances(NOW) if i.slot == 6)
+        self.assertEqual((lane.cls, lane.lane, lane.borrowed), ("measure", "movies-red-fix", False))
+
+    def test_a_light_runner_says_this_scheduler_serves_the_lanes(self):
+        # a workflow's plan job, on a light runner, reads its RUNNER_LABELS: the lanes' labels are asked for only where
+        # a scheduler that starts runners for them is deployed (scripts/ci/measure-lane.sh)
+        host = self.host(FakeDocker(["Runner.Listener"]))
+        host.start(11, "light")
+        with open(os.path.join(host.cfg.state_dir, "11.env")) as f:
+            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER}\n", f.read())
+        light = next(i for i in host.instances(NOW) if i.slot == 11)
+        self.assertEqual(light.lane, "movies")
 
     def test_a_busy_runner_is_never_stopped(self):
         docker = FakeDocker(["Runner.Worker"])

@@ -94,6 +94,15 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     all(labels("report-timings.yml", measure).values) shouldBe "movies"
   }
 
+  "a landing check's takes rows" should "queue in the measure lane their plan job names, never hosted (2026-11-16)" in {
+    // scripts/ci/measure-lane.sh writes the lane step's label: movies-red-fix or movies-landing where ci-runner's
+    // scheduler serves the lanes (runner_scheduler.py MEASURE_LANES), movies-measure otherwise; main never reads it
+    val drift = ctx("refs/heads/measure/agent/abc-123-drift-x")
+    for (lane <- Seq("movies-red-fix", "movies-landing"))
+      legRunner(drift.copy(steps = Map("lane.label" -> lane)), "identity-takes.yml") shouldBe lane
+    legRunner(ctx(RunnerLabel.Main).copy(steps = Map("lane.label" -> "movies-landing")), "identity-takes.yml") shouldBe "ubuntu-22.04"
+  }
+
   "a measurement" should "stay on ci-runner whatever MOVIES_MEASURE_RUNNERS says (no way back to hosted, 2026-11-06)" in {
     // the owner: "measurements always on ci" -- the 2026-11-02 escape (MOVIES_MEASURE_RUNNERS=hosted) is gone, so a
     // measurement never queues GitHub's 20 that main's suite runs on

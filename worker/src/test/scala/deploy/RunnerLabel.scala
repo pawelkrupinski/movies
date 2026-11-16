@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -14,7 +14,8 @@ object RunnerLabel {
   val Main    = "refs/heads/main"
 
   /** Where a workflow runs: the forge (`github.server_url`), the ref, the inputs a caller passed, the outputs of
-   *  the jobs it needs, keyed `<job>.<name>`, the repository's variables (unset: none), the running workflow's name and,
+   *  the jobs it needs, keyed `<job>.<name>`, the plan job's own steps' outputs, keyed `<step>.<name>` (unset: none, as a
+   *  skipped step leaves it), the repository's variables (unset: none), the running workflow's name and,
    *  for a `workflow_run`, the fields of the run that started it (`head_branch`, `name`). */
   final case class Context(
       server: String,
@@ -23,7 +24,8 @@ object RunnerLabel {
       outputs: Map[String, String] = Map.empty,
       vars: Map[String, String] = Map.empty,
       workflow: String = "",
-      workflowRun: Map[String, String] = Map.empty
+      workflowRun: Map[String, String] = Map.empty,
+      steps: Map[String, String] = Map.empty
   )
 
   private enum Value {
@@ -113,6 +115,7 @@ object RunnerLabel {
       case s"inputs.$name"                    => ctx.inputs.get(name).fold(Null)(Str(_))
       case s"vars.$name"                      => Str(ctx.vars.getOrElse(name, ""))
       case s"needs.$job.outputs.$name"        => ctx.outputs.get(s"$job.$name").fold(Null)(Str(_))
+      case s"steps.$step.outputs.$name"       => ctx.steps.get(s"$step.$name").fold(Null)(Str(_))
       case b @ ("true" | "false")             => Bool(b == "true")
       case other                              => fail(s"`$other` is outside the subset")
     }

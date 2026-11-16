@@ -195,4 +195,23 @@ drift someskipped --run 901
 check "...a dispatch's left-out countries skipped beside a green row: DRIFT CLEAN, exit 0" "0 DRIFT CLEAN" \
   "$(cat "$work/someskipped.rc") $(tail -1 "$work/someskipped.out")"
 
+# THE LANE (scripts/ci/measure-lane.sh): a landing check's rows queue ahead of optional measurements, a red fix's ahead
+# of those -- passed only to a workflow that has the input (an older one would refuse the dispatch)
+printf 'name: Identity takes\non:\n    workflow_dispatch:\n        inputs:\n            lane:\n' > "$repo/.github/workflows/identity-takes.yml"
+scratch_git "$repo" commit -qam "identity-takes: the lane input" && scratch_git "$repo" push -q origin main
+older=$tip tip=$(scratch_git "$repo" rev-parse HEAD)
+lane_of() { sed -n 's/.* -f lane=\([a-z-]*\)$/\1/p' "$work/state/dispatches"; }
+rm -f "$work/state/dispatches"; drift landing --seeds 1,2 --countries de,uk
+check "a drift check is a landing check: its rows queue in the landing lane" "landing" "$(lane_of)"
+echo '[{"databaseId": 3726, "number": 2517, "status": "completed"}]' > "$work/state/runs.json"
+jobs 3726 "takes-drift-2 (germany):completed:failure"; artifact 3726 de 2 0 1 37
+jobs 900 "takes-drift-2 (germany):completed:success"
+rm -f "$work/state/dispatches"; drift redfix --for-red 3726
+check "--for-red: a gate-red fix's rows queue in the red-fix lane, ahead of every other" "red-fix" "$(lane_of)"
+rm -f "$work/state/dispatches"; drift optional --lane measure --seeds 1,2 --countries de,uk
+check "--lane measure: no lane input, the rows are an optional measurement's" "" "$(lane_of)"
+rm -f "$work/state/dispatches"; tip=$older; drift old --seeds 1,2 --countries de,uk
+check "a commit whose workflow has no lane input is dispatched without one" "0 " "$(grep -c -- '-f lane=' "$work/state/dispatches") $(lane_of)"
+check "an unknown lane is a usage error" "2" "$(drift badlane --lane urgent; cat "$work/badlane.rc")"
+
 spec_summary

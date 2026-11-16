@@ -1226,3 +1226,33 @@ queue:
 
 At most 2 checks were borrowed at once. Every deferred measurement was a second one beside the kept one (or the record's
 own later starts used up the kept room). None waited longer than 4 min, less than the borrowed check it waited on.
+
+## 19. A red fix's drift check queued behind optional measurements (2026-11-16)
+
+Main went red at 07:16Z (#2515-#2521, PopulationMonotonicityPart3Spec). Its fix, 715ab5a1a, was a 4-line TSV change.
+The fix's pre-push drift check, Identity takes 43816825023 (ten `takes-drift` rows on `movies-measure`), started its
+first row at once. After 80 minutes it had ended 2 rows: 1-3 of its rows ran at a time. ci-runner's scheduler journal,
+05:30-07:47Z (273 ticks, read only):
+
+- Measurements were queued on 226 ticks: 14-27 jobs. They came from another drift check (43813139246, ten rows), an
+  identity-measure run (43814658448, ten takes rows), Order independence, the build caches, the tool self-tests and
+  the nix stage. All of them share the one label.
+- While measurements were queued, 3-5 ran (4 on 107 ticks, 5 on 31). The measure cpuset read 10 of 20 threads busy
+  at the median and 16 at most. A measurement used 2.24 cores. The limit holding them was the CPU term, on every tick:
+  85 % of 20 = 17 cores, less the busy cores, less the cores owed by young runners (the short jobs kept 1-2 young),
+  less one settled job's rest, must still hold a new job's full 4. So room ended at 4-5 jobs. The just-deployed
+  borrowing (section 18) never applies while a measurement is queued, and d76c6b1b6 had raised this capacity. Neither
+  change caused the wait.
+- GitHub gives a fresh `movies-measure` runner to any job queued on that label, so the red fix's rows got about one
+  slot in five.
+- The runners page showed `waiting 0` because it listed only the 40 newest runs, and the takes run was older than all
+  of them (fixed in ci-runners-page, which now pages through every queued and in-progress run).
+
+**Fix: the measure lanes** (runner_scheduler.py `MEASURE_LANES`). A measure-slice runner registers one of
+`movies-red-fix`, `movies-landing` or `movies-measure`, and each measure start goes to the highest lane that has a job
+with no runner. scripts/identity-drift-ci, the landing checks' drift rows (the pre-push hook's `--for-red` and
+`--against main`, and agentctl's batch tip), dispatches Identity takes with `lane: landing`, and with `red-fix` for
+`--for-red`. The takes preflight turns the lane into the legs' label (scripts/ci/measure-lane.sh). It does that only
+when its light runner carries `movies-lanes`, the label that a scheduler serving the lanes gives its light runners.
+Before the scheduler pin bump, every lane runs as `movies-measure`, so no job waits on a label that nothing serves.
+The CPU over-reservation (4-5 jobs on a half-idle cpuset) is left as is; the memory caps hold the lane at 6 anyway.

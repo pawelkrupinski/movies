@@ -84,6 +84,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # THE MEASURE LANE off main (scripts/ci/measure-lane.sh): a landing check's rows run ahead of every optional
+            # measurement on ci-runner, a red fix's ahead of those (scripts/identity-drift-ci passes it).
+            lane:
+                description: The ci-runner lane the legs queue in off main -- red-fix, landing, or empty for measure.
+                required: false
+                type: string
+                default: ''
             takes-base:
                 description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
                 required: false
@@ -210,9 +217,9 @@ jobs:
             # path of .github/harness-aa-paths.txt -- each leg then adds the A/A rows and the `takes-drift-aa` job compares them.
             harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}
             # Main's rows on GitHub's hosted runners, every run off main (a measurement) and every call that is no gate
-            # (`measurement-lane`: the explorer's) on ci-runner's `movies-measure` (the owner, 2026-11-06;
-            # identity-model-convergence.yml's `runner` says the rest).
-            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && 'movies-measure') || 'ubuntu-22.04' }}
+            # (`measurement-lane`: the explorer's) on ci-runner's measure lanes -- `movies-measure`, or the dispatch's
+            # `lane` (measure-lane.sh) -- (the owner, 2026-11-06; identity-model-convergence.yml's `runner` says the rest).
+            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && (steps.lane.outputs.label || 'movies-measure')) || 'ubuntu-22.04' }}
             light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && 'movies' || 'ubuntu-26.04' }}
             on-main: ${{ github.ref == 'refs/heads/main' }}
             # THE DRIFT EXPLORER'S CALL (identity-drift-explorer.yml): `github` is the CALLER's context in a called workflow,
@@ -251,6 +258,13 @@ jobs:
                   INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
                   INPUT_DRIFT_EXPLORE: ${{ inputs.drift-explore }}
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
+            # Off main, the measure lane every leg queues in: the dispatch's `lane` where this runner's scheduler serves it.
+            - name: Which measure lane do the legs queue in?
+              id: lane
+              if: ${{ github.ref != 'refs/heads/main' }}
+              env:
+                  INPUT_LANE: ${{ inputs.lane }}
+              run: scripts/ci/measure-lane.sh "$INPUT_LANE" >> "$GITHUB_OUTPUT"
             # THE A/A ROWS (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
             # only when the range since the previous run of this workflow on main that ran (else the parent) changed a harness
             # path. An unreadable run list judges the parent alone; this step failing runs no A/A row (the output's fallback).

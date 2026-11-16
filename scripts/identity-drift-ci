@@ -10,7 +10,7 @@
 #
 # usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds S1,S2|S1|,S2|both]
 #                                  [--for-red <run> | --against <run>|main] [--timeout <minutes>]
-#                                  [--out DIR] [--no-wait] [--profile]
+#                                  [--out DIR] [--no-wait] [--profile] [--lane red-fix|landing|measure]
 #        scripts/identity-drift-ci --run <run id> [--out DIR]
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
 #                scripts/ci/ laid over it, as identity-measure does)
@@ -39,6 +39,11 @@
 #   --profile    a JFR CPU profile of every JVM each row starts (the workflow's `profile`, scripts/ci/jfr-every-jvm.sh),
 #                uploaded as the row's convergence-profile-* artifact; the head is replayed, never read from the store
 #   --out        where each row's artifact goes (default target/identity-drift-ci/<run>)
+#   --lane       the ci-runner lane the rows queue in (scripts/ci/measure-lane.sh): default `red-fix` with --for-red, else
+#                `landing` -- this is a landing check, and its rows run ahead of every optional measurement (2026-11-16:
+#                a red fix's ten rows ran 1-3 at a time for 80+ min behind 14-27 queued measurement jobs); `measure` for
+#                a check nothing waits on (identity-landing-check's). A commit whose identity-takes.yml has no `lane`
+#                input is dispatched without it (movies-measure)
 #
 # It pushes the commit as `measure/<user>/<short sha>-drift-<random>` (the pre-push hook checks nothing on a measure/
 # ref; the run deletes its branch as its last job), dispatches through scripts/ci/dispatch.sh, waits with backoff (60 s,
@@ -68,7 +73,7 @@ workflow=identity-takes.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
-ref=HEAD seeds=both for_red="" against="" timeout_min=75 timeout_set="" out="" nowait="" run="" profile=""
+ref=HEAD seeds=both for_red="" against="" lane="" timeout_min=75 timeout_set="" out="" nowait="" run="" profile=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift ;;
@@ -80,6 +85,7 @@ while [ "$#" -gt 0 ]; do
     --out) flag_value "$@"; out=$2; shift ;;
     --no-wait) nowait=1 ;;
     --profile) profile=1 ;;
+    --lane) flag_value "$@"; lane=$2; shift ;;
     --run) flag_value "$@"; run=$2; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) usage_error "unknown option $1" ;;
@@ -92,6 +98,8 @@ if [ "$seeds" != both ]; then
   pins=$(python3 "$here/ci/drift_seeds.py" pins "$seeds" 2> /dev/null) || usage_error "--seeds takes S1,S2, S1, ,S2 or both, not $seeds"
 fi
 [ -z "$for_red" ] || [ -z "$against" ] || usage_error "--for-red and --against each name the baseline: one of them"
+if [ -z "$lane" ]; then if [ -n "$for_red" ]; then lane="red-fix"; else lane="landing"; fi; fi
+case "$lane" in red-fix|landing|measure) ;; *) usage_error "--lane takes red-fix, landing or measure, not $lane" ;; esac
 countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
 remote=${IDENTITY_MEASURE_REMOTE:-origin}
 
@@ -236,6 +244,10 @@ if [ -z "$run" ]; then
   [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
   [ -z "$pins" ] || only+=(-f drift-seeds="$pins")
   [ -z "$profile" ] || only+=(-f profile=true)
+  # the lane input, where the pushed workflow knows it (an older one refuses an unknown input)
+  if [ "$lane" != measure ] && git show "$push:.github/workflows/$workflow" 2> /dev/null | grep -qE '^            lane:$'; then
+    only+=(-f lane="$lane")
+  fi
   dispatched_at=$SECONDS
   identity_dispatch_measure "$workflow" "$branch" "$push" \
     "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" "${only[@]}" \
