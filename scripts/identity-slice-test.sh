@@ -306,16 +306,20 @@ check "a kept JVM that never listens is stopped at the deadline, and the call fa
 one_slot="$cache/jvm-slots/1.flock"
 slotted() { KINOWO_JVM_SLOTS=1 slice "$@"; }
 # the keeper itself: not a subshell of its own poll, which carries the same command line for a moment (under CI's load a
-# second pid caught here made the keeper's slot look unheld for the whole wait, precommit-check run 4012)
+# second pid caught here made the keeper's slot look unheld for the whole wait, precommit-check run 4012). ps lists the
+# whole machine, so the JVM's pid must be the exact word after --keep-served: a substring match also takes a
+# co-agent's keeper of JVM 4242 for one of JVM 424.
 keeper_of() {
-  ps -axo pid=,ppid=,args= | awk -v jvm="--keep-served $1" 'index($0, jvm) && !/awk/ { pid[$1] = $2 }
+  ps -axo pid=,ppid=,args= | awk -v jvm="$1" '{ for (i = 3; i < NF; i++) if ($i == "--keep-served" && $(i + 1) == jvm) { pid[$1] = $2; next } }
     END { for (p in pid) if (!(pid[p] in pid)) print p }'
 }
-# a keeper mid-poll: its subshell carries its command line too, and is not the keeper
+# a keeper mid-poll: its subshell carries its command line too, and is not the keeper. It "watches" this run's own
+# pid, which no other run's fake keeper can share: a fixed number made every concurrent run of this file (agents'
+# pre-push hooks, one per worktree) see each other's fake keeper (92 in 100 with two at once, 2026-11-16).
 printf '( sleep 30; : ) &\nwait\n' > "$work/fake-keeper.sh"
-bash "$work/fake-keeper.sh" --keep-served 424242 & fake=$!
+bash "$work/fake-keeper.sh" --keep-served "$$" & fake=$!
 wait_until "the fake keeper's subshell runs" '[ "$(ps -axo ppid= | grep -cw "$fake")" -ge 1 ]'
-check "keeper_of names the keeper alone, not its poll's subshell" "$fake" "$(keeper_of 424242 | paste -sd' ' -)"
+check "keeper_of names the keeper alone, not its poll's subshell" "$fake" "$(keeper_of "$$" | paste -sd' ' -)"
 # shellcheck disable=SC2046 # the subshells' pids, one word each
 kill $(ps -axo pid=,ppid= | awk -v p="$fake" '$2 == p { print $1 }') "$fake" 2>/dev/null; wait "$fake" 2>/dev/null
 gone_within() { local pid=$1; wait_until "pid $pid is gone" '! kill -0 "$pid" 2>/dev/null'; }
