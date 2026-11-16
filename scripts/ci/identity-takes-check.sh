@@ -171,25 +171,35 @@ pick_base() {
 # service from the GraphQL that failed), newest first, stopping at the first green. Identity takes #82 and #114 lost
 # their base, and their verdict, to GraphQL alone. It names only a GREEN commit: none in its window fails the pick as
 # before, never a guess the full walk could have answered otherwise (the 40-commit window that once absorbed a day's moves).
+# ONE DEADLINE for the whole walk, IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE (600 s), the fetch and every read inside it: 200
+# reads each bounded only by gh_read (120 s) could hold the row 6.7 hours. Past it, it names no base -- the same exit 2.
 local_base() {
   local depth=${IDENTITY_TAKES_LOCAL_HISTORY:-200} history="$RUNNER_TEMP/takes-history.git" url sha state checked=0 key value
+  local deadline=${IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE:-600} started=$SECONDS left
   local auth=()
+  # the seconds the walk has left, at most `$1` (a read's own bound); none left fails, saying so
+  within_deadline() {
+    left=$((deadline - (SECONDS - started)))
+    [ "$left" -gt 0 ] || { echo "identity takes ($cc): the history-from-git walk ran past its $deadline s deadline after $checked commit(s) -- no base named" >&2; return 1; }
+    [ "$left" -lt "$1" ] || left=$1
+  }
   echo "identity takes ($cc): GraphQL gave no history; reading the head's from git, each commit's status by REST" >&2
   url=$(git remote get-url origin) || return 1
   # the checkout's own credentials (actions/checkout's, or the row checkout's, http.<server>/.extraheader)
   while read -r key value; do auth+=(-c "$key=$value"); done < <(git config --get-regexp '^http\..*extraheader$' 2> /dev/null)
   rm -rf "$history"
-  if ! { git init -q --bare "$history" &&
-         bounded "$gh_download" git ${auth[@]+"${auth[@]}"} -C "$history" fetch -q --no-tags --filter=tree:0 \
+  if ! { git init -q --bare "$history" && within_deadline "$gh_download" &&
+         bounded "$left" git ${auth[@]+"${auth[@]}"} -C "$history" fetch -q --no-tags --filter=tree:0 \
            --depth="$((depth + 1))" "$url" "$head" >&2; }; then
     echo "identity takes ($cc): could not fetch the head's history from git either" >&2
     return 1
   fi
   while read -r sha; do
+    within_deadline "$gh_read" || return 1
     checked=$((checked + 1))
-    state=$(bounded "$gh_read" gh api "repos/$GITHUB_REPOSITORY/commits/$sha/status?per_page=100" \
+    state=$(bounded "$left" gh api "repos/$GITHUB_REPOSITORY/commits/$sha/status?per_page=100" \
               --jq "[.statuses[] | select(.context == \"$context\" and (.created_at // \"\") >= \"$history_floor\") | .state][0] // \"-\" | ascii_upcase") \
-      || { echo "identity takes ($cc): could not read $sha's status by REST either" >&2; return 1; }
+      || { within_deadline 1 || return 1; echo "identity takes ($cc): could not read $sha's status by REST either" >&2; return 1; }
     [ "$state" = SUCCESS ] && { echo "identity takes ($cc): $sha is green, $checked commit(s) back (history from git)" >&2; echo "$sha"; return 0; }
   done < <(git -C "$history" rev-list --max-count="$depth" "$head~1" 2> /dev/null)
   echo "identity takes ($cc): no green commit in the $checked commit(s) of the head's history git gave -- no base named" >&2
