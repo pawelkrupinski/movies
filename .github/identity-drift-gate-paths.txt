@@ -1,9 +1,12 @@
 # THE INCREMENTAL = WHOLE GATE ITSELF: what decides what a takes-drift row finds -- the check script, the replay harness,
-# the flip predicate and the two allow-lists. A push to main touching one of these, or carrying `New-Check:` and touching
+# the flip predicate, the two allow-lists and the gate seeds. A push to main touching one of these, or carrying `New-Check:` and touching
 # a drift path (.github/identity-drift-paths.txt), is a check's birth or tightening: the pre-push hook's `identitydrift`
 # check runs every drift row (scripts/identity-drift-ci --against main) and refuses a row worse than main's own run --
 # a new or tightened check lands green, everything it finds at birth on its allow-list as TEMPORARY
 # (scripts/ci/commit_rules.py). The flip and drift gates were both born red (9bb54c1a4, a2c684f80): 15 red runs.
+# NOT the flip backlog (test/resources/fixtures/identity-flip-backlog.tsv): the differential gate decides nothing by it
+# (it only labels a flip the base shows too; identity-drift-check.sh passes no --flips-baseline), so a backlog edit -- a
+# red fix filing known flips, 2026-11-16 Main #2515 -- is no check's birth and dispatches no drift row.
 # The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
 scripts/ci/identity-drift-check.sh
 scripts/ci/drift_seeds.py
@@ -13,5 +16,4 @@ worker/src/test/scala/scripts/IdentityDrift.scala
 identity/src/main/scala/services/identity/TakeFlips.scala
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
-test/resources/fixtures/identity-flip-backlog.tsv
 test/resources/fixtures/drift-gate-seeds.tsv

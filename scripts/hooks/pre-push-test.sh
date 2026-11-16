@@ -637,10 +637,16 @@ check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls i
 code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is commit_rules_test.py\'s')"
 check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
-code="$(drift_push test/resources/fixtures/identity-flip-backlog.tsv 'the backlog, edited alone')"
-check "...and so does a push touching only the flip backlog, a gate file on no drift path" "0 1" \
+code="$(drift_push test/resources/fixtures/drift-gate-seeds.tsv 'the gate seeds, edited alone')"
+check "...and so does a push touching only a gate file on no drift path (the gate seeds)" "0 1" \
   "$code $(calls 'against main$')"
-scratch_git "$area" rm -q test/resources/fixtures/identity-flip-backlog.tsv; scratch_git "$area" commit -qm "the backlog, deleted"
+# 2026-11-16 (Main #2515): a red fix adding four known-flip rows to the backlog dispatched every drift row and waited 75
+# min on the starved measure queue. The differential drift gate decides nothing by the backlog (it labels pre-existing
+# flips; scripts/ci/identity-drift-check.sh passes no --flips-baseline), so a backlog-only push is no check's birth.
+code="$(drift_push test/resources/fixtures/identity-flip-backlog.tsv $'the backlog, edited alone\n\nFixes-Red: 3726')"
+check "...but a push touching only the flip backlog, even one claiming a red, runs no drift row" "0 0" \
+  "$code $(calls identity-drift-ci)"
+scratch_git "$area" rm -q test/resources/fixtures/drift-gate-seeds.tsv; scratch_git "$area" commit -qm "the gate seeds, deleted"
 : > "$AREA_CALLS"
 code="$(cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1; echo $?)"
 check "...and so does one deleting it -- a deletion-only push runs that check alone" "0 1 0" \
