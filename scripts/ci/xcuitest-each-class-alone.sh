@@ -18,6 +18,24 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${DESTINATION:?the simulator to run on, as an xcodebuild -destination}"
 dir="${XCUITEST_DIR:-ios/KinowoUITests}"
 
+# FIRST LAUNCH BEFORE THE FIRST CLASS: a fresh Simulator's first launch of the app is minutes of system work (Order
+# independence #77: 148 s, and XCUITest's launch timed out; every later launch ~16 s), and it fell on whichever class
+# sorts first, every run CardShareMenuUITests (#74 a press read as a tap in the same stall). The workflow boots the
+# Simulator first; this installs the built app and launches it once, outside any test. A warm-up that fails or hangs
+# only warns: the classes still say for themselves whether they pass.
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/../tool-conventions.sh"
+udid="${DESTINATION##*id=}"
+app="${XCUITEST_APP:-build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app}"
+bundle="${XCUITEST_BUNDLE_ID:-dev.kinowo.Kinowo}"
+started=$SECONDS
+if bounded 300 xcrun simctl install "$udid" "$app" && bounded 300 xcrun simctl launch "$udid" "$bundle"; then
+    echo "warmed the Simulator: $bundle installed and launched once in $((SECONDS - started))s"
+    bounded 60 xcrun simctl terminate "$udid" "$bundle" || echo "::warning::could not end the warm-up launch of $bundle"
+else
+    echo "::warning::the Simulator warm-up launch of $bundle failed after $((SECONDS - started))s: the first class pays the first launch"
+fi
+
 mkdir -p build/alone
 classes=$(grep -hoE 'class[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*XCTestCase' "$dir"/*.swift \
     | sed -E 's/class[[:space:]]+([A-Za-z0-9_]+).*/\1/' | sort -u)

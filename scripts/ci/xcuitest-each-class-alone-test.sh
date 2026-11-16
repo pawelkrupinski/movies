@@ -25,13 +25,16 @@ cat >"$tmp/bin/xcodebuild" <<'SH'
 #!/usr/bin/env bash
 for arg in "$@"; do case "$arg" in -only-testing:*) class=${arg##*/} ;; esac; done
 echo "$class" >>"$CALLS"
+echo "xcodebuild $class" >>"$CALLS.order"
 echo "$*" >>"$CALLS.args"
 echo "error: -[KinowoUITests.$class testLaunches] : xcodebuild's own report for $class"
 [ "$class" != "${FAILING:-}" ]
 SH
 # xcrun xcresulttool get test-results tests --path <bundle>: the failed class's tree, its file inside the checkout.
+# xcrun simctl <...>: the warm-up, recorded in order with the classes; fails when $WARMUP_FAILS.
 cat >"$tmp/bin/xcrun" <<'SH'
 #!/usr/bin/env bash
+if [ "$1" = simctl ]; then echo "$*" >>"$CALLS.order"; [ -z "${WARMUP_FAILS:-}" ]; exit; fi
 cat "$TREE"
 SH
 chmod +x "$tmp/bin/xcodebuild" "$tmp/bin/xcrun"
@@ -45,7 +48,7 @@ cat >"$tmp/beta.json" <<JSON
 JSON
 
 alone() { # alone <failing class or ""> <tests dir>: runs the script in $tmp/work; sets out and code
-  : >"$tmp/calls"; : >"$tmp/calls.args"; : >"$tmp/summary"
+  : >"$tmp/calls"; : >"$tmp/calls.args"; : >"$tmp/calls.order"; : >"$tmp/summary"
   out=$(cd "$tmp/work" && PATH="$tmp/bin:$PATH" CALLS="$tmp/calls" FAILING="$1" TREE="$tmp/beta.json" \
     DESTINATION="platform=iOS Simulator,id=SIM" XCUITEST_DIR="$2" GITHUB_STEP_SUMMARY="$tmp/summary" \
     "$HERE/xcuitest-each-class-alone.sh" 2>&1)
@@ -69,6 +72,12 @@ check "and so does the job summary" "XCUITest classes that fail when run alone: 
 
 alone "" "$tmp/tests"
 check "all passing: the step passes" "0" "$code"
+check "the built app is installed and launched once on the destination before the first class, then ended" \
+  "simctl install SIM build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app|simctl launch SIM dev.kinowo.Kinowo|simctl terminate SIM dev.kinowo.Kinowo|xcodebuild AlphaUITests" \
+  "$(head -4 "$tmp/calls.order" | paste -sd '|' -)"
+WARMUP_FAILS=1 alone "" "$tmp/tests"
+check "a failed warm-up only warns: every class still runs and the step passes" "0 3 1" \
+  "$code $(grep -c '^xcodebuild ' "$tmp/calls.order") $(printf '%s\n' "$out" | grep -c '::warning::the Simulator warm-up launch')"
 check "all passing: no error at all" "0" "$(printf '%s\n' "$out" | grep -c '::error')"
 
 alone "" "$tmp/none"
