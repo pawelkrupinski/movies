@@ -90,7 +90,9 @@ class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
     // The CMD above runs `bin/heap-dumps.sh` in BOTH images; a dist without it would log
     // "not found" and boot with the ConfigMap's directory-form flag, i.e. the pid-1 collision.
     val build = RepoFile.read("build.sbt")
-    build should include (""""infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh"""")
+    // The script's path is one setting, shared by the dist mapping and the image inputs (project/ImageInputs.scala).
+    build should include (""""infra" / "nix" / "files" / "heap-dumps.sh")""")
+    build should include ("""Universal / mappings += heapDumpScriptFile.value -> "bin/heap-dumps.sh"""")
     "heapDumpScript\\)".r.findAllIn(build).size shouldBe 2
   }
 
