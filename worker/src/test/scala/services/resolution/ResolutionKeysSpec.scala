@@ -36,7 +36,7 @@ class ResolutionKeysSpec extends AnyFlatSpec with Matchers {
     keys.size shouldBe 4
   }
 
-  // A forced re-enrich must forget a film's memoised resolutions, or it replays
+  // An operator's refresh must forget a film's memoised resolutions, or it replays
   // them instead of re-probing. The film's own title sits in a DIFFERENT field
   // per source — mc/rt lead with the ORIGINAL title and carry it in the fallback
   // field — so the match is on whole fields, not position. These are the exact

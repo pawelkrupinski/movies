@@ -243,9 +243,9 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     calls.get() shouldBe 2
   }
 
-  // The operator's escape hatch has to keep working: a forced re-enrich must
+  // The operator's escape hatch has to keep working: an operator's refresh must
   // genuinely re-probe, not replay a remembered "no page for this film".
-  it should "drop a remembered miss on forget, so a forced re-enrich really re-probes" in {
+  it should "drop a remembered miss on forget, so an operator's refresh really re-probes" in {
     val cache = rememberingCache()
     val calls = new AtomicInteger(0)
     def resolve(): Option[String] = { calls.incrementAndGet(); None }
