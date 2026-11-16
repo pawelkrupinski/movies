@@ -729,6 +729,14 @@ scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"
 echo again >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam again
 out="$(PREPUSH_DELEGATED_FROM=/elsewhere scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
 check "a hook already handed over to runs itself (no recursion)" "old" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+# a dry-run mode names the file it means: every plan query runs the copy it was asked of, from whatever checkout
+# (--lint-plan was missing from the list and handed over to the cwd's copy: lint_registry_reads.py asks its own)
+for mode in --plan --compile-plan --unit-plan --lint-plan; do
+  rm -f "$hp/ran"
+  (cd "$hp/wt" && bash "$hp/clone/scripts/hooks/pre-push" "$mode" < /dev/null > /dev/null 2>&1)
+  check "a $mode query from another checkout runs the copy asked of, never hands over" "old" \
+    "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+done
 # install-hooks.sh puts the relative path back: an absolute path to THIS checkout's scripts/hooks is the same directory,
 # never "hooks that would stop running"; another directory holding hooks still is
 mkdir -p "$hp/wt/scripts"; cp "$REPO_ROOT/scripts/install-hooks.sh" "$hp/wt/scripts/install-hooks.sh"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$hp/wt/scripts/hooks-path.sh"

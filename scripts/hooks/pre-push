@@ -217,9 +217,14 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
 # the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
-# the dry runs (--plan, --compile-plan, --range, --checks-only), which name the file they mean.
-case "${1:-}" in
-    --plan|--compile-plan|--unit-plan|--range|--checks-only|--fast-only|--verify-only|--failure-summary) ;;
+# the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
+# THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
+# check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--unit-plan|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
+case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
+case "$dry_run" in
+    1) ;;
     *)
         if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
             hooks_path="$(git config --get core.hooksPath || true)"
@@ -263,7 +268,7 @@ root_warning=""
 # A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
 # `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
 # stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
-case "${1:-}" in --plan|--compile-plan|--unit-plan|--lint-plan|--failure-summary) root_check="" ;; esac
+! is_plan_mode "${1:-}" || root_check=""
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
 tree="" area_tests=""
