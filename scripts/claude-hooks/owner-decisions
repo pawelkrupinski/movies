@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""Put agentctl's pending OWNER DECISIONS in front of the session the owner is talking to.
+
+The owner (2026-11-16): a `RED BLOCKED ON OWNER: WAITING ON YOU: ... Answer: `! ~/bin/agentctl decide <id> "..."``
+showed only in his status line; the sessions he talks to never surfaced it, so decisions sat unanswered for hours.
+The orchestrator's `agentctl inbox wait --forever` Monitor was lost after every compaction and other sessions never
+ran one. Run as Claude Code hooks from .claude/settings.json:
+
+  prompt         UserPromptSubmit: reads the unread owner alerts (agentctl's alert index directly, ~1 ms; without
+                 one, `agentctl inbox --audience owner --unread --json`) and adds, as context, each
+                 unread owner alert that is a DECISION (its verdict says WAITING ON YOU / BLOCKED ON OWNER or carries
+                 an `agentctl decide` command) -- the question, why, and the exact `! ~/bin/agentctl decide ...` line --
+                 telling the model to put each to the user verbatim at the top of its reply. Other owner alerts
+                 (invariants, budgets) stay the orchestrator's Monitor's. Dedupe: an item is shown once per session,
+                 again only when its verdict changes, after REMIND_SECONDS (30 min), or after a compaction; an acked
+                 or closed alert is no longer unread and drops out by itself.
+  session-start  SessionStart: after a compaction (or /clear) says to re-arm the owner inbox Monitor and forgets the
+                 session's shown items (the summary may have lost them); on startup/resume only in the root checkout
+                 (the orchestrator's). Silent elsewhere.
+
+Never blocks a prompt: a missing, slow or failing agentctl, or garbage anywhere, prints nothing and exits 0.
+Env (tests): AGENTCTL_INBOX_DIR (agentctl's own), OWNER_DECISIONS_AGENTCTL, OWNER_DECISIONS_STATE_DIR, OWNER_DECISIONS_REMIND_SECONDS.
+"""
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+AGENTCTL = os.environ.get("OWNER_DECISIONS_AGENTCTL", os.path.expanduser("~/bin/agentctl"))
+STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
+REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
+STATE_TTL_SECONDS = 7 * 24 * 3600
+MONITOR = "~/bin/agentctl inbox wait --forever --since-ack --audience owner"
+DECISION = re.compile(r"WAITING ON YOU|BLOCKED ON OWNER|agentctl decide ")
+QUESTION = re.compile(r"WAITING ON YOU:\s*(.*?)(?:\s+Answer:|\s+Why:|$)", re.S)
+WHY = re.compile(r"\bWhy:\s*(.*?)(?:\s+Look:|\s+Auto-clears|$)", re.S)
+COMMAND = re.compile(r"`(!\s*~/bin/agentctl decide [^`]*)`")
+
+
+def emit(event, text):
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}))
+
+
+def state_path(session):
+    return os.path.join(STATE_DIR, re.sub(r"[^A-Za-z0-9_.-]", "_", session) + ".json")
+
+
+def load_state(session):
+    try:
+        with open(state_path(session)) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_state(session, state):
+    os.makedirs(STATE_DIR, exist_ok=True)
+    tmp = state_path(session) + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(state, f)
+    os.replace(tmp, state_path(session))
+    now = time.time()
+    for name in os.listdir(STATE_DIR):  # a session's file outlives it; a week is plenty
+        path = os.path.join(STATE_DIR, name)
+        try:
+            if now - os.path.getmtime(path) > STATE_TTL_SECONDS:
+                os.remove(path)
+        except OSError:
+            pass
+
+
+def owner_alerts_from_index():
+    """The unread owner alerts read straight from agentctl's alert index (item -> live entry, `<inbox>.alerts/
+    index.json`, beside `acked/`) in ~1 ms: the set `inbox --audience owner --unread` lists. None when there is no
+    index to read; then the CLI (~0.3-0.5 s) answers."""
+    inbox = os.environ.get("AGENTCTL_INBOX_DIR") or os.path.expanduser("~/.cache/agentctl/inbox")
+    try:
+        with open(inbox + ".alerts/index.json") as f:
+            items = json.load(f)["items"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    entries = []
+    for entry_id in items.values():
+        if not isinstance(entry_id, str) or os.path.exists(os.path.join(inbox, "acked", entry_id)):
+            continue
+        try:
+            with open(os.path.join(inbox, entry_id + ".json")) as f:
+                entry = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(entry, dict) and entry.get("audience") == "owner":
+            entries.append(entry)
+    return entries
+
+
+def owner_alerts_from_cli():
+    out = subprocess.run([AGENTCTL, "inbox", "--audience", "owner", "--unread", "--json", "--limit", "0"],
+                         capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL)
+    return json.loads(out.stdout) if out.returncode == 0 else []
+
+
+def pending_decisions():
+    entries = owner_alerts_from_index()
+    if entries is None:
+        entries = owner_alerts_from_cli()
+    return [e for e in entries if isinstance(e, dict) and not e.get("read") and DECISION.search(e.get("verdict") or "")]
+
+
+def describe(entry):
+    verdict = " ".join((entry.get("verdict") or "").split())
+    question, why, command = (m.group(1).strip() if m else None
+                              for m in (QUESTION.search(verdict), WHY.search(verdict), COMMAND.search(verdict)))
+    if not question:
+        return "- " + verdict[:800]
+    lines = ["- WAITING ON YOU: " + question[:600]]
+    if why:
+        lines.append("  Why: " + why[:400])
+    if command:
+        lines.append("  Answer: `" + command + "`")
+    return "\n".join(lines)
+
+
+def prompt(hook):
+    session = str(hook.get("session_id") or "unknown")
+    state, now, shown = load_state(session), time.time(), []
+    for entry in pending_decisions():
+        key = str(entry.get("item") or entry.get("id"))
+        digest = hashlib.sha1((entry.get("verdict") or "").encode()).hexdigest()[:16]
+        seen = state.get(key)
+        if seen and seen.get("digest") == digest and now - seen.get("at", 0) < REMIND_SECONDS:
+            continue
+        state[key] = {"at": now, "digest": digest}
+        shown.append(describe(entry))
+    if not shown:
+        return
+    save_state(session, state)
+    emit("UserPromptSubmit",
+         "agentctl has %d decision(s) waiting on the owner (the user). Put each one to the user verbatim at the top of "
+         "your reply, before anything else -- the question, why, and the exact `! ...` answer command for them to "
+         "run -- then carry on with their message:\n%s" % (len(shown), "\n".join(shown)))
+
+
+def in_root_checkout(cwd):
+    def rev(flag):
+        r = subprocess.run(["git", "-C", cwd, "rev-parse", "--path-format=absolute", flag],
+                           capture_output=True, text=True, timeout=5, env=dict(os.environ, GIT_OPTIONAL_LOCKS="0"))
+        return os.path.realpath(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else None
+    git_dir = rev("--git-dir")
+    return git_dir is not None and git_dir == rev("--git-common-dir")
+
+
+def session_start(hook):
+    source, cwd = hook.get("source"), hook.get("cwd") or os.getcwd()
+    if source in ("compact", "clear"):
+        try:
+            os.remove(state_path(str(hook.get("session_id") or "unknown")))
+        except OSError:
+            pass
+    elif not (source in ("startup", "resume") and in_root_checkout(cwd)):
+        return
+    emit("SessionStart",
+         "Re-arm the owner inbox Monitor now (a compaction or restart drops it): run `%s` as a Monitor (or Bash "
+         "run_in_background), then triage and ack each line it streams. "
+         "Pending owner decisions are also added to each prompt by scripts/claude-hooks/owner-decisions." % MONITOR)
+
+
+def main():
+    try:
+        hook = json.load(sys.stdin)
+        if not isinstance(hook, dict):
+            return
+        {"prompt": prompt, "session-start": session_start}[sys.argv[1]](hook)
+    except Exception:  # a broken hook must never wedge a prompt
+        pass
+
+
+if __name__ == "__main__":
+    main()
+    sys.exit(0)

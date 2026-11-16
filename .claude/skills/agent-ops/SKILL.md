@@ -100,6 +100,11 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   `--sha <commit>`; `--run <id>` = that run's failed jobs and steps), then `~/bin/agentctl ci-why [<id>]` for the
   failure's log. ~450 hand-written `gh run list/view --json jobs/--log` calls a week (2026-11) asked exactly these.
   `gh run rerun` is denied by `scripts/claude-hooks/gh-run-guard` (a rerun is never a fix); list/view/watch are advised.
+- **Owner decisions reach every session:** `scripts/claude-hooks/owner-decisions` (UserPromptSubmit) adds each
+  unread agentctl owner decision (WAITING ON YOU / BLOCKED ON OWNER, with its `! ~/bin/agentctl decide ...` line) to
+  the prompt's context -- put it to the user verbatim at the top of your reply; once per session, again when it
+  changes, after 30 min or after a compaction. Its SessionStart half says, after a compaction and on startup in the
+  root checkout (the orchestrator), to re-arm the `agentctl inbox wait --forever --since-ack --audience owner` Monitor.
 - **CI wait:** `scripts/ci-wait`, never a hand-written `gh run view`/`sleep` loop. `--run <id>`; `--workflow <w> --sha
   <commit>` (waits for the run to appear, then to finish); several `--workflow`s for a set; `--or-later` (a green run
   at that commit or later), `--until-green` (wait through reds), `--any-completed` (each workflow's newest verdict).

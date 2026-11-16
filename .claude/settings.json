@@ -3,6 +3,15 @@
     "SessionStart": [
       {
         "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/root-checkout-guard\" session-start", "timeout": 30 }]
+      },
+      {
+        "matcher": "compact|clear|startup|resume",
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/owner-decisions\" session-start", "timeout": 10 }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/owner-decisions\" prompt", "timeout": 5 }]
       }
     ],
     "PreToolUse": [
