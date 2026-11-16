@@ -36,6 +36,8 @@ mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src
   "$repo/worker/src/fixtures/scala/tools" "$repo/worker/src/fixtures/scala/services/identity/adapters" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
 cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$REPO_ROOT/scripts/zinc_orphans.py" "$repo/scripts/"
 mkdir -p "$repo/scripts/ci" && cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the shared modules the diff imports
+cp "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$repo/scripts/ci/"  # --emit-drift-slice files the walk's rows with it
+printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n' > "$repo/test/resources/fixtures/identity-flip-backlog.tsv"
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
@@ -85,6 +87,10 @@ case " \$* " in *" scripts.IdentityDrift "*)
     exit1) echo "boom" >&2; exit 1 ;;
     killed) exit 137 ;;
   esac ;;
+esac
+# the slice's arrival walk (--emit-drift-slice's third stage): STUB_WALK is what it prints, STUB_WALK_RC how it exits
+case " \$* " in *" services.identity.PopulationMonotonicitySpec "*)
+  printf '%b' "\${STUB_WALK:-# drift-slices/de/kino-lalka-1: 0 flip(s) in 1.0s\\n}"; exit "\${STUB_WALK_RC:-0}" ;;
 esac
 [ -z "\${STUB_EMIT_SLICE:-}" ] || [ -z "\$(printf '%s' "\$*" | grep -- --emit-slice)" ] || echo "--emit-slice: \$STUB_EMIT_SLICE"
 out="" ref="" serve=""
@@ -436,6 +442,15 @@ check "scripts/identity-explain is identity-slice --explain" "1" \
 drift() { STUB_EMIT_SLICE="$work/slice-dir" STUB_DRIFT="$1" slice de --recording 777 --key 'Kino|Lalka' --emit-drift-slice > "$work/drift.stdout"; echo $?; }
 check "a replay that ends RED is REPLAYS RED, exit 0" "0 1" "$(drift red) $(grep -c 'REPLAYS RED' "$work/err")"
 check "a replay that ends CLEAN replays clean" "0 1" "$(drift clean) $(grep -c 'replays clean' "$work/err")"
+# Main #2515: the slice lands with every population row its arrival walk finds, filed in the backlog in the same step
+backlog="$repo/test/resources/fixtures/identity-flip-backlog.tsv"
+walk='# drift-slices/de/kino-lalka-1: 1 flip(s) in 1.0s\ndrift-slices/de/kino-lalka-1\tKino\tLalka\tfilm-film-film: model tmdb:1@1 -> tmdb:2@2 -> tmdb:1@3 [chain 3]\n'
+check "the slice's arrival walk files each flip as a population row (printed), once" "0 1 1 0 1" \
+  "$(STUB_WALK="$walk" drift clean) $(grep -c 'population row(s) filed' "$work/err") $(grep -c "$(printf '^population\tde\t')" "$work/drift.stdout") $(STUB_WALK="$walk" drift clean) $(grep -c "$(printf '^population\tde\t\tdrift-slices/de/kino-lalka-1\tKino\tLalka\t')" "$backlog")"
+check "...a clean walk files none, said" "0 1 2" \
+  "$(drift clean) $(grep -c 'finds no flip no population row names' "$work/err") $(grep -c . "$backlog")"
+check "...and a walk that fails files nothing, exit 6" "6 1 1" \
+  "$(STUB_WALK='# drift-slices/de/kino-lalka-1: FAILED boom\n' drift clean) $(grep -c 'population walk failed' "$work/err") $(grep -c "$(printf '^population\tde\t')" "$backlog")"
 check "a JVM out-of-memory is NO VERDICT, exit 5, never RED or CLEAN" "5 1 0 0" \
   "$(drift oom) $(grep -c 'NO VERDICT: the replay ran out of memory' "$work/err") $(grep -c 'REPLAYS RED' "$work/err") $(grep -c 'replays clean' "$work/err")"
 check "a non-zero exit with no verdict line is NO VERDICT, exit 5" "5 1 0" \

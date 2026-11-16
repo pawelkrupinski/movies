@@ -14,6 +14,9 @@ import population_walk_diff as t  # noqa: E402
 
 TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "population_walk_diff.py")
 SLICE = "drift-slices/uk/poole-hen-0a1b2c3d"
+# the tool's own git, in a scratch repository: never a hook's exported GIT_DIR
+NO_GIT_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+SCRATCH_GIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scratch-git.sh")
 
 
 def candidate(directory, slice_name, head=(), known=()):
@@ -188,17 +191,19 @@ class Brought(unittest.TestCase):
         os.makedirs(os.path.join(self.fx, "drift-slices", "uk", "kept-1"))
         self.write("drift-slices/uk/kept-1/slice.json", "{}")
         self.write("identity-flip-backlog.tsv", "kind\tcountry\tseed\tslice\tvenue\trawTitle\n")
-        self.git("init", "-q")
-        self.git("add", "-A")
-        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+        self.scratch("scratch_repo", "-q")
+        self.scratch("scratch_git", "add", "-A")
+        self.scratch("scratch_git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
         self.cands = os.path.join(self.tmp.name, "cands")
         os.makedirs(self.cands)
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def git(self, *args):
-        subprocess.run(["git", "-C", self.repo, *args], check=True, capture_output=True)
+    def scratch(self, helper, *args):
+        """scripts/scratch-git.sh's isolating helpers: a raw git would inherit a hook's GIT_DIR."""
+        subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", SCRATCH_GIT, helper, self.repo, *args],
+                       check=True, capture_output=True, text=True)
 
     def write(self, rel, text):
         path = os.path.join(self.fx, rel)
@@ -208,7 +213,7 @@ class Brought(unittest.TestCase):
 
     def brought(self):
         p = subprocess.run([sys.executable, TOOL, "brought", self.cands, "HEAD"], cwd=self.repo, capture_output=True,
-                           text=True)
+                           text=True, env=NO_GIT_ENV)
         self.assertEqual(p.returncode, 0, p.stderr)
         return p.stdout.split()
 
@@ -230,7 +235,8 @@ class Brought(unittest.TestCase):
         self.assertEqual(self.brought(), ["drift-slices/uk/kept-1"])
 
     def changed(self):
-        p = subprocess.run([sys.executable, TOOL, "changed-slices", "HEAD"], cwd=self.repo, capture_output=True, text=True)
+        p = subprocess.run([sys.executable, TOOL, "changed-slices", "HEAD"], cwd=self.repo, capture_output=True, text=True,
+                           env=NO_GIT_ENV)
         self.assertEqual(p.returncode, 0, p.stderr)
         return p.stdout.split()
 
@@ -253,7 +259,8 @@ class Brought(unittest.TestCase):
         path = os.path.join(self.tmp.name, "walk.txt")
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(walk)
-        p = subprocess.run([sys.executable, TOOL, "judge-walk", path], cwd=self.repo, capture_output=True, text=True)
+        p = subprocess.run([sys.executable, TOOL, "judge-walk", path], cwd=self.repo, capture_output=True, text=True,
+                           env=NO_GIT_ENV)
         return p.returncode, p.stdout
 
     HEADER = "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n"
