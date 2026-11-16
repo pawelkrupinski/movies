@@ -306,16 +306,18 @@ rm "$tree/scripts/fl/new.sh"
 # --floor: BOTH RUNS IN ONE. The hook ran the floor run beside the native one, so a test in the floor's scope ran twice at
 # once (pre-push-test.sh, minutes each, slowing both); now each test runs once: the floor's scope under the floor bash,
 # the rest natively, in one pool -- and the floor's static half still fails the run.
-put scripts/fl/which-test.sh "$(printf '%s\n' 'echo "$1"' 'command -v bash >> "$WHICH_BASH"')"
+put scripts/fl/which-test.sh "$(printf '%s\n' 'echo "floor $(command -v bash)" >> "$WHICH_BASH"')"
 put scripts/fl/which.sh 'echo which'
-put scripts/fl/names-which-test.sh 'echo "reads what scripts/fl/which.sh prints"; command -v bash >> "$WHICH_BASH"'
+put scripts/fl/names-which-test.sh 'echo "reads what scripts/fl/which.sh prints"; echo "native $(command -v bash)" >> "$WHICH_BASH"'
 scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'a tool whose test says which bash runs it'
 whichbase="$(scratch_git "$tree" rev-parse HEAD)"
 echo 'echo edited' >> "$tree/scripts/fl/which.sh"
 export WHICH_BASH="$work/which-bash"; : > "$WHICH_BASH"
 code="$(run --floor "$work/floor-bash" --changed "$whichbase")"
 check "--floor: a changed tool's self-test runs once, under the floor bash; a test it does not scope runs natively" \
-  "0 2 1 1" "$code $(grep -c . "$WHICH_BASH") $(grep -c 'floor-bin/bash$' "$WHICH_BASH") $(grep -c '^PASS .*fl/names-which-test.sh$' "$work/out")"
+  "0 2 1 1 1" "$code $(grep -c . "$WHICH_BASH") $(grep -c '^floor .*floor-bin/bash$' "$WHICH_BASH") $(
+    [ "$(sed -n 's/^floor //p' "$WHICH_BASH")" != "$(sed -n 's/^native //p' "$WHICH_BASH")" ] && echo 1) $(
+    grep -c '^PASS .*fl/names-which-test.sh$' "$work/out")"
 check "...the floor's tests marked in the table" "1" "$(grep -c '^PASS .*fl/which-test.sh (floor)$' "$work/out")"
 echo 'readarray -t x < f' >> "$tree/scripts/fl/which.sh"
 check "...and a construct the floor lacks still fails the run" "1 1" \
