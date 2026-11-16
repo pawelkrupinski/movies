@@ -9,8 +9,8 @@ a week spent watching a log.
 
 PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on stderr) a call without run_in_background
 whose command runs one of them in command position -- unless it is bounded to a minute or less (`--timeout 60` for
-wait-for and agentctl wait, `--timeout 60s` / `--timeout 1` for ci-wait, whose bare number is minutes), a check that
-is answered at once. `--help` is allowed. A broken guard never blocks (exit 0).
+wait-for and agentctl wait, `--timeout 60s` / `--timeout 1` for ci-wait, whose bare number is minutes, or a
+`timeout 60` prefix), a check that is answered at once. `--help` is allowed. A broken guard never blocks (exit 0).
 """
 import json
 import os
@@ -50,17 +50,27 @@ def seconds(value, bare_unit):
 
 
 def waits(words):
-    """Each (tool, its arguments) a waiting tool runs with, in command position."""
-    found, position = [], True
+    """Each (tool, its arguments, the seconds a `timeout` prefix bounds it to or None) a waiting tool runs with, in
+    command position. `timeout 30 scripts/wait-for ...` is a bounded check as much as `--timeout 30` is."""
+    found, position, prefix_timeout, bound = [], True, False, None
     for index, word in enumerate(words):
         if shell.is_punctuation(word):
             position = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
+            if position:
+                prefix_timeout, bound = False, None
             continue
         if not position:
             continue
-        if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or \
-                re.fullmatch(r"[0-9.]+[smhd]?", word) or word in ("timeout", "gtimeout", "env", "nice"):
-            continue  # a prefix, its option or duration: the command is still to come
+        if word in ("timeout", "gtimeout"):
+            prefix_timeout = True
+            continue
+        if re.fullmatch(r"[0-9.]+[smhd]?", word):
+            # timeout's DURATION: its options come before it, -k's own duration among them
+            if prefix_timeout and bound is None and words[index - 1] not in ("-k", "--kill-after", "-s", "--signal"):
+                bound = seconds(word, "s")
+            continue
+        if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or word in ("env", "nice"):
+            continue  # a prefix or its option: the command is still to come
         name = os.path.basename(word)
         rest = []
         for later in words[index + 1:]:
@@ -68,10 +78,10 @@ def waits(words):
                 break
             rest.append(later)
         if name in ("wait-for", "ci-wait"):
-            found.append((name, rest))
+            found.append((name, rest, bound))
         elif name == "agentctl" and rest[:1] == ["wait"]:
-            found.append(("agentctl wait", rest[1:]))
-        position = False
+            found.append(("agentctl wait", rest[1:], bound))
+        position, prefix_timeout, bound = False, False, None
     return found
 
 
@@ -81,13 +91,15 @@ def unbounded_wait(command):
         words = shell.tokens(shell.without_heredoc_bodies(command))
     except ValueError:
         return None
-    for name, arguments in waits(words):
+    for name, arguments, bound in waits(words):
         if "-h" in arguments or "--help" in arguments:
             continue
         limit = None
         for flag, value in zip(arguments, arguments[1:] + [""]):
             if flag == "--timeout":
                 limit = seconds(value, "m" if name == "ci-wait" else "s")
+        if bound is not None and (limit is None or bound < limit):
+            limit = bound
         if limit is None or limit > SHORT_WAIT_SECONDS:
             return name
     return None
