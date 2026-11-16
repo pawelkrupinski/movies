@@ -55,6 +55,10 @@ jobs:
         with:
             drift-only: true
             drift-explore: auto
+            # NOT ON THE GATE'S HOSTED RUNNERS: on ci-runner's measurement lanes, as the family explorer's rows are. Called
+            # on main, Identity takes picked GitHub's hosted runners by the ref, and on 2026-11-16 00:35Z these rows held 8
+            # of the account's 20 while the gate's convergence and takes rows queued (SelfHostedRunnersSpec).
+            measurement-lane: true
         # TMDB_API_KEY, the proxy's credentials and the GITHUB_TOKEN the setup and publish actions read.
         secrets: inherit
 

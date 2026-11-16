@@ -26,19 +26,51 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
 
   private def yml(file: String) = RepoFile.withoutComments(RepoFile.read(s".github/workflows/$file"))
 
-  /** Every job's label in `file`; a job reading its plan job's output is judged by that output's expression. */
-  private def labels(file: String, at: RunnerLabel.Context): Map[String, String] = {
-    val code = yml(file)
-    val jobs = RepoFile.jobs(code)
-    def planned(runner: String) = runner match {
-      case s"$${{ needs.$job.outputs.$key }}" =>
-        RepoFile.block(jobs(job.trim), "outputs").linesIterator.map(_.trim)
-          .collectFirst { case l if l.startsWith(s"${key.trim}:") => WorkflowText.stripComment(l.drop(key.trim.length + 1).trim) }
-          .getOrElse(runner)
-      case other => other
-    }
-    jobs.flatMap((name, job) => RunsOn.findFirstMatchIn(job).map(m => name -> RunnerLabel(planned(m.group(1).trim), at)))
+  private val Call     = """(?m)^\s+uses:\s*\./\.github/workflows/(\S+\.yml)\s*$""".r
+  private val InputRef = """inputs\.([\w-]+)""".r
+
+  /** A runner expression as its job reads it: one reading its plan job's output, that output's expression. */
+  private def planned(jobs: Map[String, String], runner: String): String = runner match {
+    case s"$${{ needs.$job.outputs.$key }}" =>
+      RepoFile.block(jobs(job.trim), "outputs").linesIterator.map(_.trim)
+        .collectFirst { case l if l.startsWith(s"${key.trim}:") => WorkflowText.stripComment(l.drop(key.trim.length + 1).trim) }
+        .getOrElse(runner)
+    case other => other
   }
+
+  /** Every job's own `runs-on:` expression in `file`, as [[planned]]. */
+  private def runsOn(file: String): Map[String, String] = {
+    val jobs = RepoFile.jobs(yml(file))
+    jobs.flatMap((name, job) => RunsOn.findFirstMatchIn(job).map(m => name -> planned(jobs, m.group(1).trim)))
+  }
+
+  /** Every reusable call in `file`: the calling job, the called workflow, and what its `with:` passes, as [[planned]]. */
+  private def calls(file: String): Seq[(String, String, Map[String, String])] = {
+    val jobs = RepoFile.jobs(yml(file))
+    jobs.toSeq.flatMap((name, job) => Call.findFirstMatchIn(job).map { m =>
+      val passed =
+        if (!job.linesIterator.exists(_.trim == "with:")) Map.empty[String, String]
+        else RepoFile.block(job, "with").linesIterator.drop(1).map(l => WorkflowText.stripComment(l).trim)
+          .collect { case s"$key:$value" if value.trim.nonEmpty => key.trim -> planned(jobs, value.trim) }.toMap
+      (name, m.group(1), passed)
+    })
+  }
+
+  /** The inputs a workflow's runner choice reads: its own jobs', and its calls' through the values it passes them. */
+  private def runnerInputs(file: String): Set[String] = {
+    val passedOn = calls(file).flatMap((_, callee, passed) => passed.filter((key, _) => runnerInputs(callee)(key)).values)
+    (runsOn(file).values ++ passedOn).flatMap(InputRef.findAllMatchIn(_).map(_.group(1))).toSet
+  }
+
+  /** Every job's label in `file`, and every reusable call's jobs under `<calling job> / <job>`, read with the inputs the
+   *  call passes: a called workflow runs where its CALLER's ref and inputs put it, not where a dispatch of it would. */
+  private def labels(file: String, at: RunnerLabel.Context): Map[String, String] =
+    runsOn(file).map((job, runner) => job -> RunnerLabel(runner, at)) ++
+      calls(file).flatMap { (job, callee, passed) =>
+        val read   = runnerInputs(callee)
+        val inputs = passed.collect { case (key, value) if read(key) => key -> RunnerLabel(value, at) }
+        labels(callee, at.copy(inputs = inputs)).map((called, label) => s"$job / $called" -> label)
+      }
 
   /** The legs' runner of a suite: Identity model convergence's, or (since 2026-11-08) Identity takes', the same rule. */
   private def legRunner(at: RunnerLabel.Context, suite: String = "identity-model-convergence.yml"): String = {
@@ -115,6 +147,18 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
         .collectFirst { case l if l.startsWith("runner:") => l.drop("runner:".length).trim }.get
       withClue(s"$f: ")(RunnerLabel(runner, onMain) shouldBe "movies-measure")
     }
+  }
+
+  /** THE DRIFT EXPLORER CALLS Identity takes on main (2026-11-15), and a called workflow reads its caller's ref: picked by
+   *  the ref alone, its rows took GitHub's hosted runners -- on 2026-11-16 00:35Z 8 of the account's 20, while 14
+   *  convergence and 21 takes rows of THE GATE's run 43779901411 queued. No gate verdict, so none of the gate's runners. */
+  "the drift explorer's called Identity takes rows" should "run on ci-runner, though called on main" in {
+    val explorer = labels("identity-drift-explorer.yml", ctx(RunnerLabel.Main))
+    val called   = explorer.filter((job, _) => job.startsWith("drift / "))
+    called.keySet should contain allOf ("drift / preflight", "drift / leg / convergence")
+    all(called.values) should (be("movies") or be("movies-measure"))
+    called("drift / leg / convergence") shouldBe "movies-measure"
+    withClue("ci-runner switched off: ")(all(labels("identity-drift-explorer.yml", ctx(RunnerLabel.Main, Map.empty)).values.map(Hosted)) shouldBe true)
   }
 
   "the timings report" should "run where its caller does: hosted for THE GATE's workflows on main, ci-runner otherwise" in {

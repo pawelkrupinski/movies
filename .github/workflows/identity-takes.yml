@@ -20,7 +20,8 @@
 # drift-only, `drift-explore: auto`), so its rows run inside the explorer's own run, under the explorer's name. A run of
 # this workflow on main is then always a gate verdict: the explorer's drift-only replay, which no `verdict complete` can
 # call complete, is never one (it was a red NO VERDICT run every night, 2026-11-15). Inside a call `verdict complete` and
-# `timings` are skipped -- the run is not THE GATE's, and Report run timings reports the explorer's run itself.
+# `timings` are skipped -- the run is not THE GATE's, and Report run timings reports the explorer's run itself -- and every
+# job runs on ci-runner (`measurement-lane`), never on the hosted runners the gate's own runs wait for.
 #
 # A VERDICT ALREADY PROVEN IS NOT RUN AGAIN: Main's kick hands convergence a landing check's convergence run (`reuse-run`),
 # and convergence hands it here; this preflight judges the takes run THAT run dispatched (convergence_reuse.py verify
@@ -50,6 +51,15 @@ on:
                 description: Each takes-drift row replays N (or `auto`) random seeds off the gate, head alone, never red.
                 required: true
                 type: string
+            # NO GATE VERDICT, SO NONE OF THE GATE'S RUNNERS: main's own runs take GitHub's 20 hosted runners, which only
+            # THE GATE may hold (the owner, 2026-11-06: "main branch convergence ... always on gh, measurements always on
+            # ci"). A caller on main that is no gate (the explorer) runs every job where a measurement off main does --
+            # ci-runner's `movies-measure` and `movies` lanes. On 2026-11-16 00:35Z the explorer's called rows held 8 of
+            # the 20 while 14 convergence and 21 takes rows of the gate's run 43779901411 queued. (SelfHostedRunnersSpec)
+            measurement-lane:
+                description: Run every job on ci-runner's lanes, as a run off main does -- the caller is no gate (the drift explorer).
+                required: true
+                type: boolean
     workflow_dispatch:
         inputs:
             # The Identity model convergence run whose preflight dispatched this one (scripts/ci/dispatch-takes.sh); empty
@@ -168,7 +178,7 @@ jobs:
     # the secret is set, every leg's pair exists, the plan, the reuse. THE PLAN (WorkflowPlanSpec): every later job reads
     # its decisions from these outputs.
     preflight:
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -199,10 +209,11 @@ jobs:
             # THE HARNESSES' A/A SELF-TEST (scripts/ci/harness_aa.py): `true` on a full run on main whose push changed a
             # path of .github/harness-aa-paths.txt -- each leg then adds the A/A rows and the `takes-drift-aa` job compares them.
             harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}
-            # Main's rows on GitHub's hosted runners, every run off main (a measurement) on ci-runner's `movies-measure`
-            # (the owner, 2026-11-06; identity-model-convergence.yml's `runner` says the rest).
-            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
-            light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
+            # Main's rows on GitHub's hosted runners, every run off main (a measurement) and every call that is no gate
+            # (`measurement-lane`: the explorer's) on ci-runner's `movies-measure` (the owner, 2026-11-06;
+            # identity-model-convergence.yml's `runner` says the rest).
+            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && 'movies-measure') || 'ubuntu-22.04' }}
+            light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || inputs.measurement-lane) && 'movies' || 'ubuntu-26.04' }}
             on-main: ${{ github.ref == 'refs/heads/main' }}
             # THE DRIFT EXPLORER'S CALL (identity-drift-explorer.yml): `github` is the CALLER's context in a called workflow,
             # so this names the explorer's run -- no gate verdict, no in-run timings. Matched on the explorer by name, never
