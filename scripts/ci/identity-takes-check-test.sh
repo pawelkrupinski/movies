@@ -45,8 +45,8 @@ case "\$*" in *"contexts {"*) echo "invalid character '<' looking for beginning 
 # HISTORY_FAILS_ONCE=<file>: the first read answers an HTML error page, as github.com's GraphQL did for Identity takes #82
 [ -n "\${HISTORY_FAILS_ONCE:-}" ] && [ ! -f "\$HISTORY_FAILS_ONCE" ] && { : > "\$HISTORY_FAILS_ONCE"; echo "invalid character '<' looking for beginning of value" >&2; exit 1; }
 [ -n "\${HISTORY_HANGS:-}" ] && { echo \$\$ >> "\$HISTORY_HANGS"; exec sleep 86400; } # never answers: blocks until killed
-# STATUS_SLOW=<seconds>: every REST status read (the history-from-git walk's) takes that long to answer
-case "\$*" in "api repos/o/r/commits/"*"/status"*) [ -n "\${STATUS_SLOW:-}" ] && sleep "\$STATUS_SLOW" ;; esac
+# STATUS_HANGS=<pid file>: every REST status read (the history-from-git walk's) never answers: blocks until killed
+case "\$*" in "api repos/o/r/commits/"*"/status"*) [ -n "\${STATUS_HANGS:-}" ] && { echo \$\$ >> "\$STATUS_HANGS"; exec sleep 86400; } ;; esac
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
   "api repos/o/r/commits/"*"/status"*) sha="\${2#repos/o/r/commits/}"; state "\${sha%%/*}"; exit 0 ;;
@@ -103,12 +103,13 @@ check "...but with no green commit in git's window it names no base, never a gue
   "$code $(grep -c 'no green commit in the 2 commit(s)' "$work/log")"
 # Up to IDENTITY_TAKES_LOCAL_HISTORY (200) reads, each bounded by gh's 120 s: 6.7 hours with no overall bound. The walk has
 # one deadline (IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE), and past it it names no base, saying so.
-echo SUCCESS > "$work/status-$c1"
-start=$SECONDS code=0; GRAPHQL_FAILS=1 STATUS_SLOW=3 IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE=2 run || code=$?
-check "...and a walk whose reads outlast its deadline stops there, naming no base" "2 1" \
-  "$code $(grep -c 'past its 2 s deadline' "$work/log")"
-check "...within the deadline, not every read's own bound" 1 "$([ $((SECONDS - start)) -lt 6 ] && echo 1 || echo 0)"
-rm "$work/status-$c1"
+# The reads never answer and each one's own bound is a day, so only the deadline can end the walk (shell-spec.sh's HUNG
+# STUBS: were it missing, spec_bounded's deadline would fail the case).
+: > "$work/status-hung"
+code=0; GRAPHQL_FAILS=1 STATUS_HANGS="$work/status-hung" IDENTITY_TAKES_GH_TIMEOUT=86400 IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE=2 run \
+  || code=$?
+check "...and a walk whose reads outlast its deadline stops there, naming no base, leaving no gh running" "2 1 0" \
+  "$code $(grep -c 'past its 2 s deadline' "$work/log") $(spec_still_running "$work/status-hung")"
 rm "$work/status-$c2"
 # The stub never answers: the check stops only by its bound cutting the read off (shell-spec.sh's HUNG STUBS).
 : > "$work/hung"
