@@ -42,11 +42,11 @@ ADVICE = (
 
 
 def seconds(value, bare_unit):
-    match = re.fullmatch(r"([0-9.]+)([smh]?)", value or "")
+    match = re.fullmatch(r"([0-9.]+)([smhd]?)", value or "")
     if not match:
         return None
     number, unit = float(match.group(1)), match.group(2) or bare_unit
-    return number * {"s": 1, "m": 60, "h": 3600}[unit]
+    return number * {"s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
 
 
 def waits(words):
@@ -64,10 +64,12 @@ def waits(words):
         if word in ("timeout", "gtimeout"):
             prefix_timeout = True
             continue
+        if prefix_timeout and bound is None and words[index - 1] in ("-k", "--kill-after", "-s", "--signal"):
+            continue  # an option's value (-s KILL, -k 5), never timeout's duration nor the command
         if re.fullmatch(r"[0-9.]+[smhd]?", word):
-            # timeout's DURATION: its options come before it, -k's own duration among them
-            if prefix_timeout and bound is None and words[index - 1] not in ("-k", "--kill-after", "-s", "--signal"):
-                bound = seconds(word, "s")
+            # timeout's DURATION (its options come before it); 0 disables the timeout: no bound
+            if prefix_timeout and bound is None:
+                bound = seconds(word, "s") or None
             continue
         if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or word in ("env", "nice"):
             continue  # a prefix or its option: the command is still to come
