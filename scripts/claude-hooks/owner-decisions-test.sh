@@ -7,6 +7,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 hook="$REPO_ROOT/scripts/claude-hooks/owner-decisions"
+. "$REPO_ROOT/scripts/scratch-git.sh"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fails=0
@@ -92,7 +93,7 @@ start() { # <source> <cwd> [session]
   printf '{"session_id": "%s", "hook_event_name": "SessionStart", "source": "%s", "cwd": "%s"}' "${3:-s1}" "$1" "$2" |
     python3 "$hook" session-start 2>/dev/null
 }
-git -C "$tmp" init -q root && git -C "$tmp/root" commit -q --allow-empty -m x && git -C "$tmp/root" worktree add -q "$tmp/wt" 2>/dev/null
+scratch_repo "$tmp/root" && scratch_git "$tmp/root" commit -q --allow-empty -m x && scratch_git "$tmp/root" worktree add -q "$tmp/wt" 2>/dev/null
 check "compact: re-arm the Monitor" 1 "$(start compact "$tmp/wt" | context | grep -c 'inbox wait --forever --since-ack --audience owner')"
 check "compact: the session's pending decisions are shown again" 1 "$(prompt "$tmp/changed.json" | context | grep -c 'stage 6')"
 check "startup in the root checkout: re-arm" 1 "$(start startup "$tmp/root" | context | grep -c 'Monitor')"
