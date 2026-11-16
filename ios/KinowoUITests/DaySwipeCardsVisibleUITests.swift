@@ -40,7 +40,11 @@ final class DaySwipeCardsVisibleUITests: XCTestCase {
         }
 
         // Swipe left starting on the card, well past the 30% commit threshold.
-        let start = card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // A `ScreenPoint`, not a card-anchored coordinate: XCUITest re-resolves an
+        // element-anchored coordinate on the app's main thread while it plays the
+        // touch, and that grid search can stall the drag (CardShareMenuUITests,
+        // Order independence #74; see `ScreenPoint`).
+        let start = ScreenPoint.of(card, normalizedOffset: CGVector(dx: 0.5, dy: 0.5), in: app)
         let end = start.withOffset(CGVector(dx: -screen.width * 0.7, dy: 0))
         start.press(forDuration: 0.05, thenDragTo: end)
         Thread.sleep(forTimeInterval: 1.5)
