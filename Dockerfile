@@ -47,7 +47,7 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 # The `jdk` stage's base sets JAVA_VERSION too, but ENV does not cross stages: restated here, and the
 # `grep` after `java --version` below fails the build when the linked runtime is another release.
-ENV JAVA_VERSION=jdk-27+35
+ENV JAVA_VERSION=jdk-27.0.1.0
 COPY --from=jdk /opt/jre /opt/java/openjdk
 RUN set -eux; \
     apt-get update; \

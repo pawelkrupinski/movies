@@ -13,6 +13,12 @@ OCI distribution API (anonymous bearer token, paginated) and decides by the pin'
   minor    take the newest tag within the current major.
   report   never rewrite; list what is newer (a new major, an OS release, a tag other files must move with).
 
+A pin may RESTATE some of its image's own env (`restate`): each file's `ENV <name>=<value>` line is set to the value
+the pinned digest's config carries (its linux/amd64 image), whenever the pin is written and whenever that line has
+drifted. The Dockerfile's runtime stage restates the jdk stage's JAVA_VERSION (ENV does not cross stages) and fails
+its build when `java --version` names another release: a digest moved alone to Temurin 27.0.1 left jdk-27+35 and
+failed every image build (Main #2547).
+
 TWO PULL REQUESTS, ONE PER REPOSITORY (both CLAUDE.md's sanctioned bot PRs). This checkout's pins are rewritten by
 infra/bin/nix-update into its weekly PR (nix-update/all). The pins in the movies-gitops checkout (infra/kubernetes,
 gitignored here, put there by infra/bin/fetch-gitops) are rewritten by `--gitops-out` into that repository's own PR
@@ -59,9 +65,10 @@ def image_ref(path):
 
 
 class Pin:
-    def __init__(self, name, files, registry, repository, policy, tag_key=SEMVER, pattern=None, root="repo", note=""):
+    def __init__(self, name, files, registry, repository, policy, tag_key=SEMVER, pattern=None, root="repo", note="",
+                 restate=()):
         self.name, self.files, self.registry, self.repository = name, files, registry, repository
-        self.policy, self.tag_key, self.root, self.note = policy, tag_key, root, note
+        self.policy, self.tag_key, self.root, self.note, self.restate = policy, tag_key, root, note, tuple(restate)
         self.pattern = re.compile(pattern or image_ref(repository.split("/", 1)[1] if repository.startswith("library/")
                                                        else repository), re.M)
 
@@ -71,7 +78,7 @@ class Pin:
 
 PINS = [
     Pin("eclipse-temurin", ["Dockerfile"], DOCKER_HUB, "library/eclipse-temurin", "digest", tag_key=r"(\d+)-jdk",
-        note="JdkVersionParitySpec holds the major to CI's JDK: a new major is listed, never taken"),
+        restate=("JAVA_VERSION",), note="JdkVersionParitySpec holds the major to CI's JDK: a new major is listed, never taken"),
     Pin("ubuntu", ["Dockerfile", "scripts/run-script-tests"], DOCKER_HUB, "library/ubuntu", "digest",
         tag_key=r"(\d\d)\.(04)", note="LTS releases only; the runtime base, and CI's script-test container: "
         "the digest is refreshed, a new release (`later`) only listed"),
@@ -129,6 +136,24 @@ def rewrite(text, pattern, tag, digest=None):
     return pattern.sub(sub, text)
 
 
+def restated(name):
+    """A file's `ENV <name>=<value>` line, the value its group."""
+    return re.compile(rf"(?m)^(ENV {re.escape(name)}=)(\S+)$")
+
+
+def restate(text, names, env):
+    """Every `ENV <name>=` line of `names` set to the image's own value. Refuses a file without one, or an image
+    whose config does not set it: the weekly run would otherwise move the digest and leave the line stale."""
+    for name in names:
+        pattern = restated(name)
+        if not pattern.search(text):
+            raise ValueError(f"no `ENV {name}=` line to restate")
+        if name not in env:
+            raise ValueError(f"the pinned image sets no {name}")
+        text = pattern.sub(lambda m, value=env[name]: m.group(1) + value, text)
+    return text
+
+
 # ---- the registry (OCI distribution API) ---------------------------------------------------------
 
 AUTH_PARAM = re.compile(r'(\w+)="([^"]*)"')
@@ -182,6 +207,22 @@ class Registry:
             raise ValueError(f"{repository}:{tag} answered without a Docker-Content-Digest")
         return got
 
+    def _json(self, repository, path, accept=None):
+        with self._open(f"{self.base}/v2/{repository}/{path}", repository, accept=accept) as r:
+            return json.loads(r.read())
+
+    def image_env(self, repository, digest):
+        """The env the image at `digest` was built with: a manifest list's linux/amd64 image, its config's Env."""
+        manifest = self._json(repository, f"manifests/{digest}", MANIFEST_TYPES)
+        if "manifests" in manifest:
+            image = next((m for m in manifest["manifests"] if m.get("platform", {}).get("architecture") == "amd64"
+                          and m.get("platform", {}).get("os", "linux") == "linux"), None)
+            if image is None:
+                raise ValueError(f"{repository}@{digest} lists no linux/amd64 image")
+            manifest = self._json(repository, f"manifests/{image['digest']}", MANIFEST_TYPES)
+        config = self._json(repository, f"blobs/{manifest['config']['digest']}")
+        return dict(e.split("=", 1) for e in (config.get("config") or {}).get("Env") or [])
+
 
 # ---- one pass ------------------------------------------------------------------------------------
 
@@ -208,13 +249,23 @@ def check(pin, root=ROOT, gitops=GITOPS, write=(), registry=None):
             new_digest, row["latest"] = fresh, f"{tag}@{fresh[:19]}"
     elif same:
         new_tag, row["latest"] = same, same
+    if pin.restate:
+        env = registry.image_env(pin.repository, new_digest)
+        fresh_texts = {f: restate(t, pin.restate, env) for f, t in texts.items()}
+        drifted = [f"{name}={env[name]}" for name in pin.restate
+                   if any(m.group(2) != env[name] for t in texts.values() for m in restated(name).finditer(t))]
+        if drifted:
+            row["latest"] = (row["latest"] or row["current"]) + f" ({', '.join(drifted)})"
+        texts_to_write = fresh_texts
+    else:
+        texts_to_write = texts
     if row["latest"]:
         if pin.policy == "report":
             row["action"] = "behind"
         else:
             row["action"] = "bumped"
             if pin.root in write:
-                for f, t in texts.items():
+                for f, t in texts_to_write.items():
                     (base / f).write_text(rewrite(t, pin.pattern, new_tag, new_digest))
     elif later:
         row["action"] = "held"

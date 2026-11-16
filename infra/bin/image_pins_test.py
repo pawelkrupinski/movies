@@ -76,9 +76,23 @@ class Files(unittest.TestCase):
                 image_pins.read_pin(text, self.buildkit)
 
 
+AMD64 = "sha256:" + "c" * 64
+CONFIG = "sha256:" + "d" * 64
+ARM64 = "sha256:" + "e" * 64
+
+
 class FakeRegistry(BaseHTTPRequestHandler):
     tags = {"acme/tool": [["v1.0.0", "v1.1.0"], ["v1.2.0", "v2.0.0"]]}
     digests = {("acme/tool", "v1.0.0"): NEW}
+    # NEW's manifest list, its amd64 image's manifest and that image's config (the env the image's own build set)
+    documents = {
+        f"/v2/acme/tool/manifests/{NEW}": {"manifests": [
+            {"digest": ARM64, "platform": {"architecture": "arm64", "os": "linux"}},
+            {"digest": AMD64, "platform": {"architecture": "amd64", "os": "linux"}}]},
+        f"/v2/acme/tool/manifests/{AMD64}": {"config": {"digest": CONFIG}},
+        f"/v2/acme/tool/blobs/{CONFIG}": {"config": {"Env": ["PATH=/opt/java/openjdk/bin:/usr/bin",
+                                                             "JAVA_VERSION=jdk-27.0.1.0"]}},
+    }
 
     def log_message(self, *args):
         pass
@@ -104,6 +118,8 @@ class FakeRegistry(BaseHTTPRequestHandler):
             return self.reply(200, json.dumps({"token": "t0ken"}).encode())
         if not self.authorised():
             return
+        if self.path in self.documents:
+            return self.reply(200, json.dumps(self.documents[self.path]).encode())
         page = 1 if "last=" in self.path else 0
         pages = self.tags["acme/tool"]
         headers = [("Link", '</v2/acme/tool/tags/list?last=v1.1.0&n=1000>; rel="next"')] if page + 1 < len(pages) else []
@@ -132,13 +148,17 @@ class Protocol(unittest.TestCase):
     def test_digest(self):
         self.assertEqual(image_pins.Registry(self.base).digest("acme/tool", "v1.0.0"), NEW)
 
-    def check(self, policy, text, root="repo", write=("repo",)):
+    def test_image_env(self):
+        self.assertEqual(image_pins.Registry(self.base).image_env("acme/tool", NEW),
+                         {"PATH": "/opt/java/openjdk/bin:/usr/bin", "JAVA_VERSION": "jdk-27.0.1.0"})
+
+    def check(self, policy, text, root="repo", write=("repo",), restate=()):
         with tempfile.TemporaryDirectory() as d:
             tree = pathlib.Path(d)
             (tree / "gitops").mkdir()
             target = tree / ("gitops" if root == "gitops" else "") / "Dockerfile"
             target.write_text(text)
-            pin = image_pins.Pin("tool", ["Dockerfile"], self.base, "acme/tool", policy, root=root)
+            pin = image_pins.Pin("tool", ["Dockerfile"], self.base, "acme/tool", policy, root=root, restate=restate)
             row = image_pins.check(pin, tree, tree / "gitops", write=write)
             return row, target.read_text()
 
@@ -151,6 +171,25 @@ class Protocol(unittest.TestCase):
         row, text = self.check("digest", f"FROM acme/tool:v1.0.0@{OLD}\n")
         self.assertEqual(row["action"], "bumped")
         self.assertEqual(text, f"FROM acme/tool:v1.0.0@{NEW}\n")
+
+    def test_digest_refresh_restates_the_images_own_env(self):
+        """Main #2547: the weekly PR moved eclipse-temurin:27-jdk to 27.0.1 but left `ENV JAVA_VERSION=jdk-27+35`,
+        and the runtime stage's `java --version | grep` check failed every image build."""
+        row, text = self.check("digest", f"FROM acme/tool:v1.0.0@{OLD} AS jdk\nENV JAVA_VERSION=jdk-27+35\n",
+                               restate=("JAVA_VERSION",))
+        self.assertEqual(row["action"], "bumped")
+        self.assertEqual(text, f"FROM acme/tool:v1.0.0@{NEW} AS jdk\nENV JAVA_VERSION=jdk-27.0.1.0\n")
+
+    def test_current_digest_with_a_stale_restated_env_is_set_right(self):
+        row, text = self.check("digest", f"FROM acme/tool:v1.0.0@{NEW} AS jdk\nENV JAVA_VERSION=jdk-27+35\n",
+                               restate=("JAVA_VERSION",))
+        self.assertEqual(row["action"], "bumped")
+        self.assertIn("JAVA_VERSION=jdk-27.0.1.0", row["latest"])
+        self.assertEqual(text, f"FROM acme/tool:v1.0.0@{NEW} AS jdk\nENV JAVA_VERSION=jdk-27.0.1.0\n")
+
+    def test_restated_env_line_missing_refused(self):
+        with self.assertRaises(ValueError):
+            self.check("digest", f"FROM acme/tool:v1.0.0@{OLD} AS jdk\n", restate=("JAVA_VERSION",))
 
     def test_report_policy_never_writes(self):
         row, text = self.check("report", "image: acme/tool:v1.0.0\n")
@@ -233,6 +272,14 @@ class RealPins(unittest.TestCase):
             self.assertIsNotNone(image_pins.key(tag, pin.tag_key), f"{pin.name}: {tag} does not read as {pin.tag_key}")
             if pin.policy == "digest":
                 self.assertIsNotNone(digest, f"{pin.name}: a digest pin with no @sha256")
+            for f in pin.files:
+                for name in pin.restate:
+                    self.assertRegex((base / f).read_text(), image_pins.restated(name),
+                                     f"{pin.name}: {f} restates no `ENV {name}=` for the weekly run to set")
+
+    def test_the_jdk_pin_restates_java_version(self):
+        """The runtime stage's `java --version` check reads JAVA_VERSION: it moves with the jdk stage's digest."""
+        self.assertEqual(next(p for p in image_pins.PINS if p.name == "eclipse-temurin").restate, ("JAVA_VERSION",))
 
     def test_this_repository(self):
         self.shapes("repo")
