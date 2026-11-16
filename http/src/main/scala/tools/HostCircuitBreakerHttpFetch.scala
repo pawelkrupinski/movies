@@ -83,11 +83,34 @@ class HostCircuitBreakerHttpFetch(
   meter:            CircuitBreakerMeter = CircuitBreakerMeter.noop,
   // Who hears each host going away and coming back (`Transition`), once per transition, on the thread whose request
   // made it: a cheap call that hands any real work elsewhere. Nobody by default.
-  onTransition:     (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => ()
+  onTransition:     (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => (),
+  // Where the hosts that failed and have not answered since are kept across a restart ([[UnrecoveredHosts]]):
+  // read once as the breaker is built, each such host starting half-open. Nowhere by default.
+  remembered:       UnrecoveredHosts = UnrecoveredHosts.none
 ) extends ForwardingHttpFetch with Logging {
   import HostCircuitBreakerHttpFetch.{Breaker, Transition}
 
   private val breakers = new ConcurrentHashMap[String, Breaker]()
+
+  // The hosts a previous process saw fail and never answer, HALF-OPEN: open (so they read as unrecovered, and the
+  // outage's series carries on through the restart) with a cooldown already over, so the first call to each is its
+  // probe -- an answer closes it at once, a failure re-opens it as any failed probe does. One failed longer ago
+  // than `RememberFor` is let go: a host nothing has asked for that long (a venue retired while down) would
+  // otherwise read as down for ever.
+  locally {
+    val at = clock.instant()
+    try remembered.load().foreach { h =>
+      if (h.failedAt.isAfter(at.minusMillis(HostCircuitBreakerHttpFetch.RememberFor.toMillis)))
+        breakers.put(h.host, Breaker(failureThreshold, Some(at), h.lastFailure, openDuration.toMillis))
+      else keep(_.recovered(h.host))
+    }
+    catch { case scala.util.control.NonFatal(e) => logger.warn("breaker: could not read the hosts left unrecovered; starting with none", e) }
+  }
+
+  /** Tell [[remembered]]; its failure is logged, never the request's. */
+  private def keep(change: UnrecoveredHosts => Unit): Unit =
+    try change(remembered)
+    catch { case scala.util.control.NonFatal(e) => logger.warn("breaker: could not keep a host's state", e) }
 
   /** How many hosts are open right now: skipped outright, their cooldown still running. A host
    *  whose cooldown has run out with no call since is half-open, not open. */
@@ -126,6 +149,7 @@ class HostCircuitBreakerHttpFetch(
     Option(breakers.remove(host)).foreach { was =>
       if (was.openUntil.isDefined) {
         announce(logger.info(_), s"Circuit CLOSED for $host — its half-open probe succeeded.")
+        keep(_.recovered(host))
         tell(host, Transition.Closed)
       } else tell(host, Transition.Answered(was.failures))
     }
@@ -161,6 +185,7 @@ class HostCircuitBreakerHttpFetch(
         } else Breaker(failures, None, why, failedPages = pages)
       }
     })
+    if (opened.get() || reopened.get()) keep(_.failed(UnrecoveredHosts.Host(host, why, clock.instant())))
     if (opened.get()) { meter.opened(); tell(host, Transition.Opened) }
     if (opened.get())
       announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures " +
@@ -298,6 +323,10 @@ object HostCircuitBreakerHttpFetch {
    *  probe, at most, lands after a block has ended), short enough that a host that comes back is read again
    *  within minutes. */
   val MaxOpenDuration: FiniteDuration = 5.minutes
+
+  /** How long a host that failed is remembered across a restart with no failure since: past the hourly scrape of a
+   *  parked venue several times over, so an outage of any length carries on through every boot inside it. */
+  val RememberFor: FiniteDuration = 6.hours
 
   /** The causing failure as one short line for the breaker to carry — type plus
    *  message, since `SSLHandshakeException` and `HttpTimeoutException` are already

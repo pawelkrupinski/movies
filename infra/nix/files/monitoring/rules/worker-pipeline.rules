@@ -624,20 +624,19 @@ groups:
       # NOT REPLAYED: the metric is new, so there is no history. A wide proxy outage (`leg=decodo`)
       # can open many hosts at once and fires one alert per host.
       #
-      # ONE OUTAGE, ONE EPISODE, ACROSS WORKER RESTARTS (2026-11-15). The breaker lives in the
-      # worker's memory, so a boot forgets it: the series ends and comes back only when the host
-      # next fails four times -- for a parked venue its next hourly scrape, 50-120 minutes later,
-      # far past the 10m bridge. Kino Ikar's (kinoikar.mok-jar.pl) certificate failed PKIX from
-      # 11-12 13:50Z to the 11-14 10:18Z TlsTrust deploy without one success, yet worker-pl's 29
-      # boots in those two days cut it into 18 runs and 7 episodes (11-08..11-15: 45 episodes,
-      # ~a third of them such re-fires). `keep_firing_for: 2h` holds a firing alert through that
-      # gap; a blip still has to hold the full hour on its own first. Replayed over 11-01..11-15
-      # (5m steps): 262 episodes -> 115, kinoikar's 11-12..11-14 outage one episode. A healed host
-      # resolves 2h10m after its series ends -- harmless in a daily digest.
+      # ONE OUTAGE, ONE EPISODE, ACROSS WORKER RESTARTS (2026-11-16). The workers restart on every
+      # deploy (62 in the week to 11-16, every one an image rollout). The breaker used to live in
+      # memory alone, so a boot forgot it and the series came back only when the host next failed
+      # four times -- for a parked venue its next hourly scrape, far past the 10m bridge: Kino Ikar's
+      # (kinoikar.mok-jar.pl) two-day PKIX outage, 11-12..11-14, cut into 7 episodes by 29 boots.
+      # The scrape and enrich legs' breakers now keep their unrecovered hosts in the country's
+      # `http_unrecovered_hosts` (tools.UnrecoveredHosts) and a booting worker starts each half-open,
+      # so the series resumes at the first scrape after the boot, inside the 10m bridge. That replaced
+      # 7ae4900ae's `keep_firing_for: 2h`, which held a firing alert through the gap it can no longer
+      # have. The `decodo` leg's breakers (ProxyChain) still forget: no episode in 11-08..11-15 was one.
       - alert: WorkerHttpHostCircuitOpen
         expr: max by (country, leg, host) (last_over_time(kinowo_worker_http_circuit_open[10m])) == 1
         for: 1h
-        keep_firing_for: 2h
         labels:
           severity: warning
           domain: third-party

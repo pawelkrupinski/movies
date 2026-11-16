@@ -4,7 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MongoUnrecoveredHosts, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust, UnrecoveredHosts}
 
 /** The two phase-labelled HTTP chains over ONE wire leaf, and the third-party
  *  metadata / rating / resolution clients that draw from the `enrich` one.
@@ -64,8 +64,14 @@ trait HttpWiring { self: WorkerWiring =>
       HttpWiring.pacedWire(
         new CountingHttpFetch(sharedRealHttpLeaf, workerMetrics.httpMetrics.recorderFor(country.code, phase)),
         configuration, pacingFleet, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase),
-        breakerListener(phase)),
+        breakerListener(phase), breakerMemory(phase)),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
+
+  /** Where the `phase` chain's breaker keeps the hosts it saw fail and not answer, across a restart: this country's
+   *  `http_unrecovered_hosts`, or nowhere without a database. A hermetic replay keeps nothing: a breaker state left
+   *  by an earlier run is not in its recording. */
+  protected def breakerMemory(phase: String): UnrecoveredHosts =
+    mongoConnection.database.fold[UnrecoveredHosts](UnrecoveredHosts.none)(new MongoUnrecoveredHosts(_, phase))
 
   /** Who hears the `phase` chain's host breakers change state: the enrichment chain's, the identity questions waiting on
    *  a host that is back ([[identityHostTransition]]); the scrape chain's, nobody. */
@@ -158,7 +164,8 @@ object HttpWiring {
   def pacedWire(leaf: HttpFetch, configuration: settings.ProcessConfiguration, fleetHostPace: FleetHostPace,
                 clock: java.time.Clock, sleep: Long => Unit,
                 breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop,
-                breakerListener: (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => ()): HttpFetch = {
+                breakerListener: (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => (),
+                breakerMemory: UnrecoveredHosts = UnrecoveredHosts.none): HttpFetch = {
     val pace = PacedHttpFetch.configuredInterval(configuration)
     new PacedHttpFetch(
       new ThrottledHttpFetch(
@@ -166,7 +173,7 @@ object HttpWiring {
         new RetryingHttpFetch(
           new HostCircuitBreakerHttpFetch(
             PacedHttpFetch.perProcess(leaf, pace, clock = clock, sleep = sleep),
-            meter = breakerMeter, clock = clock, onTransition = breakerListener),
+            meter = breakerMeter, clock = clock, onTransition = breakerListener, remembered = breakerMemory),
           sleep),
         paceFor = pace, clock = clock, sleep = sleep),
       fleetHostPace, PacedHttpFetch.configuredFleetInterval(configuration),

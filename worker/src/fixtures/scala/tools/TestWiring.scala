@@ -48,6 +48,9 @@ trait TestWiring extends WorkerWiring {
   override protected def zyteApiKey: Option[settings.ZyteApiKey] = None
   override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] = None
   override protected def residentialProxyProbe: Option[ProxyProbe] = None
+  // A harness's breakers start with no host down: a host an earlier run's breaker left open is in no recording, and
+  // would turn the next run's first request to it into a probe that run's own requests never made.
+  override protected def breakerMemory(phase: String): UnrecoveredHosts = UnrecoveredHosts.none
 
   // Run the adaptive-timeout scrape inline on the calling thread, so the
   // order-determinism specs see no scrape thread to race. Fixture scrapes are
