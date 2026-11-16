@@ -174,18 +174,26 @@ object WorkerMain extends Logging {
     addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
   }
 
-  /** One step of the drain, its failure logged and the drain going on, whatever the step threw -- a fatal error
-   *  included: the process is ending either way, and each later step still owes its own resources' release. */
-  private def drainStep(what: String)(step: => Unit): Unit =
-    AnyThrowable.captured(step).left.foreach(e => logger.warn(s"$what error on shutdown: ${e.getMessage}"))
+  /** The drain's steps in order, each failure logged and the drain going on, whatever a step threw -- a fatal error
+   *  included: the process is ending either way, and each later step still owes its own resources' release. An
+   *  interrupted step's flag (`AnyThrowable.captured` keeps it) is cleared before the next step, which would otherwise
+   *  fail at its first wait, and set again on this thread once the drain ends. */
+  private[modules] def drain(steps: Seq[(String, () => Unit)]): Unit = {
+    val interrupted = steps.foldLeft(Thread.interrupted()) { case (interruptedSoFar, (what, step)) =>
+      AnyThrowable.captured(step()).left.foreach(e => logger.warn(s"$what error on shutdown: ${e.getMessage}"))
+      Thread.interrupted() || interruptedSoFar
+    }
+    if (interrupted) Thread.currentThread().interrupt()
+  }
 
   /** The SIGTERM drain: the process samplers, then each wiring, then the shared client — last, since each
    *  wiring's `stop()` closed only its own (per-country) resources; the borrowed client is owned here. */
   private def shutDown(shared: SharedResources, wirings: Seq[WorkerWiring], health: HttpServer, done: CountDownLatch): Unit = {
     logger.info("Worker received shutdown signal — draining the enrichment cascade…")
-    drainStep("Metrics stop")(shared.metrics.stop()) // process-level samplers, once
-    wirings.foreach(w => drainStep("Drain")(w.stop()))
-    drainStep("Mongo client close")(shared.client.foreach(_.close()))
+    drain(
+      ("Metrics stop" -> (() => shared.metrics.stop())) +: // process-level samplers, once
+        wirings.map(w => "Drain" -> (() => w.stop())) :+
+        ("Mongo client close" -> (() => shared.client.foreach(_.close()))))
     health.stop(0)
     done.countDown()
   }
