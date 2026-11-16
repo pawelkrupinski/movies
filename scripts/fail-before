@@ -13,9 +13,13 @@
 #   FAIL-BEFORE: yes|no     PASS-AFTER: yes|no     (and the tail of each output)
 # Exit 0 only for yes/yes; 1 otherwise; 2 for a usage or setup error, or a run that timed out (no verdict).
 #
-# TEST-SIDE FILES (the only ones copied into BEFORE): */src/test|it|fixtures/**, *_test.py, *-test.sh,
-# test/resources/**, .claude/**. --files <glob> (repeatable; a shell `case` pattern over the repo-relative
-# path, `*` crosses `/`) replaces that default list.
+# TEST-SIDE FILES (the only ones copied into BEFORE): the source and resource directories of the build's TEST
+# configurations, *_test.py, *-test.sh, test/resources/**, .claude/**. Which src/ directories are test-side is read
+# from <commit>'s build.sbt, not listed here: `Test` and every `config(...)` extending it (src/test, src/it,
+# src/page, or the directory its `scalaSource`/`resourceDirectory` names). A configuration extending `Compile` --
+# src/fixtures, the replay wirings and fixture-archive code the tests drive -- is code under test and stays at the
+# parent: copied, a fix living there met its test in BEFORE and proved nothing. --files <glob> (repeatable; a shell
+# `case` pattern over the repo-relative path, `*` crosses `/`) replaces that default list.
 #
 # SBT: a command that goes through scripts/sbt-warm runs against each worktree's own kept server (the
 # worktree's own copy of the script); both servers are stopped afterwards. A cold worktree compiles from
@@ -53,11 +57,37 @@ done
 # One argument is a shell line, run as written ('a && b'); several are ONE command, each argument kept whole -- joined
 # bare they were split again by `bash -c`, and `scripts/sbt-warm "identity/testOnly X -- -z some case"` ran the whole module.
 if [ $# -eq 1 ]; then command_line=$1; else command_line=$(printf '%q ' "$@"); fi
-[ ${#patterns[@]} -gt 0 ] || patterns=('*/src/test/*' '*/src/it/*' '*/src/fixtures/*' '*_test.py' '*-test.sh' 'test/resources/*' '.claude/*')
 
 top=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git checkout"
 sha=$(git -C "$top" rev-parse --verify -q "$commit^{commit}") || die "no such commit: $commit"
 parent=$(git -C "$top" rev-parse --verify -q "$sha^") || die "$commit has no parent"
+
+# The src/ directories of the build's test configurations, one per line: `test`, every `lazy val X = config("x")
+# extend Y` whose Y is Test or another such configuration (its sbt default src/x), and any directory such a
+# configuration's `X / scalaSource` / `javaSource` / `resourceDirectory` names. Read from <commit>'s build.sbt
+# (none: sbt's default, src/test alone).
+test_source_directories() {
+  local build line test_vals=" Test " grew=1
+  build=$(git -C "$top" show "$sha:build.sbt" 2>/dev/null) || build=""
+  echo test
+  local config_re='lazy val ([A-Za-z0-9_]+) *= *config\("([A-Za-z0-9_-]+)"\) *extend\(? *([A-Za-z0-9_]+)'
+  while [ "$grew" = 1 ]; do # a configuration may extend one declared after it: repeat until none joins
+    grew=0
+    while IFS= read -r line; do
+      if [[ $line =~ $config_re ]] && [[ $test_vals == *" ${BASH_REMATCH[3]} "* ]] && [[ $test_vals != *" ${BASH_REMATCH[1]} "* ]]; then
+        test_vals="$test_vals${BASH_REMATCH[1]} "; echo "${BASH_REMATCH[2]}"; grew=1
+      fi
+    done <<< "$build"
+  done
+  local override_re='([A-Za-z0-9_]+) */ *(scalaSource|javaSource|resourceDirectory) *:= *baseDirectory\.value */ *"src" */ *"([^"]+)"'
+  while IFS= read -r line; do
+    if [[ $line =~ $override_re ]] && [[ $test_vals == *" ${BASH_REMATCH[1]} "* ]]; then echo "${BASH_REMATCH[3]}"; fi
+  done <<< "$build"
+}
+if [ ${#patterns[@]} -eq 0 ]; then
+  while IFS= read -r directory; do patterns+=("*/src/$directory/*"); done < <(test_source_directories | sort -u)
+  patterns+=('*_test.py' '*-test.sh' 'test/resources/*' '.claude/*')
+fi
 
 base=${KINOWO_FAIL_BEFORE_DIR:-$HOME/.cache/kinowo-fail-before}
 mkdir -p "$base" || die "cannot create $base"

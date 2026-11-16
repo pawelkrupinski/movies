@@ -61,6 +61,33 @@ check "a commit with no test-side file: exit 2" "2" "$rc"
 out="$(cd "$repo" && "$tool" --files 'probe.txt' -- 'test "$(bash greet.sh)" = "hello world"' 2>&1)"; rc=$?
 check "--files redefines test-side: only probe.txt is carried over, yes/yes" "0" "$rc"
 
+# Which src/ directories are test-side comes from the commit's build.sbt: a configuration extending Test (it, page)
+# is; one extending Compile (fixtures: the replay wirings, the fixture-archive code) is code under test, so a fix
+# living there stays at the parent. Copied over, the fix met its test in BEFORE and "proved" nothing.
+mkdir -p "$repo/worker/src/fixtures/scala" "$repo/worker/src/page/scala"
+cat > "$repo/build.sbt" <<'SBT'
+lazy val PageTest = config("page") extend Test
+lazy val Fixtures = config("fixtures") extend Compile
+SBT
+printf 'archive=broken\n' > "$repo/worker/src/fixtures/scala/Archive.scala"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a build with a fixtures configuration"
+printf 'archive=fixed\n' > "$repo/worker/src/fixtures/scala/Archive.scala"
+mkdir -p "$repo/worker/src/test/scala"
+printf 'grep -q archive=fixed worker/src/fixtures/scala/Archive.scala\n' > "$repo/worker/src/test/scala/ArchiveSpec.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a fix in src/fixtures, its test in src/test"
+# The test file is present on both sides (test -f), so only the fixtures file decides BEFORE's verdict
+out="$(cd "$repo" && "$tool" -- 'test -f worker/src/test/scala/ArchiveSpec.sh && bash worker/src/test/scala/ArchiveSpec.sh' 2>&1)"; rc=$?
+check "a fix in src/fixtures stays at the parent: yes/yes" "0 yes yes" \
+  "$rc $(printf '%s\n' "$out" | sed -n 's/^FAIL-BEFORE: //p') $(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER: //p')"
+printf 'exit 1\n' > "$repo/worker/src/page/scala/PageSpec.sh"
+printf 'archive=fixed again\n' > "$repo/worker/src/fixtures/scala/Archive.scala"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a test in src/page, a configuration extending Test"
+out="$(cd "$repo" && "$tool" -- 'test ! -f worker/src/page/scala/PageSpec.sh || bash worker/src/page/scala/PageSpec.sh' 2>&1)"
+check "...and a src/page test is carried over: FAIL-BEFORE yes" "yes" "$(printf '%s\n' "$out" | sed -n 's/^FAIL-BEFORE: //p')"
+
 # Several arguments are one command, each kept whole: an sbt test filter (`-- -z "some case"`) must reach sbt as one
 # argument, not be split by the shell into words that run the whole module.
 printf 'echo hello world again\n' > "$repo/greet.sh"
