@@ -198,7 +198,7 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
 | `drift` | `*/src/main/scala/models/*`, `data/`, the City models, the drift script | `scripts/ci/generated-artefacts-drift.sh` | seconds |
 | `snapshot` | `test/resources/fixtures/08-06-2026/`, its inputs script | `scripts/read-model-snapshot-inputs.sh check` | seconds |
 | `dashboards` | `infra/nix/files/monitoring/`, `infra/test/test_dashboards.py` | `infra/test/test_dashboards.py` | < 1 s |
-| `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/` | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`); again under the floor bash 3.2 (`scripts/floor-bash`: a Mac's `/bin/bash`, on Linux -- ci-runner -- the GNU 3.2.57 `--install` builds; none BLOCKS, `PREPUSH_SKIP=floor`) | seconds to minutes |
+| `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/`, or a path matching a glob a self-test declares it reads (`# script-test-reads:`; `scripts/run-script-tests --reads`: every workflow, `.py` and Scala spec) | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`); again under the floor bash 3.2 (`scripts/floor-bash`: a Mac's `/bin/bash`, on Linux -- ci-runner -- the GNU 3.2.57 `--install` builds; none BLOCKS, `PREPUSH_SKIP=floor`) | seconds to minutes |
 | `actionlint` | workflow files, composite actions | actionlint (+ shellcheck on `run:` blocks) | seconds |
 | `schedules` | workflow files, `infra/nix/files/scheduled-workflows.json`, `infra/nix/files/scheduled_dispatch.py` | `infra/nix/files/scheduled_dispatch.py check`: monitoring-1's dispatch timers match the workflows' own crons, and every covered workflow treats the external scheduler's `repository_dispatch` as its schedule | < 1 s |
 | `shellcheck` | `*.sh`, `scripts/hooks/*` | shellcheck; fails only on warnings the push adds | seconds |
@@ -219,7 +219,13 @@ install warns and passes: Docker or Xcode not running. GitOps manifests
 that cannot be fetched block (the checkout left behind is stale).
 
 **Checks without the gate.** `--checks-only A..B` is `--range A..B` minus the red gate (said in one line): what the
-`waiting` branch is checked with while main is red; the gate is judged when it is pushed.
+`waiting` branch is checked with while main is red; the gate is judged when it is pushed. `--fast-only A..B` is the
+`waiting` batch's combined check at green (stage 2b). `--verify-only <full base>..<tip>` is agentctl's COMBINED-TREE
+VERIFICATION (the owner, 2026-11-16, "but always recompile and unit test"): a change fully checked on an older main,
+rebased onto a main that moved with no file overlap (`~/bin/lib/agentctl/queue.py`, FILE GRANULARITY), is not checked
+again in full but once on the rebased tip, on a `check/verify-<full base>-<id>` branch: the `--fast-only` set over what
+landed and the change together, plus the unit tests of every module either side touches (`--unit-plan < paths` prints
+them; the worker's are its `rest` row, never its identity or heavy rows), with no area tests and no red gate.
 
 **The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
 jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
@@ -232,7 +238,7 @@ its 14 code reds in five days were there. The laptop's own push never selects th
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in
 `A..B`, judged as a push to main, pushing nothing. A `<remote>/main..HEAD` base reads that remote's runs, so the push
 that follows reuses the pass. Use it before a manual push that may run long: `scripts/hooks/pre-push --range
-origin/main..HEAD`. `--plan` and `--compile-plan` read paths on stdin and print the plan only.
+origin/main..HEAD`. `--plan`, `--compile-plan`, `--unit-plan` and `--lint-plan` read paths on stdin and print the plan only.
 
 ## Stage 4: the watch after landing
 
