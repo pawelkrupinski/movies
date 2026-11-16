@@ -1,8 +1,6 @@
 package tools
 
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
 
 /**
  * Where a [[HostCircuitBreakerHttpFetch]] keeps the hosts it has seen fail and not seen answer since, so a
@@ -38,12 +36,4 @@ object UnrecoveredHosts {
     def failed(host: Host): Unit   = ()
     def recovered(host: String): Unit = ()
   }
-}
-
-/** The hosts in this process's memory: a spec's, or a process with no database to keep them in. */
-final class InMemoryUnrecoveredHosts extends UnrecoveredHosts {
-  private val hosts = new ConcurrentHashMap[String, UnrecoveredHosts.Host]()
-  def load(): Seq[UnrecoveredHosts.Host]          = hosts.values.asScala.toSeq.sortBy(_.host)
-  def failed(host: UnrecoveredHosts.Host): Unit   = { hosts.put(host.host, host); () }
-  def recovered(host: String): Unit               = { hosts.remove(host); () }
 }

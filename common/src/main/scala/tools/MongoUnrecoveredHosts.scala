@@ -1,44 +1,66 @@
 package tools
 
-import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.{BsonDateTime, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 /** The hosts one breaker chain (`chain`: the worker's `scrape` or `enrich` phase) left unrecovered, in its country's
  *  `http_unrecovered_hosts`: one document per (chain, host), written as a host opens or an open host's probe fails
  *  (at most once per cooldown), deleted as it answers. */
 final class MongoUnrecoveredHosts(db: MongoDatabase, chain: String) extends UnrecoveredHosts {
+  import MongoUnrecoveredHosts.{decode, encode, idOf}
   private val Timeout = 10.seconds
   private lazy val collection: MongoCollection[Document] = db.getCollection[Document](MongoUnrecoveredHosts.Collection)
 
   def load(): Seq[UnrecoveredHosts.Host] =
-    Await.result(collection.find(Filters.eq("chain", chain)).toFuture(), Timeout).flatMap { d =>
-      for {
-        host <- d.get[org.mongodb.scala.bson.BsonString]("host").map(_.getValue)
-        at   <- d.get[BsonDateTime]("failedAt").map(t => Instant.ofEpochMilli(t.getValue))
-      } yield UnrecoveredHosts.Host(host, d.get[org.mongodb.scala.bson.BsonString]("lastFailure").map(_.getValue), at)
-    }.sortBy(_.host)
+    Await.result(collection.find(Filters.eq("chain", chain)).batchSize(MongoReplies.Default).toFuture(), Timeout)
+      .flatMap(decode).sortBy(_.host)
 
   def failed(host: UnrecoveredHosts.Host): Unit = {
-    val document = Document("_id" -> s"$chain|${host.host}", "chain" -> chain, "host" -> host.host,
-      "failedAt" -> BsonDateTime(host.failedAt.toEpochMilli)) ++
-      host.lastFailure.fold(Document())(why => Document("lastFailure" -> why))
-    Await.result(collection.replaceOne(Filters.eq("_id", s"$chain|${host.host}"), document,
+    Await.result(collection.replaceOne(Filters.eq("_id", idOf(chain, host.host)), encode(chain, host),
       ReplaceOptions().upsert(true)).toFuture(), Timeout)
     ()
   }
 
   def recovered(host: String): Unit = {
-    Await.result(collection.deleteOne(Filters.eq("_id", s"$chain|$host")).toFuture(), Timeout)
+    Await.result(collection.deleteOne(Filters.eq("_id", idOf(chain, host))).toFuture(), Timeout)
     ()
   }
 }
 
 object MongoUnrecoveredHosts {
   val Collection = "http_unrecovered_hosts"
+
+  private def idOf(chain: String, host: String): String = s"$chain|$host"
+
+  /** A host's document: its chain, host, when it last failed and with what. */
+  def encode(chain: String, host: UnrecoveredHosts.Host): Document =
+    Document("_id" -> idOf(chain, host.host), "chain" -> chain, "host" -> host.host,
+      "failedAt" -> BsonDateTime(host.failedAt.toEpochMilli)) ++
+      host.lastFailure.fold(Document())(why => Document("lastFailure" -> why))
+
+  def decode(document: Document): Option[UnrecoveredHosts.Host] =
+    for {
+      host <- document.get[BsonString]("host").map(_.getValue)
+      at   <- document.get[BsonDateTime]("failedAt").map(t => Instant.ofEpochMilli(t.getValue))
+    } yield UnrecoveredHosts.Host(host, document.get[BsonString]("lastFailure").map(_.getValue), at)
+}
+
+/** The hosts in this process's memory -- a spec's -- each written through the Mongo store's own codec and read back
+ *  ([[services.BsonRoundTrip]]), so it holds what `http_unrecovered_hosts` would. */
+final class InMemoryUnrecoveredHosts extends UnrecoveredHosts {
+  private val hosts = new ConcurrentHashMap[String, UnrecoveredHosts.Host]()
+  def load(): Seq[UnrecoveredHosts.Host] = hosts.values.asScala.toSeq.sortBy(_.host)
+  def failed(host: UnrecoveredHosts.Host): Unit = {
+    MongoUnrecoveredHosts.decode(services.BsonRoundTrip(MongoUnrecoveredHosts.encode("memory", host)))
+      .foreach(kept => hosts.put(kept.host, kept))
+  }
+  def recovered(host: String): Unit = { hosts.remove(host); () }
 }
