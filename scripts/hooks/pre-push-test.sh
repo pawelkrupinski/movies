@@ -172,11 +172,17 @@ printf '\033[36m▸\033[0m pre-push --unit-plan\n'
 units() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --unit-plan | tr '\n' '|' | sed 's/|$//'; }
 check "a common source runs common's unit tests alone (the compile covers its dependents)" "common/Test/test" \
   "$(units common/src/main/scala/A.scala)"
-check "a worker test file runs the worker's rest unit row, never its heavy rows" \
-  "worker/testOnly * -services.identity.* -scripts.* -tools.*" "$(units worker/src/test/scala/services/ASpec.scala)"
+# the worker's rest row as build.sbt's WORKER_ROW defines it: outside the identity row's prefixes and the heavy rows,
+# plus the identity suites the rest row runs instead (WorkerRestSuites: a drift-slice shard), read from the build
+check "a worker test file runs the worker's rest unit row as build.sbt defines it, never its heavy rows" \
+  "worker/testOnly * -services.identity.* -scripts.* -tools.*|worker/testOnly scripts.IdentityDriftSlicesShard3Spec" \
+  "$(units worker/src/test/scala/services/ASpec.scala)"
 check "a worker identity-row spec the paths change runs by name" \
-  "worker/testOnly * -services.identity.* -scripts.* -tools.*|worker/testOnly services.identity.XSpec scripts.YSpec" \
+  "worker/testOnly * -services.identity.* -scripts.* -tools.*|worker/testOnly scripts.IdentityDriftSlicesShard3Spec services.identity.XSpec scripts.YSpec" \
   "$(units worker/src/test/scala/services/identity/XSpec.scala worker/src/test/scala/scripts/YSpec.scala)"
+check "...a rest-row suite the paths change, once" \
+  "worker/testOnly * -services.identity.* -scripts.* -tools.*|worker/testOnly scripts.IdentityDriftSlicesShard3Spec" \
+  "$(units worker/src/test/scala/scripts/IdentityDriftSlicesShard3Spec.scala)"
 check "a resource counts, each module once, in dependency order" "scrapers/Test/test|web/Test/test" \
   "$(units web/src/main/A.scala scrapers/src/test/resources/x.json web/src/test/scala/B.scala)"
 check "no module path, no unit tests (e2e is the heavy rows')" "" \
@@ -192,6 +198,9 @@ for mode in --plan --compile-plan --unit-plan --lint-plan; do
   (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
 done
 check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
+check "a build.sbt whose worker rows the unit plan cannot read fails closed: a command sbt refuses, never a silent row" \
+  "worker/build.sbt-WORKER_ROW-unreadable" \
+  "$(cd "$planrepo" && printf 'worker/src/test/scala/ASpec.scala\n' | scripts/hooks/pre-push --unit-plan | tr '\n' '|' | sed 's/|$//')"
 check "with no local-tests.txt beside the hook, no area is selected" "driftguards sbt" \
   "$(cd "$planrepo" && printf 'identity/src/main/scala/A.scala\n' | scripts/hooks/pre-push --plan | tr '\n' ' ' | sed 's/ $//')"
 
@@ -254,6 +263,8 @@ if command -v shellcheck >/dev/null; then
   printf '#!/bin/sh\nexit 0\n' > "$scratch/bin/java"; chmod +x "$scratch/bin/java"
   # The test-config compiles ride the lints' ONE sbt run, ahead of them.
   printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/sbt-args"\n' "$scratch" > "$scratch/bin/sbt"; chmod +x "$scratch/bin/sbt"
+  # the build whose WORKER_ROW the unit plan reads the worker's rest row from
+  cp "$REPO_ROOT/build.sbt" "$repo/build.sbt"; scratch_git "$repo" add build.sbt; scratch_git "$repo" commit -qm "the build"
   mkdir -p "$repo/worker/src/it/scala"; echo 'object B' > "$repo/worker/src/it/scala/B.scala"
   scratch_git "$repo" add worker; scratch_git "$repo" commit -qm "adds a worker it/ source"
   (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)

@@ -536,9 +536,41 @@ compile_plan() {
 # ── Which unit tests the combined-tree verification runs (--verify-only) ────────────────────────
 # One line per path on stdin; prints sbt test commands, one per line: `<module>/Test/test` for every module with a
 # path under its src/ (base, http, common, identity, testkit, scrapers, web; e2e is the heavy rows', geodata has
-# none), the worker's `rest` unit row (build.sbt's WORKER_ROW: every suite outside services.identity., scripts. and
-# tools., which are its identity row -- the `identity` area's -- and its heavy rows, no unit stage's), and the worker
+# none), the worker's `rest` unit row (worker_rest_row: build.sbt's WORKER_ROW, read from the build), and the worker
 # identity-row specs the paths change, by name.
+#
+# THE WORKER'S REST ROW IS BUILD.SBT'S, READ FROM IT (review 2026-11-16: a hand-written copy left out
+# scripts.IdentityDriftSlicesShard3Spec, which the rest row runs): every suite outside the identity row's prefixes
+# (`Seq(...).exists(suite.startsWith)`, the `identity` area's) and the heavy rows (HeavyRows, no unit stage's), plus
+# the suites the rest row runs instead (WorkerRestSuites). A build whose definition this cannot read prints a command
+# sbt refuses -- the verification fails closed, never runs a row it guessed.
+worker_rest_row() {
+    local rows prefixes exclusions="" suites="" kind name
+    rows="$(awk '
+        function quoted(kind, s) { sub(/\/\/.*/, "", s); while (match(s, /"[^"]*"/)) {
+            n = substr(s, RSTART + 1, RLENGTH - 2); if (kind == "prefix" || n ~ /\./) print kind " " n; s = substr(s, RSTART + RLENGTH) } }
+        /^lazy val HeavyRows/ { block = "heavy" } /^lazy val HeavySuites/ { block = "" }
+        /^lazy val WorkerRestSuites/ { block = "rest" } /^lazy val workerRowSettings/ { block = "row" }
+        block == "row" && /exists\(suite\.startsWith\)/ { quoted("prefix", $0) }
+        block == "heavy" || block == "rest" { quoted(block, $0) }
+        block == "rest" && /\)[[:space:]]*(\/\/.*)?$/ { block = "" }
+        block == "row" && /^[^[:space:]]/ && !/^lazy val workerRowSettings/ { block = "" }' build.sbt 2>/dev/null)"
+    prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
+    if [ -z "$prefixes" ] || ! printf '%s\n' "$rows" | grep -q '^rest '; then
+        echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
+    fi
+    while IFS= read -r name; do exclusions+=" -$name*"; done <<< "$prefixes"
+    while read -r kind name; do
+        local covered=""
+        while IFS= read -r prefix; do case "$name" in "$prefix"*) covered=1 ;; esac; done <<< "$prefixes"
+        case "$kind" in
+            heavy) [ -n "$covered" ] || exclusions+=" -$name" ;;
+            rest) printf '%s\n' "$rows" | grep -qxF "heavy $name" || suites+=" $name" ;;
+        esac
+    done <<< "$rows"
+    echo "worker/testOnly *$exclusions"
+    printf '%s\n' "${suites# }"
+}
 unit_plan() {
     local path module modules=" " specs="" spec
     while IFS= read -r path; do
@@ -551,12 +583,19 @@ unit_plan() {
                 spec="${path#worker/src/test/scala/}"; spec="${spec%.scala}"; specs+=" ${spec//\//.}" ;;
         esac
     done
+    local rest_row="" rest_suites=""
     for module in base http common identity testkit scrapers web worker; do
         case "$modules" in *" $module "*) ;; *) continue ;; esac
-        if [ "$module" = worker ]; then echo 'worker/testOnly * -services.identity.* -scripts.* -tools.*'
+        if [ "$module" = worker ]; then
+            rest_row="$(worker_rest_row)"
+            head -1 <<< "$rest_row"
+            rest_suites="$(sed -n '2p' <<< "$rest_row")"
         else echo "$module/Test/test"; fi
     done
-    if [ -n "$specs" ]; then echo "worker/testOnly$specs"; fi
+    # the rest row's own identity suites and the identity-row specs the paths change, in one run, each once
+    for spec in $specs; do case " $rest_suites " in *" $spec "*) ;; *) rest_suites+=" $spec" ;; esac; done
+    rest_suites="${rest_suites# }"
+    if [ -n "$rest_suites" ]; then echo "worker/testOnly $rest_suites"; fi
     return 0
 }
 
