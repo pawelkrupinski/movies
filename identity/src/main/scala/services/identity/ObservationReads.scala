@@ -16,7 +16,10 @@ import scala.collection.mutable
 class ObservationReads {
   import ObservationReads.{Asked, Change}
   private val asking  = new ThreadLocal[Option[Question]] { override def initialValue() = None }
-  private val readers = mutable.HashMap.empty[String, Set[Question]]
+  // Each key's readers under ONE string of it: the stores build a key afresh on every read (`TmdbStore.keyOf`, a venue
+  // page's), and a question's set held the copy its own read made -- one string per (question, key) pair, the same
+  // document named by every question reading it: on PL's model ~16% of the live set (JFR old-object samples, 2026-11-16).
+  private val readers = mutable.HashMap.empty[String, ObservationReads.Readers]
   private val keysOf  = mutable.HashMap.empty[Question, Asked]
   // One clock for when each question began asking and when each change was announced: a change wakes only the questions
   // asked before it, which read the document as it was.
@@ -33,13 +36,17 @@ class ObservationReads {
 
   /** The store read `key` for the question this thread is asking, if any. */
   def read(key: String): Unit = asking.get.foreach { question => synchronized {
-    readers.updateWith(key)(held => Some(held.getOrElse(Set.empty) + question))
-    keysOf.updateWith(question)(held => Some(held.fold(Asked(0L, Set(key)))(asked => asked.copy(keys = asked.keys + key))))
+    val held = readers.getOrElseUpdate(key, new ObservationReads.Readers(key))
+    held.questions += question
+    keysOf.updateWith(question)(asked => Some(asked.fold(Asked(0L, Set(held.key)))(asked => asked.copy(keys = asked.keys + held.key))))
   } }
 
   /** Drop what `question` read: it is being asked anew. */
   def forget(question: Question): Unit = synchronized {
-    keysOf.remove(question).foreach(_.keys.foreach(key => readers.updateWith(key)(_.map(_ - question).filter(_.nonEmpty))))
+    keysOf.remove(question).foreach(_.keys.foreach(key => readers.get(key).foreach { held =>
+      held.questions -= question
+      if (held.questions.isEmpty) readers.remove(key)
+    }))
   }
 
   /** New content was filed (under the key the caller pairs it with), now: by the question this thread is asking, if it
@@ -49,12 +56,12 @@ class ObservationReads {
   def announced(): Change = Change(ticks.incrementAndGet(), Set.empty, filed = false)
 
   /** The questions whose answers new content under `keys` can change: every question that reads one. */
-  def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.getOrElse(_, Set.empty)).toSet))
+  def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.get(_).fold(Set.empty[Question])(_.questions)).toSet))
 
   /** The questions whose answers each change can have changed: those that read its key and began asking before it, but
    *  never one that filed it -- it has read what it filed -- and, for a change no question filed, every reader. */
   def changedBy(changes: Map[String, Change]): AnswersChanged = synchronized(answersOf(changes.toSeq.flatMap { case (key, change) =>
-    readers.getOrElse(key, Set.empty).filter(question =>
+    readers.get(key).fold(Set.empty[Question])(_.questions).filter(question =>
       !change.filed || (!change.filers(question) && keysOf.get(question).forall(_.at < change.at)))
   }.toSet))
 
@@ -67,11 +74,21 @@ class ObservationReads {
   /** How many keys it tracks: the index a model's questions keep over the store. */
   def keys: Int = synchronized(readers.size)
 
+  /** How many distinct string objects its index holds its keys in: one a key, whichever questions read it. */
+  private[identity] def keyObjects: Int = synchronized {
+    val held = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[String, java.lang.Boolean]())
+    readers.keysIterator.foreach(held.add); keysOf.valuesIterator.foreach(_.keys.foreach(held.add))
+    held.size
+  }
+
   /** Every key some question reads now — what the store's sweep must keep (`TmdbStoreSweep`). */
   def trackedKeys: Set[String] = synchronized(readers.keySet.toSet)
 }
 
 object ObservationReads {
+  /** The questions reading one key, under the one string of the key every question's [[Asked]] names. */
+  private final class Readers(val key: String) { var questions: Set[Question] = Set.empty }
+
   /** When a question began asking, and the keys it read. */
   private final case class Asked(at: Long, keys: Set[String])
 

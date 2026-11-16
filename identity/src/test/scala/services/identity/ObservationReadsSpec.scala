@@ -37,4 +37,16 @@ class ObservationReadsSpec extends AnyFlatSpec with Matchers {
     reads.changedBy(Map("k" -> change)).queries shouldBe Set(earlier, later)
     reads.changedBy(Seq("k")).queries shouldBe Set(earlier, later)
   }
+
+  "a key every question reads" should "be held as one string, whichever copy of it each read named" in {
+    val reads = new ObservationReads
+    // each store read builds its key afresh: three questions, three equal strings
+    Seq(earlier, filer, later).foreach(query => reads.asking(Question.Candidate(query))(reads.read(new String("tmdb_films:603"))))
+    reads.keyObjects shouldBe 1
+    reads.changedBy(Seq("tmdb_films:603")).queries shouldBe Set(earlier, filer, later)
+    reads.forget(Question.Candidate(earlier))
+    reads.changedBy(Seq("tmdb_films:603")).queries shouldBe Set(filer, later)
+    Seq(filer, later).foreach(query => reads.forget(Question.Candidate(query)))
+    reads.keys shouldBe 0
+  }
 }
