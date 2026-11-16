@@ -1001,7 +1001,7 @@ for r in "${ranges[@]}"; do
         && deleted="$(git diff --name-only --diff-filter=D "${r/../...}")" \
         || { printf '\033[33m! pre-push\033[0m cannot diff %s — blocked (bypass with --no-verify)\n' "$r" >&2; exit 1; }
     changed="$changed$names"$'\n'
-    # the drift check's selection counts deletions too: deleting the flip backlog changes what the gate holds
+    # the drift check's selection counts deletions too: deleting a gate file (the gate seeds) changes what the gate holds
     drift_changed="$drift_changed$names"$'\n'"$deleted"$'\n'
 done
 changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
