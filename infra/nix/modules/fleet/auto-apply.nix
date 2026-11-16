@@ -65,17 +65,7 @@ let
   # whole run (the applier bounds a switch at 3600 s: nixos-auto-apply.py). Half of it, for headroom.
   maxRestartedOneshotSeconds = 30 * 60;
 
-  # systemd's TimeoutStartSec in seconds, or null for unbounded (`infinity`, `0`) or anything this
-  # does not read (`1h 30min`) -- which the assertion counts as long, the direction that refuses.
-  timeoutSeconds = value:
-    let
-      text = toString (if builtins.isList value then lib.last value else value);
-      parsed = builtins.match "([1-9][0-9]*) *(s|sec|m|min|h|hr)?" text;
-      factor = { s = 1; sec = 1; m = 60; min = 60; h = 3600; hr = 3600; };
-      unit = builtins.elemAt parsed 1;
-    in
-    if parsed == null then null
-    else lib.toInt (builtins.elemAt parsed 0) * (if unit == null then 1 else factor.${unit});
+  oneshotStartBound = import ../../lib/oneshot-start-bound.nix;
 
   forgiven = unit:
     !(lib.any (matchesUnit unit) cfg.neverDisturbUnits)
@@ -85,7 +75,7 @@ let
     (name: service:
       let
         serviceConfig = service.serviceConfig or { };
-        timeout = if serviceConfig ? TimeoutStartSec then timeoutSeconds serviceConfig.TimeoutStartSec else 0;
+        timeout = oneshotStartBound serviceConfig;
       in
       (service.enable or true)
       && (service.restartIfChanged or true)
@@ -368,8 +358,10 @@ in
           # `switch_failed` (2026-11-15 review). `restartIfChanged = false` makes the switch leave
           # the running unit alone; its next start reads the new definition.
           #
-          # Measured against the unit's DECLARED TimeoutStartSec (a longer one, or one this cannot
-          # read, counts as long). A oneshot that declares none is not judged here.
+          # Measured against the unit's DECLARED TimeoutStartSec (or TimeoutSec). A longer one, one
+          # this cannot read, or NONE counts as long: systemd gives a oneshot no start timeout by
+          # default, so an undeclared one is unbounded (../../lib/oneshot-start-bound.nix). Bound
+          # it with a TimeoutStartSec of at most 30 min, or set restartIfChanged = false.
           assertion = longForgivenOneshots == [ ];
           message = ''
             ${config.networking.hostName}: these oneshot services are forgiven by
@@ -377,7 +369,9 @@ in
             ${toString (maxRestartedOneshotSeconds / 60)} minutes (TimeoutStartSec), and keep the default
             restartIfChanged = true: ${lib.concatStringsSep ", " longForgivenOneshots}.
             A switch that changes one while it runs waits for the whole run, past the applier's
-            one-hour switch bound. Set `restartIfChanged = false` on them.
+            one-hour switch bound. Set `restartIfChanged = false` on them (and forgive them as
+            routineUnits), or declare a TimeoutStartSec of at most
+            ${toString (maxRestartedOneshotSeconds / 60)} minutes. No TimeoutStartSec is unbounded.
           '';
         }
         {

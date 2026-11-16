@@ -110,7 +110,11 @@ same flag.
 
 `auto-apply.nix` asserts it fleet-wide: a oneshot forgiven by `restartableUnits`/`routineUnits` whose
 declared `TimeoutStartSec` exceeds 30 min (or is unbounded or unreadable) must set
-`restartIfChanged = false`, or the host does not evaluate. `routineUnits`' four built-ins are now a
+`restartIfChanged = false`, or the host does not evaluate. A oneshot that declares NO timeout is
+unbounded (systemd disables a oneshot's start timeout by default) and counts as long: it was first read
+as 0, which passed `registry-prune` (k3s-worker-1, now `restartIfChanged = false` and routine) and
+mongo-1's `logrotate`/`logrotate-checkconf` (now `TimeoutStartSec` 15/5 min), 2026-11-16. Cases:
+`infra/test/test_oneshot_start_bound.sh`. `routineUnits`' four built-ins are now a
 definition rather than the option default, so a module adding its own entries merges with them
 instead of dropping them (`lib.mkForce` replaces the list). Case: `Leniency` in
 `infra/test/test_auto_apply_classify.py`.

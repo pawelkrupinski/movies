@@ -253,6 +253,12 @@ jobs:
         working-directory: infra
         run: python3 test/test_dashboards.py
 
+      # The assertion in fleet/auto-apply.nix reads a forgiven oneshot's start bound through this; a
+      # oneshot declaring no timeout is unbounded (2026-11-16: it was read as 0 and passed).
+      - name: A oneshot's start bound reads an undeclared timeout as unbounded
+        working-directory: infra
+        run: bash test/test_oneshot_start_bound.sh
+
       - name: reboot-required decides from the booted closure, not from a missing one
         working-directory: infra
         run: bash test/test_reboot_required.sh

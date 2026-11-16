@@ -47,12 +47,12 @@ in
   # "traces export: ... connection refused" error in the journal every 10 s, nothing else.
   systemd.services.docker-registry.environment.OTEL_TRACES_EXPORTER = "none";
 
-  # Bouncing the pruner disturbs nothing that serves, so an edit to it must not hold back every
-  # other change staged onto this host (see the same list in fleet/container-image-gc.nix).
-  fleet.autoApply.restartableUnits = [
-    "registry-prune.service"
-    "registry-prune.timer"
-  ];
+  # An edit to the pruner must not hold back every other change staged onto this host (see the same
+  # list in fleet/container-image-gc.nix). The timer is bounced; the service is ROUTINE, not
+  # restartable: it is `restartIfChanged = false` below, so a switch during a run leaves it running
+  # (changed-but-skipped, which only routineUnits forgives).
+  fleet.autoApply.restartableUnits = [ "registry-prune.timer" ];
+  fleet.autoApply.routineUnits = [ "registry-prune.service" ];
 
   # Prune, then collect with the registry STOPPED -- the collector is not safe against a concurrent
   # push. A CI push in that minute fails and is retried by re-running the job.
@@ -63,6 +63,12 @@ in
     after = [ "docker-registry.service" ];
     startAt = "*-*-* 04:00:00";
     serviceConfig.Type = "oneshot";
+    # NEVER RESTARTED BY A SWITCH. Its run is unbounded (a oneshot declares no timeout by default; a
+    # garbage-collect's length grows with the registry), and a switch restarting it mid-run would
+    # kill the collector with the registry stopped and wait on the new run's whole length --
+    # fleet/auto-apply.nix's assertion (2026-11-16). A running prune finishes on its old
+    # definition; the next 04:00 run reads the new one.
+    restartIfChanged = false;
     script = ''
       ${lib.getExe prune} http://127.0.0.1:${toString port}/v2 ${toString keep} ${reg.storagePath} ${toString handoffMinutes}
       # However the collector ends, the registry comes back up: the cluster pulls from it.

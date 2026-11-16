@@ -813,6 +813,14 @@ in
     # forgotten.
     fleet.autoApply.restartableUnits = [ "logrotate.service" "logrotate-checkconf.service" ];
 
+    # BOUNDED, BECAUSE THEY ARE FORGIVEN. systemd gives a oneshot no start timeout unless it declares
+    # one, and a switch that restarts a running oneshot waits on its whole run -- fleet/auto-apply.nix
+    # refuses to forgive an unbounded one (2026-11-16). Both take seconds; a rotation still running
+    # after 15 minutes is hung (a postrotate signal that never returns), and failing it is what makes
+    # `SystemdUnitFailed` say so.
+    systemd.services.logrotate.serviceConfig.TimeoutStartSec = "15min";
+    systemd.services.logrotate-checkconf.serviceConfig.TimeoutStartSec = "5min";
+
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
 
