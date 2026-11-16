@@ -554,7 +554,7 @@ worker_rest_row() {
         block == "row" && /exists\(suite\.startsWith\)/ { quoted("prefix", $0) }
         block == "heavy" || block == "rest" { quoted(block, $0) }
         block == "rest" && /\)[[:space:]]*(\/\/.*)?$/ { block = "" }
-        block == "row" && /^[^[:space:]]/ && !/^lazy val workerRowSettings/ { block = "" }' build.sbt 2>/dev/null)"
+        block == "row" && /^[^[:space:]]/ { if ($0 !~ /^lazy val workerRowSettings/) block = "" }' build.sbt 2>/dev/null)"
     prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
     if [ -z "$prefixes" ] || ! printf '%s\n' "$rows" | grep -q '^rest '; then
         echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
