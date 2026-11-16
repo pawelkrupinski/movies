@@ -6,10 +6,8 @@ import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /** The hosts one breaker chain (`chain`: the worker's `scrape` or `enrich` phase) left unrecovered, in its country's
  *  `http_unrecovered_hosts`: one document per (chain, host), written as a host opens or an open host's probe fails
@@ -51,16 +49,4 @@ object MongoUnrecoveredHosts {
       host <- document.get[BsonString]("host").map(_.getValue)
       at   <- document.get[BsonDateTime]("failedAt").map(t => Instant.ofEpochMilli(t.getValue))
     } yield UnrecoveredHosts.Host(host, document.get[BsonString]("lastFailure").map(_.getValue), at)
-}
-
-/** The hosts in this process's memory -- a spec's -- each written through the Mongo store's own codec and read back
- *  ([[services.BsonRoundTrip]]), so it holds what `http_unrecovered_hosts` would. */
-final class InMemoryUnrecoveredHosts extends UnrecoveredHosts {
-  private val hosts = new ConcurrentHashMap[String, UnrecoveredHosts.Host]()
-  def load(): Seq[UnrecoveredHosts.Host] = hosts.values.asScala.toSeq.sortBy(_.host)
-  def failed(host: UnrecoveredHosts.Host): Unit = {
-    MongoUnrecoveredHosts.decode(services.BsonRoundTrip(MongoUnrecoveredHosts.encode("memory", host)))
-      .foreach(kept => hosts.put(kept.host, kept))
-  }
-  def recovered(host: String): Unit = { hosts.remove(host); () }
 }
