@@ -396,9 +396,9 @@ lazy val identity = (project in file("identity"))
       Dependencies.icu4j,
       scalatestPlay % Test, scalatestScalaCheck % Test),
     Test / unmanagedSources ++= sharedTestDoubles.value ++ identityTestDoubles.value,
-    // The build's source digest (the identity rules and venue slot versions), compiled here too so its specs check
-    // the very code the build digests with.
-    Test / unmanagedSources += (LocalRootProject / baseDirectory).value / "project" / "SourceDigest.scala"
+    // The build's source digest (the identity rules and venue slot versions) and the test-impact selection's reader
+    // names, compiled here too so their specs check the very code the build runs.
+    Test / unmanagedSources ++= Seq("SourceDigest.scala", "ReaderNames.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "1g"))

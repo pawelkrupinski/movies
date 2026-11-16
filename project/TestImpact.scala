@@ -12,7 +12,10 @@ import xsbti.VirtualFileRef
  *  - any other changed file seeds the classes of every source whose STRING LITERALS name it: its file name, its stem
  *    (a hyphenated one also by each leading run of two or more of its words: `cinema-scrapes-hard-clusters-pl.json.gz`
  *    is read through `s"cinema-scrapes-$key"`), or a directory between its resource root and it
- *    (`identity-unmatched/pl.json.gz` through `Path.of(..., "identity-unmatched")`);
+ *    (`identity-unmatched/pl.json.gz` through `Path.of(..., "identity-unmatched")`) -- `ReaderNames.tokens`;
+ *  - any changed file, a source included, also seeds every source whose literals name its path or a directory above
+ *    it (`ReaderNames.treeNames`): a spec walking `worker/src/main` for a call reads every source under it, which no
+ *    class dependency records;
  *  - a changed path a generated identity stamp digests (`<name>-sources.txt`, `IdentityRulesSources`) changes that
  *    stamp, read by name like any resource;
  *  - a resource or fixture no literal names has an UNKNOWN reader, and so has a deleted source (its old dependents are
@@ -37,47 +40,7 @@ object TestImpact {
     else id
   }
 
-  /** The string literals of a source, their contents only: what a reader names a file by, never its comments. */
-  def literals(text: String): Seq[String] = {
-    val out = Seq.newBuilder[String]
-    var i = 0
-    val n = text.length
-    while (i < n) {
-      if (text.startsWith("//", i)) { val e = text.indexOf('\n', i); i = if (e < 0) n else e }
-      else if (text.startsWith("/*", i)) { val e = text.indexOf("*/", i + 2); i = if (e < 0) n else e + 2 }
-      else if (text.startsWith("\"\"\"", i)) {
-        val e = text.indexOf("\"\"\"", i + 3); val end = if (e < 0) n else e
-        out += text.substring(i + 3, end); i = end + 3
-      } else if (text.charAt(i) == '"') {
-        var j = i + 1
-        while (j < n && text.charAt(j) != '"' && text.charAt(j) != '\n') j += (if (text.charAt(j) == '\\') 2 else 1)
-        out += text.substring(i + 1, math.min(j, n)); i = j + 1
-      } else if (text.charAt(i) == '\'' && i + 2 < n && (text.charAt(i + 2) == '\'' || text.charAt(i + 1) == '\\')) {
-        val e = text.indexOf('\'', i + 2); i = if (e < 0) n else e + 1 // a character literal: '"' is no string
-      } else i += 1
-    }
-    out.result()
-  }
-
-  private val ResourceRoots = Seq("src/main/resources/", "src/test/resources/", "src/it/resources/", "src/page/resources/",
-    "src/fixtures/resources/", "test/resources/fixtures/", "test/resources/")
-
-  /** Whether a path is data some spec may read off the class path or the fixtures tree. */
-  def isResource(path: String): Boolean = ResourceRoots.exists(r => path.startsWith(r) || path.contains("/" + r))
-
-  /** The names a reader may name `path` by (the scaladoc above). */
-  def tokens(path: String): Set[String] = {
-    val name  = path.substring(path.lastIndexOf('/') + 1)
-    val stem  = name.takeWhile(_ != '.')
-    val words = stem.split("[-_]").toSeq
-    val runs  = (2 until words.size).map(k => words.take(k).mkString("-")).filter(_.length >= 6)
-    val under = ResourceRoots.flatMap { r =>
-      val i = path.indexOf(r)
-      if (i == 0 || (i > 0 && path.charAt(i - 1) == '/')) Some(path.substring(i + r.length)) else None
-    }.sortBy(_.length).headOption.getOrElse(path)
-    val dirs  = under.split('/').toSeq.dropRight(1)
-    (Set(name, under) ++ runs ++ dirs ++ (if (stem.length >= 4) Set(stem) else Set.empty)).filter(_.nonEmpty)
-  }
+  import kinowo.build.ReaderNames.{isResource, literals, tokens, treeNames}
 
   /**
    * THE REVERSE OF [[select]]: every path a change to which [[select]] would let reach a class of `roots` (repository paths
@@ -111,15 +74,17 @@ object TestImpact {
     }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
     val reachedLiterals = sources.collect { case (src, lits) if reached(src) => lits }.flatten.toSet
     val anyLiterals     = sources.flatMap(_._2).toSet
-    // every tracked file but a source: one a reached literal names, and data no literal names
+    // every tracked file but a source: one a reached literal names, and data no literal names; and any file, a source
+    // included, under a tree a reached literal walks
     val data = tracked.filterNot(p => p.endsWith(".scala") || p.endsWith(".java")).filter { path =>
       val names = tokens(path)
       names.exists(reachedLiterals) || (isResource(path) && !names.exists(anyLiterals))
     }
+    val walked = tracked.filter(path => treeNames(path).exists(reachedLiterals))
     val build = (repo * "*.sbt").get ++ (repo / "project" * ("*.scala" || "*.sbt" || "*.properties")).get
     val stamped = stamps.filter(_.exists).filter(list => tokens(list.getName.stripSuffix("-sources.txt") + "-version.txt").exists(reachedLiterals))
       .flatMap(IO.readLines(_)).filter(_.nonEmpty)
-    (reached.toSeq ++ data ++ build.map(f => IO.relativize(repo, f).get) ++ stamped).distinct.filterNot(exclude).sorted
+    (reached.toSeq ++ data ++ walked ++ build.map(f => IO.relativize(repo, f).get) ++ stamped).distinct.filterNot(exclude).sorted
   }
 
   /** The verdict: `ALL <why>` lines (every test), else the affected test classes as `<module> <class>` lines. */
@@ -143,10 +108,8 @@ object TestImpact {
     lazy val sources: Seq[(String, Set[String])] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
       ((module / "src") ** ("*.scala" || "*.java")).get
     }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
-    def readers(path: String): Seq[String] = {
-      val names = tokens(path)
-      sources.collect { case (src, lits) if lits.exists(names) => src }
-    }
+    def readers(names: Set[String]): Seq[String] = sources.collect { case (src, lits) if lits.exists(names) => src }
+    def seedReaders(srcs: Seq[String]): scala.Unit = srcs.foreach(src => seeds ++= classesOf.getOrElse(src, Set.empty))
     // a changed path a stamp digests changes the stamp
     val stamped = stamps.filter(_.exists).flatMap { list =>
       val digested = IO.readLines(list).toSet
@@ -158,6 +121,7 @@ object TestImpact {
     (changed ++ stamped).distinct.foreach { path =>
       if ((path.endsWith(".sbt") && !path.contains("/")) || path.startsWith("project/")) why += s"ALL the build changed: $path"
       else if (path.endsWith(".scala") || path.endsWith(".java")) {
+        seedReaders(readers(treeNames(path)))
         classesOf.get(path) match {
           case Some(cls) => seeds ++= cls
           case None if new File(repo, path).exists && !path.matches("[^/]+/src/.*") => () // not compiled by a module
@@ -167,9 +131,9 @@ object TestImpact {
           case None => why += s"ALL a source deleted or renamed (its old dependents are not on record): $path"
         }
       } else {
-        val by = readers(path)
+        val by = readers(tokens(path))
         if (by.isEmpty && isResource(path)) why += s"ALL a resource no literal names (its reader is unknown): $path"
-        by.foreach(src => seeds ++= classesOf.getOrElse(src, Set.empty))
+        seedReaders(by ++ readers(treeNames(path)))
       }
     }
     val reasons = why.result()
