@@ -51,10 +51,12 @@ class QueueEnrichmentRetrigger(
   // for a task type outside this set has no handler here, so we never enqueue it.
   private val enabledRatingTaskTypes = RatingSources.forCountry(country).map(_.taskType).toSet
 
-  // The task type a rating retrigger kind maps to, for the country gate above. The
-  // non-rating kinds (resolve) apply in every country and aren't listed.
-  private def enabled(kind: RetriggerKind): Boolean =
-    QueueEnrichmentRetrigger.ratingOf.get(kind).forall(rating => enabledRatingTaskTypes.contains(rating._1))
+  // A rating retrigger passes the country gate above when its task type is wired here; the IMDb-id resolve applies
+  // in every country.
+  private def enabled(kind: RetriggerKind): Boolean = QueueEnrichmentRetrigger.taskOf(kind) match {
+    case RetriggerTask.Rating(taskType, _) => enabledRatingTaskTypes.contains(taskType)
+    case RetriggerTask.ResolveImdbId       => true
+  }
 
   override def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = {
     val (applicable, dropped) = kinds.partition(enabled)
@@ -62,9 +64,9 @@ class QueueEnrichmentRetrigger(
       logger.info(s"Dropping ${dropped.map(_.toString).toSeq.sorted.mkString(", ")} retrigger for " +
         s"'${key.cleanTitle}' — source not enabled in ${country.code}")
     applicable.foreach { kind =>
-      QueueEnrichmentRetrigger.ratingTaskOf(kind) match {
-        case Some((taskType, freshness)) => refreshRating(key, record, taskType, freshness)
-        case None =>
+      QueueEnrichmentRetrigger.taskOf(kind) match {
+        case RetriggerTask.Rating(taskType, freshness) => refreshRating(key, record, taskType, freshness)
+        case RetriggerTask.ResolveImdbId =>
           queue.enqueue(
             TaskType.ResolveImdbId,
             EnrichTaskKeys.resolveImdbIdDedup(key.cleanTitle, key.year),
@@ -89,18 +91,21 @@ class QueueEnrichmentRetrigger(
     record.searchTitle.orElse(record.originalTitle).getOrElse(normalizer.searchQuery(key.cleanTitle))
 }
 
-object QueueEnrichmentRetrigger {
-  /** The task a rating retrigger kind enqueues and the freshness stamp its handler writes on each ask. The
-   *  non-rating kind (IMDb-id resolve) applies in every country, is not freshness-gated, and isn't listed. */
-  val ratingOf: Map[RetriggerKind, (TaskType, FreshnessKind)] =
-    RetriggerKind.all.flatMap(kind => ratingTaskOf(kind).map(kind -> _)).toMap
+/** What a retrigger kind enqueues: the IMDb-id resolve, or a rating task with the freshness stamp its handler writes on
+ *  each ask. Its own two cases, so a new kind cannot fall into the resolve branch by answering "no rating". */
+sealed trait RetriggerTask
+object RetriggerTask {
+  case object ResolveImdbId extends RetriggerTask
+  final case class Rating(taskType: TaskType, freshness: FreshnessKind) extends RetriggerTask
+}
 
-  /** [[ratingOf]] as a match the compiler checks whole: a new kind must say which task it is, or none. */
-  def ratingTaskOf(kind: RetriggerKind): Option[(TaskType, FreshnessKind)] = kind match {
-    case RetriggerKind.ResolveImdbId => None
-    case RetriggerKind.ImdbRating    => Some((TaskType.ImdbRating,    FreshnessKind.ImdbRating))
-    case RetriggerKind.FilmwebRating => Some((TaskType.FilmwebRating, FreshnessKind.FilmwebRating))
-    case RetriggerKind.RtRating      => Some((TaskType.RtRating,      FreshnessKind.RtRating))
-    case RetriggerKind.McRating      => Some((TaskType.McRating,      FreshnessKind.McRating))
+object QueueEnrichmentRetrigger {
+  /** Which task a retrigger kind enqueues, as a match the compiler checks whole: a new kind must name its task. */
+  def taskOf(kind: RetriggerKind): RetriggerTask = kind match {
+    case RetriggerKind.ResolveImdbId => RetriggerTask.ResolveImdbId
+    case RetriggerKind.ImdbRating    => RetriggerTask.Rating(TaskType.ImdbRating,    FreshnessKind.ImdbRating)
+    case RetriggerKind.FilmwebRating => RetriggerTask.Rating(TaskType.FilmwebRating, FreshnessKind.FilmwebRating)
+    case RetriggerKind.RtRating      => RetriggerTask.Rating(TaskType.RtRating,      FreshnessKind.RtRating)
+    case RetriggerKind.McRating      => RetriggerTask.Rating(TaskType.McRating,      FreshnessKind.McRating)
   }
 }

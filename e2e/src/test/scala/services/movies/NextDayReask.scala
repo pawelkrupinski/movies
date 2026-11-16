@@ -2,7 +2,7 @@ package services.movies
 
 import models.MovieRecord
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.tasks.{QueueEnrichmentRetrigger, RatingTasks}
+import services.tasks.{QueueEnrichmentRetrigger, RatingTasks, RetriggerTask}
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -18,6 +18,12 @@ import scala.jdk.CollectionConverters.*
  *  inputs is [[MergeRetrigger.changedInputs]]'s — production's own table — and what each writes, [[RetriggerKind.writes]]. */
 object NextDayReask {
 
+  /** The freshness stamp a kind's handler writes on each ask: a rating task's, none for the IMDb-id resolve. */
+  private def stampOf(kind: RetriggerKind): Option[FreshnessKind] = QueueEnrichmentRetrigger.taskOf(kind) match {
+    case RetriggerTask.Rating(_, freshness) => Some(freshness)
+    case RetriggerTask.ResolveImdbId        => None
+  }
+
   /** One day-one write that changed an enrichment input: its place in the day's sequence of writes and asks, each
    *  enrichment it should have re-asked with its inputs' before → after, and the slots the write changed. */
   final case class InputChange(sequence: Long, kinds: Map[RetriggerKind, Seq[String]], slots: Seq[String])
@@ -31,7 +37,7 @@ object NextDayReask {
     val enrichments = RetriggerKind.all.flatMap { kind =>
       val moved = kind.writes(dayOne).zip(kind.writes(dayTwo)).collect { case ((name, a), (_, b)) if a != b => s"$name $a → $b" }
       Option.when(moved.nonEmpty) {
-        val stamped = QueueEnrichmentRetrigger.ratingOf.contains(kind)
+        val stamped = stampOf(kind).nonEmpty
         val since   = seen.lastAsk.get(kind)
         val unasked = seen.changes.filter(c => c.kinds.contains(kind) && since.forall(c.sequence > _))
         val asked   = since.fold(if (stamped) "it was never asked on day one" else "its asks are not stamped")(s => s"its last day-one ask was #$s")
@@ -105,10 +111,12 @@ object NextDayReask {
     /** `id`'s day one, up to `until`: its input changes, and each stamped enrichment's last ask under any key it held. */
     def dayOne(id: FilmId, until: Long): DayOne = {
       val keys = keysOf.getOrDefault(id, Set.empty)
-      val lastAsk = QueueEnrichmentRetrigger.ratingOf.flatMap { case (kind, (_, freshness)) =>
-        keys.iterator.flatMap { case (key, tmdb) => Option(asks.get(RatingTasks.dedupKey(freshness, key, tmdb))).map(_.longValue) }
-          .filter(_ <= until).maxOption.map(kind -> _)
-      }
+      val lastAsk = RetriggerKind.all.flatMap { kind =>
+        stampOf(kind).flatMap { freshness =>
+          keys.iterator.flatMap { case (key, tmdb) => Option(asks.get(RatingTasks.dedupKey(freshness, key, tmdb))).map(_.longValue) }
+            .filter(_ <= until).maxOption.map(kind -> _)
+        }
+      }.toMap
       DayOne(Option(changes.get(id)).fold(Seq.empty[InputChange])(_.asScala.toSeq.filter(_.sequence <= until)), lastAsk)
     }
   }
