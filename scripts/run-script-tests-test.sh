@@ -119,7 +119,12 @@ echo '# edited' >> "$tree/.github/workflows/main.yml"
 check "--changed: a workflow's edit selects the test declaring it reads every workflow" "scripts/ci/layout_test.py" \
   "$(listed --changed "$readers")"
 check "...never one whose declaration is past its first 40 lines" "0" "$(grep -c late_test "$work/out")"
-scratch_git "$tree" checkout -q -- .github/workflows/main.yml
+echo '# edited' >> "$tree/scripts/hooks/gate.sh"
+check "--readers: of what --changed selects, only the tests a declared glob selects (the hook's --verify-only)" \
+  "scripts/ci/layout_test.py scripts/hooks/gate-test.sh|scripts/ci/layout_test.py" \
+  "$(listed --changed "$readers")|$(listed --changed "$readers" --readers)"
+check "...and --readers without --changed is a usage error" "64" "$(run --readers)"
+scratch_git "$tree" checkout -q -- .github/workflows/main.yml scripts/hooks/gate.sh
 mkdir -p "$tree/tools/x" && put tools/x/deep.py 'print(1)'
 check "--changed: a .py anywhere selects the test reading every .py" "scripts/ci/floor_test.py" "$(listed --changed "$readers")"
 rm -r "$tree/tools"
@@ -220,6 +225,75 @@ check "...the test run by it, and the tool the test starts through env bash" "sc
   "$(paste -sd'|' - < "$work/via-fake")"
 check "...a --bash that is no executable is a usage error" "64" "$(run --bash "$work/no-such-bash" scripts/env)"
 rm -rf "$tree/scripts/env"
+
+# --bash with --changed: THE FLOOR'S OWN SCOPE (the pre-push hook's floor run, which re-ran every selected test under
+# 3.2 and cost a landing +70 s). The bash the change touches is parsed by the floor and its added lines held to the
+# bash-4-only constructs; the tests re-run are the self-tests of the bash tools it touches and of those sourcing them --
+# never a test selected only by a name it mentions or a glob it reads, nor one of a Python tool.
+printf '#!/bin/sh\n[ "$1" = -n ] && grep -q FLOOR_CANNOT_PARSE "$2" && { echo "$2: syntax error" >&2; exit 2; }\nexec %s "$@"\n' \
+  "$real_bash" > "$work/floor-bash"; chmod +x "$work/floor-bash"
+put scripts/fl/tool.sh 'echo tool'
+put scripts/fl/tool-test.sh 'bash scripts/fl/tool.sh'
+put scripts/fl/mention-test.sh 'echo "reads what scripts/fl/tool.sh prints"'
+put scripts/fl/flib.sh 'echo lib'
+put scripts/fl/user.sh "$(printf '%s\n' '. "$(dirname "$0")/flib.sh"')"
+put scripts/fl/user-test.sh 'bash scripts/fl/user.sh'
+put scripts/fl/py.py 'print(1)'
+put scripts/fl/py_test.py "$(printf '%s\n' '# script-test-reads: scripts/fl/*.py' 'print(1)')"
+printf '#!/usr/bin/env bash\necho bare\n' > "$tree/scripts/fl/bare"
+put scripts/fl/bare-test.sh 'bash scripts/fl/bare'
+scratch_git "$tree" add -A && scratch_git "$tree" commit -qm floor
+floorbase="$(scratch_git "$tree" rev-parse HEAD)"
+floor() { run --bash "$work/floor-bash" --changed "$floorbase" "$@"; }
+floor_listed() { floor --list > /dev/null; cut -f1 "$work/out" | paste -sd' ' -; }
+echo 'echo edited' >> "$tree/scripts/fl/tool.sh"
+check "the floor's scope: a bash tool's edit re-runs its own self-test, not one only naming it" \
+  "scripts/fl/mention-test.sh scripts/fl/tool-test.sh|scripts/fl/tool-test.sh" \
+  "$(listed --changed "$floorbase")|$(floor_listed)"
+check "...and runs it, passing" "0 1" "$(floor) $(grep -c '^PASS .*fl/tool-test.sh' "$work/out")"
+scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
+echo 'echo edited' >> "$tree/scripts/fl/flib.sh"
+check "...a sourced library's edit re-runs the self-tests of the tools sourcing it" "scripts/fl/user-test.sh" "$(floor_listed)"
+scratch_git "$tree" checkout -q -- scripts/fl/flib.sh
+echo 'echo edited' >> "$tree/scripts/fl/bare"
+check "...an extensionless bash tool is bash" "scripts/fl/bare-test.sh" "$(floor_listed)"
+scratch_git "$tree" checkout -q -- scripts/fl/bare
+echo 'print(2)' >> "$tree/scripts/fl/py.py"
+check "...a Python change re-runs nothing under it, and passes" "0 1" "$(floor) $(grep -c 'no script tests selected' "$work/out")"
+scratch_git "$tree" checkout -q -- scripts/fl/py.py
+printf '%s\n' 'declare -A seen' 'seen[x]=1' >> "$tree/scripts/fl/tool.sh"
+check "an added bash-4-only construct fails the floor run, though every test re-run under it passes" "1 1" \
+  "$(floor) $(grep -c '^PASS .*fl/tool-test.sh' "$work/out")"
+check "...naming the file, its line and the construct" "1" \
+  "$(grep -c '^FLOOR .*scripts/fl/tool.sh:2: an associative array, declare -A (bash 4.0)' "$work/out")"
+check "...while the run on today's bash passes" "0" "$(run --changed "$floorbase" scripts/fl)"
+scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
+printf '%s\n' 'readarray -t x < f' >> "$tree/scripts/fl/mention-test.sh"
+check "...in any bash file the change touches, a test re-run or not" "1" \
+  "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/mention-test.sh:2:' "$work/out")"
+scratch_git "$tree" checkout -q -- scripts/fl/mention-test.sh
+for construct in 'mapfile -t lines < f' 'echo "${name,,}"' 'wait -n' 'echo "${arr[-1]}"' 'exec {fd}> f' 'cmd |& tee f' \
+    'echo x &>> f' 'printf "%(%s)T" -1' '[[ -v name ]]' 'echo "${name@Q}"' 'local -n ref=x' 'shopt -s globstar' \
+    'echo "$EPOCHSECONDS"' 'coproc cat' 'declare -g x=1'; do
+  printf '%s\n' "$construct" >> "$tree/scripts/fl/tool.sh"
+  check "...each bash-4-only construct: $construct" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/tool.sh:2:' "$work/out")"
+  scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
+done
+printf '%s\n' '# mapfile and ${x,,} need bash 4' 'echo "${BASHPID:-$$}" # on 3.2: $$' 'declare -a list' 'echo "${x:-a}|${#y}"' \
+  >> "$tree/scripts/fl/tool.sh"
+check "...never one only named in a comment, a guarded BASHPID, an indexed array or a 3.2 expansion" "0" "$(floor)"
+scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
+printf '%s\n' 'mapfile = 1' >> "$tree/scripts/fl/py.py"
+check "...nor a non-bash file's line" "0" "$(floor)"
+scratch_git "$tree" checkout -q -- scripts/fl/py.py
+printf '%s\n' 'echo FLOOR_CANNOT_PARSE' >> "$tree/scripts/fl/user.sh"
+check "a changed bash file the floor cannot parse fails the run, saying so" "1 1" \
+  "$(floor) $(grep -c '^FLOOR .*scripts/fl/user.sh: bash 3.2 cannot parse it' "$work/out")"
+scratch_git "$tree" checkout -q -- scripts/fl/user.sh
+put scripts/fl/new.sh 'readarray -t x < f'
+check "...an untracked bash file's lines are all added lines" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/new.sh:1:' "$work/out")"
+rm "$tree/scripts/fl/new.sh"
+rm -rf "$tree/scripts/fl"; scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'floor done'
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"
 check "a flag given last without its value is a usage error, 64 (not 1)" "64" "$(run --jobs)"

@@ -26,8 +26,10 @@
 #                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data) or matching a glob a self-test
 #                 declares it reads (`run-script-tests --reads`: every workflow, .py and Scala spec): only the self-tests
 #                 whose test, tool, a file they name, or one they read the push changed -- this hook's own test among them (it names
-#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; run again
-#                 under the floor bash 3.2 the tools promise to run on (`--bash "$(scripts/floor-bash)"`: a Mac's
+#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; and the
+#                 floor bash 3.2 the tools promise to run on, in its own scope (run-script-tests' FLOOR: the bash the
+#                 push touches parsed by it and its added lines held to 3.2, the self-tests of those bash files re-run
+#                 under it; `--changed <base> --bash "$(scripts/floor-bash)"`: a Mac's
 #                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
 #                 builds; none BLOCKS, PREPUSH_SKIP=floor skips it); and, Docker running, beside them on Linux
 #                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
@@ -196,7 +198,8 @@
 # older main A, rebased onto a main that moved with no file overlap, so A..B is what landed since plus the change --
 # the --fast-only set over those paths, plus the unit tests of every module they touch (`--unit-plan < paths` prints
 # them; the worker's are its `rest` unit row -- its identity row is the `identity` area's, its heavy rows no unit
-# stage's -- and any worker identity-row spec the paths change, by name). `--checks-only A..B` is `--range A..B` without
+# stage's -- and any worker identity-row spec the paths change, by name), plus the self-tests holding repo-wide files
+# to a rule (`run-script-tests --readers`) when those paths touch what they read. `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
@@ -1053,6 +1056,23 @@ fast_select() { # stdin: the checks the paths select -> those --fast-only runs, 
     done
 }
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | fast_select)"
+# --verify-only: THE REPO-WIDE SELF-TESTS. A test holding every .py, workflow or spec to a rule (a `# script-test-reads:`
+# glob, run-script-tests' READS) breaks on a combined tree whose two sides share no file -- 18 of Tool self-tests' first
+# 35 reds were that class (python_floor_lint_test.py on a .py, lint-registry-test.sh on a spec) -- so exactly those run
+# (`--readers`, natively: a rule over files' content, no floor or Linux run) when the combined change touches what
+# they read. A runner from before --readers runs none, as before.
+scripttests_readers=""
+if [ -n "$verify_only" ] && ! printf '%s\n' "$checks" | grep -qx scripttests && [ -n "$changed" ] \
+        && grep -q -e '--readers' scripts/run-script-tests 2>/dev/null; then
+    reader_globs="$(scripts/run-script-tests --reads 2>/dev/null)"
+    while IFS= read -r path && [ -z "$scripttests_readers" ]; do
+        while IFS= read -r glob; do
+            # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
+            [ -n "$glob" ] && case "$path" in $glob) scripttests_readers=1; break ;; esac
+        done <<< "$reader_globs"
+    done <<< "$changed"
+    [ -n "$scripttests_readers" ] && checks="${checks:+$checks$'\n'}scripttests"
+fi
 # --verify-only: the touched modules' unit tests ride the sbt check, which runs whenever there are any
 if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! printf '%s\n' "$checks" | grep -qx sbt; then
     checks="sbt${checks:+$'\n'$checks}"
@@ -1261,11 +1281,17 @@ scripttests_floor() {
 }
 
 check_scripttests() {
-    # Beside them, in the background: the same tests under the floor bash 3.2 (scripttests_floor), so a bash-4-only
-    # construct is caught at the push, not by the nightly macOS job -- beside, not after, so it costs a landing check
-    # little wall time; and on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a Mac's BSD ones hide
+    # Beside them, in the background: the floor bash 3.2 (scripttests_floor) over the bash the push touches -- parsed,
+    # its added lines held to 3.2, its own self-tests re-run (run-script-tests' FLOOR; every selected test re-run cost a
+    # landing ~+70 s) -- so a bash-4-only construct is caught at the push, not by the nightly macOS job; and on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a Mac's BSD ones hide
     # (03b3a6825). Warm, that adds ~4 s to a run the native one outlasts: ~0 s of wall time.
     local floor floor_pid="" linux_pid="" rc=0
+    if [ -n "$scripttests_readers" ]; then # --verify-only's repo-wide self-tests (above), alone
+        if scripts/run-script-tests --changed "$base_sha" --readers > "$tmp/scripttests.log" 2>&1; then
+            tail -1 "$tmp/scripttests.log"; return 0
+        fi
+        grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; return 1
+    fi
     floor=$(scripttests_floor) || return 1
     if [ -n "$floor" ]; then
         scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 &

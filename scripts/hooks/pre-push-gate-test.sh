@@ -215,7 +215,7 @@ script_push() {
   case "${floor:-}" in '') ;; found) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}") ;;
     *) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}" PREPUSH_FLOOR_BASH="$floor") ;; esac
   rm -f "$gate/args"; (cd "$grepo" && all_green env -u PREPUSH_FLOOR_BASH "${floor_env[@]}" STUB_RUNNER_ARGS="$gate/args" "$@" \
-  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
+  bash "$REPO_ROOT/scripts/hooks/pre-push" "${mode:---range}" "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
 check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
   "$(script_push) $(cat "$gate/args")"
 check "...and a failing one blocks the push" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
@@ -256,6 +256,29 @@ check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_LI
 check "...Docker not running: never blocking" "0 1" "$(script_push STUB_NO_DOCKER=1) $(grep -c -- '--linux' "$gate/args")"
 check "...and PREPUSH_SKIP=linux skips just that" "0 --changed $runner_base" \
   "$(script_push PREPUSH_SKIP="${pathchecks/scripttests/} linux") $(cat "$gate/args")"
+# --verify-only (agentctl's combined tree: a change checked on an older main, rebased over what landed with no file
+# overlap): the self-tests holding repo-wide files to a rule (a `# script-test-reads:` glob) can break on the combined
+# tree with no file of either side theirs -- 18 of Tool self-tests' first 35 reds (python_floor_lint_test.py on a .py,
+# lint-registry-test.sh on a spec). Exactly those run, once, when the combined change touches what they read.
+printf '#!/usr/bin/env bash\n# knows --readers\ncase "$*" in --reads) echo "*.py"; exit 0 ;; esac\necho "$*" >> "$STUB_RUNNER_ARGS"\nexit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
+scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner with --readers"
+runner_base="$(scratch_git "$grepo" rev-parse HEAD)"
+mkdir -p "$grepo/docs" && echo a > "$grepo/docs/verify.md"
+scratch_git "$grepo" add docs && scratch_git "$grepo" commit -qm "a doc"
+runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
+mode=--verify-only
+check "--verify-only over paths no self-test reads runs no self-test" "0 " "$(script_push) $(cat "$gate/args" 2>/dev/null)"
+mkdir -p "$grepo/tools" && echo 'print(1)' > "$grepo/tools/x.py"
+scratch_git "$grepo" add tools && scratch_git "$grepo" commit -qm "a .py the floor lint reads"
+runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
+floor=$(floor_bash 3)
+check "...over a path one reads: exactly the reading self-tests, once (no floor or Linux run of a content rule)" \
+  "0 --changed $runner_base --readers" "$(script_push) $(paste -sd'|' - < "$gate/args")"
+check "...and a failing one blocks the verification" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
+floor=""
+mode=--range
+check "...while a plain check runs the whole selection, as ever" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
+mode=""
 # ── oldrefs: a push changing a tool's TOOL_FILES runs the old-ref compile test, read from the tools of the pushed tree ──
 printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/A.scala\n  tools/B.scala)\n' > "$grepo/scripts/identity-slice"
 printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/title-trace"

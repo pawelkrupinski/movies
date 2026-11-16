@@ -71,9 +71,11 @@ is that the local toolchain is missing (e.g. no full Xcode for
   `# script-test-reads: .github/workflows/*` in its first 40 lines)
   (the pre-push hook's `scripttests`), `--list --all` shows the
   `# script-test: <tag>` ones kept out of the default run. `--bash /bin/bash`
-  runs them under macOS's bash 3.2, the floor the tools promise: the pre-push
-  hook does so on a Mac for the tests a push selects, and the nightly Order
-  independence `swift` job for all of them.
+  runs them under macOS's bash 3.2, the floor the tools promise: with
+  `--changed` it is the floor's own scope (the bash the change touches parsed
+  by it, its added lines held to 3.2, those files' own self-tests re-run), the
+  pre-push hook's floor run; the nightly Order independence `swift` job runs
+  all of them under it.
   `--linux` runs them in CI's ubuntu-26.04 container (Docker / Rancher
   Desktop; the pre-push hook runs that leg beside the native one when Docker
   is up). A new self-test needs no wiring: name it by the scheme and CI runs it.
