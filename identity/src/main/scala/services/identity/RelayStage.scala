@@ -182,17 +182,23 @@ private[identity] object RelayStage {
    *  its digits ("Apollo 13"). */
   def shortYearCut(l: Listing): Seq[String] =
     if (l.relayBilled.isEmpty) Nil
-    else l.ownTitles.flatMap(title => ShortClosingYear.findFirstMatchIn(title.trim).map(m => title.trim.take(m.start).trim)).filter(_.exists(_.isLetter))
-  private val ShortClosingYear = """(?<=\s)['’]?\d{2}\s*$""".r
+    else l.ownTitles.flatMap(title => ShortClosingYear.findFirstMatchIn(title.trim)
+      .filter(m => inItsSeason(l, 2000 + m.group(1).toInt)).map(m => title.trim.take(m.start).trim)).filter(_.exists(_.isLetter))
+  private val ShortClosingYear = """(?<=\s)['’]?(\d{2})\s*$""".r
+
+  /** Is `year` one a relay's title can close on: the year its screenings' season opens or the next (the owner,
+   *  2026-11-16) — "… 2026" in December 2026, "… 27" in January 2027 — never one past it ("… 99" is no 2099 relay), nor
+   *  any while it has no screenings to read a season by. */
+  private def inItsSeason(l: Listing, year: Int): Boolean = l.screeningsSeason.exists(season => year == season || year == season + 1)
 
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
    *  (1 December 2026) dates the 2026/27 relay by it, as The Beehive Honiton's "The Met: La Fanciulla del West 27" (26
-   *  January 2027) dates the Met's 2026/27 relay, whose record TMDB titles with no season. Read only where it is not
-   *  before its screenings' season ([[of]]). */
+   *  January 2027) dates the Met's 2026/27 relay, whose record TMDB titles with no season. Read only as the year its
+   *  screenings' season opens or the next ([[inItsSeason]]): any other is the title's own digits, kept in it. */
   private def closingYear(l: Listing): Option[Int] =
     l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(m => Option(m.group(1)).fold(2000 + m.group(2).toInt)(_.toInt))).distinct match {
-      case Seq(one) => Some(one)
-      case _        => None
+      case Seq(one) if inItsSeason(l, one) => Some(one)
+      case _                               => None
     }
 
   private val Encore = """(?i)(?<![\p{L}])encore(?![\p{L}])""".r

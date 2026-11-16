@@ -252,6 +252,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
   }
 
+  // the owner, 2026-11-16 (choice b): a relay's closing year is read only as its screenings' season year or the next one
+  "a relay's closing year" should "date it only as the year its screenings' season opens or the next, else stay its title's digits" in {
+    // UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026" (1 December 2026), The Beehive Honiton's "The Met: La
+    // Fanciulla del West 27" (26 January 2027): both the 2026/27 season's
+    RelayStage.of(Listing("RBO: THE NUTCRACKER 2026", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2025, 2026))
+    RelayStage.of(Listing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2026, 2027))
+    // " 99", " 58" and " 2031" are no year of its season: no 2099, 2058 nor 2031 relay; two digits stay in its search
+    Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58", "The Met: La Fanciulla del West 2031").foreach { title =>
+      withClue(title) { RelayStage.of(Listing(title, screeningsSeason = Some(2026))).toSeq.flatMap(_.seasons).filter(_ > 2027) shouldBe empty }
+    }
+    Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58").foreach { title =>
+      withClue(title) { IdentityMeasures.searchQueries(Listing(title, screeningsSeason = Some(2026))) should not contain "La Fanciulla del West" }
+    }
+    // no screenings' season to read it by: no closing year either
+    IdentityMeasures.searchQueries(Listing("The Met: La Fanciulla del West 27")) should not contain "La Fanciulla del West"
+    // a title naming no relay keeps its digits, as ever
+    RelayStage.of(Listing("Apollo 13", screeningsSeason = Some(2026))) shouldBe None
+    IdentityMeasures.searchQueries(Listing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
+  }
+
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
   // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
   "a box office's trailing certificate" should "be no part of any title shape or search" in {
