@@ -470,6 +470,15 @@ class BorrowedCheckTest(unittest.TestCase):
         d = self.at(self.two_full_checks() + [idle], queued(check=1, measure=1))
         self.assertIn(3, d.stops)
 
+    def test_an_idle_borrowed_runner_stays_while_every_queued_measurement_has_its_runner(self):
+        # the measurement's own runner waits for it (GitHub hands it over within the tick): stopping the borrowed check's
+        # runner frees nothing a measurement needs, leaves its check queued and starts it again next tick, and races
+        # GitHub handing it that check
+        idle = rs.Instance(3, "check", False, NOW, NOW - 60, slice_class="measure")
+        waiting = rs.Instance(4, "measure", False, NOW, NOW - 20)
+        d = self.at(self.two_full_checks() + [idle, waiting], queued(check=1, measure=1))
+        self.assertNotIn(3, d.stops)
+
     def test_no_borrow_where_the_classes_share_their_cpus(self):
         r = readings(cpu_busy=0, cores=CORES)
         d = rs.decide(CFG, IDLE, queued(check=5), self.two_full_checks() + [self.settled(3, "check", 5)], NOW, r)

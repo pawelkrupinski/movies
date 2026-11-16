@@ -392,7 +392,7 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
                   lanes: dict) -> list:
     """Bitcashier saturated: the idle heavy runners (a light lane runner is too small to hold bitcashier back). Past
     max_slots, or memory short of what our settling runners still owe: idle ones, lowest class first. An idle borrowed
-    check while a measurement is queued (it holds the measurement's slot, cap and cores). And an idle runner whose
+    check while a queued measurement has no runner of its lane waiting (it holds that one's slot, cap and cores). And an idle runner whose
     class has nothing queued for longer than idle_stop_seconds."""
     rank = {c: i for i, c in enumerate(CLASSES)}
     idle = [i for i in instances if not i.busy]
@@ -406,7 +406,10 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
             stops.append(inst.slot)
             excess -= 1
             short -= memory_charge(cfg, inst)
-    stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and demand.get("measure", 0) > 0]
+    # a measurement with no runner of its lane waiting for it (one that has its runner needs nothing the borrow holds)
+    waiting_for = sum(max(0, n - sum(1 for i in idle if i.cls == "measure" and i.lane == lane and i.slot not in stops))
+                      for lane, n in lanes.items())
+    stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and waiting_for > 0]
     return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, lanes) == 0
                     and now - i.idle_since >= cfg.idle_stop_seconds]
 
@@ -520,7 +523,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             of ours there can grow into the check's cores -- AND the live reading (cpu_owed, a borrowed check at its
             whole cap) holds the check and the kept measurements.
           * MEASUREMENTS FIRST: none starts while a queued measurement has no runner, an idle borrowed runner is
-            stopped when a measurement queues (_idle_to_stop), and at most borrow_max_checks run at once.
+            stopped when a measurement queues with no runner (_idle_to_stop), and at most borrow_max_checks run at once.
           * THE BOUND: each borrow leaves measure_reserve_jobs measurements' cores, memory, slice caps and slots, so a
             measurement queued beside borrowed checks starts on the next tick whatever they do; only measurements
             beyond those may wait, each for at most the end of one borrowed check (a landing-check job, under 20 min),
