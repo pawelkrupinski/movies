@@ -62,11 +62,23 @@ object ProdLookupInputs {
       LiveAsks.remembered(new QuestionMemory(docs, language, clock)))
   }
 
-  /** What prod's model reads of `database` (prod's country database, read-only) to resolve `byCinema`. */
-  def read(database: MongoDatabase, byCinema: Seq[(models.Cinema, Seq[CinemaMovie])], country: Country, clock: Clock): Captured = {
-    val listings = ModelRead.corpus(byCinema, TitleNormalizer.forCountry(country))
+  /** What prod's model reads of `database` (prod's country database, read-only) to resolve `byCinema` and the listings
+   *  of `kept` (prod's kept set, [[ProdRetained]]) it holds beside them. The kept ones count: 2026-11-15, PL "NT Live:
+   *  Mizantrop" at sixteen venues took its film through Kino Nowe Horyzonty's and Kinoteka's departed listings, whose
+   *  venue pages (year, director) were not captured -- the live drift check's whole resolve read them as bare titles and
+   *  called prod's right take drift. */
+  def read(database: MongoDatabase, byCinema: Seq[(models.Cinema, Seq[CinemaMovie])], kept: Seq[Listing], country: Country,
+           clock: Clock): Captured = {
+    val listings = modelInput(byCinema, kept, country)
     capture(new MongoTmdbDocuments(database), venuePages(database, listings.flatMap(_.page).distinct), listings,
       new MongoPinStore(Some(database)).all(), country, clock)
+  }
+
+  /** The listings whose lookups the recorder captures: those billed in `byCinema`, and those of `kept` the model holds
+   *  beside them ([[ProdRetained.modelInput]]), as the live drift check resolves them. */
+  def modelInput(byCinema: Seq[(models.Cinema, Seq[CinemaMovie])], kept: Seq[Listing], country: Country): Seq[Listing] = {
+    val normalizer = TitleNormalizer.forCountry(country)
+    ProdRetained.modelInput(ModelRead.corpus(byCinema, normalizer), kept, normalizer)
   }
 
   /** What a resolve of `listings` over `pins` reads of `prod`'s documents through [[lookups]], every live ask refused: the

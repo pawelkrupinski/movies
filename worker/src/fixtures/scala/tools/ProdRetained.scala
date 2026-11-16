@@ -34,6 +34,12 @@ object ProdRetained {
         now - services.identity.adapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))
     }
 
+  /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set) a
+   *  billed listing still bills the title of ([[services.identity.ListingRetention.retained]]) -- what the recorder
+   *  captures prod's lookups for (ProdLookupInputs.read) and what the live drift check resolves (IdentityLiveDrift). */
+  def modelInput(billed: Seq[Listing], recorded: Seq[Listing], normalizer: services.movies.TitleNormalizer): Seq[Listing] =
+    billed ++ services.identity.ListingRetention.retained(recorded, billed, normalizer)
+
   def write(root: Path, code: String, listings: Seq[Listing]): Path = {
     val file = path(root, code)
     Files.createDirectories(file.getParent)

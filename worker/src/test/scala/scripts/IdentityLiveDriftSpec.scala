@@ -122,7 +122,7 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers with ScratchDirect
     tools.ProdRetained.write(root, "pl", ended)
     val recorded = tools.ProdRetained.readFrom(root, "pl")
     recorded shouldBe ended                                                   // read back as written, its facts whole
-    IdentityLiveDrift.modelInput(listings(Helios -> "Lalka"), recorded, normalizer).map(_.key) should contain(ended.head.key)
-    IdentityLiveDrift.modelInput(listings(Helios -> "Matilda"), recorded, normalizer).map(_.key) should not contain ended.head.key
+    tools.ProdRetained.modelInput(listings(Helios -> "Lalka"), recorded, normalizer).map(_.key) should contain(ended.head.key)
+    tools.ProdRetained.modelInput(listings(Helios -> "Matilda"), recorded, normalizer).map(_.key) should not contain ended.head.key
   }
 }

@@ -109,12 +109,6 @@ object IdentityLiveDrift {
 
   /** Every listing (with its slot keys) joined to prod's film and compared with the whole resolve's — see the header for
    *  what is left out. */
-  /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set,
-   *  [[ProdRetained]]) a billed listing still bills the title of ([[services.identity.ListingRetention.retained]]). */
-  def modelInput(billed: Seq[services.identity.Listing], recorded: Seq[services.identity.Listing],
-                 normalizer: TitleNormalizer): Seq[services.identity.Listing] =
-    billed ++ services.identity.ListingRetention.retained(recorded, billed, normalizer)
-
   /** The decisions prod's projection serves of `resolution`: each take a hand judgement in `judged` calls wrong withdrawn,
    *  the projection's own last step (`TakeJudgements.withdraw` over `BundledJudgements`, IdentityProjectionWiring). */
   def asServed(resolution: Resolution, judged: TakeJudgements.Index): Map[ListingKey, ResolverDecision] =
@@ -181,7 +175,7 @@ object IdentityLiveDrift {
     val normalizer = TitleNormalizer.forCountry(country)
     // and the listings prod's model kept for their facts alone (ProdRetained), as its take-up resumes them
     val billed    = IdentitySlice.listingsOf(recording, rows)
-    val listings  = modelInput(billed, ProdRetained.readFrom(inputsDir, country.code), normalizer)
+    val listings  = ProdRetained.modelInput(billed, ProdRetained.readFrom(inputsDir, country.code), normalizer)
     val venues    = tools.CountryScrapeCorpus.cinemasOf(country).toSet
     val slots     = rows.filter(r => venues(r.cinema)).flatMap(r => r.films.map(cm => ListingKey.of(r.cinema, cm) -> slotKeys(r.cinema, cm, normalizer)))
       .distinctBy(_._1)

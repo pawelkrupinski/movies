@@ -79,7 +79,9 @@ object RecordCorpusFixture {
       // them for those (ProdLookupInputs)
       val lookups  = Alongside.start(s"prod-lookup-inputs-${country.code}") {
         val accepted = ProdListings.read(database, known)
-        (accepted, ProdLookupInputs.read(database, ProdListings.merged(rows, accepted).map(row => row.cinema -> row.films), country, clock))
+        // prod's kept listings too: their pages and answers are the model's input as much as the billed ones'
+        val kept     = scala.util.Try(retained.join(ProdLookupInputs.ReadTimeout)).getOrElse(Nil)
+        (accepted, ProdLookupInputs.read(database, ProdListings.merged(rows, accepted).map(row => row.cinema -> row.films), kept, country, clock))
       }
 
       val written = tools.Stopwatch.start()

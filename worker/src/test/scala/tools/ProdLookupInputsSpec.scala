@@ -88,6 +88,20 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
       Seq(models.Helios -> Seq("Stary, przyjęty"), models.Multikino -> Seq("Film Multikina"), models.KinoMuza -> Seq("Film Muzy"))
   }
 
+  // 2026-11-15, PL "NT Live: Mizantrop": prod took its film at sixteen venues through two departed listings it kept
+  // (Kino Nowe Horyzonty's, Kinoteka's), whose venue pages carried the year and director. The recorder captured pages
+  // for the billed listings alone, so the live drift check's whole resolve read the kept two as bare titles, took no
+  // film, and IdentityIncrementalDrift called prod's right take drift for every venue.
+  "the listings a capture reads" should "be the billed and the kept a billed listing still bills the title of, their pages with them" in {
+    val normalizer = services.movies.TitleNormalizer.forCountry(poland)
+    val nh   = "https://www.kinonh.pl/artykul.s?id=23063"
+    val kept = ModelRead.corpus(Seq(models.KinoMuza -> Seq(film(models.KinoMuza, "Mizantrop", Some(nh))),
+      models.Multikino -> Seq(film(models.Multikino, "Matilda", Some("https://example.org/matilda")))), normalizer)
+    val read = ProdLookupInputs.modelInput(Seq(models.Helios -> Seq(film(models.Helios, "NT Live: Mizantrop", None))), kept, poland)
+    read.flatMap(_.page) shouldBe Seq(nh)
+    read.map(_.key) should contain(kept.head.key)
+  }
+
   private def film(cinema: models.Cinema, title: String, page: Option[String]) =
     CinemaMovie(Movie(title), cinema, None, page, None, Nil, Nil, Seq(Showtime(LocalDateTime.of(2026, 10, 26, 18, 0), None, None, Nil)))
   private def venue(cinema: models.Cinema, titles: String*) = ArchivedScrape(cinema, None,
