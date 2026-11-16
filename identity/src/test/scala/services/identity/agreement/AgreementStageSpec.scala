@@ -260,6 +260,32 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stageOver(unanswered = true).questionsOf(listing(KinoMuza, "Karnet na festiwal")) shouldBe empty
   }
 
+  it should "ask of a title shaped as a franchise marathon once the model's own TMDB search found a film of that very title" in {
+    // the owner, 2026-11-16: "Skid Row Marathon" (2017) is a film once TMDB's search for it finds it, a franchise's night until
+    val skidRow = listing(KinoMuza, "Skid Row Marathon")
+    object Searched extends services.identity.IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = false
+      def detail(listing: Listing): Answer[Option[services.identity.DetailFacts]] = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery): Answer[Seq[services.identity.Hit]] = query match {
+        case services.identity.CandidateQuery.Title("Skid Row Marathon") => Answer.Known(Seq(services.identity.Hit(478312, "Skid Row Marathon", None, Some(2017), 1.2)))
+        case _                                                            => Answer.Known(Nil)
+      }
+      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+    }
+    def stageOver(tmdb: services.identity.IdentityLookups) = new AgreementStage(
+      Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true)), NoVenueDetails, normalizer,
+      IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb))
+    stageOver(Searched).questionsOf(skidRow).collect { case Question.Family(_, q) => q } should contain("title|Skid Row Marathon")
+    stageOver(NoVenueDetails).questionsOf(skidRow) shouldBe empty
+    stageOver(Searched).questionsOf(listing(KinoMuza, "The Hunger Games Marathon")) shouldBe empty
+    // the cluster the model left unmatched: an event while nothing of its title is found, the families' to read once it is
+    val model = Resolution(Seq(ResolverDecision(Seq(skidRow.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+      Map(skidRow.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def basis(tmdb: services.identity.IdentityLookups) = stageOver(tmdb).apply(model, Map(skidRow.key -> skidRow).get, version = 1).decisions.head.basis
+    basis(NoVenueDetails) shouldBe ResolverDecision.Basis.Event
+    basis(Searched) should not be ResolverDecision.Basis.Event
+  }
+
   "the settle rule" should "type a question attempted and not answered as Failed, decided on as no evidence, never Known" in {
     // docs/design/identity-structural-fixes.md fix 4c: the one collapse of a not-yet-answered question is typed, so a
     // reader decides on it only through Answer.failedAs

@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{FilmTable, Listing}
+import services.identity.{FilmTable, Hit, Listing}
 
 /** [[NonFilmEvents]] on the titles that decided its rules: the events the unmatched clusters bill, and the films and
  *  relays whose titles read like one. */
@@ -107,6 +107,27 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     Seq("Maraton Bajek", "Maraton Dla Dzieci", "Horror Movie Marathon", "Christmas Movie Marathon", "Samurai Marathon",
       "Autumn Marathon", "Brittany Runs a Marathon", "Spirit of the Marathon", "Kelton's Dark Corner 4: The Kelton Marathon")
       .foreach(title => withClue(title) { NonFilmEvents.of(titled(title)).filter(_ == "franchise marathon") shouldBe None })
+  }
+
+  it should "read a title shaped as a franchise marathon as a film when its own search found a film of that very title" in {
+    def hit(id: Int, title: String, original: Option[String] = None) = Hit(id, title, original, None, 1.0)
+    def found(hits: Hit*): Listing => Seq[Hit] = _ => hits
+    // the 2017 documentary: TMDB's search for the billing holds a film titled so -- a film, its families asked
+    NonFilmEvents.of(titled("Skid Row Marathon"), found(hit(1, "Skid Row Marathon"), hit(2, "Skid Row"))) shouldBe None
+    NonFilmEvents.of(titled("SKID ROW MARATHON"), found(hit(1, "Skid-Row Marathon"))) shouldBe None
+    NonFilmEvents.of(titled("Skid Row Marathon"), found(hit(1, "Maraton Skid Row", Some("Skid Row Marathon")))) shouldBe None
+    // nothing of that title found (or no search at hand): the franchise's night it reads as
+    NonFilmEvents.of(titled("Skid Row Marathon")) shouldBe Some("franchise marathon")
+    NonFilmEvents.of(titled("Skid Row Marathon"), found(hit(2, "Skid Row"))) shouldBe Some("franchise marathon")
+    NonFilmEvents.of(titled("The Hunger Games Marathon"), found(hit(3, "The Hunger Games"), hit(4, "The Hunger Games: Catching Fire"))) shouldBe
+      Some("franchise marathon")
+    // the words before it name a franchise -- several films titled by them -- even where a record bears the whole title
+    NonFilmEvents.of(titled("Twilight Saga Marathon"), found(hit(5, "Twilight Saga Marathon"), hit(6, "Twilight Saga: New Moon"),
+      hit(7, "Twilight Saga: Eclipse"))) shouldBe Some("franchise marathon")
+    NonFilmEvents.of(titled("Maraton Diuny"), found(hit(9, "Diuna"), hit(10, "Diuna: Część druga"))) shouldBe Some("franchise marathon")
+    // the films still read as films whatever was found
+    Seq("Samurai Marathon", "Brittany Runs a Marathon", "Spirit of the Marathon", "Kelton's Dark Corner 4: The Kelton Marathon")
+      .foreach(title => withClue(title) { NonFilmEvents.of(titled(title), found(hit(11, title))).filter(_ == "franchise marathon") shouldBe None })
   }
 
   "an event's billing" should "state its edition, episodes and session length as facts" in {

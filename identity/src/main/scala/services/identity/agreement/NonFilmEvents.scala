@@ -49,8 +49,8 @@ object NonFilmEvents {
     // Never a marathon of a KIND of film ([[MarathonKinds]]: "Maraton Bajek" is each venue's own cartoons), "<film> -
     // maraton" (one film's marathon screening, "Inna Mamusia - maraton", judged right), nor a film's own title closing
     // on the word: one name before it ("Samurai Marathon", "Autumn Marathon"), an article ("Brittany Runs a Marathon",
-    // "Spirit of the Marathon") or a subtitle ("Kelton's Dark Corner 4: The Kelton Marathon"). KNOWN GAP: a film
-    // titled by two words and the word ("Skid Row Marathon", 2017) reads as one, unless it states its director and year.
+    // "Spirit of the Marathon") or a subtitle ("Kelton's Dark Corner 4: The Kelton Marathon"). A film titled by two
+    // words and the word ("Skid Row Marathon", 2017) reads as one only until its own search finds it ([[namesItsOwnFilm]]).
     "franchise marathon" -> (s"""(?U)^maraton\\s+(?!$MarathonKinds)\\p{L}""" +
       s"""|^(?![^:]*\\b$MarathonKinds)[^:]*\\S\\s+\\S+\\s+(?<!\\b(?:a|an|the|der|die|das)\\s)marathon\\s*$$""").r,
     "esports"           -> """\bleague\s+of\s+legends|\bworlds\s+\d\d\b.*\bfinals""".r,
@@ -111,10 +111,11 @@ object NonFilmEvents {
 
   /** Why `listings` (a cluster's) are an event no film database holds — the first listing's reason — or `None` unless
    *  every one of them is. */
-  def of(listings: Seq[Listing]): Option[String] =
+  def of(listings: Seq[Listing]): Option[String] = of(listings, NothingFound)
+  def of(listings: Seq[Listing], found: Found): Option[String] =
     if (listings.isEmpty) None
     else {
-      val reasons = listings.iterator.map(of)
+      val reasons = listings.iterator.map(of(_, found))
       val first   = reasons.next()
       first.filter(_ => reasons.forall(_.isDefined))
     }
@@ -151,7 +152,7 @@ object NonFilmEvents {
   private val SessionHours   = """\b(\d{1,2})\s*(?:stunden|hours|hrs)\b""".r
 
   /** `listing`'s event and what its title states of it ([[Facts]]), or `None` when it bills no event ([[of]]). */
-  def facts(listing: Listing): Option[Facts] = of(listing).map { kind =>
+  def facts(listing: Listing, found: Found = NothingFound): Option[Facts] = of(listing, found).map { kind =>
     val title    = listing.rawTitle.toLowerCase(Locale.ROOT)
     val edition  = EditionYear.findFirstMatchIn(title).map(_.group(1).toInt)
       .orElse(EsportsEdition.findFirstMatchIn(title).map(2000 + _.group(1).toInt))
@@ -167,13 +168,35 @@ object NonFilmEvents {
   }
 
   /** The event every one of `listings` bills, as the first states it — `None` unless each bills one of one kind. */
-  def facts(listings: Seq[Listing]): Option[Facts] = {
-    val all = listings.map(facts)
+  def facts(listings: Seq[Listing], found: Found): Option[Facts] = {
+    val all = listings.map(facts(_, found))
     all.headOption.flatten.filter(first => all.forall(_.exists(_.kind == first.kind)))
   }
 
-  /** Why `listing` is an event no film database holds, or `None`. */
-  def of(listing: Listing): Option[String] =
+  /** What TMDB's searches for a listing's own title found — the answers the model read for it, no question of its own:
+   *  what tells a film titled as a franchise's marathon from one ([[namesItsOwnFilm]]). */
+  type Found = Listing => Seq[services.identity.Hit]
+  /** No search at hand: a title shaped as a franchise's marathon reads as one. */
+  val NothingFound: Found = _ => Nil
+
+  private val MarathonWord    = Set("marathon", "maraton")
+  private val LeadingArticles = Set("the", "a", "an", "der", "die", "das")
+  private def words(title: String): Seq[String] = TitleContainment.tokens(title).dropWhile(LeadingArticles)
+
+  /** Whether a title shaped as a franchise's marathon ([[Markers]]) is a film's own — the owner, 2026-11-16: its search
+   *  found a film titled so, whole ("Skid Row Marathon", the 2017 documentary), and the words beside the marathon name
+   *  no franchise: no two other films found are titled by them ("Twilight Saga Marathon" beside "Twilight Saga: New
+   *  Moon" and "Twilight Saga: Eclipse" stays the night of the saga, whatever record bears its whole billing). */
+  private[agreement] def namesItsOwnFilm(raw: String, hits: Seq[services.identity.Hit]): Boolean = {
+    val whole = words(raw)
+    val named = whole.filterNot(MarathonWord)
+    def titles(hit: services.identity.Hit) = (hit.title +: hit.originalTitle.toSeq).map(words)
+    val (itsOwn, others) = hits.partition(hit => titles(hit).contains(whole))
+    itsOwn.nonEmpty && named.nonEmpty && others.count(hit => titles(hit).exists(_.startsWith(named))) < 2
+  }
+
+  /** Why `listing` is an event no film database holds, or `None`. `found`: what its own title's searches found. */
+  def of(listing: Listing, found: Found = NothingFound): Option[String] =
     if (listing.directors.exists(_.trim.nonEmpty) && listing.year.isDefined) None
     else {
       val raw   = listing.rawTitle.trim
@@ -181,6 +204,7 @@ object NonFilmEvents {
       if (ListingShape.relays(listing, title)) liveShow(listing, title)
       else Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
         .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
+        .filterNot(reason => reason == "franchise marathon" && namesItsOwnFilm(raw, found(listing)))
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
         .orElse(eventBilled(raw).filter(NonMovieEventClassifier.isPerformance(_)).map(_ => "live event"))
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
