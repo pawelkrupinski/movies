@@ -198,7 +198,8 @@
 # older main A, rebased onto a main that moved with no file overlap, so A..B is what landed since plus the change --
 # the --fast-only set over those paths, plus the unit tests of every module they touch (`--unit-plan < paths` prints
 # them; the worker's are its `rest` unit row -- its identity row is the `identity` area's, its heavy rows no unit
-# stage's -- and any worker identity-row spec the paths change, by name), plus the self-tests holding repo-wide files
+# stage's -- and any worker identity-row spec the paths change, by name; through the kept server narrowed to the
+# classes the combined change reaches, test_impact), plus the self-tests holding repo-wide files
 # to a rule (`run-script-tests --readers`) when those paths touch what they read. `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the

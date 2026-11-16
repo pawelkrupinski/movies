@@ -226,7 +226,9 @@ rebased onto a main that moved with no file overlap (`~/bin/lib/agentctl/queue.p
 again in full but once on the rebased tip, on a `check/verify-<full base>-<id>` branch: the `--fast-only` set over what
 landed and the change together, plus the unit tests of every module either side touches (`--unit-plan < paths` prints
 them; the worker's are its `rest` row as build.sbt's `WORKER_ROW` defines it, read from the build, never its identity
-or heavy rows), and the self-tests that hold repo-wide files to a rule (`# script-test-reads:`; `run-script-tests
+or heavy rows) -- through the checkout's kept sbt server, narrowed to the classes the combined change can reach
+(`identityImpact`, project/TestImpact.scala: Zinc's class dependencies, and the specs whose literals name a changed
+file or a tree above it, as a lint walking `worker/src/main` does; a cold check runs them all) -- and the self-tests that hold repo-wide files to a rule (`# script-test-reads:`; `run-script-tests
 --readers`) when the combined change touches what they read -- the two sides share no file, yet a .py or a spec of
 either can break them -- with no area tests and no red gate.
 
