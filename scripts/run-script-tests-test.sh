@@ -275,12 +275,13 @@ check "...in any bash file the change touches, a test re-run or not" "1" \
 scratch_git "$tree" checkout -q -- scripts/fl/mention-test.sh
 for construct in 'mapfile -t lines < f' 'echo "${name,,}"' 'wait -n' 'echo "${arr[-1]}"' 'exec {fd}> f' 'cmd |& tee f' \
     'echo x &>> f' 'printf "%(%s)T" -1' '[[ -v name ]]' 'echo "${name@Q}"' 'local -n ref=x' 'shopt -s globstar' \
-    'echo "$EPOCHSECONDS"' 'coproc cat' 'declare -g x=1'; do
+    'echo "$EPOCHSECONDS"' 'coproc cat' 'declare -g x=1' 'declare -u name' 'local -l name=x' 'echo {1..9..2}'; do
   printf '%s\n' "$construct" >> "$tree/scripts/fl/tool.sh"
   check "...each bash-4-only construct: $construct" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/tool.sh:2:' "$work/out")"
   scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
 done
 printf '%s\n' '# mapfile and ${x,,} need bash 4' 'echo "${BASHPID:-$$}" # on 3.2: $$' 'declare -a list' 'echo "${x:-a}|${#y}"' \
+  'local -r name=x' 'echo {1..9}' \
   >> "$tree/scripts/fl/tool.sh"
 check "...never one only named in a comment, a guarded BASHPID, an indexed array or a 3.2 expansion" "0" "$(floor)"
 scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
@@ -302,6 +303,26 @@ scratch_git "$tree" checkout -q "$floorbase" -- scripts/fl/tool.sh; scratch_git 
 put scripts/fl/new.sh 'readarray -t x < f'
 check "...an untracked bash file's lines are all added lines" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/new.sh:1:' "$work/out")"
 rm "$tree/scripts/fl/new.sh"
+# --floor: BOTH RUNS IN ONE. The hook ran the floor run beside the native one, so a test in the floor's scope ran twice at
+# once (pre-push-test.sh, minutes each, slowing both); now each test runs once: the floor's scope under the floor bash,
+# the rest natively, in one pool -- and the floor's static half still fails the run.
+put scripts/fl/which-test.sh "$(printf '%s\n' 'echo "$1"' 'command -v bash >> "$WHICH_BASH"')"
+put scripts/fl/which.sh 'echo which'
+put scripts/fl/names-which-test.sh 'echo "reads what scripts/fl/which.sh prints"; command -v bash >> "$WHICH_BASH"'
+scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'a tool whose test says which bash runs it'
+whichbase="$(scratch_git "$tree" rev-parse HEAD)"
+echo 'echo edited' >> "$tree/scripts/fl/which.sh"
+export WHICH_BASH="$work/which-bash"; : > "$WHICH_BASH"
+code="$(run --floor "$work/floor-bash" --changed "$whichbase")"
+check "--floor: a changed tool's self-test runs once, under the floor bash; a test it does not scope runs natively" \
+  "0 2 1 1" "$code $(grep -c . "$WHICH_BASH") $(grep -c 'floor-bin/bash$' "$WHICH_BASH") $(grep -c '^PASS .*fl/names-which-test.sh$' "$work/out")"
+check "...the floor's tests marked in the table" "1" "$(grep -c '^PASS .*fl/which-test.sh (floor)$' "$work/out")"
+echo 'readarray -t x < f' >> "$tree/scripts/fl/which.sh"
+check "...and a construct the floor lacks still fails the run" "1 1" \
+  "$(run --floor "$work/floor-bash" --changed "$whichbase") $(grep -c '^FLOOR .*scripts/fl/which.sh:3:' "$work/out")"
+check "...--floor without --changed, or with --bash, is a usage error" "64 64" \
+  "$(run --floor "$work/floor-bash") $(run --floor "$work/floor-bash" --bash "$work/floor-bash" --changed "$whichbase")"
+scratch_git "$tree" checkout -q -- scripts/fl
 rm -rf "$tree/scripts/fl"; scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'floor done'
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"

@@ -13,6 +13,8 @@
 #   scripts/run-script-tests --bash "$(scripts/floor-bash)"  # every self-test under the floor bash 3.2 (macOS's
 #                                                  # /bin/bash; elsewhere scripts/floor-bash --install builds it)
 #   scripts/run-script-tests --changed origin/main --bash "$(scripts/floor-bash)"  # the floor's own scope (FLOOR)
+#   scripts/run-script-tests --changed origin/main --floor "$(scripts/floor-bash)" # both in ONE run: the floor's scope
+#                                                  # under the floor bash, the rest natively (FLOOR; the pre-push hook)
 #   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
 #                                                  # them (default: those --changed origin/main selects); Docker
 #
@@ -51,6 +53,11 @@
 # failing the run -- and, re-run under it, the self-tests of those bash files and of the scripts sourcing them, never a
 # test selected only by a name it mentions or a glob it reads (those run on today's bash: no bash the change touched
 # is theirs to run). The nightly macOS job (order-independence.yml) runs every self-test under it, whatever changed.
+# `--floor <bash>` with `--changed` is both runs in ONE: the floor's static half, the floor's scope under it, and every
+# other selected test natively, in one pool of --jobs. The hook ran the two side by side, so a test in both ran twice at
+# once -- pre-push-test.sh, ~150-220 s each, kept a hook change ~+43 s (+14%) over its budget by the contention alone
+# (2026-11-16) -- and each test of the floor's scope now runs once, under 3.2. Its run on today's bash is the --linux
+# run's (CI's ubuntu bash 5) and CI's; a construct that bash 5 rejects and 3.2 accepts is the rare way round.
 #
 # LONGEST FIRST. A run lasts as long as its slowest slot, and a few tests take minutes where most take seconds, so a slow
 # one started last stretches the run. Tests start in descending order of the seconds their last PASS took, kept in
@@ -96,7 +103,7 @@ PythonFloor="3.9"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
 stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-watch.sh"
-jobs=8 timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" test_bash="" linux=0 filters=()
+jobs=8 timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" test_bash="" floor_bash="" linux=0 filters=()
 usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
 # A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
 usage_error() { echo "run-script-tests: $*" >&2; usage; }
@@ -113,6 +120,7 @@ while [ $# -gt 0 ]; do
     --tag) flag_value "$@"; tag="$2"; shift ;;
     --changed) flag_value "$@"; changed_base="$2"; shift ;;
     --bash) flag_value "$@"; test_bash="$2"; shift ;;
+    --floor) flag_value "$@"; floor_bash="$2"; shift ;;
     --linux) linux=1 ;;
     -h|--help) usage ;;
     -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
@@ -122,6 +130,7 @@ while [ $# -gt 0 ]; do
 done
 cd "$root" || exit 64
 [ "$readers" = 0 ] || [ -n "$changed_base" ] || usage_error "--readers needs --changed"
+[ -z "$floor_bash" ] || { [ -n "$changed_base" ] && [ -z "$test_bash" ]; } || usage_error "--floor needs --changed, and no --bash"
 # --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
 [ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
 
@@ -417,9 +426,20 @@ if [ -n "$test_bash" ]; then
   mkdir "$work/bash-bin" && ln -s "$test_bash" "$work/bash-bin/bash" || exit 64
   PATH="$work/bash-bin:$PATH"; export PATH
 fi
-: > "$work/floor"
+: > "$work/floor"; : > "$work/floor.tests"
+if [ -n "$floor_bash" ]; then # --floor: the floor's own scope, worked out by its own run's rules (FLOOR), run in this one
+  [ -x "$floor_bash" ] || { echo "run-script-tests: --floor $floor_bash is no executable" >&2; exit 64; }
+  mkdir "$work/floor-bin" && ln -s "$floor_bash" "$work/floor-bin/bash" || exit 64
+  "$BASH" "${BASH_SOURCE[0]}" --root "$root" --changed "$changed_base" --bash "$floor_bash" --list > "$work/floor.list" \
+    || { cat "$work/floor.list" >&2; exit 2; }
+  cut -f1 "$work/floor.list" > "$work/floor.tests"
+fi
 if [ -n "$changed_base" ]; then
   changed_paths > "$work/changed.direct" || exit 2
+  if [ -n "$floor_bash" ] && [ "$list" = 0 ]; then
+    bash_sources < "$work/changed.direct" > "$work/changed.bash"
+    test_bash=$floor_bash floor_findings "$work/changed.bash" > "$work/floor"
+  fi
   if [ -n "$test_bash" ]; then # the floor's scope (FLOOR): only the bash the change touches
     bash_sources < "$work/changed.direct" > "$work/changed.bash"
     [ "$list" = 1 ] || floor_findings "$work/changed.bash" > "$work/floor"
@@ -451,7 +471,7 @@ fi
 floor_failed() { # the floor's findings (FLOOR) fail the run whatever its tests say: said, and true when there are any
   [ -s "$work/floor" ] || return 1
   echo; cat "$work/floor"
-  echo "run-script-tests: $(wc -l < "$work/floor" | tr -d ' ') thing(s) the floor bash $test_bash cannot run (FLOOR)"
+  echo "run-script-tests: $(wc -l < "$work/floor" | tr -d ' ') thing(s) the floor bash ${test_bash:-$floor_bash} cannot run (FLOOR)"
 }
 if [ ! -s "$work/selected" ]; then
   if [ -n "$changed_base" ]; then
@@ -472,12 +492,14 @@ fi
 
 # ── Running ────────────────────────────────────────────────────────────────────────────────────
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
-  local i="$1" path="$2" start=$SECONDS code interpreter=bash
+  local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH
   case "$path" in *.py) interpreter=python3 ;; esac
+  # --floor: the floor's scope runs under the floor bash alone -- ONCE, not again natively beside it (FLOOR)
+  if grep -qxF "$path" "$work/floor.tests"; then interpreter=$floor_bash test_path="$work/floor-bin:$PATH"; fi
   # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
   # (appended to, as the watch below appends its report: neither writes over the other)
   : > "$work/$i.log"
-  BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 &
+  PATH=$test_path BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 &
   local test_pid=$! watch_pid
   # the no-progress bound: its log written counts as progress; a stall says what the test's group was stuck on, in its
   # log, and ends the group. Run by this script's own bash: a --bash under test runs the tests only.
@@ -518,7 +540,7 @@ report() { # <index>
   elif [ "$code" = 124 ] || [ "$code" = 137 ]; then status=TIMEOUT
   else status=FAIL
   fi
-  printf '%-7s %4ss  %s\n' "$status" "$secs" "${paths[$i]}" >> "$work/table"
+  printf '%-7s %4ss  %s%s\n' "$status" "$secs" "${paths[$i]}" "$(grep -qxF "${paths[$i]}" "$work/floor.tests" && echo " (floor)")" >> "$work/table"
   [ "$status" = PASS ] && printf '%s\t%s\n' "${paths[$i]}" "$secs" >> "$work/seconds.tsv"
   if [ "$status" != PASS ]; then
     failed=$((failed + 1))

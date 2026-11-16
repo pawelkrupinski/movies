@@ -3,6 +3,8 @@
 (^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*A	an associative array, declare -A (bash 4.0)
 (^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*n	a nameref, declare -n (bash 4.3)
 (^|[^A-Za-z0-9_-])(declare|typeset)[[:space:]]+-[A-Za-z]*g	declare -g (bash 4.2)
+(^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*[lu]	a case attribute, declare -l / -u (bash 4.0)
+\{(-?[0-9]+|[A-Za-z])\.\.(-?[0-9]+|[A-Za-z])\.\.-?[0-9]+\}	a brace expansion with a step, {1..9..2} (bash 4.0)
 (^|[^A-Za-z0-9_-])(mapfile|readarray)([^A-Za-z0-9_-]|$)	mapfile / readarray (bash 4.0)
 (^|[^A-Za-z0-9_-])wait[[:space:]]+-n	wait -n (bash 4.3)
 (^|[^A-Za-z0-9_-])coproc([[:space:]]|$)	coproc (bash 4.0)
