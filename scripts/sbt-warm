@@ -646,8 +646,8 @@ server_gone() {
 # A client ENDING is no stall (Order independence #74: "0 done done", a busy stub retried after it had printed): its
 # tree's CPU leaves the sum as its processes end, and the poll that found it gone, or a zombie, counted as quiet -- with
 # one quiet poll of its wind-down on a loaded runner, that made the 2 s bound. So a poll that finds the client ended
-# judges nothing, and a process of the trees that ended since the last poll is progress (a tree that waits on nothing
-# keeps its processes).
+# judges nothing, and the trees shrinking since the last poll is progress (a tree that waits on nothing keeps its
+# processes; one that only replaces them with short-lived children, a spawn loop, is no progress).
 watch_client() {
   local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100} next quiet=0 last now spid dump
   local live=${KINOWO_SBT_WARM_LIVENESS_SECONDS:-15} nextlive started=$SECONDS pids lastpids
@@ -675,10 +675,11 @@ watch_client() {
     # its CPU out of the sum, and the poll read as quiet (4 of 60 busy calls under 3x-cores load, each trace "now=0,
     # nothing runnable, nothing ended, client gone"). Alive after the measure, it was alive throughout it.
     client_running || break
-    # progress: CPU, a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh), or one
-    # ended since the last poll's listing or before this measure was done
+    # progress: CPU, a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh), the trees
+    # shrinking since the last poll's listing (a wind-down; one replacing its processes is no progress), or one ended
+    # before this measure was done
     # shellcheck disable=SC2086
-    if [ $((now - last)) -ge "$need" ] || stall_any_runnable $pids || stall_any_ended "$lastpids" "$pids" ||
+    if [ $((now - last)) -ge "$need" ] || stall_any_runnable $pids || stall_tree_shrank "$lastpids" "$pids" ||
       stall_any_gone $pids; then
       quiet=0
       [ -n "${KINOWO_PROGRESS_FILE:-}" ] && touch "$KINOWO_PROGRESS_FILE"

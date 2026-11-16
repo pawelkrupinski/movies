@@ -19,7 +19,7 @@
 #       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
 #       `bounded` then returns the step's status as for any other end.
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
-#                                     stall_any_runnable [<pid>...], stall_any_ended <before> <after>,
+#                                     stall_any_runnable [<pid>...], stall_tree_shrank <before> <after>,
 #                                     stall_any_gone [<pid>...]
 #
 # THE STALL SIGNAL, for any caller (agentctl land among them): a stalled step's tool exits 75 (EX_TEMPFAIL) with a
@@ -66,14 +66,19 @@ stall_any_runnable() { # [<pid>...]
   ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -q '^R'
 }
 
-# Whether one of the pids of <before> (whitespace-separated) is not in <after>: a process of the watched tree ended
-# between two polls. sbt-warm's client watch counts it as progress: the CPU of a process that ended leaves the sum,
-# and a client winding down on a loaded machine (its sbt done, the wrapper reaping it) otherwise reads as quiet.
-stall_any_ended() { # <before> <after>
-  local p
+# Whether the tree SHRANK between two polls: a pid of <before> (whitespace-separated) is not in <after>, and every pid
+# of <after> was in <before>. sbt-warm's client watch counts it as progress: the CPU of a process that ended leaves the
+# sum, and a client winding down on a loaded machine (its sbt done, the wrapper reaping it) otherwise reads as quiet.
+# A process ending beside a new one is no progress: a tree that keeps spawning short-lived children (a retry loop's
+# `sleep`) ends one every poll, and counting any end let such a tree run for ever (2026-11-16 review) -- one doing real
+# work through its children shows that work as their CPU, which ps -S adds to the parent that reaps them.
+stall_tree_shrank() { # <before> <after>
+  local p ended=1 before after
   # shellcheck disable=SC2086 # whitespace-separated pids, newlines folded
-  for p in $1; do case " $(echo $2) " in *" $p "*) ;; *) return 0 ;; esac; done
-  return 1
+  before=" $(printf '%s ' $1)" after=" $(printf '%s ' $2)"
+  for p in $after; do case "$before" in *" $p "*) ;; *) return 1 ;; esac; done
+  for p in $before; do case "$after" in *" $p "*) ;; *) ended=0 ;; esac; done
+  return "$ended"
 }
 
 # Whether one of the <pid>s has ended (gone, or a zombie not yet waited for). Asked after a measure of their CPU, it

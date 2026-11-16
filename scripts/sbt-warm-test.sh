@@ -571,6 +571,19 @@ SHIM
 chmod +x "$scratch/slow-ps/ps"
 check "a client ending while a poll measures it is no stall" "0 done" "$(busy_call 1 PATH="$scratch/slow-ps:$PATH")"
 rm -f "$scratch/winding-down"
+# A TREE THAT ONLY REPLACES ITS PROCESSES IS NO PROGRESS: a client looping on short-lived children (a retry loop's
+# `sleep`) ends one every poll, and when any process ending counted as progress such a call never stalled at all --
+# here it ran into spec_bounded's deadline (124). A process ending is progress only when the trees shrank: nothing new.
+cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+echo \$\$ >> "$scratch/hung"; while :; do sleep 0.3; done
+STUB
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 SPEC_HANG_BOUND=40 \
+  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null); rc=$?
+check "a client that only spawns short-lived children is a stall" "75 yes" \
+  "$rc $(grep -q '^sbt-warm STALLED: compile' <<<"$out" && echo yes || echo "no: $out")"
+check "...and no spawning client left behind" "0" "$(spec_still_running "$scratch/hung")"
+rm -f "$scratch/hung"
 
 # ONE COMMAND AT A TIME: a --serve marks the server serving; a call meeting a live serve fails at once, BLOCKED, instead
 # of queueing behind it; the serve's owner gone, the server is stopped; a serve gone, the next call restarts the server
