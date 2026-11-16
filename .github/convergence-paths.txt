@@ -172,6 +172,7 @@ scripts/ci/population_walk_diff.py
 scripts/ci/recording_health.py
 scripts/ci/release-store-prune.sh
 scripts/ci/scheduled-failure-issue.sh
+scripts/ci/seed-sbt-runner.sh
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
 scripts/identity-fetch-recording.sh

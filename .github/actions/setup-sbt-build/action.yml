@@ -48,6 +48,10 @@ runs:
         distribution: temurin
         java-version: ${{ inputs.java-version }}
         cache: sbt
+    # setup-sbt's own download is one retry-free curl: seed the tool cache it looks in first (SetupSbtRunnerPinSpec).
+    - name: Seed the sbt runner into the tool cache (retrying, checksum-verified)
+      shell: bash
+      run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'
     # setup-sbt installs the runner; ITS sbt-2 disk cache is off, and restored below under a key of our
     # own. setup-sbt keys it on the first line of `java -version`, which is the JVM's "Picked up
     # JAVA_TOOL_OPTIONS: ..." banner wherever that variable is set, so

@@ -13,6 +13,12 @@ import org.scalatest.matchers.should.Matchers
  * 2026-10-26), across ~6,000 sbt jobs a week. The runner only launches the build's own sbt (project/build.properties),
  * so which runner it is changes nothing else. Bump this with the image's ARG, in the same pair of commits.
  *
+ * Where the runner is NOT in the tool cache (GitHub's hosted runners), setup-sbt's own download is one `curl -sL` with no
+ * retry: a DNS blip on a hosted runner failed a convergence leg on it (curl exit 6, Identity model convergence #1195,
+ * 2026-11-16). So every setup-sbt step comes right after `scripts/ci/seed-sbt-runner.sh`, which puts the pinned runner
+ * into the tool cache through fetch-verified.sh (retrying for minutes, checksum-verified) and names the curl exit if it
+ * still fails; setup-sbt then finds it there and downloads nothing.
+ *
  * And setup-sbt's own disk cache stays off: it is sbt 2's, and this build is on sbt 1, so it only ever restored and
  * saved an empty directory.
  */
@@ -38,6 +44,19 @@ class SetupSbtRunnerPinSpec extends AnyFlatSpec with Matchers {
     }.flatten
   }
 
+  private val SeedStep = """run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'"""
+
+  /** Each setup-sbt step's own `if:` and the code lines of the step before it, comments dropped. */
+  private def seedsBefore(text: String): Seq[(Option[String], Seq[String])] = {
+    val lines = RepoFile.withoutComments(text).linesIterator.map(_.trim).filter(_.nonEmpty).toVector
+    lines.indices.collect {
+      case at if lines(at).stripPrefix("- ").startsWith("uses: sbt/setup-sbt@") =>
+        val ownIf = lines.drop(at + 1).takeWhile(!_.startsWith("- ")).find(_.startsWith("if:"))
+        val start = lines.lastIndexWhere(_.startsWith("- "), at - 1)
+        (ownIf, lines.slice(start, at).map(_.stripPrefix("- ")))
+    }
+  }
+
   private lazy val steps: Seq[(String, Map[String, String])] =
     RepoFile.ciFiles().flatMap(path => setupSbtSteps(RepoFile.read(path)).map(path -> _))
 
@@ -54,6 +73,23 @@ class SetupSbtRunnerPinSpec extends AnyFlatSpec with Matchers {
     withClue("pass `disk-cache: 'false'`; this build is on sbt 1: ") {
       cached shouldBe empty
     }
+  }
+
+  it should "come right after the retrying seed step, under the same condition" in {
+    val found = RepoFile.ciFiles().flatMap(path => seedsBefore(RepoFile.read(path)).map(path -> _))
+    found.map(_._1).distinct.size should be >= 9
+    val unseeded = found.collect {
+      case (path, (ownIf, before)) if !before.contains(SeedStep) || before.find(_.startsWith("if:")) != ownIf => path
+    }
+    withClue(s"put a step `$SeedStep` (with setup-sbt's own `if:`) right before setup-sbt: ") {
+      unseeded shouldBe empty
+    }
+  }
+
+  "the seed script" should "pin the same runner, with its release's sha256" in {
+    val script = RepoFile.read("scripts/ci/seed-sbt-runner.sh")
+    script should include(s"version=\"$${1:-$ImageRunner}\"")
+    script should include("sha256=\"${2:-6ff28e1dea38d1de48ea3d4e903f0380b85b19f945a103e30ec4298717c90cd7}\"")
   }
 
   "the build" should "still be on sbt 1, for which setup-sbt's disk cache holds nothing" in {

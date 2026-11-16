@@ -92,6 +92,10 @@ jobs:
                   java-version: 27
                   cache: sbt
 
+            # setup-sbt's own download is one retry-free curl: seed the tool cache it looks in first (SetupSbtRunnerPinSpec).
+            - name: Seed the sbt runner into the tool cache (retrying, checksum-verified)
+              shell: bash
+              run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'
             - uses: sbt/setup-sbt@v1
               with:
                   sbt-runner-version: 2.0.10 # the job image's (SetupSbtRunnerPinSpec)
