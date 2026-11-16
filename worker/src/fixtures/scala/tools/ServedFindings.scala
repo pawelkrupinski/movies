@@ -6,8 +6,13 @@ import scala.jdk.CollectionConverters._
 
 /** One offence a served-corpus check names: the check (`what`, the report's heading), the offender it names
  *  (`subject`: the film, venue and listing -- what stays the same while the same offence stands, never a count or a
- *  first showtime), and the line the report prints. */
-final case class ServedFinding(what: String, subject: String, line: String)
+ *  first showtime), and the line the report prints. A verify matches a finding to the base's by `what` AND
+ *  `subject`, so neither may carry a count: the emit check's heading once named how many screenings the archive
+ *  stored, and a head whose scrape stored one more would have failed every standing finding under it. The heading
+ *  is checked (no digit in it); a subject's count is its check's to keep out. */
+final case class ServedFinding(what: String, subject: String, line: String) {
+  require(!what.exists(_.isDigit), s"a served finding's heading names its check, never a count: '$what'")
+}
 
 /**
  * A served-corpus check's findings, judged against the BASE's over the same recording: what the code added fails,

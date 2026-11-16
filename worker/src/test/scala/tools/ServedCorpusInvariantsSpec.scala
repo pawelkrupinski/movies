@@ -201,4 +201,12 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
     def row(id: String) = StoredMovieRecord("It", Some(2017), MovieRecord(), FilmId(id), storedKey = Some("it|2017"))
     ServedCorpusInvariants.duplicatedKeys(Seq(row("f1"), row("f2")), titleNormalizer) shouldBe Seq("it|2017 <- f1, f2")
   }
+
+  // A verify tells a standing finding from a new one by its heading and subject; a count in the heading (the emit
+  // check's "of N screening(s) never reach the read model") moved with any head that stored one more, and every
+  // standing finding under it then failed as the code's.
+  "a served finding" should "refuse a heading that carries a count" in {
+    an[IllegalArgumentException] should be thrownBy ServedFinding("of 812 screening(s) never reach the read model", "Helios at 2026-11-16T18:00", "x")
+    noException should be thrownBy ServedFinding("stored screening(s) never reach the read model", "Helios at 2026-11-16T18:00", "x")
+  }
 }

@@ -1629,7 +1629,7 @@ abstract class CountryConvergenceBehaviour(
       def named(what: String, offenders: Iterable[String]) = offenders.toSeq.map(o => ServedFinding(what, o, o))
       val failing = failingOf("emit",
         named("cinema(s) in cinema_scrapes never reach the read model", lostCinemas) ++
-        named(s"of ${storedScreenings.size} screening(s) never reach the read model", lostScreenings.toSeq.sorted.map { case (c, at) => s"$c at $at" }) ++
+        named("stored screening(s) never reach the read model", lostScreenings.toSeq.sorted.map { case (c, at) => s"$c at $at" }) ++
         named("settled film(s) exist in the corpus but are emitted by nothing", homeless))
       withClue(s"${country.displayName}'s read model does not emit what its archive holds:\n${failing.mkString("\n")}\n") {
         failing shouldBe empty
