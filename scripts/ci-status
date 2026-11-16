@@ -10,8 +10,10 @@
 #   scripts/ci-status --workflow <file|name>   those workflows instead (repeatable)
 #   scripts/ci-status --branch <b>             another branch than main
 #   scripts/ci-status --run <id>               one run: its jobs that did not succeed, with the failing steps (what
-#                                              `gh run view <id> --json jobs --jq ...` was written for), then the
-#                                              `agentctl ci-why <id>` that reads the failure's log
+#                                              `gh run view <id> --json jobs --jq ...` was written for) -- a job with no
+#                                              failed step (cancelled, never given a runner) with its check run's
+#                                              annotations, which name why -- then the `agentctl ci-why <id>` that reads
+#                                              the failure's log
 #   --no-cache                                 ask GitHub again (the cache: ~/.cache/ci-status, CI_STATUS_CACHE_DIR)
 #
 # Output, tab-separated: <workflow> <run id> <sha10> <status> <conclusion> <created>; "-" for a workflow with no run.

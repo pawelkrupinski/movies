@@ -78,6 +78,20 @@ def workflow_lines(workflows, branch, sha, use_cache):
     return lines
 
 
+def job_annotations(job_id, use_cache):
+    """A job that did not succeed with no failed step (cancelled before a step ran, or never given a runner) has no log to
+    read: its cause is in its check run's annotations. iOS #526 (run 43903912001): ui-tests (macos-latest) sat 15 min
+    with no runner and was cancelled, the cause only in "The job was not acquired by Runner of type hosted even after
+    multiple attempts" -- and ci-why, reading logs, called it UNCLEAR. Each distinct annotation once, indented."""
+    data = gh_api(f"check-runs/{job_id}/annotations", use_cache)
+    seen = []
+    for annotation in data if isinstance(data, list) else []:
+        line = f"  {annotation.get('annotation_level') or '-'}: {(annotation.get('message') or '').strip()}"
+        if line not in seen:
+            seen.append(line)
+    return seen
+
+
 def run_lines(run_id, use_cache):
     data = gh_api(f"actions/runs/{run_id}/jobs?per_page=100", use_cache)
     if data is None:
@@ -90,6 +104,8 @@ def run_lines(run_id, use_cache):
         steps = ", ".join(s["name"] for s in job.get("steps", []) if s.get("conclusion") == "failure")
         lines.append("\t".join([job["name"], str(job.get("id", "-")), job.get("status") or "-",
                                 job.get("conclusion") or "-", steps or "-"]))
+        if not steps and job.get("id") is not None:
+            lines += job_annotations(job["id"], use_cache)
     lines.append(f"why (reads the failed step's log): ~/bin/agentctl ci-why {run_id}")
     return lines
 

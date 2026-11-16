@@ -15,7 +15,13 @@ RUNS = '''{"workflow_runs":[
  {"id":9,"name":"Identity takes","path":".github/workflows/identity-takes.yml","head_sha":"aaaaaaaaaaaaaaaa","status":"completed","conclusion":"success","created_at":"2026-11-15T09:05:00Z"}]}'''
 JOBS = '''{"jobs":[
  {"id":11,"name":"scope","status":"completed","conclusion":"success","steps":[]},
- {"id":12,"name":"test (worker)","status":"completed","conclusion":"failure","steps":[{"name":"Set up job","conclusion":"success"},{"name":"Run sbt","conclusion":"failure"}]}]}'''
+ {"id":12,"name":"test (worker)","status":"completed","conclusion":"failure","steps":[{"name":"Set up job","conclusion":"success"},{"name":"Run sbt","conclusion":"failure"}]},
+ {"id":13,"name":"ui-tests","status":"completed","conclusion":"cancelled","steps":[]}]}'''
+# iOS #526's ui-tests (run 43903912001): no runner, no step, its cause only in its annotations.
+ANNOTATIONS = '''[
+ {"annotation_level":"failure","message":"The job was not acquired by Runner of type hosted even after multiple attempts"},
+ {"annotation_level":"notice","message":"Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."},
+ {"annotation_level":"notice","message":"Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."}]'''
 
 
 class CiStatus(unittest.TestCase):
@@ -28,6 +34,10 @@ class CiStatus(unittest.TestCase):
 echo "$*" >> {self.counter}
 [ -n "${{FAKE_GH_FAIL:-}}" ] && exit 1
 case "$2" in
+  *annotations*) cat <<'A'
+{ANNOTATIONS}
+A
+;;
   *jobs*) cat <<'J'
 {JOBS}
 J
@@ -75,10 +85,23 @@ esac
 
     def test_a_run_lists_only_its_failed_jobs_and_steps(self):
         _, out = self.ci("--run", "2")
-        self.assertIn("2 jobs, 1 ok", out)
+        self.assertIn("3 jobs, 1 ok", out)
         self.assertIn("test (worker)\t12\tcompleted\tfailure\tRun sbt", out)
         self.assertNotIn("scope", out)
         self.assertIn("agentctl ci-why 2", out)
+
+    def test_a_job_with_no_failed_step_is_named_by_its_annotations(self):
+        _, out = self.ci("--run", "2")
+        self.assertIn("ui-tests\t13\tcompleted\tcancelled\t-\n  failure: The job was not acquired by Runner of type hosted "
+                      "even after multiple attempts\n  notice: Due to capacity constraints", out)
+        self.assertEqual(out.count("capacity constraints"), 1)  # each distinct annotation once
+
+    def test_a_job_with_a_failed_step_asks_for_no_annotations(self):
+        self.ci("--run", "2")
+        with open(self.counter) as f:
+            asked = f.read()
+        self.assertIn("check-runs/13/annotations", asked)
+        self.assertNotIn("check-runs/12/", asked)
 
     def test_unreachable_gh_is_exit_2(self):
         status, _ = self.ci(FAKE_GH_FAIL="1")
