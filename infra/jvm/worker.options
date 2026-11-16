@@ -53,6 +53,15 @@
 # peak 30 s ~1.25 cores (was 1.4-2.1); at 3, us JIT at 5 min -16% more (77-95 -> 68-84 s); neither cost
 # CPU 10-30 minutes after boot. 4 measured no different from 3 on us/pl/uk boots, so 3 it stays.
 -XX:CompileThresholdScaling=3
+# Compact the old generation whole at every full collection, leaving no dead wood. By default the Parallel collector
+# leaves a dense prefix of the old generation uncompacted, up to MarkSweepDeadRatio (5) percent of its CAPACITY in dead
+# objects (filler arrays), compacting fully only every MarkSweepAlwaysCompactCount-th (4th) collection -- so a worker's
+# "live set after a full GC" (jvm_memory_pool_collection_used_bytes) carried ~5% of its old generation in garbage it never
+# reclaims, the headroom NodeMemoryBudgetSpec sizes against. Measured 2026-11-16 on a local worker over DE's prod mirror
+# (1400m, -Xmn240m): 444 -> 386 MB used after each full collection, the 58 MB of FillerElement arrays gone, the live
+# objects alike, full pauses 245-277 ms either way (15 full collections each). In prod that is ~21 MB of PL's 416 MB
+# old generation, ~30 of DE's 592, ~45 of US's 896.
+-XX:MarkSweepDeadRatio=0
 # Page the whole heap in at boot rather than on first use. -Xms equals -Xmx, so the heap is committed
 # from the start but its pages reach RSS only when first written: worker-pl's RSS stepped +120 MB
 # 13-23 minutes into a boot (2026-10-07 22:06, 10-12 01:22 -- NMT's committed total unchanged, the

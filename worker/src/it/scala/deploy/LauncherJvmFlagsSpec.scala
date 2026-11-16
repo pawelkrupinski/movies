@@ -160,4 +160,10 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   "the worker JVM" should "page its whole heap in at boot, so its RSS does not step up when the heap is first used" in {
     finalFlags(LauncherOptions.of("worker")).get("AlwaysPreTouch") shouldBe Some("true")
   }
+
+  // The Parallel collector's dead wood: a full collection otherwise leaves up to 5% of the old generation's capacity in dead
+  // objects uncompacted, read as live set by every heap alert and by NodeMemoryBudgetSpec (infra/jvm/worker.options).
+  it should "compact its old generation whole at every full collection, leaving no dead wood" in {
+    finalFlags(LauncherOptions.of("worker")).get("MarkSweepDeadRatio") shouldBe Some("0")
+  }
 }
