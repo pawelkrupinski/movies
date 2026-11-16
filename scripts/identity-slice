@@ -35,7 +35,10 @@
 #                 sequence (--slice --widen, $KINOWO_DRIFT_SLICE_SEEDS seeds, default 12) with every answer it lacks read from
 #                 the recording and kept in it, round after round until the slice is CLOSED: replayed alone it lacks no
 #                 request and finds what its listings' replay with the recording behind it finds -- else the cut fails
-#                 (exit 1, CUT NOT CLOSED). A replay that crashes, runs out of memory, is killed or prints no "## DRIFT VERDICT:" line is "NO VERDICT: <cause>", exit 5, never RED or CLEAN. IdentityDriftSlicesSpec replays every such slice. A drift or flip red is not
+#                 (exit 1, CUT NOT CLOSED). Then the slice's ARRIVAL WALK (PopulationMonotonicitySpec) with this
+#                 checkout's code: each A -> B -> A take no `population` row of identity-flip-backlog.tsv names is
+#                 appended to it, so the slice and every row main's spec demands of it land together (Main #2515); a
+#                 walk that fails or breaches the rule contract files nothing (exit 6). A replay that crashes, runs out of memory, is killed or prints no "## DRIFT VERDICT:" line is "NO VERDICT: <cause>", exit 5, never RED or CLEAN. IdentityDriftSlicesSpec replays every such slice. A drift or flip red is not
 #                 closed until its listing's slice is committed (docs/landing-process.md). This checkout's code only.
 #   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
 #                 film taken from the judgements (never from the take), each shown with its own evidence; refused when
@@ -548,6 +551,27 @@ if [ "$emit_drift" = 1 ]; then
         identity_log "$dir: NO VERDICT: $cause"; exit 5 ;;
     esac
     identity_log "drift slice $dir: closed, $( [ "$verdict" = CLEAN ] && echo "replays clean" || echo "REPLAYS RED (above): the regression it guards is open -- commit it with the fix")"
+    # THE BACKLOG ROWS THE SLICE NEEDS, filed in the same step (Main #2515: 97d260d67 committed the Ratzeburg Grinch
+    # slice with its drift row alone, and PopulationMonotonicitySpec failed main on the four A -> B -> A takes its arrival
+    # walk found there): the slice walked with this checkout's code, every flip no `population` row names appended to
+    # identity-flip-backlog.tsv (scripts/ci/population_walk_diff.py rows --into). A walk that fails, or a rule
+    # contract breach (no row covers one), files nothing: exit 6.
+    # The walk names slices by their path under the checkout (Fixtures.relativize): the checkout's own relative path.
+    backlog="$repo/test/resources/fixtures/identity-flip-backlog.tsv"
+    rc=0
+    jvm_slot_take identity-slice
+    (cd "$repo" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.PopulationMonotonicitySpec "${dir#"$repo"/}") > "$work/population.out" 2> "$work/population.log" || rc=$?
+    jvm_slot_release
+    if [ "$rc" != 0 ] || ! filed=$(python3 -I "$repo/scripts/ci/population_walk_diff.py" rows --into "$backlog" < "$work/population.out"); then
+      tail -20 "$work/population.log" "$work/population.out" >&2
+      identity_log "$dir: the population walk failed or breached the rule contract (above): no backlog row filed -- PopulationMonotonicitySpec fails the slice on main"; exit 6
+    fi
+    if [ -n "$filed" ]; then
+      printf '%s\n' "$filed"
+      identity_log "drift slice $dir: $(grep -c . <<< "$filed") population row(s) filed in identity-flip-backlog.tsv (above): commit them with the slice under the owner's named decision (Owner-Approved:), or fix the flips"
+    else
+      identity_log "drift slice $dir: its arrival walk finds no flip no population row names"
+    fi
   done < <(sed -n 's/^--emit-slice: //p' "$work/0.txt")
   [ "$emitted" -gt 0 ] || { identity_log "no drift slice emitted (no listing matched?)"; exit 1; }
   exit 0

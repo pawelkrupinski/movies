@@ -102,6 +102,15 @@
 #                 `Drift-Harness-Refactor: <why>`; and a change to what the worker serves over time (the model's
 #                 input gate, holds, settle, asks) ships its gauges/alert in the same commit or names the earlier
 #                 push's commit that did (`Gauges-Shipped: <sha>`; else `Gauges: none -- <why>`). Seconds: git only
+#   `flipbacklog` THE FLIP BACKLOG IS COMPLETE (Main #2515: 97d260d67 committed the Ratzeburg Grinch drift slice with its
+#                 `drift` row alone; PopulationMonotonicitySpec failed main on four A -> B -> A takes no `population` row
+#                 named, and a slice changed alone selected no check at all), on a change to the flip backlog, the
+#                 struck flips, the drift-gate seeds, a drift or identity slice, or its judge: every slice the change
+#                 brings (its files, or its `population` rows, differ from the merge base's:
+#                 scripts/ci/population_walk_diff.py changed-slices) walked with PopulationMonotonicitySpec.main through
+#                 scripts/sbt-warm, and judged on the known rows alone, as main's spec judges it (judge-walk): a flip no
+#                 row names refuses with the row to add, as do a cured row, a rule contract breach and a failed walk.
+#                 No slice brought (a seeds-only explorer filing): no sbt, a second. Else ~3 s a slice warm
 #   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
 #                 matches and hard clusters: the judgements are well formed and the files leaning on
 #                 them agree. A judgements change is also read against the takes the newest Identity
@@ -342,7 +351,7 @@ is_page_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0 schedules=0
+    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0
     local tools script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
     # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
@@ -407,6 +416,11 @@ plan() {
         [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
         is_identity_path "$path" && identity=1
         is_drift_path "$path" && driftguards=1
+        case "$path" in
+            test/resources/fixtures/identity-flip-backlog.tsv|test/resources/fixtures/identity-flips-struck.tsv|\
+            test/resources/fixtures/drift-gate-seeds.tsv|test/resources/fixtures/drift-slices/*|\
+            test/resources/fixtures/identity-slices/*|scripts/ci/population_walk_diff*.py) flipbacklog=1 ;;
+        esac
         is_page_path "$path" && page=1
         case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
         case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
@@ -429,6 +443,7 @@ plan() {
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
+    [ $flipbacklog = 1 ] && echo flipbacklog
     [ $identity = 1 ] && echo identity
     [ $page = 1 ] && echo page
     [ $oldrefs = 1 ] && echo oldrefs
@@ -1598,6 +1613,24 @@ check_identitydrift() {
     return $rc
 }
 check_driftguards() { commit_rules driftguards; }
+# THE FLIP BACKLOG IS COMPLETE (the header's `flipbacklog`): the slices the change brings walked, judged as main's spec
+# judges them
+check_flipbacklog() {
+    local mb s dirs=()
+    need flipbacklog python3 "install Python 3 (brew install python)" || return 1
+    mb="$(git merge-base "$base_sha" "$head_sha")" || { warn "flipbacklog: no merge base of ${base_sha:0:9} and ${head_sha:0:9}"; return 1; }
+    python3 scripts/ci/population_walk_diff.py changed-slices "$mb" > "$tmp/flipbacklog.slices" \
+        || { warn "flipbacklog: the slices the change brings could not be read"; return 1; }
+    while IFS= read -r s; do [ -n "$s" ] && dirs+=("test/resources/fixtures/$s"); done < "$tmp/flipbacklog.slices"
+    if [ "${#dirs[@]}" -eq 0 ]; then log "flipbacklog: no slice the change brings"; return 0; fi
+    need_jvm flipbacklog || return 1
+    log "flipbacklog: ${#dirs[@]} slice(s) the change brings, walked (PopulationMonotonicitySpec)"
+    if ! scripts/sbt-warm "worker/Test/runMain services.identity.PopulationMonotonicitySpec ${dirs[*]}" > "$tmp/flipbacklog.log" 2>&1; then
+        tail -20 "$tmp/flipbacklog.log" >&2; warn "flipbacklog: the walk did not run (full log: $tmp/flipbacklog.log)"; return 1
+    fi
+    sed -nE 's/^\[info\] //; /^(# )?(drift|identity)-slices\//p' "$tmp/flipbacklog.log" > "$tmp/flipbacklog.walk"
+    python3 scripts/ci/population_walk_diff.py judge-walk "$tmp/flipbacklog.walk"
+}
 check_page() { run_local_tests page; }
 
 # THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB.

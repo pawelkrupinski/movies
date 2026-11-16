@@ -70,6 +70,13 @@ check "a title rule runs them" "driftguards sbt identity|driftguards sbt identit
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
 check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \
   "driftguards sbt identity" "$(plan common/src/main/scala/services/movies/TitleNormalizer.scala)"
+# Main #2515: a drift slice is what PopulationMonotonicitySpec and IdentityDriftSlicesSpec walk -- 97d260d67's slice would
+# have walked only because its backlog row rode along
+check "a drift slice runs the flip backlog check (the population walk over it)" "flipbacklog" \
+  "$(plan test/resources/fixtures/drift-slices/de/x-05c3cfc6/slice.json.gz)"
+check "...and so do the flip backlog (with the identity area), the struck flips and the drift-gate seeds" \
+  "allowlists driftguards sbt flipbacklog identity|flipbacklog|flipbacklog" \
+  "$(plan test/resources/fixtures/identity-flip-backlog.tsv)|$(plan test/resources/fixtures/drift-gate-seeds.tsv)|$(plan scripts/ci/population_walk_diff.py | grep -o flipbacklog)"
 check "an identity spec runs them (and, a spec, the self-tests reading every spec)" "driftguards scripttests sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
 check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"
@@ -422,7 +429,7 @@ area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hook
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
 for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
-cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$area/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile
@@ -441,6 +448,8 @@ case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Faile
 case "$1" in identityImpact\ *) [ -n "${IMPACT_LINES+x}" ] && printf '%b' "$IMPACT_LINES" > "${1##* }" ;; esac
 # the population walk's digest task: $WALK_DIGEST (unset: an empty answer, no rows kept)
 case "$1" in identityWalkDigest\ *) printf '%s' "${WALK_DIGEST:-}" > "${1##* }" ;; esac
+# the flip backlog check's walk (PopulationMonotonicitySpec.main): $SBTWARM_WALK printed, as sbt prints a runMain's lines
+case "$1" in *"runMain services.identity.PopulationMonotonicitySpec "*) printf '%b' "${SBTWARM_WALK:-}" ;; esac
 # the population walk's candidate (PopulationMonotonicitySpec): $SBTWARM_CANDIDATE written into the line's directory
 for a in "$@"; do case "$a" in *-Didentity.population.candidates=*) [ -n "${SBTWARM_CANDIDATE:-}" ] && { d="${a##*-Didentity.population.candidates=}"
   d="${d%% *}"; mkdir -p "$d" && printf '%b' "$SBTWARM_CANDIDATE" > "$d/s.tsv"; } ;; esac; done
@@ -509,6 +518,26 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWA
   POPWALK_REFUSES='drift-slices/uk/x: Lighthouse Poole | PFF: Hen [chain 3]')"
 check "...and a flip the base lacks blocks the push, the listing named" "1 1 1" \
   "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'NEW flip the base does not have: drift-slices/uk/x: Lighthouse Poole' "$testroot/area-out")"
+# THE FLIP BACKLOG IS COMPLETE (Main #2515): a slice committed without the population rows its walk finds refuses
+grinch=test/resources/fixtures/drift-slices/de/grinch-05c3cfc6
+backlog_before="$(cat "$area/test/resources/fixtures/identity-flip-backlog.tsv" 2> /dev/null || echo absent)"
+grinch_walk='# drift-slices/de/grinch-05c3cfc6: 1 flip(s) in 3.1s\ndrift-slices/de/grinch-05c3cfc6\tBurgtheater Ratzeburg\tAdventskino: Der Grinch\tfilm-film-film: model tmdb:8871@30 -> tmdb:360920@35 -> tmdb:8871@39 [chain 3]\n'
+code="$(area_push "$grinch/slice.json" SBTWARM_WALK="$grinch_walk")"
+check "THE FLIP BACKLOG: a drift slice alone is walked, and a flip no population row names blocks the push with its row" "1 1 1 1" \
+  "$code $(calls 'runMain services.identity.PopulationMonotonicitySpec test/resources/fixtures/drift-slices/de/grinch-05c3cfc6\]') $(grep -c 'blocked by: flipbacklog' "$testroot/area-out") $(grep -c "$(printf 'population\tde\t\tdrift-slices/de/grinch-05c3cfc6\tBurgtheater Ratzeburg')" "$testroot/area-out")"
+printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\npopulation\tde\t\tdrift-slices/de/grinch-05c3cfc6\tBurgtheater Ratzeburg\tAdventskino: Der Grinch\t\t2026-11-16\tidentity\tfilm-film-film\n' \
+  > "$area/test/resources/fixtures/identity-flip-backlog.tsv"
+code="$(area_push "$grinch/slice.json" SBTWARM_WALK="$grinch_walk" PREPUSH_SKIP="eslint lintspecs sbt identity allowlists driftguards")"
+check "...and passes once the slice comes with its rows" "0 1" \
+  "$code $(calls 'runMain services.identity.PopulationMonotonicitySpec')"
+code="$(area_push test/resources/fixtures/drift-gate-seeds.tsv)"
+check "...and a change bringing no slice walks nothing" "0 0 1" \
+  "$code $(calls runMain) $(grep -c 'flipbacklog: no slice the change brings' "$testroot/area-out")"
+# the area as it was: the slice gone, the backlog's text back (the drift checks below edit it)
+scratch_git "$area" rm -rq "$grinch"
+if [ "$backlog_before" = absent ]; then scratch_git "$area" rm -q test/resources/fixtures/identity-flip-backlog.tsv
+else printf '%s\n' "$backlog_before" > "$area/test/resources/fixtures/identity-flip-backlog.tsv"; scratch_git "$area" add -A; fi
+scratch_git "$area" commit -qm "the flip backlog checks, undone"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_FAILS=identity/test)"
 check "a failing identity set blocks the push, naming the check and the failure" "1 1 1" \
   "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'Failed 1' "$testroot/area-out")"

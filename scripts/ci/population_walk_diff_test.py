@@ -107,6 +107,189 @@ class Judge(unittest.TestCase):
         p = subprocess.run([sys.executable, TOOL, "slices", self.dir], capture_output=True, text=True)
         self.assertEqual(p.stdout.split(), [SLICE])
 
+    def run_brought(self, brought):
+        listed = os.path.join(self.tmp.name, "brought.txt")
+        with open(listed, "w", encoding="utf-8") as fh:
+            fh.write("".join(f"{b}\n" for b in brought))
+        p = subprocess.run([sys.executable, TOOL, "judge", self.dir, self.base, "--brought", listed],
+                           capture_output=True, text=True)
+        return p.returncode, p.stdout
+
+    # Main #2515: 97d260d67 committed the Ratzeburg Grinch slice with a drift row only; its flips walked alike at the base
+    # (the base walks the HEAD's slice) and passed as "pre-existing" -- but main's spec judges on the known rows alone
+    def test_a_flip_the_base_has_too_refuses_in_a_slice_the_change_brings_with_the_row_to_add(self):
+        candidate(self.dir, SLICE, head=[("Lighthouse Poole", "PFF: Hen", 3)])
+        base_rows(self.base, walked=[(SLICE, [("Lighthouse Poole", "PFF: Hen")])])
+        rc, out = self.run_brought([SLICE])
+        self.assertEqual(rc, 1, out)
+        self.assertIn(f"NEW flip in a slice or known rows this change brings: {SLICE}: Lighthouse Poole | PFF: Hen", out)
+        self.assertIn(f"population\tuk\t\t{SLICE}\tLighthouse Poole\tPFF: Hen\t\t", out)
+        self.assertNotIn("pre-existing", out)
+
+    def test_a_stale_known_row_refuses_in_a_slice_the_change_brings(self):
+        candidate(self.dir, SLICE, head=[], known=[("A", "Hen", "note")])
+        base_rows(self.base, walked=[(SLICE, [])])
+        rc, out = self.run_brought([SLICE])
+        self.assertEqual(rc, 1, out)
+        self.assertIn("CURED known row", out)
+
+    def test_a_slice_the_change_does_not_bring_keeps_the_differential(self):
+        candidate(self.dir, SLICE, head=[("Lighthouse Poole", "PFF: Hen", 3)])
+        base_rows(self.base, walked=[(SLICE, [("Lighthouse Poole", "PFF: Hen")])])
+        rc, out = self.run_brought(["drift-slices/de/other-00000000"])
+        self.assertEqual(rc, 0, out)
+        self.assertIn("pre-existing", out)
+
+    def test_backlog_row_reads_the_slices_country(self):
+        self.assertEqual(t.backlog_row("drift-slices/de/x-1", "V", "T", "film-film-film: a -> b -> a", "2026-11-16").split("\t"),
+                         ["population", "de", "", "drift-slices/de/x-1", "V", "T", "", "2026-11-16", "identity",
+                          "film-film-film: a -> b -> a"])
+        self.assertEqual(t.backlog_row("identity-slices/uk-mowlem-hen-7", "V", "T", "n", "d").split("\t")[1], "uk")
+
+    def test_rows_turns_a_walk_into_backlog_rows(self):
+        walk = (f"# {SLICE}: 1 flip(s) in 1.0s\n{SLICE}\tLighthouse Poole\tPFF: Hen\tfilm-none-film: model 5 -> none\n"
+                "# drift-slices/de/clean-1: 0 flip(s) in 1.0s\n")
+        p = subprocess.run([sys.executable, TOOL, "rows", "--first-seen", "2026-11-16"], input=walk,
+                           capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout, f"population\tuk\t\t{SLICE}\tLighthouse Poole\tPFF: Hen\t\t2026-11-16\tidentity\t"
+                                   "film-none-film: model 5 -> none\n")
+
+    def test_rows_into_the_backlog_files_each_missing_row_once(self):
+        backlog = os.path.join(self.tmp.name, "backlog.tsv")
+        with open(backlog, "w", encoding="utf-8") as fh:
+            fh.write("# comment\nkind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n"
+                     f"population\tuk\t\t{SLICE}\tA\tHen\t\t2026-11-01\tidentity\told note\n")
+        walk = f"{SLICE}\tA\tHen\tfilm-none-film: x\n{SLICE}\tB\tHen\tfilm-film-film: y\n"
+        for _ in range(2):
+            p = subprocess.run([sys.executable, TOOL, "rows", "--first-seen", "2026-11-16", "--into", backlog],
+                               input=walk, capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+        with open(backlog, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        self.assertEqual(lines[2:], [f"population\tuk\t\t{SLICE}\tA\tHen\t\t2026-11-01\tidentity\told note",
+                                     f"population\tuk\t\t{SLICE}\tB\tHen\t\t2026-11-16\tidentity\tfilm-film-film: y"])
+
+    def test_rows_fails_on_a_walk_that_failed_or_breached(self):
+        for what in ("FAILED boom", "BREACH X | T: undeclared"):
+            p = subprocess.run([sys.executable, TOOL, "rows"], input=f"# {SLICE}: {what}\n", capture_output=True, text=True)
+            self.assertEqual(p.returncode, 1)
+            self.assertIn(what, p.stderr)
+
+
+class Brought(unittest.TestCase):
+    """`brought`: the candidate slices whose data or known rows differ from the base's -- a new or edited slice, a
+    population row of it added or removed."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = os.path.join(self.tmp.name, "repo")
+        self.fx = os.path.join(self.repo, "test", "resources", "fixtures")
+        os.makedirs(os.path.join(self.fx, "drift-slices", "uk", "kept-1"))
+        self.write("drift-slices/uk/kept-1/slice.json", "{}")
+        self.write("identity-flip-backlog.tsv", "kind\tcountry\tseed\tslice\tvenue\trawTitle\n")
+        self.git("init", "-q")
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+        self.cands = os.path.join(self.tmp.name, "cands")
+        os.makedirs(self.cands)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def git(self, *args):
+        subprocess.run(["git", "-C", self.repo, *args], check=True, capture_output=True)
+
+    def write(self, rel, text):
+        path = os.path.join(self.fx, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+    def brought(self):
+        p = subprocess.run([sys.executable, TOOL, "brought", self.cands, "HEAD"], cwd=self.repo, capture_output=True,
+                           text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return p.stdout.split()
+
+    def test_a_new_slice_is_brought_an_unchanged_one_is_not(self):
+        self.write("drift-slices/de/new-2/slice.json", "{}")
+        candidate(self.cands, "drift-slices/de/new-2")
+        candidate(self.cands, "drift-slices/uk/kept-1")
+        self.assertEqual(self.brought(), ["drift-slices/de/new-2"])
+
+    def test_an_edited_slice_is_brought(self):
+        self.write("drift-slices/uk/kept-1/slice.json", "{\"more\": 1}")
+        candidate(self.cands, "drift-slices/uk/kept-1")
+        self.assertEqual(self.brought(), ["drift-slices/uk/kept-1"])
+
+    def test_a_slice_whose_population_rows_changed_is_brought(self):
+        self.write("identity-flip-backlog.tsv", "kind\tcountry\tseed\tslice\tvenue\trawTitle\n"
+                                                "population\tuk\t\tdrift-slices/uk/kept-1\tV\tT\n")
+        candidate(self.cands, "drift-slices/uk/kept-1")
+        self.assertEqual(self.brought(), ["drift-slices/uk/kept-1"])
+
+    def changed(self):
+        p = subprocess.run([sys.executable, TOOL, "changed-slices", "HEAD"], cwd=self.repo, capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return p.stdout.split()
+
+    def test_changed_slices_names_every_slice_the_change_brings_and_none_else(self):
+        self.assertEqual(self.changed(), [])
+        self.write("drift-slices/de/new-2/slice.json", "{}")
+        self.write("identity-slices/uk-case-3/slice.json", "{}")
+        self.assertEqual(self.changed(), ["drift-slices/de/new-2", "identity-slices/uk-case-3"])
+
+    def test_changed_slices_names_a_slice_whose_population_rows_changed(self):
+        self.write("identity-flip-backlog.tsv", "kind\tcountry\tseed\tslice\tvenue\trawTitle\n"
+                                                "population\tuk\t\tdrift-slices/uk/kept-1\tV\tT\n")
+        self.assertEqual(self.changed(), ["drift-slices/uk/kept-1"])
+
+    def test_changed_slices_leaves_out_a_deleted_slice(self):
+        os.remove(os.path.join(self.fx, "drift-slices/uk/kept-1/slice.json"))
+        self.assertEqual(self.changed(), [])
+
+    def walk_judge(self, walk):
+        path = os.path.join(self.tmp.name, "walk.txt")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(walk)
+        p = subprocess.run([sys.executable, TOOL, "judge-walk", path], cwd=self.repo, capture_output=True, text=True)
+        return p.returncode, p.stdout
+
+    HEADER = "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n"
+
+    # Main #2515, the hook's `flipbacklog` check: a slice walked and judged on the head's known rows, as main's spec does
+    def test_judge_walk_refuses_a_flip_no_population_row_names_printing_the_row(self):
+        g = "drift-slices/de/grinch-05c3cfc6"
+        rc, out = self.walk_judge(f"# {g}: 1 flip(s) in 3.1s\n{g}\tBurgtheater Ratzeburg\tAdventskino: Der Grinch\t"
+                                  "film-film-film: model tmdb:8871@30 -> tmdb:360920@35 -> tmdb:8871@39 [chain 3]\n")
+        self.assertEqual(rc, 1, out)
+        self.assertIn(f"population\tde\t\t{g}\tBurgtheater Ratzeburg\tAdventskino: Der Grinch\t\t", out)
+        self.assertIn(f"{g}: Burgtheater Ratzeburg | Adventskino: Der Grinch: film-film-film", out)
+
+    def test_judge_walk_passes_a_known_or_struck_flip_and_refuses_a_cured_row(self):
+        g = "drift-slices/de/grinch-05c3cfc6"
+        self.write("identity-flip-backlog.tsv", self.HEADER + f"population\tde\t\t{g}\tA\tT\t\td\to\tn\n"
+                                                              f"population\tde\t\t{g}\tGone\tT\t\td\to\tn\n")
+        self.write("identity-flips-struck.tsv", "country\tvenue\trawTitle\tdecision\nde\tS\tT\tOWNER-APPROVED x\n")
+        rc, out = self.walk_judge(f"# {g}: 2 flip(s) in 1s\n{g}\tA\tT\tfilm-none-film: x\n{g}\tS\tT\tfilm-none-film: y\n")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("CURED known row", out)
+        self.assertIn("Gone | T", out)
+        self.assertNotIn("NEW flip", out)
+
+    def test_judge_walk_refuses_a_failed_walk_and_a_rule_contract_breach(self):
+        g = "drift-slices/de/grinch-05c3cfc6"
+        rc, out = self.walk_judge(f"# {g}: FAILED boom\n")
+        self.assertEqual(rc, 1, out)
+        rc, out = self.walk_judge(f"# {g}: 0 flip(s) in 1s\n# {g}: BREACH X | T: undeclared rule\n")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("undeclared rule", out)
+
+    def test_judge_walk_passes_a_clean_walk(self):
+        rc, out = self.walk_judge("# drift-slices/de/clean-1: 0 flip(s) in 1s\n")
+        self.assertEqual(rc, 0, out)
+
     def test_differential(self):
         self.assertEqual(t.differential([1, 2, 3], [3, 4]), ([1, 2], [4], [3]))
 

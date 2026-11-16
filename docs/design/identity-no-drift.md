@@ -98,7 +98,12 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   --emit-drift-slice` cuts the listing into `test/resources/fixtures/drift-slices/<cc>/<name>/`, widened with every
   answer the incremental sequence reads, and `scripts.IdentityDriftSlicesSpec` replays every slice through that
   sequence on 12 seeds in the unit suite (Tier 1 of the drift gate; `IdentityDrift --slice`, at least one listing
-  leaving and returning). The fix's push carries the slice, or `Drift-Slice: none -- <why>` when the red has no
+  leaving and returning). The same step walks the slice's arrival chains (`PopulationMonotonicitySpec`, this
+  checkout's code) and appends to `identity-flip-backlog.tsv` a `population` row for every A -> B -> A take no row names
+  yet, so the slice lands with every row main's spec demands of it -- commit them under the owner's named decision, or
+  fix the flips (Main #2515: a slice committed with its `drift` row alone failed main on four takes). The landing check
+  judges a slice the change brings (new or edited data, or its `population` rows changed) on the known rows alone, as
+  main does, printing each missing row; only an untouched slice is judged against the base. The fix's push carries the slice, or `Drift-Slice: none -- <why>` when the red has no
   listing (a CI script, a timeout); a fix already on main without either is answered by a later commit's
   `Drift-Slice-For: <sha> none -- <why>` (main is never amended). **The legs' seeds rotate** (the owner, 2026-10-31): `takes-drift-1` / `-2`
   replay their run's pair of 1..64 (`scripts/ci/drift_seeds.py`), a red names its seed and reproducer, and a red seed

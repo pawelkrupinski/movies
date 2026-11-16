@@ -415,11 +415,14 @@ object PopulationMonotonicitySpec {
     val dirs = if (args.isEmpty) sliceDirs else args.toSeq.map(Path.of(_))
     dirs.foreach { dir =>
       val started = System.nanoTime()
-      val rows    = Try(walk(dir))
+      val result  = Try(walked(dir))
       val seconds = (System.nanoTime() - started) / 1e9
-      rows.fold(e => println(s"# ${relative(dir)}: FAILED $e"), rs => {
-        println(f"# ${relative(dir)}: ${rs.size} flip(s) in $seconds%.1fs")
-        rs.foreach(r => println(s"${relative(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.stage} ${r.path} [${r.where}]"))
+      result.fold(e => println(s"# ${relative(dir)}: FAILED $e"), w => {
+        println(f"# ${relative(dir)}: ${w.rows.size} flip(s) in $seconds%.1fs")
+        w.rows.foreach(r => println(s"${relative(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.stage} ${r.path} [${r.where}]"))
+        // the rule contract's breaches (the spec's "A real family's rules" test): scripts/ci/population_walk_diff.py
+        // refuses them where it judges a slice on the known rows alone
+        w.breaches.foreach(b => println(s"# ${relative(dir)}: BREACH ${b.replace('\n', ' ')}"))
       })
     }
   }

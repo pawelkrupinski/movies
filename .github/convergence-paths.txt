@@ -108,9 +108,11 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/run-page-test/action.yml
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml
+.github/allow-lists.txt
 .github/convergence-paths.txt
 .github/gating-checks.tsv
 .github/harness-aa-paths.txt
+.github/identity-drift-gate-paths.txt
 .github/scripts/convergence-fill.sh
 .github/scripts/convergence-findings-summary.sh
 .github/scripts/convergence-publish.sh
@@ -133,6 +135,7 @@ scripts/ci/ci-timings
 scripts/ci/ci_trends.py
 scripts/ci/ci_trends_test.py
 scripts/ci/commit-rules-ci.sh
+scripts/ci/commit_rules.py
 scripts/ci/convergence-row-minutes.tsv
 scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
@@ -164,11 +167,14 @@ scripts/ci/keep-previous-origins.sh
 scripts/ci/measure-lane.sh
 scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
+scripts/ci/population-walk-diff
+scripts/ci/population_walk_diff.py
 scripts/ci/recording_health.py
 scripts/ci/release-store-prune.sh
 scripts/ci/scheduled-failure-issue.sh
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
+scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-slice
 scripts/identity_slice_diff.py
@@ -177,5 +183,7 @@ scripts/local-mirror/freshness
 scripts/local-mirror/service.sh
 scripts/local-mirror/start-local-mongo.sh
 scripts/read-model-snapshot-inputs.sh
+scripts/sbt-warm
 scripts/tool-conventions.sh
+scripts/zinc_orphans.py
 # END GENERATED

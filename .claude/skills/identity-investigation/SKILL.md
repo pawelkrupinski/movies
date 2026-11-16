@@ -41,6 +41,7 @@ Design and limits: docs/design/identity-slice.md.
 | Which commit of A..B moved it? | `… --bisect A..B` |
 | Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong (parallel, results shared — see "Fast batches") |
 | Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from the judgements only) |
+| Pin a drift or flip red's listing as a drift slice, with its backlog rows | `scripts/identity-slice <cc> --venue V --title T --emit-drift-slice` → `test/resources/fixtures/drift-slices/<cc>/`, closed on 12 seeds, then its arrival walk files every `population` row `PopulationMonotonicitySpec` will demand into `identity-flip-backlog.tsv` (commit the slice and rows together, the owner's OK named; Main #2515) |
 | A pinned case fails "lacks answers" after a resolver change (its listings now ask more) | `scripts/identity-slice-refresh [--recording RUN] <case dir>...` — re-emits each case with every listing its expected.tsv names, in place, its hand expected.tsv kept |
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
 | Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
