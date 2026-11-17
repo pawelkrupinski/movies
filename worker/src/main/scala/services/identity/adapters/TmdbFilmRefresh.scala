@@ -1,9 +1,7 @@
 package services.identity
 package adapters
 
-import clients.TmdbClient
 import play.api.Logging
-import services.enrichment.ImdbClient
 import services.refresh.{RefreshableSource, RefreshableSources}
 import services.tasks.BulkRefreshResult
 import tools.{HttpFetch, HttpPath}
@@ -18,13 +16,14 @@ import tools.{HttpFetch, HttpPath}
  * fetched record carries: a Polish title just added on TMDB reaches the listings billing it, whose searches found nothing
  * before — a banner-decorated billing ("FOKUS: GRANICE - Bańki") through the search its peeled title asks.
  *
- * Every request goes through `fetch` (the normalizing lookup chain), so an answer that moved is filed and wakes the
- * model like any other (`TmdbStore.onChanged`), and one that did not writes nothing. `families` is the model's
+ * Every request goes through `fetch` (the normalizing lookup chain), asked through the lookups `lookupsOver` builds over
+ * it (one set per refresh — [[TmdbFilmRefresh.liveLookups]] in production), so an answer that moved is filed
+ * and wakes the model like any other (`TmdbStore.onChanged`), and one that did not writes nothing. `families` is the model's
  * ([[IdentityModelService.families]]): `None` while it is not taken up, when nothing is reached and the run says so.
  *
  * The `tmdb-films` [[RefreshableSource]]: its keys TMDB film ids.
  */
-final class TmdbFilmRefresh(fetch: HttpFetch, tmdb: HttpFetch => TmdbClient, families: () => Option[Seq[TmdbFilmRefresh.Family]],
+final class TmdbFilmRefresh(fetch: HttpFetch, lookupsOver: HttpFetch => IdentityLookups, families: () => Option[Seq[TmdbFilmRefresh.Family]],
                             fold: String => String)
     extends RefreshableSource with Logging {
   import TmdbFilmRefresh._
@@ -35,7 +34,7 @@ final class TmdbFilmRefresh(fetch: HttpFetch, tmdb: HttpFetch => TmdbClient, fam
   def refresh(keys: Seq[String]): BulkRefreshResult = refreshFilms(keys.flatMap(_.toIntOption)).result
 
   def refreshFilms(films: Seq[Int]): Refreshed = HttpPath.within(HttpPath.Refresh) {
-    val lookups = new TmdbIdentityLookups(tmdb(fetch), new ImdbClient(fetch), Nil, oneReadPerTitle = true)
+    val lookups = lookupsOver(fetch)
     val records = films.distinct.map(film => film -> lookups.film(film))
     val titles  = records.flatMap {
       case (_, Answer.Known(Some(record))) => (record.title +: (record.originalTitle.toSeq ++ record.alternativeTitles)).map(fold)
@@ -55,6 +54,11 @@ final class TmdbFilmRefresh(fetch: HttpFetch, tmdb: HttpFetch => TmdbClient, fam
 }
 
 object TmdbFilmRefresh {
+  /** The lookups a production refresh asks through: TMDB (by `tmdb`, over the refresh's fetch) and IMDb live, no venue
+   *  detail pages, each title read once per refresh. */
+  def liveLookups(tmdb: HttpFetch => clients.TmdbClient): HttpFetch => IdentityLookups =
+    fetch => new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch), Nil, oneReadPerTitle = true)
+
   /** One family as a refresh reads it: its questions, the films its decisions take, lean to or name as candidate, and
    *  its listings' titles, raw and as the model reads them. */
   final case class Family(queries: Set[CandidateQuery], films: Set[Int], titles: Set[String])

@@ -93,7 +93,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
    *  (`TmdbFilmRefresh`, the `tmdb-films` source of a `RefreshSource` task), through the lookup chain (`enrichmentFetch`). */
   lazy val identityTmdbFilmRefresh: services.identity.adapters.TmdbFilmRefresh =
     new services.identity.adapters.TmdbFilmRefresh(
-      new services.identity.adapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer), tmdbClientOver,
+      new services.identity.adapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer),
+      services.identity.adapters.TmdbFilmRefresh.liveLookups(tmdbClientOver),
       families = () => identityModel.families(WorkerWiring.IdentityModelPeek), fold = titleNormalizer.sanitize)
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
    *  people it reads, while it is taken up. */

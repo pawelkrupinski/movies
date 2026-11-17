@@ -49,7 +49,7 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
     val changed = mutable.Buffer.empty[String]
     store.onChanged(changed += _)
     val refresh = new TmdbFilmRefresh(new NormalizingHttpFetch(tmdb, new TmdbNormalizer(store)),
-      new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
+      TmdbFilmRefresh.liveLookups(new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")))),
       families = () => Option.when(modelUp)(TmdbFilmRefresh.Family.of(questions, Seq(oczy, zar, lalka, banner))),
       fold = services.movies.TitleNormalizer.forCountry(models.Country.Poland).sanitize)
     def filed(query: CandidateQuery): Boolean = store.get(TmdbKind.Query, Seq(TmdbStore.questionId("pl-PL", query))).nonEmpty
