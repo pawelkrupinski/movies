@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 class ChunkScrapePlanner(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
-  queue:         TaskQueue,
+  queue:         TaskProducer,
   publishScrape: CinemaScraper => Unit,
   // Records the terminal outcome of a plan that never reaches the reduce (empty or
   // failed), so such a cinema still advances its due schedule.

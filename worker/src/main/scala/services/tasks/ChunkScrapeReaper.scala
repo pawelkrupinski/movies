@@ -33,7 +33,7 @@ import scala.concurrent.duration._
  */
 class ChunkScrapeReaper(
   store:        ChunkScrapeStore,
-  queue:        TaskQueue,
+  queue:        TaskProducer,
   coordinator:  ChunkScrapeCoordinator,
   interval:     ChunkScrapeReaper.SweepInterval = ChunkScrapeReaper.SweepInterval(1.hour),
   initialDelay: ChunkScrapeReaper.InitialDelay = ChunkScrapeReaper.InitialDelay(45.seconds),

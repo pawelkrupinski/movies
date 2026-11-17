@@ -24,7 +24,7 @@ import java.time.Instant
  * the legacy title-key fallback, the [[DueWindow]] gate, and the queue's own dedup.
  */
 class RatingEnqueuer(
-  queue:     TaskQueue,
+  queue:     TaskProducer,
   freshness: FreshnessStore,
   // The shared due schedule. The SAME instance must back the [[RatingHandler]] so
   // this enqueue gate and that execution gate agree on what counts as due — see

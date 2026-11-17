@@ -2,14 +2,14 @@ package services.identity
 package adapters
 
 import services.cinemas.common.DetailEnricher
-import services.tasks.TaskQueue
+import services.tasks.TaskProducer
 import services.venuepages.ReadVenuePageTasks
 
 /** A cut-over country's [[PageWait]]: a listing at a venue with a detail page awaits it while that page has
  *  no answer in venue_pages (`VenuePageIndex`), its page read by a `ReadVenuePage` task. A page that
  *  carries the listing's identity (`defersTmdbResolution`) is awaited until read or gone; a
  *  display-only one only until it has been tried — staging likewise lets a display-only page fail. */
-final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex, queue: TaskQueue,
+final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex, queue: TaskProducer,
                           freshness: services.freshness.FreshnessStore, clock: java.time.Clock)
     extends PageWait {
   private val enricherOf = enrichers.map(e => e.cinema -> e).toMap

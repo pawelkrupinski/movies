@@ -31,7 +31,7 @@ import scala.concurrent.duration._
 class DetailReaper(
   enrichers: Seq[DetailEnricher],
   cache:     MovieCache,
-  queue:     TaskQueue,
+  queue:     TaskProducer,
   freshness: FreshnessStore,
   // The shared per-row refresh schedule, phase-spread across its period (6h, the
   // DetailEnrich TTL) exactly like [[EnrichmentReaper]] / [[ScrapeReaper]]. The

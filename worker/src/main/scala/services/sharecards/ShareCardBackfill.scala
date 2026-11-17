@@ -4,7 +4,7 @@ import models.ResolvedMovie
 import play.api.Logging
 import services.events.{DomainEvent, TaskFinished}
 import services.readmodel.ReadModelReader
-import services.tasks.{EnqueueResult, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, TaskProducer, TaskType}
 
 import java.time.{Clock, Instant}
 import scala.util.Try
@@ -36,7 +36,7 @@ import scala.util.Try
 class ShareCardBackfill(
   service:    ShareCardService,
   reader:     ReadModelReader,
-  queue:      TaskQueue,
+  queue:      TaskProducer,
   metrics:    ShareCardMetrics,
   clock:      Clock,
   maxBacklog: settings.ShareCardBackfillMaxBacklog = settings.ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog)

@@ -3,7 +3,7 @@ package services.sharecards
 import models.{Country, ResolvedMovie}
 import play.api.Logging
 import services.readmodel.ShareCardLedger
-import services.tasks.{EnqueueResult, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, TaskProducer, TaskType}
 import tools.{Digest, OgCardRenderer}
 
 import java.time.{Clock, Instant}
@@ -30,7 +30,7 @@ class ShareCardService(
   country:  Country,
   store:    ShareCardStore,
   posters:  ShareCardPosters,
-  queue:    TaskQueue,
+  queue:    TaskProducer,
   rescrapes: ShareCardRescrapes,
   metrics:  ShareCardMetrics,
   clock:    Clock

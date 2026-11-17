@@ -3,7 +3,7 @@ package services.venuepages
 import play.api.Logging
 import services.UptimeMonitor
 import services.cinemas.common.DetailEnricher
-import services.tasks.{EnqueueResult, EnrichDetailsTasks, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, EnrichDetailsTasks, HandlerOutcome, Task, TaskHandler, TaskProducer, TaskType}
 
 /** Asking for a venue page to be read into venue_pages, keyed by the PAGE — for a listing no film row
  *  holds yet, which `EnrichDetails` (keyed by the film row) cannot reach. */
@@ -12,7 +12,7 @@ object ReadVenuePageTasks {
     Map(EnrichDetailsTasks.GroupKey -> enricher.detailGroup, EnrichDetailsTasks.RefKey -> page)
 
   /** Queue the read; the queue's unique dedup key keeps one per page however often it is asked. */
-  def enqueue(queue: TaskQueue, enricher: DetailEnricher, page: String, now: java.time.Instant): Boolean =
+  def enqueue(queue: TaskProducer, enricher: DetailEnricher, page: String, now: java.time.Instant): Boolean =
     queue.enqueue(TaskType.ReadVenuePage, EnrichDetailsTasks.pageDedupKey(enricher.detailGroup, page),
       payload(enricher, page), submittedAt = now) == EnqueueResult.Added
 }

@@ -49,7 +49,7 @@ import scala.util.Try
  */
 class ScrapeReaper(
   scrapers:  Seq[CinemaScraper],
-  queue:     TaskQueue,
+  queue:     TaskProducer,
   freshness: FreshnessStore,
   // The shared due schedule (each cinema scraped once per its freshness window,
   // phase-spread across it so all ~300 don't fall due together). The SAME instance

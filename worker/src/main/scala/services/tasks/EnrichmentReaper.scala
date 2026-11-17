@@ -54,7 +54,7 @@ import scala.concurrent.duration._
  */
 class EnrichmentReaper(
   cache:     MovieCacheReader,
-  queue:     TaskQueue,
+  queue:     TaskProducer,
   freshness: FreshnessStore,
   // The shared due schedule (each row refreshed once per its period, phase-spread
   // across it). The SAME instance must back `RatingHandler` so this enqueue gate

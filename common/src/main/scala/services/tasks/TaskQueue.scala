@@ -187,15 +187,22 @@ object TaskState {
  * Two implementations share this contract: [[MongoTaskQueue]] (durable,
  * multi-instance-safe) and [[InMemoryTaskQueue]] (tests / Mongo-less dev).
  */
-trait TaskQueue {
+trait TaskQueue extends TaskProducer with TaskConsumer with TaskQueueMonitor {
+  def close(): Unit = ()
+}
+
+/** The producer's side of a [[TaskQueue]]: adding work, amending or raising work already waiting, and
+ *  the backlog of a type a producer throttles on. What a reaper, an enqueuer or a handler that queues
+ *  follow-up work takes. */
+trait TaskProducer {
   /** Add a waiting task unless one with `dedupKey` is already active. `notBefore`,
-   *  when set, holds the new task back from [[claim]] until that instant (the same
+   *  when set, holds the new task back from [[TaskConsumer.claim]] until that instant (the same
    *  `nextEligibleAt` gate the transient-failure backoff uses) — so a caller can
    *  enqueue a burst of tasks at staggered eligibility to spread claim pressure
    *  (see [[services.tasks.ChunkScrapePlanner]]) instead of making them all
    *  claimable at once. `None` = immediately claimable, the default.
    *
-   *  `claimAhead` places the task that far ahead in the claim order — [[claim]] takes
+   *  `claimAhead` places the task that far ahead in the claim order — [[TaskConsumer.claim]] takes
    *  the oldest `submittedAt` first, so the queue orders it as if submitted `claimAhead`
    *  earlier — while [[TaskSummary.enqueuedAt]] keeps the real `submittedAt`. Back-dating
    *  `submittedAt` itself bought the same priority but made the task read as one that had
@@ -224,6 +231,22 @@ trait TaskQueue {
    *  task back, nor one being worked on. Returns whether a waiting task is now at least that far forward. */
   def raise(dedupKey: String, claimFrom: Instant): Boolean = false
 
+  /** Count of WAITING (claimable) tasks of `taskType`. A cheap, index-backed
+   *  backlog gauge for the reaper's throttle backoff: while CPU-credit throttled,
+   *  the reaper must not pile new work on an undrained queue (that pins the pool
+   *  permanently busy with no idle gap to rebuild credit — the 2026-06-24 spiral).
+   *  See [[services.tasks.ScrapeReaper]].
+   *
+   *  THROWS when the count cannot be read. A failed read is not a reading: answering
+   *  0 made an unreachable Mongo look like an empty queue, the one state in which a
+   *  throttle admits everything. Callers treat "unknown" as its own case (the reaper
+   *  admits nothing that tick), never as 0. */
+  def waitingCount(taskType: TaskType): Int
+}
+
+/** The consumer's side of a [[TaskQueue]]: the worker pool's lease cycle — claim, complete or release,
+ *  reap the leases of workers that died — and the doorbell it parks on. */
+trait TaskConsumer {
   /** Atomically lease the oldest *eligible* waiting task to `workerId` for
    *  `lease`, or None when nothing is waiting. A task released with a future
    *  `notBefore` (transient-failure backoff) is skipped until `now` reaches it,
@@ -254,31 +277,6 @@ trait TaskQueue {
    *  once it has waited past a rollback's length (`MongoTaskQueue.RetiredTaskTypeAfter`). */
   def reapExpiredLeases(now: Instant): Int
 
-  /** Count of tasks per state, of the types this build knows — for the debug view, the heartbeat and tests. THROWS
-   *  when the counts cannot be read, like [[waitingCount]]: an empty map is an empty
-   *  queue. */
-  def countByState(): Map[String, Long]
-
-  /** Count of WAITING (claimable) tasks of `taskType`. A cheap, index-backed
-   *  backlog gauge for the reaper's throttle backoff: while CPU-credit throttled,
-   *  the reaper must not pile new work on an undrained queue (that pins the pool
-   *  permanently busy with no idle gap to rebuild credit — the 2026-06-24 spiral).
-   *  See [[services.tasks.ScrapeReaper]].
-   *
-   *  THROWS when the count cannot be read. A failed read is not a reading: answering
-   *  0 made an unreachable Mongo look like an empty queue, the one state in which a
-   *  throttle admits everything. Callers treat "unknown" as its own case (the reaper
-   *  admits nothing that tick), never as 0. */
-  def waitingCount(taskType: TaskType): Int
-
-  /** Read-only snapshot for the monitoring page: per-state counts plus the live
-   *  ACTIVE tasks (waiting + worked-on), ordered by [[TaskState.activeByPriority]]
-   *  — worked-on first — and oldest-first within each state, capped at
-   *  `activeLimit`. Completed tasks are removed, so only active tasks appear.
-   *  Index-backed + bounded so the web can poll it cheaply. THROWS when the queue
-   *  cannot be read (see [[countByState]]). */
-  def monitor(activeLimit: Int = 200): QueueSnapshot
-
   /** Push: call `onWaiting` for every newly enqueued task, so a worker pool can park on a signal
    *  instead of polling. It is handed the task's `notBefore` hold, if it has one: a held task is
    *  claimable only once that passes, and nothing is written then, so the pool has to time that
@@ -288,8 +286,22 @@ trait TaskQueue {
    *  (then the backstop is the only wakeup). Default no-op so a queue need only override it if it
    *  can push. */
   def watchWaiting(onWaiting: Option[Instant] => Unit): Option[AutoCloseable] = None
+}
 
-  def close(): Unit = ()
+/** The read-only view of a [[TaskQueue]] for the heartbeat, the metrics and the admin pages. */
+trait TaskQueueMonitor {
+  /** Count of tasks per state, of the types this build knows — for the debug view, the heartbeat and tests. THROWS
+   *  when the counts cannot be read, like [[TaskProducer.waitingCount]]: an empty map is an empty
+   *  queue. */
+  def countByState(): Map[String, Long]
+
+  /** Read-only snapshot for the monitoring page: per-state counts plus the live
+   *  ACTIVE tasks (waiting + worked-on), ordered by [[TaskState.activeByPriority]]
+   *  — worked-on first — and oldest-first within each state, capped at
+   *  `activeLimit`. Completed tasks are removed, so only active tasks appear.
+   *  Index-backed + bounded so the web can poll it cheaply. THROWS when the queue
+   *  cannot be read (see [[countByState]]). */
+  def monitor(activeLimit: Int = 200): QueueSnapshot
 }
 
 /** One active task as shown on the monitoring page. */

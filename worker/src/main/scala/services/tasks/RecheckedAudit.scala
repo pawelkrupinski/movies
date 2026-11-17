@@ -32,7 +32,7 @@ import scala.util.Random
 final class RecheckedAudit(
   name:         String,
   taskType:     TaskType,
-  queue:        TaskQueue,
+  queue:        TaskProducer,
   metrics:      RecheckedAudit.Metrics,
   clock:        Clock,
   sampleSize:   AuditSample,

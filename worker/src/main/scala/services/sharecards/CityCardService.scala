@@ -3,7 +3,7 @@ package services.sharecards
 import models.{City, Country}
 import play.api.Logging
 import services.readmodel.ReadModelReader
-import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer, TaskType}
 import tools.{CityCardRenderer, Digest, OgCardRenderer, PosterDecode}
 
 import java.nio.file.{Files, Path}
@@ -42,7 +42,7 @@ class CityCardService(
   country: Country,
   store:   ShareCardStore,
   reader:  ReadModelReader,
-  queue:   TaskQueue,
+  queue:   TaskProducer,
   metrics: ShareCardMetrics,
   clock:   Clock,
   schedule: DueWindow = new DueWindow(CityCardService.Period),

@@ -22,7 +22,7 @@ import scala.util.Try
  * logs are shipped durably, answered post-hoc).
  */
 class WorkerHeartbeat(
-  queue:           TaskQueue,
+  queue:           TaskQueueMonitor,
   intervalSeconds: Long      = 60,
   now:             () => Long,
   // Where each beat is reported (`ScheduledTickStale`).

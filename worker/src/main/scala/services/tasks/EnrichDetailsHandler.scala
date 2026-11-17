@@ -51,7 +51,7 @@ object EnrichDetailsTasks {
    *  re-gates on (shared instance). The phase offset, hashed from `dk`, scatters a synchronized cohort (a re-key wave
    *  that orphans a whole batch's stamps at once) across the period instead of dumping it in one tick. What the
    *  enqueue came to: [[Enqueued.Zero]] when not due. */
-  def enqueueIfDueAs(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
+  def enqueueIfDueAs(queue: TaskProducer, freshness: FreshnessStore, dueWindow: DueWindow,
                      enricher: DetailEnricher, key: CacheKey, ref: String, dk: String, now: Instant): Enqueued =
     if (!dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now)) Enqueued.Zero
     else Enqueued.of(queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref), submittedAt = now))

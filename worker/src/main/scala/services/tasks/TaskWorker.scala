@@ -69,7 +69,7 @@ trait TaskHandler {
  * quickly.
  */
 class TaskWorker(
-  queue:             TaskQueue,
+  queue:             TaskConsumer,
   handlers:          Seq[TaskHandler],
   processingTimeout: TaskWorker.ProcessingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
   retryBackoff:      TaskWorker.RetryBackoff = TaskWorker.RetryBackoff(2.seconds),

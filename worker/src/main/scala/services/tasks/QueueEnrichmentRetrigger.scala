@@ -31,7 +31,7 @@ import services.movies.TitleNormalizer
  * prevent, reached through the one enqueue path that used to skip it.
  */
 class QueueEnrichmentRetrigger(
-  queue:     TaskQueue,
+  queue:     TaskProducer,
   freshness: FreshnessStore,
   // The country this sink serves — selects which rating sources apply, mirroring
   // [[RatingEnqueuer]]. Defaults to Poland so tests and single-country paths keep

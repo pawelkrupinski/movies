@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskQueue, TaskSummary, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskProducer, TaskQueueMonitor, TaskSummary, TaskType}
 
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a
@@ -14,7 +14,7 @@ import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, Enric
  * stream was rejected for the same reason `/uptime` dropped one — it would push
  * every task transition 24/7 even with nobody watching.
  */
-class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue,
+class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskProducer & TaskQueueMonitor,
                       bulkResults: BulkTaskResultStore,
                       // The deployment's country — the one the page's country switch marks current.
                       country: models.Country,
