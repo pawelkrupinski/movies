@@ -59,7 +59,8 @@ runs:
         restore-keys: ${{ inputs.restore-keys }}
     - if: (inputs.restore-only == 'true' || github.ref != 'refs/heads/main') && inputs.save-only != 'true'
       id: restore
-      uses: actions/cache/restore@v5
+      # through the self-hosted runner's local mirror where it has one: the same entry, extracted off the host's disk
+      uses: ./.github/actions/cache-restore
       with:
         path: |
           project/target
