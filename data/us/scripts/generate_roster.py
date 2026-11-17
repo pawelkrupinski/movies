@@ -24,8 +24,9 @@ Things it refuses to do, because each fails SILENTLY downstream:
   * emit a venue on no page, or on two, or a page listing a venue the roster does
     not have — a venue on no page is never scraped, and nothing else says so.
 
-It needs `timezonefinder` (`python3 -m pip install timezonefinder`), only ever at
-regeneration time — the roster is checked in.
+It needs `timezonefinder`, only ever at regeneration time — the roster is checked in:
+`PATH="$(scripts/timezonefinder-python):$PATH" python3 data/us/scripts/generate_roster.py`
+puts a pinned one first (Homebrew's python refuses a plain pip install, PEP 668).
 
 Usage:  python3 data/us/scripts/generate_roster.py
 """
@@ -64,7 +65,8 @@ def _timezone_finder():
     try:
         from timezonefinder import TimezoneFinder
     except ImportError:
-        raise SystemExit("timezonefinder is not installed — `python3 -m pip install timezonefinder` "
+        raise SystemExit("timezonefinder is not installed — run with "
+                         "`PATH=\"$(scripts/timezonefinder-python):$PATH\" python3 ...` "
                          "(needed only to regenerate the roster; see data/us/README.md)")
     return TimezoneFinder()
 

@@ -266,8 +266,9 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
     warns that the push's ssh connection, opened before the hook, may die ("closed by remote host", "Broken pipe"):
     push the same thing again and the stored pass is reused.
 
-A local tool a check needs that is missing (sbt or a working java, shellcheck, actionlint, npm, python3 and
-timezonefinder, gh, curl, jq) **blocks** the push with the fix, never a skip. Only what lies outside the machine's
+A local tool a check needs that is missing (sbt or a working java, shellcheck, actionlint, npm, python3, gh, curl, jq) **blocks** the push with the fix, never a skip. The drift check's timezonefinder is
+provisioned, not asked for: `scripts/timezonefinder-python` builds a pinned venv (`scripts/timezonefinder-requirements.txt`)
+once under `~/.cache/kinowo-timezonefinder`, and the check blocks only when that build fails, printing its error. Only what lies outside the machine's
 install warns and passes: Docker or Xcode not running. GitOps manifests
 that cannot be fetched block (the checkout left behind is stale).
 

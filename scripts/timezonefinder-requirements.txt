@@ -1,0 +1,8 @@
+# The pinned timezonefinder the roster generators use locally (data/us/scripts/generate_roster.py), installed by
+# scripts/timezonefinder-python into a venv of its own. Changing a line here builds a fresh venv on the next drift check.
+cffi==2.1.1
+flatbuffers==25.12.19
+numpy==2.5.5
+pycparser==3.12
+timezonefinder==9.2.0
+timezonefinder-data==4.2026.6

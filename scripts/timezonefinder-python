@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Prints a directory whose python3 imports timezonefinder, for the pre-push `drift` check to put first on PATH
+# (data/us/scripts/generate_roster.py needs it; every other roster generator is stdlib-only, so the same python3 runs
+# them all).
+#
+#   scripts/timezonefinder-python        # -> /Users/x/.cache/kinowo-timezonefinder/<key>/bin
+#   PATH="$(scripts/timezonefinder-python):$PATH" scripts/ci/generated-artefacts-drift.sh
+#
+# The python3 on PATH, when it imports timezonefinder already (CI's, after its pip install), is used as it is. Otherwise
+# a venv of that python3 with scripts/timezonefinder-requirements.txt (every version pinned) is built once under
+# $KINOWO_TIMEZONEFINDER_VENVS (default ~/.cache/kinowo-timezonefinder), keyed by the lock file's hash and the python's
+# version, and reused by every worktree and agent after. WHY: 2026-11-17, `python3 -m pip install timezonefinder`, the
+# hook's old fix, is refused on Homebrew's python (PEP 668, externally-managed-environment), so an agent skipped the
+# drift check with PREPUSH_SKIP=drift. A venv is what PEP 668 asks for, and needs no hand step.
+#
+# Exit 0 with the directory; 1 when the venv cannot be built (no network, no wheel and no compiler), the pip log's tail
+# on stderr.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$here/tool-conventions.sh"
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") ;; *) usage_error "no arguments expected: $1" ;; esac
+
+python="$(command -v python3)" || die "python3 not found: install Python 3 (brew install python)"
+if "$python" -c 'import timezonefinder' 2>/dev/null; then dirname "$python"; exit 0; fi
+
+lock="$here/timezonefinder-requirements.txt"
+version="$("$python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+key="py$version-$( { echo "$version"; cat "$lock"; } | git hash-object --stdin | cut -c1-12)"
+venvs="${KINOWO_TIMEZONEFINDER_VENVS:-${XDG_CACHE_HOME:-$HOME/.cache}/kinowo-timezonefinder}"
+venv="$venvs/$key"
+if [ -x "$venv/bin/python3" ] && "$venv/bin/python3" -c 'import timezonefinder' 2>/dev/null; then
+    echo "$venv/bin"; exit 0
+fi
+
+# Built aside and renamed into place: two agents building at once each finish, and one rename wins.
+mkdir -p "$venvs"
+build="$(mktemp -d "$venvs/.build.XXXXXX")"
+trap 'rm -rf "$build"' EXIT
+echo "timezonefinder-python: building the pinned timezonefinder venv (once) at $venv" >&2
+"$python" -m venv "$build/venv" >"$build/log" 2>&1 \
+    && bounded 600 "$build/venv/bin/python3" -m pip install --quiet --disable-pip-version-check -r "$lock" >>"$build/log" 2>&1 \
+    && "$build/venv/bin/python3" -c 'import timezonefinder' >>"$build/log" 2>&1 \
+    || { tail -20 "$build/log" >&2; die "could not build the timezonefinder venv (python $version, $lock): fix the error above and run scripts/timezonefinder-python again"; }
+rm -rf "$venv" 2>/dev/null || true
+mv "$build/venv" "$venv" 2>/dev/null || [ -x "$venv/bin/python3" ] || die "could not move the venv into $venv"
+echo "$venv/bin"

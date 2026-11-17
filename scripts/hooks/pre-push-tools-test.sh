@@ -132,10 +132,18 @@ check "actionlint missing: a workflow push BLOCKS, with the fix" "1 1" \
   "$(tool_push .github/workflows/x.yml actionlint PATH="$(path_without actionlint)") $(grep -c 'brew install actionlint' "$gate/err")"
 check "npm missing: the ESLint check BLOCKS, with the fix" "1 1" \
   "$(tool_push eslint.config.js eslint PATH="$(path_without npm)") $(grep -c 'npm not found' "$gate/err")"
-mkdir -p "$gate/notzf"; printf '#!/bin/sh\n[ "$1" = -c ] && { echo "ModuleNotFoundError: No module named timezonefinder" >&2; exit 1; }\nexit 0\n' \
-  > "$gate/notzf/python3"; chmod +x "$gate/notzf/python3"
-check "timezonefinder missing: the roster drift check BLOCKS, with the fix" "1 1" \
-  "$(tool_push data/pl/venues.json drift PATH="$gate/notzf:$PATH") $(grep -c 'pip install timezonefinder' "$gate/err")"
+# timezonefinder: Homebrew's python3 has none and refuses a pip install (PEP 668); 2026-11-17 an agent skipped the drift
+# check for it. The check builds the pinned venv itself (scripts/timezonefinder-python) and blocks only when it cannot.
+. "$REPO_ROOT/scripts/timezonefinder-python-stub.sh"; timezonefinder_python_stub "$gate/notzf"
+mkdir -p "$grepo/scripts/ci"
+printf '#!/bin/sh\ncommand -v python3 > "$STUB_DRIFT_PYTHON"\n' > "$grepo/scripts/ci/generated-artefacts-drift.sh"
+chmod +x "$grepo/scripts/ci/generated-artefacts-drift.sh"
+tzf=(PATH="$gate/notzf/bin:$PATH" KINOWO_TIMEZONEFINDER_VENVS="$gate/tzf-venvs" STUB_DRIFT_PYTHON="$gate/drift-python")
+check "no timezonefinder and its venv cannot be built: the roster drift check BLOCKS, with the build's error and the fix" "1 1 1" \
+  "$(tool_push data/pl/venues.json drift "${tzf[@]}" STUB_PIP_FAIL=1) $(grep -c 'No matching distribution' "$gate/err") $(grep -c 'Fix: scripts/timezonefinder-python' "$gate/err")"
+check "no timezonefinder on PATH's python3: the check builds the pinned venv and runs the generators with its python3" "0 1" \
+  "$(tool_push data/pl/venues.json drift "${tzf[@]}") $(case "$(cat "$gate/drift-python" 2>/dev/null)" in "$gate/tzf-venvs/"*/bin/python3) echo 1 ;; *) echo 0 ;; esac)"
+rm -rf "$grepo/scripts" "$gate/tzf-venvs" "$gate/drift-python"
 check "python3 missing: the dashboards check BLOCKS, with the fix" "1 1" \
   "$(tool_push infra/test/test_dashboards.py dashboards PATH="$(path_without python3)") $(grep -c 'python3 not found' "$gate/err")"
 check "gh missing on a judgements push: BLOCKED (the served-takes check needs it), with the fix" "1 1" \

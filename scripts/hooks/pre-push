@@ -186,7 +186,8 @@
 #
 # A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
 # its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
-# actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder, gh (judgements; the
+# actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder (the pinned venv
+# scripts/timezonefinder-python builds by itself; blocked only when it cannot), gh (judgements; the
 # red gate); the red gate unread blocks a production
 # push (THE GATE FAILS CLOSED, above). What stays a WARNING is what lies outside
 # this machine's install: an external service unreachable (a served-takes download) and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
@@ -1339,11 +1340,16 @@ check_eslint() {
 
 check_drift() {
     need drift python3 "install Python 3 (brew install python)" || return 1
-    # data/us/scripts/generate_roster.py needs it; without it the generator exits before writing any ::error:: line
-    python3 -c 'import timezonefinder' 2>/dev/null \
-        || missing_tool drift "python3's timezonefinder" "python3 -m pip install timezonefinder" || return 1
+    # data/us/scripts/generate_roster.py needs timezonefinder: the PATH's python3 when it has it, else the pinned venv
+    # scripts/timezonefinder-python builds once (2026-11-17: Homebrew's python refuses a pip install, PEP 668)
+    local tzf tzf_tool
+    tzf_tool="$(dirname "${BASH_SOURCE[0]}")/../timezonefinder-python"
+    tzf="$("$tzf_tool" 2>"$tmp/timezonefinder.log")" \
+        || { cat "$tmp/timezonefinder.log" >&2
+             missing_tool drift "python3's timezonefinder" "scripts/timezonefinder-python (it builds the pinned venv; its error is above)"
+             return 1; }
     # GeoNames' Polish gazetteer, kept in the shared git dir so every worktree downloads it once.
-    GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
+    PATH="$tzf:$PATH" GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
         scripts/ci/generated-artefacts-drift.sh > "$tmp/drift.log" 2>&1 \
         || { if grep -q '::error::' "$tmp/drift.log"; then sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2
              else tail -30 "$tmp/drift.log" >&2; fi; return 1; }

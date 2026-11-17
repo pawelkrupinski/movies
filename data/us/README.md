@@ -133,8 +133,8 @@ python3 data/us/scripts/build_pages.py
 python3 data/us/scripts/generate_roster.py
 ```
 
-`generate_roster.py` needs `timezonefinder` (`python3 -m pip install
-timezonefinder`), the only dependency outside the standard library and only ever
+`generate_roster.py` needs `timezonefinder` (`PATH="$(scripts/timezonefinder-python):$PATH"`
+puts a pinned venv's python3 first; the pre-push drift check does it itself), the only dependency outside the standard library and only ever
 at regeneration time — the roster is checked in, so nothing at build or test time
 imports it.
 
