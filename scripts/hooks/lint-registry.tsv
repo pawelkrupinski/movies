@@ -136,6 +136,7 @@ repochecks:deploy.ReleaseLanePublishSpec	@repo
 repochecks:deploy.RepoFileSpec	@repo
 repochecks:deploy.RetireVenuesWorkflowSpec	@repo
 repochecks:deploy.RunTimingsWiringSpec	@repo
+repochecks:deploy.RunnerCacheWiringSpec	@repo
 repochecks:deploy.SbtCachePathsSpec	@repo
 repochecks:deploy.SbtTargetCacheJarsSpec	@repo
 repochecks:deploy.ScheduledRunReportSpec	@repo
