@@ -259,6 +259,12 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String = seen("sanitize", Array(title))(sanitizeCache.get(title, computeSanitize))
 
+  /** The slot key for a cinema's report of a film under `title`. The ONE rule for
+   *  deriving a cinema slot key, shared by the scrape ingest, the staging write,
+   *  and detail enrichment, so the same (cinema, title) always lands on one slot. */
+  def slotKey(cinema: models.Cinema, title: String): models.CinemaShowing =
+    models.CinemaShowing(cinema, sanitize(title))
+
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
   def mergeKey(title: String, allTitles: Iterable[String]): String =
@@ -436,7 +442,7 @@ object TitleNormalizer {
    *  here: a process-wide memo would be one set of caches every wiring and every
    *  spec in the JVM shares. */
   def forCountry(country: Country): TitleNormalizer =
-    new TitleNormalizer(TitleRuleSet.forCountry(country), facts = country.titleFacts, country = country.code)
+    new TitleNormalizer(TitleRuleSet.forCountry(country), facts = TitleFacts.rulesFor(country), country = country.code)
 
   /** What a measurement learns of every title reading a process makes: the normaliser's country (empty unless
    *  [[forCountry]] built it), the public method read, its arguments (a venue by its display name) and what it read,

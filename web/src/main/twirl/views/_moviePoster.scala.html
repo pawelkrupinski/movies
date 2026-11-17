@@ -14,7 +14,7 @@
    was a fifth of a city page). *@
 @poster match {
   case Some(href) => {
-    @defining((href.proxiedPoster, fallbackPosters.map(_.proxiedPoster).mkString("|"))) { case (proxied, fallbacks) =>
+    @defining((controllers.WebHref.proxiedPoster(href), fallbackPosters.map(controllers.WebHref.proxiedPoster).mkString("|"))) { case (proxied, fallbacks) =>
       <img src="@proxied" alt="@movie.title" @if(aboveTheFold){class="poster-img" fetchpriority="high"} else {loading="lazy"} decoding="async" data-original-src="@proxied"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean),i=+(this.dataset.fallbackIndex||0);if(i<fb.length){var g=this.dataset.retryGen||'0',u=fb[i];this.dataset.fallbackIndex=i+1;this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     }
     <div class="no-poster" style="display:none" data-i18n="poster.missing">@messages("poster.missing")</div>

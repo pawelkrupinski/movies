@@ -2,7 +2,7 @@ package tools
 
 /**
  * Whether a whole-collection read saw every row — what a keyset scan
- * (`services.movies.KeysetScan`) and every repository method built on one answer, instead
+ * (`tools.KeysetScan`) and every repository method built on one answer, instead
  * of a `Boolean`.
  *
  * The bug this exists to make unwritable: a scan that failed part-way still handed the

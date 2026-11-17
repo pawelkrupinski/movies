@@ -46,7 +46,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val slots = rng.shuffle(venues).take(1 + rng.nextInt(venues.size)).flatMap { venue =>
       rng.shuffle(titles).take(1 + rng.nextInt(2)).map { title =>
         val listed = title.map(t => s"$t $n")
-        CinemaShowing.keyFor(venue, listed.getOrElse(s"Listing $n"), normalizer) ->
+        normalizer.slotKey(venue, listed.getOrElse(s"Listing $n")) ->
           SourceData(title = listed, showtimes = pool.take(rng.nextInt(3)).toSeq.map(Showtime(_, bookingUrl = Some(s"https://book/$n"))))
       }
     }
@@ -212,7 +212,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val census   = censusOver(cache, new PrometheusRegistry())
     census.seed()
     val wide = row("Wide Film", MovieRecord(tmdbId = Some(1), data = venues.map(v =>
-      (CinemaShowing.keyFor(v, "Wide Film", normalizer): Source) -> SourceData(title = Some("Wide Film"),
+      (normalizer.slotKey(v, "Wide Film"): Source) -> SourceData(title = Some("Wide Film"),
         showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))).toMap))
     val key = cache.keyOf("Wide Film", Some(2026))
     counting.reset()
@@ -301,7 +301,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
   // A wide film's part is rebuilt on every change of the film, and held until the next: as lists, a cell of 24 bytes per
   // screening slot — the largest named holder of dead list cells in worker-us's old generation (heap dump 2026-10-05).
   it should "hold its title groups and screenable slots as arrays, the same slots" in {
-    val data = (0 until 40).map(i => (models.CinemaShowing.keyFor(KinoApollo, s"x$i", normalizer): Source) ->
+    val data = (0 until 40).map(i => (normalizer.slotKey(KinoApollo, s"x$i"): Source) ->
       SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))).toMap[Source, SourceData] ++
       Map[Source, SourceData](Helios -> SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None))))
     val readyPart  = FilmCensus.of(row("Wide", ready(Helios, 1, tomorrow).copy(data = data)), normalizer, None)

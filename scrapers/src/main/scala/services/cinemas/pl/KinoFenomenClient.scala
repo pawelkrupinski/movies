@@ -105,7 +105,7 @@ object KinoFenomenClient {
 
   /** Director(s) its `| reżyseria: … |` metadata credits, read as every Polish title's credit is
    *  ([[services.movies.TitleFacts]]). Empty when the listing carries none. */
-  def parseDirectors(rawTitle: String): Seq[String] = models.Country.Poland.titleFacts.peel(rawTitle).facts.directors
+  def parseDirectors(rawTitle: String): Seq[String] = services.movies.TitleFacts.rulesFor(models.Country.Poland).peel(rawTitle).facts.directors
 
   /** Production year — from the trailing `| … Country YYYY` metadata segment, or
    *  a `(YYYY)` paren in the title. Only these two structured positions count, so

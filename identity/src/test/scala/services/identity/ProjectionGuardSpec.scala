@@ -15,7 +15,7 @@ class ProjectionGuardSpec extends AnyFlatSpec with Matchers {
   /** A film at one venue with `upcoming` showtimes still to come and `past` already shown. */
   private def record(title: String, upcoming: Int, past: Int = 0): MovieRecord = {
     val times = (1 to upcoming).map(h => now.plusHours(h)) ++ (1 to past).map(h => now.minusHours(h))
-    MovieRecord(data = Map(CinemaShowing.keyFor(Helios, title, SingleCountryNormalizer.titleNormalizer) ->
+    MovieRecord(data = Map(SingleCountryNormalizer.titleNormalizer.slotKey(Helios, title) ->
       SourceData(title = Some(title), showtimes = times.map(Showtime(_, None)))))
   }
   private def stored(i: Int, upcoming: Int = 10, past: Int = 0) =

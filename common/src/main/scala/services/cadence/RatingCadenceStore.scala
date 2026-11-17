@@ -5,7 +5,7 @@ import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, 
 import org.mongodb.scala.model.{Filters, Sorts}
 import com.mongodb.client.model.UpdateOptions
 import play.api.Logging
-import services.movies.KeysetScan
+import tools.KeysetScan
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap

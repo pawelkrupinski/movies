@@ -269,7 +269,7 @@ private[identity] object VenueSlots {
    *  apart — the page's own, its key the title's marked with the page's hash (the same in every JVM): a wire key is a
    *  Mongo field name, which a url's dots would split. */
   private[identity] def slotKey(cinema: Cinema, title: String, page: Option[String], normalizer: TitleNormalizer): CinemaShowing = {
-    val key = CinemaShowing.keyFor(cinema, title, normalizer)
+    val key = normalizer.slotKey(cinema, title)
     page.fold(key)(p => key.copy(titleKey = s"${key.titleKey}#${Integer.toHexString(p.hashCode)}"))
   }
 }

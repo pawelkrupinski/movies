@@ -38,7 +38,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
   /** The slot a stored film holds for `l`, as the landing wrote it. */
   private def slotOf(l: ProjectedListing): (models.Source, SourceData) =
-    CinemaShowing.keyFor(l.listing.cinema, l.listing.cleanTitle, normalizer) ->
+    normalizer.slotKey(l.listing.cinema, l.listing.cleanTitle) ->
       SourceData(title = Some(l.listing.cleanTitle), rawTitle = Some(l.listing.rawTitle), releaseYear = l.listing.year,
         director = l.listing.directors, filmUrl = l.listing.page)
 
@@ -214,7 +214,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   it should "be drafted over its stored record exactly as over none, matched or not, answered or not" in {
     val written = MovieRecord(searchTitle = Some("Obcy 8 pasazer Nostromo"), imdbId = Some("tt0078748"), wikidataId = Some("Q103569"),
       tmdbAttempt = Some(models.TmdbAttempt(IdentityProjectionPlan.ResolverVerdict, Instant.parse("2026-09-01T00:00:00Z"))),
-      retainedSynopses = Map(models.CinemaShowing.keyFor(Helios, "Obcy", normalizer) -> "Statek Nostromo."), data = Map(slotOf(obcy.head)))
+      retainedSynopses = Map(normalizer.slotKey(Helios, "Obcy") -> "Statek Nostromo."), data = Map(slotOf(obcy.head)))
     val decisions = Seq(decision(None, obcy*), decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty), decision(Some(348), obcy*),
       decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0)))(DecisionTrace.Empty))
     decisions.foreach { d =>
@@ -385,7 +385,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
     val oneFilm = plan(Seq(has, kawalski), resolution(decision(Some(2026), has, kawalski)),
       slots = readingPages(Map(hasPage -> kawalskiRead, kawalskiPage -> kawalskiRead).get))
-    oneFilm.films.head.record.data.keySet shouldBe Set(CinemaShowing.keyFor(KinoApollo, "Lalka", normalizer))
+    oneFilm.films.head.record.data.keySet shouldBe Set(normalizer.slotKey(KinoApollo, "Lalka"))
   }
 
   // DE Schauburg Karlsruhe (recording 38326582997) bills Oakley's 2026 "Sinn und Sinnlichkeit (OmU)" with its year and the

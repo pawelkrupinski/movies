@@ -34,7 +34,7 @@ import scala.concurrent.Await
  * the error depends only on how many of the sampled films happen to be mid-migration,
  * so it moves with every re-record and cannot be read off the number.
  *
- * Matched on the SLOT KEY (`"<cinema>␟<titleKey>"`, `CinemaShowing.keyFor`) rather
+ * Matched on the SLOT KEY (`"<cinema>␟<titleKey>"`, `TitleNormalizer.slotKey`) rather
  * than on the slot's stored title, because the key is the one identity both homes
  * share — the embedded map is KEYED by it — and because a stored title is not
  * comparable to the corpus's: production strips a listing's decoration before storing
@@ -53,8 +53,8 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
 
   /** Two films, identical in every way that matters except WHERE their cinema slot is
    *  stored: one migrated to `movie_slots`, one still embedded on the row. */
-  private val sideKey     = CinemaShowing.keyFor(KinoPionier, "Ktoś całkiem obcy", titleNormalizer)
-  private val embeddedKey = CinemaShowing.keyFor(KinoPionier, "Rambo: Pierwsza krew", titleNormalizer)
+  private val sideKey     = titleNormalizer.slotKey(KinoPionier, "Ktoś całkiem obcy")
+  private val embeddedKey = titleNormalizer.slotKey(KinoPionier, "Rambo: Pierwsza krew")
   private val sideListing     = ListingKey.Published(KinoPionier.displayName, "Ktoś całkiem obcy", None, Nil)
   private val embeddedListing = ListingKey.Published(KinoPionier.displayName, "Rambo: Pierwsza krew", None, Nil)
 

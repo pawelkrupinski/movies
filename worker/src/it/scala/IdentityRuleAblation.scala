@@ -91,7 +91,7 @@ object IdentityRuleAblation {
       c.gaps))
     val every    = (TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(c.country))
     def resolve(config: Config): (Seq[Listing], Map[ListingKey, Take], Resolution) = {
-      val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = c.country.titleFacts)
+      val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = services.movies.TitleFacts.rulesFor(c.country))
       val listings   = listingsOf(w, normalizer)
       val resolution = RuleAblation.disabling(config.identityRules)(IdentityResolver.resolve(listings, lookups, normalizer, ResolveInputs.Unpinned))
       val takes      = listings.map { l =>

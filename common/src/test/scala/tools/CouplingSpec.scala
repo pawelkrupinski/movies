@@ -122,6 +122,37 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     report should include("1. `models`, `services.movies`")
   }
 
+  private val layers = Coupling.Layers.parse(Seq(
+    "# a comment", "", "layer\t0\ttools\tutilities", "layer\t1\tmodels\tthe data", "layer\t2\tservices\tthe application",
+    "layer\t3\tworker\tthe composition root"))
+
+  "a package's layer" should "be the longest prefix row naming it, none when no row does" in {
+    layers.layerOf("services.movies") shouldBe Some(2)
+    layers.layerOf("models") shouldBe Some(1)
+    layers.layerOf("modelsx") shouldBe None
+    Coupling.Layers.parse(Seq("layer\t2\tservices\tx", "layer\t0\tservices.low\ty")).layerOf("services.low") shouldBe Some(0)
+  }
+
+  "the layering" should "forbid a package edge into a higher layer and a package without one, unless allowed with a why" in {
+    Coupling.layerViolations(graph, layers) shouldBe Seq(("models", "services.movies") -> Seq("models.Codec" -> "services.movies.MovieRepository"))
+    val allowing = Coupling.Layers.parse(Seq("layer\t0\ttools\tu", "layer\t1\tmodels\td", "layer\t2\tservices\ta",
+      "allow\tmodels->services.movies\tthe codec reads the repository"))
+    Coupling.layerViolations(graph, allowing) shouldBe Seq(("worker", "?") -> Nil)
+    Coupling.baselineRows(graph, fanOutLimit = 3, layers = Some(allowing)).last shouldBe "layer-violation\tworker->?\t0"
+  }
+
+  "the layer table" should "refuse a row of another shape and an allowed edge without its why" in {
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("layer\tzero\ttools\tu"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("allow\tmodels->services\t "))
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("lyer\t0\ttools\tu"))
+  }
+
+  "the checked-in layer table" should "parse, and name every package's layer" in {
+    val table = Coupling.Layers.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-layers.tsv").toPath).asScala.toSeq)
+    Seq("tools", "models", "settings", "services.identity", "clients", "controllers", "modules.wiring").flatMap(table.layerOf) shouldBe
+      Seq(0, 1, 2, 3, 3, 4, 5)
+  }
+
   "the checked-in baseline" should "be the rows' shape, one row a key, its limits the build's" in {
     val lines = Files.readAllLines(RepoRoot.file("test/resources/coupling-baseline.tsv").toPath).asScala.toSeq
     lines.take(Coupling.BaselineHeader.size) shouldBe Coupling.BaselineHeader

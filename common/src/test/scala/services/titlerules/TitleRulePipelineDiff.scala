@@ -64,8 +64,8 @@ object TitleRulePipelineDiff {
       val texts = removed.toSeq.flatMap(id => touched.getOrElse(id, Nil)).distinct
       val countries = Country.all.filter(c => table.exists(r => removed(r.id) && r.appliesTo(c)))
       val diffs = countries.iterator.flatMap { c =>
-        val before = new TitleNormalizer(TitleRuleSet(table.filter(_.appliesTo(c))), facts = c.titleFacts)
-        val after  = new TitleNormalizer(TitleRuleSet(table.filter(r => r.appliesTo(c) && !removed(r.id))), facts = c.titleFacts)
+        val before = new TitleNormalizer(TitleRuleSet(table.filter(_.appliesTo(c))), facts = services.movies.TitleFacts.rulesFor(c))
+        val after  = new TitleNormalizer(TitleRuleSet(table.filter(r => r.appliesTo(c) && !removed(r.id))), facts = services.movies.TitleFacts.rulesFor(c))
         texts.iterator.flatMap { s =>
           val (b, a) = (readings(before, s), readings(after, s))
           b.zip(a).find(p => p._1 != p._2).map { case (x, y) => s"${c.code}: '$s' read '$x', without '$y'" }

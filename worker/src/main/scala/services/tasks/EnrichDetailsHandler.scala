@@ -1,7 +1,7 @@
 package services.tasks
 
 import services.events.EventBus
-import models.{CinemaShowing, Source, SourceData}
+import models.{Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
@@ -245,7 +245,7 @@ class EnrichDetailsHandler(
         case (s, sd) if Source.cinemaOf(s).isDefined && DetailEnricher.nativeRefOf(sd).contains(ref) => s
       })
     else {
-      val derived     = CinemaShowing.keyFor(enricher.cinema, title, cache.normalizer)
+      val derived     = cache.normalizer.slotKey(enricher.cinema, title)
       val venueSlots  = cache.get(rowKey).toList.flatMap(_.data.filter { case (s, _) => Source.cinemaOf(s).contains(enricher.cinema) })
       val cinemaSlots = venueSlots.collect { case (s, sd) if DetailEnricher.nativeRefOf(sd).forall(_ == ref) => s }
       if (venueSlots.isEmpty) Seq(derived)             // chain / not-yet-scraped → create it

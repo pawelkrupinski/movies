@@ -264,7 +264,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     // render as twin slots on /debug and double-count `cinemaSlots`. Decode must
     // collapse them to the single canonical per-title slot.
     val showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 28, 17, 5), None, Some("Sala 11"), List("2D", "NAP")))
-    val perTitle  = CinemaShowing.keyFor(Multikino, "Dzień objawienia", titleNormalizer)
+    val perTitle  = titleNormalizer.slotKey(Multikino, "Dzień objawienia")
     val slot      = SourceData(title = Some("Dzień objawienia"), showtimes = showtimes)
     val record    = MovieRecord(data = Map[Source, SourceData](
       perTitle -> slot,

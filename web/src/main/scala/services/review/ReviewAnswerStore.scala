@@ -49,7 +49,7 @@ final class MongoReviewAnswerStore(db: MongoDatabase) extends ReviewAnswerStore 
 
   def all(): Seq[ReviewAnswer] = {
     val out = Vector.newBuilder[ReviewAnswer]
-    val outcome = services.movies.KeysetScan.scan[Document](
+    val outcome = tools.KeysetScan.scan[Document](
       "review_answers", batchSize = tools.MongoReplies.Default, maxAttempts = 3, initialBackoff = 200.millis,
       keyOf = _.toBsonDocument.getString("_id").getValue,
       fetchPage = (after, limit) => Await.result(collection.find(after.fold(Filters.empty())(id => Filters.gt("_id", id)))

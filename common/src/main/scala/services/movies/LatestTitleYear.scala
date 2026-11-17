@@ -10,7 +10,7 @@ import java.time.{Clock, LocalDate, ZoneOffset}
  *  The title readers are pure and take the year itself (`latestYear: Int`); a caller reads it off the clock it was
  *  given. The model accessors that reach them through a venue's representative slot (`MovieRecord.cinemaData`) take
  *  an instance as a context parameter, so their many readers name no clock. */
-final class LatestTitleYear(clock: Clock) {
+final class LatestTitleYear(clock: Clock) extends CinemaSlotReadings {
   def value: Int = LatestTitleYear.of(clock)
 }
 

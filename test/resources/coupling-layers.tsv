@@ -1,0 +1,18 @@
+# THE LAYERING (CLAUDE.md, Design rules; project/Coupling.scala `Layers`, `sbt couplingReport`, scripts/coupling-report):
+# every production package's layer, bottom (0) up. A package may depend only on its own layer or a lower one; the
+# coupling ratchet (scripts/ci/coupling_ratchet.py) fails on any package edge into a higher layer, and on a package no
+# row names -- a new top-level package takes its place here in the commit that adds it.
+#
+#   layer<TAB><n><TAB><package prefix><TAB><why it sits there>   the longest prefix naming a package decides
+#   allow<TAB><from>-><to><TAB><why>                          an upward edge kept on purpose (keep this list short)
+#
+# Packages inside one layer may still reach each other (services.* is one layer, and still one package cycle: the next
+# cut). To cut an upward edge: move the type to the layer its users sit on, or put a small trait in the lower package.
+layer	0	tools	generic utilities and the HTTP layer: text, digests, clocks, fetches; they know no film, venue or setting (they take values)
+layer	1	models	the domain data -- films, venues, cities, countries -- and the pure readings of it
+layer	2	settings	typed configuration: values resolved from the environment, which name models (a Country)
+layer	3	clients	the external services' clients, beside the services that use them
+layer	3	services	the application: scraping, identity, enrichment, the read model, metrics -- one layer, cycles inside it allowed
+layer	4	controllers	the web tier's HTTP endpoints, view models and filters, over the services
+layer	5	modules	the composition roots (AppLoader, WorkerMain and their wirings): everything is wired here, nothing depends on them
+layer	5	diagnostics	command-line programs run beside the app (FilmwebDiff, RosterAudit): built from the whole stack like a composition root

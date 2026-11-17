@@ -4,7 +4,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
-import services.movies.KeysetScan
+import tools.KeysetScan
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
@@ -115,7 +115,7 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
     // documents for Poland alone and says it grows with every cinema in every
     // country — which is precisely the size at which an unbounded `find()` stops
     // being merely slow and recurses the async driver into `StackOverflowError` on
-    // an I/O thread (see services.movies.KeysetScan). This runs every 5 minutes,
+    // an I/O thread (see tools.KeysetScan). This runs every 5 minutes,
     // forever, in BOTH the web and the worker, so it is the highest-frequency
     // unbounded read we had.
     //

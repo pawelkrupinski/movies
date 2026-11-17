@@ -15,7 +15,7 @@ object ListingSeed {
       val key   = cache.keyOf(cm.movie.title, cm.movie.releaseYear)
       val prior = cache.get(key).getOrElse(MovieRecord())
       cache.put(key, prior.copy(data = prior.data +
-        (CinemaShowing.keyFor(cinema, cm.movie.title, cache.normalizer) -> slots.build(cm, cm.movie.title, None))))
+        (cache.normalizer.slotKey(cinema, cm.movie.title) -> slots.build(cm, cm.movie.title, None))))
     }
   }
 

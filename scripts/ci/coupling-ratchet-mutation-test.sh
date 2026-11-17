@@ -15,6 +15,7 @@ trap 'rm -rf "$work"' EXIT
 mutants=(
   'a new module edge passes @@ if key not in of_kind(baseline, "module-edge"): @@ if False:'
   'a new cycle edge passes @@ if key not in of_kind(baseline, "cycle-edge"): @@ if False:'
+  'a layer violation passes @@ for key, refs in sorted(of_kind(current, "layer-violation").items()): @@ for key, refs in []:'
   'Ce is not compared @@         if ce > allowed:
             was @@         if False:
             was'

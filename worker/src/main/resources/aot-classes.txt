@@ -10383,7 +10383,7 @@ services.movies.FormatTags$$anon$1
 services.movies.JavaTimeCodecs$
 services.movies.JavaTimeCodecs$$anon$1
 services.movies.KeyAddressedMovieWrites
-services.movies.KeysetScan$
+tools.KeysetScan$
 services.movies.ListedShowtimes
 services.movies.ListedShowtimes$
 services.movies.ListingConstraints$

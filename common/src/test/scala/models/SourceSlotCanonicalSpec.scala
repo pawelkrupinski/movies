@@ -13,7 +13,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class SourceSlotCanonicalSpec extends AnyFlatSpec with Matchers {
 
-  private val mkShowing = CinemaShowing.keyFor(Multikino, "Dzień objawienia", titleNormalizer)
+  private val mkShowing = titleNormalizer.slotKey(Multikino, "Dzień objawienia")
 
   "dropSupersededCinemaSlots" should "drop a bare Cinema slot superseded by a per-title slot of the same cinema" in {
     val data = Map[Source, String](Multikino -> "bare", mkShowing -> "per-title", Tmdb -> "tmdb")

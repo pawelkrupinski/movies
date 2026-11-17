@@ -194,7 +194,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key      = cache.keyOf("Dune", None)
-    cache.put(key, MovieRecord(data = Map(models.CinemaShowing.keyFor(KinoApollo, "Dune", titleNormalizer) -> SourceData(
+    cache.put(key, MovieRecord(data = Map(titleNormalizer.slotKey(KinoApollo, "Dune") -> SourceData(
       title = Some("Dune"), filmUrl = Some(Page),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val bus = new RecordingEventBus

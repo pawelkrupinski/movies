@@ -24,7 +24,7 @@ object ProjectedPatchCheck {
   private val at         = LocalDateTime.of(2036, 10, 7, 18, 0)
 
   private def slot(cinema: models.Cinema, hours: Int*): (Source, SourceData) =
-    CinemaShowing.keyFor(cinema, "Projected Patch", normalizer) ->
+    normalizer.slotKey(cinema, "Projected Patch") ->
       SourceData(title = Some("Projected Patch"), releaseYear = Some(2026), showtimes = hours.map(h => Showtime(at.plusHours(h.toLong), None)))
 
   private val first = MovieRecord(data = Map(slot(Multikino, 0, 2), slot(KinoMuranow, 1), slot(Helios, 3)))

@@ -22,7 +22,7 @@ class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {
     val cast    = new CountingCast("Timothée Chalamet", "Zendaya")
     // Five venues: a set of up to four holds its elements unhashed.
     val cinemas = Seq[Cinema](Helios, KinoApollo, KinoMuza, Multikino, Rialto)
-    val at      = (cinema: Cinema) => CinemaShowing.keyFor(cinema, "Diuna", SingleCountryNormalizer.titleNormalizer)
+    val at      = (cinema: Cinema) => SingleCountryNormalizer.titleNormalizer.slotKey(cinema, "Diuna")
     val slot    = (hour: Int) => ShowtimesDigest.stripSlot(SourceData(title = Some("Diuna"), filmUrl = Some("https://venue/diuna"),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 6, hour, 0), None))))
     val film    = ProjectedFilm(FilmId("diuna|2021"), 1L, "Diuna", Some(2021), "diuna|2021",

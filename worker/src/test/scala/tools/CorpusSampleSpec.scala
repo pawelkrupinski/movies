@@ -141,7 +141,7 @@ class CorpusSampleSpec extends AnyFlatSpec with Matchers {
 
   /** Two venues shouting a title differently still key alike, but a DECORATED listing
    *  keys on its own decoration — which is why the key has to come from
-   *  `CinemaShowing.keyFor` rather than from anything this object spells out. */
+   *  `TitleNormalizer.slotKey` rather than from anything this object spells out. */
   it should "key a decorated listing under its own spelling" in {
     CorpusSample.slotKeysOf(Seq(venue(models.Helios, "Diuna (dubbing)")), Set("diunadubbing"), titleNormalizer) shouldBe
       Set("Helios Posnania␟diunadubbing")

@@ -1,7 +1,8 @@
 // COUPLING (project/Coupling.scala, scripts/coupling-report): `couplingReport <rows out> [<markdown out>]` writes the
 // production code's coupling rows -- the shape of test/resources/coupling-baseline.tsv, which
 // scripts/ci/coupling_ratchet.py compares them with -- and, given a second path, the human report. Every deployed
-// module's Compile analysis (testkit, itkit, repochecks and e2e are test code).
+// module's Compile analysis (testkit, itkit, repochecks and e2e are test code), and the layering it must keep
+// (test/resources/coupling-layers.tsv: every package's layer, an upward package edge a `layer-violation` row).
 def couplingModule(name: String): ProjectReference = LocalProject(name)
 lazy val couplingUnits = Def.task {
   Seq(
@@ -29,8 +30,9 @@ couplingReport := {
   require(args.size == 1 || args.size == 2, "couplingReport <rows out> [<markdown out>]")
   val started = System.nanoTime
   val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value)
-  IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph))
-  if (args.size == 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value))
+  val layers = Some(kinowo.build.Coupling.Layers.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-layers.tsv")))
+  IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers))
+  if (args.size == 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers))
   streams.value.log.info(s"couplingReport: ${graph.types.size} classes, ${graph.known.size} dependencies, " +
     s"${(System.nanoTime - started) / 1000000} ms after the compiles, to ${args.mkString(" and ")}")
 }

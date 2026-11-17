@@ -4,7 +4,8 @@ import tools.CommandLine
 import services.MongoConnection
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
-import services.movies.{KeysetScan, MovieCodecs, MovieRepository, ScreeningsRepository, SlotsRepository, StoredMovieDto}
+import services.movies.{MovieCodecs, MovieRepository, ScreeningsRepository, SlotsRepository, StoredMovieDto}
+import tools.KeysetScan
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

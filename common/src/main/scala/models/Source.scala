@@ -42,12 +42,6 @@ object CinemaShowing {
   // ␟ SYMBOL FOR UNIT SEPARATOR — a printable char that never appears in a real
   // cinema displayName, so it round-trips the wire key unambiguously.
   final val Separator: Char = '␟'
-
-  /** The slot key for a cinema's report of a film under `title`. The ONE rule for
-   *  deriving a cinema slot key, shared by the scrape ingest, the staging write,
-   *  and detail enrichment, so the same (cinema, title) always lands on one slot. */
-  def keyFor(cinema: Cinema, title: String, normalizer: services.movies.TitleNormalizer): CinemaShowing =
-    CinemaShowing(cinema, normalizer.sanitize(title))
 }
 
 object Source {

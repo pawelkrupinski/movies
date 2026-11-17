@@ -2,7 +2,7 @@ package services.identity
 
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Helios, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData}
+import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{FilmId, ListingKey, SingleCountryNormalizer, StoredMovieRecord}
@@ -34,7 +34,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
   private def film(rng: Random, id: String, listings: Seq[ProjectedListing]): StoredMovieRecord = {
     val held = rng.shuffle(listings).take(1 + rng.nextInt(3))
     val data = held.map { l =>
-      (CinemaShowing.keyFor(l.listing.cinema, l.listing.cleanTitle, normalizer): models.Source) -> SourceData(title = Some(l.listing.cleanTitle),
+      (normalizer.slotKey(l.listing.cinema, l.listing.cleanTitle): models.Source) -> SourceData(title = Some(l.listing.cleanTitle),
         rawTitle = Some(l.listing.rawTitle), releaseYear = if (rng.nextInt(4) == 0) Some(1990) else l.listing.year,
         director = if (rng.nextInt(4) == 0) Seq("Someone") else l.listing.directors, filmUrl = l.listing.page)
     }.toMap
@@ -192,7 +192,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     val live    = new LiveProjectionIndex(normalizer)
     val listing = CinemaMovie(Movie("Lalka", releaseYear = Some(1968)), Multikino, None, None, None, Nil, Nil, Seq(Showtime(start, None)))
     val read    = Seq(ProjectedListing.of(Listing.of(Multikino, listing, normalizer), listing))
-    val at      = CinemaShowing.keyFor(Multikino, read.head.listing.cleanTitle, normalizer): models.Source
+    val at      = normalizer.slotKey(Multikino, read.head.listing.cleanTitle): models.Source
     def film(id: String, year: Int, director: String) = StoredMovieRecord("Lalka", None, MovieRecord(tmdbId = Some(id.last.asDigit),
       data = Map(at -> SourceData(title = Some("Lalka"), rawTitle = Some("Lalka"), releaseYear = Some(year), director = Seq(director),
         filmUrl = Some(s"https://multikino.pl/filmy/lalka-$id")))),

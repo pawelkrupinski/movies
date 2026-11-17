@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """coupling_ratchet.py: measured coupling past the baseline fails (a new cross-module edge kind, a new package cycle
-edge, a package's Ce past its row or the new-package limit, a class's fan-out past its row or reaching the limit);
+edge, a package's Ce past its row or the new-package limit, a class's fan-out past its row or reaching the limit, any package edge into a higher layer);
 a baseline grown in a range passes only when a commit changing it carries `Coupling: <why>`; falls pass and are said.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
@@ -117,6 +117,14 @@ class CouplingRatchetTest(unittest.TestCase):
 
     def test_a_class_below_the_fan_out_limit_passes(self):
         self.assert_passes(rows("fanout\tworker.Wiring\t29"))
+
+    def test_an_upward_layer_edge_fails_whatever_the_baseline_says(self):
+        violation = "layer-violation\tmodels->services.movies\t2"
+        self.commit({BASELINE: rows(violation)}, "a baseline that recorded the violation")
+        self.assert_fails(rows(violation), "a package edge into a higher layer: models->services.movies")
+
+    def test_an_unlayered_package_fails(self):
+        self.assert_fails(rows("layer-violation\tfresh->?\t0"), "package fresh has no layer")
 
     def test_falls_pass_and_are_said(self):
         out = self.assert_passes(rows("ce\tmodels\t3", drop=("ce\tmodels", "cycle-edge", "fanout")))

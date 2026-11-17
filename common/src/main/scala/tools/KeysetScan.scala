@@ -1,6 +1,5 @@
-package services.movies
+package tools
 
-import tools.{RetryWithBackoff, ScanOutcome}
 
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.concurrent.duration.{Duration, FiniteDuration}

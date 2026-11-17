@@ -141,50 +141,6 @@ case class MovieRecord(
    *  membership question pays O(n log n) for an answer that needs one pass. */
   private[models] def slotCinemas: Iterator[Cinema] = data.keysIterator.flatMap(Source.cinemaOf)
 
-  /** One representative slot per cinema — the keyed view detail enrichment, the
-   *  published [[evidence]] and the [[displayTitle]] vote read. A venue listing the film
-   *  several ways (plain, a senior-club screening, a cheap-Tuesday promo) is represented
-   *  by its LEAST-decorated listing — see [[leastDecorated]]; it used to be whichever
-   *  title sorted last, which named rows after promotions. Consumers that need EVERY
-   *  slot (the display split, divert) use [[cinemaShowings]]; consumers that only ask
-   *  WHICH venues are present use [[slotCinemas]]. `latestYear` is what tells a sequel's
-   *  number from a year in that decoration test ("Odyssey 2027"), so every accessor built on
-   *  this view takes it from its caller's clock. */
-  def cinemaData(using latestYear: services.movies.LatestTitleYear): Map[Cinema, SourceData] = {
-    val byVenue = cinemaShowings.groupMap(_._1)(_._2)
-    if (byVenue.valuesIterator.forall(_.lengthIs == 1)) byVenue.view.mapValues(_.head).toMap
-    else {
-      val venuesPerSpelling = byVenue.valuesIterator
-        .flatMap(_.flatMap(_.title).map(services.movies.TitleContainment.tokens).distinct)
-        .toSeq.groupMapReduce(identity)(_ => 1)(_ + _)
-      byVenue.view.mapValues(leastDecorated(_, venuesPerSpelling, latestYear.value)).toMap
-    }
-  }
-
-  /** Of one venue's slots, the least-decorated listing: a spelling that does not
-   *  decorate another of the venue's titles (`TitleContainment` — a banner on either
-   *  edge), then the spelling most venues share (catches a banner on BOTH edges, and
-   *  picks between equally bare translations), then the fewest words, then the words
-   *  themselves. Structural rather than rule-driven, so it needs no country's
-   *  normalizer. Several slots carrying that one spelling are one listing and settle
-   *  field by field (`MovieRecordMerge.mergeSlots`), so no order picks among them. */
-  private def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int], latestYear: Int): SourceData = {
-    val spelled = slots.map(sd => sd -> services.movies.TitleContainment.tokens(sd.title.getOrElse("")))
-    val best = spelled.map(_._2).distinct.minBy { tokens =>
-      (spelled.exists { case (_, other) => services.movies.TitleContainment.decorates(other, tokens, latestYear) },
-       -venuesPerSpelling.getOrElse(tokens, 0), tokens.length, tokens.mkString(" "))
-    }
-    spelled.collect { case (sd, tokens) if tokens == best => sd } match {
-      case Seq(only) => only
-      case several   => services.movies.MovieRecordMerge.mergeSlots(several)
-    }
-  }
-
-  /** What the cinemas published about this film — the only evidence a TMDB
-   *  resolution is searched from or judged against. Cinema slots only; see
-   *  [[services.resolution.FilmEvidence]] for why the derived slots are excluded. */
-  def evidence(using services.movies.LatestTitleYear): services.resolution.FilmEvidence = services.resolution.FilmEvidence.of(this)
-
   /** A view of this record restricted to the given cinema SLOT KEYS, keeping
    *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained synopses
    *  untouched. The read-model split ([[services.readmodel.ReadModelProjection]])
@@ -257,41 +213,6 @@ case class MovieRecord(
   private def firstPrioritized[A](of: SourceData => Option[A]): Option[A] =
     data.iterator.flatMap { case (s, sd) => of(sd).map(v => (Source.priorityOf(s), s.displayName, v)) }
       .minByOption { case (priority, name, _) => (priority, name) }.map(_._3)
-
-  /** Cinema-only iteration in the same priority order — used by accessors
-   *  that should *not* fall back to TMDB/IMDb (e.g. `cinemaOriginalTitle`,
-   *  which is specifically the cinema-reported English title used as a
-   *  TMDB-search hint). */
-  private def prioritizedCinema(using services.movies.LatestTitleYear): Seq[(Cinema, SourceData)] =
-    cinemaData.toSeq.sortBy { case (c, _) => (Source.priority.getOrElse(c, Int.MaxValue), c.displayName) }
-
-  /** Display title for the row, derived deterministically (no scrape-order
-   *  dependence) by the shared `chooseDisplay` ladder: dominant clean form
-   *  across the per-cinema reported titles → the `Tmdb` slot's Polish title
-   *  (when it shares that identity and is well-formed) → the cinema
-   *  `preferredDisplay` ladder → `recase`. A trailing bracketed year equal to
-   *  [[resolvedYear]] — the year the card prints beside the title — is dropped from
-   *  every spelling first.
-   *
-   *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache keys
-   *  the row by) because the record itself doesn't carry it; it's the fallback
-   *  when no cinema is scraping yet (TMDB-only row).
-   *
-   *  `extraCinemaTitles` are cinema-reported titles this record does not itself carry —
-   *  the slots a MIGRATED film keeps in `movie_slots` while its `movies` document reports
-   *  none. They join the VOTE and nothing else, so a caller can make the ladder see the
-   *  whole film without putting foreign slots into a record something is about to persist.
-   *
-   *  `normalizer` is an ordinary parameter, not a context one: the display
-   *  ladder is country-specific, and the Twirl templates that render a row have
-   *  no given in scope — making it implicit silently broke `web`. */
-  def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer,
-                   extraCinemaTitles: Seq[String] = Nil)(using services.movies.LatestTitleYear): String =
-    normalizer.chooseDisplay(
-      perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
-      fallback        = cleanTitle,
-      tmdbTitle       = data.get(Tmdb).flatMap(_.title),
-      shownYear       = resolvedYear)
 
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */
@@ -487,36 +408,6 @@ case class MovieRecord(
    *  pre-enrichment yearless orphan (`sanitize(title)|`) out of `web_movies`. */
   def readyToProject: Boolean = tmdbConcluded
 
-  /** Genre names — first non-empty list in genre-priority
-   *  order: TMDB → Filmweb → cinema slots (in their normal priority order).
-   *  Unlike `countries`, we don't union across sources because each source
-   *  has its own taxonomy and spelling (TMDB's "Sci-Fi" vs Helios'
-   *  "science fiction"); unioning would surface inconsistent labels for the
-   *  same concept. Each list is spelled as the genre master set names it in the screening country's
-   *  language ([[services.movies.SlotFields.genres]]): a slot keeps the spelling it was stored with
-   *  until its source is read again (a TMDB slot fetched before the set printed "film TV"), and a
-   *  placeholder ("Unknown") is no genre, so the next source's list is taken instead. */
-  def genres(using services.movies.LatestTitleYear): Seq[String] = {
-    val language = screeningLanguage
-    def served(genres: Seq[String]): Seq[String] = language.fold(genres)(services.movies.SlotFields.genres(genres, _))
-    def slotGenres(s: Source): Seq[String] = data.get(s).map(slot => served(slot.genres)).getOrElse(Seq.empty)
-    val tmdb    = slotGenres(Tmdb)
-    val filmweb = slotGenres(Filmweb)
-    if (tmdb.nonEmpty)    tmdb
-    else if (filmweb.nonEmpty) filmweb
-    else prioritizedCinema.iterator.map(slot => served(slot._2.genres)).find(_.nonEmpty).getOrElse(Seq.empty)
-  }
-
-  /** Age rating / certificate, CINEMA-first: the local screening venue's
-   *  certificate (BBFC in the UK) is the authoritative one for that country,
-   *  unlike TMDB's multi-country certification. Falls back to a `Tmdb` slot's
-   *  value only if no cinema carries one. Verbatim per source — no cross-scheme
-   *  normalisation (a UK "15" and a German "FSK 16" are different labels for
-   *  different audiences). */
-  def ageRating(using services.movies.LatestTitleYear): Option[String] =
-    prioritizedCinema.iterator.flatMap(_._2.ageRating).find(_.nonEmpty)
-      .orElse(data.get(Tmdb).flatMap(_.ageRating))
-
   /** Production countries — union across sources, deduplicated
    *  case-insensitively while preserving the priority-first order. Sources
    *  spell country names in their own way, so the same country might appear
@@ -534,19 +425,6 @@ case class MovieRecord(
     seen.toSeq
   }
 
-  /** Best available original (production-language) title across sources —
-   *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then
-   *  whatever a cinema's own API exposed (only Multikino does), then Filmweb's
-   *  `/info` originalTitle as a last-resort gap-filler (surfaces on a
-   *  Filmweb-only row TMDB never resolved). None when no source supplied one.
-   *  Distinct from `originalTitle`, which is TMDB-only and stays that way for
-   *  the search/URL fallbacks that rely on it. */
-  def anyOriginalTitle(using services.movies.LatestTitleYear): Option[String] =
-    originalTitle
-      .orElse(data.get(Imdb).flatMap(_.originalTitle))
-      .orElse(evidence.originalTitle)
-      .orElse(data.get(Filmweb).flatMap(_.originalTitle))
-
   /** Original (production-language) titles contributed by the resolved-metadata
    *  sources — TMDB, IMDb, Filmweb. These are the alternate search terms the
    *  resolution lookups mine (`resolveTmdbId` folds every slot's `originalTitle`
@@ -557,15 +435,6 @@ case class MovieRecord(
   def resolverOriginalTitles: Set[String] =
     Seq(Tmdb, Imdb, Filmweb).flatMap(s => data.get(s).flatMap(_.originalTitle)).toSet
 
-  /** The original title worth showing alongside `displayed` — present, and
-   *  not merely a case/whitespace re-spelling of the title already on screen.
-   *  An English-language film carries the same string as both its cinema
-   *  title and its original title, so showing it would just repeat the line.
-   *  Centralising the "is it redundant?" test here lets every frontend render
-   *  the result unconditionally. */
-  def distinctOriginalTitle(displayed: String)(using services.movies.LatestTitleYear): Option[String] =
-    anyOriginalTitle.map(_.trim).filter(_.nonEmpty)
-      .filterNot(_.equalsIgnoreCase(displayed.trim))
 }
 
 object MovieRecord {

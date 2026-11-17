@@ -32,9 +32,9 @@ class PutSlotsIfPresentSpec extends AnyFlatSpec with Matchers {
     Seq(slotWise, recordWise).foreach(_.cache.put(filmKey, MovieRecord(imdbRating = Some(7.5), data = Map[Source, SourceData](
       (KinoMuza: Source) -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(1)))))))
     val writes: Seq[(Source, SourceData)] = Seq(
-      CinemaShowing.keyFor(Multikino, "Slot Film", normalizer) -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2))),
-      CinemaShowing.keyFor(Multikino, "Slot Film", normalizer) -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2))),
-      CinemaShowing.keyFor(Multikino, "Slot Film", normalizer) -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2), at(3))),
+      normalizer.slotKey(Multikino, "Slot Film") -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2))),
+      normalizer.slotKey(Multikino, "Slot Film") -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2))),
+      normalizer.slotKey(Multikino, "Slot Film") -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2), at(3))),
       (KinoMuza: Source) -> SourceData(title = Some("Slot Film"), synopsis = Some("new"), showtimes = Seq(at(1))),
       (KinoMuza: Source) -> SourceData(title = Some("Slot Film"), synopsis = Some("new"), showtimes = Nil))
     writes.zipWithIndex.foreach { case ((source, slot), step) =>
@@ -50,7 +50,7 @@ class PutSlotsIfPresentSpec extends AnyFlatSpec with Matchers {
   // drain's CPU, with the drain's other claimants queued behind the lock (JFR, run 37622335270 and after).
   it should "write several slots at once, each from what it held, exactly as putIfPresent of the same update does" in {
     val (slotWise, recordWise) = (new Side, new Side)
-    val multikino = CinemaShowing.keyFor(Multikino, "Slot Film", normalizer)
+    val multikino = normalizer.slotKey(Multikino, "Slot Film")
     Seq(slotWise, recordWise).foreach(_.cache.put(filmKey, MovieRecord(imdbRating = Some(7.5), data = Map[Source, SourceData](
       (KinoMuza: Source) -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(1))),
       multikino -> SourceData(title = Some("Slot Film"), showtimes = Seq(at(2))),
@@ -60,7 +60,7 @@ class PutSlotsIfPresentSpec extends AnyFlatSpec with Matchers {
     val writes: Seq[(Seq[Source], String)] = Seq(
       Seq(KinoMuza, multikino) -> "page",
       Seq(KinoMuza, multikino) -> "page",                       // the same read again: nothing moves
-      Seq(multikino, CinemaShowing.keyFor(KinoPalacowe, "Slot Film", normalizer)) -> "page, read again",
+      Seq(multikino, normalizer.slotKey(KinoPalacowe, "Slot Film")) -> "page, read again",
       Seq(KinoMuza) -> "page")
     writes.zipWithIndex.foreach { case ((sources, synopsis), step) =>
       slotWise.cache.putSlotsIfPresent(filmKey, sources)((_, held) => merged(synopsis)(held))

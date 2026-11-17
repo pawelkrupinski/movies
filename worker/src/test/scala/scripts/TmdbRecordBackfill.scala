@@ -175,7 +175,7 @@ object TmdbRecordBackfill {
       val films = db.getCollection[BsonDocument](TmdbKind.Film.collection)
       val out   = Seq.newBuilder[RecordState]
       val local = TmdbStore.Partial.Local.field
-      services.movies.KeysetScan.scan[BsonDocument]("tmdb_films scan", Page, maxAttempts = 3, initialBackoff = 1.second,
+      tools.KeysetScan.scan[BsonDocument]("tmdb_films scan", Page, maxAttempts = 3, initialBackoff = 1.second,
         keyOf = _.getString("_id").getValue,
         fetchPage = (after, size) => Await.result(films
           .find(Filters.and((Seq(Filters.exists(local)) ++ after.map(Filters.gt("_id", _)))*))

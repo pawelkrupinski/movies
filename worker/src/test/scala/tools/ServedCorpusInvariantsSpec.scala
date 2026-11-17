@@ -24,7 +24,7 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
 
   private def film(id: String, title: String, tmdbId: Option[Int], slots: (Cinema, String)*): StoredMovieRecord =
     StoredMovieRecord(title, Some(2026), MovieRecord(tmdbId = tmdbId, data = slots.map { case (c, t) =>
-      (CinemaShowing.keyFor(c, t, titleNormalizer): Source) -> SourceData(title = Some(t), showtimes = Seq(Showtime(Seven, None)))
+      (titleNormalizer.slotKey(c, t): Source) -> SourceData(title = Some(t), showtimes = Seq(Showtime(Seven, None)))
     }.toMap), FilmId(id))
 
   private def card(id: String): ResolvedMovie = ResolvedMovie(
@@ -120,7 +120,7 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
     def paged(title: String, page: String, at: LocalDateTime) = Helios -> CinemaMovie(Movie(title), Helios, None, Some(page),
       None, Nil, Nil, Seq(Showtime(at, bookingUrl = None)))
     def holding(id: String, year: Int, page: String, at: LocalDateTime) = StoredMovieRecord("Lalka", Some(year),
-      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, "Lalka", titleNormalizer) ->
+      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](titleNormalizer.slotKey(Helios, "Lalka") ->
         SourceData(title = Some("Lalka"), releaseYear = Some(year), filmUrl = Some(page), showtimes = Seq(Showtime(at, None))))),
       FilmId(id))
     check(listings = Seq(paged("Lalka", pageHas, Nine), paged("Lalka", pageKawalski, Seven)),
@@ -135,7 +135,7 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
     def dated(title: String, year: Option[Int], at: LocalDateTime) =
       Helios -> CinemaMovie(Movie(title, releaseYear = year), Helios, None, None, None, Nil, Nil, Seq(Showtime(at, bookingUrl = None)))
     def holding(id: String, year: Int, at: LocalDateTime*) = StoredMovieRecord("Sinn und Sinnlichkeit", Some(year),
-      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, "Sinn und Sinnlichkeit", titleNormalizer) ->
+      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](titleNormalizer.slotKey(Helios, "Sinn und Sinnlichkeit") ->
         SourceData(title = Some("Sinn und Sinnlichkeit"), releaseYear = Some(year), showtimes = at.map(Showtime(_, None))))), FilmId(id))
     check(listings = Seq(dated("Sinn und Sinnlichkeit", Some(1996), Seven), dated("Sinn und Sinnlichkeit", None, Nine)),
       records = Seq(holding("f1", 1996, Seven), holding("f2", 2026, Nine)),

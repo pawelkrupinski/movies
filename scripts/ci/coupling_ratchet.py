@@ -3,7 +3,8 @@
 # measured from Zinc's class-dependency record (`sbt couplingReport`, project/Coupling.scala), may not grow past the
 # checked-in baseline (test/resources/coupling-baseline.tsv) -- no new package cycle edge, no new cross-module edge
 # kind, no package's Ce (the outside packages its classes use) past its row (or past the new-package limit), no
-# class's fan-out past its row (or, without a row, to the limit) -- and the baseline itself may grow only in a commit
+# class's fan-out past its row (or, without a row, to the limit), no package edge into a higher layer (the layering,
+# test/resources/coupling-layers.tsv: a `layer-violation` row fails whatever the baseline says) -- and the baseline itself may grow only in a commit
 # carrying `Coupling: <why>`. A fall needs no
 # trailer: `scripts/coupling-report --update` writes the measured rows, every fall included.
 #
@@ -54,6 +55,13 @@ def violations(current: Rows, baseline: Rows) -> List[str]:
     """The measured rows past the baseline, one sentence each."""
     lim = limits(baseline)
     out = []
+    for key, refs in sorted(of_kind(current, "layer-violation").items()):
+        a, b = key.split("->")
+        if b == "?":
+            out.append(f"package {a} has no layer: give it a row in test/resources/coupling-layers.tsv")
+        else:
+            out.append(f"a package edge into a higher layer: {key} ({refs} class references) -- cut it, or allow it with its why "
+                       "in test/resources/coupling-layers.tsv")
     for key, refs in sorted(of_kind(current, "module-edge").items()):
         if key not in of_kind(baseline, "module-edge"):
             out.append(f"a new cross-module edge kind: {key} ({refs} class references)")

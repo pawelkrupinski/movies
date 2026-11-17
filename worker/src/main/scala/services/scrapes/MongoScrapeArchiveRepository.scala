@@ -143,7 +143,7 @@ class MongoScrapeArchiveRepository(
   def contentStamps(): Map[String, ContentStamp] = coll.toSeq.flatMap { c =>
     val stamps    = c.withDocumentClass[ContentStampDto]()
     val collected = Seq.newBuilder[ContentStampDto]
-    val complete  = services.movies.KeysetScan.scan[ContentStampDto](
+    val complete  = tools.KeysetScan.scan[ContentStampDto](
       label          = "ScrapeArchiveRepository content-stamp batch",
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
       maxAttempts    = 5,
@@ -178,7 +178,7 @@ class MongoScrapeArchiveRepository(
    * The unbounded form did not merely run slowly on a large archive — it CRASHED.
    * A single cursor over a big collection recurses the async driver's per-message
    * completion chain deep enough to throw `StackOverflowError` on a driver I/O
-   * thread (see [[services.movies.KeysetScan]], which exists because `movies` and
+   * thread (see [[tools.KeysetScan]], which exists because `movies` and
    * `screenings` hit exactly this). The crash lands on an uncaught I/O thread, not
    * on the caller's `Await`, so nothing here catches it: the future simply never
    * completes and the caller sees a 120s timeout with no cause attached. That is
@@ -316,7 +316,7 @@ class MongoScrapeArchiveRepository(
       // venue's whole listing, so a page is several round trips and a decode, and the US archive read
       // page after page was ~6 s of every identity projection.
       val ids      = Vector.newBuilder[String]
-      val idsWhole = services.movies.KeysetScan.scan[org.bson.BsonDocument](
+      val idsWhole = tools.KeysetScan.scan[org.bson.BsonDocument](
         label          = "ScrapeArchiveRepository id batch",
         batchSize      = MongoScrapeArchiveRepository.IdBatchSize,
         maxAttempts    = 5,
@@ -333,7 +333,7 @@ class MongoScrapeArchiveRepository(
         // A row whose id names no venue decodes to nothing (`StoredScrapeDto.toDomain`), kept or not.
         if (Cinema.byDisplayName.get(id).exists(keep)) ids += id
       })
-      idsWhole.andThen(services.movies.KeysetScan.byKeys[StoredScrapeDto](
+      idsWhole.andThen(tools.KeysetScan.byKeys[StoredScrapeDto](
         label          = "ScrapeArchiveRepository keyset batch",
         keys           = ids.result(),
         batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,

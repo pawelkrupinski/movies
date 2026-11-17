@@ -1,5 +1,6 @@
 package services.movies
 
+import tools.KeysetScan
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}

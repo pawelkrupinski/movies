@@ -25,7 +25,7 @@ import java.time.LocalDateTime
  * read model's rows for that film:
  *
  *   - HOMED: every listing with showtimes is held by EXACTLY one stored film, in the slot
- *     `CinemaShowing.keyFor` derives for its (cinema, title) — none is a lost listing, two
+ *     `TitleNormalizer.slotKey` derives for its (cinema, title) — none is a lost listing, two
  *     is one listing duplicated across films.
  *   - SERVED UNDER ITS FILM: every showtime of that listing is in the read model's
  *     screenings for THAT film (or one of its `~variant` cards) at THAT cinema.

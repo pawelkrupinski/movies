@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{CinemaShowing, Helios, KinoMuza, Multikino, MovieRecord, SourceData}
+import models.{Helios, KinoMuza, Multikino, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
@@ -13,7 +13,7 @@ import services.movies.{ListingKey, SingleCountryNormalizer}
 class FilmShapesSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private def slot(cinema: models.Cinema, director: String) =
-    (CinemaShowing.keyFor(cinema, "Lalka", normalizer): models.Source) -> SourceData(title = Some("Lalka"), director = Seq(director))
+    (normalizer.slotKey(cinema, "Lalka"): models.Source) -> SourceData(title = Some("Lalka"), director = Seq(director))
   private def record(directors: String*) =
     MovieRecord(data = Seq(Multikino, Helios, KinoMuza).zip(directors).map { case (c, d) => slot(c, d) }.toMap)
   private val keys = Seq(ListingKey.Native("Multikino", "lalka", "Lalka"), ListingKey.Native("Helios", "lalka", "Lalka"))

@@ -15,7 +15,7 @@ import scala.concurrent.duration.FiniteDuration
  *
  * How to use: `MongoRead.one("what", 10.seconds)(collection.find(filter).headOption())` — then match
  * the [[ReadOutcome]] (or `.required` when the row must exist). Whole-collection reads answer a
- * [[ScanOutcome]] through `services.movies.KeysetScan` instead. `NoSwallowedFailureSpec` (its
+ * [[ScanOutcome]] through `tools.KeysetScan` instead. `NoSwallowedFailureSpec` (its
  * repository-read shape) flags the old `Try(Await.result(…)).toOption` form; a site where a miss is
  * truly the safe answer is allowlisted in `RepositoryReadSwallows` with WHY.
  */

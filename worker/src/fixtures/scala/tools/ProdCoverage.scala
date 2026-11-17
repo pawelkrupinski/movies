@@ -42,7 +42,7 @@ object ProdCoverage {
              *  baseline is taken, so it counts prod's coverage of exactly the films the
              *  sample corpus replays. `None` counts every film.
              *
-             *  The key (`"<cinema>␟<titleKey>"`, `CinemaShowing.keyFor`) is what both
+             *  The key (`"<cinema>␟<titleKey>"`, `TitleNormalizer.slotKey`) is what both
              *  sides derive from the same (cinema, title), which the stored slot TITLE is
              *  not: prod strips a listing's decoration before storing it, so a corpus
              *  "The Room [dubbing]" never equalled the "The Room" on prod's slot. */

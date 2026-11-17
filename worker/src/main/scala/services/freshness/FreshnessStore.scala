@@ -5,7 +5,7 @@ import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFu
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Filters, Indexes, Sorts}
 import play.api.Logging
-import services.movies.KeysetScan
+import tools.KeysetScan
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap

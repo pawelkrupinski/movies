@@ -47,7 +47,7 @@ object CorpusSample {
    *  out reading 79% resolved against the replay's 70%.
    *
    *  The slot KEY is what both sides derive from the same (cinema, title) pair, through
-   *  the same `CinemaShowing.keyFor` — so there is one rule, not two that have to agree.
+   *  the same `TitleNormalizer.slotKey` — so there is one rule, not two that have to agree.
    *  The slot's stored TITLE is not that: prod strips a listing's decoration before
    *  storing it, so a corpus "The Room [dubbing]" never equalled the "The Room" prod had
    *  put on the slot, and every decorated listing silently fell out of the baseline —
@@ -55,7 +55,7 @@ object CorpusSample {
   def slotKeysOf(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] =
     rows.flatMap(row => row.films
         .filter(film => keys.contains(keyOf(film, normalizer)))
-        .map(film => models.CinemaShowing.keyFor(row.cinema, film.movie.title, normalizer).displayName))
+        .map(film => normalizer.slotKey(row.cinema, film.movie.title).displayName))
       .toSet
 
   /** Every distinct film key in the corpus, sorted — a stable universe to sample

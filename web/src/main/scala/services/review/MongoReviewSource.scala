@@ -7,7 +7,8 @@ import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.{MongoIdentityModelStore, PosterAnswers, ResolverDecision, ResolverDecisionBson}
-import services.movies.{KeysetScan, SlotsRepository}
+import services.movies.SlotsRepository
+import tools.KeysetScan
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Await

@@ -121,7 +121,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     row.data.get(decorated).map(_.showtimes.size)   shouldBe Some(1)
     // No base-title phantom fabricated: still exactly one KinoApollo slot.
     row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 1
-    row.data.get(CinemaShowing.keyFor(KinoApollo, "Dune", titleNormalizer))            shouldBe None
+    row.data.get(titleNormalizer.slotKey(KinoApollo, "Dune"))            shouldBe None
   }
 
   it should "land detail on EVERY programme-edition slot of a cinema (no phantom) when the film runs as several editions" in {
@@ -143,7 +143,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     Seq(a, b, c).foreach { s => row.data.get(s).map(_.director) shouldBe Some(Seq("Jan Komasa")) }
     // Still exactly three slots — no base-title phantom fabricated.
     row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 3
-    row.data.get(CinemaShowing.keyFor(KinoApollo, "Ojczyzna", titleNormalizer)) shouldBe None
+    row.data.get(titleNormalizer.slotKey(KinoApollo, "Ojczyzna")) shouldBe None
   }
 
   // Kinoteka runs "Rozważna i romantyczna" as two programme editions — "| Kino dla
@@ -637,10 +637,10 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   // fabricated one there: one listing held by two films.
   it should "land the page on the row the task was asked for, not on another film of the same title" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val showing = CinemaShowing.keyFor(KinoApollo, "Lalka", titleNormalizer)
+    val showing = titleNormalizer.slotKey(KinoApollo, "Lalka")
     val bare    = services.movies.CacheKey.stored("Lalka", "lalka|")
     val second  = services.movies.CacheKey.stored("Lalka", "lalka~1164|")
-    cache.put(bare, MovieRecord(data = Map(CinemaShowing.keyFor(CinemaCityKinepolis, "Lalka", titleNormalizer) -> SourceData(title = Some("Lalka")))))
+    cache.put(bare, MovieRecord(data = Map(titleNormalizer.slotKey(CinemaCityKinepolis, "Lalka") -> SourceData(title = Some("Lalka")))))
     cache.put(second, MovieRecord(data = Map(showing -> SourceData(title = Some("Lalka"), filmUrl = Some("http://ref"),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val page = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(runtimeMinutes = Some(170))))

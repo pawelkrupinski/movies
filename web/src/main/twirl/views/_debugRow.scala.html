@@ -14,6 +14,7 @@
  * that OOM'd the view on the full corpus.
  *@
 @(row: StoredMovieRecord, normalizer: services.movies.TitleNormalizer, latestYear: services.movies.LatestTitleYear)(implicit city: models.City)
+@import services.movies.CinemaSlotReadings.*
 @defining(row.id.value) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>

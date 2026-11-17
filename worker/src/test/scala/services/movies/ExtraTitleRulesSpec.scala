@@ -168,7 +168,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // seed's slash strip keeps the part before " / " — the banner — and drops the
   // film, so this banner must fold before it. The director tail ("… reż. Andrzej Wajda") is off by then: intake
   // reads it into the listing's director (TitleFacts).
-  private val sokolniaWajda = models.Country.Poland.titleFacts.peel("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda").title
+  private val sokolniaWajda = services.movies.TitleFacts.rulesFor(models.Country.Poland).peel("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda").title
 
   // An id names one rule: a second rule under it reads as the first wherever a rule is named (an override, a report,
   // the rule store), and two strands added a day apart each brought their own copy.

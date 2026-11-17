@@ -14,7 +14,7 @@ import scala.util.Using
  * `key` is the row's stored lookup key (`sanitize(title)|year`), the nearest thing to a title a
  * `movies` document carries. `covered` names the coverage axes the row holds a value on, under the
  * names [[ProdCoverageBaseline.metrics]] uses. `slots` are the row's screening slot keys
- * (`"<cinema>␟<titleKey>"`, `CinemaShowing.keyFor`): the one identity a replayed film and a
+ * (`"<cinema>␟<titleKey>"`, `TitleNormalizer.slotKey`): the one identity a replayed film and a
  * production film share, so the per-film diff ([[FilmCoverageDiff]]) joins on them.
  *
  * `modelTook` says which stage made the row's TMDB take: `Some(true)` when prod's identity model itself named that film

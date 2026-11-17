@@ -126,6 +126,56 @@ object Coupling {
     }
   }
 
+  // ── layers ──
+
+  /** THE LAYERING (test/resources/coupling-layers.tsv, [[Layers.parse]]): every package's layer, bottom (0) up, and the
+   *  few package edges allowed to point up anyway, each with its why. A package may depend only on its own layer or one
+   *  below; a package no row names is a violation too, so a new top-level package takes a place before it lands. */
+  final case class Layers(rows: Seq[(String, Int)], allowed: Set[(String, String)]) {
+    /** A package's layer: the longest `prefix` row naming it (`services` names `services.movies`), None for none. */
+    def layerOf(pkg: String): Option[Int] =
+      rows.filter { case (prefix, _) => pkg == prefix || pkg.startsWith(prefix + ".") }.sortBy(-_._1.length).headOption.map(_._2)
+  }
+
+  object Layers {
+    /** The table's rows: `layer<TAB><n><TAB><package prefix><TAB><why>` and `allow<TAB><from>-><to><TAB><why>`; `#` lines
+     *  and blank lines are comments. A row of any other shape, or an `allow` without its why, is an error. */
+    def parse(lines: Seq[String]): Layers = {
+      val layers = Seq.newBuilder[(String, Int)]
+      val allowed = Set.newBuilder[(String, String)]
+      lines.zipWithIndex.foreach { case (line, index) =>
+        val n: Int = index + 1
+        val cols: Array[String] = line.split("\t", -1)
+        def bad(why: String): Nothing = throw new IllegalArgumentException(s"coupling-layers.tsv line $n: $why")
+        if (line.trim.isEmpty || line.startsWith("#")) ()
+        else if (cols(0) == "layer" && cols.length == 4) {
+          if (cols(1).isEmpty || !cols(1).forall(_.isDigit)) bad(s"layer `${cols(1)}` is not a number")
+          layers += ((cols(2), cols(1).toInt))
+        } else if (cols(0) == "allow" && cols.length == 3) {
+          if (cols(2).trim.isEmpty) bad(s"the allowed edge ${cols(1)} has no why")
+          val ends: Array[String] = cols(1).split("->", -1)
+          if (ends.length != 2 || ends(0).isEmpty || ends(1).isEmpty) bad(s"`${cols(1)}` is not <from>-><to>")
+          allowed += ((ends(0), ends(1)))
+        } else bad("not a `layer` or `allow` row")
+      }
+      Layers(layers.result(), allowed.result())
+    }
+  }
+
+  /** The package edges the layering forbids, with the class references making each: an edge into a higher layer that
+   *  no `allow` row names, and (as `<package>->?`) every package no `layer` row names. */
+  def layerViolations(g: Graph, layers: Layers): Seq[((String, String), Seq[(String, String)])] = {
+    val unlayered: Seq[((String, String), Seq[(String, String)])] =
+      packages(g).map(_.name).filter(p => layers.layerOf(p).isEmpty).map(p => ((p, "?"), Seq.empty[(String, String)]))
+    def up(a: String, b: String): Boolean = {
+      val from: Option[Int] = layers.layerOf(a)
+      val to: Option[Int] = layers.layerOf(b)
+      from.isDefined && to.isDefined && to.get > from.get && !layers.allowed((a, b))
+    }
+    val upward: Seq[((String, String), Seq[(String, String)])] = packageEdges(g).toSeq.filter { case ((a, b), _) => up(a, b) }
+    (unlayered ++ upward).sortBy { case ((a, b), _) => (a, b) }
+  }
+
   // ── classes ──
 
   /** Per class: (fan-in, fan-out) over distinct production classes. */
@@ -149,13 +199,15 @@ object Coupling {
   val DefaultNewPackageCeLimit = 8
 
   /** The ratchet's rows (TAB-separated `kind key value`, sorted): what scripts/ci/coupling_ratchet.py compares. */
-  def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit): Seq[String] = {
+  def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit,
+                   layers: Option[Layers] = None): Seq[String] = {
     val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tnew-package-ce\t$newPackageCeLimit")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
     val ce = packages(g).map(p => s"ce\t${p.name}\t${p.cePackages}")
     val fanout = fans(g).toSeq.collect { case (c, (_, out)) if out >= fanOutLimit => s"fanout\t$c\t$out" }.sorted
-    limits ++ modules ++ cycleEdges ++ ce ++ fanout
+    val layerRows = layers.toSeq.flatMap(l => layerViolations(g, l)).map { case ((a, b), refs) => s"layer-violation\t$a->$b\t${refs.size}" }
+    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ layerRows
   }
 
   val BaselineHeader: Seq[String] = Seq(
@@ -168,6 +220,8 @@ object Coupling {
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): a new one adds a cycle",
     "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
     "#   fanout       <class>, its fan-out (distinct production classes it uses), at or above the limit: it may not rise",
+    "#   layer-violation <from>-><to>, a package edge into a higher layer (test/resources/coupling-layers.tsv): never",
+    "#                held here -- the ratchet fails on any (cut it, or allow it in the layer table with its why)",
     "# A row added or raised lands only in a commit carrying `Coupling: <why>` (CLAUDE.md, Design rules); a fall is",
     "# recorded by --update with no trailer. Module-edge and cycle-edge weights are information: only the pair is held.")
 
@@ -178,7 +232,7 @@ object Coupling {
     Seq(header.mkString("| ", " | ", " |"), header.map(_ => "---").mkString("|", "|", "|")) ++ rows.map(_.mkString("| ", " | ", " |"))
 
   /** The markdown summary. `declared`: each module's direct Compile dependencies (build.sbt's dependsOn). */
-  def report(g: Graph, declared: Map[String, Set[String]], top: Int = 20): String = {
+  def report(g: Graph, declared: Map[String, Set[String]], top: Int = 20, layers: Option[Layers] = None): String = {
     val modules = g.types.map(_.module).distinct.sorted
     val medges = moduleEdges(g)
     val pkgs = packages(g)
@@ -220,6 +274,20 @@ object Coupling {
       c.edges.foreach { case ((a, b), refs) =>
         val sample = refs.take(3).map { case (x, y) => s"`$x` -> `$y`" }.mkString(", ")
         out += s"   - `$a -> $b`: ${refs.size} refs (${sample}${if (refs.size > 3) ", ..." else ""})"
+      }
+    }
+    layers.foreach { l =>
+      val bad = layerViolations(g, l)
+      out += ""
+      out += s"## Layers (${bad.size} violations)"
+      out += ""
+      out += "Each package's layer (test/resources/coupling-layers.tsv), bottom up; a package depends only on its own layer or below."
+      out += ""
+      out ++= table(Seq("layer", "packages"), pkgs.groupBy(p => l.layerOf(p.name).map(_.toString).getOrElse("?")).toSeq.sortBy(_._1)
+        .map { case (n, ps) => Seq(n, ps.map(p => s"`${p.name}`").sorted.mkString(" ")) })
+      bad.foreach { case ((a, b), refs) =>
+        val sample = refs.take(3).map { case (x, y) => s"`$x` -> `$y`" }.mkString(", ")
+        out += (if (b == "?") s"- `$a` has no layer" else s"- `$a -> $b` points up: ${refs.size} refs ($sample${if (refs.size > 3) ", ..." else ""})")
       }
     }
     out += ""

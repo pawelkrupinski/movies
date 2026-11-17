@@ -105,7 +105,7 @@ final class MongoVenuePageStore(database: MongoDatabase) extends VenuePageStore 
       _.wasAcknowledged())
 
   def foreach(onPage: VenuePage => Unit): tools.ScanOutcome =
-    services.movies.KeysetScan.scan[Document](
+    tools.KeysetScan.scan[Document](
       label          = "MongoVenuePageStore.foreach",
       batchSize      = 2000,
       maxAttempts    = 3,

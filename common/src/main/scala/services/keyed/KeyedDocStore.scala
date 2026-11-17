@@ -107,7 +107,7 @@ final class InMemoryKeyedDocStore[T](codec: DocCodec[T]) extends KeyedDocStore[T
 /**
  * The documents in `collection`: replaced whole (upserted) on each write, read by `_id`, and scanned
  * in `_id`-keyset pages — never one unbounded cursor, which at a corpus's size recurses the async
- * driver into a `StackOverflowError` ([[services.movies.KeysetScan]]). `expireAfter` keeps a TTL
+ * driver into a `StackOverflowError` ([[tools.KeysetScan]]). `expireAfter` keeps a TTL
  * index on the codec's stamp field.
  */
 final class MongoKeyedDocStore[T](collection: MongoCollection[Document], codec: DocCodec[T], expireAfter: Option[FiniteDuration] = None)
@@ -161,7 +161,7 @@ object MongoKeyedDocStore {
   /** Every document of `collection` in `_id`-keyset pages of 2,000, each page retried with backoff:
    *  the way a whole small store is read, whatever it keeps in its documents. */
   def scanDocuments(collection: MongoCollection[Document], label: String)(each: Seq[Document] => Unit): ScanOutcome =
-    services.movies.KeysetScan.scan[Document](
+    tools.KeysetScan.scan[Document](
       label          = label,
       batchSize      = 2000,
       maxAttempts    = 3,

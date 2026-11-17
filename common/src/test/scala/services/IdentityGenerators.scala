@@ -109,7 +109,7 @@ object IdentityGenerators {
       cinema <- Gen.oneOf(cinemaPool)
       title  <- titles
       slot   <- genSlot(Some(title))
-    } yield CinemaShowing.keyFor(cinema, title, titleNormalizer) -> slot
+    } yield titleNormalizer.slotKey(cinema, title) -> slot
 
   /** A Tmdb / Imdb / Filmweb slot — a previous resolution's derived data,
    *  titled by a bare base title so it can alias a cinema's spelling. */

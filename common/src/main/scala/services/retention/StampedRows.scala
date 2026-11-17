@@ -63,7 +63,7 @@ object StampedRows {
   def scanBefore[D, A](collection: MongoCollection[D], before: org.bson.conversions.Bson, field: String)(idOf: D => String)
                       (stampOf: D => Option[A])(using scala.reflect.ClassTag[D]): Seq[(String, A)] = {
     val found = Vector.newBuilder[(String, A)]
-    val complete = services.movies.KeysetScan.scan[D](
+    val complete = tools.KeysetScan.scan[D](
       label = s"${collection.namespace.getCollectionName} retention scan", batchSize = 2000, maxAttempts = 3,
       initialBackoff = 500.millis, keyOf = idOf,
       fetchPage = (after, limit) => Await.result(collection

@@ -296,7 +296,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
                 val shown = s.programme.getOrElse(cinema, Vector.empty)
                 val row   = if (n == 1 && shown.nonEmpty) shown(rng.nextInt(shown.size)) else s.listing(cinema)
                 val title = row.movie.title
-                val stray = MovieRecord(data = Map(CinemaShowing.keyFor(cinema, title, normalizer) ->
+                val stray = MovieRecord(data = Map(normalizer.slotKey(cinema, title) ->
                   SourceData(title = Some(title), rawTitle = Some(title), releaseYear = row.movie.releaseYear, director = row.director,
                     filmUrl = row.filmUrl, showtimes = row.showtimes)))
                 val key = CacheKey(s"$title stray $t", row.movie.releaseYear, normalizer)

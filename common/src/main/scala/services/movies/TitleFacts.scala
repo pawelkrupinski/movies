@@ -10,11 +10,29 @@ import services.movies.TitleWords.Concept
  * system (DE kinoheld's "Das siebte Kreuz D, ab 12"), and what the format peel takes beside the formats: a BBFC
  * certificate and a running time (UK "Wicker (15) 105 mins").
  *
- * Per country ([[Rules]], `models.Country.titleFacts`): a country reads the credit and label words of its own languages
+ * Per country ([[Rules]], [[rulesFor]]): a country reads the credit and label words of its own languages
  * and English (the title-word table's, [[TitleWords.Concept.DirectorCredit]], [[TitleWords.Concept.OriginalTitle]]), and
  * the rating system its venues bill ([[RatingSystem]]) — a bare "(15)" is a BBFC certificate in the UK only.
  */
 object TitleFacts {
+
+  /** How `country`'s venues bill facts inside a title: the languages of the credit and label words they write -- their
+   *  own and English -- and the age-rating system they bill, if they bill one there. Every country names its own: a bare
+   *  "(15)" is a certificate in the UK and nothing anywhere else. */
+  def rulesFor(country: models.Country): Rules = country match {
+    case models.Country.Poland        => PolandRules
+    case models.Country.UnitedKingdom => UnitedKingdomRules
+    case models.Country.Germany       => GermanyRules
+    case models.Country.UnitedStates  => UnitedStatesRules
+    case models.Country.Spain         => SpainRules
+  }
+  // Built once each: a Rules compiles its credit and label patterns.
+  private lazy val PolandRules: Rules = Rules(Set("pl", "en"), Some(RatingSystem.PolishAge))
+  private lazy val UnitedKingdomRules: Rules = Rules(Set("en"), Some(RatingSystem.Bbfc))
+  private lazy val GermanyRules: Rules = Rules(Set("de", "en"), Some(RatingSystem.Fsk))
+  private lazy val UnitedStatesRules: Rules = Rules(Set("en"), None)
+  private lazy val SpainRules: Rules = Rules(Set("es", "en"), None)
+
 
   final case class Facts(directors: Seq[String] = Nil, originalTitle: Option[String] = None,
                          runtimeMinutes: Option[Int] = None, ageRating: Option[String] = None)

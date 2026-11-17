@@ -13,7 +13,7 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
   private val id         = FilmId("flistener")
   private val filmKey    = CacheKey.stored("Listener", "listener|2026")
   private val at         = LocalDateTime.of(2036, 10, 7, 18, 0)
-  private def slot(cinema: models.Cinema, hours: Int*) = CinemaShowing.keyFor(cinema, "Listener", normalizer) ->
+  private def slot(cinema: models.Cinema, hours: Int*) = normalizer.slotKey(cinema, "Listener") ->
     SourceData(title = Some("Listener"), releaseYear = Some(2026), showtimes = hours.map(h => Showtime(at.plusHours(h.toLong), None)))
   private val film = MovieRecord(data = Map(slot(Multikino, 0, 2), slot(Helios, 3)))
 

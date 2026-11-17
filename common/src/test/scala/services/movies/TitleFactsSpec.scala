@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 /** The facts venues bill inside a title (recording 38713274617's billings), read per country. */
 class TitleFactsSpec extends AnyFlatSpec with Matchers {
 
-  private def peel(country: Country, title: String) = country.titleFacts.peel(title)
+  private def peel(country: Country, title: String) = TitleFacts.rulesFor(country).peel(title)
 
   "a director credited in a title" should "be read into the listing's director and taken off the title" in {
     peel(Country.Poland, "Lalka, reż. Maciej Kawalski (2026)") shouldBe
@@ -111,9 +111,9 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
   it should "read the certificate the format peel takes off only where it is the country's rating system" in {
     val format = FormatTags.peel("Wicker (15) 105 mins")
     format shouldBe FormatTags.Peeled("Wicker", Nil, Some("15"), Some(105))
-    TitleFacts.of(Country.UnitedKingdom.titleFacts, TitleFacts.Facts.empty, format) shouldBe
+    TitleFacts.of(TitleFacts.rulesFor(Country.UnitedKingdom), TitleFacts.Facts.empty, format) shouldBe
       TitleFacts.Facts(runtimeMinutes = Some(105), ageRating = Some("15"))
-    TitleFacts.of(Country.Germany.titleFacts, TitleFacts.Facts.empty, format) shouldBe TitleFacts.Facts(runtimeMinutes = Some(105))
+    TitleFacts.of(TitleFacts.rulesFor(Country.Germany), TitleFacts.Facts.empty, format) shouldBe TitleFacts.Facts(runtimeMinutes = Some(105))
     FormatTags.peel("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)") shouldBe
       FormatTags.Peeled("Screening: NTL - Hay Fever", Nil, Some("12A"), Some(160))
     FormatTags.peel("Bad Apples (15) (2026) 100 mins") shouldBe FormatTags.Peeled("Bad Apples (2026)", Nil, Some("15"), Some(100))
