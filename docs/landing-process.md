@@ -180,6 +180,28 @@ queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTC
 - While it checks, no other change pushes (a push would move main under it), except a red fix, which keeps its own
   check tree and lands alone. A change queued meanwhile joins the next batch.
 
+## Stage 2d: the push batch, when checked changes each owe a verify round
+
+The owner (2026-11-17): "combine them instead of landing them one by one". A change fully checked on a main that has
+moved since owes a verify round (`--verify-only`, stage 3) before it pushes, and the oldest verification pushes first;
+so N checked changes used to land one after another, each paying a check-runner wait plus a ~10 min verify round after
+the previous push moved main. Now, at green with no batch open and no change's own verify round running, 2 or more such
+changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH"):
+
+- **Who joins**: up to 4, oldest first: changes checked on an older main, or queued for their verify round. Never a red
+  fix (it pushes alone, first, even while a push batch verifies), a `land --no-batch` change or one held by a known
+  red. A member that needs a FULL round on the current main (agentctl's file-overlap and build-aware rules, judged
+  against main plus the members before it) is left out and checked again alone, as before.
+- **The check**: ONE `--verify-only <the oldest member's full base>..<tip>` round over the union (on ci-runner
+  `check/verify-<base>-batch-<tip>`): every test config compiled, the lints, the fast specs and the unit tests of every
+  module any member, or what landed meanwhile, touches. More than one identity-model commit in it also runs G5's drift
+  check of its tip.
+- **Pass**: one push (the plan the members' full checks passed is skipped; the hook judges the red gate); each change
+  `LANDED` with its own watch and landing record (`batch_id`, `batch` size).
+- **Fail**: searched prefix by prefix as the backlog batch is; the confirmed culprit rejected, the changes before it
+  land, the rest verify again in the next push batch.
+- A change checked while a push batch verifies waits for it and joins the next one.
+
 ## Stage 3: the pre-push hook
 
 `scripts/hooks/pre-push`, run by git on every push (and by `--range` as a dry run). In order:
