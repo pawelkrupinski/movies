@@ -93,6 +93,20 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     (rowOf.values.flatten.toSeq :+ "identity") shouldBe (rowOf.values.flatten.toSeq :+ "identity").distinct
   }
 
+  /** The identity row runs in two (2026-11-17, `test (worker-identity)` the last job of 83 of 94 Main runs): `identity2`
+   *  names the real-family specs' parts outright, so a part SliceParts adds, or one renamed, would fall back to `identity`
+   *  silently and the long pole would grow back. Every part the specs define is named, and each name is a suite. */
+  they should "run every real-family spec part on identity2, by the parts SliceParts defines" in {
+    val block = buildSbt.substring(buildSbt.indexOf("lazy val IdentitySecondRowSuites"), buildSbt.indexOf("lazy val workerRowSettings"))
+    block should include(s"(1 to ${services.identity.SliceParts.Count})")
+    block should include("PopulationMonotonicityPart${k}Spec")
+    block should include("ReadSetClosurePart${k}Spec")
+    (1 to services.identity.SliceParts.Count).flatMap(k =>
+      Seq(s"services.identity.PopulationMonotonicityPart${k}Spec", s"services.identity.ReadSetClosurePart${k}Spec"))
+      .foreach(name => withClue(name)(Class.forName(name).getName shouldBe name))
+    RepoFile.matrixRows(testJob).find(_("shard") == "worker-identity-2").map(_("suites")) shouldBe Some("identity2")
+  }
+
   "ci.yml's integration rows" should "be build.sbt's IT_ROW filters, each running all of itAll" in {
     RepoFile.matrixRows(itJob).map(_("row")) should contain theSameElementsAs rowsOf("IT_ROW").toSeq
     itJob should include("IT_ROW: ${{ matrix.row }}")

@@ -214,25 +214,35 @@ lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -
 lazy val HeavyRows: Map[String, Set[String]] = Map(
   "heavy1" -> Set(
     "services.identity.IdentitySliceCasesSpec",       // every pinned slice of a recording, decided again
+    "scripts.IdentityRefitMeasureAllSpec",            // the refit's whole-vs-sharded measure over two captures
+    "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed
     "scripts.IdentityUnifiedFitSpec",                 // the unified model's weights fitted again from every capture's rows
     "services.identity.NonFilmEventsFixtureSpec",     // the non-film events over every capture's unmatched clusters
     "tools.UnmatchedClustersGapsSpec",                // a capture replayed for the lookups it lacks
     "scripts.IdentityDriftSlicesShard1Spec",          // the drift slices' second shard (IdentityDriftSlicesSpec)
     "services.identity.FamilyConvergenceSlicesSpec"), // every drift slice's families walked over their population lattice
   "heavy2" -> Set(
-    "scripts.IdentityRefitMeasureAllSpec",            // the refit's whole-vs-sharded measure over two captures
-    "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed
     "scripts.IdentityRefitCaptureReplaySpec",         // the refit's re-resolve of a capture
     "services.identity.MatchedTakesLabelSpec",        // every capture's matched takes against the labels
     "scripts.IdentityDriftSlicesShard2Spec",          // the drift slices' third shard (IdentityDriftSlicesSpec)
     "services.identity.FamilyIndexCompletenessSpec")) // every slice's family index, against corpora a population apart
+// (2026-11-17: the refit measure and the ratchet moved heavy2 -> heavy1, 405 of heavy2's 1,352 suite-seconds against
+// heavy1's 587, Main p50 10:23 against 6:01 over 15 runs to 44049933651.)
 lazy val HeavySuites: Set[String] = HeavyRows.values.flatten.toSet
 // Identity suites the catch-all `rest` row (CI's `worker`) runs instead: a drift-slice shard (IdentityDriftSlicesSpec).
 lazy val WorkerRestSuites: Set[String] = Set("scripts.IdentityDriftSlicesShard3Spec")
+// THE IDENTITY ROW IN TWO (2026-11-17): `identity` alone was the last job of 83 of 94 Main runs (`test (worker-identity)`
+// p50 14:48, its sbt step 853 s, 15 Main runs to 44049933651). `identity2` (ci.yml `worker-identity-2`) runs the
+// real-family specs' parts (SliceParts), ~2,150 of the row's suite-seconds in those runs (PopulationMonotonicity 1-4:
+// 630 + 366 + 219 + 189, ReadSetClosure 1-4: 340 + 174 + 140 + ~100); `identity` keeps the rest, the drift slices' shard 0
+// among them. Each part is named: a part SliceParts adds lands on `identity` until it is listed here (UnitTestSplitSpec).
+lazy val IdentitySecondRowSuites: Set[String] =
+  (1 to 4).flatMap(k => Seq(s"services.identity.PopulationMonotonicityPart${k}Spec", s"services.identity.ReadSetClosurePart${k}Spec")).toSet
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
-  "heavy1"   -> HeavyRows("heavy1"),
-  "heavy2"   -> HeavyRows("heavy2"),
-  "identity" -> (suite => !HeavySuites(suite) && !WorkerRestSuites(suite) &&
+  "heavy1"    -> HeavyRows("heavy1"),
+  "heavy2"    -> HeavyRows("heavy2"),
+  "identity2" -> IdentitySecondRowSuites,
+  "identity"  -> (suite => !HeavySuites(suite) && !WorkerRestSuites(suite) && !IdentitySecondRowSuites(suite) &&
     Seq("services.identity.", "scripts.", "tools.").exists(suite.startsWith))))
 
 lazy val itReportSettings = Seq(

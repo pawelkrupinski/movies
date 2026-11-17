@@ -27,7 +27,7 @@ env:
 
 # Pipeline shape:
 #
-#   test × 5 (heavy ×2, worker-identity, worker, rest) ─┐
+#   test × 6 (heavy ×2, worker-identity ×2, worker, rest) ─┐
 #   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
@@ -49,7 +49,7 @@ env:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 5 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
+# Current split: 6 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -135,12 +135,12 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # The unit tests, SPLIT across five runners: the worker module (~6,300 tests, the heaviest) on four through
-    # build.sbt's WORKER_ROW filter, and base, http, common, identity and testkit on the fifth (`rest`). Two of the worker's rows are
+    # The unit tests, SPLIT across six runners: the worker module (~6,300 tests, the heaviest) on five through
+    # build.sbt's WORKER_ROW filter, and base, http, common, identity and testkit on the sixth (`rest`). Two of the worker's rows are
     # its HEAVY suites (build.sbt `HeavyRows`, 2026-10-28): the ones that re-decide a recording's slices or re-resolve
     # the checked-in captures, which the owner wants out of the unit rows but still run before every deploy -- they do:
     # main.yml's publish jobs `needs: ci`, this job's rows included. `worker-identity` runs the resolver's other specs,
-    # the tools' and the identity tooling's, and `worker` the worker's rest beside the web, scrapers and repochecks modules. Each
+    # the tools' and the identity tooling's (`worker-identity-2` the real-family specs' parts, build.sbt `IdentitySecondRowSuites`), and `worker` the worker's rest beside the web, scrapers and repochecks modules. Each
     # row is cut to roughly equal time from per-suite JUnit times (measure run 3419 and after). One runner running all
     # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The non-sbt checks
     # (roster drift, the read-model stamp, actionlint, …) ride `heavy1`, the lightest row (Main runs 3614-3623: heavy1
@@ -153,11 +153,12 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [ heavy1, heavy2, worker-identity, worker, rest ]
+                shard: [ heavy1, heavy2, worker-identity, worker-identity-2, worker, rest ]
                 include:
                     - { shard: heavy1,          cmd: testUnitWorker, suites: heavy1 }
                     - { shard: heavy2,          cmd: testUnitWorker, suites: heavy2 }
-                    - { shard: worker-identity, cmd: testUnitWorker, suites: identity }
+                    - { shard: worker-identity,   cmd: testUnitWorker, suites: identity }
+                    - { shard: worker-identity-2, cmd: testUnitWorker, suites: identity2 }
                     - { shard: worker,          cmd: testUnitWorkerAndWeb, suites: rest }
                     - { shard: rest,            cmd: testUnitRest }
         runs-on: ubuntu-26.04
