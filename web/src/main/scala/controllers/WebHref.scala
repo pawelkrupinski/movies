@@ -32,9 +32,6 @@ object WebHref {
 
   def of(url: String): Option[WebHref] = Option.when(accepts(url))(new WebHref(url))
 
-  /** `poster` through [[tools.PosterProxy.proxy]]: the weserv address is https, so the answer stays one. */
-  def proxiedPoster(poster: WebHref): WebHref = of(tools.PosterProxy.proxy(poster.url)).getOrElse(poster)
-
   /** Whether `url` may become a [[WebHref]]: http(s), from its first character. */
   def accepts(url: String): Boolean =
     url.regionMatches(true, 0, "https://", 0, 8) || url.regionMatches(true, 0, "http://", 0, 7)

@@ -123,7 +123,7 @@ object RenderSafetyLintSpec {
     ("_ratingBadges.scala.html", "href")             -> "a WebHref (`for (href <- WebHref.of(…))`)",
     ("_serviceNameLink.scala.html", "u")             -> "a WebHref (the template's `url: Option[WebHref]`)",
     ("_filmDetailContent.scala.html", "url")         -> "a WebHref (FilmSchedule.linkableCinemaFilmUrls)",
-    ("_moviePoster.scala.html", "proxied")           -> "a WebHref (WebHref.proxiedPoster of the template's `poster: Option[WebHref]`)",
+    ("_moviePoster.scala.html", "proxied")           -> "a WebHref (ProxiedPoster.of of the template's `poster: Option[WebHref]`)",
     ("_filmDetailContent.scala.html", "href")        -> "an app route: FilmHref of a sibling city (MovieController.otherCityLinks)",
     ("film.scala.html", "canonicalUrl")              -> "an app URL: this page's own address (MovieController.film)",
     ("_ogTagsApp.scala.html", "{if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}") ->
