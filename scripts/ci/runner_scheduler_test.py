@@ -450,6 +450,15 @@ class BorrowedCheckTest(unittest.TestCase):
         borrowed = [self.settled(s, "check", 2.0, pool="measure") for s in (3, 4)]
         self.assertEqual(self.at(self.two_full_checks() + borrowed, queued(check=3)).starts, ())
 
+    def test_borrowed_checks_never_hold_the_check_lane(self):
+        # 2026-11-17 09:23Z: one check at home (0.4 cores), two borrowed, the check cpuset 3 of 12 busy, 6 checks queued
+        # 21 min "held by cpu" with check_lane '0 x': the lane counted the borrowed checks, which run on the measure
+        # CPUs, so the checks' own 12 threads sat idle. The lane is the checks' own cpuset's: one more starts there.
+        home = rs.Instance(4, "check", True, NOW, NOW - 120, mem_gib=1, cpu_cores=0.4, cpu_seconds=48)
+        borrowed = [self.settled(s, "check", 2.0, pool="measure") for s in (2, 3)]
+        d = self.at([home] + borrowed, queued(check=6), check_busy=3, measure_busy=7)
+        self.assertEqual((d.starts, d.borrowed), (((1, "check"),), ()))
+
     def test_a_borrowed_check_is_charged_its_whole_cap_to_measurements(self):
         # one borrowed check reading 1 core on 4 busy: measurements see 17 - 4 - 3 (its rest of 4) = 10, two -- not
         # 17 - 4 = 13, three
