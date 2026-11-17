@@ -25,7 +25,7 @@ trait AgreementKeys {
 final class InMemoryAgreementKeys extends AgreementKeys {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[Long, StoredKey]
   private var next = 0L
-  private val stored = services.BsonRoundTrip.via(AgreementKeys.encode, AgreementKeys.decode)
+  private val stored = tools.BsonRoundTrip.via(AgreementKeys.encode, AgreementKeys.decode)
   def all(): AgreementKeys.Held = synchronized(AgreementKeys.Held(kept.values.toSeq, next))
   def replace(retired: Set[Long], moved: Seq[StoredKey], next: Long): Unit = synchronized {
     kept --= retired; moved.foreach(k => kept(k.key) = stored(k)); this.next = next

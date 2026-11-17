@@ -1,5 +1,6 @@
 package services.metrics
 
+import tools.CacheOccupancy
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec

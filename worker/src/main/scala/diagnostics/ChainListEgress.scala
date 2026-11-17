@@ -1,0 +1,52 @@
+package diagnostics
+
+
+
+import tools.TlsTrust
+import tools.FetchedPage
+import tools.HttpFetch
+import tools.ProxyChain
+import tools.ResidentialShards
+import tools.SessionWarmingHttpFetch
+import tools.Stopwatch
+import services.cinemas.roster.ChainDirectory
+import services.cinemas.roster.RosterFinding.DirectoryNotRead
+
+/**
+ * How [[RosterAudit]] reaches the chains' own venue lists. Multikino's sits
+ * behind Cloudflare, which refuses GitHub's runner addresses (403 on both the
+ * home page and the list, run 35910520576), so when the Decodo credentials are
+ * set (`DECODO_PROXY_USER`/`PASS`, the worker's and the OG-card workflow's
+ * secrets) every list goes through the same proxy-primary chain the worker's
+ * Multikino scrapes use, with the direct fetch behind it. Without them the lists
+ * are fetched directly, as before.
+ *
+ * @param proxyShards one fetch per Decodo pool IP, or None when the proxy isn't
+ *                    configured
+ */
+final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[HttpFetch]], clock: java.time.Clock,
+                            stopwatch: Stopwatch) {
+
+  /** The list's fetch. A list that wants a session ([[ChainDirectory.warmUpUrl]])
+   *  warms it only when a call fails, then retries — once per egress, the way the
+   *  worker's own Multikino scrapes do, never up front as well. */
+  def fetchFor(directory: ChainDirectory): String => FetchedPage = {
+    val directLeg = directory.warmUpUrl.fold(direct)(new SessionWarmingHttpFetch(direct, _))
+    val http      = proxyShards.fold(directLeg)(ProxyChain.proxyPrimary(_, directLeg, clock, stopwatch, directory.warmUpUrl))
+    url => FetchedPage(url, http.get(url))
+  }
+
+  /** An unread list is a note when only the direct address was tried — a
+   *  datacenter IP a chain may refuse — but a failure once the residential proxy
+   *  was tried too: then nothing left explains it but the list itself. */
+  def judged(unread: DirectoryNotRead): DirectoryNotRead =
+    if (proxyShards.isEmpty) unread
+    else unread.copy(detail = s"${unread.detail}, through the residential proxy too", failing = true)
+}
+
+object ChainListEgress {
+  def fromConfiguration(direct: HttpFetch, configuration: settings.ProcessConfiguration, clock: java.time.Clock,
+                        stopwatch: Stopwatch): ChainListEgress =
+    new ChainListEgress(direct, ResidentialShards.fromCredentials(configuration.proxyUser, configuration.proxyPassword, TlsTrust.newContext()),
+      clock, stopwatch)
+}

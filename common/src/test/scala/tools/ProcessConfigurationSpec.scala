@@ -4,7 +4,7 @@ import settings.*
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.MongoAddress
+import settings.MongoAddress
 import testsupport.RepoRoot
 
 import java.nio.file.{Files, Path}

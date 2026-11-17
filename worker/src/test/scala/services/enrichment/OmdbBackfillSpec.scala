@@ -50,7 +50,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "leave a film TMDB has no record of to the identity resolver's fallback source" in {
     // Its IMDb id is the resolver's to give, on every fact it publishes (`ResolverDecision.fallback`): a title
     // search guessed PL "Lalka" (2026) the 1968 film's.
-    val cache = cacheWith(MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
+    val cache = cacheWith(MovieRecord(tmdbAttempt = Some(models.TmdbAttempt.Legacy)))
     new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
     cache.get(keyOf(cache)).flatMap(_.imdbId) shouldBe None
   }

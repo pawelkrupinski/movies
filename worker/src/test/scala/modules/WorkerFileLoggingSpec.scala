@@ -65,7 +65,7 @@ class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers with ScratchDirect
       val configurator = new JoranConfigurator()
       configurator.setContext(context)
       configurator.doConfigure(getClass.getResourceAsStream("/logback.xml"))
-      tools.LogFields.stamp(context, settings.CommitSha("0e41a4812"))
+      tools.LogFields.stamp(context, "0e41a4812")
       val root  = context.getLogger(ROOT_LOGGER_NAME)
       val event = new ch.qos.logback.classic.spi.LoggingEvent("fqcn", context.getLogger("services.identity.adapters.IdentityProjection"),
         ch.qos.logback.classic.Level.INFO, "identity take change: lost", null, null)

@@ -22,7 +22,7 @@ import scala.util.Try
 final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatch: tools.Stopwatch,
                                   // Where each completed flush is reported (`ScheduledTickStale`).
                                   ticks: TickRecorder = TickRecorder.Unrecorded,
-                                  threadPools: ThreadPools) extends services.Stoppable with Logging {
+                                  threadPools: ThreadPools) extends tools.Stoppable with Logging {
   import FacebookFetchRecorder.*
 
   private val pending  = new ConcurrentHashMap[String, Instant]()

@@ -11,7 +11,7 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 import scala.util.Try
-import services.cinemas.CountryNames
+import models.CountryNames
 import services.movies.TitleNormalizer
 
 /**

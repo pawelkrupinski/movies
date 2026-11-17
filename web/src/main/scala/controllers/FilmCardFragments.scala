@@ -2,7 +2,7 @@ package controllers
 
 import com.github.benmanes.caffeine.cache.Cache
 import play.twirl.api.Html
-import services.metrics.CacheOccupancy
+import tools.CacheOccupancy
 
 /**
  * A film's rendered listing card — its poster, links, ratings and whole showings tree —

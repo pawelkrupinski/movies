@@ -387,7 +387,7 @@ object RealHttpFetch {
    *  through one IP tripped Decodo's "too many authentication attempts. Limit: 3"
    *  cap and rolled all proxied traffic to Zyte on 2026-06-16. See the
    *  `reference_decodo_isp_proxy` memory. */
-  case class ProxyConfig(host: String, ports: Seq[Int], user: settings.ProxyUser, password: settings.ProxyPassword) {
+  case class ProxyConfig(host: String, ports: Seq[Int], user: tools.ProxyUser, password: tools.ProxyPassword) {
     require(ports.nonEmpty, "ProxyConfig needs at least one port")
 
     /** This config's sticky egress: the sole port of a [[pinnedTo]] config, or

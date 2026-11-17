@@ -13,11 +13,11 @@ class InMemoryReadModelDerivationMarker(initial: Option[String] = None,
 
   def recorded(): Try[Option[DerivationVersion]] = readable(version)
   def record(version: DerivationVersion): Unit   =
-    this.version = MongoReadModelDerivationMarker.versionOf(services.BsonRoundTrip(MongoReadModelDerivationMarker.encode(version)))
+    this.version = MongoReadModelDerivationMarker.versionOf(tools.BsonRoundTrip(MongoReadModelDerivationMarker.encode(version)))
 
   def progress(): Try[Option[DerivationProgress]]        = readable(pass)
   def recordProgress(progress: DerivationProgress): Unit =
-    pass = Some(MongoReadModelDerivationMarker.progressOf(services.BsonRoundTrip(MongoReadModelDerivationMarker.encode(progress))))
+    pass = Some(MongoReadModelDerivationMarker.progressOf(tools.BsonRoundTrip(MongoReadModelDerivationMarker.encode(progress))))
 
   def current: Option[String]                  = version.map(_.value)
   def currentProgress: Option[DerivationProgress] = pass

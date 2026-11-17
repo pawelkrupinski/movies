@@ -56,7 +56,7 @@ object RecordAllDataToFixture {
   /** The process's own Decodo pool — None without its credentials, and every paid route is then direct alone. */
   def processResidentialShards(configuration: _root_.settings.ProcessConfiguration,
                                tls: javax.net.ssl.SSLContext): Option[IndexedSeq[HttpFetch]] =
-    ResidentialShards.fromConfiguration(configuration, tls)
+    ResidentialShards.fromCredentials(configuration.proxyUser, configuration.proxyPassword, tls)
 }
 
 /** The recording wiring — an instance `main` builds, so the lazily built fetches, clients

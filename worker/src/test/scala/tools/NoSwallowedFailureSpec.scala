@@ -156,7 +156,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/titlerules/TitleRule.scala", "compiled",
       "try Some(new Regex(pattern)) catch { case NonFatal(_) => None }") ->
       "an invalid (half-typed) pattern disables only its own rule, and is surfaced to the editor through patternValid",
-    ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",
+    ("common/src/main/scala/services/MonitoringHttpFetch.scala", "classify",
       "case _: Exception => None") ->
       "a URL whose host does not parse gets no uptime row; the call itself still goes out and fails on its own",
     ("worker/src/main/scala/tools/ResidentialProxyProbe.scala", "statusThrough",

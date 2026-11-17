@@ -149,7 +149,7 @@ class InMemoryAuthExchangeCodeStore extends AuthExchangeCodeStore {
   private val codes = new ConcurrentHashMap[String, PendingExchangeCode]()
 
   override def put(pending: PendingExchangeCode): Unit = {
-    val stored = MongoAuthExchangeCodeStore.decode(org.mongodb.scala.Document(services.BsonRoundTrip(MongoAuthExchangeCodeStore.encode(pending))))
+    val stored = MongoAuthExchangeCodeStore.decode(org.mongodb.scala.Document(tools.BsonRoundTrip(MongoAuthExchangeCodeStore.encode(pending))))
       .getOrElse(throw new IllegalStateException("an exchange code does not read back as stored"))
     codes.put(stored.code, stored); ()
   }

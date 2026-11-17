@@ -1,5 +1,6 @@
 package services
 
+import settings.MongoAddress
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

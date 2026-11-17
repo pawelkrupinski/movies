@@ -11,7 +11,7 @@ import tools.ObjectGraph
  *  quietly reads the real cluster — and the /debug stacks put every other country into one
  *  country's wiring (`CountryIsolationMatrixSpec` red only in CI).
  *
- *  The wiring is handed its [[services.MongoAddress]]; the environment below names a
+ *  The wiring is handed its [[settings.MongoAddress]]; the environment below names a
  *  cluster anyway (nothing listens on port 1, and a client only dials on its first
  *  operation), so a member that still read `MONGODB_URI` for itself would open a client. */
 class TestWebWiringSpec extends AnyFlatSpec with Matchers {

@@ -1,9 +1,12 @@
 package settings
 
+import tools.ProxyUser
+import tools.ProxyPassword
+import tools.PaceKnob
+import tools.HostPace
 import java.util.Locale
 
 import models.Country
-import services.MongoAddress
 import tools.Env
 
 import java.nio.file.Path

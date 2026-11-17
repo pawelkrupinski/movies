@@ -1,7 +1,7 @@
 package tools
 
 import models.SourceData
-import services.cinemas.CountryNames
+import models.CountryNames
 import services.movies.FilmRuntime
 
 /** The shape every field of a cinema slot must have: what `CinemaSlotInvariantsSpec` holds every corpus to, and what

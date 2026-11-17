@@ -2,7 +2,7 @@ package services.readmodel
 
 import models.{Cinema, City, CityScreening, Country, ResolvedMovie}
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}

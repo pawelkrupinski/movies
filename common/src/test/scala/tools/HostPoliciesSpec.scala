@@ -128,7 +128,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
   "requestIntervalFor" should "pace kinoheld's API, retunable by its own knob" in {
     val url     = "https://next-live.kinoheld.de/graphql"
     val flipped = Env.of()
-    flipped.installOverrides(Map(_root_.settings.PaceKnob.Kinoheld.key -> "900").get)
+    flipped.installOverrides(Map(_root_.tools.PaceKnob.Kinoheld.key -> "900").get)
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace)  shouldBe Some(Duration.ofMillis(500))
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)   shouldBe Some(Duration.ofMillis(900))
   }
@@ -136,7 +136,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
   it should "pace Cineamo's API, retunable by its own knob" in {
     val url     = "https://api.cineamo.com/showings?cinemaId=997&page=1"
     val flipped = Env.of()
-    flipped.installOverrides(Map(_root_.settings.PaceKnob.Cineamo.key -> "350").get)
+    flipped.installOverrides(Map(_root_.tools.PaceKnob.Cineamo.key -> "350").get)
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace)  shouldBe Some(Duration.ofMillis(200))
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)   shouldBe Some(Duration.ofMillis(350))
   }

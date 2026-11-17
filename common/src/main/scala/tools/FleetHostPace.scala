@@ -32,7 +32,7 @@ object FleetHostPace {
 final class InMemoryFleetHostPace extends FleetHostPace {
   private val next = new ConcurrentHashMap[String, Instant]()
   private def stored(host: String, at: Instant) =
-    MongoFleetHostPace.nextOf(services.BsonRoundTrip(MongoFleetHostPace.encode(host, at))).getOrElse(at)
+    MongoFleetHostPace.nextOf(tools.BsonRoundTrip(MongoFleetHostPace.encode(host, at))).getOrElse(at)
   def take(host: String, interval: FiniteDuration, horizon: Duration, now: Instant): Either[Instant, Instant] = synchronized {
     val slot = FleetHostPace.slotOf(Option(next.get(host)), now)
     if (horizon.isFinite && slot.isAfter(now.plusMillis(horizon.toMillis))) Left(slot)

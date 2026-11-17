@@ -190,7 +190,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
     services.movies.ListingSeed.land(cache, CinemaCityPoznanPlaza, Seq(bare))
     val key = cache.keyOf("Afrykanska Przygoda", Some(2007))
-    cache.putIfPresent(key, _.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))) shouldBe true
+    cache.putIfPresent(key, _.copy(tmdbAttempt = Some(models.TmdbAttempt.Legacy))) shouldBe true
     def land(detail: FilmDetail) = {
       val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain),
         uptimeOverride = Some("Cinema City Enrichment"))

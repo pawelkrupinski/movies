@@ -68,9 +68,9 @@ class MemoisingMinifier(maxEntries: Long = MemoisingMinifier.MaxEntries) extends
   def cachedBlocks: Int = { blockCache.cleanUp(); blockCache.estimatedSize().toInt }
 
   /** The block cache's size and hit ratio, for `WebCacheMetrics`. */
-  def occupancy: services.metrics.CacheOccupancy = {
+  def occupancy: tools.CacheOccupancy = {
     blockCache.cleanUp()
-    services.metrics.CacheOccupancy.of(blockCache, weighted = false)
+    tools.CacheOccupancy.of(blockCache, weighted = false)
   }
 }
 

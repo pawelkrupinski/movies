@@ -24,7 +24,7 @@ import scala.concurrent.duration.FiniteDuration
  * wrap its tick in the same guard, and "every implementation has to remember" is
  * how one of them eventually doesn't.
  */
-trait SampledCensus extends services.Stoppable with Logging {
+trait SampledCensus extends tools.Stoppable with Logging {
 
   /** Names the daemon thread and the failure logs — kebab-case, e.g. `rating-run-census`. */
   protected def censusName: String

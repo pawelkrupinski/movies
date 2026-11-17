@@ -86,7 +86,7 @@ final class InMemoryIdentityHistory extends IdentityHistory with IdentityHistory
   private val held = new ConcurrentLinkedQueue[HistoryEntry]()
   // each entry as the Mongo store keeps it: written to BSON and read back
   def append(entries: Seq[HistoryEntry]): Unit =
-    entries.foreach(e => held.add(MongoIdentityHistory.entryOf(services.BsonRoundTrip(MongoIdentityHistory.docOf(e)))))
+    entries.foreach(e => held.add(MongoIdentityHistory.entryOf(tools.BsonRoundTrip(MongoIdentityHistory.docOf(e)))))
   def all: Seq[HistoryEntry] = held.asScala.toSeq.sortBy(_.at)
   def since(kinds: Seq[String], from: Long): Seq[HistoryEntry] = all.filter(e => kinds.contains(e.kind) && e.at > from)
   def of(kind: String, ids: Seq[String]): Seq[HistoryEntry] = { val wanted = ids.toSet; all.filter(e => e.kind == kind && wanted(e.id)) }

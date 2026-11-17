@@ -5,7 +5,7 @@ import java.util.Locale
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{MovieRecord, Source, SourceData}
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import tools.TickRun
 
 import java.util.concurrent.ConcurrentHashMap
@@ -157,8 +157,8 @@ class CaffeineMovieCache(
    *  a maximum of zero would render as "full" on a ratio panel. What it is worth
    *  watching for is the SHAPE, a count that tracks the corpus rather than climbing
    *  past it. */
-  def occupancy: services.metrics.CacheOccupancy =
-    services.metrics.CacheOccupancy.of(positive, weighted = false)
+  def occupancy: tools.CacheOccupancy =
+    tools.CacheOccupancy.of(positive, weighted = false)
 
   // Read from the injected clock, like every other stamp this cache takes — strictly monotonic, so a
   // put in the same instant as the last one still moves it.

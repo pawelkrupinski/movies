@@ -21,13 +21,13 @@ object ResidentialProxy {
 
   /** The configured proxy, or None when host/ports (file) or user/pass (env) are
    *  absent — in which case the caller keeps the direct egress. */
-  def fromConfiguration(configuration: settings.ProcessConfiguration): Option[RealHttpFetch.ProxyConfig] =
-    fromConfig(loadProperties(PropertiesResource), configuration.proxyUser, configuration.proxyPassword)
+  def fromCredentials(user: Option[ProxyUser], password: Option[ProxyPassword]): Option[RealHttpFetch.ProxyConfig] =
+    fromConfig(loadProperties(PropertiesResource), user, password)
 
   private[tools] def fromConfig(
     props:    Properties,
-    user:     Option[settings.ProxyUser],
-    password: Option[settings.ProxyPassword]
+    user:     Option[tools.ProxyUser],
+    password: Option[tools.ProxyPassword]
   ): Option[RealHttpFetch.ProxyConfig] =
     for {
       host  <- Option(props.getProperty("host")).map(_.trim).filter(_.nonEmpty)

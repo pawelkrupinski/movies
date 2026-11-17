@@ -29,13 +29,13 @@ trait EgressWiring { self: WorkerWiring =>
   /** Where [[proxyShards]] comes from — a seam so the test wirings can refuse the proxy
    *  whatever environment they are handed: `TestWiring` answers None. */
   protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
-    ResidentialShards.fromConfiguration(configuration, tlsContext)
+    ResidentialShards.fromCredentials(configuration.proxyUser, configuration.proxyPassword, tlsContext)
 
   /** The residential proxy's health check — a CONNECT through each pool port — that a venue failing on the proxy is
    *  parked on and released by (`ProxyParking`); None where the proxy isn't configured. A seam like
    *  [[residentialProxyShards]]: `TestWiring` answers None. */
   protected def residentialProxyProbe: Option[ProxyProbe] =
-    ResidentialProxy.fromConfiguration(configuration).map(new ResidentialProxyProbe(_))
+    ResidentialProxy.fromCredentials(configuration.proxyUser, configuration.proxyPassword).map(new ResidentialProxyProbe(_))
 
   // Proxy primary → `fallback` (direct), so a proxy IP that's ever unreachable/burned
   // rolls over to the direct fetch rather than failing outright. There is no paid

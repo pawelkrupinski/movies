@@ -79,7 +79,7 @@ object RosterFinding {
   /** A chain's venue list that could not be read this time — one finding for
    *  all its venues. Not failing when read from a datacenter address alone:
    *  Multikino's list sits behind Cloudflare, which refuses those outright, CI's
-   *  among them. `tools.ChainListEgress` fails it once the residential proxy was
+   *  among them. `diagnostics.ChainListEgress` fails it once the residential proxy was
    *  tried too. */
   final case class DirectoryNotRead(directory: String, venues: Int, detail: String, failing: Boolean = false) extends RosterFinding {
     def describe: String = s"$directory's venue list: not read ($detail) — its $venues venues not checked"
@@ -88,7 +88,7 @@ object RosterFinding {
 
 /**
  * The pure half of the ONLINE roster audit: given what each venue's source page
- * said, name every place the roster and the sources disagree. `tools.RosterAudit`
+ * said, name every place the roster and the sources disagree. `diagnostics.RosterAudit`
  * does the fetching; this decides, so the decisions are testable on recorded
  * pages.
  */

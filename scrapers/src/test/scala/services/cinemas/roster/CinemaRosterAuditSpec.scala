@@ -27,7 +27,7 @@ import scala.util.{Try, Using}
  *     only by what the other adds.
  *   - Kino nad Wartą (Koło) was wired to Konin's culture centre. That one only
  *     the ONLINE half can see — the source's own page names the town — which is
- *     `tools.RosterAudit`, run weekly by `.github/workflows/roster-audit.yml`.
+ *     `diagnostics.RosterAudit`, run weekly by `.github/workflows/roster-audit.yml`.
  *
  * The town checks read [[City.townsOf]] (the venue table built from the
  * catalog's `// <Town> — <source>` annotations, see `data/pl/README.md`), so they

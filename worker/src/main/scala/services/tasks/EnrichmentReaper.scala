@@ -5,7 +5,7 @@ import services.movies.LatestTitleYear
 import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval}
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}

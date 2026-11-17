@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 

@@ -4,7 +4,8 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MongoUnrecoveredHosts, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust, UnrecoveredHosts}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MongoUnrecoveredHosts, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust, UnrecoveredHosts}
+import services.MonitoringHttpFetch
 
 /** The two phase-labelled HTTP chains over ONE wire leaf, and the third-party
  *  metadata / rating / resolution clients that draw from the `enrich` one.
@@ -166,7 +167,7 @@ object HttpWiring {
                 breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop,
                 breakerListener: (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => (),
                 breakerMemory: UnrecoveredHosts = UnrecoveredHosts.none): HttpFetch = {
-    val pace = PacedHttpFetch.configuredInterval(configuration)
+    val pace = PacedHttpFetch.configuredInterval(configuration.hostPace)
     new PacedHttpFetch(
       new ThrottledHttpFetch(
         // a timeout, a lost connection or a server error asked again on the spot, each try through the breaker
@@ -176,7 +177,7 @@ object HttpWiring {
             meter = breakerMeter, clock = clock, onTransition = breakerListener, remembered = breakerMemory),
           sleep),
         paceFor = pace, clock = clock, sleep = sleep),
-      fleetHostPace, PacedHttpFetch.configuredFleetInterval(configuration),
+      fleetHostPace, PacedHttpFetch.configuredFleetInterval(configuration.hostPace),
       PacedHttpFetch.FleetHorizon, clock, sleep = sleep, paceName = "the fleet's pace")
   }
 }

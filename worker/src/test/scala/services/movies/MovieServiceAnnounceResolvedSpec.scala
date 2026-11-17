@@ -75,7 +75,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     // which guessed PL "Lalka" (2026) the 1968 film's id and its 6.9.
     val (service, seen, _, queue) = fixture()
     service.announceResolvedNewMovie(
-      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
+      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(models.TmdbAttempt.Legacy)))
 
     seen shouldBe empty
     waiting(queue) shouldBe 0L // no tmdbId/imdbId → nothing eligible
@@ -84,7 +84,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
   it should "enqueue the IMDb rating of a tmdbNoMatch promotion the fallback source gave an imdbId, at once" in {
     val (service, seen, _, queue) = fixture()
     service.announceResolvedNewMovie(
-      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = Some("tt9999999")))
+      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(models.TmdbAttempt.Legacy), imdbId = Some("tt9999999")))
 
     seen shouldBe empty
     waiting(queue) shouldBe 1L // IMDb's rating, off the fallback's id

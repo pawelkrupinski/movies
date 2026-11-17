@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AssetsComponents, TruncationTolerantHttpErrorHandler}
+import controllers.{AssetsComponents, CspFilter, TruncationTolerantHttpErrorHandler}
 import play.api.ApplicationLoader.Context
 import play.api.http.{HttpErrorConfig, HttpErrorHandler}
 import play.api.mvc.{EssentialFilter, Handler}
@@ -8,7 +8,7 @@ import play.api.routing.Router
 import play.api.routing.sird._
 import play.api._
 import models.Country
-import services.MongoAddress
+import settings.MongoAddress
 import settings.{ApplicationMode, ProcessConfiguration}
 import tools.{ConstructByType, Env, IssuerCertificateFetching}
 import play.filters.HttpFiltersComponents
@@ -125,7 +125,7 @@ object AppLoader {
    *  countries sharing a domain share a sign-in: `/uk`, `/de` and `/us` are one
    *  origin, and a visitor who signs in on one of them is the same person on the
    *  next. What that cookie carries is a `userId`, and it resolves against the
-   *  SHARED users database (`models.UsersDatabase.name`), so it means the same
+   *  SHARED users database (`settings.UsersDatabase.name`), so it means the same
    *  account whichever mount reads it — scoping it per country would not protect
    *  anything, it would just sign the visitor out for crossing a path segment.
    *  (The remembered CITY, which this comment used to worry about in the same

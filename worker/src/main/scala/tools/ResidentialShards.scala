@@ -8,7 +8,7 @@ object ResidentialShards {
   def apply(config: Option[RealHttpFetch.ProxyConfig], tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
     config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg), tls)).toIndexedSeq)
 
-  /** The shards of the proxy `configuration` names. */
-  def fromConfiguration(configuration: settings.ProcessConfiguration, tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
-    ResidentialShards(ResidentialProxy.fromConfiguration(configuration), tls)
+  /** The shards of the proxy these credentials sign in to. */
+  def fromCredentials(user: Option[ProxyUser], password: Option[ProxyPassword], tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
+    ResidentialShards(ResidentialProxy.fromCredentials(user, password), tls)
 }

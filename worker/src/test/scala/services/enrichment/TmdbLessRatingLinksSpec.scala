@@ -9,7 +9,7 @@ import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.resolution.TmdbAttempt
+import models.TmdbAttempt
 import services.tasks.RatingSources
 import tools.UpstreamNotFound
 

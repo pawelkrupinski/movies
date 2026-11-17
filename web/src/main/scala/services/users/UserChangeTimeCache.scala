@@ -53,7 +53,7 @@ final class CaffeineUserChangeTimeCache(
   entryTtl:   FiniteDuration = 10.minutes,
   // What `entryTtl` is measured on: the system's nanosecond ticker outside specs.
   ticker:     Ticker         = Ticker.systemTicker()
-) extends UserChangeTimeCache with services.Stoppable with Logging {
+) extends UserChangeTimeCache with tools.Stoppable with Logging {
 
   // A synchronous executor: Caffeine's default runs eviction/expiry MAINTENANCE
   // asynchronously (on the common ForkJoinPool), so a write past `maxEntries`

@@ -43,11 +43,11 @@ object HeapDumper extends Logging {
 
   /** Write a live-objects HPROF dump to `directory/<reason>-<millis>.hprof`. Returns the
    *  path on success, None on any failure. */
-  def dump(directory: settings.HeapDumpDirectory, reason: Reason,
+  def dump(directory: java.nio.file.Path, reason: Reason,
            clock: java.time.Clock): Option[String] =
     Try {
-      Files.createDirectories(directory.value)
-      val path = directory.value.resolve(fileName(reason, clock.millis())).toString
+      Files.createDirectories(directory)
+      val path = directory.resolve(fileName(reason, clock.millis())).toString
       val bean = ManagementFactory.newPlatformMXBeanProxy(
         ManagementFactory.getPlatformMBeanServer,
         "com.sun.management:type=HotSpotDiagnostic",
@@ -60,7 +60,7 @@ object HeapDumper extends Logging {
         logger.error(s"HeapDumper: wrote ${reason.description} dump to $path")
         Some(path)
       case Failure(e) =>
-        logger.error(s"HeapDumper: heap dump to ${directory.value} failed (${e.getClass.getSimpleName}: ${e.getMessage}) — continuing to restart without it.")
+        logger.error(s"HeapDumper: heap dump to $directory failed (${e.getClass.getSimpleName}: ${e.getMessage}) — continuing to restart without it.")
         None
     }
 }

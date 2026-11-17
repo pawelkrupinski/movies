@@ -3,7 +3,7 @@ package tools
 import settings.{MongoDatabaseName, MongoUri, ProcessConfiguration}
 
 /** The cluster and database a one-off tool `main` (an audit, a profiler) reads: both required,
- *  unlike the serving [[services.MongoAddress]], whose absent URI means "run without Mongo". */
+ *  unlike the serving [[settings.MongoAddress]], whose absent URI means "run without Mongo". */
 final case class ToolMongoAddress(uri: MongoUri, database: MongoDatabaseName)
 
 object ToolMongoAddress {

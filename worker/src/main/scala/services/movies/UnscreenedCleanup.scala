@@ -2,7 +2,7 @@ package services.movies
 
 import models.{MovieRecord, SourceData}
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService}

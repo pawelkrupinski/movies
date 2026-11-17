@@ -44,7 +44,7 @@ class InMemoryScrapeCostStore extends ScrapeCostStore {
   def record(dedupKey: String, cost: ScrapeCost): Unit = {
     val _ = costs.updateWith(dedupKey) { prior =>
       val recent = (prior.getOrElse(Vector.empty) :+ cost).takeRight(ScrapeCostStore.RecentRuns)
-      Some(MongoScrapeCostStore.decode(services.BsonRoundTrip(MongoScrapeCostStore.encode(dedupKey, recent)))._2.toVector)
+      Some(MongoScrapeCostStore.decode(tools.BsonRoundTrip(MongoScrapeCostStore.encode(dedupKey, recent)))._2.toVector)
     }
   }
 

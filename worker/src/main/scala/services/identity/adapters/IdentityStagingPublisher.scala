@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagedFact, StagedListing, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
 import services.movies.ListingKey
 import tools.{ThreadPools, ScheduledTick, TickRecorder}

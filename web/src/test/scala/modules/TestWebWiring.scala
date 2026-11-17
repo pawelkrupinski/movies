@@ -1,7 +1,8 @@
 package modules
 
 import models.{Country, MovieRecord}
-import services.{MongoAddress, MongoConnection}
+import services.MongoConnection
+import settings.MongoAddress
 import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
 import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection, ReadModelReader}
 import play.api.test.Helpers.stubControllerComponents

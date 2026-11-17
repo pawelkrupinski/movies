@@ -10,7 +10,7 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
   // key -> (entry, enqueued at)
   private val entries  = collection.mutable.LinkedHashMap.empty[String, (RescrapeEntry, Instant)]
   private def put(key: String, entry: RescrapeEntry, enqueued: Instant): Unit = {
-    val stored = services.BsonRoundTrip(MongoFacebookRescrapeStore.entryDocument(entry, enqueued))
+    val stored = tools.BsonRoundTrip(MongoFacebookRescrapeStore.entryDocument(entry, enqueued))
     entries(key) = (MongoFacebookRescrapeStore.entryOf(stored), MongoFacebookRescrapeStore.enqueuedAtOf(stored))
   }
   private var nextSlot = Option.empty[Instant]

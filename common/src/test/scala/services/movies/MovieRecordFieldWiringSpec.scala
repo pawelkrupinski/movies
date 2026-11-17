@@ -63,7 +63,7 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
     rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test"),
     searchTitle       = Some("Test"),
-    tmdbAttempt       = Some(services.resolution.TmdbAttempt("evidence-fingerprint", Instant.parse("2026-05-17T09:00:00Z"))),
+    tmdbAttempt       = Some(models.TmdbAttempt("evidence-fingerprint", Instant.parse("2026-05-17T09:00:00Z"))),
     data              = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Test Original"))),
     retainedSynopses  = Map[Source, String](Helios -> "the longest synopsis this source ever published")
   )

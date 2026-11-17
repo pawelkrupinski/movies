@@ -127,7 +127,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(shows), services.movies.SingleCountryNormalizer.titleNormalizer))
     rm.movieUpserts shouldBe empty  // still enriching
     // TMDB concludes as a definitive no-match → `tmdbNoMatch` → ready → projects.
-    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(shows).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)), services.movies.SingleCountryNormalizer.titleNormalizer))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(shows).copy(tmdbAttempt = Some(models.TmdbAttempt.Legacy)), services.movies.SingleCountryNormalizer.titleNormalizer))
     rm.movieUpserts     should have size 1
     rm.screeningUpserts should have size 1
   }

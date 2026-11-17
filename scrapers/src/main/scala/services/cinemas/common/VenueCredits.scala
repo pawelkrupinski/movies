@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import services.cinemas.CountryNames
+import models.CountryNames
 import tools.Whitespace.collapsedSpaces
 
 import java.util.Locale

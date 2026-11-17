@@ -82,7 +82,7 @@ class InMemoryResolutionStore(
     }
 
   override def put(hintKey: String, value: String): Unit = {
-    val stored = services.BsonRoundTrip(ResolutionStore.encode(hintKey, value, clock.instant()))
+    val stored = tools.BsonRoundTrip(ResolutionStore.encode(hintKey, value, clock.instant()))
     entries.put(stored.getString("_id"), (stored.getString("value"), Instant.ofEpochMilli(stored.getDate("at").getTime))); ()
   }
 

@@ -3,7 +3,7 @@ package services.tasks
 import settings.LivenessStaleAfter
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}

@@ -59,7 +59,7 @@ trait MongoWiring { self: Wiring =>
   // already talking to.
   lazy val usersConnection: MongoConnection = Wiring.connectionTo(
     ownDbName    = mongoAddress.databaseFor(country),
-    sharedDbName = models.UsersDatabase.name(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
+    sharedDbName = settings.UsersDatabase.name(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
     own          = mongoConnection,
     openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
 

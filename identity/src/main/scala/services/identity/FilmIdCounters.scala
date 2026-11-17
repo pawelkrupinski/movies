@@ -104,7 +104,7 @@ final class InMemoryFilmIdCounterStore extends FilmIdCounterStore {
   def insert(entries: Seq[FilmIdCounter]): Int = synchronized {
     entries.count { e =>
       val free = !stored.contains(e.filmId) && !stored.valuesIterator.contains(e.counter)
-      if (free) MongoFilmIdCounterStore.decode(Seq(services.BsonRoundTrip(MongoFilmIdCounterStore.encode(e)))).foreach(s => stored.update(s.filmId, s.counter))
+      if (free) MongoFilmIdCounterStore.decode(Seq(tools.BsonRoundTrip(MongoFilmIdCounterStore.encode(e)))).foreach(s => stored.update(s.filmId, s.counter))
       free
     }
   }

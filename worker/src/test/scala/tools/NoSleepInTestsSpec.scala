@@ -67,7 +67,7 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
       "stalls one probe past Eventually's deadline to prove the deadline still gets its own try",
     "testkit/src/main/scala/tools/ExecutorProbes.scala"                      -> Overlap,
     "scrapers/src/test/scala/tools/ParallelDetailFetchSpec.scala"              -> Overlap,
-    "worker/src/test/scala/tools/FilmwebDiffParallelFetchSpec.scala"         -> Overlap,
+    "worker/src/test/scala/diagnostics/FilmwebDiffParallelFetchSpec.scala"         -> Overlap,
     "worker/src/test/scala/tools/SharedLiveAnswersSpec.scala"                -> Overlap,
     "worker/src/test/scala/tools/IdentityLookupSweepSpec.scala"              -> Overlap,
     "worker/src/test/scala/modules/WorkerWiringSpec.scala"                   -> Overlap,

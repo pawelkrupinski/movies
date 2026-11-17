@@ -33,7 +33,7 @@ class InMemoryFallbackStore extends FallbackStore {
   def get(cinema: String): Option[FallbackState] = Option(map.get(cinema))
   def findAll(): Seq[FallbackState] = map.values().asScala.toSeq
   def put(state: FallbackState): Unit = {
-    val stored = MongoFallbackStore.fromDocument(services.BsonRoundTrip(Document("_id" -> state.cinema) ++ MongoFallbackStore.toDocument(state)))
+    val stored = MongoFallbackStore.fromDocument(tools.BsonRoundTrip(Document("_id" -> state.cinema) ++ MongoFallbackStore.toDocument(state)))
       .getOrElse(throw new IllegalStateException(s"fallback state of ${state.cinema} does not read back as stored"))
     map.put(stored.cinema, stored); ()
   }

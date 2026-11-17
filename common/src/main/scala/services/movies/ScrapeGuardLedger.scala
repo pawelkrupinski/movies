@@ -69,5 +69,5 @@ final class InMemoryScrapeGuardLedger extends ScrapeGuardLedger {
   private val byCinema = scala.collection.concurrent.TrieMap.empty[String, ScrapeGuardState]
   def get(cinema: Cinema): Option[ScrapeGuardState] = Some(byCinema.getOrElse(cinema.displayName, ScrapeGuardState.Fresh))
   def put(cinema: Cinema, state: ScrapeGuardState): Unit =
-    byCinema.update(cinema.displayName, services.BsonRoundTrip.via(ScrapeGuardState.encode, ScrapeGuardState.decode)(state))
+    byCinema.update(cinema.displayName, tools.BsonRoundTrip.via(ScrapeGuardState.encode, ScrapeGuardState.decode)(state))
 }

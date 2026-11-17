@@ -290,7 +290,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip the tmdbNoMatch conclusion marker when set" in {
-    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
+    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbAttempt = Some(models.TmdbAttempt.Legacy))
     val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.EPOCH)), titleNormalizer)
     back.record.tmdbNoMatch shouldBe true
   }
@@ -312,7 +312,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.EPOCH), EncoderContext.builder().build())
     raw.put("tmdbNoMatch", org.bson.BsonBoolean.TRUE)   // a document written before attempts were recorded
     val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
-    back.record.tmdbAttempt shouldBe Some(services.resolution.TmdbAttempt.Legacy)
+    back.record.tmdbAttempt shouldBe Some(models.TmdbAttempt.Legacy)
     back.record.tmdbNoMatch shouldBe true
     // …and the flag itself is never written back.
     val again = new BsonDocument()

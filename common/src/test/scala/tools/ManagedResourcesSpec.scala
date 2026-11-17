@@ -61,7 +61,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     @volatile var handed = Option.empty[scala.concurrent.duration.FiniteDuration]
     val grace   = scala.concurrent.duration.Duration(3, "seconds")
     val managed = new ManagedResources(new Stopwatch(() => 0L), grace)
-    managed.stopping(new services.Stoppable {
+    managed.stopping(new tools.Stoppable {
       def stop(): Unit = ()
       override def stopWithin(budget: scala.concurrent.duration.FiniteDuration): Unit = handed = Some(budget)
     })

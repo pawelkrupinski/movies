@@ -2,7 +2,6 @@ package tools
 
 import java.util.Locale
 
-import settings.{HostPace, PaceKnob}
 
 import java.net.URI
 import java.net.http.HttpClient
@@ -49,10 +48,10 @@ final case class HostPolicy(
   connectTimeout: Duration = HostPolicies.DefaultConnectTimeout,
   requestTimeout: Duration = HostPolicies.DefaultRequestTimeout,
   minRequestInterval: Option[Duration] = None,
-  paceKnob: Option[settings.PaceKnob] = None,
+  paceKnob: Option[tools.PaceKnob] = None,
   headers: Map[String, String] = Map.empty,
   fleetMinInterval: Option[Duration] = None,
-  fleetPaceKnob: Option[settings.PaceKnob] = None,
+  fleetPaceKnob: Option[tools.PaceKnob] = None,
   httpVersion: HttpClient.Version = HostPolicies.DefaultHttpVersion,
 )
 

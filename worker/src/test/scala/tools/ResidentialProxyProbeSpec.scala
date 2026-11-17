@@ -36,7 +36,7 @@ class ResidentialProxyProbeSpec extends AnyFlatSpec with Matchers {
   }
 
   private def probeOn(port: Int) = new ResidentialProxyProbe(
-    RealHttpFetch.ProxyConfig("127.0.0.1", Seq(port), settings.ProxyUser("user"), settings.ProxyPassword("pass")),
+    RealHttpFetch.ProxyConfig("127.0.0.1", Seq(port), tools.ProxyUser("user"), tools.ProxyPassword("pass")),
     timeout = 2.seconds)
 
   "the residential proxy probe" should "fail on the 503 every port answered during the outage" in {

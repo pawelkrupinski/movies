@@ -261,7 +261,7 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
                             stopwatch: tools.Stopwatch,
                             // Where each completed tick is reported (`ScheduledTickStale`).
                             ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
-                            threadPools: tools.ThreadPools) extends services.Stoppable with Logging {
+                            threadPools: tools.ThreadPools) extends tools.Stoppable with Logging {
   import FacebookRescrapeDrain.*
 
   private val brake = new FacebookUsageBrake(store, clock)

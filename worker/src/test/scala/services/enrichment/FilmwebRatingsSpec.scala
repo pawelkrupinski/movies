@@ -372,7 +372,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val captured = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val repository = new InMemoryMovieRepository(Seq(
       ("Ostatni konsjerż", None, MovieRecord(
-        tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
+        tmdbAttempt = Some(models.TmdbAttempt.Legacy),
         // The cinema dates it: a TMDB-less row is linked only to a page that agrees (`TmdbLessRatingLinks`).
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż"), releaseYear = Some(2025)))
       ))

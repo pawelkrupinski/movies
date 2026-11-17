@@ -1,7 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, Source, SourceData, TitleSearch}
-import services.resolution.TmdbAttempt
+import models.TmdbAttempt
 import org.bson.{BsonReader, BsonType, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
@@ -11,7 +11,7 @@ import services.PersistedCodecs
 
 import java.time.Instant
 
-/** Wire form of [[services.resolution.TmdbAttempt]]. */
+/** Wire form of [[models.TmdbAttempt]]. */
 case class StoredTmdbAttempt(evidence: String, at: Instant)
 
 /**

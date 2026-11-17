@@ -32,7 +32,7 @@ case class ApiFilm(
   // Some(true) while the film's identity is provisional (`ResolvedMovie.provisional`: the take decided on the inputs as
   // they stand, an answer it reads not filed yet); omitted otherwise.
   provisional: Option[Boolean] = None,
-  // The master-set id ([[services.cinemas.GenreNames]]) of each of `genres` that has one, in order — a stable,
+  // The master-set id ([[models.GenreNames]]) of each of `genres` that has one, in order — a stable,
   // language-independent key beside the display names. Additive: clients that ignore it are unaffected.
   genreIds: Seq[String] = Seq.empty
 )
@@ -133,7 +133,7 @@ object ApiFilm {
         )
       },
       provisional      = Option.when(resolved.provisional)(true),
-      genreIds         = fs.movie.genres.flatMap(services.cinemas.GenreNames.idOf).distinct
+      genreIds         = fs.movie.genres.flatMap(models.GenreNames.idOf).distinct
     )
   }
 

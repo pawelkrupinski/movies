@@ -52,7 +52,7 @@ object EnvRegistryStore {
 class InMemoryEnvRegistryStore extends EnvRegistryStore {
   // keyed by app -> (key -> knob)
   private val byApp = new java.util.concurrent.ConcurrentHashMap[String, Map[String, RegisteredKnob]]()
-  private def stored(k: RegisteredKnob) = MongoEnvRegistryStore.fromDoc(services.BsonRoundTrip(MongoEnvRegistryStore.toDoc(k)))
+  private def stored(k: RegisteredKnob) = MongoEnvRegistryStore.fromDoc(tools.BsonRoundTrip(MongoEnvRegistryStore.toDoc(k)))
     .getOrElse(throw new IllegalStateException(s"knob ${k.app}|${k.key} does not read back as stored"))
   def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean = {
     byApp.put(app, knobs.map(k => k.key -> stored(k)).toMap); true

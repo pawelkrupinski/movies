@@ -28,7 +28,7 @@ Unit=(
     "common/Test tools.BoundedParallelSpec"
     "worker/Test tools.AdaptiveParallelSpec"
     "scrapers/Test tools.ParallelDetailFetchSpec"
-    "worker/Test tools.FilmwebDiffParallelFetchSpec"
+    "worker/Test diagnostics.FilmwebDiffParallelFetchSpec"
 )
 It=(
     "web/IntegrationTest integration.HiddenFilmsConcurrentWritesIntegrationSpec"

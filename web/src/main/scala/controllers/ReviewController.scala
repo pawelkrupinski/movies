@@ -87,7 +87,7 @@ class ReviewController(cc: ControllerComponents,
     val order    = shown.map(_._1.id).zipWithIndex.toMap
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
       answeredHidden = selected.size - open.size, done.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
-    Ok(views.html.review(view)).withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
+    Ok(views.html.review(view)).withHeaders("Content-Security-Policy" -> controllers.CspFilter.WithGoogleFonts)
   }
 
   def queue(country: Option[String], limit: Int, answered: Boolean): Action[AnyContent] = Action {
@@ -232,7 +232,7 @@ class ReviewController(cc: ControllerComponents,
               val near     = if (keys.isEmpty && title.nonEmpty) ListingExplain.near(decisions, wantedVenue, title) else Nil
               val said     = Option.when(title.nonEmpty && keys.isEmpty && near.isEmpty)(s"no listing in ${c.code} is billed as “$title”")
               Ok(views.html.reviewListing(ListingExplainView(c, wantedVenue, title, explains, near, said.toSeq ++ labels._2 ++ notices)))
-                .withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
+                .withHeaders("Content-Security-Policy" -> controllers.CspFilter.WithGoogleFonts)
           }
       }
     }

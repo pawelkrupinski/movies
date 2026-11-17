@@ -135,7 +135,7 @@ object McswElektrowniaCinemaClient {
   /** One tail segment as what it states, or `None` when it states nothing this venue writes. */
   private def piece(raw: String): Option[Seq[Piece]] = {
     val t = raw.trim
-    val country = services.cinemas.CountryNames.canonical(t)
+    val country = models.CountryNames.canonical(t)
     if (t.isEmpty) Some(Nil)
     else if (services.identity.IdentityMeasures.countryCode(country).isDefined) Some(Seq(Piece.Country(country)))
     else Age.findFirstMatchIn(t).map(m => Seq(Piece.AgeOf(m.group(1))))

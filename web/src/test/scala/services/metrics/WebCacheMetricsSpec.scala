@@ -1,5 +1,6 @@
 package services.metrics
 
+import tools.CacheOccupancy
 import scala.language.implicitConversions
 import controllers.TestResponseCache.given
 import controllers.TestResponseCache

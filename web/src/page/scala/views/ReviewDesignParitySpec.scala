@@ -3,7 +3,7 @@ package views
 import com.sun.net.httpserver.HttpExchange
 import controllers.ReviewController
 import models.Country
-import modules.CspFilter
+import controllers.CspFilter
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll

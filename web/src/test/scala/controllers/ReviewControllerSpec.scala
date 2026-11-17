@@ -190,7 +190,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
 
   it should "send the policy that lets it load the published review pages' Google fonts" in {
     val result = controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest())
-    headers(result).get("Content-Security-Policy") shouldBe Some(modules.CspFilter.WithGoogleFonts)
+    headers(result).get("Content-Security-Policy") shouldBe Some(controllers.CspFilter.WithGoogleFonts)
   }
 
   it should "badge an unmatched card with its best candidate's probability, the no-match confidence named in the fold-out" in {

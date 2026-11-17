@@ -27,7 +27,7 @@ trait VenueSlotFingerprints {
 /** The fingerprints as [[MongoVenueSlotFingerprints]] would hold them: each written as its document to BSON and read back. */
 final class InMemoryVenueSlotFingerprints extends VenueSlotFingerprints {
   private var kept = Set.empty[Long]
-  private val stored = services.BsonRoundTrip.via(MongoVenueSlotFingerprints.encode, MongoVenueSlotFingerprints.decode)
+  private val stored = tools.BsonRoundTrip.via(MongoVenueSlotFingerprints.encode, MongoVenueSlotFingerprints.decode)
   def all(): Set[Long] = synchronized(kept)
   def update(added: Set[Long], removed: Set[Long]): Unit = synchronized { kept = kept -- removed ++ added.map(stored) }
 }

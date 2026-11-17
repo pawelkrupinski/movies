@@ -304,6 +304,6 @@ final class SharedExecutionBudget(override val maxConcurrent: Int) extends Execu
 
 object SharedExecutionBudget {
   /** The worker's background budget, sized by its resolved `KINOWO_BG_CONCURRENCY`. */
-  def forBackground(concurrency: settings.BackgroundConcurrency): SharedExecutionBudget =
-    new SharedExecutionBudget(concurrency.value)
+  def forBackground(concurrency: Int): SharedExecutionBudget =
+    new SharedExecutionBudget(concurrency)
 }

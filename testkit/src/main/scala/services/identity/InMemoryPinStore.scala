@@ -5,7 +5,7 @@ final class InMemoryPinStore extends PinStore {
   private val pins = new java.util.concurrent.ConcurrentHashMap[String, Pin]()
   def all(): Seq[Pin]              = { import scala.jdk.CollectionConverters._; pins.values.asScala.toSeq }
   def insert(pin: Pin): Unit = {
-    val stored = MongoPinStore.decode(services.BsonRoundTrip(MongoPinStore.encode(pin)))
+    val stored = MongoPinStore.decode(tools.BsonRoundTrip(MongoPinStore.encode(pin)))
       .getOrElse(throw new IllegalStateException(s"pin ${pin.id} does not read back as stored"))
     pins.put(stored.id, stored); ()
   }

@@ -10,7 +10,7 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import services.cinemas.CountryNames
+import models.CountryNames
 
 /**
  * Kino Agrafka (Kraków) — an independent arthouse cinema run by Fundacja

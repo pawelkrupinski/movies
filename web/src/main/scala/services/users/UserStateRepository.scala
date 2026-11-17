@@ -343,7 +343,7 @@ object MongoUserStateRepository {
 /** The states as `userStates` would hold them: each written through its codec to BSON and read back. */
 class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
-  private val stored = services.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[UserState]))
+  private val stored = tools.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[UserState]))
   private def put(state: UserState): UserState = { val kept = stored(state); store(kept.userId) = kept; kept }
   private val liveness = new ChangeStreamLiveness(clock)
   private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None

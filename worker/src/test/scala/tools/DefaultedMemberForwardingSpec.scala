@@ -1,5 +1,6 @@
 package tools
 
+import services.MonitoringHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoCachingDetailFetch, UptimeMonitor}

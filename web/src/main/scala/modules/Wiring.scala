@@ -3,7 +3,8 @@ package modules
 import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, ReviewWiring, UsersWiring}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
-import services.{MongoAddress, MongoConnection}
+import services.MongoConnection
+import settings.MongoAddress
 
 /**
  * Read/serving composition root. Builds the content-serving half of the app: the

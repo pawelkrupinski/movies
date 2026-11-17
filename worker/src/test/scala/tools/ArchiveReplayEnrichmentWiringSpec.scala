@@ -36,7 +36,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   /** What a test started that can still fetch — and so record into its tree — after the test ends: the IMDb-id
    *  resolver retries a failed lookup a minute or more later, on a scheduler of its own. Stopped before the trees go,
    *  or a long `worker/test` run found the retry's recording re-creating a deleted tree in the fixture root. */
-  private val stoppedAtEnd = scala.collection.mutable.ListBuffer.empty[services.Stoppable]
+  private val stoppedAtEnd = scala.collection.mutable.ListBuffer.empty[tools.Stoppable]
 
   /** Point the wirings built from here on at a tree of their own. Called once per test by
    *  [[beforeEach]], and again by any test that needs a SECOND wiring not to see the

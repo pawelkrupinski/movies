@@ -1,5 +1,7 @@
 package services
 
+
+import tools.Stoppable
 /** A [[Stoppable]] whose worker pool can be QUIESCED without being ended.
  *
  *  `stop()` is a one-way door — it shuts the executor down, and every later

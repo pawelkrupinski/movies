@@ -2,7 +2,8 @@ package integration
 
 import tools.SpecTimeouts
 
-import models.{Country, User, UserState, UsersDatabase}
+import models.{Country, User, UserState}
+import settings.UsersDatabase
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._

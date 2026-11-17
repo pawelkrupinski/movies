@@ -108,10 +108,10 @@ final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetenti
     deleted
   }
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
-    ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> services.BsonRoundTrip.read(_))).toMap
+    ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> tools.BsonRoundTrip.read(_))).toMap
   // Written through the round-trip base's write half, so a document the driver refuses (a NUL in a field name) throws here too.
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit =
-    docs.foreach { case (id, d) => byKind(kind).put(id, services.BsonRoundTrip.bytes(d)) }
+    docs.foreach { case (id, d) => byKind(kind).put(id, tools.BsonRoundTrip.bytes(d)) }
   def size(kind: TmdbKind): Int = byKind(kind).size
 }
 

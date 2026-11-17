@@ -24,7 +24,7 @@ class MovieRecordDiffSpec extends AnyFlatSpec with Matchers {
 
   it should "name every differing field, not just the first" in {
     val a = MovieRecord(tmdbId = Some(1), tmdbAttempt = None, searchTitle = Some("a"))
-    val b = MovieRecord(tmdbId = Some(2), tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), searchTitle = Some("b"))
+    val b = MovieRecord(tmdbId = Some(2), tmdbAttempt = Some(models.TmdbAttempt.Legacy), searchTitle = Some("b"))
 
     val described = MovieRecordDiff.describe(a, b, 1)
     described should include ("tmdbId")

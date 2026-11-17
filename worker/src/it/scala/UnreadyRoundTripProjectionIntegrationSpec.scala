@@ -6,7 +6,7 @@ import models.{KinoMuranow, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
-import services.resolution.TmdbAttempt
+import models.TmdbAttempt
 import tools.Eventually
 
 import java.time.{Instant, LocalDateTime}

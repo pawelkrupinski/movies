@@ -38,7 +38,7 @@ class InMemoryEnvOverrideStore extends EnvOverrideStore {
   def lookup(key: String): Option[String] = Option(map.get(key))
   def all(): Map[String, String] = { import scala.jdk.CollectionConverters._; map.asScala.toMap }
   def set(key: String, value: String): Unit = {
-    val (k, v) = MongoEnvOverrideStore.decode(services.BsonRoundTrip(MongoEnvOverrideStore.encode(key, value)))
+    val (k, v) = MongoEnvOverrideStore.decode(tools.BsonRoundTrip(MongoEnvOverrideStore.encode(key, value)))
       .getOrElse(throw new IllegalStateException(s"override $key does not read back as stored"))
     map.put(k, v); ()
   }

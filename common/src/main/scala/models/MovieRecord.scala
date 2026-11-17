@@ -54,8 +54,8 @@ case class MovieRecord(
   //
   // `tmdbAttempt` is the last TMDB search that found nothing: WHAT it searched
   // with and WHEN, so the next look can tell whether anything it would search
-  // with has changed (see `services.resolution.TmdbAttempt`). A hit clears it.
-  tmdbAttempt:       Option[services.resolution.TmdbAttempt] = None,
+  // with has changed (see `models.TmdbAttempt`). A hit clears it.
+  tmdbAttempt:       Option[models.TmdbAttempt] = None,
 
   // Per-source data from the most recent refresh. Cinemas contribute on
   // every scrape tick (their slot gets replaced wholesale, and dropped if
@@ -475,7 +475,7 @@ case class MovieRecord(
    *  staging ceiling): that row is concluded so it can be shown, but nothing is known
    *  about the film, so no rule may read "TMDB names nothing" off it. */
   def tmdbAnswered: Boolean =
-    tmdbId.isDefined || tmdbAttempt.exists(a => !services.resolution.TmdbAttempt.isUnanswered(a))
+    tmdbId.isDefined || tmdbAttempt.exists(a => !models.TmdbAttempt.isUnanswered(a))
 
   /** TMDB enrichment has concluded — a hit (`tmdbId` set) or a definitive
    *  no-match (`tmdbNoMatch`). A purely transient failure leaves both unset, so
@@ -526,7 +526,7 @@ case class MovieRecord(
   def countries: Seq[String] = {
     val seen = scala.collection.mutable.LinkedHashSet.empty[String]
     prioritized.flatMap(_._2.countries)
-      .filter(services.cinemas.CountryNames.isPolish)
+      .filter(models.CountryNames.isPolish)
       .foreach { c =>
         val key = c.toLowerCase(Locale.ROOT)
         if (!seen.exists(_.toLowerCase(Locale.ROOT) == key)) seen += c

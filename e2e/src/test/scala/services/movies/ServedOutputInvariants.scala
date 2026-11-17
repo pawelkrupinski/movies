@@ -2,7 +2,7 @@ package services.movies
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models.{City, Country, MovieRecord, Tmdb}
-import services.cinemas.CountryNames
+import models.CountryNames
 import services.readmodel.ReadModelProjection
 
 import java.net.URI

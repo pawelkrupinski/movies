@@ -6,7 +6,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import play.api.libs.json._
-import services.cinemas.CountryNames
+import models.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies, VenueCategory}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}

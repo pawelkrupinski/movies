@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import org.mongodb.scala.MongoDatabase
-import services.metrics.CacheOccupancy
+import tools.CacheOccupancy
 
 import java.time.Clock
 

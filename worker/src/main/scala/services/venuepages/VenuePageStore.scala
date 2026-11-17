@@ -63,11 +63,11 @@ final class InMemoryVenuePageStore extends VenuePageStore {
   private val landings = new ConcurrentHashMap[String, FilmDetail]()
   def get(key: VenuePageKey): Option[VenuePage] = Option(pages.get(key.id))
   def put(page: VenuePage): Boolean = {
-    val kept = pageOf(services.BsonRoundTrip(documentOf(page))).getOrElse(throw new IllegalStateException(s"page ${page.key.id} does not read back as stored"))
+    val kept = pageOf(tools.BsonRoundTrip(documentOf(page))).getOrElse(throw new IllegalStateException(s"page ${page.key.id} does not read back as stored"))
     pages.put(kept.key.id, kept); true
   }
   def stored(key: VenuePageKey): StoredVenuePage = StoredVenuePage(get(key), Option(landings.get(key.id)))
-  def land(key: VenuePageKey, detail: FilmDetail): Boolean = { landings.put(key.id, detailOf(services.BsonRoundTrip(detailDocument(detail)))); true }
+  def land(key: VenuePageKey, detail: FilmDetail): Boolean = { landings.put(key.id, detailOf(tools.BsonRoundTrip(detailDocument(detail)))); true }
   def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = { pages.values.asScala.toSeq.sortBy(_.key.id).foreach(onPage); tools.ScanOutcome.complete }
 }
 

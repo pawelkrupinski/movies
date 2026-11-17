@@ -68,7 +68,7 @@ jobs:
             # still lets the artifact upload below run.
             - name: Run FilmwebDiff
               continue-on-error: true
-              run: sbt "worker/runMain tools.FilmwebDiff all filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
+              run: sbt "worker/runMain diagnostics.FilmwebDiff all filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
               env:
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}

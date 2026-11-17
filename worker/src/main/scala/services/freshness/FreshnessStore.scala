@@ -84,7 +84,7 @@ class InMemoryFreshnessStore extends FreshnessStore {
   private val stamps = new ConcurrentHashMap[String, Instant]()
   override def lastFetchedAt(key: String): Option[Instant] = Option(stamps.get(key))
   override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = {
-    val stored = services.BsonRoundTrip(org.mongodb.scala.bson.collection.immutable.Document("_id" -> key) ++ MongoFreshnessStore.encode(kind, at))
+    val stored = tools.BsonRoundTrip(org.mongodb.scala.bson.collection.immutable.Document("_id" -> key) ++ MongoFreshnessStore.encode(kind, at))
     MongoFreshnessStore.stampOf(stored).foreach { case (k, stamp) => stamps.put(k, stamp) }
   }
   override def invalidate(key: String): Unit = { stamps.remove(key); () }

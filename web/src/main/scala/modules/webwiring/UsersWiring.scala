@@ -5,7 +5,8 @@ import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
-import tools.{HttpFetch, MonitoringHttpFetch, RealHttpFetch, TlsTrust}
+import tools.{HttpFetch, RealHttpFetch, TlsTrust}
+import services.MonitoringHttpFetch
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
  *  The signed-in visitor: the users + user-state repositories on the shared

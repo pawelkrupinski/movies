@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
  * How to use, in a wiring member — register where the thing is built, in the same expression:
  * {{{
  * lazy val pool    = managedResources.executor("enrichment")(DaemonExecutors.boundedEC("enrichment", 4))
- * lazy val reaper  = managedResources.stopping(new SomeReaper(…))            // a services.Stoppable
+ * lazy val reaper  = managedResources.stopping(new SomeReaper(…))            // a tools.Stoppable
  * lazy val client  = managedResources.register("http", newClient())(_.close()) // anything else closeable
  * }}}
  * and call `closeAll()` from the root's `stop()`.
@@ -44,11 +44,11 @@ final class ManagedResources(stopwatch: Stopwatch, grace: FiniteDuration = Manag
     }, () => executor.isTerminated), executor)
 
   /** `service`, stopped by [[closeAll]] — a reaper, census or cache that owns its own scheduler. */
-  def stopping[A <: services.Stoppable](service: A): A =
+  def stopping[A <: tools.Stoppable](service: A): A =
     hold(Held(service.getClass.getSimpleName, service, left => service.stopWithin(left), () => true), service)
 
   /** Each of `services` (an `Option` of one, a `Seq` of several), stopped by [[closeAll]]. */
-  def stoppingEach[C <: IterableOnce[services.Stoppable]](all: C): C = {
+  def stoppingEach[C <: IterableOnce[tools.Stoppable]](all: C): C = {
     all.iterator.foreach(stopping); all
   }
 

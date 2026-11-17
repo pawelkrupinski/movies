@@ -253,7 +253,7 @@ object MongoStagingDocuments {
  *  worker's or web's with no database. */
 final class InMemoryStagingDocuments extends StagingDocuments {
   private val held = TrieMap.empty[String, StagingDoc]
-  private def stored(doc: StagingDoc) = MongoStagingDocuments.decode(services.BsonRoundTrip(MongoStagingDocuments.encode(doc)))
+  private def stored(doc: StagingDoc) = MongoStagingDocuments.decode(tools.BsonRoundTrip(MongoStagingDocuments.encode(doc)))
   def index(): Seq[StagingEntry]                    = held.values.toSeq.map(d => StagingEntry(d.id, d.country, d.kind, d.updatedAt))
   def bodies(ids: Seq[String]): Map[String, String] = ids.flatMap(id => held.get(id).map(id -> _.body)).toMap
   def put(docs: Seq[StagingDoc]): Unit              = docs.foreach(d => held.update(d.id, stored(d)))

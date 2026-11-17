@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The roster-audit workflow's one step: run tools.RosterAudit and turn its verdict into the job's.
+# The roster-audit workflow's one step: run diagnostics.RosterAudit and turn its verdict into the job's.
 #
 # A source disagreeing with the roster (exit 3, RosterAudit.DriftFound) is data drift -- a fix to the roster, the
 # owner's task -- so the run stays green, warns, and writes overdue=true to $GITHUB_OUTPUT; the workflow's `report`
@@ -14,7 +14,7 @@ set -uo pipefail
 report="${1:?report file}"
 output="${GITHUB_OUTPUT:-/dev/null}"
 
-sbt "worker/runMain tools.RosterAudit $report"
+sbt "worker/runMain diagnostics.RosterAudit $report"
 status=$?
 
 case "$status" in

@@ -105,7 +105,7 @@ class InMemoryScreeningsRepository(clock: java.time.Clock,
                                    roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository with InMemorySlotKeyedRows[ListedShowtimes] {
 
   protected val rows = new InMemorySlotRows[ListedShowtimes](clock, (filmId, slotKey, row) =>
-    services.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredScreeningsDto]))(
+    tools.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredScreeningsDto]))(
       StoredScreeningsDto.of(filmId, slotKey, row, clock.instant())).listed)
 
   def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] = tools.ReadOutcome.Answered(rows.forFilm(filmId))

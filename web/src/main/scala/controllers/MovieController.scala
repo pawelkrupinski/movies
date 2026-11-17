@@ -213,12 +213,12 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** A link minted when venues printed their own spelling of a genre ("?genre=przygoda") 301s onto the
-   *  vocabulary's ("?genre=Przygodowy", [[services.cinemas.GenreNames]]), query otherwise intact: the
+   *  vocabulary's ("?genre=Przygodowy", [[models.GenreNames]]), query otherwise intact: the
    *  genre filter and the browse page match the stored names exactly, so the old spelling would
    *  narrow the listing to nothing. `None` when every genre in the query is already canonical. */
   private def canonicalGenreLink(c: City, tail: String, request: RequestHeader): Option[Result] = {
     val genreKeys = Set("genre", "gatunek")
-    def canonical(value: String) = services.cinemas.GenreNames.canonical(value, c.country.language)
+    def canonical(value: String) = models.GenreNames.canonical(value, c.country.language)
     val changed = request.queryString.exists { case (key, values) => genreKeys(key) && values.exists(v => canonical(v) != v) }
     Option.when(changed) {
       def enc(s: String) = java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8)

@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import ScalaSourceScan.{MainRoots, TestRoots, codeOf, scalaFiles}
 
 /**
- * Every in-memory stand-in for a Mongo-backed store writes through the round-trip base ([[services.BsonRoundTrip]]):
+ * Every in-memory stand-in for a Mongo-backed store writes through the round-trip base ([[tools.BsonRoundTrip]]):
  * each value it is handed is written through the store's own codec to BSON and read back, so a spec against it reads
  * what Mongo would hold and fails where Mongo would refuse. A NUL in an agreement receipt's field name passed every
  * unit spec because the in-memory store kept what it was handed (2026-10-25).
@@ -45,7 +45,7 @@ class InMemoryStoresRoundTripSpec extends AnyFlatSpec with Matchers {
 
   "Every in-memory stand-in for a Mongo-backed store" should "write each value through the round-trip base" in {
     val mains = scalaFiles(MainRoots).map(codeOf)
-    withClue("write each stored value through services.BsonRoundTrip with the Mongo store's own codec (or build on " +
+    withClue("write each stored value through tools.BsonRoundTrip with the Mongo store's own codec (or build on " +
       "InMemoryKeyedDocStore), or exempt the class here with why it holds nothing to round-trip: ")(
       notRoundTripping(scalaFiles(MainRoots ++ TestRoots).map(codeOf), mains) shouldBe empty)
   }
@@ -62,7 +62,7 @@ class InMemoryStoresRoundTripSpec extends AnyFlatSpec with Matchers {
         |  def put(v: String): Unit = kept += v
         |}
         |final class InMemoryRoundTripping extends Store {
-        |  def put(v: String): Unit = kept += services.BsonRoundTrip.via(encode, decode)(v)
+        |  def put(v: String): Unit = kept += tools.BsonRoundTrip.via(encode, decode)(v)
         |}
         |class InMemoryPlain extends Plain
         |""".stripMargin)

@@ -56,7 +56,7 @@ class InMemoryRatingCadenceStore extends RatingCadenceStore {
   private val stats = new ConcurrentHashMap[String, RatingChangeStats]()
   override def statsFor(key: String): Option[RatingChangeStats] = Option(stats.get(key))
   override protected def persist(key: String, s: RatingChangeStats): Unit = {
-    val stored = MongoRatingCadenceStore.decodeRecord(services.BsonRoundTrip(Document("_id" -> key) ++ MongoRatingCadenceStore.encodeRecord(s)))
+    val stored = MongoRatingCadenceStore.decodeRecord(tools.BsonRoundTrip(Document("_id" -> key) ++ MongoRatingCadenceStore.encodeRecord(s)))
       .getOrElse(throw new IllegalStateException(s"rating cadence of $key does not read back as stored"))
     stats.put(stored._1, stored._2); ()
   }

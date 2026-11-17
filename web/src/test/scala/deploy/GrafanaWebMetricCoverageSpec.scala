@@ -4,7 +4,8 @@ import testsupport.SourceTrees
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CacheOccupancy, UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
+import services.metrics.{UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
+import tools.CacheOccupancy
 
 import java.io.File
 import scala.jdk.CollectionConverters._

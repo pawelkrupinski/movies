@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
 
 import scala.util.Try

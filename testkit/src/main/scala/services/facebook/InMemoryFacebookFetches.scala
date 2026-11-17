@@ -7,7 +7,7 @@ import java.time.Instant
  *  kept as [[MongoFacebookFetches]] stores it, written to BSON and read back. */
 class InMemoryFacebookFetches extends FacebookFetches {
   private val fetches = collection.mutable.Map.empty[String, Instant]
-  private def stored(url: String, at: Instant) = MongoFacebookFetches.fetchedAtOf(services.BsonRoundTrip(MongoFacebookFetches.encode(url, at))).get
+  private def stored(url: String, at: Instant) = MongoFacebookFetches.fetchedAtOf(tools.BsonRoundTrip(MongoFacebookFetches.encode(url, at))).get
 
   def record(fetched: Map[String, Instant]): Unit = synchronized {
     fetched.foreach { case (url, written) =>

@@ -53,6 +53,6 @@ class KinoAgrafkaClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   // its own comma segment, so the director cut must drop it rather than read it
   // as a second director. Guard the whole corpus, not one film.
   it should "never capture a country name as a director" in {
-    fetched.flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
+    fetched.flatMap(_.director).filter(models.CountryNames.isPolish) shouldBe empty
   }
 }

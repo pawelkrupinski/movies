@@ -66,7 +66,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   protected def identityHistoryOverrides: Set[services.identity.adapters.IdentityHistory.Override] = Set.empty
   lazy val identityTmdbDocuments: services.identity.adapters.TmdbDocuments = identityTmdbLayer.documents
   /** The layer's document cache, by cache name, for `registerCacheMetrics`. */
-  lazy val identityTmdbCacheOccupancies: Seq[(String, () => services.metrics.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies
+  lazy val identityTmdbCacheOccupancies: Seq[(String, () => tools.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies
   /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
   lazy val identityTmdbSweep: services.identity.adapters.TmdbStoreSweep =
     new services.identity.adapters.TmdbStoreSweep(identityTmdbLayer.backend,

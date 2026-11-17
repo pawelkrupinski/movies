@@ -1,7 +1,7 @@
 package services.enrichment
 
 import models.{Imdb, Source, SourceData}
-import services.cinemas.CountryNames
+import models.CountryNames
 import services.movies.{CacheKey, MovieCache}
 import services.tasks.BulkRefreshResult
 import tools.BoundedParallel

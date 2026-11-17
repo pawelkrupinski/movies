@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import tools.{ThreadPools, TickRecorder, TickRun, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}

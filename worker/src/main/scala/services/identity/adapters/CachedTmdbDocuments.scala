@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache
 import org.bson.codecs.{BsonDocumentCodec, EncoderContext}
 import org.bson.io.BasicOutputBuffer
 import org.bson.{BsonBinaryWriter, BsonDocument, BsonDouble, BsonInt32, BsonString, RawBsonDocument}
-import services.metrics.CacheOccupancy
+import tools.CacheOccupancy
 
 import java.util.concurrent.atomic.AtomicLongArray
 import scala.jdk.CollectionConverters._

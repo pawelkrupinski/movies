@@ -15,7 +15,7 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     tmdbId:      Option[Int],
     imdbId:      Option[String] = None,
     searchTitle: Option[String] = None,
-    tmdbAttempt: Option[services.resolution.TmdbAttempt] = None,
+    tmdbAttempt: Option[models.TmdbAttempt] = None,
     original:    Option[String] = None
   ): MovieRecord =
     MovieRecord(tmdbId = tmdbId, imdbId = imdbId, searchTitle = searchTitle, tmdbAttempt = tmdbAttempt,
@@ -59,7 +59,7 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-kick IMDb-id resolution for a tmdbNoMatch row when a NEW originalTitle hint arrives" in {
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
+    val before = rec(tmdbId = None, tmdbAttempt = Some(models.TmdbAttempt.Legacy))
     val after  = before.copy(data = Map[Source, SourceData](Filmweb -> SourceData(originalTitle = Some("Der letzte Concierge"))))
     decide(before, k("Ostatni konsjerż"), after, k("Ostatni konsjerż")) should contain (ResolveImdbId)
   }
@@ -85,13 +85,13 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
 
   it should "re-kick IMDb-id resolution when tmdbNoMatch flips to true (film not on TMDB but may be on IMDb)" in {
     val before = rec(tmdbId = None, tmdbAttempt = None, imdbId = None)
-    val after  = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),  imdbId = None)
+    val after  = rec(tmdbId = None, tmdbAttempt = Some(models.TmdbAttempt.Legacy),  imdbId = None)
     decide(before, k("Nomadland"), after, k("Nomadland")) should contain (ResolveImdbId)
   }
 
   it should "re-kick IMDb-id resolution when a tmdbNoMatch row gains an originalTitle hint" in {
-    val before = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = None, original = None)
-    val after  = rec(tmdbId = None, tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = None, original = Some("Past Lives"))
+    val before = rec(tmdbId = None, tmdbAttempt = Some(models.TmdbAttempt.Legacy), imdbId = None, original = None)
+    val after  = rec(tmdbId = None, tmdbAttempt = Some(models.TmdbAttempt.Legacy), imdbId = None, original = Some("Past Lives"))
     decide(before, k("Poprzednie życie"), after, k("Poprzednie życie")) should contain (ResolveImdbId)
   }
 
@@ -100,7 +100,7 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     // took IMDb's first "Volcanoes" (2009); after, the 2018 film — whichever listing arrived first won, and
     // Identity model convergence's order-independence leg saw both. With no TMDB id the IMDb id is only as
     // good as the facts it was searched by, so it is searched again when they grow.
-    val noMatch = Some(services.resolution.TmdbAttempt.Legacy)
+    val noMatch = Some(models.TmdbAttempt.Legacy)
     val before  = rec(tmdbId = None, tmdbAttempt = noMatch, imdbId = Some("tt1477111"))
     decide(before, k("Volcanoes", None), before.copy(data = before.data + (Tmdb -> SourceData(director = Seq("Michael Dalton-Smith")))),
       k("Volcanoes", None)) should contain (ResolveImdbId)
@@ -127,7 +127,7 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
   it should "re-ask every rating site for a film TMDB has no record of when what its cinemas publish of it changes" in {
     // Verify scrape recording #26: "Afrykanska Przygoda" (2007), no TMDB film, searched on Filmweb by its cinemas' facts
     // before they were all in, missed; only the next day's pass asked again and found its page.
-    val noMatch = Some(services.resolution.TmdbAttempt.Legacy)
+    val noMatch = Some(models.TmdbAttempt.Legacy)
     def listed(director: Seq[String], original: Option[String]) = rec(tmdbId = None, tmdbAttempt = noMatch).copy(data =
       Map(models.Kinoteka -> SourceData(title = Some("Afrykanska Przygoda"), releaseYear = Some(2007), director = director, originalTitle = original)))
     val before = listed(Nil, None)

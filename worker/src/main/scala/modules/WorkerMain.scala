@@ -36,7 +36,7 @@ object WorkerMain extends Logging {
     // place in the worker that asks the process anything; every wiring below is handed them.
     val process = ProcessConfiguration.resolve()
     // Before the first line: every line from here on names the image it came from (`build`), what ties it to a deploy.
-    tools.LogFields.stampBuild(process.commit)
+    tools.LogFields.stampBuild(process.commit.value)
     logger.info(s"Worker starting — commit ${process.commit.value}")
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
@@ -172,7 +172,7 @@ object WorkerMain extends Logging {
                                    wirings: Seq[WorkerWiring], heapDumpDir: HeapDumpDirectory): Unit = {
     addMetricsEndpoint(health, metrics, wirings)
     logger.info(s"Worker metrics up on :$port/metrics")
-    addHeapDumpEndpoint(health, heapDumpDir, tools.HeapDumper.dump(_, _, wirings.head.clock))
+    addHeapDumpEndpoint(health, heapDumpDir, (directory, reason) => tools.HeapDumper.dump(directory.value, reason, wirings.head.clock))
     addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
   }
 

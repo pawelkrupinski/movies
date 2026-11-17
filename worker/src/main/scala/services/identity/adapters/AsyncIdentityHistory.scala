@@ -36,7 +36,7 @@ import scala.concurrent.duration._
  * [[TakeExplanation]] places. What still overflows is dropped and counted.
  */
 final class AsyncIdentityHistory(inner: IdentityHistory, dropped: Long => Unit, capacity: Int = AsyncIdentityHistory.Capacity)
-    extends IdentityHistory with services.Stoppable with Logging {
+    extends IdentityHistory with tools.Stoppable with Logging {
   private val queue   = new AsyncIdentityHistory.Backlog(capacity)
   @volatile private var running = true
   private val writer  = {

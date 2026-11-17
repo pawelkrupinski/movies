@@ -8,5 +8,5 @@ final class InMemoryIdentityTraceStore extends IdentityTraceStore {
   def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit = synchronized {
     held.filterInPlace((_, trace) => !removed(trace.family)); added.iterator.flatMap(_.build()).map(stored).foreach(trace => held(trace.listing) = trace)
   }
-  private val stored = services.BsonRoundTrip.via(MongoIdentityTraceStore.encode, MongoIdentityTraceStore.decode)
+  private val stored = tools.BsonRoundTrip.via(MongoIdentityTraceStore.encode, MongoIdentityTraceStore.decode)
 }

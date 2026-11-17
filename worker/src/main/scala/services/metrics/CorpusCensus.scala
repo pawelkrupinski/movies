@@ -62,7 +62,7 @@ final class CorpusCensus(
   // Where each completed publish is reported (`ScheduledTickStale`): a dead census leaves its gauges flat.
   ticks:           TickRecorder      = TickRecorder.Unrecorded,
   threadPools:     ThreadPools
-) extends services.Stoppable with Logging {
+) extends tools.Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
   import CorpusCensus._

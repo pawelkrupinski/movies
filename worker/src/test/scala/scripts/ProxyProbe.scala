@@ -26,7 +26,7 @@ object ProxyProbe {
   def main(args: Array[String]): Unit = {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     tools.IssuerCertificateFetching.Enabled.applyToJvm()
-    ResidentialProxy.fromConfiguration(_root_.settings.ProcessConfiguration.resolve()) match {
+    { val configuration = _root_.settings.ProcessConfiguration.resolve(); ResidentialProxy.fromCredentials(configuration.proxyUser, configuration.proxyPassword) } match {
       case None =>
         println("No proxy config — set DECODO_PROXY_USER / DECODO_PROXY_PASS (host+ports come from residential-proxy.properties).")
       case Some(config) =>

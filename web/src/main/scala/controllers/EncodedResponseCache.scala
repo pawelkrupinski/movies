@@ -135,7 +135,7 @@ class EncodedResponseCache(refreshExecutor: ExecutionContext,
   def heldEntries: Int = { entries.cleanUp(); entries.estimatedSize().toInt }
 
   /** What this cache holds against its byte budget, for `kinowo_web_cache_*`. */
-  def occupancy: services.metrics.CacheOccupancy = services.metrics.CacheOccupancy.of(entries, weighted = true)
+  def occupancy: tools.CacheOccupancy = tools.CacheOccupancy.of(entries, weighted = true)
 
   private def store(key: String, entry: Entry): Unit =
     // An entry larger than the whole budget is never worth holding: storing it

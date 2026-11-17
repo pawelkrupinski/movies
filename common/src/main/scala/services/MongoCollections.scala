@@ -6,7 +6,7 @@ enum CollectionDatabase {
   case Corpus
   /** The database every country's deployment shares ([[FleetDatabase]]). */
   case Fleet
-  /** The web's accounts database, `MONGODB_USERS_DB`, else the deployment's own corpus (`models.UsersDatabase`). */
+  /** The web's accounts database, `MONGODB_USERS_DB`, else the deployment's own corpus (`settings.UsersDatabase`). */
   case Users
   /** The dev-only identity review pages' own database on the LOCAL mirror instance, never prod. */
   case LocalReview

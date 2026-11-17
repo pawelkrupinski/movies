@@ -12,7 +12,7 @@ final case class PublishedVenue(town: String, street: Option[String], location: 
 
 /**
  * A multi-venue source whose venue page names the venue's town — read by the
- * ONLINE roster audit (`tools.RosterAudit`) to check that page against the town
+ * ONLINE roster audit (`diagnostics.RosterAudit`) to check that page against the town
  * we file the venue under. Only the two Polish sources the three 2026-09 roster
  * mistakes came through publish one: a bilety24 organiser page (Braniewo's
  * Baszta on Środa's organiser, Koło's Kino nad Wartą on Konin's culture centre)

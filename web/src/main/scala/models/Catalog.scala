@@ -75,7 +75,7 @@ object Catalog {
    * goes to the first country, in this catalog's order, that answers to it.
    * Temporary, with the table.
    *
-   * `genres` is the genre master set ([[services.cinemas.GenreNames.spellings]]): each
+   * `genres` is the genre master set ([[models.GenreNames.spellings]]): each
    * id -> every spelling the server folds into it, its display names first. A
    * `?genre=` link minted under an old spelling 301s on the web onto the
    * deployment's name, but a link an app claims never reaches that redirect: the
@@ -214,7 +214,7 @@ object Catalog {
         }
       }
     val owners = JsObject(LegacySlugOwners.owners.toSeq.sorted.map { case (slug, code) => slug -> JsString(code) })
-    val genres = JsObject(services.cinemas.GenreNames.spellings.map { case (id, spellings) => id -> JsArray(spellings.map(JsString(_))) })
+    val genres = JsObject(models.GenreNames.spellings.map { case (id, spellings) => id -> JsArray(spellings.map(JsString(_))) })
     Json.stringify(Json.obj("countries" -> countries, "cities" -> cities, "bareSlugOwners" -> owners, "genres" -> genres))
   }
 

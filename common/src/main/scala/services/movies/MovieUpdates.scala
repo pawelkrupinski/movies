@@ -34,7 +34,7 @@ private[movies] object MovieUpdates {
     scalar("metacriticUrl",     p.metacriticUrl,     (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("rottenTomatoesUrl", p.rottenTomatoesUrl, (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("searchTitle",       p.searchTitle,       (s: String) => new org.mongodb.scala.bson.BsonString(s))
-    scalar("tmdbAttempt",       p.tmdbAttempt,       (a: services.resolution.TmdbAttempt) =>
+    scalar("tmdbAttempt",       p.tmdbAttempt,       (a: models.TmdbAttempt) =>
       new org.bson.BsonDocument("evidence", new org.mongodb.scala.bson.BsonString(a.evidence))
         .append("at", BsonDateTime(a.at.toEpochMilli)))
     scalar("retainedSynopses", p.retainedSynopses, (m: Map[Source, String]) => {

@@ -52,8 +52,8 @@ class WorkerWiringLifecycleSpec extends AnyFlatSpec with Matchers {
 
   "The member walk" should "name an unregistered member, and not a registered one" in {
     val managed = new tools.ManagedResources(_root_.tools.SpecStopwatch.Frozen)
-    final class Root { val loose = new services.Stoppable { def stop(): Unit = () }; val held = managed.stopping(new services.Stoppable { def stop(): Unit = () }) }
+    final class Root { val loose = new tools.Stoppable { def stop(): Unit = () }; val held = managed.stopping(new tools.Stoppable { def stop(): Unit = () }) }
     UnmanagedMembers.of(new Root, managed).map(_.takeWhile(_ != ' ')) shouldBe Seq("loose")
-    ObjectGraph.collect(new Root) { case s: services.Stoppable => s }.size shouldBe 2
+    ObjectGraph.collect(new Root) { case s: tools.Stoppable => s }.size shouldBe 2
   }
 }

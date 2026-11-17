@@ -1,7 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Source, SourceData}
-import services.resolution.TmdbAttempt
+import models.TmdbAttempt
 
 /**
  * Field-level diff between two `MovieRecord` snapshots — the minimal set of

@@ -103,7 +103,7 @@ object MissingFixtureFill {
   /** The residential proxy [[route]] falls back to — sticky per host and path across the pool's IPs — when
    *  `configuration` holds its credentials; None otherwise. The fill's and a recording's alike. */
   def residentialProxy(configuration: settings.ProcessConfiguration, tls: javax.net.ssl.SSLContext): Option[HttpFetch] =
-    ResidentialShards.fromConfiguration(configuration, tls)
+    ResidentialShards.fromCredentials(configuration.proxyUser, configuration.proxyPassword, tls)
       .map(new StickyShardHttpFetch(_, StickyShardHttpFetch.hostAndPath))
 
   /** The chain a fill writes through: `ArchiveReplayWiring.recordedChain` into `tree` under `root` — the

@@ -13,15 +13,15 @@ class TmdbAttemptPropertySpec extends IdentityPropertySpec {
 
   "TmdbAttempt.fingerprint" should "not depend on the order or multiplicity of the search terms" in {
     forAll(genFilmEvidence, withPermutation(genSearchTerms), Gen.choose(0, 4)) { case (evidence, (terms, permuted), repeat) =>
-      TmdbAttempt.fingerprint(evidence, permuted ++ terms.take(repeat)) shouldBe TmdbAttempt.fingerprint(evidence, terms)
+      FilmEvidence.fingerprint(evidence, permuted ++ terms.take(repeat)) shouldBe FilmEvidence.fingerprint(evidence, terms)
     }
   }
 
   it should "change when a director the cinemas had not named is added" in {
     forAll(genFilmEvidence, genSearchTerms, genName) { (evidence, terms, director) =>
       whenever(!evidence.directors.contains(director)) {
-        TmdbAttempt.fingerprint(evidence.withDirectors(Seq(director)), terms) should not be
-          TmdbAttempt.fingerprint(evidence, terms)
+        FilmEvidence.fingerprint(evidence.withDirectors(Seq(director)), terms) should not be
+          FilmEvidence.fingerprint(evidence, terms)
       }
     }
   }

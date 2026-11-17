@@ -107,7 +107,7 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
         case _ =>
           counter += 1
           val runId = s"$cinema#$counter"
-          val run = MongoChunkScrapeStore.toRun(services.BsonRoundTrip(MongoChunkScrapeStore.runDoc(cinema, runId, expectedKeys, now)))
+          val run = MongoChunkScrapeStore.toRun(tools.BsonRoundTrip(MongoChunkScrapeStore.runDoc(cinema, runId, expectedKeys, now)))
           byCinema.put(cinema, State(run, Map.empty))
           Some(runId)
       }
@@ -120,7 +120,7 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
       byCinema.get(cinema).foreach { st =>
         if (st.run.runId == runId && st.chunks.get(key).forall(chunk.replaces))
           byCinema.put(cinema, st.copy(chunks = st.chunks.updated(key,
-            MongoChunkScrapeStore.toChunk(services.BsonRoundTrip(MongoChunkScrapeStore.chunkDoc(cinema, runId, key, chunk, now))))))
+            MongoChunkScrapeStore.toChunk(tools.BsonRoundTrip(MongoChunkScrapeStore.chunkDoc(cinema, runId, key, chunk, now))))))
       }
     }
 

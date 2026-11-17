@@ -16,7 +16,7 @@ object ProxyChain {
 
   /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
    *  when given, metered and circuit-broken) with `fallback` behind it — the
-   *  chain `EgressWiring`'s `proxyPrimary` explains, shared with `tools.RosterAudit`. */
+   *  chain `EgressWiring`'s `proxyPrimary` explains, shared with `diagnostics.RosterAudit`. */
   def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, clock: java.time.Clock, stopwatch: Stopwatch,
                    warmUrl: Option[String] = None,
                    keyOf: String => String = StickyShardHttpFetch.hostAndPath,

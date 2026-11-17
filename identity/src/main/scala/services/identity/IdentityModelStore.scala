@@ -38,7 +38,7 @@ trait IdentityModelStore {
 final class InMemoryIdentityModelStore extends IdentityModelStore {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[String, StoredFamily]
   @volatile private var rules: Option[String] = None
-  private val stored = services.BsonRoundTrip.via(MongoIdentityModelStore.encode, MongoIdentityModelStore.decode)
+  private val stored = tools.BsonRoundTrip.via(MongoIdentityModelStore.encode, MongoIdentityModelStore.decode)
   def families(): Seq[StoredFamily] = synchronized(kept.values.toSeq)
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = synchronized { kept --= removed; added.foreach(f => kept(f.id) = stored(f)) }
   def rulesVersion: Option[String] = rules

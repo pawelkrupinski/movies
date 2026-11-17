@@ -6,7 +6,8 @@ import modules.wiring.{AlertingWiring, ChunkScrapeWiring, ClosureWiring, CorpusW
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
-import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor, UptimeTier}
+import services.{Drainable, MongoConnection, MongoTuning, UptimeMonitor, UptimeTier}
+import settings.MongoAddress
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
 import services.metrics.WorkerMetrics
 import services.tasks.{CostSpacedPhaseOffset, DueWindow, ScrapeCadence, VenueCadenceStore}
@@ -43,7 +44,7 @@ class WorkerWiring(
     // so all countries draw run permits from one Semaphore/cap rather than each
     // spinning its own (see `backgroundBudget`). Defaulted so a single-country
     // boot / test constructs its own.
-    injectedBackgroundBudget: ExecutionBudget = SharedExecutionBudget.forBackground(WorkerWiring.DefaultBackgroundConcurrency),
+    injectedBackgroundBudget: ExecutionBudget = SharedExecutionBudget.forBackground(WorkerWiring.DefaultBackgroundConcurrency.value),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client at its `mongoAddress`, the
@@ -430,5 +431,5 @@ object WorkerWiring {
 
   /** The ONE background budget a process shares across its countries' wirings. */
   def backgroundBudgetFrom(configuration: ProcessConfiguration): ExecutionBudget =
-    SharedExecutionBudget.forBackground(configuration.backgroundConcurrency(DefaultBackgroundConcurrency))
+    SharedExecutionBudget.forBackground(configuration.backgroundConcurrency(DefaultBackgroundConcurrency).value)
 }

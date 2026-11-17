@@ -1,5 +1,6 @@
 package tools
 
+import services.MonitoringHttpFetch
 import clients.tools.{ConstantHttpFetch, FailingHttpFetch, RequestLogHttpFetch}
 import com.mongodb.MongoWriteException
 import org.scalatest.flatspec.AnyFlatSpec

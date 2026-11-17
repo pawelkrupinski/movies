@@ -43,7 +43,7 @@ class WebMovieMetrics(
   // last counts for ever, which the films-served alerts read as a steady country.
   ticks: TickRecorder = TickRecorder.Unrecorded,
   threadPools: ThreadPools
-) extends services.Stoppable with Logging {
+) extends tools.Stoppable with Logging {
   private val cities: Seq[City] = servingCountry.cities
   private val country: String   = servingCountry.code
 

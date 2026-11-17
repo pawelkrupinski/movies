@@ -86,6 +86,18 @@ final case class FilmEvidence(
 }
 
 object FilmEvidence {
+
+  /** What a resolution attempt actually consumed: the cinemas' evidence and the
+   *  extra search terms mined from derived slots (a Filmweb-supplied original
+   *  title is a legitimate SEARCH input even though it is no evidence). Sorted
+   *  and joined so two attempts on the same inputs fingerprint alike whatever
+   *  order the inputs arrived in. */
+  def fingerprint(evidence: FilmEvidence, searchTerms: Iterable[String]): String =
+    tools.Digest.sha1Hex(evidence.canonical + "\u001d" + searchTerms.toSeq.distinct.sorted.mkString("\u001f"))
+
+  def attempt(evidence: FilmEvidence, searchTerms: Iterable[String], at: java.time.Instant): models.TmdbAttempt =
+    models.TmdbAttempt(fingerprint(evidence, searchTerms), at)
+
   val empty: FilmEvidence = FilmEvidence(Nil, Nil, Nil, Nil, Nil, Nil)
 
   /** The evidence a record's cinema slots carry. Titles come from EVERY slot (a

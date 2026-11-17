@@ -69,7 +69,7 @@ class ThrottledHttpFetch(
   // captured log output.
   report:       Option[String => Unit] = None,
   // The pace `PacedHttpFetch` holds each host to, quoted in the pace-report
-  // (the wiring passes `PacedHttpFetch.configuredInterval(env)`).
+  // (the wiring passes `PacedHttpFetch.configuredInterval(configuration.hostPace)`).
   paceFor:      String => Option[FiniteDuration] = _ => None
 ) extends ForwardingHttpFetch with Logging {
 

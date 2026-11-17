@@ -44,7 +44,7 @@ trait AgreementVerdicts {
  *  read back. */
 final class InMemoryAgreementVerdicts extends AgreementVerdicts {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[String, StoredVerdict]
-  private val stored = services.BsonRoundTrip.via(AgreementVerdicts.encode, AgreementVerdicts.decode)
+  private val stored = tools.BsonRoundTrip.via(AgreementVerdicts.encode, AgreementVerdicts.decode)
   def all(): Seq[StoredVerdict] = synchronized(kept.values.toSeq)
   def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = synchronized { kept --= removed; added.foreach(v => kept(v.id) = stored(v)) }
 }

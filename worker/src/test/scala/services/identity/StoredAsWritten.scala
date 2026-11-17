@@ -4,7 +4,7 @@ import services.identity.agreement.{AgreementVerdicts, StoredVerdict}
 
 /**
  * The agreement's verdicts as a deploy leaves them, for `scripts.IdentityDrift`: kept as the worker's Mongo store keeps
- * them (the in-memory store writes each one to BSON and reads it back, [[services.BsonRoundTrip]]), and able to outrule
+ * them (the in-memory store writes each one to BSON and reads it back, [[tools.BsonRoundTrip]]), and able to outrule
  * every one of them as a deploy changing the agreement's code does.
  */
 object StoredAsWritten {

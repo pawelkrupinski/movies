@@ -157,7 +157,7 @@ object MongoUserRepository {
 class InMemoryUserRepository extends UserRepository {
   private val byId  = scala.collection.mutable.Map.empty[String, User]
   private val bySub = scala.collection.mutable.Map.empty[(String, String), String]
-  private val stored = services.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[User]))
+  private val stored = tools.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[User]))
 
   def enabled: Boolean = true
 

@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters._
  * in-memory twin of the Mongo rows' `updatedAt`, which the same no-op guards leave alone.
  *
  * Each row is kept as its Mongo store would hand it back: `stored(filmId, slotKey, row)` writes it through the store's
- * codec to BSON and reads it back ([[services.BsonRoundTrip]]), before the no-op guard compares it.
+ * codec to BSON and reads it back ([[tools.BsonRoundTrip]]), before the no-op guard compares it.
  *
  * One monitor guards all mutations — fine at test/dev scale.
  */

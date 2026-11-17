@@ -213,7 +213,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
    *  carried (item 7's open part), so both sides drop it. */
   it should "be drafted over its stored record exactly as over none, matched or not, answered or not" in {
     val written = MovieRecord(searchTitle = Some("Obcy 8 pasazer Nostromo"), imdbId = Some("tt0078748"), wikidataId = Some("Q103569"),
-      tmdbAttempt = Some(services.resolution.TmdbAttempt(IdentityProjectionPlan.ResolverVerdict, Instant.parse("2026-09-01T00:00:00Z"))),
+      tmdbAttempt = Some(models.TmdbAttempt(IdentityProjectionPlan.ResolverVerdict, Instant.parse("2026-09-01T00:00:00Z"))),
       retainedSynopses = Map(models.CinemaShowing.keyFor(Helios, "Obcy", normalizer) -> "Statek Nostromo."), data = Map(slotOf(obcy.head)))
     val decisions = Seq(decision(None, obcy*), decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty), decision(Some(348), obcy*),
       decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0)))(DecisionTrace.Empty))
@@ -308,7 +308,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val older = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1),
       data = Map(slotOf(lalka.head))),
       FilmId("f-older"), Some("lalka|2026"))
-    val newer = StoredMovieRecord("Lalka 2D PL", None, MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
+    val newer = StoredMovieRecord("Lalka 2D PL", None, MovieRecord(tmdbAttempt = Some(models.TmdbAttempt.Legacy),
       data = Map(slotOf(lalka(1)), slotOf(lalka(2)))),
       FilmId("f-newer"), Some("lalka2dpl|"))
     val map = FilmIdCounters.of(Seq(FilmIdCounter("f-older", 1), FilmIdCounter("f-newer", 2))).toOption.get

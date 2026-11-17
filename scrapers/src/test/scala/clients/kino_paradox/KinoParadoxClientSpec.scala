@@ -82,6 +82,6 @@ class KinoParadoxClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "never read a country name as a director" in {
-    fetched.flatMap(_.director).filter(services.cinemas.CountryNames.isPolish) shouldBe empty
+    fetched.flatMap(_.director).filter(models.CountryNames.isPolish) shouldBe empty
   }
 }

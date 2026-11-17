@@ -87,9 +87,9 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   def countScreenings(): tools.ReadOutcome[Long] = tools.ReadOutcome.Answered(lock.synchronized(screeningsStore.size.toLong))
 
   // Each document as the read model's collections would hand it back: written through their codec to BSON and read
-  // again (`services.BsonRoundTrip`); the watchers get that, as the change stream decodes the stored document.
-  private val storedMovie     = services.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[ResolvedMovie]))
-  private val storedScreening = services.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[CityScreening]))
+  // again (`tools.BsonRoundTrip`); the watchers get that, as the change stream decodes the stored document.
+  private val storedMovie     = tools.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[ResolvedMovie]))
+  private val storedScreening = tools.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[CityScreening]))
 
   def upsertMovie(written: ResolvedMovie): Unit = {
     val m = storedMovie(written)

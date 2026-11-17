@@ -48,8 +48,8 @@ class CachingTaskQueue(
    *  The `active` half is the one worth watching: it is what spares a Mongo
    *  round-trip per re-enqueue, so riding its ceiling means the dedup is being
    *  evicted and those round-trips are coming back. */
-  def occupancy: services.metrics.CacheOccupancy =
-    services.metrics.CacheOccupancy.of(active, weighted = false)
+  def occupancy: tools.CacheOccupancy =
+    tools.CacheOccupancy.of(active, weighted = false)
 
   override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
     if (active.getIfPresent(dedupKey) != null) EnqueueResult.Duplicate // known-active: skip the Mongo round-trip

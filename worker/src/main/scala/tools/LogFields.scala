@@ -2,7 +2,6 @@ package tools
 
 import ch.qos.logback.classic.LoggerContext
 import org.slf4j.{LoggerFactory, MDC}
-import settings.CommitSha
 
 /**
  * Fields on worker log lines beside their text — each one a VictoriaLogs field LogsQL filters and groups on, once
@@ -16,13 +15,13 @@ object LogFields {
   val Build = "build"
 
   /** Put `commit` on every line this process logs from now on, as [[Build]]. */
-  def stampBuild(commit: CommitSha): Unit = LoggerFactory.getILoggerFactory match {
+  def stampBuild(commit: String): Unit = LoggerFactory.getILoggerFactory match {
     case context: LoggerContext => stamp(context, commit)
     case _                      => ()
   }
 
   /** [[stampBuild]] on `context` — the process's own, or a spec's. */
-  def stamp(context: LoggerContext, commit: CommitSha): Unit = context.putProperty(Build, commit.value)
+  def stamp(context: LoggerContext, commit: String): Unit = context.putProperty(Build, commit)
 
   /** Run `body` with `fields` on every line it logs on this thread, the fields it found there put back after. */
   def within[A](fields: (String, String)*)(body: => A): A = {

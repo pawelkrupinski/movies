@@ -26,6 +26,9 @@ final class WebHref private (val url: String) extends AnyVal {
    *  percent-encoded ([[tools.AsciiUrl]]) — what the mobile decoders need. `AsciiUrl`
    *  leaves the scheme's ASCII alone, so the result is still http(s). */
   def asciiEncoded: WebHref = new WebHref(tools.AsciiUrl.encode(url))
+
+  /** This poster through [[tools.PosterProxy.proxy]]: the weserv address is https, so the answer stays one. */
+  def proxiedPoster: WebHref = WebHref.of(tools.PosterProxy.proxy(url)).getOrElse(this)
 }
 
 object WebHref {

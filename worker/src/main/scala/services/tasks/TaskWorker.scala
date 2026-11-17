@@ -2,7 +2,7 @@ package services.tasks
 
 import settings.WorkerPoolSize
 
-import services.Stoppable
+import tools.Stoppable
 import services.metrics.TaskObserver
 import services.metrics.WorkerTaskMetrics.Outcome
 import tools.{ThreadPools, TickRecorder, ScheduledTick}

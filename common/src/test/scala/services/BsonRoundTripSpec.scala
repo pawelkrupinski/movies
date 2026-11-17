@@ -2,6 +2,7 @@ package services
 
 import org.bson.{BsonDateTime, BsonDocument, BsonInt64, BsonSerializationException, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
+import tools.BsonRoundTrip
 import org.scalatest.matchers.should.Matchers
 import services.keyed.{DocCodec, InMemoryKeyedDocStore}
 import org.mongodb.scala.bson.collection.immutable.Document

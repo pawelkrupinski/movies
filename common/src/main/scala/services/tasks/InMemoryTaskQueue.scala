@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
  * cycle — FIFO atomic claim, ownership-guarded complete/release, lease reaping —
  * from the same [[TaskLeases]] rules over its own rows. All
  * mutations are guarded by one monitor — fine at test/dev scale. What a task is written with — its payload and its
- * instants — is written as [[MongoTaskQueue]] inserts it to BSON and read back ([[services.BsonRoundTrip]]).
+ * instants — is written as [[MongoTaskQueue]] inserts it to BSON and read back ([[tools.BsonRoundTrip]]).
  */
 class InMemoryTaskQueue extends TaskQueue {
 
@@ -63,7 +63,7 @@ class InMemoryTaskQueue extends TaskQueue {
       if (active) EnqueueResult.Duplicate
       else {
         val id     = UUID.randomUUID().toString
-        val stored = services.BsonRoundTrip(MongoTaskQueue.inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead))
+        val stored = tools.BsonRoundTrip(MongoTaskQueue.inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead))
         def instant(field: String) = stored.get(field).map(at => Instant.ofEpochMilli(at.asDateTime.getValue))
         rows.put(id, Row(id, taskType, dedupKey, MongoTaskQueue.payloadOf(stored), TaskState.Waiting,
           instant("submittedAt").get, 0, None, None, instant("nextEligibleAt"), instant("enqueuedAt")))
@@ -88,7 +88,7 @@ class InMemoryTaskQueue extends TaskQueue {
     // "Amended" means MATCHED, as Mongo's matched count reports it: a waiting task that
     // already carries `fields` still runs the caller's request.
     fields.nonEmpty && rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
-      val stored = services.BsonRoundTrip(org.mongodb.scala.Document("payload" -> MongoTaskQueue.payloadDocument(r.payload ++ fields)))
+      val stored = tools.BsonRoundTrip(org.mongodb.scala.Document("payload" -> MongoTaskQueue.payloadDocument(r.payload ++ fields)))
       rows.put(r.id, r.copy(payload = MongoTaskQueue.payloadOf(stored))); true
     }
   }

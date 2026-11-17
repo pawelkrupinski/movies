@@ -1,7 +1,8 @@
 package services.movies
 
 import models.Showtime
-import services.cinemas.{CountryNames, GenreNames}
+import models.CountryNames
+import models.GenreNames
 
 import java.net.URI
 import java.util.Locale

@@ -1,7 +1,7 @@
 package services.movies
 
 import play.api.Logging
-import services.Stoppable
+import tools.Stoppable
 import tools.{TickRecorder}
 
 import services.schedule.{OccurrenceKey, ScheduledRunStore}

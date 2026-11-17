@@ -287,7 +287,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
    *  decorators sit behind the catalog's diagnostic door. */
   private val SystemStopwatchBacklog: Set[String] = Set(
     "http/src/main/scala/tools/RetryWithBackoff.scala",
-    "common/src/main/scala/tools/MonitoringHttpFetch.scala",
+    "common/src/main/scala/services/MonitoringHttpFetch.scala",
     "identity/src/main/scala/services/identity/ObservationReads.scala",
     "identity/src/main/scala/services/identity/IncrementalResolver.scala",
     "identity/src/main/scala/services/identity/agreement/AgreementStage.scala",

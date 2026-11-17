@@ -1,5 +1,6 @@
 package services.metrics
 
+import tools.CacheOccupancy
 import tools.ThreadPools
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}

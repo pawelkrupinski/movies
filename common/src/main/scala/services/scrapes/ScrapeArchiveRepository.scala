@@ -367,7 +367,7 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
   private val byCinema = scala.collection.mutable.Map.empty[String, ArchivedScrape]
 
   private def stored(row: ArchivedScrape): ArchivedScrape =
-    StoredScrapeDto.toDomain(row.cinema, services.BsonRoundTrip.throughCodec(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto]))(StoredScrapeDto.of(row)))
+    StoredScrapeDto.toDomain(row.cinema, tools.BsonRoundTrip.throughCodec(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto]))(StoredScrapeDto.of(row)))
 
   def enabled: Boolean = true
 
