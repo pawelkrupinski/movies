@@ -31,7 +31,7 @@ class SearchRefreshHoldReplaySpec extends AnyFlatSpec with Matchers {
     val waiting = world.applied()
     waiting.film shouldBe Some(Game)                       // was None: the model's pooled:no-film served
     world.outcome(waiting) shouldBe a[TakeOutcome.Pending]
-    world.stage.heldNow().listings shouldBe 3
+    world.stage.standingTakes.held().listings shouldBe 3
 
     // a re-scrape billing the same listings before the poster comes: still standing
     world.applied().film shouldBe Some(Game)
@@ -41,7 +41,7 @@ class SearchRefreshHoldReplaySpec extends AnyFlatSpec with Matchers {
     val decided = world.applied()
     (decided.film, world.outcome(decided)) shouldBe ((Some(Game), TakeOutcome.Taken(s"tmdb:$Game")))
     decided.explanation.last should startWith ("filled by venues.current")
-    world.stage.heldNow().listings shouldBe 0
+    world.stage.standingTakes.held().listings shouldBe 0
   }
 
   it should "stand at most the input gate's bound, then be served as it stands, Pending" in {
@@ -56,7 +56,7 @@ class SearchRefreshHoldReplaySpec extends AnyFlatSpec with Matchers {
     val bounded = world.applied(sameVersion = true)
     bounded.film shouldBe None
     world.outcome(bounded) shouldBe a[TakeOutcome.Pending]
-    world.stage.heldNow().listings shouldBe 0
+    world.stage.standingTakes.held().listings shouldBe 0
     world.filePoster()
     world.applied().film shouldBe Some(Game)
   }
