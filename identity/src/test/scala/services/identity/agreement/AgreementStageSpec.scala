@@ -962,7 +962,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       attemptsMarked = Some(() => marks))
     val resolution = this.resolution                                                     // the model hands the same decisions
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None   // Filmweb's question holds it
-    stage.awaiting should not be empty
+    stage.questions.awaiting should not be empty
     reads = 0
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None   // quiet: nothing marked, nothing read
     reads shouldBe 0L

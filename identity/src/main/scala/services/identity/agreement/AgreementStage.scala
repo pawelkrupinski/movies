@@ -119,12 +119,13 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] val decidedUnder: String =
     s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(families.keySet, identities, listedOn, calibration)}"
 
-  @volatile private var wantedNow: Set[Question] = Set.empty
   /** Every question the last [[apply]] met unanswered or stale, one each: the families' questions, TMDB's finds of agreed
    *  IMDb ids, the posters not hashed yet (the corrections' a few at a time), the catalogue ids not mapped and venue pages
    *  not read yet, and the TMDB records a broadcast take waits on to read again — filed before records kept the whole
    *  release day ([[IdentityLookups.releaseDay]]). A caller after one kind matches it out. */
-  def wanted: Set[Question] = wantedNow
+  def wanted: Set[Question] = questions.wanted
+  /** The questions on their way to `ask`, and what of them is awaited. */
+  private[agreement] val questions = new QuestionHandOver(ask, attemptsMarked)
 
   /** What `decision`'s take waits on, as the last [[apply]] left it: the model's gaps, and the stage's own — its cluster's
    *  family questions or its fill's TMDB answers ([[waiting]]), and its take's correction's questions ([[correctionWaits]]).
@@ -278,17 +279,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  names its cluster — a key only names (docs/design/identity-no-drift.md, "One dependency index"). Kept while a
    *  cluster of that shape is met. */
   private[agreement] val askedNow = mutable.HashSet.empty[Long]
-  /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
-   *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
-  private[agreement] var awaiting = Set.empty[Question]
-  /** `attemptsMarked` as it stood when [[awaiting]] was last found unattempted: while the memory has marked nothing
-   *  since, none of them can have been attempted, and a quiet apply reads none of their records (3,459 on the e2e corpus,
-   *  4.4 MB a tick). */
-  private[agreement] var awaitingMarks: Option[Long] = None
-  /** The questions handed to `ask` since the families' answers last moved (at `handedAt`): a tick that filed nothing
-   *  hands nothing. */
-  private[agreement] var handed   = Set.empty[Question]
-  private[agreement] var handedAt = -1L
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against — a cache
    *  of the TMDB answers the read took ([[Memo]]): kept while none of them was filed since. */
   private[agreement] val candidateFilms = new Memo[String, AgreementStage.CandidateFilms](_.reads, _ => false)
@@ -334,7 +324,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     // the year an input no filing announces: its turning reaches the verdicts that read another year, through the index
     if (year != yearNow) { yearNow = year; held.moved(_ == Dependency.Year, readNow); last = None }
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
-    val waited = attemptedSince
+    val waited = questions.attemptedSince(tried)
     if (waited) uncheckAttempted()
     last.collect { case (was, at, came) if !reread && !waited && !unread && !holdDue && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
@@ -361,17 +351,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     attemptUnchecked = held.moved(AgreementStage.isAttempt, readNow)
   /** How many verdicts the last attempt marked read again ([[uncheckAttempted]]). */
   private[agreement] var attemptUnchecked = 0
-
-  /** Was a question the last apply waited on attempted since, though nothing was filed — a cluster's wait settling, a
-   *  take's evidence read as none? */
-  private[agreement] def attemptedSince: Boolean = awaiting.nonEmpty && {
-    val marks = attemptsMarked.map(_())
-    (marks.isEmpty || marks != awaitingMarks) && {
-      val since = awaiting.exists(tried)
-      if (!since) awaitingMarks = marks   // marked since, but none of these: not read again until the next mark
-      since
-    }
-  }
 
   /** Forget the listings read for each decision holding one of `keys`; whether one the stage reads — a cluster nothing
    *  took, a model take it corrects — holds any. */
@@ -416,11 +395,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val served = standing(resolution, decisions, pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     tmdbReads.publish()
-    wantedNow = pass.wanted(correctionPostersAtOnce, tried)
-    handOver(version)
-    // read before the questions are: a mark landing while they are read moves it, and the next apply reads them again
-    awaitingMarks = attemptsMarked.map(_())
-    awaiting = wantedNow.filterNot(tried)
+    questions.handOver(pass.wanted(correctionPostersAtOnce, tried), version, tried)
     unread = pass.spent
     familyVerdicts.applied()
     report(served, pass, started)
@@ -667,13 +642,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (index.get(verdict.listings).exists(_ eq verdict)) index -= verdict.listings
   }
 
-  /** Hands `ask` what the last apply met unanswered and was not handed at `version` yet. */
-  private[agreement] def handOver(version: Long): Unit = {
-    if (handedAt != version) { handed = Set.empty; handedAt = version }
-    val open = wantedNow -- handed
-    if (open.nonEmpty) { ask(open); handed = handed ++ open }
-  }
-
   /** What the apply came to, for [[metrics]]. */
   private[agreement] def report(decisions: Seq[ResolverDecision], pass: AgreementStage.Pass, started: tools.Stopwatch.Started): Unit = {
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
@@ -681,7 +649,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     def taken(basis: ResolverDecision.Basis) = byBasis.getOrElse(basis, 0)
     val open      = mutable.Map.empty[VoterFamily, Int]
     var finds, postersOpen, catalogueOpen, undated = 0
-    wantedNow.foreach {
+    questions.wanted.foreach {
       case Question.Family(family, _) => open(family) = open.getOrElse(family, 0) + 1
       case Question.Find(_)           => finds += 1
       case Question.Poster(_)         => postersOpen += 1
