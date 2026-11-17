@@ -58,6 +58,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val byName = Coupling.packages(graph).map(p => p.name -> p).toMap
     val movies = byName("services.movies")
     movies.ce shouldBe 2 // models.Film, tools.Slugify
+    movies.cePackages shouldBe 2 // models, tools
     movies.ca shouldBe 2 // models.Codec, worker.Main
     movies.instability shouldBe 0.5
     movies.abstractness shouldBe 0.5
@@ -65,6 +66,17 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val base = byName("tools")
     (base.ca, base.ce, base.instability, base.abstractness, base.distance) shouldBe ((2, 0, 0.0, 0.0, 1.0))
     byName("worker").instability shouldBe 1.0
+    (byName("worker").ce, byName("worker").cePackages) shouldBe ((3, 3))
+  }
+
+  "a package's Ce in packages" should "not rise when a dependency is split into roles in the same package" in {
+    def ce(edges: Set[(String, String)]) = {
+      val g = Graph(Seq(t("services.a.User"), t("services.b.Store", isAbstract = true), t("services.b.Reader", isAbstract = true),
+        t("services.b.Writer", isAbstract = true)), edges)
+      Coupling.packages(g).find(_.name == "services.a").map(p => (p.ce, p.cePackages))
+    }
+    ce(Set("services.a.User" -> "services.b.Store")) shouldBe Some((1, 1))
+    ce(Set("services.a.User" -> "services.b.Reader", "services.a.User" -> "services.b.Writer")) shouldBe Some((2, 1))
   }
 
   "a package cycle" should "be a strongly connected component, with every edge inside it" in {
@@ -106,7 +118,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val report = Coupling.report(graph, Map("worker" -> Set("common"), "common" -> Set("base", "geodata")))
     report should include("`worker -> base` (1 refs) is used but not declared")
     report should not include ("`worker -> common` (2 refs) is used but not declared")
-    report should include("| `services.movies` | common | 2 | 1 | 2 | 2 | 0.50 | 0.50 | 0.00 |")
+    report should include("| `services.movies` | common | 2 | 1 | 2 | 2 | 2 | 0.50 | 0.50 | 0.00 |")
     report should include("1. `models`, `services.movies`")
   }
 

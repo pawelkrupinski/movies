@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# THE COUPLING RATCHET (the pre-push hook's `coupling` check; CLAUDE.md, Design rules): the production code's coupling,
+# THE COUPLING RATCHET (the pre-push sbt check's coupling step; CLAUDE.md, Design rules): the production code's coupling,
 # measured from Zinc's class-dependency record (`sbt couplingReport`, project/Coupling.scala), may not grow past the
 # checked-in baseline (test/resources/coupling-baseline.tsv) -- no new package cycle edge, no new cross-module edge
-# kind, no package's Ce past its row (or past the new-package limit), no class's fan-out past its row (or, without a
-# row, to the limit) -- and the baseline itself may grow only in a commit carrying `Coupling: <why>`. A fall needs no
+# kind, no package's Ce (the outside packages its classes use) past its row (or past the new-package limit), no
+# class's fan-out past its row (or, without a row, to the limit) -- and the baseline itself may grow only in a commit
+# carrying `Coupling: <why>`. A fall needs no
 # trailer: `scripts/coupling-report --update` writes the measured rows, every fall included.
 #
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--range A..B ...]
@@ -22,7 +23,7 @@ from typing import Dict, List, Tuple
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information
 VALUED = ("ce", "fanout")
-DEFAULT_LIMITS = {"fanout": 30, "new-package-ce": 15}
+DEFAULT_LIMITS = {"fanout": 30, "new-package-ce": 8}
 
 Rows = Dict[Tuple[str, str], int]
 

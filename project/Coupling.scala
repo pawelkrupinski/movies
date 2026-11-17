@@ -9,7 +9,8 @@ package kinowo.build
  *  - MODULES: the cross-module edges, weighted by the class->class references across them;
  *  - PACKAGES (a class's package cut to its top two segments: `services.identity`, `models`): afferent coupling Ca (the
  *    classes outside the package depending on one inside), efferent coupling Ce (the classes outside it that its classes
- *    depend on), instability I = Ce / (Ca + Ce), abstractness A (traits and abstract classes / all its types) and the
+ *    depend on; and, held by the ratchet, the outside PACKAGES they depend on -- splitting a trait into roles, which raises
+ *    the class count without a new dependency, leaves it), instability I = Ce / (Ca + Ce), abstractness A (traits and abstract classes / all its types) and the
  *    distance from the main sequence D = |A + I - 1|; and the package CYCLES, the strongly connected components of the
  *    package graph, with every package edge inside one (its weight, and the class references that make it);
  *  - CLASSES: fan-in and fan-out (distinct production classes referencing it / referenced by it);
@@ -64,7 +65,7 @@ object Coupling {
 
   // ── packages ──
 
-  final case class PackageStats(name: String, types: Int, abstracts: Int, ca: Int, ce: Int, modules: Seq[String]) {
+  final case class PackageStats(name: String, types: Int, abstracts: Int, ca: Int, ce: Int, cePackages: Int, modules: Seq[String]) {
     def instability: Double = if (ca + ce == 0) 0.0 else ce.toDouble / (ca + ce)
     def abstractness: Double = if (types == 0) 0.0 else abstracts.toDouble / types
     def distance: Double = math.abs(abstractness + instability - 1)
@@ -75,8 +76,9 @@ object Coupling {
     val cross = g.known.toSeq.filter { case (from, to) => pkg(from) != pkg(to) }
     val ce = cross.groupBy { case (from, _) => pkg(from) }.map { case (p, es) => p -> es.map(_._2).toSet.size }
     val ca = cross.groupBy { case (_, to) => pkg(to) }.map { case (p, es) => p -> es.map(_._1).toSet.size }
+    val cePackages = cross.groupBy { case (from, _) => pkg(from) }.map { case (p, es) => p -> es.map(e => pkg(e._2)).toSet.size }
     g.types.groupBy(t => pkg(t.name)).toSeq.map { case (p, ts) =>
-      PackageStats(p, ts.size, ts.count(_.isAbstract), ca.getOrElse(p, 0), ce.getOrElse(p, 0), ts.map(_.module).distinct.sorted)
+      PackageStats(p, ts.size, ts.count(_.isAbstract), ca.getOrElse(p, 0), ce.getOrElse(p, 0), cePackages.getOrElse(p, 0), ts.map(_.module).distinct.sorted)
     }.sortBy(_.name)
   }
 
@@ -143,15 +145,15 @@ object Coupling {
 
   /** The fan-out at and above which a class has a row of its own (below it, a class is held to the limit). */
   val DefaultFanOutLimit = 30
-  /** The Ce a package with no row may reach. */
-  val DefaultNewPackageCeLimit = 15
+  /** The outside packages a package with no row may depend on. */
+  val DefaultNewPackageCeLimit = 8
 
   /** The ratchet's rows (TAB-separated `kind key value`, sorted): what scripts/ci/coupling_ratchet.py compares. */
   def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit): Seq[String] = {
     val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tnew-package-ce\t$newPackageCeLimit")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
-    val ce = packages(g).map(p => s"ce\t${p.name}\t${p.ce}")
+    val ce = packages(g).map(p => s"ce\t${p.name}\t${p.cePackages}")
     val fanout = fans(g).toSeq.collect { case (c, (_, out)) if out >= fanOutLimit => s"fanout\t$c\t$out" }.sorted
     limits ++ modules ++ cycleEdges ++ ce ++ fanout
   }
@@ -164,7 +166,7 @@ object Coupling {
     "#                at or below the second",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): a new one adds a cycle",
-    "#   ce           <package>, its efferent coupling (distinct outside classes its classes use): it may not rise",
+    "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
     "#   fanout       <class>, its fan-out (distinct production classes it uses), at or above the limit: it may not rise",
     "# A row added or raised lands only in a commit carrying `Coupling: <why>` (CLAUDE.md, Design rules); a fall is",
     "# recorded by --update with no trailer. Module-edge and cycle-edge weights are information: only the pair is held.")
@@ -204,11 +206,11 @@ object Coupling {
     out += ""
     out += "## Packages"
     out += ""
-    out += "Ca: outside classes using the package; Ce: outside classes it uses; I = Ce/(Ca+Ce); A = abstract types / types; D = |A+I-1|. Sorted by D, then Ce."
+    out += "Ca: outside classes using the package; Ce: outside classes it uses (Ce pkgs: outside packages, what the ratchet holds); I = Ce/(Ca+Ce); A = abstract types / types; D = |A+I-1|. Sorted by D, then Ce."
     out += ""
-    out ++= table(Seq("package", "modules", "types", "abstract", "Ca", "Ce", "I", "A", "D"),
+    out ++= table(Seq("package", "modules", "types", "abstract", "Ca", "Ce", "Ce pkgs", "I", "A", "D"),
       pkgs.sortBy(p => (-math.round(p.distance * 1000), -p.ce, p.name)).map(p =>
-        Seq(s"`${p.name}`", p.modules.mkString(" "), p.types.toString, p.abstracts.toString, p.ca.toString, p.ce.toString, f2(p.instability), f2(p.abstractness), f2(p.distance))))
+        Seq(s"`${p.name}`", p.modules.mkString(" "), p.types.toString, p.abstracts.toString, p.ca.toString, p.ce.toString, p.cePackages.toString, f2(p.instability), f2(p.abstractness), f2(p.distance))))
     out += ""
     out += s"## Package cycles (${cyc.size})"
     out += ""
