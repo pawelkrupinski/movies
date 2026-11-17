@@ -229,10 +229,10 @@ class MongoScreeningsRepository(
   findAllBatchSize:     Int            = 500,
   findAllBatchAttempts: Int            = 4,
   findAllBatchBackoff:  FiniteDuration = 500.millis,
-  // Persist THIS stream's resume token so a restart replays showtime changes that landed
-  // while down — the `movies` stream can't, a showtime write never touches `movies`. ON only
-  // in the worker (the durable mirror); OFF for web /debug + scripts. See [[ChangeStreamResumeToken]].
-  persistResumeToken:   Boolean        = false,
+  // Where THIS stream's resume token is kept, so a restart replays showtime changes that landed
+  // while down — the `movies` stream can't, a showtime write never touches `movies`. Persistent
+  // only in the worker (the durable mirror); none for web /debug + scripts. See [[ResumeTokenStore]].
+  resumeTokens:         ResumeTokenStore = ResumeTokenStore.Ephemeral,
   // What this store streams. The worker passes the Prometheus sink; everything else keeps
   // the no-op. This cursor is the read-model projection's larger trigger and had no metric
   // at all, which is what made a 40x projection climb unattributable — see [[ScreeningsMetrics]].
@@ -254,7 +254,7 @@ class MongoScreeningsRepository(
     c
   }
 
-  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
+  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, resumeTokens, stopwatch)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 

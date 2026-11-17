@@ -2,21 +2,14 @@ package services.movies
 
 import java.util.Locale
 
-import com.mongodb.WriteConcern
-import com.mongodb.client.model.ReplaceOptions
 import org.bson.BsonDocument
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
- * Persists ONE change-stream's resume token to `change_stream_tokens` (`_id =
- * streamId`) so the cursor reopens — after a terminal error, and the big win, after
+ * Keeps ONE change-stream's resume token in its [[ResumeTokenStore]] (`change_stream_tokens`,
+ * `_id = streamId`, in the worker) so the cursor reopens — after a terminal error, and the big win, after
  * a WORKER RESTART — from where it left off, REPLAYING events that landed while the
  * process was down. That closes the downtime gap the consumers' periodic backstops
  * (cache rehydrate / sweeper reconcile) exist for.
@@ -27,17 +20,16 @@ import scala.util.Try
  * showtime edits made while down and only the full reproject catches them (the
  * asymmetry that kept the reproject non-redundant).
  *
- * `enabled` is ON only in the WORKER (the durable mirror); web /debug + scripts pass
- * it OFF so an ephemeral viewer's cursor position can't clobber the worker's shared
- * token. Best-effort throughout — a failed load/save only logs; the backstop covers
+ * The store is persistent only in the WORKER (the durable mirror); web /debug + scripts
+ * keep none ([[ResumeTokenStore.Ephemeral]]) so an ephemeral viewer's cursor position
+ * can't clobber the worker's shared token. Best-effort throughout — a failed load/save only logs; the backstop covers
  * a miss. Persist is time-throttled + fire-and-forget so the driver thread never
  * blocks on a Mongo write per event; a clean shutdown forces one synchronous save so
  * a restart's resume is deterministic.
  */
 class ChangeStreamResumeToken(
   streamId: String,
-  database: Option[MongoDatabase],
-  enabled:  Boolean,
+  store:    ResumeTokenStore,
   // The owner's monotonic clock: what the save throttle times the gap since the last save on.
   stopwatch: tools.Stopwatch
 ) extends Logging {
@@ -46,18 +38,10 @@ class ChangeStreamResumeToken(
   private val lastToken = new AtomicReference[BsonDocument](null)
   // When the last throttled save went out — none yet, so the first is never throttled.
   private val lastSave  = new AtomicReference[Option[tools.Stopwatch.Started]](None)
-  private lazy val coll: Option[MongoCollection[Document]] =
-    if (!enabled) None
-    else database.map(_.getCollection[Document]("change_stream_tokens").withWriteConcern(WriteConcern.W1.withJournal(false)))
 
   /** The persisted position to reopen from (a restart / prior terminal error): absent when none
    *  was saved, FAILED when it could not be read — which is not "none saved". */
-  def load(): tools.ReadOutcome[BsonDocument] =
-    coll.fold[tools.ReadOutcome[BsonDocument]](tools.ReadOutcome.none(s"$streamId resume token (not persisted)")) { c =>
-      tools.MongoRead.one(s"$streamId resume token", 5.seconds)(c.find(Filters.eq("_id", streamId)).headOption())
-        .flatMap(_.get("token").fold[tools.ReadOutcome[BsonDocument]](tools.ReadOutcome.none(s"$streamId resume token"))(
-          token => tools.ReadOutcome.Answered(token.asDocument())))
-    }
+  def load(): tools.ReadOutcome[BsonDocument] = store.load(streamId)
 
   // How many opens in a row found the saved position unreadable. Only the opening thread
   // (the reopen scheduler, or a registration under the stream's lock) touches it.
@@ -113,13 +97,9 @@ class ChangeStreamResumeToken(
    *  restart resumes deterministically; otherwise fire-and-forget + time-throttled. */
   def save(force: Boolean): Unit = {
     val token = lastToken.get()
-    if (token != null) coll.foreach { c =>
-      if (force || lastSave.get().forall(_.millis >= TokenSaveThrottleMs)) {
-        lastSave.set(Some(stopwatch.start()))
-        val write = c.replaceOne(Filters.eq("_id", streamId),
-          Document("_id" -> streamId, "token" -> token), new ReplaceOptions().upsert(true)).toFuture()
-        if (force) Try(Await.result(write, 5.seconds))
-      }
+    if (token != null && (force || lastSave.get().forall(_.millis >= TokenSaveThrottleMs))) {
+      lastSave.set(Some(stopwatch.start()))
+      store.save(streamId, token, synchronously = force)
     }
   }
 
@@ -127,7 +107,7 @@ class ChangeStreamResumeToken(
    *  token (oplog window exceeded), where resuming would loop on the same error. */
   def clear(): Unit = {
     synchronized { generations.incrementAndGet(); lastToken.set(null) }
-    coll.foreach(c => Try(Await.result(c.deleteOne(Filters.eq("_id", streamId)).toFuture(), 5.seconds)))
+    store.clear(streamId)
   }
 
   /** What a cursor reading from this position does on its terminal error, logged under the cursor's

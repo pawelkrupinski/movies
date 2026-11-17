@@ -114,7 +114,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
     Seq("Clock.systemUTC()", "models.VenueClock.system", "tools.Stopwatch.System", "Stopwatch.System")
       .foreach(default => withClue(default)(LiveClockDefault.findFirstIn(default) shouldBe defined))
     LiveClockDefault.findFirstIn("SpecClock.Pinned") shouldBe None
-    LiveClockDefault.findFirstIn("new ChangeStreamResumeToken(\"movies\", None, enabled = false, stopwatch = Stopwatch.System)") shouldBe None
+    LiveClockDefault.findFirstIn("new ChangeStreamResumeToken(\"movies\", ResumeTokenStore.Ephemeral, stopwatch = Stopwatch.System)") shouldBe None
   }
 
   "production code" should "not default a parameter to the live clock — the composition root passes its own" in {

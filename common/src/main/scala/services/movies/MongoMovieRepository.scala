@@ -84,12 +84,12 @@ class MongoMovieRepository(
   // collection for films whose slots haven't been rewritten since the split landed.
   // Scripts/tests that pass `None` write nothing extra.
   slots: Option[SlotsRepository] = None,
-  // Persist the change-stream resume token so the shared cursor reopens (after a terminal
+  // Where the change-stream resume token is kept, so the shared cursor reopens (after a terminal
   // error or a WORKER RESTART) from where it left off — replaying events that landed while
-  // this process was down, closing the gap the consumers' periodic backstops exist for. ON
-  // only in the WORKER (the durable read-model / cache mirror); OFF for web /debug + scripts,
-  // whose ephemeral cursor position must not clobber the worker's in the shared token doc.
-  persistResumeToken: Boolean = false,
+  // this process was down, closing the gap the consumers' periodic backstops exist for. The
+  // WORKER (the durable read-model / cache mirror) passes its database's store; web /debug +
+  // scripts keep none, so their ephemeral cursor position cannot clobber the worker's token.
+  resumeTokens: ResumeTokenStore = ResumeTokenStore.Ephemeral,
   // The country whose rules derive a row's `_id` (`sanitize(title)|year`). The
   // document id IS the row's identity, so a repository writing under another
   // country's rules would split or collide rows. REQUIRED, not defaulted: this is
@@ -138,7 +138,7 @@ class MongoMovieRepository(
   // first use. We apply our own codec registry to the handed-in database (a
   // view, not a clone — the underlying client is the `MongoConnection`'s) and
   // grab our collection from it.
-  private lazy val initResult: (Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
+  private lazy val coll: Option[MongoCollection[StoredMovieDto]] =
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
@@ -149,11 +149,9 @@ class MongoMovieRepository(
         val coll = withRegistry.getCollection[StoredMovieDto](MovieRepository.Collection)
           .withWriteConcern(WriteConcern.W1.withJournal(false))
         MovieIndexes.ensure(withRegistry, coll)
-        (Some(withRegistry), Some(coll))
-      case None => (None, None)
+        Some(coll)
+      case None => None
     }
-  private def database: Option[MongoDatabase]                   = initResult._1
-  private def coll:     Option[MongoCollection[StoredMovieDto]] = initResult._2
 
   def enabled: Boolean = coll.isDefined
 
@@ -737,7 +735,7 @@ class MongoMovieRepository(
       // this process was down — the gap the consumers' periodic backstops exist for. See
       // [[ChangeStreamResumeToken]]; the `screenings` and `movie_slots` streams each persist
       // their own sibling token.
-      resumeToken         = new ChangeStreamResumeToken("movies", database, persistResumeToken, stopwatch),
+      resumeToken         = new ChangeStreamResumeToken("movies", resumeTokens, stopwatch),
       changeStreamMetrics = changeStreamMetrics,
       screeningsMetrics   = screeningsMetrics,
       slotsMetrics        = slotsMetrics,

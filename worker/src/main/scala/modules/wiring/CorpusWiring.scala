@@ -4,7 +4,7 @@ import scala.concurrent.duration.DurationInt
 import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
 import modules.WorkerWiring
-import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ResumeTokenStore, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
 
 /** ── MovieRecord cache (write-through) ───────────────────────────────────────
  *  The `movies` corpus and its side collections, the write-through cache every
@@ -17,11 +17,16 @@ trait CorpusWiring { self: WorkerWiring =>
   // re-decodes on every write. Wiring the screenings repo turns the split on — movies
   // is written without showtimes, reads stitch them from `screenings`. `start()` runs
   // the one-shot backfill before the cache hydrates.
+  /** Where this worker's change streams keep their resume positions: the worker is the durable
+   *  read-model/cache mirror, so a restart replays events missed while down instead of leaning
+   *  on the backstop. */
+  lazy val resumeTokens: ResumeTokenStore = ResumeTokenStore.in(mongoConnection.database)
+
   lazy val screeningsRepository: ScreeningsRepository =
     // Persist the screenings stream's resume token too (like `movies`): a showtime change
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
-    new MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true,
+    new MongoScreeningsRepository(mongoConnection.database, resumeTokens = resumeTokens,
       metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
   // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
@@ -32,7 +37,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // Its own persisted resume token and its own counters, like `screenings`: a venue's slot
     // lands without a `movies` write whenever the film document is unchanged, so this is the
     // third cursor on the projector and a restart must replay it too.
-    new MongoSlotsRepository(mongoConnection.database, persistResumeToken = true,
+    new MongoSlotsRepository(mongoConnection.database, resumeTokens = resumeTokens,
       metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
@@ -49,9 +54,7 @@ trait CorpusWiring { self: WorkerWiring =>
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
     changeDebounce = MovieChangeStream.Debounce.forCountry(country),
-    // The worker is the durable read-model/cache mirror: persist the change-stream resume
-    // token so a restart replays events missed while down instead of leaning on the backstop.
-    persistResumeToken = true, stopwatch = stopwatch)
+    resumeTokens = resumeTokens, stopwatch = stopwatch)
 
   lazy val movieCache: CaffeineMovieCache = managedResources.stopping(
     new CaffeineMovieCache(movieRepository,

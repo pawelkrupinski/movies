@@ -16,7 +16,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
+import services.movies.{ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore, StoredMovieRecord, FilmId}
 import tools.Eventually
 import tools.Eventually.awaitStreamLive
 
@@ -335,7 +335,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
     import scala.jdk.CollectionConverters._
 
-    // ITS OWN DATABASE. This is one of the few specs with `persistResumeToken = true`,
+    // ITS OWN DATABASE. This is one of the few specs with a persistent `resumeTokens` store,
     // which watches the WHOLE `movies` collection and persists to the SHARED
     // `change_stream_tokens` collection — under `IntegrationTest / parallelExecution`
     // (many spec CLASSES run concurrently), a sibling spec's write to the shared
@@ -350,7 +350,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // tripping on driver-session-pool errors in the same window. See
     // IsolatedMongoDatabase's own doc comment.
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "movies-resume-spec") { db =>
-      val repo1   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo1   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
       val gotA    = new CountDownLatch(1)
       val handle1 = repo1.watchChanges(r => if (r.id.value == idA) gotA.countDown(), _ => ())
@@ -375,7 +375,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         repo1.upsert("__integration-test-resume-C__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
 
         // A fresh process (empty in-memory state) resumes from the persisted token.
-        val repo2   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        val repo2   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
         val idB     = StoredMovieRecord.keyFor("__integration-test-resume-B__", Some(1909), titleNormalizer)
         val idC     = StoredMovieRecord.keyFor("__integration-test-resume-C__", Some(1909), titleNormalizer)
         val seen    = ConcurrentHashMap.newKeySet[String]()
@@ -418,13 +418,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // counts meaningful, so it cannot even spend the retry that would absorb one.
     //
     // It also stops this spec writing `change_stream_tokens` in the SHARED database,
-    // which `persistResumeToken = true` makes it do, and which other specs read.
+    // which a persistent `resumeTokens` store makes it do, and which other specs read.
     val db     = client.getDatabase(tools.RunScopedDatabaseName.fresh("kinowo_it_dropresume"))
     def clearToken(): Unit = Await.ready(
       db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), SpecTimeouts.Io)
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
 
-    val repo1     = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo1     = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
     val idA       = StoredMovieRecord.keyFor("__integration-test-dropped-A__", Some(1911), titleNormalizer)
     val warmTitle = "__integration-test-dropped-warm__"
     val warmId    = StoredMovieRecord.keyFor(warmTitle, Some(1911), titleNormalizer)
@@ -452,7 +452,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // The restore: drop the watched collection out from under the saved token.
       Await.ready(db.getCollection(services.movies.MovieRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
 
-      val repo2 = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), persistResumeToken = true, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo2 = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       val idD   = StoredMovieRecord.keyFor("__integration-test-dropped-D__", Some(1911), titleNormalizer)
       val gotD  = new CountDownLatch(1)
       val handle2 = repo2.watchChanges(r => if (r.id.value == idD) gotD.countDown(), _ => ())
@@ -495,7 +495,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import scala.jdk.CollectionConverters._
 
     // ITS OWN DATABASE — see the "movies" resume test above for why: this is the
-    // other spec with `persistResumeToken = true`, watching the WHOLE `screenings`
+    // other spec with a persistent `resumeTokens` store, watching the WHOLE `screenings`
     // collection, which a sibling spec's write under `IntegrationTest /
     // parallelExecution` can ring (and, if its shape doesn't decode, break). This
     // exact test flaked in CI (2026-09-19) with a `SideCollectionWatch` decode
@@ -507,7 +507,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val filmB = "__it-screenings-resume-B__"
       val filmC = "__it-screenings-resume-C__"
       val filmWarm = "__it-screenings-resume-warmup__"
-      val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val repo1 = new MongoScreeningsRepository(Some(db), resumeTokens = ResumeTokenStore.in(Some(db)), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       // SWEEP A PRIOR RUN'S ROWS BEFORE WRITING ANY, not only in the `finally`. The
       // slots below are written at FIXED hours, and since `5fb4f607e` the screenings
       // cursor does not ring for a row that did not move — so if a previous run died
@@ -552,7 +552,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         repo1.upsertSlot(filmC, "Multikino␟C", ListedShowtimes(at(12), None))
 
         // A fresh process (empty in-memory state) resumes from the persisted token.
-        val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+        val repo2   = new MongoScreeningsRepository(Some(db), resumeTokens = ResumeTokenStore.in(Some(db)), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
         val seen    = ConcurrentHashMap.newKeySet[String]()
         val gotBC   = new CountDownLatch(2)
         val handle2 = repo2.watchApplied((fid, applied) => { if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown(); applied() })
@@ -578,7 +578,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 2, h, 0), bookingUrl = Some("https://book")))
       val filmWarm = "__it-screenings-drop-warmup__"
       val filmD    = "__it-screenings-drop-D__"
-      val repo1    = new MongoScreeningsRepository(Some(db), persistResumeToken = true, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val repo1    = new MongoScreeningsRepository(Some(db), resumeTokens = ResumeTokenStore.in(Some(db)), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val gotWarm  = new CountDownLatch(1)
       val handle1  = repo1.watchApplied { (fid, applied) => if (fid == filmWarm) gotWarm.countDown(); applied() }
       handle1 shouldBe defined
@@ -592,7 +592,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // The restore: drop the watched collection out from under the saved token.
       Await.ready(db.getCollection(services.movies.ScreeningsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
 
-      val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val repo2   = new MongoScreeningsRepository(Some(db), resumeTokens = ResumeTokenStore.in(Some(db)), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val gotD    = new CountDownLatch(1)
       val handle2 = repo2.watchApplied { (fid, applied) => if (fid == filmD) gotD.countDown(); applied() }
       try {
@@ -897,8 +897,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // accounted for"), reproduced 0 times locally at any budget both times, which looked like
       // a demand-window bug and got the settle budget widened twice chasing it (20s -> 60s ->
       // 150s). The real cause (630eba965, 2026-09-19): two SIBLING tests just above ("resume the
-      // change stream"/"resume the screenings change stream") ran their `persistResumeToken =
-      // true` cursors against the SAME SHARED `kinowo` database this test also uses, watching
+      // change stream"/"resume the screenings change stream") ran their persistent-`resumeTokens`
+      // cursors against the SAME SHARED `kinowo` database this test also uses, watching
       // the WHOLE `movies`/`screenings` collections with no server-side schema filter. Under
       // `IntegrationTest / parallelExecution := true` (many spec CLASSES run concurrently), ANY
       // sibling spec's write to those shared collections rang those two cursors too, and a shape

@@ -206,7 +206,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     import services.cadence.{MongoRatingCadenceReader, MongoRatingCadenceStore}
     import services.freshness.{FreshnessKind, MongoFreshnessStore}
     import services.identity.MongoVenueSlotFingerprints
-    import services.movies.ChangeStreamResumeToken
+    import services.movies.{ChangeStreamResumeToken, MongoResumeTokenStore}
     import services.closure.MongoClosureLedger
     import services.resolution.MongoResolutionStore
     import services.tasks.{MongoScrapeCostStore, ScrapeCost}
@@ -241,7 +241,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       ledger.record("Kino Gone", services.closure.LedgerEntry(services.closure.LedgerKind.SourceDropped, Far, "evidence")); ledger.entries(); ledger.withdraw("Kino Gone")
       val fingerprints = new MongoVenueSlotFingerprints(db)
       fingerprints.update((1L to 10L).toSet, Set.empty); fingerprints.update(Set(11L), Set(1L)); fingerprints.all()
-      val token = new ChangeStreamResumeToken("movies", Some(db), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
+      val token = new ChangeStreamResumeToken("movies", new MongoResumeTokenStore(db), stopwatch = _root_.tools.Stopwatch.System)
       token.advance(new org.bson.BsonDocument("_data", new org.bson.BsonString("826A")), token.generation)
       token.save(force = true)
       token.load().answered shouldBe defined

@@ -5,7 +5,7 @@ import org.mongodb.scala.MongoClient
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ChangeStreamResumeToken
+import services.movies.{ChangeStreamResumeToken, MongoResumeTokenStore}
 import tools.ReadOutcome
 
 /**
@@ -27,21 +27,21 @@ class ChangeStreamResumeTokenIntegrationSpec extends AnyFlatSpec with Matchers w
   private val token = new BsonDocument("_data", new BsonString("826A92A31D00000103"))
 
   "ChangeStreamResumeToken.load" should "answer absent when no position was ever saved" in {
-    new ChangeStreamResumeToken("never-saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load() shouldBe a[ReadOutcome.Absent]
+    new ChangeStreamResumeToken("never-saved", new MongoResumeTokenStore(isolated.database), stopwatch = _root_.tools.Stopwatch.System).load() shouldBe a[ReadOutcome.Absent]
   }
 
   it should "answer the position a save persisted" in {
-    val saved = new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
+    val saved = new ChangeStreamResumeToken("saved", new MongoResumeTokenStore(isolated.database), stopwatch = _root_.tools.Stopwatch.System)
     saved.advance(token, saved.generation)
     saved.save(force = true)
-    new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load() shouldBe ReadOutcome.Answered(token)
+    new ChangeStreamResumeToken("saved", new MongoResumeTokenStore(isolated.database), stopwatch = _root_.tools.Stopwatch.System).load() shouldBe ReadOutcome.Answered(token)
   }
 
   "ChangeStreamResumeToken.save" should "time its throttle window on the stopwatch it is handed, not the process's clock" in {
     var nanos     = 0L
     val stopwatch = new _root_.tools.Stopwatch(() => nanos)
-    val throttled = new ChangeStreamResumeToken("throttled", Some(isolated.database), enabled = true, stopwatch = stopwatch)
-    def persisted = new ChangeStreamResumeToken("throttled", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load()
+    val throttled = new ChangeStreamResumeToken("throttled", new MongoResumeTokenStore(isolated.database), stopwatch = stopwatch)
+    def persisted = new ChangeStreamResumeToken("throttled", new MongoResumeTokenStore(isolated.database), stopwatch = _root_.tools.Stopwatch.System).load()
     val later     = new BsonDocument("_data", new BsonString("826A92A31D00000104"))
     throttled.advance(token, throttled.generation)
     throttled.save(force = false)
@@ -54,7 +54,7 @@ class ChangeStreamResumeTokenIntegrationSpec extends AnyFlatSpec with Matchers w
   }
 
   "ChangeStreamResumeToken.load" should "answer Failed, not Absent, when the position cannot be read" in {
-    val blind = new ChangeStreamResumeToken("blind", Some(unreachable.getDatabase("resume-token")), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
+    val blind = new ChangeStreamResumeToken("blind", new MongoResumeTokenStore(unreachable.getDatabase("resume-token")), stopwatch = _root_.tools.Stopwatch.System)
     blind.load() shouldBe a[ReadOutcome.Failed]
     // …so the open is deferred to the reopen backoff a few times — and then opens anyway, at
     // now: a cursor that never opens is worse than one that skips.

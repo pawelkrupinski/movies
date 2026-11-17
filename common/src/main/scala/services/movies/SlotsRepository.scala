@@ -280,10 +280,10 @@ class MongoSlotsRepository(
   findAllBatchSize:     Int            = 250,
   findAllBatchAttempts: Int            = 4,
   findAllBatchBackoff:  FiniteDuration = 500.millis,
-  // Persist THIS stream's resume token so a restart replays slot changes that landed while
+  // Where THIS stream's resume token is kept, so a restart replays slot changes that landed while
   // down — like `screenings`, and for the same reason: a slot write need not touch `movies`.
-  // ON only in the worker (the durable mirror); OFF for web /debug + scripts.
-  persistResumeToken:   Boolean        = false,
+  // Persistent only in the worker (the durable mirror); none for web /debug + scripts.
+  resumeTokens:         ResumeTokenStore = ResumeTokenStore.Ephemeral,
   // What this store's cursor delivers, and what the apply coalesced away. The worker passes
   // the Prometheus sink; everything else keeps the no-op. See [[SideCollectionChangeMetrics]].
   metrics:              SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
@@ -304,7 +304,7 @@ class MongoSlotsRepository(
     c
   }
 
-  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
+  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, resumeTokens, stopwatch)
 
  /** A FAILED read is answered as one rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
