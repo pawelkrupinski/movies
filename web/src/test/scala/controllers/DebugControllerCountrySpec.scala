@@ -24,7 +24,6 @@ class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
     country,
     new services.movies.InMemoryMovieRepository(Seq(
       (title, Some(2021), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))))), normalizer = services.movies.TitleNormalizer.forCountry(country)),
-    new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,
     services.attempts.EnrichmentAttemptReader.empty)
 
@@ -85,7 +84,7 @@ class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
     val now     = java.time.Instant.parse("2026-10-03T12:00:00Z")
     val readAt  = now.minusSeconds(3600)
     val listing = CorpusListing.read(plStack.movieRepository)
-    val stack   = new DebugStack(Country.Poland, plStack.movieRepository, plStack.taskQueue,
+    val stack   = new DebugStack(Country.Poland, plStack.movieRepository,
       plStack.ratingCadenceReader, plStack.attemptReader,
       corpusListing = Some(() => DebugSnapshot(listing, Some(readAt.minusSeconds(10)), Some(readAt))))
     val html = contentAsString(TestDebugController.build(Seq.empty, Mode.Dev,

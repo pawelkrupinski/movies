@@ -73,7 +73,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
   "the wiring's DebugController" should "age the read-mirror on the wiring clock" in {
     val wiring = new ClockedWiring {
       override lazy val debugCountries: DebugCountries = DebugCountries.of(
-        new DebugStack(models.Country.default, movieRepository, taskQueue, ratingCadenceReader,
+        new DebugStack(models.Country.default, movieRepository, ratingCadenceReader,
           enrichmentAttemptReader,
           mirrorFreshness = () => Some(Pinned.minusSeconds(300))),
         Map.empty, devMode = true)

@@ -6,7 +6,6 @@ import play.api.Mode
 import services.{MongoConnection, UptimeMonitor}
 import services.movies.MongoMovieRepository
 import services.readmodel.MongoReadModelRepository
-import services.tasks.MongoTaskQueue
 
 /** ── /debug ────────────────────────────────────────────────────────────────
  *  The dev-only corpus inspector: one `DebugStack` of read-only views per
@@ -78,7 +77,7 @@ trait DebugWiring { self: Wiring =>
   private lazy val bootDebugCadence = debugSnapshot(s"/debug/cadence ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
     ratingCadenceReader.all())
   private lazy val bootDebugStack: DebugStack = new DebugStack(
-    country, movieRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
+    country, movieRepository, ratingCadenceReader, enrichmentAttemptReader,
     mirrorFreshness        = mirrorFreshnessOf(movieMirrorConnection),
     corpusListing          = Some(() => bootDebugListing.get()),
     ratingCadenceSnapshot  = Some(() => bootDebugCadence.get()))
@@ -110,7 +109,6 @@ trait DebugWiring { self: Wiring =>
         val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(
           new services.cadence.MongoRatingCadenceReader(conn.database).all())
         val stack = new DebugStack(country, repository,
-          new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptStore(conn.database),
           ratingCadenceSnapshot  = Some(() => cadence.get()),

@@ -9,10 +9,9 @@ import play.api.Mode
 import play.api.test.Helpers
 import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
-import services.tasks.{InMemoryTaskQueue, TaskQueue}
 
 /** Shared builder for a fully-wired [[DebugController]]: an in-memory corpus
- *  and task queue behind a single-country [[DebugStack]], and the read model
+ *  behind a single-country [[DebugStack]], and the read model
  *  projected from the same `records` (also what /debug/readmodel lists, unless
  *  `readModels` says otherwise). Returns the concrete [[WebReadModel]] too, so a
  *  spec can `reload()` or inspect what `rehydrate` reloaded. */
@@ -23,7 +22,6 @@ object TestDebugController {
     mode: Mode = Mode.Test,
     cinemaSourceUrls: Map[String, String] = Map.empty,
     adminAction: AdminAction = TestAdminAction(),
-    taskQueue: TaskQueue = new InMemoryTaskQueue,
     // The on-demand corpus dump's source; defaults to an in-memory repo holding
     // the same `records`. Override to drive the /debug read path (e.g. to assert
     // the two scans run concurrently).
@@ -45,7 +43,7 @@ object TestDebugController {
       debugCountries   = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
         movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),
-        taskQueue, ratingCadenceReader, attemptReader))),
+        ratingCadenceReader, attemptReader))),
       readModel        = readModel,
       adminAction      = adminAction,
       environment      = mode,

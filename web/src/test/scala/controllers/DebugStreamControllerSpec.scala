@@ -40,7 +40,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev) =
     new DebugStreamController(Helpers.stubControllerComponents(),
       DebugCountries.single(new DebugStack(models.Country.default, repository,
-        new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
+        services.cadence.RatingCadenceReader.empty,
         services.attempts.EnrichmentAttemptReader.empty)),
       mode)
 

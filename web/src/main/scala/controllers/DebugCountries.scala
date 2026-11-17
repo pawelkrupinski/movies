@@ -8,7 +8,6 @@ import services.MirrorFreshness
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
 import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
-import services.tasks.TaskQueue
 
 
 /**
@@ -30,7 +29,6 @@ import services.tasks.TaskQueue
 final class DebugStack(
   val country:               Country,
   val movieRepository:       MovieRepositoryReader & MovieChangeFeed,
-  val taskQueue:             TaskQueue,
   val ratingCadenceReader:   RatingCadenceReader,
   val attemptReader:         EnrichmentAttemptReader,
   // How far behind the local read-mirror this stack reads through is. Defaults
