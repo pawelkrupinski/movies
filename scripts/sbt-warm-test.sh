@@ -548,10 +548,16 @@ check "a client whose server vanished fails fast with the stall signal naming th
   "$rc $(grep -q '^sbt-warm STALLED: common/testOnly x (its server vanished' <<<"$out" && echo yes || echo "no: $out")"
 check "...and no hung client left behind, TERM ignored or not" "0" "$(spec_still_running "$scratch/hung")"
 rm -f "$scratch/hung"
-# a client using CPU is progress, however long it runs
+# a client using CPU is progress, however long it runs. Given a KINOWO_PROGRESS_FILE, it stays busy until the watch has
+# touched it (60 s at most): a busy stub of a fixed 4 s ended before the watch's first poll whenever `ps` was slow (10 of
+# 32 runs under load: a call's start and its first listing took the 4 s), and the touch it checked never had a poll to
+# come from. The slow listing below makes that so on every run.
 cat > "$scratch/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-end=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done; echo done
+end=$((SECONDS + 4))
+while [ "$SECONDS" -lt "$end" ] ||
+  { [ -n "${KINOWO_PROGRESS_FILE:-}" ] && [ ! -e "$KINOWO_PROGRESS_FILE" ] && [ "$SECONDS" -lt 60 ]; }; do :; done
+echo done
 STUB
 # busy_call <stall seconds> [<env>...] -> "<status> <output>" of a call of the busy stub, and what sbt-warm said when that
 # is not "0 done" (it names the processes it watched)
@@ -562,7 +568,15 @@ busy_call() {
     spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>"$scratch/busy.err"); rc=$?
   if [ "$rc $out" = "0 done" ]; then echo "0 done"; else echo "$rc $out | sbt-warm said: $(tr '\n' ' ' < "$scratch/busy.err")"; fi
 }
-check "a command busy past the stall bound is no stall" "0 done" "$(busy_call 2 KINOWO_PROGRESS_FILE="$scratch/progress")"
+mkdir -p "$scratch/slow-listing"
+cat > "$scratch/slow-listing/ps" <<SHIM
+#!/usr/bin/env bash
+case " \$* " in *" -axo pid=,ppid= "*) sleep 2.5 ;; esac
+exec "$(command -v ps)" "\$@"
+SHIM
+chmod +x "$scratch/slow-listing/ps"
+check "a command busy past the stall bound is no stall" "0 done" \
+  "$(busy_call 2 KINOWO_PROGRESS_FILE="$scratch/progress" PATH="$scratch/slow-listing:$PATH")"
 check "...and it touched KINOWO_PROGRESS_FILE as it went" "yes" "$([ -f "$scratch/progress" ] && echo yes || echo no)"
 # A CLIENT'S OWN END IS NO STALL, even under a bound of one quiet poll: the poll that finds the client ended (its tree's
 # CPU gone from the sum) judges nothing, and its processes ending as it winds down are progress. Order independence #74
