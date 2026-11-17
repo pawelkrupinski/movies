@@ -54,7 +54,8 @@
 #     alert or dashboard (GAUGE_FILES) in the same commit, or names the EARLIER push's commit that did
 #     (`Gauges-Shipped: <sha>`, an ancestor outside this push), or says `Gauges: none -- <why>`. On 11-06 the readiness
 #     gate deployed at 07:50Z, its gauges ~12:20Z, and stuck listings went unseen ~4.5 h. Watch the roll with
-#     scripts/deploy-watch.
+#     scripts/deploy-watch. A serving file the commit changes only in its imports, comments and declared types
+#     (`retypes_only`: a parameter narrowed to a role trait) moves no behaviour and needs none of these.
 #
 # usage: commit_rules.py allowlists|driftguards --range A..B [--range C..D ...] [--registry .github/allow-lists.txt]
 # Prints each refusal and why; exit 0 none, 1 some, 2 usage or an unreadable range. Tested by commit_rules_test.py.
@@ -390,8 +391,28 @@ def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
             "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'."]
 
 
+# A declared type in a Scala line: `name: Type` (generics, dots, `&`/`|` unions included), as a parameter or a member.
+TYPE_ANNOTATION = re.compile(r"\b(\w+)\s*:\s*[A-Z][\w.]*(?:\[[^\]=]*\])?(?:\s*[&|]\s*[A-Z][\w.]*(?:\[[^\]=]*\])?)*")
+
+
+def retypes_only(c: Commit, path: str) -> bool:
+    """Whether `c` changes `path` only in its imports, its comments and the types it declares -- a parameter narrowed
+    to a role trait (2026-11-17: `queue: TaskQueue` to `queue: TaskProducer` in VenuePageWait was asked for gauges).
+    Such a commit can move no behaviour the worker serves: the same lines run, typed otherwise. Every changed line,
+    imports and comment lines dropped and each `name: Type` read as `name: _`, must pair with one the other side has."""
+    removed, added = [], []
+    for line in git("diff", "-U0", "--no-color", c.parent, c.sha, "--", path).splitlines():
+        if line.startswith(("---", "+++")) or not line[:1] in "+-":
+            continue
+        body = line[1:].strip()
+        if not body or body.startswith(("import ", "//", "/*", "*")):
+            continue
+        (removed if line[0] == "-" else added).append(TYPE_ANNOTATION.sub(r"\1: _", body))
+    return sorted(removed) == sorted(added)
+
+
 def gauges_before_behaviour(c: Commit, opts: dict) -> list[str]:
-    behaviour = sorted(p for p in c.changed if SERVING_FILES.match(p))
+    behaviour = sorted(p for p in c.changed if SERVING_FILES.match(p) and not retypes_only(c, p))
     if not behaviour or any(GAUGE_FILES.match(p) for p in c.changed):
         return []
     why = []

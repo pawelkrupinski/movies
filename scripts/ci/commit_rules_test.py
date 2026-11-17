@@ -450,6 +450,22 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({self.GATE_FILE: "r2\n"}, "Identity model: one name\n\nGauges: none")
         self.assertEqual(1, self.guards(f"{head}^..{head}"), "none without a why")
 
+    def test_a_serving_file_only_retyped_needs_no_gauges(self):
+        before = ("package services.identity.adapters\n\nimport services.tasks.TaskQueue\n\n"
+                  "final class VenuePageWait(index: VenuePageIndex, queue: TaskQueue,\n    clock: Clock) {\n"
+                  "  def request(page: String): Unit = queue.enqueue(page)\n}\n")
+        self.commit({self.GATE_FILE: before}, "Identity model: the page wait")
+        retyped = before.replace("import services.tasks.TaskQueue", "import services.tasks.TaskProducer") \
+                        .replace("queue: TaskQueue,", "queue: TaskProducer & TaskQueueMonitor,") + "// the producer role only\n"
+        head = self.commit({self.GATE_FILE: retyped}, "VenuePageWait: take the producer role")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"), "imports, a comment and a declared type: no behaviour moved")
+        changed = retyped.replace("queue.enqueue(page)", "queue.enqueue(page.trim)")
+        head = self.commit({self.GATE_FILE: changed}, "VenuePageWait: trim the page")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a changed statement is behaviour, however small")
+        moved = changed.replace("index: VenuePageIndex, queue", "queue").replace("    clock: Clock", "    index: VenuePageIndex, clock: Clock")
+        head = self.commit({self.GATE_FILE: moved}, "VenuePageWait: reorder")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a reordered parameter list is not a retype")
+
 
 if __name__ == "__main__":
     unittest.main()
