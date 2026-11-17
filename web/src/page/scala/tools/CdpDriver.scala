@@ -236,11 +236,15 @@ object Chrome {
     }.map(_._1)
   }
 
-  /** `scheme://host[:port]` of `url` — the key Chrome's per-origin storage is filed under. */
-  private[tools] def originOf(url: String): String = {
-    val uri  = URI.create(url)
-    val port = if (uri.getPort == -1) "" else s":${uri.getPort}"
-    s"${uri.getScheme}://${uri.getHost}$port"
+  /** `scheme://host[:port]` of `url` — the key Chrome's per-origin storage is filed under — or none for a URL with no
+   *  host (`about:blank`, `data:`), which has no storage of its own: Chrome 158 refuses the `about://null` a join made
+   *  of it (Main #2586, ChromeOriginSpec). */
+  private[tools] def originOf(url: String): Option[String] = {
+    val uri = URI.create(url)
+    Option(uri.getHost).map { host =>
+      val port = if (uri.getPort == -1) "" else s":${uri.getPort}"
+      s"${uri.getScheme}://$host$port"
+    }
   }
 
   private[tools] def httpGet(url: String): String = {
@@ -349,7 +353,9 @@ class Chrome private[tools] (
         }
         page.send("Fetch.enable", Json.obj("handleAuthRequests" -> true, "patterns" -> Json.arr(Json.obj("urlPattern" -> "*"))))
       }
-      page.send("Storage.clearDataForOrigin", Json.obj("origin" -> Chrome.originOf(url), "storageTypes" -> "local_storage"))
+      Chrome.originOf(url).foreach { origin =>
+        page.send("Storage.clearDataForOrigin", Json.obj("origin" -> origin, "storageTypes" -> "local_storage"))
+      }
       page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
