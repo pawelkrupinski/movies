@@ -28,13 +28,17 @@ import services.movies.ListingKey
  *    the signals the agreement rests on, kept with the decision as every other measure's evidence is.
  *  - `awaits`, for no film, the questions it is still waiting on -- its searches unanswered, the records its family's
  *    pools await, its listings' venue pages not read, the agreement's own questions: no film YET ([[outcome]]).
+ *  - `filmTitled`, the members billed as a franchise's marathon whose node's own TMDB searches found a film of that very
+ *    title ([[agreement.NonFilmEvents.filmTitled]]: "Skid Row Marathon", 2017): films, not the night their title reads
+ *    as -- what the agreement stage reads of them, the model's own answers, never a search of its own.
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
                                   contradictions: Seq[String] = Nil, fallback: Option[ResolverDecision.Fallback] = None,
                                   leaning: Option[ResolverDecision.Leaning] = None,
                                   unanswered: Int = 0, agreed: Map[String, String] = Map.empty,
-                                  candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty)(
+                                  candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty,
+                                  filmTitled: Set[ListingKey] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   /** The rule the first member whose node accepted the film alone accepted it by ([[DecidedBy]]'s fallback for a listing

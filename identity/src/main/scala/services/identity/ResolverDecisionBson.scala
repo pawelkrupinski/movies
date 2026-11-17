@@ -3,6 +3,7 @@ package services.identity
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 
 import scala.jdk.CollectionConverters._
+import scala.util.chaining.scalaUtilChainingOps
 
 /** A [[ResolverDecision]] as BSON fields — the one encoding every identity collection storing a
  *  decision uses (`identity_model_families`). */
@@ -33,6 +34,8 @@ object ResolverDecisionBson {
     .append("awaits", BsonArray.fromIterable(decision.awaits.toSeq.flatMap(awaitedId).sorted.map(BsonString(_))))
     .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
     .append("trace", traceOf(decision))
+    .pipe(d => if (decision.filmTitled.isEmpty) d
+      else d.append("filmTitled", BsonArray.fromIterable(decision.filmTitled.toSeq.map(services.movies.ListingKey.serialised).sorted.map(BsonString(_)))))
 
   /** A question a decision awaits, as stored: the model's own -- a search (`q|` its sort key), a film's record (`f|`), a
    *  venue page (`p|` its listing key) -- else the agreement's own id ([[Question.id]]). */
@@ -92,6 +95,7 @@ object ResolverDecisionBson {
     var awaits                                    = Set.empty[Question]
     var agreed                                    = Map.empty[String, String]
     var trace: Option[BsonDocument]               = None
+    var filmTitled                                = Set.empty[services.movies.ListingKey]
     BsonFields.document(reader) {
       case "members"        => members = {
                                  val all = Vector.newBuilder[services.movies.ListingKey]
@@ -116,6 +120,7 @@ object ResolverDecisionBson {
                                }.getOrElse(Set.empty)
       case "trace"          => trace = BsonFields.when(reader, BsonType.DOCUMENT)(
                                  new org.bson.codecs.BsonDocumentCodec().decode(reader, org.bson.codecs.DecoderContext.builder().build()))
+      case "filmTitled"     => filmTitled = BsonFields.strings(reader).flatMap(services.movies.ListingKey.parse).toSet
       case "agreed"         => agreed = BsonFields.when(reader, BsonType.DOCUMENT) {
                                  val all = Map.newBuilder[String, String]
                                  BsonFields.document(reader)(family => all += family -> reader.readString())
@@ -125,7 +130,7 @@ object ResolverDecisionBson {
     }
     ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
       ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
-      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate, awaits)(
+      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate, awaits, filmTitled)(
       trace.fold(DecisionTrace.Empty)(keptTrace(_, BsonFields.required(members, "members"))))
   }
 

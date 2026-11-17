@@ -36,6 +36,15 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(agreed)) shouldBe agreed
   }
 
+  it should "read back with its members whose own searches found a film titled as their marathon, and store none without" in {
+    val skidRow = ListingKey.Published("Kinozentrum Frauentor", "Skid Row Marathon", None, Nil)
+    val titled  = ResolverDecision(Seq(skidRow, snowLeopard), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil, filmTitled = Set(skidRow))()
+    ResolverDecisionBson.decode(ResolverDecisionBson.encode(titled)) shouldBe titled
+    val none = titled.copy(filmTitled = Set.empty)(DecisionTrace.Empty)
+    ResolverDecisionBson.encode(none).containsKey("filmTitled") shouldBe false
+    ResolverDecisionBson.decode(ResolverDecisionBson.encode(none)) shouldBe none
+  }
+
   it should "read a whole-number confidence and fallback probability stored as an integer, as a copier like mongosh writes 1.0" in {
     val decided = ResolverDecision(Seq(snowLeopard), None, 1.0, ResolverDecision.Basis.BelowThreshold, Nil,
       fallback = Some(ResolverDecision.Fallback("imdb", "tt13920372", 1.0)))()

@@ -66,7 +66,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  found ([[CandidateGeneration.hitsOf]]: a film titled as the marathon it seems to bill), once a node. */
   private val eventOfNode = scala.collection.mutable.HashMap.empty[String, Option[agreement.NonFilmEvents.Facts]]
   private def eventOf(node: EvidenceNode) =
-    eventOfNode.getOrElseUpdate(node.id, agreement.NonFilmEvents.facts(node.listings, _ => scoring.generation.hitsOf(node.id)))
+    eventOfNode.getOrElseUpdate(node.id, agreement.NonFilmEvents.facts(node.listings, agreement.NonFilmEvents.titledBy(scoring.generation.hitsOf(node.id))))
   /** Do both nodes name their event alike ([[agreement.NonFilmEvents.Facts.name]])? */
   private def sameEventName(first: EvidenceNode, second: EvidenceNode): Boolean =
     eventOf(first).exists(a => a.name.nonEmpty && eventOf(second).exists(_.name == a.name))

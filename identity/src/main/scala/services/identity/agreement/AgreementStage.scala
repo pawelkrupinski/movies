@@ -819,16 +819,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
   private[agreement] def eventOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Option[String] =
     Option(events.get(decision)).getOrElse {
-      val event = NonFilmEvents.of(decision.members.flatMap(listingOf), searched)
+      // a title shaped as a franchise's marathon is a film's own as the MODEL's searches found ([[ResolverDecision.filmTitled]]):
+      // its answers, in its decision -- one moved hands the stage a new decision, read again -- never a search of the stage's
+      val event = NonFilmEvents.of(decision.members.flatMap(listingOf), listing => decision.filmTitled(listing.key))
       events.put(decision, event); event
     }
-
-  /** What TMDB's searches for a listing's own titles found ([[NonFilmEvents.Found]]): the answers the model read for its
-   *  decision -- a moved one hands the stage a new decision, so [[eventOf]]'s verdict is read again -- and no question
-   *  of the stage's own: one not answered yet finds nothing. */
-  private[agreement] val searched: NonFilmEvents.Found = listing =>
-    tmdb.toSeq.flatMap(lookups => services.identity.CandidateQueries.of(services.identity.Evidence.of(listing, None))
-      .collect { case query: CandidateQuery.Title => lookups.candidates(query).answered.getOrElse(Nil) }.flatten)
 
   /** The decision's listings, sorted by key. */
   private[agreement] def sortedListings(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
@@ -932,14 +927,16 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  gap they meet), and the posters the poster vote and veto read of it while they are not hashed: its venue poster
    *  ([[PosterEvidence.urls]]), then those of the films its own searches find ([[posterDistances]] over the listing
    *  alone). None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked nor its poster
-   *  hashed. What the model's input gate waits on before a listing's version is taken in
-   *  (docs/design/identity-structural-fixes.md, fix 1: asking apart from deciding): a population-independent set, a
+   *  hashed -- a title shaped as a franchise's marathon reads as one here, the model's searches that may make it a film's
+   *  ([[ResolverDecision.filmTitled]]) not read yet: its families are asked once its decision says so. What the model's
+   *  input gate waits on before a listing's version is taken in (docs/design/identity-structural-fixes.md, fix 1: asking
+   *  apart from deciding): a population-independent set, a
    *  function of the listing and the answers filed. Without the posters, a listing joined a cluster with one unhashed, the
    *  take waited on it, and the model's "no film" stood until the poster was filed seconds later (prod 11-07..11-10: UK
    *  "Hadoota" x14 and ES "DUNE" x6 on their own venue posters; US "Parkway Drive: Home" x83 and UK "Touché" x5 on a
    *  candidate film's). */
   def questionsOf(listing: Listing): Set[Question] =
-    if (NonFilmEvents.of(listing, searched).isDefined) Set.empty
+    if (NonFilmEvents.of(listing).isDefined) Set.empty
     else {
       val gaps = mutable.Set.empty[Question]
       verdictsOf(Seq(listing), gaps, mutable.Map.empty)

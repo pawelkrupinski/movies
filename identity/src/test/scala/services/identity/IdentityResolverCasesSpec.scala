@@ -51,6 +51,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(1187326))
   }
 
+  "A title shaped as a franchise's marathon" should "be filed as a film's own once the model's own search found a film of that very title" in {
+    // the owner, 2026-11-16: "Skid Row Marathon" (2017) -- the model's decision says so (ResolverDecision.filmTitled), the
+    // agreement stage reads it there; "The Hunger Games Marathon" stays the saga's night, whatever the search found
+    val films = Seq(F(478312, "Skid Row Marathon", 2017, "Mark Hayes", 87, 2), F(70160, "The Hunger Games", 2012, "Gary Ross", 142, 90),
+      F(101299, "The Hunger Games: Catching Fire", 2013, "Francis Lawrence", 146, 80))
+    val skidRow = listing(KinoMuza, "Skid Row Marathon")
+    val saga    = listing(KinoOaza, "The Hunger Games Marathon")
+    val r = resolve(Seq(skidRow, saga), films)
+    withClue(r.decisionOf(skidRow.key).render)(r.decisionOf(skidRow.key).filmTitled shouldBe Set(skidRow.key))
+    withClue(r.decisionOf(saga.key).render)(r.decisionOf(saga.key).filmTitled shouldBe empty)
+  }
+
   "A listing that publishes only a film's work, without its subtitle" should "take the film when its director and year are the film's" in {
     // ES, three venues' "Leonas" (2026, Juan Manuel Cotelo, 94 min) is "Leonas, el instinto más
     // salvaje": the calibration read the bare title as a fragment of the record's.

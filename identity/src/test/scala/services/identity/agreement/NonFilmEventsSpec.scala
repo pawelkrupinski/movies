@@ -111,7 +111,7 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
 
   it should "read a title shaped as a franchise marathon as a film when its own search found a film of that very title" in {
     def hit(id: Int, title: String, original: Option[String] = None) = Hit(id, title, original, None, 1.0)
-    def found(hits: Hit*): Listing => Seq[Hit] = _ => hits
+    def found(hits: Hit*): NonFilmEvents.FilmTitled = NonFilmEvents.titledBy(hits)
     // the 2017 documentary: TMDB's search for the billing holds a film titled so -- a film, its families asked
     NonFilmEvents.of(titled("Skid Row Marathon"), found(hit(1, "Skid Row Marathon"), hit(2, "Skid Row"))) shouldBe None
     NonFilmEvents.of(titled("SKID ROW MARATHON"), found(hit(1, "Skid-Row Marathon"))) shouldBe None

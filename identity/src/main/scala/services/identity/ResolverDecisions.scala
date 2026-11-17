@@ -103,7 +103,8 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
         apart.take(4) ++ best ++ gaps ++ awaiting ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
         leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
         s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown,
-      candidate = candidate, awaits = awaits)(
+      candidate = candidate, awaits = awaits,
+      filmTitled = cluster.flatMap(node => node.listings.filter(agreement.NonFilmEvents.filmTitled(_, scoring.generation.hitsOf(node.id))).map(_.key)).toSet)(
       traceOf(cluster, scope, scored, film, basis, edges, ids))
   }
 

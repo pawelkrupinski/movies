@@ -4,7 +4,7 @@ import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Resolution, ResolverDecision}
-import services.movies.SingleCountryNormalizer
+import services.movies.{ListingKey, SingleCountryNormalizer}
 
 /** The model's no-matches, on their way to the projection: one ≥3 families agree on takes that film — TMDB's when its
  *  IMDb id finds one there — and one a family has not answered for yet stays as the model left it, its question named. */
@@ -260,30 +260,33 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stageOver(unanswered = true).questionsOf(listing(KinoMuza, "Karnet na festiwal")) shouldBe empty
   }
 
-  it should "ask of a title shaped as a franchise marathon once the model's own TMDB search found a film of that very title" in {
-    // the owner, 2026-11-16: "Skid Row Marathon" (2017) is a film once TMDB's search for it finds it, a franchise's night until
+  it should "read a title shaped as a franchise marathon as a film once the model's own TMDB search found it, asking no search itself" in {
+    // the owner, 2026-11-16: "Skid Row Marathon" (2017) is a film once the model's search for it finds it, a franchise's
+    // night until -- read off the model's decision (ResolverDecision.filmTitled), never a lookup of the stage's own
     val skidRow = listing(KinoMuza, "Skid Row Marathon")
-    object Searched extends services.identity.IdentityLookups {
+    object NoLookup extends services.identity.IdentityLookups {
+      private def asked(what: String) = fail(s"the stage looked up $what: no search of its own for a marathon's title")
       def hasDetail(listing: Listing): Boolean = false
-      def detail(listing: Listing): Answer[Option[services.identity.DetailFacts]] = Answer.Known(None)
-      def candidates(query: services.identity.CandidateQuery): Answer[Seq[services.identity.Hit]] = query match {
-        case services.identity.CandidateQuery.Title("Skid Row Marathon") => Answer.Known(Seq(services.identity.Hit(478312, "Skid Row Marathon", None, Some(2017), 1.2)))
-        case _                                                            => Answer.Known(Nil)
-      }
-      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+      def detail(listing: Listing): Answer[Option[services.identity.DetailFacts]] = asked(s"detail of ${listing.rawTitle}")
+      def candidates(query: services.identity.CandidateQuery): Answer[Seq[services.identity.Hit]] = asked(query.toString)
+      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = asked(s"film $tmdbId")
     }
-    def stageOver(tmdb: services.identity.IdentityLookups) = new AgreementStage(
+    val stage = new AgreementStage(
       Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true)), NoVenueDetails, normalizer,
-      IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb))
-    stageOver(Searched).questionsOf(skidRow).collect { case Question.Family(_, q) => q } should contain("title|Skid Row Marathon")
-    stageOver(NoVenueDetails).questionsOf(skidRow) shouldBe empty
-    stageOver(Searched).questionsOf(listing(KinoMuza, "The Hunger Games Marathon")) shouldBe empty
-    // the cluster the model left unmatched: an event while nothing of its title is found, the families' to read once it is
-    val model = Resolution(Seq(ResolverDecision(Seq(skidRow.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
-      Map(skidRow.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    def basis(tmdb: services.identity.IdentityLookups) = stageOver(tmdb).apply(model, Map(skidRow.key -> skidRow).get, version = 1).decisions.head.basis
-    basis(NoVenueDetails) shouldBe ResolverDecision.Basis.Event
-    basis(Searched) should not be ResolverDecision.Basis.Event
+      IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
+      tmdb = Some(NoLookup))
+    // the input gate reads it as the night it seems, the model's searches not in yet: nothing asked
+    stage.questionsOf(skidRow) shouldBe empty
+    stage.questionsOf(listing(KinoMuza, "The Hunger Games Marathon")) shouldBe empty
+    // the cluster the model left unmatched: an event while the model's searches found no film of its title, the families'
+    // to read once they did
+    def basis(filmTitled: Set[ListingKey]) = {
+      val model = Resolution(Seq(ResolverDecision(Seq(skidRow.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil,
+        filmTitled = filmTitled)()), 1, Map(skidRow.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      stage.apply(model, Map(skidRow.key -> skidRow).get, version = 1).decisions.head.basis
+    }
+    basis(Set.empty) shouldBe ResolverDecision.Basis.Event
+    basis(Set(skidRow.key)) should not be ResolverDecision.Basis.Event
   }
 
   "the settle rule" should "type a question attempted and not answered as Failed, decided on as no evidence, never Known" in {
