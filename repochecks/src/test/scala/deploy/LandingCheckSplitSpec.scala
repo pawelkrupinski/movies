@@ -25,7 +25,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     names should not be empty
     names.filterNot(n => globs.exists(matches(_, n))) shouldBe empty
     // an expanded matrix name is one too
-    Seq("check (identity 1/3)", "heavy rows (itrest)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+    Seq("check (identity 1/2)", "heavy rows (itrest itidentity e2e)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
   }
 
   "the landing check" should "run the page area and the old refs in jobs of their own, each with a cap of its own" in {
@@ -57,26 +57,32 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
-   *  41276112019; docs/investigations/2026-11-01-twenty-runners.md), then in one job of their own (~12.5 min). Three
-   *  shards beside the rest, created only for a change the plan gives an identity check, each a third of the selected specs (scripts/ci/shard_tests.py). */
-  "the identity check" should "run in three shards beside the rest, only when the plan names it" in {
+   *  41276112019; docs/investigations/2026-11-01-twenty-runners.md), then in one job of their own (~12.5 min), then three
+   *  shards. TWO since 2026-11-17: an identity landing ran 7 check jobs on ci-runner's ~4 check slots, in waves (3 days to
+   *  11-17: 44 identity landings, land -> LANDED p50 54 min, runner wait p50 25 min; 7 jobs against the others' 3), and
+   *  the third shard's ~3 min of specs cost a whole job's setup and a slot. Created only for a change the plan gives an
+   *  identity check, each half the selected specs (scripts/ci/shard_tests.py). */
+  "the identity check" should "run in two shards beside the rest, only when the plan names it" in {
     val identity = jobs("check-identity")
     identity should include("needs: [ plan ]")
     identity should include("if: ${{ needs.plan.outputs.identity == 'true' }}")
-    identity should include("shard: [1, 2, 3]")
-    identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3")
+    identity should include("shard: [1, 2]")
+    identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/2")
+    identity should include("name: check (identity ${{ matrix.shard }}/2)")
     RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/shard_tests.py --shard \"$PREPUSH_IDENTITY_SHARD\"")
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
-   *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them -- in
-   *  two jobs, `itrest` alone and the others together (one job ran them one after another, 9-10 min). */
-  "the landing check" should "run every heavy row the change can move, in two jobs" in {
+   *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them -- in ONE
+   *  job since 2026-11-17 (two, `itrest` alone, cost a second slot and setup for ~4 min: one after another they are ~8 min
+   *  with one compile, under an identity shard's ~11). */
+  "the landing check" should "run every heavy row the change can move, in one job" in {
     val heavy = jobs("heavy")
     jobs("plan") should include("scripts/ci/precommit-share.sh checks plan")
     RepoFile.read("scripts/ci/precommit-share.sh") should include("""plan) vars+=("PREPUSH_HEAVY_ROWS=1")""")
-    heavy should include("rows: ${{ fromJSON(needs.plan.outputs.heavy-groups) }}")
-    heavy should include("ROWS: ${{ matrix.rows }}")
+    heavy should include("ROWS: ${{ needs.plan.outputs.heavy }}")
+    heavy should not include ("matrix")
+    jobs("plan") should not include ("heavy-groups")
     heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$ROWS\"")
     heavy should include("scripts/ci/start-mongo-replset.sh")
     heavy should include("runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-22.04' }}")

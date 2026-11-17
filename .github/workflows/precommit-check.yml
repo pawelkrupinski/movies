@@ -43,7 +43,7 @@ env:
 jobs:
     # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1, with
     # PREPUSH_HEAVY_ROWS=1), for the jobs that run only when it names their share: the old refs, the page area and Main's
-    # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`), and identity's three shards. A job the plan does not name is
+    # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`), and identity's two shards. A job the plan does not name is
     # skipped, never created: under load a created job waits for a slot even to do nothing. The rest starts beside it.
     # It runs on the light lane (`movies`: its own slots, seconds, git and the hook's listing only), so the lane it names
     # for the jobs after it is decided here, and a red fix's plan never queues behind other landings' checks.
@@ -54,7 +54,6 @@ jobs:
             # the check lane every job after the plan asks for: a gate-red fix's (check/red-<id>) the one served first
             check-lane: ${{ steps.plan.outputs.check-lane }}
             heavy: ${{ steps.plan.outputs.heavy }}
-            heavy-groups: ${{ steps.plan.outputs.heavy-groups }}
             page: ${{ steps.plan.outputs.page }}
             oldrefs: ${{ steps.plan.outputs.oldrefs }}
             identity: ${{ steps.plan.outputs.identity }}
@@ -82,13 +81,10 @@ jobs:
                   echo "the change's checks:${checks% }"
                   rows="$(tr ' ' '\n' <<< "$checks" | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ *$//' || true)"
                   echo "heavy=$rows" >> "$GITHUB_OUTPUT"
-                  # THE HEAVY ROWS IN TWO JOBS: `itrest` (~4.5 min with its compile) alone, the other rows (~1.5-2 min each) together
-                  groups="$(python3 -c 'import json, sys; r = sys.argv[1].split(); g = [x for x in (["itrest"] if "itrest" in r else []) + [" ".join(x for x in r if x != "itrest")] if x]; print(json.dumps(g or [""]))' "$rows")"
-                  echo "heavy-groups=$groups" >> "$GITHUB_OUTPUT"
                   for share in page oldrefs identity; do
                       case "$checks" in *" $share "*) echo "$share=true" ;; *) echo "$share=false" ;; esac >> "$GITHUB_OUTPUT"
                   done
-                  echo "heavy rows: ${rows:-none} as $groups"
+                  echo "heavy rows: ${rows:-none}"
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:
@@ -100,7 +96,7 @@ jobs:
     # between jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
     # 4025 (a 124-path batch) spent 7 min on scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80
     # minutes with oldrefs, ios and identitydrift still to go. `check (rest)` runs every selected check but the page
-    # area, the old refs and identity; `check (identity k/3)` a third of identity's specs each; `check (oldrefs)` the old
+    # area, the old refs and identity; `check (identity k/2)` half of identity's specs each; `check (oldrefs)` the old
     # refs beside them; `check (page)` the page area alone, after all of them.
     check:
         name: check (rest)
@@ -213,12 +209,14 @@ jobs:
 
     # THE IDENTITY SHARDS: the identity module's tests ran after the sbt check in the rest's job (292 s then 585 s, a
     # 15.9-minute job, run 41276112019), then in one job of their own beside it (~12.5 min: 2.5 min selecting, 10 min of
-    # ~300 specs, run 41373956176). Now in three, after the plan: every shard selects the same specs (the hook's test-impact
-    # selection) and runs a third of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
+    # ~300 specs, run 41373956176), then in three. Now in TWO, after the plan (2026-11-17: an identity landing ran 7 check
+    # jobs on ci-runner's ~4 check slots, in waves -- 44 identity landings in 3 days, land -> LANDED p50 54 min, runner wait
+    # p50 25 min -- and the third shard's ~3 min of specs cost a job's setup and a slot): every shard selects the same specs
+    # (the hook's test-impact selection) and runs half of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
     # balanced on scripts/ci/shard-weights-identity.tsv). A change the hook gives no identity check sets nothing up.
     check-identity:
-        name: check (identity ${{ matrix.shard }}/3)
-        # only for a change the plan gives an identity check: three shards created at t=0 for a scripts change waited up
+        name: check (identity ${{ matrix.shard }}/2)
+        # only for a change the plan gives an identity check: the shards created at t=0 for a scripts change waited up
         # to 20 min for a slot under load, to do nothing (precommit-check run 41403785550: 26 min wall, 10 runner-min)
         needs: [ plan ]
         if: ${{ needs.plan.outputs.identity == 'true' }}
@@ -227,7 +225,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [1, 2, 3]
+                shard: [1, 2]
         steps:
             - uses: actions/checkout@v5
               with:
@@ -290,7 +288,7 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: identity
-                  PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3
+                  PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/2
                   KINOWO_POPULATION_WALK_ROWS: ${{ runner.temp }}/population-walk-rows
               run: |
                   mkdir -p "$TMPDIR"
@@ -560,20 +558,17 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # MAIN'S HEAVY ROWS the change can move, in two jobs (the plan's heavy-groups): `itrest` alone, the others together. One
-    # job ran them one after another, 9-10 min (itrest 264 s, itidentity 74, e2ecorpus 111, e2e 98: run 41373956176).
+    # MAIN'S HEAVY ROWS the change can move, in ONE job, one after another (itrest 264 s, itidentity 74, e2e 98: run
+    # 41373956176; ~8 min with one compile, under an identity shard's ~11). Two jobs (`itrest` alone) until 2026-11-17 cost
+    # a second slot and setup on ci-runner's ~4 check slots for ~4 min (LandingCheckSplitSpec).
     # `e2ecorpus` runs here only while `basic` does not already run its spec (the hook's corpus_in_basic): it does, in the
     # rest's sbt check, so the row is not selected (it ran FilmScheduleEndToEnd a second time, 160 s: run 41627361428).
     heavy:
-        name: heavy rows (${{ matrix.rows }})
+        name: heavy rows (${{ needs.plan.outputs.heavy }})
         needs: [ plan ]
         if: ${{ needs.plan.outputs.heavy != '' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-22.04' }}
         timeout-minutes: 90
-        strategy:
-            fail-fast: false
-            matrix:
-                rows: ${{ fromJSON(needs.plan.outputs.heavy-groups) }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -590,7 +585,7 @@ jobs:
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet --filter=blob:none origin main
             - name: Start MongoDB (single-node replica set, for change streams)
-              if: ${{ contains(matrix.rows, 'it') }}
+              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
               run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
@@ -606,16 +601,16 @@ jobs:
                       sbt-target-unit-worker-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
             - name: Check out the gitops manifests (movies-gitops main, anonymously)
-              if: ${{ contains(matrix.rows, 'itrest') }}
+              if: ${{ contains(needs.plan.outputs.heavy, 'itrest') }}
               run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
             - name: Wait for MongoDB, started in the background above
-              if: ${{ contains(matrix.rows, 'it') }}
+              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
               run: scripts/ci/in-background.sh wait mongo-start 240
             - name: The change's heavy rows
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
-                  ROWS: ${{ matrix.rows }}
+                  ROWS: ${{ needs.plan.outputs.heavy }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
               run: |
