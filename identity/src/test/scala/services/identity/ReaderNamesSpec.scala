@@ -3,14 +3,14 @@ package services.identity
 import kinowo.build.ReaderNames
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.SourceTrees
 
-import java.nio.file.Files
 
 /** Which sources read a changed file for the test-impact selection (`project/ReaderNames.scala`): a lint walking a
  *  source tree (ListingConstraintsRoutingSpec walks `worker/src/main` for a direct MixedFilmDetector veto) reads every
  *  source under it, though no class dependency records it, so the narrowed unit tests of a `MovieService.scala` change
- *  must keep it. Under a module's source tree the walk is the reader's DECLARATION (testsupport.SourceTrees). */
+ *  must keep it. Under a module's source tree the walk is the reader's DECLARATION (testsupport.SourceTrees); that every
+ *  declarer in the repository is selected so is SourceTreeWalksLintSpec's (this spec declares no tree, so the
+ *  selection never adds identity's test JVM to a change elsewhere). */
 class ReaderNamesSpec extends AnyFlatSpec with Matchers {
 
   private def walks(text: String, path: String): Boolean =
@@ -66,39 +66,5 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
     // a tree's walker never says which file it reads: a fixture under a walked tree that no literal opens by name still
     // has an unknown reader, so the selection runs every test
     ReaderNames.tokens("test/resources/fixtures/flicks/x/day.html") should not contain "test/resources/fixtures/flicks"
-  }
-
-  // the repository's own sources, as the build scans them (TestImpact: every module's `src/`)
-  private lazy val sources: Seq[ReaderNames.Source] =
-    (SourceTrees("*/src").scalaFiles ++ SourceTrees("*/src").files(".java")).map(f => ReaderNames.source(f.toString, Files.readString(f)))
-
-  private def readersOf(path: String): Seq[String] = ReaderNames.walkers(path, sources)
-
-  // review rounds 5-8: each found a walker the literal-spotting missed (a module in a variable, `.resolve("src")`, ...)
-  "a change in a module" should "select every source declaring a tree that holds it" in {
-    readersOf("common/src/main/scala/clients/TmdbJson.scala") should contain allOf (
-      "common/src/test/scala/testsupport/ModuleSources.scala", "worker/src/test/scala/tools/ScalaSourceScan.scala")
-    readersOf("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala") should contain allOf (
-      "worker/src/test/scala/tools/ScalaSourceScan.scala", "scrapers/src/test/scala/services/cinemas/NoWallClockInClientsSpec.scala",
-      "worker/src/test/scala/tools/ListingCompletenessSpec.scala", "common/src/test/scala/testsupport/ModuleSources.scala")
-    readersOf("worker/src/main/scala/services/movies/MovieService.scala") should contain (
-      "worker/src/test/scala/services/movies/ListingConstraintsRoutingSpec.scala")
-    readersOf("identity/src/main/scala/services/identity/Authority.scala") should contain (
-      "identity/src/test/scala/services/identity/ProvenanceSpec.scala")
-    readersOf("worker/src/test/scala/deploy/RepoFile.scala") should contain (
-      "worker/src/test/scala/deploy/StressAndEmulatorScheduleSpec.scala")
-  }
-
-  it should "select every declarer in the repository, for a file under each tree it declares" in {
-    val files = SourceTrees("*/src").files("").map(_.toString)
-    val declarers = sources.filter(_.declared.nonEmpty)
-    declarers.size should be > 50
-    val unselected = for {
-      declarer <- declarers
-      tree     <- declarer.declared
-      file     <- files.find(ReaderNames.covers(tree, _)).toSeq
-      if !readersOf(file).contains(declarer.path)
-    } yield s"${declarer.path}: $tree ($file)"
-    unselected shouldBe empty
   }
 }

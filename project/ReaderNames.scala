@@ -27,8 +27,8 @@ object ReaderNames {
 
   /** Every string literal of a source: the offset of its opening quote, the offset after its closing one, and its
    *  contents (a triple-quoted literal is ONE literal, the quotes inside it none). Comments hold none. */
-  def literalSpans(text: String): Seq[(Int, Int, String)] = {
-    val out = Seq.newBuilder[(Int, Int, String)]
+  def literalSpans(text: String): IndexedSeq[(Int, Int, String)] = {
+    val out = Vector.newBuilder[(Int, Int, String)] // indexed: code() walks it by position
     var i = 0
     val n = text.length
     while (i < n) {
@@ -91,7 +91,7 @@ object ReaderNames {
   val Declaration: scala.util.matching.Regex = """(?<!\bnew\s{1,4})\bSourceTrees\s*(?:\.\s*apply\s*)?\(""".r
 
   /** The trees a source DECLARES it reads: the literals of its `SourceTrees(...)` calls (testsupport.SourceTrees). */
-  def declaredTrees(text: String): Seq[String] = {
+  def declaredTrees(text: String): Seq[String] = if (!text.contains("SourceTrees")) Nil else {
     val spans = argumentSpans(code(text), Declaration)
     literalSpans(text).collect { case (start, _, tree) if spans.exists { case (open, close) => open < start && start < close } => tree.stripSuffix("/") }
   }
