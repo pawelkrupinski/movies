@@ -16,7 +16,7 @@ class RosterAuditArgumentsSpec extends AnyFlatSpec with Matchers {
     val workflow = Files.readString(Paths.get(".github/workflows/roster-audit.yml"), StandardCharsets.UTF_8)
     val script   = Files.readString(Paths.get("scripts/ci/roster-audit.sh"), StandardCharsets.UTF_8)
     """scripts/ci/roster-audit\.sh ([^\n]*)""".r.findFirstMatchIn(workflow).map(_.group(1).trim) shouldBe Some("\"$GITHUB_STEP_SUMMARY\"")
-    """runMain tools\.RosterAudit ([^"]*)"""".r.findFirstMatchIn(script).map(_.group(1).trim) shouldBe Some("$report")
+    """runMain diagnostics\.RosterAudit ([^"]*)"""".r.findFirstMatchIn(script).map(_.group(1).trim) shouldBe Some("$report")
     RosterAudit.reportPath(Seq("summary.md")) shouldBe Right(Some(Paths.get("summary.md")))
     RosterAudit.reportPath(Nil) shouldBe Right(None)
     // args.headOption read only the first and ignored the rest

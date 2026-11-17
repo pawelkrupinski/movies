@@ -13,7 +13,7 @@ class FilmwebDiffArgumentsSpec extends AnyFlatSpec with Matchers {
 
   "FilmwebDiff" should "read the weekly workflow's own command line: everything, no window end" in {
     val workflow = Files.readString(Paths.get(".github/workflows/filmweb-diff.yml"), StandardCharsets.UTF_8)
-    val args = """runMain tools\.FilmwebDiff ([^"]*)"""".r.findFirstMatchIn(workflow).map(_.group(1).trim.split("\\s+").toSeq).get
+    val args = """runMain diagnostics\.FilmwebDiff ([^"]*)"""".r.findFirstMatchIn(workflow).map(_.group(1).trim.split("\\s+").toSeq).get
     FilmwebDiff.parse(args, slugs) shouldBe
       Right(FilmwebDiff.Options(None, "filmweb-diff.txt", "filmweb-diff.csv", "filmweb-diff.json"))
   }
