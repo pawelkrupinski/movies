@@ -402,7 +402,7 @@ case object KinoMok             extends Cinema("Kino MOK", "MOK")               
 
 // ── Filmweb catchment cinemas (nearby towns Filmweb groups under each city) ──
 // Each is served by FilmwebShowtimesClient via its Filmweb internal cinema id
-// (verified non-empty seances 2026-06). Wired in `PolishScraperCatalog`, under its town's group.
+// (verified non-empty seances 2026-06). Wired in its town's registry (`services.cinemas.pl.venues`), Filmweb catchment tier.
 // wroclaw
 case object KinoAstra extends Cinema("Kino Astra", "Astra")   // Oborniki Śląskie — kulturalne-oborniki.bilety24.pl
 case object KinoDyskusyjnyKlubFilmowyPolitechnika extends Cinema("Dyskusyjny Klub Filmowy Politechnika", "Wrocław")   // Wrocław — filmweb 1645
@@ -558,7 +558,7 @@ case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdks
 // Every venue Filmweb, bilety24 or a chain lists as currently screening in a town
 // no page covered yet. A town within ~45 km of an existing city joins that city;
 // the rest are grouped into regions around their largest town, every venue about
-// an hour's drive from it. Wired in `PolishScraperCatalog`, under its town's group; the page
+// an hour's drive from it. Wired in its town's registry (`services.cinemas.pl.venues`), nearby-towns tier; the page
 // that lists each is generated into `PolishPages`.
 // szczecin
 case object KinoMOKPolice extends Cinema("Kino MOK Police", "MOK Police")   // Police — biletyna Miejski-Osrodek-Kultury

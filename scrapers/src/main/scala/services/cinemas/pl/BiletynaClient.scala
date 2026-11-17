@@ -39,8 +39,8 @@ import scala.util.Try
  * booking link, since the feed can omit an event the page still shows.
  *
  * One instance per venue, captured by its place page + `cinema`, so adding a
- * biletyna-hosted cinema is a new catalog line, not a new client (OCP); the
- * catalog's `biletynaPages` lists them. Several were previously scraped from
+ * biletyna-hosted cinema is a new line in its town's venue registry
+ * (`PolishVenue.Biletyna`, `services.cinemas.pl.venues`), not a new client (OCP). Several were previously scraped from
  * Filmweb, which had silently gone empty or stale for them.
  *
  * biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so the catalog

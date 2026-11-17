@@ -11,7 +11,7 @@ import java.time.LocalDate
 
 /**
  * Replays a recorded seances + title/info capture for every Filmweb-catchment
- * venue wired in `PolishScraperCatalog`'s Filmweb sweep catchments. Each is just a new
+ * venue wired in a Polish town registry's Filmweb catchment tier (`services.cinemas.pl.venues`). Each is just a new
  * `FilmwebShowtimesClient` instance pointed at a Filmweb internal cinema id (the
  * client itself is parsing-tested in [[FilmwebShowtimesClientSpec]]); what's
  * fallible per venue is the id — a transcription slip wires the wrong cinema, or

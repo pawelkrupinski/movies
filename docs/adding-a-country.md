@@ -137,7 +137,8 @@ those is expensive to change once a `Country` is switchable.
    `Source` key) — disambiguate chain collisions with `(City)`.
 4. **Scrape catalog** (`scrapers/.../services/cinemas/CinemaScraperCatalog.scala`) —
    wire each cinema to its source client — off its roster per city, as Germany, Spain and the US
-   are, or in a country catalog of its own as `PolishScraperCatalog` / `UkScraperCatalog` list them
+   are, or in a country catalog of its own as `PolishScraperCatalog` (built from one venue registry per town,
+   `services/cinemas/pl/venues/`) / `UkScraperCatalog` list them
    (filed under each cinema's page whatever group it sits in). Reuse an existing
    client where the source repeats (UK→`FlicksClient`, DE→`WebediaShowtimesClient`
    via `filmstarts(theaterId, cinema)`); a genuinely new source is a new

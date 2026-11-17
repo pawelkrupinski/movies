@@ -60,8 +60,9 @@ class CinemaScraperCatalog(
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
     this(CinemaEgress.diagnostic(http, clock, proxyShards), venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl), titles, _ => scala.util.Success(Nil))
 
-  /** Poland's hand-wired venues. */
-  val poland: PolishScraperCatalog = new PolishScraperCatalog(egress, venueClock, chainDetailCache, titles)
+  /** Poland's hand-wired venues, from each town's venue registry. */
+  val poland: PolishScraperCatalog =
+    new PolishScraperCatalog(egress, venueClock, chainDetailCache, titles, services.cinemas.pl.venues.PolishTowns.venues)
 
   // ── United Kingdom (Flicks) ──────────────────────────────────────────────
   // Through `flicksFetch`, NOT `http`: Cloudflare 403s our Fly egress IP on
@@ -354,8 +355,4 @@ object CinemaScraperCatalog {
     val (placed, unplaced) = all.partition(s => pageOf(s.cinema).isDefined)
     Filed(placed.groupBy(s => pageOf(s.cinema).get), unplaced)
   }
-
-  /** Kino Kryterium's MSI portal: it times out the worker's IP and every Decodo proxy IP, so its pages AND its posters
-   *  go through the Zyte route (`EgressWiring.zyteFetch`). */
-  val KinoKryteriumUrl = "https://bilety.ck105.koszalin.pl"
 }
