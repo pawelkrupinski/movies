@@ -360,6 +360,21 @@ in
         extraConfig = "redir / /select/vmui/";
       };
 
+      # GITHUB'S PUSH WEBHOOK FOR movies-gitops, into Flux's notification-controller Receiver
+      # (movies-gitops image-automation/receiver.yaml), so a gitops commit reconciles at once instead
+      # of at the `movies` GitRepository's next 5-minute poll (2026-11-17, owner's "2a").
+      # NO GOOGLE LOGIN, because GitHub has no browser session -- and none is needed: `/hook/*` is
+      # all this vhost publishes (no `upstream`, so everything else is a 404), the path's digest is
+      # derived from the webhook token, and the `github` receiver rejects any request whose
+      # X-Hub-Signature-256 HMAC that token did not sign. A forged request that got past both could
+      # only make Flux fetch main early.
+      # THE UPSTREAM IS A PINNED ClusterIP (Service `webhook-receiver-pinned`), reached through this
+      # host's kube-proxy like `headlamp.kinowo.net` above; deploy.FluxWebhookReceiverSpec keeps the
+      # two files agreeing.
+      "flux.kinowo.net" = {
+        pathUpstreams."/hook" = "10.43.92.92:80";
+      };
+
       # THE sslip.io NAME IS GONE, and the move to fsn1 is what settled it rather than a change of
       # mind. `grafana.2-28-52-210.sslip.io` RESOLVES ITS OWN IP OUT OF ITS OWN LABEL -- that is what
       # sslip.io is -- so the address it names is 2.28.52.210, a primary IP that could not follow

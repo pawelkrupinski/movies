@@ -74,6 +74,7 @@ repochecks:deploy.E2eShardCoverageSpec	@repo *.scala
 repochecks:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a file lint
 repochecks:deploy.FleetDatabaseConfigSpec	@gitops
 repochecks:deploy.FluxImageAutomationSpec	@gitops
+repochecks:deploy.FluxWebhookReceiverSpec	@gitops infra/nix/hosts/monitoring-1/default.nix infra/k8s-secrets/secrets.map
 repochecks:deploy.GitHubRunnerLabelSpec	@repo
 repochecks:deploy.GrafanaAnnotationSsoBypassSpec	@repo infra/nix/hosts/monitoring-1/default.nix infra/nix/modules/roles/public-proxy.nix
 repochecks:deploy.GrafanaCityEmptyQualifierSpec	@repo

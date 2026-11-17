@@ -11,6 +11,7 @@ hostnames onto two domains this project owns:
 | — | `showtimes.cc` | the brand front door: a country picker, Poland as one link to `kinowo.net` (`showtimes.cc/{polish-city}/` is a 404) |
 | `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
 | — (ssh tunnel to 10.20.0.11:9428) | `logs.kinowo.net` | VictoriaLogs vmui + LogsQL API (`/select` only; Google sign-in via `auth.kinowo.net`) |
+| — (5-minute poll) | `flux.kinowo.net` | GitHub's push webhook for movies-gitops into Flux's Receiver (`/hook/*` only, HMAC-checked; added 2026-11-17) |
 
 `docs/adding-a-country.md` (and its appendix on restoring a stopped country) covers
 the country dimension. This file covers the HOST dimension, and exists mainly for its
@@ -30,6 +31,7 @@ ordering — several of the steps below are only safe in one sequence.
    grafana.kinowo.net A 128.140.49.167 # monitoring-1 — NOT the same host
    logs.kinowo.net    A 128.140.49.167 # monitoring-1 — VictoriaLogs' own UI
    auth.kinowo.net    A 128.140.49.167 # monitoring-1 — the Google sign-in for both of the above
+   flux.kinowo.net    A 128.140.49.167 # monitoring-1 — the movies-gitops push webhook (dns-only)
    showtimes.cc      A  2.28.47.31
    www.showtimes.cc  A  2.28.47.31
    uk.showtimes.cc   A  2.28.47.31    # NOT how the UK is served — see below
