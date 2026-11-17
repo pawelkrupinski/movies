@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Run movies' GitOps-reading specs against a movies-gitops tree BEFORE that tree reaches movies-gitops main.
+#
+#   scripts/gitops-specs --plan                  print the sbt commands: the lint registry's `@gitops` rows, per module
+#   scripts/gitops-specs --manifests <dir>       run them, with <dir> (a movies-gitops tree) as infra/kubernetes
+#
+# WHY (2026-11-17, Main #2564). The deploy specs read movies-gitops main through infra/bin/fetch-gitops, which tracks
+# main on purpose (the specs test what is deployed; a pin would go stale with every image-automation commit). So a
+# gitops push changed what movies main's specs saw with no movies check run: 5ec2eee added Flux's
+# notification-controller, NodeMemoryBudgetSpec went over its reserve, and main went red on a push to ANOTHER
+# repository. movies-gitops' pre-push hook (its scripts/hooks/pre-push) now calls this with the tree being pushed,
+# so the push is refused while it would turn movies main red -- the same local, pre-push shape as movies' own checks
+# (no pre-merge CI, the owner 2026-10-26).
+#
+# It runs in its OWN detached worktree of movies at origin/main ($KINOWO_GITOPS_CHECK_WORKTREE, default
+# ~/projects/movies-gitops-check), never the root checkout nor the caller's: the specs it runs are main's, and a
+# gitops change that needs a movies change lands the movies side first. sbt through scripts/sbt-warm (a JVM slot,
+# released when it ends). Exit: 0 green, 1 a spec failed (log named), 2 could not run.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# allow-fallback: this checkout's own registry; only the --manifests run (and the test) names another
+registry="${KINOWO_LINT_REGISTRY:-$here/scripts/hooks/lint-registry.tsv}"
+
+# One `<module>/testOnly <spec> ...` line per module with an `@gitops` row, modules in first-seen order.
+plan() {
+    awk -F'\t' '
+        !/^#/ && NF >= 2 && (" " $2 " ") ~ / @gitops / {
+            split($1, part, ":")
+            if (!(part[1] in specs)) order[++n] = part[1]
+            specs[part[1]] = specs[part[1]] " " part[2]
+        }
+        END { for (i = 1; i <= n; i++) print order[i] "/testOnly" specs[order[i]] }
+    ' "$registry"
+}
+
+case "${1:-}" in
+    --plan) plan; exit 0 ;;
+    --manifests) manifests="${2:?--manifests <dir>}" ;;
+    *) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+esac
+[ -d "$manifests" ] || { echo "gitops-specs: no directory $manifests" >&2; exit 2; }
+manifests="$(cd "$manifests" && pwd)"
+
+movies="${KINOWO_MOVIES_REPO:-$HOME/projects/movies}"
+check="${KINOWO_GITOPS_CHECK_WORKTREE:-$HOME/projects/movies-gitops-check}"
+git -C "$movies" fetch --quiet origin main || { echo "gitops-specs: cannot fetch movies origin/main" >&2; exit 2; }
+if [ ! -e "$check/.git" ]; then
+    git -C "$movies" worktree add --quiet --detach "$check" origin/main
+else
+    git -C "$check" checkout --quiet --detach origin/main
+fi
+echo "gitops-specs: movies $(git -C "$check" rev-parse --short HEAD) (origin/main) in $check"
+
+# The tree under test, where fetch-gitops would have put main's (a copy: the specs never see the caller's .git).
+rm -rf "$check/infra/kubernetes"
+mkdir -p "$check/infra/kubernetes"
+(cd "$manifests" && tar --exclude ./.git -cf - .) | (cd "$check/infra/kubernetes" && tar -xf -)
+
+commands=()
+while IFS= read -r line; do commands+=("$line"); done < <(KINOWO_LINT_REGISTRY="$check/scripts/hooks/lint-registry.tsv" "$0" --plan)
+[ "${#commands[@]}" -gt 0 ] || { echo "gitops-specs: the lint registry names no @gitops spec" >&2; exit 2; }
+
+log="$(mktemp -t gitops-specs.XXXXXX)"
+echo "gitops-specs: ${#commands[@]} sbt line(s); log $log"
+# The server is stopped afterwards: a gitops push is rare, and a kept one would hold a JVM slot for nobody.
+status=0
+(cd "$check" && scripts/sbt-warm "${commands[@]}") > "$log" 2>&1 || status=$?
+(cd "$check" && scripts/sbt-warm --stop) >> "$log" 2>&1 || true
+if [ "$status" -eq 0 ]; then
+    echo "gitops-specs: GREEN ($(grep -h 'Tests: succeeded' "$log" | tr '\n' ' '))"
+    exit 0
+fi
+grep -E '\*\*\* FAILED \*\*\*|^\[error\]' "$log" | head -20 >&2 || true
+echo "gitops-specs: RED -- this tree would turn movies main red; full log: $log" >&2
+exit 1
