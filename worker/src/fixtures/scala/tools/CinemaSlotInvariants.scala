@@ -1,7 +1,6 @@
 package tools
 
 import models.SourceData
-import models.CountryNames
 import services.movies.FilmRuntime
 
 /** The shape every field of a cinema slot must have: what `CinemaSlotInvariantsSpec` holds every corpus to, and what
@@ -25,12 +24,21 @@ object CinemaSlotInvariants {
   /** The corpus was captured in 2026: a release year past this is a misread number, not a film. */
   private val LatestYear     = 2030
 
+  /** `CountryNames.isCountry`, reached by name: this title-trace tool file also compiles into refs older than
+   *  CountryNames' move from services.cinemas to models (scripts/identity-slice-old-ref-test.sh), so it names neither. */
+  private val isCountry: String => Boolean = {
+    val countryNames = Seq("models.CountryNames$", "services.cinemas.CountryNames$").iterator
+      .flatMap(name => scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption).next()
+    val method = countryNames.getClass.getMethod("isCountry", classOf[String])
+    name => method.invoke(countryNames, name).asInstanceOf[Boolean]
+  }
+
   /** Each shape rule `slot` breaks, as `rule: value`. */
   def violations(slot: SourceData): Seq[String] = {
     val people = (slot.director ++ slot.cast).map(_.trim).filter(_.nonEmpty).flatMap { person =>
       if (Runtime.matches(person)) Some(s"person-is-runtime: $person")
       else if (DateOrNumber.matches(person)) Some(s"person-is-date-or-number: $person")
-      else if (CountryNames.isCountry(person)) Some(s"person-is-country: $person")
+      else if (isCountry(person)) Some(s"person-is-country: $person")
       else if (CreditLabel.findFirstIn(person).isDefined) Some(s"person-carries-credit-label: $person")
       else Option.when(YearInName.findFirstIn(person).isDefined)(s"person-carries-year: $person")
     }
