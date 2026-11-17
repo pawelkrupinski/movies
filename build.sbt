@@ -335,9 +335,10 @@ lazy val common = (project in file("common"))
       scalatestPlay % Test,
       scalatestScalaCheck % Test,
     ),
-    // The shared time doubles (`sharedTestDoubles`), and the test-impact selection's reader names, which
-    // SourceTreeWalksLintSpec reads source-tree declarations with exactly as the build does.
-    Test / unmanagedSources ++= sharedTestDoubles.value :+ (LocalRootProject / baseDirectory).value / "project" / "ReaderNames.scala"
+    // The shared time doubles (`sharedTestDoubles`), the test-impact selection's reader names, which
+    // SourceTreeWalksLintSpec reads source-tree declarations with exactly as the build does, and the coupling
+    // numbers `sbt couplingReport` writes (CouplingSpec).
+    Test / unmanagedSources ++= sharedTestDoubles.value ++ Seq("ReaderNames.scala", "Coupling.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))

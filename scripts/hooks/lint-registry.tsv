@@ -19,6 +19,7 @@ common:services.PersistedCodecsLintSpec	@repo *.scala
 common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala
 common:testsupport.ModuleSourcesSpec	@repo *.scala
+common:tools.CouplingSpec	@repo test/resources/coupling-baseline.tsv	the coupling baseline in the rows' shape, its limits the build's (the ratchet itself is the sbt check's coupling step)
 common:tools.DeepExpressionLintSpec	@repo *.scala
 common:tools.JvmDefaultsLintSpec	@repo *.scala
 common:tools.NoEnvLocalReadersSpec	@repo *.scala
