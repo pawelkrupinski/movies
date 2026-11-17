@@ -1,0 +1,65 @@
+# actions/cache/restore, through the runner's local mirror where the runner has one (scripts/ci/runner_cache.py).
+#
+# ci-runner's self-hosted slots (bitcashier infra, movies-runners.nix) mount a host directory that outlives the job
+# (MOVIES_RUNNER_CACHE). There GitHub is asked only WHICH entry this job gets (`lookup-only`, no download); that
+# entry's local copy is extracted when the host has it, else the entry is downloaded as before and mirrored for the next
+# job. On a GitHub-hosted runner (no mirror) this is a plain actions/cache/restore. Either way the job gets the same
+# entry's files, so the outputs are actions/cache/restore's own. (RunnerCacheWiringSpec)
+name: Restore a cache (runner-local mirror first)
+description: actions/cache/restore, served from the self-hosted runner's local copy of the matched entry when it has one.
+inputs:
+  path:
+    description: actions/cache's `path`.
+    required: true
+  key:
+    description: actions/cache's `key`.
+    required: true
+  restore-keys:
+    description: actions/cache's `restore-keys`.
+    required: false
+    default: ''
+outputs:
+  cache-hit:
+    description: "'true' on an exact hit on `key`, as actions/cache/restore reports it."
+    value: ${{ steps.mirror.outputs.restored == 'true' && steps.lookup.outputs.cache-hit || steps.download.outputs.cache-hit }}
+  cache-matched-key:
+    description: The key of the entry restored.
+    value: ${{ steps.mirror.outputs.restored == 'true' && steps.lookup.outputs.cache-matched-key || steps.download.outputs.cache-matched-key }}
+runs:
+  using: composite
+  steps:
+    - id: local
+      shell: bash
+      run: echo "dir=$(python3 "$GITHUB_WORKSPACE/scripts/ci/runner_cache.py" dir)" >> "$GITHUB_OUTPUT"
+    - id: lookup
+      if: steps.local.outputs.dir != ''
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}
+        lookup-only: 'true'
+    - id: mirror
+      if: steps.lookup.outputs.cache-matched-key != ''
+      shell: bash
+      env:
+        KEY: ${{ steps.lookup.outputs.cache-matched-key }}
+        PATHS: ${{ inputs.path }}
+      run: |
+        if python3 "$GITHUB_WORKSPACE/scripts/ci/runner_cache.py" restore --key "$KEY" --paths "$PATHS"; then
+          echo "restored=true" >> "$GITHUB_OUTPUT"
+        fi
+    - id: download
+      if: steps.mirror.outputs.restored != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.restore-keys }}
+    - if: steps.local.outputs.dir != '' && steps.download.outputs.cache-matched-key != ''
+      shell: bash
+      continue-on-error: true
+      env:
+        KEY: ${{ steps.download.outputs.cache-matched-key }}
+        PATHS: ${{ inputs.path }}
+      run: python3 "$GITHUB_WORKSPACE/scripts/ci/runner_cache.py" save --key "$KEY" --paths "$PATHS"

@@ -65,7 +65,8 @@ runs:
     - name: Restore the sbt dependency cache (not main, restore only)
       id: sbt-deps-restore
       if: inputs.cache == 'sbt' && github.ref != 'refs/heads/main'
-      uses: actions/cache/restore@v5
+      # through the self-hosted runner's local mirror where it has one (580 MB: ~32 s from GitHub's cache on ci-runner)
+      uses: ./.github/actions/cache-restore
       with:
         path: |
           ~/.ivy2/cache
