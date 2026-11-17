@@ -125,3 +125,4 @@ job	identity-takes.yml	leg (spain)	aggregate
 job	identity-takes.yml	leg (united-kingdom)	aggregate
 job	identity-takes.yml	leg (united-states)	aggregate
 job	identity-takes.yml	timings	aggregate
+job	main.yml	test (worker-identity-2)	2567
