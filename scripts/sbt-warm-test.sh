@@ -595,11 +595,22 @@ rm -f "$scratch/winding-down"
 # A TREE THAT ONLY REPLACES ITS PROCESSES IS NO PROGRESS: a client looping on short-lived children (a retry loop's
 # `sleep`) ends one every poll, and when any process ending counted as progress such a call never stalled at all --
 # here it ran into spec_bounded's deadline (124). A process ending is progress only when the trees shrank: nothing new.
+# ...NOR ONE NEW SINCE THE LAST POLL ENDING WHILE A POLL MEASURES IT: counted as a measure that missed its CPU, the loop's
+# `sleep` listed and gone before the measure was done read as progress whenever `ps` was slow -- at a load of 17 often
+# enough that the call never stalled (124). A `ps` whose CPU measure takes longer than the stub's `sleep` makes that
+# race on every poll.
 cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 echo \$\$ >> "$scratch/hung"; while :; do sleep 0.3; done
 STUB
-out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 SPEC_HANG_BOUND=40 \
+mkdir -p "$scratch/slow-measure"
+cat > "$scratch/slow-measure/ps" <<SHIM
+#!/usr/bin/env bash
+case " \$* " in *" -o time= "*) sleep 0.6 ;; esac
+exec "$(command -v ps)" "\$@"
+SHIM
+chmod +x "$scratch/slow-measure/ps"
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 SPEC_HANG_BOUND=40 PATH="$scratch/slow-measure:$PATH" \
   spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null); rc=$?
 check "a client that only spawns short-lived children is a stall" "75 yes" \
   "$rc $(grep -q '^sbt-warm STALLED: compile' <<<"$out" && echo yes || echo "no: $out")"

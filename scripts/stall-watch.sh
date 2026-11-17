@@ -20,7 +20,7 @@
 #       `bounded` then returns the step's status as for any other end.
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
 #                                     stall_any_runnable [<pid>...], stall_tree_shrank <before> <after>,
-#                                     stall_any_gone [<pid>...]
+#                                     stall_any_gone [<pid>...], stall_kept_pids <before> <after>
 #
 # THE STALL SIGNAL, for any caller (agentctl land among them): a stalled step's tool exits 75 (EX_TEMPFAIL) with a
 # line `<tool> STALLED: <step> ...` on stderr -- scripts/sbt-warm (`sbt-warm STALLED: <sbt command> ...`) and the
@@ -83,9 +83,21 @@ stall_tree_shrank() { # <before> <after>
 
 # Whether one of the <pid>s has ended (gone, or a zombie not yet waited for). Asked after a measure of their CPU, it
 # says whether that measure missed one: a process that ended before it is out of the sum, one alive after it was in it.
+# Ask it of the processes the last poll measured too (stall_kept_pids): only their end takes CPU out of the sum that
+# poll's measure is compared with. A process new since then adds nothing to that baseline, and whatever it used reaches
+# the sum through its parent once reaped (ps -S). Asked of every listed process, a spawn loop's `sleep` ending while a
+# slow `ps` measured read as progress (2026-11-17: sbt-warm-test's spawn-loop case never stalled at a load of 17).
 stall_any_gone() { # [<pid>...]
   [ $# -gt 0 ] || return 1
   [ "$(ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -cv '^Z')" -lt $# ]
+}
+
+# The pids of <after> that were in <before> too (whitespace-separated lists), one per line
+stall_kept_pids() { # <before> <after>
+  local p before
+  # shellcheck disable=SC2086 # whitespace-separated pids, newlines folded
+  before=" $(printf '%s ' $1)"
+  for p in $2; do case "$before" in *" $p "*) echo "$p" ;; esac; done
 }
 
 # Whether <file> was modified since the watchdog's mark <mark> (a file whose mtime is the previous poll)

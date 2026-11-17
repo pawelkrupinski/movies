@@ -700,11 +700,11 @@ watch_client() {
     # nothing runnable, nothing ended, client gone"). Alive after the measure, it was alive throughout it.
     client_running || break
     # progress: CPU, a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh), the trees
-    # shrinking since the last poll's listing (a wind-down; one replacing its processes is no progress), or one ended
-    # before this measure was done
+    # shrinking since the last poll's listing (a wind-down; one replacing its processes is no progress), or one the last
+    # poll measured too ended before this measure was done (a spawn loop's new `sleep` ending mid-measure is none)
     # shellcheck disable=SC2086
     if [ $((now - last)) -ge "$need" ] || stall_any_runnable $pids || stall_tree_shrank "$lastpids" "$pids" ||
-      stall_any_gone $pids; then
+      stall_any_gone $(stall_kept_pids "$lastpids" "$pids"); then
       quiet=0
       [ -n "${KINOWO_PROGRESS_FILE:-}" ] && touch "$KINOWO_PROGRESS_FILE"
     else
