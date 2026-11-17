@@ -19,7 +19,7 @@ module-edge	identity->base	25
 module-edge	identity->common	490
 module-edge	identity->http	6
 module-edge	scrapers->base	52
-module-edge	scrapers->common	1466
+module-edge	scrapers->common	1467
 module-edge	scrapers->geodata	3
 module-edge	scrapers->http	323
 module-edge	scrapers->identity	8
@@ -28,11 +28,11 @@ module-edge	web->common	562
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	45
-module-edge	worker->base	73
-module-edge	worker->common	1600
+module-edge	worker->base	76
+module-edge	worker->common	1603
 module-edge	worker->http	182
 module-edge	worker->identity	447
-module-edge	worker->scrapers	137
+module-edge	worker->scrapers	142
 cycle-edge	clients->services.cinemas	1
 cycle-edge	clients->services.identity	3
 cycle-edge	clients->settings	1
@@ -111,7 +111,7 @@ cycle-edge	modules.wiring->services	45
 cycle-edge	modules.wiring->services.alerts	10
 cycle-edge	modules.wiring->services.attempts	3
 cycle-edge	modules.wiring->services.cadence	3
-cycle-edge	modules.wiring->services.cinemas	52
+cycle-edge	modules.wiring->services.cinemas	54
 cycle-edge	modules.wiring->services.closure	9
 cycle-edge	modules.wiring->services.config	5
 cycle-edge	modules.wiring->services.enrichment	43
@@ -131,7 +131,7 @@ cycle-edge	modules.wiring->services.scrapes	15
 cycle-edge	modules.wiring->services.sharecards	35
 cycle-edge	modules.wiring->services.tasks	113
 cycle-edge	modules.wiring->services.venuepages	8
-cycle-edge	modules.wiring->settings	76
+cycle-edge	modules.wiring->settings	77
 cycle-edge	modules.wiring->tools	108
 cycle-edge	services->models	5
 cycle-edge	services->services.movies	3
@@ -160,7 +160,7 @@ cycle-edge	services.cadence->services.movies	2
 cycle-edge	services.cadence->services.retention	3
 cycle-edge	services.cadence->services.tasks	1
 cycle-edge	services.cadence->tools	3
-cycle-edge	services.cinemas->models	1334
+cycle-edge	services.cinemas->models	1336
 cycle-edge	services.cinemas->services	3
 cycle-edge	services.cinemas->services.enrichment	5
 cycle-edge	services.cinemas->services.fallback	3
@@ -168,7 +168,7 @@ cycle-edge	services.cinemas->services.identity	8
 cycle-edge	services.cinemas->services.movies	89
 cycle-edge	services.cinemas->services.scrapes	11
 cycle-edge	services.cinemas->settings	3
-cycle-edge	services.cinemas->tools	382
+cycle-edge	services.cinemas->tools	381
 cycle-edge	services.closure->models	12
 cycle-edge	services.closure->services.fallback	2
 cycle-edge	services.closure->services.keyed	9
@@ -188,8 +188,8 @@ cycle-edge	services.enrichment->services.keyed	9
 cycle-edge	services.enrichment->services.movies	46
 cycle-edge	services.enrichment->services.resolution	32
 cycle-edge	services.enrichment->services.tasks	7
-cycle-edge	services.enrichment->settings	1
-cycle-edge	services.enrichment->tools	49
+cycle-edge	services.enrichment->settings	3
+cycle-edge	services.enrichment->tools	52
 cycle-edge	services.events->services.tasks	2
 cycle-edge	services.facebook->services	3
 cycle-edge	services.facebook->tools	7
@@ -309,7 +309,7 @@ cycle-edge	services.tasks->models	40
 cycle-edge	services.tasks->services	22
 cycle-edge	services.tasks->services.attempts	6
 cycle-edge	services.tasks->services.cadence	13
-cycle-edge	services.tasks->services.cinemas	29
+cycle-edge	services.tasks->services.cinemas	32
 cycle-edge	services.tasks->services.enrichment	2
 cycle-edge	services.tasks->services.events	5
 cycle-edge	services.tasks->services.freshness	27
@@ -402,7 +402,7 @@ fanout	modules.webwiring.UsersWiring	54
 fanout	modules.wiring.ChunkScrapeWiring	42
 fanout	modules.wiring.CorpusWiring	63
 fanout	modules.wiring.DetailWiring	34
-fanout	modules.wiring.HttpWiring	47
+fanout	modules.wiring.HttpWiring	48
 fanout	modules.wiring.IdentityModelWiring	110
 fanout	modules.wiring.IdentityProjectionWiring	159
 fanout	modules.wiring.InvariantAuditWiring	35
@@ -411,7 +411,7 @@ fanout	modules.wiring.OperatorWiring	42
 fanout	modules.wiring.RatingsWiring	62
 fanout	modules.wiring.ReadModelWiring	39
 fanout	modules.wiring.ResolutionWiring	50
-fanout	modules.wiring.ScrapeWiring	107
+fanout	modules.wiring.ScrapeWiring	109
 fanout	modules.wiring.ShareCardWiring	82
 fanout	modules.wiring.TaskQueueWiring	48
 fanout	services.cinemas.CinemaScraperCatalog	43
@@ -443,4 +443,4 @@ fanout	services.movies.MovieService	30
 fanout	services.readmodel.ReadModelProjector	46
 fanout	services.readmodel.ReadModelSweeper	36
 fanout	services.tasks.EnrichDetailsHandler	34
-fanout	settings.ProcessConfiguration	83
+fanout	settings.ProcessConfiguration	84
