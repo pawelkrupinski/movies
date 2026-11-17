@@ -41,7 +41,7 @@
 {"text":"(4DX Rewind) Toy Story","pl,uk,de,us,es":{"query":"Toy Story","programme":"(4DX Rewind) ","bannerEnd":13}}
 {"text":"(4DX Rewind) Twisters","pl,uk,de,us,es":{"query":"Twisters","programme":"(4DX Rewind) ","bannerEnd":13}}
 {"text":"(500) Days of Summer"}
-{"text":"(BEST OF CINEMA) ROCKY D, keine Angabe"}
+{"text":"(BEST OF CINEMA) ROCKY D, keine Angabe","pl,uk,de,us,es":{"query":"(BEST OF CINEMA) ROCKY D"}}
 {"text":"(HFR) Avengers: Doomsday"}
 {"text":"(Horror Cinema) Bram Stoker s Dracula"}
 {"text":"(Horror Cinema) The Host"}
@@ -544,7 +544,7 @@
 {"text":"ANDRÉ RIEU?S 2026 CHRISTMAS CONCERT: LET IT SNOW"}
 {"text":"ANDRÉ RIEUS 2026 CHRISTMAS CONCERT: LET IT SNOW"}
 {"text":"ANDRÉ RIEU’S 2026 CHRISTMAS CONCERT: LET IT SNOW"}
-{"text":"ANDRÉ RIEU’S 2026 CHRISTMAS CONCERT: LET IT SNOW D, keine Angabe"}
+{"text":"ANDRÉ RIEU’S 2026 CHRISTMAS CONCERT: LET IT SNOW D, keine Angabe","pl,uk,de,us,es":{"query":"ANDRÉ RIEU’S 2026 CHRISTMAS CONCERT: LET IT SNOW D"}}
 {"text":"ANGELS' SHARE - EIN SCHLUCK FÜR DIE ENGEL"}
 {"text":"ANIMA – DIE KLEIDER MEINES VATERS"}
 {"text":"ANITA DRÖGEMÖLLER UND DIE RUHE AN DER RUHR"}
@@ -1760,10 +1760,10 @@
 {"text":"Berlin Alexanderplatz"}
 {"text":"Berlin Babylon"}
 {"text":"Berlin Ecke Bundesplatz: Skizzen - Weitere Geschichten vom Bundesplatz"}
-{"text":"Berlin im Film: Wolf unter Wölfen - Die Stadt und ihre Ruhelosen D, keine Angabe"}
-{"text":"Berlin im Film: Wolf unter Wölfen - Ende und Anfang D, keine Angabe"}
-{"text":"Berlin im Film: Wolf unter Wölfen - Es kommen des Teufels Husaren D, keine Angabe"}
-{"text":"Berlin im Film: Wolf unter Wölfen - Schwüle über dem Land D, keine Angabe"}
+{"text":"Berlin im Film: Wolf unter Wölfen - Die Stadt und ihre Ruhelosen D, keine Angabe","pl,uk,de,us,es":{"query":"Berlin im Film: Wolf unter Wölfen - Die Stadt und ihre Ruhelosen D"}}
+{"text":"Berlin im Film: Wolf unter Wölfen - Ende und Anfang D, keine Angabe","pl,uk,de,us,es":{"query":"Berlin im Film: Wolf unter Wölfen - Ende und Anfang D"}}
+{"text":"Berlin im Film: Wolf unter Wölfen - Es kommen des Teufels Husaren D, keine Angabe","pl,uk,de,us,es":{"query":"Berlin im Film: Wolf unter Wölfen - Es kommen des Teufels Husaren D"}}
+{"text":"Berlin im Film: Wolf unter Wölfen - Schwüle über dem Land D, keine Angabe","pl,uk,de,us,es":{"query":"Berlin im Film: Wolf unter Wölfen - Schwüle über dem Land D"}}
 {"text":"Berlin um die Ecke"}
 {"text":"Berlin – Prenzlauer Berg. Begegnungen zwischen dem 1. Mai und dem 1. Juli 1990"}
 {"text":"Berlin. Symfonia wielkiego miasta (Berlin: Symphony of a Great...","pl,uk,de,us,es":{"query":"Berlin. Symfonia wielkiego miasta"}}
@@ -5950,7 +5950,7 @@
 {"text":"GRENZGANG LIVE-SHOW: NOMADE AUF ZEIT- MIT VERTRAUEN ALS KOMPASS DURCH DIE WELT"}
 {"text":"GRENZGANG LIVE-SHOW: ROADTRIP JAPAN - ZWISCHEN KULTURSCHOCK UND KIRSCHBLÜTE"}
 {"text":"GRENZGANG: Die Empathie-Rebellion"}
-{"text":"GRINDHOUSE JUBILÄUMS-HALLOWEEN-SPECIAL , keine Angabe"}
+{"text":"GRINDHOUSE JUBILÄUMS-HALLOWEEN-SPECIAL , keine Angabe","pl,uk,de,us,es":{"query":"GRINDHOUSE JUBILÄUMS-HALLOWEEN-SPECIAL"}}
 {"text":"GROBOWIEC ŚWIETLIKÓW | Kino dyskomfortu [seans bez reklam]","pl,uk,de,us,es":{"query":"GROBOWIEC ŚWIETLIKÓW","venue":{"bok":"GROBOWIEC ŚWIETLIKÓW: Kino dyskomfortu [seans bez reklam]"}}}
 {"text":"GROIZDIGWÄR"}
 {"text":"GRZESZNICY NIE ZAZNAJĄ SPOKOJU – Splat!FilmFest ON TOUR"}
@@ -5964,7 +5964,7 @@
 {"text":"GUGUS WELT"}
 {"text":"GULLI PLAYS ACOUSTIC"}
 {"text":"GUNDERMANN"}
-{"text":"GUT FÜR ALLE - IL BENE COMUNE, keine Angabe"}
+{"text":"GUT FÜR ALLE - IL BENE COMUNE, keine Angabe","pl,uk,de,us,es":{"query":"GUT FÜR ALLE - IL BENE COMUNE"}}
 {"text":"GUTS + WE THE SURFERS Surf Film Nacht Kiel","pl,uk,de,us,es":{"query":"GUTS"}}
 {"text":"GUTS: A FEMALE EXPEDITION THROUGH AFRICA + HER WAVE","pl,uk,de,us,es":{"query":"GUTS: A FEMALE EXPEDITION THROUGH AFRICA"}}
 {"text":"GWIEZDNE WOJNY: MANDALORIAN i GROGU","pl,uk,de,us,es":{"key":"MANDALORIAN i GROGU"}}
@@ -6363,7 +6363,7 @@
 {"text":"HAMNET"}
 {"text":"HAMNET - Halte dein Herz offen"}
 {"text":"HANAMI"}
-{"text":"HANS REFFERT. REQUIEM FÜR EINEN GURU. D, keine Angabe"}
+{"text":"HANS REFFERT. REQUIEM FÜR EINEN GURU. D, keine Angabe","pl,uk,de,us,es":{"query":"HANS REFFERT. REQUIEM FÜR EINEN GURU. D"}}
 {"text":"HANUSSEN"}
 {"text":"HARD BOILED (1992)","pl,uk,de,us,es":{"key":"HARD BOILED","venue":{"kino-kinematograf":"HARD BOILED"}}}
 {"text":"HARD BOILED -chin./engl.OmU-Nachtstudio-","pl,uk,de,us,es":{"query":"HARD BOILED"}}
@@ -6378,7 +6378,7 @@
 {"text":"HEART OF LIGHT – ELEVEN SONGS FOR FIJI"}
 {"text":"HEAVENLY CREATURES"}
 {"text":"HEIDI (1965)","pl,uk,de,us,es":{"key":"HEIDI","venue":{"kino-kinematograf":"HEIDI"}}}
-{"text":"HEIMAT - EINE DEUTSCHE CHRONIK 1. FERNWEH D, keine Angabe"}
+{"text":"HEIMAT - EINE DEUTSCHE CHRONIK 1. FERNWEH D, keine Angabe","pl,uk,de,us,es":{"query":"HEIMAT - EINE DEUTSCHE CHRONIK 1. FERNWEH D"}}
 {"text":"HEIMATKINO - Filmabend und Gespräch"}
 {"text":"HEIMSUCHUNG"}
 {"text":"HEIMSUCHUNG - EINE JAHRHUNDERTGESCHICHTE"}
@@ -7317,7 +7317,7 @@
 {"text":"It’s My Time"}
 {"text":"It’s Nice Up North + Q&A","pl,uk,de,us,es":{"query":"It’s Nice Up North"}}
 {"text":"Iván & Hadoum","pl":{"key":"Iván i Hadoum","display":"Iván i Hadoum"}}
-{"text":"JAGDSZENEN AUS NIEDERBAYERN D, keine Angabe"}
+{"text":"JAGDSZENEN AUS NIEDERBAYERN D, keine Angabe","pl,uk,de,us,es":{"query":"JAGDSZENEN AUS NIEDERBAYERN D"}}
 {"text":"JAIDER - DER EINSAME JÄGER"}
 {"text":"JAILER 2"}
 {"text":"JAK BERT TO WSZYSTKO OGARNIE ?"}
@@ -14675,7 +14675,7 @@
 {"text":"TIERISCH ABGEFAHREN - RETTET DIE PETS!"}
 {"text":"TILMAN BIRR – DER MANN IST UNSERIÖS"}
 {"text":"TIMON KRAUSE experiMENTAL"}
-{"text":"TINA SCHWICHTENBERG - VON KERAMIK ZUR KONZEPTKUNST D, keine Angabe"}
+{"text":"TINA SCHWICHTENBERG - VON KERAMIK ZUR KONZEPTKUNST D, keine Angabe","pl,uk,de,us,es":{"query":"TINA SCHWICHTENBERG - VON KERAMIK ZUR KONZEPTKUNST D"}}
 {"text":"TKKG - Das Geheimnis um die rätselhafte Mind-Machine"}
 {"text":"TKKG-D. RÄTSELH. MIND-MACHINE"}
 {"text":"TN 2026"}
