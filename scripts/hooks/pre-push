@@ -594,6 +594,29 @@ unit_universe() {
     while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
     echo "worker/testOnly *$heavy"
 }
+# THE LINTS WALKING EVERY MODULE'S SOURCES, for a verification with no narrowed selection to say who reads the change
+# (TestImpact's `ALL`, a cold check, no answer: review round 7 -- the READS lints the selection adds were left out where
+# coverage should be widest): the specs built on the source walkers (the worker's ScalaSourceScan and StatefulFieldScan,
+# common's ModuleSources), as `<module>/testOnly <classes>` lines. Stdin: the plan's lines -- a module it runs whole
+# (`<module>/Test/test`), or a class it names, already runs them; $1: the lint specs this run runs (lint_plan's
+# `<module>:<class>`), never twice. Every walker's spec is a fast source scan.
+source_lint_lines() { # <lints> < plan lines
+    local plan module spec cls classes
+    plan="$(cat)"
+    for module in base http common identity testkit scrapers web worker; do
+        printf '%s\n' "$plan" | grep -qxF "$module/Test/test" && continue
+        classes=""
+        while IFS= read -r spec; do
+            [ -n "$spec" ] || continue
+            cls="${spec#"$module"/src/test/scala/}"; cls="${cls%.scala}"; cls="${cls//\//.}"
+            printf '%s\n' "${1:-}" | grep -qxF "$module:$cls" && continue
+            printf '%s\n' "$plan" | grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" && continue
+            classes+=" $cls"
+        done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
+        [ -z "$classes" ] || echo "$module/testOnly${classes}"
+    done
+    return 0
+}
 unit_plan() {
     local path module modules=" " specs="" spec
     while IFS= read -r path; do
@@ -717,6 +740,7 @@ case "${1:-}" in
     --compile-plan) compile_plan; exit 0 ;;
     --unit-plan)    unit_plan; exit 0 ;;
     --unit-universe) unit_universe; exit 0 ;;
+    --source-lints) source_lint_lines "${2:-}"; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
     --failure-summary) failure_summary "$2"; exit 0 ;;
 esac
@@ -1510,13 +1534,22 @@ check_sbt() {
         printf '%s\n' "$changed" | unit_plan > "$tmp/unit.plan"
         unit_universe > "$tmp/unit.universe"
         printf '%s\n' "$lints" > "$tmp/unit.lints"
+        local widen=""
+        [ -s "$tmp/unit.plan" ] && widen=1
         if [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ] && test_impact unit > "$tmp/unit.select.log" 2>&1 \
                 && python3 scripts/ci/identity_impact.py plan --impact "$tmp/unit.impact" --reads "$tmp/unit.universe" \
                     --except "$tmp/unit.lints" < "$tmp/unit.plan" > "$tmp/unit.narrowed"; then
             log "verify: the unit tests the combined change reaches: $(grep -c . "$tmp/unit.narrowed" | tr -d ' ') sbt line(s)$(grep -m1 '^ALL' "$tmp/unit.impact" | sed 's/^ALL/, every one:/')" >&2
             mv "$tmp/unit.narrowed" "$tmp/unit.plan"
+            grep -q '^ALL' "$tmp/unit.impact" || widen=""
         elif [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ]; then
             warn "verify: no test-impact selection ($(tail -1 "$tmp/unit.select.log")) -- every touched module's unit tests"
+        fi
+        # no selection naming the change's readers (ALL, cold, no answer): every module's source-walking lints join
+        if [ -n "$widen" ]; then
+            source_lint_lines "$lints" < "$tmp/unit.plan" > "$tmp/unit.sourcelints"
+            log "verify: no selection names the change's readers -- every module's source lints join ($(grep -c . "$tmp/unit.sourcelints" | tr -d ' ') sbt line(s))" >&2
+            cat "$tmp/unit.sourcelints" >> "$tmp/unit.plan"
         fi
         while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < "$tmp/unit.plan"
     fi

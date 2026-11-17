@@ -190,6 +190,13 @@ check "a resource counts, each module once, in dependency order" "scrapers/Test/
 check "every module's unit tests are the readers' universe, the worker's less its heavy rows, read from the build" \
   "base/Test/test|http/Test/test|common/Test/test|identity/Test/test|testkit/Test/test|scrapers/Test/test|web/Test/test|worker/testOnly * -services.identity.IdentitySliceCasesSpec" \
   "$("$REPO_ROOT/scripts/hooks/pre-push" --unit-universe | tr '\n' '|' | sed 's/|$//' | sed 's/IdentitySliceCasesSpec .*/IdentitySliceCasesSpec/')"
+# the lints walking every module's sources, which join a verification no selection narrowed: each module's, less what
+# the plan and the lint specs already run
+sourcelints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --source-lints "common:tools.DeepExpressionLintSpec"; }
+check "every module's source-walking lints, by the walkers they are built on" "1 1 1" \
+  "$(sourcelints scrapers/Test/test | grep -c '^worker/testOnly .*tools\.NoDefaultZoneSpec') $(sourcelints scrapers/Test/test | grep -c '^common/testOnly .*testsupport\.ModuleSourcesSpec') $(sourcelints | grep -c '^identity/testOnly services\.identity\.ReaderNamesSpec$')"
+check "...less a module the plan runs whole, a class it names, and a lint spec the run runs" "0 0 0" \
+  "$(sourcelints common/Test/test | grep -c '^common/') $(sourcelints 'worker/testOnly scripts.A tools.NoDefaultZoneSpec' | grep -c 'NoDefaultZoneSpec') $(sourcelints | grep -c DeepExpressionLintSpec)"
 check "no module path, no unit tests (e2e is the heavy rows')" "" \
   "$(units docs/a.md scripts/x.sh e2e/src/test/scala/A.scala geodata/src/main/scala/G.scala worker/README.md)"
 
@@ -548,6 +555,18 @@ check "--verify-only through the kept server: the worker's unit row narrowed to 
 code="$(verify_push)"
 check "...and with no selection, the whole rest row, said" "0 1 1" \
   "$code $(calls 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\*') $(grep -c 'no test-impact selection' "$testroot/area-out")"
+# review round 7: with no selection naming the change's readers (ALL, none), the lints walking every module's sources
+# -- what the READS lines add to a narrowed one -- were left out of an untouched module, where coverage should be widest
+mkdir -p "$area/common/src/test/scala/tools"
+printf 'class WalkerLintSpec { val trees = testsupport.ModuleSources.SourceTrees }\n' > "$area/common/src/test/scala/tools/WalkerLintSpec.scala"
+scratch_git "$area" add common; scratch_git "$area" commit -qm "a walker, before the change: common untouched by it"
+code="$(verify_push)"
+check "...and every module's source-walking lints join it" "0 1" "$code $(calls 'common/testOnly tools.WalkerLintSpec')"
+code="$(verify_push IMPACT_LINES='ALL the build changed: build.sbt\n')"
+check "...as they do when the selection says ALL" "0 1" "$code $(calls 'common/testOnly tools.WalkerLintSpec')"
+code="$(verify_push IMPACT_LINES='worker modules.VSpec\n')"
+check "...but not when the selection names the readers (their READS lines)" "0 0" "$code $(calls WalkerLintSpec)"
+scratch_git "$area" rm -q common/src/test/scala/tools/WalkerLintSpec.scala; scratch_git "$area" commit -qm "the walker, gone"
 kill "$kept_server" 2> /dev/null; wait "$kept_server" 2> /dev/null
 scratch_git "$area" rm -q build.sbt; scratch_git "$area" commit -qm "the build, gone"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_CANDIDATE='slice\tdrift-slices/uk/x\n')"
