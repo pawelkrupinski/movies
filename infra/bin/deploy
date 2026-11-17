@@ -45,6 +45,9 @@ import sys
 import time
 import typing
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nix_path  # noqa: E402  (beside this tool)
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PIN = "/var/lib/nixdeploy/staged-system"
 PROFILE = "/nix/var/nix/profiles/system"
@@ -679,6 +682,10 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     os.chdir(REPO)
     try:
+        try:
+            nix_path.put_nix_on_path()
+        except nix_path.NixNotFound as exc:
+            raise Unmeasured(str(exc)) from exc
         if args.list:
             hosts = json.loads(run(["nix", "eval", "--json", f"{flake_ref()}#nixosConfigurations",
                                     "--apply", "builtins.attrNames"]).stdout)

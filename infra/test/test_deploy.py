@@ -522,6 +522,7 @@ class ApplyEndToEnd(unittest.TestCase):
                                      TimeoutExpired=TimeoutError, CompletedProcess=None)
         out, err = io.StringIO(), io.StringIO()
         with mock.patch.object(deploy, "subprocess", fake), mock.patch.object(deploy.time, "sleep"), \
+                mock.patch.object(deploy.nix_path, "put_nix_on_path"), \
                 contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             rc = deploy.main(["monitoring-1", "--apply"])
         return rc, out.getvalue() + err.getvalue()

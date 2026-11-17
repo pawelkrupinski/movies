@@ -54,6 +54,7 @@ import urllib.error
 import urllib.request
 
 import image_pins  # beside this script: the container image pins no other bumper owns
+import nix_path  # beside this script: where nix is when PATH lacks it
 
 REPO = pathlib.Path(__file__).resolve().parents[1]  # infra/, the flake root
 ROOT = REPO.parent  # the git checkout
@@ -534,6 +535,11 @@ def main():
     if not args.old or not args.out:
         ap.error("--old and --out are required")
     args.out.mkdir(parents=True, exist_ok=True)
+    try:
+        nix_path.put_nix_on_path()
+    except nix_path.NixNotFound as exc:
+        print(exc, file=sys.stderr)
+        return 2
     return update(args.old.resolve(), args.out)
 
 

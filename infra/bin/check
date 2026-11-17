@@ -40,6 +40,13 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$here/.."
 
 nix_flags=(--extra-experimental-features 'nix-command flakes')
+# nix from PATH or its install location (bin/nix_path.py); not found is a FAILED check naming the fix, never a skip.
+if nix_bin="$(python3 bin/nix_path.py)"; then
+  PATH="$nix_bin:$PATH"
+else
+  echo "FAILED -- the nix eval steps below cannot run" >&2
+  exit 1
+fi
 hosts=(mongo-1 monitoring-1 k3s-worker-1)
 failed=0
 

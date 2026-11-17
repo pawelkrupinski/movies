@@ -29,6 +29,10 @@ a primary IP change, which is the failure mode this module exists to remove. `fl
 import json
 import os
 import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nix_path  # noqa: E402  (beside this module)
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -47,6 +51,10 @@ class Flake:
         self.repo = repo
 
     def _run(self, argv):
+        try:
+            nix_path.put_nix_on_path()
+        except nix_path.NixNotFound as exc:
+            return None, str(exc)
         result = subprocess.run(argv, cwd=self.repo, capture_output=True, text=True)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout).strip().splitlines()

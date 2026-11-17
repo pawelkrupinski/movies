@@ -75,6 +75,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nix_path  # noqa: E402  (beside this tool)
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # `accept-new` IS A TRUST-ON-FIRST-USE DECISION AND IT IS WEAKER HERE THAN WHERE THIS CAME FROM.
@@ -286,6 +289,11 @@ def stage(name):
 
 def main():
     wanted = sys.argv[1:]
+    try:
+        nix_path.put_nix_on_path()
+    except nix_path.NixNotFound as exc:
+        print(f"NOTHING was staged: {exc}")
+        return 2
     error = prefetch_inputs()
     if error:
         print(f"could not fetch this flake's inputs, so NOTHING was staged: {error}")
