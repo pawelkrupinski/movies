@@ -38,7 +38,8 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
   // literal names, so a
   // change to any identity source but its class dependencies' left it out of the narrowed unit tests
   "a source walking a module's tree" should "name it in one literal, never build it from parts" in {
-    val PartsPath = """(?:Path\.of|Paths\.get)\(\s*"[^"/]+"\s*,\s*"src"""".r
+    // a module and its `src` as two arguments: `"identity", "src"` and `"identity", "src/main"` alike
+    val PartsPath = """(?:Path\.of|Paths\.get|new\s+(?:java\.io\.)?File)\(\s*"[^"/]+"\s*,\s*"src(?:"|/)""".r
     val sources = Using.resource(Files.list(Path.of(".")))(_.iterator.asScala.toList).map(_.resolve("src")).filter(Files.isDirectory(_))
       .flatMap(src => Using.resource(Files.walk(src))(_.iterator.asScala.filter(_.toString.endsWith(".scala")).toList))
     sources should not be empty
