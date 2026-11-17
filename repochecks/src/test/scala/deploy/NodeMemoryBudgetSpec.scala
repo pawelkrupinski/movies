@@ -73,8 +73,15 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  ledger shows 12864Mi requested against the 12800Mi these overlays declare,
    *  so kube-system's share is ~64Mi (most of it runs on the control-plane node).
    *  This is deliberately several times that — a floor under the arithmetic, not
-   *  a tight fit, and the kubelet needs slack it does not request. */
-  private val SystemReserveMib = 512
+   *  a tight fit, and the kubelet needs slack it does not request.
+   *  576 since 2026-11-17: Flux's notification-controller (the GitHub push Receiver that took the
+   *  5-minute poll off every deploy) requests 64Mi, out of the kinowo ledger's 192Mi of spare.
+   *  Measured that day, not assumed: it ran at 45Mi RSS, and Flux's other four controllers'
+   *  7-day max RSS (Prometheus `process_resident_memory_bytes`) was 87 (source), 144 (kustomize),
+   *  71 (image-reflector) and 63Mi (image-automation) -- ~410Mi in use against 320Mi requested, so
+   *  the requests are not padding to trim, and they are `flux install --export` output that a
+   *  regeneration would put back anyway. */
+  private val SystemReserveMib = 576
 
   private val Tiers     = Seq("worker", "web")
   private val Countries = Seq("pl", "de", "uk", "us", "es")
@@ -428,7 +435,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The memory requests of everything on k3s-worker-1 that is NOT a kinowo tier — the pods the
-   *  512Mi `SystemReserveMib` is set aside for. Read from the manifests, so this is what WILL be
+   *  576Mi `SystemReserveMib` is set aside for. Read from the manifests, so this is what WILL be
    *  requested, not what happens to be scheduled today. */
   private def reserveTenants: Seq[(String, Int)] = {
     /** Every `requests: memory:` in one manifest. A file with several Deployments — Flux ships two
@@ -446,7 +453,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     val tenants = Seq(
       "kube-state-metrics" -> "infra/kubernetes/kube-state-metrics/deployment.yaml",
       "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
-      // Flux's source- and kustomize-controller, vendored from `flux install --export`.
+      // Flux's controllers (source, kustomize, notification, image-reflector, image-automation),
+      // vendored from `flux install --export`.
       "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
       "reloader"           -> "infra/kubernetes/reloader/deployment.yaml",
     )
@@ -465,7 +473,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   //
   // Measured 2026-09-03 when Headlamp was added: 64Mi (kube-state-metrics) + 128Mi (headlamp) =
   // 192Mi of 512Mi. There is room for more; the point is that the next thing added has to fit,
-  // and now says so here rather than in an incident.
+  // and now says so here rather than in an incident. 2026-11-17: Flux's notification-controller
+  // took the total to 576Mi, and the reserve was raised to match from the kinowo ledger's spare.
   "the system reserve" should "cover everything scheduled outside the kinowo tiers" in {
     val tenants = reserveTenants
     val total   = tenants.map(_._2).sum
