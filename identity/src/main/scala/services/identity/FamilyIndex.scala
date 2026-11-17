@@ -24,31 +24,21 @@ import scala.collection.concurrent.TrieMap
  */
 object FamilyIndex {
 
-  /** One read of the corpus's learned context, by key: what [[CorpusContext]] answered it. */
-  enum ContextRead {
-    case Record(film: Int)
-    case House(banner: String)
+  /** One read of the corpus's learned context, by key: what [[CorpusContext]] answered it — a value of type `A`. */
+  enum ContextRead[A] {
+    case Record(film: Int) extends ContextRead[Option[Candidate]]
+    case House(banner: String) extends ContextRead[Option[String]]
     /** Every banner's house at once: a reader that walked the whole map. */
-    case Houses
-    case HouseRanking
-    case TitleGroup(key: String)
-    case WholeTitle(sanitised: String)
-    case SegmentSpread(sanitised: String)
-    case ReachedBy(key: String)
-    case Ranked(query: CandidateQuery)
+    case Houses extends ContextRead[Map[String, String]]
+    case HouseRanking extends ContextRead[Map[String, Seq[StageRelays.Houses.Contender]]]
+    case TitleGroup(key: String) extends ContextRead[Seq[(String, IdentityMeasures.Listing)]]
+    case WholeTitle(sanitised: String) extends ContextRead[Boolean]
+    case SegmentSpread(sanitised: String) extends ContextRead[Int]
+    case ReachedBy(key: String) extends ContextRead[Seq[(String, Set[Int])]]
+    case Ranked(query: CandidateQuery) extends ContextRead[Option[Seq[Int]]]
 
     /** What `context` answers for this read: the one function the recorder and a re-read both digest. */
-    private[identity] def valueIn(context: CorpusContext): Any = this match {
-      case Record(film)             => context.candidate(film)
-      case House(banner)            => context.houses.of.get(banner)
-      case Houses                   => context.houses.of
-      case HouseRanking             => context.houseRanking
-      case TitleGroup(key)          => context.titleGroup(key)
-      case WholeTitle(sanitised)    => context.wholeTitle(sanitised)
-      case SegmentSpread(sanitised) => context.segmentSpread(sanitised)
-      case ReachedBy(key)           => context.reachedBy(key)
-      case Ranked(query)            => context.ranked(query)
-    }
+    private[identity] def valueIn(context: CorpusContext): A = ContextRead.valueOf(this, context)
     private[identity] def digestIn(context: CorpusContext): Long = ContentHash.of(valueIn(context))
     /** A readable id, as a report or a stored index names it. */
     def id: String = this match {
@@ -67,22 +57,20 @@ object FamilyIndex {
   /** A context answering each [[ContextRead]] through one function, [[read]]: the recorder and the replay below differ
    *  only in where a read's value comes from, never in which read a method makes. */
   private[identity] abstract class ReadingContext extends CorpusContext {
-    protected def read(what: ContextRead): Any
-    def candidate(id: Int): Option[Candidate] = read(ContextRead.Record(id)).asInstanceOf[Option[Candidate]]
+    protected def read[A](what: ContextRead[A]): A
+    def candidate(id: Int): Option[Candidate] = read(ContextRead.Record(id))
     def houses: StageRelays.Houses = StageRelays.Houses(HousesView)
-    def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] =
-      read(ContextRead.HouseRanking).asInstanceOf[Map[String, Seq[StageRelays.Houses.Contender]]]
-    def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
-      read(ContextRead.TitleGroup(key)).asInstanceOf[Seq[(String, IdentityMeasures.Listing)]]
-    def wholeTitle(sanitised: String): Boolean = read(ContextRead.WholeTitle(sanitised)).asInstanceOf[Boolean]
-    def segmentSpread(sanitised: String): Int = read(ContextRead.SegmentSpread(sanitised)).asInstanceOf[Int]
-    def reachedBy(key: String): Seq[(String, Set[Int])] = read(ContextRead.ReachedBy(key)).asInstanceOf[Seq[(String, Set[Int])]]
-    def ranked(query: CandidateQuery): Option[Seq[Int]] = read(ContextRead.Ranked(query)).asInstanceOf[Option[Seq[Int]]]
+    def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = read(ContextRead.HouseRanking)
+    def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] = read(ContextRead.TitleGroup(key))
+    def wholeTitle(sanitised: String): Boolean = read(ContextRead.WholeTitle(sanitised))
+    def segmentSpread(sanitised: String): Int = read(ContextRead.SegmentSpread(sanitised))
+    def reachedBy(key: String): Seq[(String, Set[Int])] = read(ContextRead.ReachedBy(key))
+    def ranked(query: CandidateQuery): Option[Seq[Int]] = read(ContextRead.Ranked(query))
 
     /** The houses' map, each banner read on its own; walked whole, read as [[ContextRead.Houses]]. */
     private object HousesView extends scala.collection.immutable.AbstractMap[String, String] {
-      private def whole = read(ContextRead.Houses).asInstanceOf[Map[String, String]]
-      def get(banner: String): Option[String] = read(ContextRead.House(banner)).asInstanceOf[Option[String]]
+      private def whole = read(ContextRead.Houses)
+      def get(banner: String): Option[String] = read(ContextRead.House(banner))
       def iterator: Iterator[(String, String)] = whole.iterator
       def removed(key: String): Map[String, String] = whole.removed(key)
       def updated[V1 >: String](key: String, value: V1): Map[String, V1] = whole.updated(key, value)
@@ -90,8 +78,21 @@ object FamilyIndex {
   }
 
   object ContextRead {
+    /** What `context` answers for `read`, typed by the read. */
+    private def valueOf[A](read: ContextRead[A], context: CorpusContext): A = read match {
+      case Record(film)             => context.candidate(film)
+      case House(banner)            => context.houses.of.get(banner)
+      case Houses                   => context.houses.of
+      case HouseRanking             => context.houseRanking
+      case TitleGroup(key)          => context.titleGroup(key)
+      case WholeTitle(sanitised)    => context.wholeTitle(sanitised)
+      case SegmentSpread(sanitised) => context.segmentSpread(sanitised)
+      case ReachedBy(key)           => context.reachedBy(key)
+      case Ranked(query)            => context.ranked(query)
+    }
+
     /** The read an [[ContextRead.id]] names; `None` for one it does not. */
-    def parse(id: String): Option[ContextRead] = id.split("\\|", 2) match {
+    def parse(id: String): Option[ContextRead[?]] = id.split("\\|", 2) match {
       case Array("houses")                => Some(Houses)
       case Array("house-ranking")         => Some(HouseRanking)
       case Array("record", film)          => film.toIntOption.map(Record(_))
@@ -107,9 +108,9 @@ object FamilyIndex {
 
   /** A corpus's context recording every read a resolve makes of it: the value it answered, and its digest. */
   private[identity] final class RecordingContext(underlying: CorpusContext) extends ReadingContext {
-    val values: TrieMap[ContextRead, Any] = TrieMap.empty
-    protected def read(what: ContextRead): Any = { val value = what.valueIn(underlying); values.update(what, value); value }
-    def reads: Map[ContextRead, Long] = values.toMap.map { case (what, value) => what -> ContentHash.of(value) }
+    val values: TrieMap[ContextRead[?], Any] = TrieMap.empty
+    protected def read[A](what: ContextRead[A]): A = { val value = what.valueIn(underlying); values.update(what, value); value }
+    def reads: Map[ContextRead[?], Long] = values.toMap.map { case (what, value) => what -> ContentHash.of(value) }
     // the listing's own evidence, cached: derived from the listing alone, which the entry's member digest holds
     override def evidenceOf(listing: Listing): Option[Evidence] = underlying.evidenceOf(listing)
   }
@@ -118,8 +119,9 @@ object FamilyIndex {
   final case class Unindexed(read: String) extends RuntimeException(s"a read the family index does not hold: $read")
 
   /** The context a family's recorded reads answer, and nothing else ([[Unindexed]]). */
-  private final class ReplayContext(values: Map[ContextRead, Any]) extends ReadingContext {
-    protected def read(what: ContextRead): Any = values.getOrElse(what, throw Unindexed(what.id))
+  private final class ReplayContext(values: Map[ContextRead[?], Any]) extends ReadingContext {
+    // The one cast: `values` is a RecordingContext's, which stored under each read the value that read answered.
+    protected def read[A](what: ContextRead[A]): A = values.getOrElse(what, throw Unindexed(what.id)).asInstanceOf[A]
   }
 
   /** Lookups answering each read through one function, [[read]], as [[ReadingContext]] does the context's. */
@@ -177,7 +179,7 @@ object FamilyIndex {
 
   /** What a family read, as VALUES: what [[replayAlone]] answers it from. Kept by [[build]] only when asked (`values`):
    *  the index itself holds digests. */
-  final case class Recorded(members: Seq[Listing], context: Map[ContextRead, Any], answers: Map[Dependency, Answer[?]],
+  final case class Recorded(members: Seq[Listing], context: Map[ContextRead[?], Any], answers: Map[Dependency, Answer[?]],
                             detailed: Map[ListingKey, Boolean])
 
   /** The family `recorded` holds resolved ALONE from its recorded reads — no corpus, no lookups beyond them: each member's
@@ -221,7 +223,7 @@ object FamilyIndex {
    *  film keys it merges under; `context`/`answers`: each read with the digest of what it read; `pins`: the ids of the
    *  pins naming a member; `takes`/`rules`: each member's take ([[PopulationMonotonicity.takeOf]], `None` pending) and
    *  the rule ids that decided it. */
-  final case class Entry(members: Map[ListingKey, Long], blockKeys: Set[String], context: Map[ContextRead, Long],
+  final case class Entry(members: Map[ListingKey, Long], blockKeys: Set[String], context: Map[ContextRead[?], Long],
                          answers: Map[Dependency, Long], pins: Set[String], takes: Map[ListingKey, Option[String]],
                          rules: Map[ListingKey, Seq[String]]) {
     /** The content digest of everything it read — equal digests under one rules version, equal decisions. */
@@ -307,14 +309,14 @@ final class FamilyIndex(val entries: Seq[FamilyIndex.Entry]) {
   import FamilyIndex.{ContextRead, Entry, Now}
 
   private lazy val byListing: Map[ListingKey, Entry] = entries.flatMap(entry => entry.members.keys.map(_ -> entry)).toMap
-  private lazy val byContext: Map[ContextRead, Seq[Entry]] = entries.flatMap(entry => entry.context.keys.map(_ -> entry)).groupMap(_._1)(_._2)
+  private lazy val byContext: Map[ContextRead[?], Seq[Entry]] = entries.flatMap(entry => entry.context.keys.map(_ -> entry)).groupMap(_._1)(_._2)
   private lazy val byAnswer: Map[Dependency, Seq[Entry]] = entries.flatMap(entry => entry.answers.keys.map(_ -> entry)).groupMap(_._1)(_._2)
   private lazy val byBlockKey: Map[String, Seq[Entry]] = entries.flatMap(entry => entry.blockKeys.map(_ -> entry)).groupMap(_._1)(_._2)
   private lazy val byRule: Map[String, Seq[Entry]] =
     entries.flatMap(entry => entry.rules.values.flatten.toSeq.distinct.map(_ -> entry)).groupMap(_._1)(_._2)
 
   def familyOf(key: ListingKey): Option[Entry] = byListing.get(key)
-  def readersOf(read: ContextRead): Seq[Entry] = byContext.getOrElse(read, Nil)
+  def readersOf(read: ContextRead[?]): Seq[Entry] = byContext.getOrElse(read, Nil)
   def readersOf(dependency: Dependency): Seq[Entry] = byAnswer.getOrElse(dependency, Nil)
   def holdersOf(blockKey: String): Seq[Entry] = byBlockKey.getOrElse(blockKey, Nil)
   /** The families a rule id ([[DecisionTrace.rulesOf]], a stage's) decided a member of. */
