@@ -55,7 +55,7 @@ class ShareCardService(
   /** Queue a render that tries `next`'s posters again for a card drawn without one. */
   def retryPoster(next: ShareCardInputs): EnqueueResult =
     queue.enqueue(TaskType.RenderShareCard, s"share-card-poster|${next.filmId}|${next.drawnHash}",
-      next.toPayload ++ Map(ReasonsKey -> ShareCardReason.Poster, FirstKey -> "false", RetryPosterKey -> "true"),
+      next.toPayload ++ Map(ReasonsKey -> ShareCardReason.Poster) ++ RenderMode.PosterRetry.payload,
       submittedAt = clock.instant())
 
   def current(movie: ResolvedMovie): Option[String] = onDisk(movie._id).map(ShareCardFile.url(movie._id, _))
@@ -63,7 +63,7 @@ class ShareCardService(
   def readyToPublish(movie: ResolvedMovie): Boolean = existing(inputs(movie)).isDefined
 
   def requestFirstCard(movie: ResolvedMovie, until: Instant): Unit = {
-    enqueueRender(inputs(movie), Seq(ShareCardReason.NewFilm), first = true)
+    enqueueRender(inputs(movie), Seq(ShareCardReason.NewFilm), RenderMode.FirstCard)
     // One task per hold, keyed by its end, so a hold renewed after a restart gets its own.
     queue.enqueue(TaskType.ReleaseShareCardHold, s"share-card-hold|${movie._id}|${until.toEpochMilli}",
       Map("filmId" -> movie._id), submittedAt = clock.instant(), notBefore = Some(until))
@@ -106,10 +106,10 @@ class ShareCardService(
 
   /** The render task's entry: [[render]], unless a newer request superseded `next` (`superseded`,
    *  nothing drawn). */
-  def renderIfLatest(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false,
+  def renderIfLatest(next: ShareCardInputs, reasons: Seq[String], mode: RenderMode = RenderMode.Ordinary,
                      askedAt: Option[Instant] = None): String =
     renderLocks(Math.floorMod(next.filmId.hashCode, renderLocks.length)).synchronized {
-      if (!superseded(next)) render(next, reasons, first, retryPoster, askedAt)
+      if (!superseded(next)) render(next, reasons, mode, askedAt)
       else {
         logRender(next, ShareCardMetrics.Outcome.Superseded, reasons, detailsMoved = Nil)
         metrics.render(ShareCardMetrics.Outcome.Superseded, reasons)
@@ -178,20 +178,20 @@ class ShareCardService(
     if (next.posterUrls.isEmpty) Seq(ShareCardFile.posterHash(None)) else next.posterUrls.map(url => ShareCardFile.posterHash(Some(url)))
 
   /** Queue a render of `next`. A first card is placed ahead of the queue's backlog. */
-  def enqueueRender(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false,
+  def enqueueRender(next: ShareCardInputs, reasons: Seq[String], mode: RenderMode = RenderMode.Ordinary,
                     askedAt: Instant = clock.instant()): EnqueueResult = {
     val now = clock.instant()
     ask(next, askedAt)
     queue.enqueue(TaskType.RenderShareCard, s"share-card|${next.filmId}|${renderKey(next)}",
-      next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), FirstKey -> first.toString, AskedAtKey -> askedAt.toEpochMilli.toString),
-      submittedAt = now, claimAhead = if (first) FirstCardHeadStart else Duration.Zero)
+      next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), AskedAtKey -> askedAt.toEpochMilli.toString) ++ mode.payload,
+      submittedAt = now, claimAhead = if (mode == RenderMode.FirstCard) FirstCardHeadStart else Duration.Zero)
   }
 
   /** The render task's work: the film's card for `next`, written over its one card file unless it
    *  is current already. A film with posters whose every candidate fails gets a card WITHOUT a
    *  poster (`rendered_no_poster`) — a film with no card could never be shared well, and coverage
    *  would stall on it — versioned as posterless, so the card a working poster later draws
-   *  replaces it. `retryPoster` re-tries the posters for such a card; failing again, it stays.
+   *  replaces it. [[RenderMode.PosterRetry]] re-tries the posters for such a card; failing again, it stays.
    *
    *  A card with a poster is drawn on its BASE — everything but the rating badges, kept as the
    *  film's one high-quality JPEG under `.base/`, stamped with every non-rating input and the
@@ -200,11 +200,12 @@ class ShareCardService(
    *  POSTER — never from an older base or card, so no card is more than one q95 step from its
    *  poster — and kept (`base_rebuild`). A posterless card is cheap to draw whole (`full`).
    *
-   *  `first` marks the first-publish gate's render: the card then records the film's first
-   *  publication, which every later card of the film carries forward. */
-  def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false,
+   *  [[RenderMode.FirstCard]] marks the first-publish gate's render: the card then records the film's
+   *  first publication, which every later card of the film carries forward. */
+  def render(next: ShareCardInputs, reasons: Seq[String], mode: RenderMode = RenderMode.Ordinary,
              askedAt: Option[Instant] = None): String = {
     import ShareCardMetrics.Outcome
+    val first        = mode == RenderMode.FirstCard
     val before       = onDisk(next.filmId)
     val detailsMoved = Option(fingerprints.get(next.filmId)).fold(Seq.empty[String])(next.fingerprint.detailsChangedFrom)
     def superseding(e: Throwable) = e.isInstanceOf[NewerAskOnDisk]
@@ -220,7 +221,7 @@ class ShareCardService(
       drawing(onBase(next, first, askedAt).orElse(rebuildBase(next, first, retry, askedAt)))
     def posterless(): Option[String] = drawing(Some(drawWhole(next, first, askedAt)))
     val drawn = Try(existing(next) match {
-      case Some(version) if retryPoster && next.isPosterless(version) =>
+      case Some(version) if mode == RenderMode.PosterRetry && next.isPosterless(version) =>
         withPoster(retry = true).fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
       case Some(version)                   => (Outcome.Existing, Some(version))
       case None if next.posterUrls.isEmpty =>

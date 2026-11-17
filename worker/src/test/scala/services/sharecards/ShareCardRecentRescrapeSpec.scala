@@ -22,7 +22,7 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
     val movie = film()
     // The first card: the gate's (recording the publication) when there was one, else the backfill's.
     val first = new Rig(clock = clockAt(published.getOrElse(now)))
-    first.service.render(first.service.inputs(movie), Seq(ShareCardReason.NewFilm), first = published.isDefined)
+    first.service.render(first.service.inputs(movie), Seq(ShareCardReason.NewFilm), if (published.isDefined) RenderMode.FirstCard else RenderMode.Ordinary)
     val rig = new Rig(store = first.store, clock = clockAt(now))
     (rig, movie)
   }
@@ -83,7 +83,7 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
 
   "A film's first card" should "not be a change: nothing was cached before it" in {
     val rig = new Rig
-    rig.service.render(rig.service.inputs(film()), Seq(ShareCardReason.NewFilm), first = true)
+    rig.service.render(rig.service.inputs(film()), Seq(ShareCardReason.NewFilm), RenderMode.FirstCard)
     rescrapes(rig) shouldBe empty
     rig.store.published(rig.store.cardPath(film()._id)) shouldBe Some(T0)
     // …and every later card of the film carries the date forward.

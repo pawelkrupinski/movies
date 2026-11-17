@@ -62,7 +62,7 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     }
     val inputs = rig.service.inputs(film())
     rig.service.render(inputs, Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.RenderedNoPoster
-    rig.service.render(inputs, Seq(ShareCardReason.Backfill), retryPoster = true) shouldBe ShareCardMetrics.Outcome.Existing
+    rig.service.render(inputs, Seq(ShareCardReason.Backfill), RenderMode.PosterRetry) shouldBe ShareCardMetrics.Outcome.Existing
     (series.posterLoadCount("pl", ok = false, retry = false), series.posterLoadCount("pl", ok = false, retry = true)) shouldBe ((1.0, 1.0))
   }
 

@@ -62,8 +62,8 @@ class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scala
     val rig = new Rig
     val released = collection.mutable.Buffer.empty[String]
     val followUp = new ShareCardFollowUp(rig.store, rig.service.superseded, _ => (), released += _)
-    rig.service.enqueueRender(rig.service.inputs(older), Seq(ShareCardReason.NewFilm), first = true)
-    rig.service.enqueueRender(rig.service.inputs(newer), Seq(ShareCardReason.NewFilm), first = true)
+    rig.service.enqueueRender(rig.service.inputs(older), Seq(ShareCardReason.NewFilm), RenderMode.FirstCard)
+    rig.service.enqueueRender(rig.service.inputs(newer), Seq(ShareCardReason.NewFilm), RenderMode.FirstCard)
     val tasks = drain(rig.queue)
 
     followUp.onTaskFinished(TaskFinished(TaskType.RenderShareCard, tasks(0).dedupKey, tasks(0).payload))
