@@ -119,5 +119,45 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
       queue.complete(task.id, "worker")
       queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0) shouldBe EnqueueResult.Added
     }
+
+    // The lease cycle ([[services.tasks.TaskLeases]]): one set of rules both stores apply.
+
+    it should s"[$name] claim the oldest waiting task first, charging it an attempt, and lease it to one worker" in {
+      val queue = fresh(cls)
+      queue.enqueue(TaskType.ResolveImdbId, "newer|2026", Map.empty, t0.plusSeconds(10))
+      queue.enqueue(TaskType.ResolveImdbId, "older|2026", Map.empty, t0)
+      val first = queue.claim("w1", 1.minute, t0.plusSeconds(20)).get
+      (first.dedupKey, first.attempts) shouldBe ("older|2026", 1)
+      queue.claim("w2", 1.minute, t0.plusSeconds(20)).map(_.dedupKey) shouldBe Some("newer|2026")
+      queue.claim("w3", 1.minute, t0.plusSeconds(20)) shouldBe None
+    }
+
+    it should s"[$name] hold a released task back until its notBefore, and give a refunded attempt back" in {
+      val queue = fresh(cls)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0)
+      val task = queue.claim("w1", 1.minute, t0).get
+      queue.release(task.id, "w1", Some("circuit open"), notBefore = Some(t0.plusSeconds(60)), refundAttempt = true)
+      queue.claim("w1", 1.minute, t0.plusSeconds(59)) shouldBe None
+      val again = queue.claim("w1", 1.minute, t0.plusSeconds(60)).get
+      again.attempts shouldBe 1
+      queue.release(again.id, "w1", Some("failed"))
+      queue.monitor().active.map(row => (row.attempts, row.lastError, row.nextEligibleAt)) shouldBe Seq((1, Some("failed"), None))
+      queue.claim("w1", 1.minute, t0.plusSeconds(60)).map(_.attempts) shouldBe Some(2)
+    }
+
+    it should s"[$name] reap only a lease that ended before now, and ignore a reaped worker's late calls" in {
+      val queue = fresh(cls)
+      queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0)
+      val first = queue.claim("w1", 1.minute, t0).get
+      queue.reapExpiredLeases(t0.plusSeconds(60)) shouldBe 0   // the lease's own last instant is still held
+      queue.reapExpiredLeases(t0.plusSeconds(61)) shouldBe 1
+      val reclaimed = queue.claim("w2", 1.minute, t0.plusSeconds(61)).get
+      reclaimed.id shouldBe first.id
+      queue.release(first.id, "w1")
+      queue.complete(first.id, "w1")
+      queue.countByState() shouldBe Map(services.tasks.TaskState.WorkedOn -> 1L)
+      queue.complete(reclaimed.id, "w2")
+      queue.countByState() shouldBe empty
+    }
   }
 }

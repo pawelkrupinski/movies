@@ -8,8 +8,9 @@ import scala.jdk.CollectionConverters._
 
 /**
  * In-memory `TaskQueue` for tests and Mongo-less dev. Mirrors
- * [[MongoTaskQueue]]'s semantics exactly: per-dedupKey idempotent enqueue,
- * FIFO atomic claim, ownership-guarded complete/release, lease reaping. All
+ * [[MongoTaskQueue]]'s semantics: per-dedupKey idempotent enqueue, and the lease
+ * cycle — FIFO atomic claim, ownership-guarded complete/release, lease reaping —
+ * from the same [[TaskLeases]] rules over its own rows. All
  * mutations are guarded by one monitor — fine at test/dev scale. What a task is written with — its payload and its
  * instants — is written as [[MongoTaskQueue]] inserts it to BSON and read back ([[services.BsonRoundTrip]]).
  */
@@ -26,8 +27,23 @@ class InMemoryTaskQueue extends TaskQueue {
     workerId:       Option[String],
     leaseExpiresAt: Option[Instant],
     nextEligibleAt: Option[Instant] = None,
-    enqueuedAt:     Option[Instant] = None
-  )
+    enqueuedAt:     Option[Instant] = None,
+    lastError:      Option[String]  = None
+  ) {
+    def matches(matching: TaskRowMatch): Boolean =
+      matching.id.forall(_ == id) && matching.state.forall(_ == state) && matching.workerId.forall(workerId.contains) &&
+        (!matching.knownTypesOnly || TaskType.all.contains(taskType)) &&
+        matching.eligibleAt.forall(now => !nextEligibleAt.exists(_.isAfter(now))) &&
+        matching.leaseExpiredBefore.forall(now => leaseExpiresAt.exists(_.isBefore(now)))
+
+    def changed(change: TaskRowChange): Row = copy(
+      state          = change.state,
+      workerId       = change.lease.map(_.workerId),
+      leaseExpiresAt = change.lease.map(_.expiresAt),
+      nextEligibleAt = change.nextEligibleAt.getOrElse(nextEligibleAt),
+      attempts       = attempts + change.attemptsBy,
+      lastError      = change.lastError.orElse(lastError))
+  }
 
   private val rows = scala.collection.mutable.LinkedHashMap.empty[String, Row]
   private val lock = new Object
@@ -77,54 +93,42 @@ class InMemoryTaskQueue extends TaskQueue {
     }
   }
 
-  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = lock.synchronized {
-    rows.values
-      .filter(r => r.state == TaskState.Waiting && !r.nextEligibleAt.exists(_.isAfter(now)))
-      .toSeq
-      .sortBy(_.submittedAt)
-      .headOption
-      .map { r =>
-        val claimed = r.copy(
-          state          = TaskState.WorkedOn,
-          attempts       = r.attempts + 1,
-          workerId       = Some(workerId),
-          leaseExpiresAt = Some(now.plusMillis(lease.toMillis))
-        )
+  // The rows as [[TaskRows]], under the one monitor: the lease cycle's rules are [[TaskLeases]]',
+  // shared with [[MongoTaskQueue]].
+  private object rowStore extends TaskRows {
+    def claimOldest(matching: TaskRowMatch, change: TaskRowChange): Option[Task] = lock.synchronized {
+      rows.values.filter(_.matches(matching)).toSeq.sortBy(_.submittedAt).headOption.map { r =>
+        val claimed = r.changed(change)
         rows.put(r.id, claimed)
         Task(claimed.id, claimed.taskType, claimed.dedupKey, claimed.payload, claimed.attempts)
       }
-  }
-
-  // Finishing removes the row outright (parity with MongoTaskQueue's delete-on-
-  // complete) — a gone row allows re-enqueue just as an old tombstone did, and
-  // nothing lists finished tasks. Ownership-guarded so a reaped worker's late call
-  // can't remove a task another worker reclaimed.
-  override def complete(id: String, workerId: String): Unit = lock.synchronized {
-    rows.get(id).foreach { r =>
-      if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId)) rows.remove(id)
+    }
+    def updateOne(matching: TaskRowMatch, change: TaskRowChange): Unit = lock.synchronized {
+      rows.values.find(_.matches(matching)).foreach(r => rows.put(r.id, r.changed(change)))
+    }
+    def updateAll(matching: TaskRowMatch, change: TaskRowChange): Int = lock.synchronized {
+      val matched = rows.values.filter(_.matches(matching)).toSeq
+      matched.foreach(r => rows.put(r.id, r.changed(change)))
+      matched.size
+    }
+    def deleteOne(matching: TaskRowMatch): Unit = lock.synchronized {
+      rows.values.find(_.matches(matching)).foreach(r => rows.remove(r.id))
     }
   }
+
+  private val leases = new TaskLeases(rowStore)
+
+  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = leases.claim(workerId, lease, now)
+
+  // Finishing removes the row outright (parity with MongoTaskQueue's delete-on-complete) — a
+  // gone row allows re-enqueue just as an old tombstone did, and nothing lists finished tasks.
+  override def complete(id: String, workerId: String): Unit = leases.complete(id, workerId)
 
   override def release(id: String, workerId: String, error: Option[String],
-                       notBefore: Option[Instant], refundAttempt: Boolean): Unit = lock.synchronized {
-    rows.get(id).foreach { r =>
-      if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId))
-        rows.put(id, r.copy(state = TaskState.Waiting, workerId = None,
-          leaseExpiresAt = None, nextEligibleAt = notBefore,
-          attempts = if (refundAttempt) math.max(0, r.attempts - 1) else r.attempts))
-    }
-  }
+                       notBefore: Option[Instant], refundAttempt: Boolean): Unit =
+    leases.release(id, workerId, error, notBefore, refundAttempt)
 
-  override def reapExpiredLeases(now: Instant): Int = lock.synchronized {
-    var n = 0
-    rows.values.toSeq.foreach { r =>
-      if (r.state == TaskState.WorkedOn && r.leaseExpiresAt.exists(!_.isAfter(now))) {
-        rows.put(r.id, r.copy(state = TaskState.Waiting, workerId = None, leaseExpiresAt = None))
-        n += 1
-      }
-    }
-    n
-  }
+  override def reapExpiredLeases(now: Instant): Int = leases.reap(now)
 
   override def countByState(): Map[String, Long] = lock.synchronized {
     rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
@@ -141,7 +145,7 @@ class InMemoryTaskQueue extends TaskQueue {
       .sortBy(r => (TaskState.activeByPriority.indexOf(r.state), r.submittedAt))
       .take(activeLimit)
       .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
-        r.attempts, r.workerId, r.leaseExpiresAt, None, r.nextEligibleAt, r.enqueuedAt))
+        r.attempts, r.workerId, r.leaseExpiresAt, r.lastError, r.nextEligibleAt, r.enqueuedAt))
     QueueSnapshot(counts, active)
   }
 
