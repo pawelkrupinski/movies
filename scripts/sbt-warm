@@ -7,6 +7,7 @@
 #                                        in this checkout's server — started, and seeded, when there is none
 #   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server) in this
 #                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
+#   (an it/ run -- itAll, IntegrationTest/test* -- is refused without MONGODB_URI: scripts/it-local.sh runs it)
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --publish           put this checkout's build into the shared build cache (when it is a clean build
 #                                        of a main commit, and no command runs in its server)
@@ -455,6 +456,15 @@ if [ "$1" = --serve ]; then
   serve=1
   shift
   [ $# -gt 0 ] || { log "--serve needs the command it serves"; exit 2; }
+fi
+
+# THE IT LAYER needs a MongoDB of its own (scripts/it-local.sh starts one): run here without MONGODB_URI, every it/ suite
+# aborts "MONGODB_URI not set" after the whole compile, and the run reads as twenty failures (2026-11-17). Refused at
+# once instead, naming the command that works; compiling the it/ sources (IntegrationTest/compile) needs no Mongo.
+if [ -z "${MONGODB_URI:-}" ] && printf '%s\n' "$@" | grep -qE '(^|[;[:space:]/])itAll([;[:space:]]|$)|IntegrationTest/test'; then
+  log "refusing an it/ run with no MONGODB_URI: every suite would abort. Run it against a MongoDB of its own:"
+  log "  scripts/it-local.sh '$(printf '%s; ' "$@" | sed 's/; $//')'"
+  exit 2
 fi
 
 # ONE STARTER per checkout: two calls finding no server would each start one (sbt --client starts it in the background,

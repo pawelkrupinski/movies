@@ -91,6 +91,16 @@ check "a seeded checkout's commands run in its own server, against its own edite
 out=$(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/test" 2>&1 >/dev/null)
 check "each call names the checkout and server it uses" "yes" \
   "$(grep -q "checkout $scratch/fresh, server " <<<"$out" && echo yes || echo "no: $out")"
+# 2026-11-17: an it/ run with no MONGODB_URI compiled everything, then aborted every suite "MONGODB_URI not set"
+calls_before=$(wc -l < "$scratch/sbt-calls")
+out=$(cd "$scratch/fresh" && unset MONGODB_URI && "$REPO_ROOT/scripts/sbt-warm" "itAll" 2>&1; echo "rc=$?")
+check "an it/ run with no MONGODB_URI is refused at once (exit 2), naming scripts/it-local.sh, sbt never called" "rc=2 yes $calls_before" \
+  "$(tail -1 <<<"$out") $(grep -q "scripts/it-local.sh 'itAll'" <<<"$out" && echo yes || echo no) $(wc -l < "$scratch/sbt-calls")"
+check "...a testOnly of it/ specs too" "rc=2" \
+  "$(cd "$scratch/fresh" && unset MONGODB_URI && "$REPO_ROOT/scripts/sbt-warm" "worker/IntegrationTest/testOnly X" > /dev/null 2>&1; echo "rc=$?")"
+(cd "$scratch/fresh" && unset MONGODB_URI && "$REPO_ROOT/scripts/sbt-warm" "IntegrationTest/compile" >/dev/null 2>&1)
+check "...but compiling the it/ sources needs no Mongo, nor a run with MONGODB_URI set" "--client IntegrationTest/compile|--client itAll" \
+  "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)|$(cd "$scratch/fresh" && MONGODB_URI=mongodb://x "$REPO_ROOT/scripts/sbt-warm" itAll >/dev/null 2>&1; tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
 echo stale > "$scratch/fresh/worker/target/scala-3.x/zinc/from"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.x/zinc/from")"

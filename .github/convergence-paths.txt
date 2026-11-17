@@ -179,10 +179,12 @@ scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-slice
 scripts/identity_slice_diff.py
+scripts/it-local.sh
 scripts/label-lookup
 scripts/local-mirror/freshness
 scripts/local-mirror/service.sh
 scripts/local-mirror/start-local-mongo.sh
+scripts/own-mongod.sh
 scripts/read-model-snapshot-inputs.sh
 scripts/sbt-warm
 scripts/tool-conventions.sh
