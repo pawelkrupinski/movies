@@ -742,9 +742,10 @@ class DemandTest(unittest.TestCase):
         self.assertEqual(rs.decide(CFG, IDLE, demand, [], NOW, ROOMY).starts, ())
 
 
-def lane_runner(slot, label, busy=False, idle_for=0):
-    """A measure-slice runner registered with one of the measure lanes' labels (MEASURE_LANES)."""
-    return dataclasses.replace(inst(slot, "measure", busy=busy, idle_for=idle_for), label=label)
+def lane_runner(slot, label, busy=False, idle_for=0, cls="measure"):
+    """A runner of `cls` registered with one of its lanes' labels (LANES), a plain label stored as none."""
+    return dataclasses.replace(inst(slot, cls, busy=busy, idle_for=idle_for),
+                               label="" if label == rs.LABELS[cls] else label)
 
 
 class MeasureLanesTest(unittest.TestCase):
@@ -788,7 +789,30 @@ class MeasureLanesTest(unittest.TestCase):
                 {"status": "queued", "labels": ["movies-landing"]}, {"status": "queued", "labels": ["movies-measure"]},
                 {"status": "in_progress", "labels": ["movies-landing"]}, {"status": "queued", "labels": ["movies-check"]}]
         self.assertEqual(rs.demand_of(jobs), queued(check=1, measure=4))
-        self.assertEqual(rs.lane_demand_of(jobs), {"movies-red-fix": 1, "movies-landing": 2, "movies-measure": 1})
+        self.assertEqual(rs.lane_demand_of(jobs),
+                         {"movies-red-fix": 1, "movies-landing": 2, "movies-measure": 1, "movies-check": 1})
+
+
+class CheckLanesTest(unittest.TestCase):
+    """2026-11-17 10:42Z: a red fix (Fixes-Red 2564) was still checking 41 min after it was queued. agentctl puts a red
+    fix first in its own queue, but its precommit-check jobs then queued for `movies-check` runners with every other
+    landing's (p50 ~8 min a job, 2026-11-14..17), GitHub handing a free runner to any of them. A red fix's checks ask for
+    movies-check-red-fix, a lane of the check class the scheduler serves first -- like the measure lanes."""
+
+    def test_a_red_fix_check_takes_the_next_check_start(self):
+        lanes = {"movies-check-red-fix": 1, "movies-check": 3}
+        d = rs.decide(rs.Config(max_slots=1), IDLE, queued(check=4), [], NOW, ROOMY, lanes)
+        self.assertEqual((d.starts, dict(d.labels)), (((1, "check"),), {1: "movies-check-red-fix"}))
+
+    def test_a_check_runner_waiting_for_another_landing_never_counts_for_a_red_fix(self):
+        lanes = {"movies-check-red-fix": 1, "movies-check": 1}
+        d = rs.decide(CFG, IDLE, queued(check=2), [lane_runner(1, "movies-check", cls="check")], NOW, ROOMY, lanes)
+        self.assertEqual(dict(d.labels), {2: "movies-check-red-fix"})
+
+    def test_queued_checks_count_by_lane(self):
+        jobs = [{"status": "queued", "labels": ["movies-check-red-fix"]}, {"status": "queued", "labels": ["movies-check"]}]
+        self.assertEqual((rs.demand_of(jobs), rs.lane_demand_of(jobs)),
+                         (queued(check=2), {"movies-check-red-fix": 1, "movies-check": 1}))
 
 
 class StarvedTest(unittest.TestCase):

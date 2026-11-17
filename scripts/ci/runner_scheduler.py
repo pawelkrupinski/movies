@@ -89,6 +89,9 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     optional measurement, a gate-red fix's ahead of those. In everything else a lane is a measurement: size, slice,
     admission, caps. Light runners also register LANES_MARKER, which says to a plan job (scripts/ci/measure-lane.sh)
     that this scheduler serves the lanes.
+  * THE CHECK LANES (2026-11-17: a red fix still checking 41 min after it was queued, its jobs queued for
+    `movies-check` runners with every other landing's): the same for the check class, CHECK_LANES
+    movies-check-red-fix then movies-check; a red fix's precommit-check jobs ask for the first.
   * THE LIGHT LANE (the owner, 2026-11-07: "why was it waiting so long, can you fix that?"): the light jobs (`movies`:
     timings reports, prunes, dispatches -- seconds, under 1 GiB) have `light_slots` slots of their own past
     `max_slots`, admitted at their own size whatever the heavy queue or bitcashier's saturation. Charged a
@@ -133,7 +136,14 @@ MEASURE_LANES = ("movies-red-fix", "movies-landing", LABELS["measure"])
 # The extra label a light runner of a scheduler serving the lanes registers: a workflow's plan job, on a light runner,
 # asks for a lane only where its own RUNNER_LABELS name this (a lane no scheduler serves would wait forever).
 LANES_MARKER = "movies-lanes"
-CLASS_OF = {label: cls for cls, label in LABELS.items()} | {lane: "measure" for lane in MEASURE_LANES}
+# THE CHECK LANES (2026-11-17: red fix 20261117-110122-...-2ed6cd, Fixes-Red 2564, was still checking 41 min after it
+# was queued: agentctl puts a red fix first in its own queue, but its precommit-check jobs then waited ~9.5 min a job
+# for a `movies-check` runner like every other landing's). The same as the measure lanes, for the check class: a check
+# runner registers ONE of them and a free check start goes to the highest with a job no runner of it waits for. A red
+# fix's checks ask for movies-check-red-fix (precommit-check.yml: agentctl pushes them to check/red-<id>).
+CHECK_LANES = ("movies-check-red-fix", LABELS["check"])
+LANES = {"check": CHECK_LANES, "measure": MEASURE_LANES}
+CLASS_OF = {label: cls for cls, label in LABELS.items()} | {lane: cls for cls, order in LANES.items() for lane in order}
 # The limits that hold a measurement, in whole jobs (Decision.limits; the other entries there only explain them).
 ADMISSION_LIMITS = ("memory", "slice", "caps", "cpu", "slots")
 
@@ -384,8 +394,8 @@ def cpu_owed(cfg: Config, r: Readings, runners: list, now: float) -> float:
 
 
 def queued_for(inst: Instance, demand: dict, lanes: dict) -> int:
-    """The queued jobs `inst` can take: its measure lane's (a lane runner takes no other lane's job), else its class's."""
-    return lanes.get(inst.lane, 0) if inst.cls == "measure" else demand.get(inst.cls, 0)
+    """The queued jobs `inst` can take: its lane's (a lane runner takes no other lane's job), else its class's."""
+    return lanes.get(inst.lane, 0) if inst.cls in LANES else demand.get(inst.cls, 0)
 
 
 def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings,
@@ -408,7 +418,7 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
             short -= memory_charge(cfg, inst)
     # a measurement with no runner of its lane waiting for it (one that has its runner needs nothing the borrow holds)
     waiting_for = sum(max(0, n - sum(1 for i in idle if i.cls == "measure" and i.lane == lane and i.slot not in stops))
-                      for lane, n in lanes.items())
+                      for lane, n in lanes.items() if lane in MEASURE_LANES)
     stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and waiting_for > 0]
     return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, lanes) == 0
                     and now - i.idle_since >= cfg.idle_stop_seconds]
@@ -419,7 +429,10 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     """The runners to start ((slot, class), highest class first, then the light lane) and the idle ones to stop, for
     `demand` (queued jobs per class; `lanes`, the measure class's per lane: none given, all movies-measure), the
     `instances` that exist and the host's live readings `r`."""
-    lanes = {LABELS["measure"]: demand.get("measure", 0)} if lanes is None else lanes
+    lanes = dict(lanes or {})
+    for cls, order in LANES.items():  # a class whose lanes nobody counted: all its demand in its plain label's lane
+        if not any(lane in lanes for lane in order):
+            lanes[LABELS[cls]] = demand.get(cls, 0)
     full = saturated(cfg, bc)
     stops = _idle_to_stop(cfg, bc, demand, instances, now, r, lanes)
     alive = [i for i in instances if i.slot not in stops]
@@ -472,24 +485,26 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     labels = {}  # slot -> the lane a measurement start registers
 
     def lane_unserved(label: str) -> int:
-        """A measure lane's queued jobs with no runner of that lane waiting for them or starting this tick."""
-        return max(0, lanes.get(label, 0) - sum(1 for i in alive if i.cls == "measure" and i.lane == label and not i.busy)
+        """A lane's queued jobs with no runner of that lane waiting for them or starting this tick."""
+        return max(0, lanes.get(label, 0) - sum(1 for i in alive if i.cls == CLASS_OF[label] and i.lane == label
+                                                and not i.busy)
                    - sum(1 for lane_label in labels.values() if lane_label == label))
 
     def unserved(cls: str) -> int:
-        """Queued jobs of `cls` with no runner waiting for them or starting this tick (a measurement's in its lane)."""
-        if cls == "measure":
-            return sum(lane_unserved(label) for label in MEASURE_LANES)
+        """Queued jobs of `cls` with no runner waiting for them or starting this tick (a check's or measurement's in its
+        lane)."""
+        if cls in LANES:
+            return sum(lane_unserved(label) for label in LANES[cls])
         return max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy)
                    - sum(1 for _, c in starts if c == cls))
 
     def take(slot: int, cls: str, home: str) -> None:
         """Start `cls` in `home`'s slice: charge its memory, its slice and caps, and its cores on every class sharing
-        that slice's CPUs. A measurement registers the highest lane still unserved."""
+        that slice's CPUs. A check or a measurement registers its class's highest lane still unserved."""
         nonlocal memory
         size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
-        if cls == "measure":
-            labels[slot] = next(label for label in MEASURE_LANES if lane_unserved(label))
+        if cls in LANES:
+            labels[slot] = next(label for label in LANES[cls] if lane_unserved(label))
         starts.append((slot, cls))
         if home in caps:
             caps[home] -= 1
@@ -577,13 +592,17 @@ def demand_of(jobs: list) -> dict:
 
 
 def lane_demand_of(jobs: list) -> dict:
-    """Queued jobs per measure lane (MEASURE_LANES), from jobs-API job dicts; a job naming two lanes is the higher's."""
+    """Queued jobs per lane (LANES: the check and the measure lanes), from jobs-API job dicts; a job naming two lanes of
+    a class is the higher's."""
     out = {}
     for job in jobs:
-        named = [l for l in job.get("labels", []) if l in MEASURE_LANES]
-        if job.get("status") == "queued" and named:
-            lane = min(named, key=MEASURE_LANES.index)
-            out[lane] = out.get(lane, 0) + 1
+        if job.get("status") != "queued":
+            continue
+        for order in LANES.values():
+            named = [l for l in job.get("labels", []) if l in order]
+            if named:
+                lane = min(named, key=order.index)
+                out[lane] = out.get(lane, 0) + 1
     return out
 
 
@@ -842,7 +861,7 @@ class Host:
         return os.path.join(self.cfg.class_cgroup.format(cls=slice_class), f"docker-{cid}.scope")
 
     def start(self, slot: int, cls: str, slice_class: str = "", label: str = "") -> None:
-        """Start the slot for one job of `cls` (`label`, a measure lane's; empty: its class's), in `slice_class`'s slice
+        """Start the slot for one job of `cls` (`label`, one of its lanes'; empty: its class's), in `slice_class`'s slice
         (its own when empty). A light runner also says it serves the measure lanes (LANES_MARKER)."""
         labels = label or LABELS[cls]
         if cls == "light":

@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `startsWith(a, b)` (GitHub's: ignoring case), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -117,6 +117,13 @@ object RunnerLabel {
       case s"needs.$job.outputs.$name"        => ctx.outputs.get(s"$job.$name").fold(Null)(Str(_))
       case s"steps.$step.outputs.$name"       => ctx.steps.get(s"$step.$name").fold(Null)(Str(_))
       case b @ ("true" | "false")             => Bool(b == "true")
+      case "startsWith"                       =>
+        if (next() != "(") fail("`startsWith` without `(`")
+        val whole = text(or())
+        if (next() != ",") fail("`startsWith` takes two arguments")
+        val prefix = text(or())
+        if (next() != ")") fail("unbalanced `startsWith(`")
+        Bool(whole.toLowerCase.startsWith(prefix.toLowerCase))
       case other                              => fail(s"`$other` is outside the subset")
     }
   }

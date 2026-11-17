@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   private val SelfHosted = Map("MOVIES_CI_RUNNERS" -> "self-hosted")
-  private val Ours       = Set("movies-check", "movies-measure", "movies")
+  private val Ours       = Set("movies-check", "movies-check-red-fix", "movies-measure", "movies")
   private val Hosted     = Set("ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04", "ubuntu-latest", "macos-latest")
   private val RunsOn     = """(?m)^\s+runs-on:\s*(\$\{\{.*}}|\S+)""".r
 
@@ -78,10 +78,28 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     RunnerLabel(line.findFirstMatchIn(yml(suite)).get.group(1), at)
   }
 
-  "a landing check" should "run every job on ci-runner's movies-check slots" in {
-    val check = labels("precommit-check.yml", ctx("refs/heads/check/x"))
+  /** A landing check's labels at `ref`, its plan job's `check-lane` output as the plan step writes it for that ref. */
+  private def landing(ref: String, vars: Map[String, String] = SelfHosted): Map[String, String] = {
+    val plan = RepoFile.jobs(yml("precommit-check.yml"))("plan")
+    withClue("the plan step names the lane by the branch: ") {
+      plan should include("""case "$GITHUB_REF" in refs/heads/check/red-*) lane=movies-check-red-fix ;; *) lane=movies-check ;; esac""")
+    }
+    val runner = if (ref.startsWith("refs/heads/check/red-")) "movies-check-red-fix" else "movies-check"
+    labels("precommit-check.yml", ctx(ref, vars).copy(outputs = Map("plan.check-lane" -> runner)))
+  }
+
+  "a landing check" should "run every job on ci-runner's movies-check slots, its plan on the light lane" in {
+    val check = landing("refs/heads/check/x")
     check should not be empty
-    all(check.values) shouldBe "movies-check"
+    check("plan") shouldBe "movies"
+    all(check.removed("plan").values) shouldBe "movies-check"
+  }
+
+  it should "run a gate-red fix's on the red-fix check lane, served first (runner_scheduler.py CHECK_LANES, 2026-11-17)" in {
+    val red = landing("refs/heads/check/red-20261117-110122-movies-x-2ed6cd")
+    red.removed("plan") should not be empty
+    all(red.removed("plan").values) shouldBe "movies-check-red-fix"
+    all(landing("refs/heads/check/red-x", vars = Map.empty).values) should startWith("ubuntu-")
   }
 
   "a measurement" should "run its convergence legs on movies-measure and the rest on ci-runner" in {

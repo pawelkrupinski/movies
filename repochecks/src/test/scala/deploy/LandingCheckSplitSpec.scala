@@ -79,7 +79,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     heavy should include("ROWS: ${{ matrix.rows }}")
     heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$ROWS\"")
     heavy should include("scripts/ci/start-mongo-replset.sh")
-    heavy should include("runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-22.04' }}")
+    heavy should include("runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-22.04' }}")
   }
 
   "the heavy rows" should "run Main's own commands" in {

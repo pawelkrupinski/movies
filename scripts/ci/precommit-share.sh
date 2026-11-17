@@ -10,7 +10,8 @@
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
 # fully checked on that older main, rebased onto one that moved with no file overlap; its range is `<that sha>..HEAD`,
-# what landed since and the change together), every other branch the change's own checks (--checks-only). The range is
+# what landed since and the change together), every other branch the change's own checks (--checks-only); a red- after
+# check/ (a gate-red fix's: check/red-fast-<id>, check/red-<id>) changes nothing here. The range is
 # otherwise the change since it left main (`<merge-base with origin/main>..HEAD`); origin/main is fetched before.
 #
 # `checks` is the hook's own selection (PREPUSH_LIST=1, scripts/hooks/pre-push), under the very environment `env` gives the
@@ -25,10 +26,12 @@ case "$what" in env|checks) ;; *) usage ;; esac
 case "$share" in rest|identity|oldrefs|page|heavy|plan) ;; *) usage ;; esac
 
 ref="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+# a gate-red fix's check is check/red-<the rest>: the prefix names the runner lane (precommit-check.yml), not the mode
+ref="${ref#check/}"; ref="${ref#red-}"
 mode=--checks-only
-case "$ref" in fast-*|check/fast-*) mode=--fast-only ;; verify-*|check/verify-*) mode=--verify-only ;; esac
+case "$ref" in fast-*) mode=--fast-only ;; verify-*) mode=--verify-only ;; esac
 if [ "$mode" = --verify-only ]; then
-    full="${ref#check/}"; full="${full#verify-}"; full="${full:0:40}"
+    full="${ref#verify-}"; full="${full:0:40}"
     git rev-parse --verify -q "$full^{commit}" > /dev/null || { echo "$0: $ref names no commit ($full)" >&2; exit 1; }
     range="$full..HEAD"
 else

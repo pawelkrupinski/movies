@@ -13,6 +13,9 @@ name: Pre-commit check
 # (infra nix/hosts/ci-runner/movies-runners.nix: one ephemeral hosted-Ubuntu container per job), so landing checks never
 # queue Main for GitHub Free's 20 hosted runners; unset, on GitHub's hosted runners as before -- the fallback while
 # ci-runner is down. (SelfHostedRunnersSpec)
+# A GATE-RED FIX'S CHECK (agentctl pushes it to check/red-<entry>) asks for movies-check-red-fix, the check lane ci-runner's
+# scheduler serves first (runner_scheduler.py CHECK_LANES), so its jobs never queue behind other landings' (2026-11-17:
+# a red fix still checking 41 min after it was queued).
 on:
     push:
         branches: ['check/**']
@@ -42,10 +45,14 @@ jobs:
     # PREPUSH_HEAVY_ROWS=1), for the jobs that run only when it names their share: the old refs, the page area and Main's
     # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`), and identity's three shards. A job the plan does not name is
     # skipped, never created: under load a created job waits for a slot even to do nothing. The rest starts beside it.
+    # It runs on the light lane (`movies`: its own slots, seconds, git and the hook's listing only), so the lane it names
+    # for the jobs after it is decided here, and a red fix's plan never queues behind other landings' checks.
     plan:
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 10
         outputs:
+            # the check lane every job after the plan asks for: a gate-red fix's (check/red-<id>) the one served first
+            check-lane: ${{ steps.plan.outputs.check-lane }}
             heavy: ${{ steps.plan.outputs.heavy }}
             heavy-groups: ${{ steps.plan.outputs.heavy-groups }}
             page: ${{ steps.plan.outputs.page }}
@@ -69,6 +76,8 @@ jobs:
             - name: What the change selects
               id: plan
               run: |
+                  case "$GITHUB_REF" in refs/heads/check/red-*) lane=movies-check-red-fix ;; *) lane=movies-check ;; esac
+                  echo "check-lane=$lane" >> "$GITHUB_OUTPUT"
                   checks=" $(scripts/ci/precommit-share.sh checks plan) "
                   echo "the change's checks:${checks% }"
                   rows="$(tr ' ' '\n' <<< "$checks" | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ *$//' || true)"
@@ -95,7 +104,7 @@ jobs:
     # refs beside them; `check (page)` the page area alone, after all of them.
     check:
         name: check (rest)
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (startsWith(github.ref, 'refs/heads/check/red-') && 'movies-check-red-fix' || 'movies-check') || 'ubuntu-26.04' }}
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
         # and the job 90, room for the failure steps after it
@@ -213,7 +222,7 @@ jobs:
         # to 20 min for a slot under load, to do nothing (precommit-check run 41403785550: 26 min wall, 10 runner-min)
         needs: [ plan ]
         if: ${{ needs.plan.outputs.identity == 'true' }}
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-26.04' }}
         timeout-minutes: 90
         strategy:
             fail-fast: false
@@ -334,7 +343,7 @@ jobs:
         name: check (oldrefs)
         needs: [ plan ]
         if: ${{ needs.plan.outputs.oldrefs == 'true' }}
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-26.04' }}
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
@@ -451,7 +460,7 @@ jobs:
         # a change the plan gives a page check: any other change no longer waits ~2 min at the end for a job with nothing to do.
         needs: [ plan, check, check-identity, check-oldrefs, heavy ]
         if: ${{ !cancelled() && needs.plan.outputs.page == 'true' && needs.check.result == 'success' && needs.check-identity.result != 'failure' && needs.check-identity.result != 'cancelled' && needs.check-oldrefs.result != 'failure' && needs.check-oldrefs.result != 'cancelled' && needs.heavy.result != 'failure' }}
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-26.04' }}
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
@@ -559,7 +568,7 @@ jobs:
         name: heavy rows (${{ matrix.rows }})
         needs: [ plan ]
         if: ${{ needs.plan.outputs.heavy != '' }}
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-22.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && needs.plan.outputs.check-lane || 'ubuntu-22.04' }}
         timeout-minutes: 90
         strategy:
             fail-fast: false

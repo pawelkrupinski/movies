@@ -47,6 +47,9 @@ check "...over what landed since its full check and the change, together" \
     "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...a branch naming no commit fails" "1" \
     "$( (cd "$repo" && GITHUB_REF_NAME="check/verify-$(printf '0%.0s' $(seq 40))-x" bash scripts/ci/precommit-share.sh env rest > /dev/null 2>&1); echo $?)"
+check "a gate-red fix's branch (check/red-...) names the runner lane only: the same mode and range" \
+    "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ')|$(REF=check/fast-ab12 share env rest | tr '\n' ' ')" \
+    "$(REF="check/red-verify-$full-x" share env rest | tr '\n' ' ')|$(REF=check/red-fast-ab12 share env rest | tr '\n' ' ')"
 g update-ref refs/remotes/origin/main "$full"
 change web/src/main/twirl/views/x.scala.html
 check "a page change: the page share" "page" "$(share checks page)"
