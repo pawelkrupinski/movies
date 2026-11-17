@@ -494,8 +494,13 @@ fi
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
   local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH
   case "$path" in *.py) interpreter=python3 ;; esac
-  # --floor: the floor's scope runs under the floor bash alone -- ONCE, not again natively beside it (FLOOR)
-  if grep -qxF "$path" "$work/floor.tests"; then interpreter=$floor_bash test_path="$work/floor-bin:$PATH"; fi
+  # --floor: the floor's scope runs under the floor bash alone -- ONCE, not again natively beside it (FLOOR). A Python
+  # self-test of a bash tool in that scope (identity_what_if_test.py, of identity-what-if, which sources scratch-git.sh)
+  # stays python3's, with the floor bash first on its PATH for the bash it runs: read by bash, it failed to parse.
+  if grep -qxF "$path" "$work/floor.tests"; then
+    test_path="$work/floor-bin:$PATH"
+    case "$path" in *.py) ;; *) interpreter=$floor_bash ;; esac
+  fi
   # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
   # (appended to, as the watch below appends its report: neither writes over the other)
   : > "$work/$i.log"

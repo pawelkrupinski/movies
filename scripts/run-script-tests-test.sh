@@ -325,6 +325,16 @@ check "...and a construct the floor lacks still fails the run" "1 1" \
 check "...--floor without --changed, or with --bash, is a usage error" "64 64" \
   "$(run --floor "$work/floor-bash") $(run --floor "$work/floor-bash" --bash "$work/floor-bash" --changed "$whichbase")"
 scratch_git "$tree" checkout -q -- scripts/fl
+put scripts/fl/pylib.sh 'echo pylib'
+put scripts/fl/pytool "$(printf '%s\n' '#!/usr/bin/env bash' '. "$(dirname "$0")/pylib.sh"')"
+put scripts/fl/pytool_test.py "$(printf '%s\n' 'import shutil, subprocess' 'subprocess.run(["bash", "-c", "echo py $(command -v bash) >> \"$WHICH_BASH\""], check=True)')"
+scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'a bash tool with a Python self-test'
+pybase="$(scratch_git "$tree" rev-parse HEAD)"
+echo 'echo edited' >> "$tree/scripts/fl/pylib.sh"; : > "$WHICH_BASH"
+code="$(run --floor "$work/floor-bash" --changed "$pybase")"
+check "...a Python self-test in the floor's scope runs under python3, the floor bash first on its PATH" "0 1 1" \
+  "$code $(grep -c '^PASS .*fl/pytool_test.py (floor)$' "$work/out") $(grep -c '^py .*floor-bin/bash$' "$WHICH_BASH")"
+scratch_git "$tree" checkout -q -- scripts/fl
 rm -rf "$tree/scripts/fl"; scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'floor done'
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"
