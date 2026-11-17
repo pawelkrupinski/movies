@@ -71,25 +71,6 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("nonexistent") shouldBe empty
   }
 
-  "urlFromTags" should "extract the venue source page from the url: tag, ignoring other tags" in {
-    UptimeMonitor.urlFromTags(Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/cinema/-1714")) shouldBe
-      Some("https://www.filmweb.pl/cinema/-1714")
-    UptimeMonitor.urlFromTags(Set("custom:RialtoClient")) shouldBe None
-    UptimeMonitor.urlFromTags(Set.empty) shouldBe None
-  }
-
-  "cinemaUrls" should "map every service carrying a url: tag to its URL, skipping the rest" in {
-    val snapshot = Map(
-      "DKF Rumcajs"              -> Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/cinema/-1714"),
-      "Multikino Stary Browar"  -> Set("shared:MultikinoClient"),
-      "Kino Rialto"             -> Set("custom:RialtoClient", "url:https://www.kinorialto.poznan.pl"),
-    )
-    UptimeMonitor.cinemaUrls(snapshot) shouldBe Map(
-      "DKF Rumcajs" -> "https://www.filmweb.pl/cinema/-1714",
-      "Kino Rialto" -> "https://www.kinorialto.poznan.pl",
-    )
-  }
-
   "average latency" should "be the mean of timed successful calls (1h and total)" in {
     val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB", 100L)
@@ -355,7 +336,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // is made from the in-memory map, so it is testable without a database, and that is the
   // whole point — the guard needs no read.
   "tagService" should "write only when the tags actually changed" in {
-    val monitor = new UptimeMonitor(surfaceExternalWrites = false, clock = specClock)
+    val monitor = new UptimeMonitor(tier = UptimeTier.Owner, clock = specClock)
     withClue("a service this process has never tagged must be written — that first write " +
              "is what reconciles a tag changed while the process was down: ") {
       monitor.tagService("Kino Nowe", Set("custom:NoweClient")) shouldBe true
@@ -383,7 +364,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // stay at 10s.
   "the tag reload" should "run on its own slow cadence, not the 10s bucket poll" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor(surfaceExternalWrites = true, clock = specClock)
+    val monitor = new UptimeMonitor(tier = UptimeTier.Surfacing(), clock = specClock)
     val schedule = monitor.backgroundSchedule(Some(collection), Some(collection))
 
     val tagJob  = schedule.find(_.name == "reload-tags").getOrElse(fail("no tag-reload job scheduled"))
@@ -397,7 +378,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
 
   "the reader's poll and tag reload" should "not complete a run whose read failed" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor(surfaceExternalWrites = true, clock = specClock)
+    val monitor = new UptimeMonitor(tier = UptimeTier.Surfacing(), clock = specClock)
     val runs = monitor.backgroundSchedule(Some(collection), Some(collection))
       .filter(job => job.name == "poll-buckets" || job.name == "reload-tags")
     runs.map(job => job.name -> job.task()) shouldBe Seq("poll-buckets" -> tools.TickRun.Incomplete, "reload-tags" -> tools.TickRun.Incomplete)
@@ -405,13 +386,13 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
 
   it should "schedule the interval it was constructed with" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor(surfaceExternalWrites = true, tagReloadIntervalMs = 1234L, clock = specClock)
+    val monitor = new UptimeMonitor(tier = UptimeTier.Surfacing(tagReloadIntervalMs = 1234L), clock = specClock)
 
     monitor.backgroundSchedule(Some(collection), Some(collection))
       .find(_.name == "reload-tags").map(_.periodMs) shouldBe Some(1234L)
   }
 
-  // The worker (surfaceExternalWrites = false) only writes — nothing reads its
+  // The worker (UptimeTier.Owner) only writes — nothing reads its
   // map — so it must schedule neither the bucket poll nor the tag reload.
   it should "not be scheduled at all on the writer (worker) side" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")

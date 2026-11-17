@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import services.UptimeMonitor
+import services.ServiceTags
 
 /**
  * Derives, for every cinema, a marker describing the scraper client behind it:
@@ -37,8 +37,8 @@ object CinemaClientMarkers {
       // The venue's public source page (`url:<https…>`); the /uptime + /debug
       // pages turn the cinema name into a link to it. Not a chip — the page
       // reads it for the `href` and skips it in the chip row. Prefix shared
-      // with the reader via `UptimeMonitor.UrlTagPrefix`.
-      sourceUrl.map(u => UptimeMonitor.UrlTagPrefix + u) ++
+      // with the reader via `ServiceTags.UrlTagPrefix`.
+      sourceUrl.map(u => ServiceTags.UrlTagPrefix + u) ++
       (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
   /** The raw scraper's client class as the marker label. For the multi-venue

@@ -14,13 +14,10 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * @parameter surfaceExternalWrites when true, after hydrating from Mongo this
- *        instance POLLS `uptimeBuckets` every `PollIntervalMs` and merges the
- *        current snapshot — including buckets written by OTHER processes — into
- *        its in-memory map, firing listeners for the ones that changed so the
- *        live /uptime SSE reflects them. The web (serving) process sets this so
- *        it surfaces the worker's scraper + enrichment metrics; the worker
- *        leaves it off — nothing reads its map.
+ * The in-memory 15-minute buckets behind /uptime, persisted to `uptimeBuckets`: the one
+ * implementation of both [[UptimeRecorder]] (what writers need) and [[UptimeHistory]] (what the
+ * pages read). Its [[UptimeTier]] says which side of the shared collection this process is on —
+ * the worker owns it and only writes, the serving app also polls what other processes wrote.
  *
  * Both ends are BOUNDED, decoupled from the scraper fetch rate:
  *  - WRITES are batched: `recordSuccess`/`recordFailure` only mutate the
@@ -39,30 +36,20 @@ import scala.util.Try
  */
 class UptimeMonitor(
   db: Option[MongoDatabase] = None,
-  surfaceExternalWrites: Boolean = false,
-  tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs,
+  tier: UptimeTier = UptimeTier.Owner,
   // What "now" is for bucketing and the averaging windows; a spec pins it.
   clock: java.time.Clock,
+  // service → (bucket timestamp → bucket): the in-memory state the recorder writes, the history
+  // reads and the `UptimeSync` merges other processes' buckets into.
+  bucketStore: UptimeMonitor.BucketStore = new UptimeMonitor.BucketStore(),
   // Where a bucket TTL index this monitor could not bring into line is recorded — the
   // worker passes its process's one set, which its gauge reads.
   ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches,
   // Where each completed flush / poll / tag reload is reported (`ScheduledTickStale`).
   ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
-) extends Logging {
+) extends UptimeRecorder with UptimeHistory with Logging {
   import UptimeMonitor._
 
-  /** Whether this process may REBUILD the bucket TTL index, or only create it when absent.
-   *
-   *  DERIVED, NOT PASSED. `surfaceExternalWrites` already says which tier this is — the
-   *  serving app sets it, the worker leaves it off — and a second boolean at the call site is
-   *  one a future wiring can silently forget, with nothing failing. Both tiers write
-   *  `uptimeBuckets` and both authenticate as the app's Mongo user, so the serving app is perfectly
-   *  able to drop an index the worker depends on. It has nothing to gain by doing so: both
-   *  compute the expiry from the same constant, so a disagreement the reader can see is one
-   *  the owner sees too, rebuilds, and reports if it cannot. */
-  private val ownsIndexes: Boolean = !surfaceExternalWrites
-
-  private val data = new BucketStore()
   // Bucket writes that failed since the last flush reported them, synchronously or in their subscriber.
   private val failedWrites = new AtomicInteger
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
@@ -73,7 +60,7 @@ class UptimeMonitor(
   // The cross-process reads (boot hydrate + serving-app poll) share this
   // process's bucket map and listener fan-out; see `UptimeSync`. Package-private
   // so a spec can seed buckets the way a polled worker write would.
-  private[services] val sync = new UptimeSync(data, notifyListeners, clock)
+  private[services] val sync = new UptimeSync(bucketStore, notifyListeners, clock)
   // Per-service labels ride their own collection; see `ServiceTags`.
   private val serviceTags = new ServiceTags(tagColl)
 
@@ -103,8 +90,7 @@ class UptimeMonitor(
         exec.scheduleWithFixedDelay(() => tools.ScheduledTick.recorded(tick, period, logger, ticks)(job.task()),
           job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
       }
-      if (surfaceExternalWrites)
-        logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s, reloading uptimeServiceTags every ${tagReloadIntervalMs / 1000}s for cross-process updates.")
+      tier.startupNote.foreach(note => logger.info(note))
     }, "uptime-monitor-init")
     thread.setDaemon(true)
     thread.start()
@@ -117,12 +103,14 @@ class UptimeMonitor(
    *  no-op. The compound index keeps its own `Try` so a TTL that cannot be
    *  reconciled can't skip it.
    *
-   *  `reconcile` only when this process OWNS the collection — see `ownsIndexes`. The
+   *  `reconcile` only when this process OWNS the collection — see [[UptimeTier]]. The
    *  serving app shares `uptimeBuckets` with the worker and gets `ensure`, which creates
    *  the index when absent and otherwise reports rather than rebuilding. */
   private def ensureIndexes(c: MongoCollection[Document]): Unit = {
-    if (ownsIndexes) MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor", ttlMismatches)
-    else             MongoTtlIndex.ensure(c, "bucket", BucketTtlSeconds, "UptimeMonitor (read tier)")
+    tier match {
+      case UptimeTier.Owner        => MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor", ttlMismatches)
+      case UptimeTier.Surfacing(_) => MongoTtlIndex.ensure(c, "bucket", BucketTtlSeconds, "UptimeMonitor (read tier)")
+    }
 
     Try {
       Await.result(c.createIndex(
@@ -133,25 +121,13 @@ class UptimeMonitor(
 
   /** The recurring background work this monitor runs once hydrate lands, as data
    *  so the CADENCES are assertable without a scheduler or a Mongo round-trip.
-   *  The writer side always flushes; the reader side (serving app) additionally
-   *  polls the buckets and re-reads the tags — each on its OWN period, because
-   *  the two reads cost wildly different amounts (see `TagReloadIntervalMs`). */
+   *  Every tier flushes; the [[UptimeTier]] adds its read jobs. */
   private[services] def backgroundSchedule(
     bucketCollection: Option[MongoCollection[Document]],
     tagCollection: Option[MongoCollection[Document]]
   ): Seq[ScheduledJob] = {
     val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => flush(c)))
-    val readerJobs =
-      if (!surfaceExternalWrites) Seq.empty
-      else Seq(
-        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => sync.poll(c))),
-        // Re-read the tag collection so a cinema tagged by the worker after this
-        // app booted still surfaces — but on its OWN, far slower period. The read
-        // is unfiltered and the collection is no longer small (see
-        // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
-        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => serviceTags.load(tc))),
-      ).flatten
-    flushJob.toSeq ++ readerJobs
+    flushJob.toSeq ++ tier.readerJobs(bucketCollection, tagCollection, sync, serviceTags)
   }
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
@@ -159,21 +135,10 @@ class UptimeMonitor(
 
   def recordSuccess(service: String): Unit = countSuccess(service, None, fallback = false, thin = false)
 
-  /** Record a successful call along with how long it took, so the uptime page
-   *  can show per-service average latency (1h + total). For a cinema scrape,
-   *  `thin` says the listing held screenings but none in the near term (see
-   *  `NearTermProgramme` in the worker): still a success, so the bar stays green,
-   *  but /uptime marks it — a feed that stopped carrying a venue's programme can
-   *  keep a stray far-off slot and never go white. */
-  def recordSuccess(service: String, durationMs: Long, thin: Boolean = false): Unit =
+  def recordSuccess(service: String, durationMs: Long, thin: Boolean): Unit =
     countSuccess(service, Some(durationMs), fallback = false, thin)
 
-  /** Record a success that was served via the Filmweb fallback — the primary
-   *  scrape failed or came back empty, so the showtimes came from Filmweb. Counts
-   *  as a success (the user got data) but also marks the bucket `fallback`, so the
-   *  /uptime bar can show "served via Filmweb" rather than a plain green. `thin`
-   *  as for [[recordSuccess]], judged on what the fallback served. */
-  def recordFallbackSuccess(service: String, durationMs: Long, thin: Boolean = false): Unit =
+  def recordFallbackSuccess(service: String, durationMs: Long, thin: Boolean): Unit =
     countSuccess(service, Some(durationMs), fallback = true, thin)
 
   private def countSuccess(service: String, durationMs: Option[Long], fallback: Boolean, thin: Boolean): Unit = {
@@ -189,12 +154,6 @@ class UptimeMonitor(
     notifyListeners(service, bucket)
   }
 
-  /** Record a call that completed without error but came back empty-handed —
-   *  for a cinema scrape, the page loaded and parsed yet yielded zero
-   *  screenings. That's neither a success (we got no data) nor a failure (the
-   *  upstream didn't error), so it gets its own dimension and surfaces as a
-   *  white "no screenings" bar. The round-trip was real, so its latency still
-   *  counts toward the average. */
   def recordEmpty(service: String, durationMs: Long): Unit = {
     val bucket = currentBucket(service)
     bucket.zeroes.incrementAndGet()
@@ -204,16 +163,12 @@ class UptimeMonitor(
     notifyListeners(service, bucket)
   }
 
-  /** Average duration (ms) of timed successful calls for `service` within the
-   *  last hour, or None when nothing was timed in that window. */
   def averageMs1h(service: String): Option[Long] = averageMs(service, Some(60 * 60 * 1000L))
 
-  /** Average duration (ms) of timed successful calls for `service` across all
-   *  retained buckets (up to the 24h Mongo TTL), or None when none were timed. */
   def averageMsTotal(service: String): Option[Long] = averageMs(service, None)
 
   private def averageMs(service: String, windowMs: Option[Long]): Option[Long] = {
-    val buckets = data.get(service)
+    val buckets = bucketStore.get(service)
     if (buckets == null) None
     else {
       val relevant = windowMs match {
@@ -236,21 +191,13 @@ class UptimeMonitor(
   }
 
   def history(service: String): Seq[BucketSnapshot] = {
-    val buckets = data.get(service)
+    val buckets = bucketStore.get(service)
     if (buckets == null) Seq.empty
     else buckets.values().asScala.toSeq.map(_.snapshot)
   }
 
-  /** The status keywords of the most recent `limit` buckets that recorded any
-   *  activity, oldest→newest. This is everything a row's TRIAGE classification
-   *  needs, and it deliberately does not build the row's bar series: the US
-   *  registers one service per venue (5,031), so materialising all 96 slots for
-   *  every service just to decide which few are red is ~484k objects — enough to
-   *  OOM-kill the web pod, which is what it did on 2026-08-31. A green bucket
-   *  whose success was `thin` reads as "thin" here, so the classifier can pull a
-   *  run of them into their own section. */
   def recentStatuses(service: String, limit: Int): Seq[String] = {
-    val buckets = data.get(service)
+    val buckets = bucketStore.get(service)
     if (buckets == null) Seq.empty
     else {
       val out = List.newBuilder[String]
@@ -265,16 +212,8 @@ class UptimeMonitor(
     }
   }
 
-  /** The error strings recorded by the most recent `limit` buckets that saw any
-   *  activity — the same window [[recentStatuses]] classifies, so the two describe
-   *  the same buckets. Cheap for the same reason: it walks the bucket map from the
-   *  newest end and never materialises a row's 96 slots.
-   *
-   *  What it is FOR: telling a venue that is broken apart from one that no longer
-   *  exists. Both are red, and only the error text separates them (see
-   *  [[services.scrapes.GoneUpstream]]). */
   def recentErrors(service: String, limit: Int): Seq[String] = {
-    val buckets = data.get(service)
+    val buckets = bucketStore.get(service)
     if (buckets == null) Seq.empty
     else {
       val out = List.newBuilder[String]
@@ -315,7 +254,7 @@ class UptimeMonitor(
    *  the window still appear, at zero — a gauge that vanishes when a service goes
    *  quiet reads as "no data" to an alert that needs to see the zero. */
   def recentTotals(cutoff: Long): Seq[(String, RecentTotals)] =
-    data.entrySet().asScala.toSeq.map { entry =>
+    bucketStore.entrySet().asScala.toSeq.map { entry =>
       var successes = 0
       var failures  = 0
       var zeroes    = 0
@@ -329,21 +268,17 @@ class UptimeMonitor(
       entry.getKey -> RecentTotals(successes, failures, zeroes)
     }
 
-  def services: Set[String] = data.keySet().asScala.toSet
+  def services: Set[String] = bucketStore.keySet().asScala.toSet
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────
 
-  /** Attach `tags` to `service`, replacing any existing set; returns whether a
-   *  Mongo write was made. The rules — and why a no-op set must NOT write — are
-   *  on [[ServiceTags.tagService]]. */
   def tagService(service: String, tags: Set[String]): Boolean = serviceTags.tagService(service, tags)
 
-  /** Current per-service tags, for the page render. */
   def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.snapshot()
 
   private def currentBucket(service: String): Bucket = {
     val timestamp = bucketTimestamp(clock.millis())
-    val buckets = bucketsOf(data, service)
+    val buckets = bucketsOf(bucketStore, service)
     val bucket = bucketAt(buckets, timestamp)
     dropExpired(buckets, timestamp)
     bucket
@@ -359,7 +294,7 @@ class UptimeMonitor(
    *  without a Mongo round-trip. */
   private[services] def drainDirty(): Seq[BucketWrite] = {
     val out = Vector.newBuilder[BucketWrite]
-    data.forEach { (service, buckets) =>
+    bucketStore.forEach { (service, buckets) =>
       buckets.values().forEach { b =>
         if (b.dirty.getAndSet(false))
           out += BucketWrite(service, b.timestamp,
@@ -478,8 +413,8 @@ object UptimeMonitor {
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 
   /** service → (bucket timestamp → bucket): the in-memory state every cluster
-   *  reads or writes. One instance per monitor, shared by reference with the
-   *  [[UptimeSync]] that merges other processes' buckets into it. */
+   *  reads or writes. One instance per monitor (the composition root passes it), shared by
+   *  reference with the [[UptimeSync]] that merges other processes' buckets into it. */
   type BucketStore = ConcurrentHashMap[String, ConcurrentSkipListMap[Long, Bucket]]
 
   private[services] def bucketsOf(store: BucketStore, service: String): ConcurrentSkipListMap[Long, Bucket] =
@@ -491,28 +426,6 @@ object UptimeMonitor {
   /** Forget the slots that fell out of the retained window as of `timestamp`. */
   private[services] def dropExpired(buckets: ConcurrentSkipListMap[Long, Bucket], timestamp: Long): Unit =
     buckets.headMap(timestamp - MaxBuckets * BucketDurationMs).clear()
-
-  // The venue's public source-page URL travels as a `"url:<https…>"` service
-  // tag (written by the worker's `CinemaClientMarkers`). Both /uptime and /debug
-  // turn a cinema name into a link to it, so the parse lives here — one prefix,
-  // one extractor — rather than re-spelt at each render site.
-  val UrlTagPrefix: String = "url:"
-  def urlFromTags(tags: Set[String]): Option[String] =
-    tags.find(_.startsWith(UrlTagPrefix)).map(_.drop(UrlTagPrefix.length))
-
-  /** `service name -> public source-page URL` for every tagged service carrying
-   *  a `url:` tag, derived from a `serviceTagsSnapshot()`. The cinema pages look
-   *  the URL up by `cinema.displayName`. */
-  def cinemaUrls(tagsSnapshot: Map[String, Set[String]]): Map[String, String] =
-    tagsSnapshot.flatMap { case (name, tags) => urlFromTags(tags).map(name -> _) }
-
-  // Per-cinema detail-enrichment health is recorded under a synthetic
-  // "<cinema displayName>|enrichment" service, distinct from the scrape service
-  // (the bare cinema name). The `/uptime` page parses the suffix to render the
-  // enrichment bar grouped under its cinema rather than as a standalone row.
-  val EnrichmentSuffix: String = "|enrichment"
-  def enrichmentService(cinemaDisplayName: String): String = cinemaDisplayName + EnrichmentSuffix
-  def isEnrichmentService(service: String): Boolean = service.endsWith(EnrichmentSuffix)
 
   /** One recurring background job: what it is, how often it runs, and the work.
    *  Exists so the cadences are inspectable data rather than arguments buried in

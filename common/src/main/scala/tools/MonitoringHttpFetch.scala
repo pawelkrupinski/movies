@@ -1,6 +1,6 @@
 package tools
 
-import services.UptimeMonitor
+import services.UptimeRecorder
 
 import java.io.IOException
 import java.net.URI
@@ -23,7 +23,7 @@ import java.util.concurrent.CompletableFuture
  */
 class MonitoringHttpFetch(
   delegate: HttpFetch,
-  monitor: UptimeMonitor,
+  monitor: UptimeRecorder,
   cinemaHosts: => Set[String] = Set.empty
 ) extends ForwardingHttpFetch {
 

@@ -6,7 +6,7 @@ import modules.wiring.{AlertingWiring, ChunkScrapeWiring, ClosureWiring, CorpusW
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
-import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor}
+import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor, UptimeTier}
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
 import services.metrics.WorkerMetrics
 import services.tasks.{CostSpacedPhaseOffset, DueWindow, ScrapeCadence, VenueCadenceStore}
@@ -86,8 +86,8 @@ class WorkerWiring(
       WorkerMetrics.singleCountry(country, workerPoolSize, threadPools))
   /** Where this country's periodic loops report each completed run (`ScheduledTickStale`). */
   lazy val ticks: tools.TickRecorder = workerMetrics.scheduledTicks.forCountry(country.code, clock)
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
-    ttlMismatches = workerMetrics.ttlIndexMismatches, ticks = ticks)
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, tier = UptimeTier.Owner, clock = clock,
+    bucketStore = new UptimeMonitor.BucketStore(), ttlMismatches = workerMetrics.ttlIndexMismatches, ticks = ticks)
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country

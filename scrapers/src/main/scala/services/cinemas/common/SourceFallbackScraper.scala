@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import models.CinemaMovie
-import services.UptimeMonitor
+import services.UptimeRecorder
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
 import services.scrapes.SeparateRuns
 
@@ -87,7 +87,7 @@ class SourceFallbackScraper(
   fallback:        () => Option[CinemaScraper],
   fallbackName:    String,
   fallbackRef:     () => Option[String],
-  monitor:         UptimeMonitor,
+  monitor:         UptimeRecorder,
   store:           FallbackStore,
   now:             () => Instant,
   baseBackoff:     FiniteDuration = SourceFallbackScraper.DefaultBaseBackoff,

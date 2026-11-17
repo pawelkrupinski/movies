@@ -239,8 +239,8 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   /** THE WIRING RULE, not just the helper. `MongoTtlIndex.ensure` behaving well is worth
    *  nothing if the serving app never calls it, and a flag at a call site is one a future
-   *  wiring can drop without any test noticing. `UptimeMonitor` derives it from
-   *  `surfaceExternalWrites`, which is what `web.modules.Wiring` sets — so constructing one
+   *  wiring can drop without any test noticing. `UptimeMonitor` takes it from its
+   *  `UptimeTier`, and `web.modules.Wiring` passes `UptimeTier.Surfacing` — so constructing one
    *  the way that wiring does is the assertion. */
   it should "not rebuild the bucket index from a monitor wired the way the serving app wires it" in {
     val buckets = database.getCollection[Document]("uptimeBuckets")
@@ -251,7 +251,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
     ).toFuture(), SpecTimeouts.Io)
     forget()
-    val monitor = new UptimeMonitor(Some(database), surfaceExternalWrites = true, clock = _root_.tools.MongoTtlSpecClock.Pinned)
+    val monitor = new UptimeMonitor(Some(database), tier = services.UptimeTier.Surfacing(), clock = _root_.tools.MongoTtlSpecClock.Pinned)
     try {
       // The index work runs on a daemon thread, so give it room to have done the wrong thing.
       eventually(timeout(SpecTimeouts.Settle), interval(Span(150, Millis))) {

@@ -3,7 +3,7 @@ package modules.webwiring
 import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, SnapshotStore}
 import modules.Wiring
 import play.api.Mode
-import services.{MongoConnection, UptimeMonitor}
+import services.{MongoConnection, ServiceTags}
 import services.movies.MongoMovieRepository
 import services.readmodel.MongoReadModelRepository
 
@@ -160,7 +160,7 @@ trait DebugWiring { self: Wiring =>
       new services.MongoMirrorFreshness(Some(client.getDatabase(db)))))
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
-    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
+    cinemaSourceUrls = () => ServiceTags.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
     servingCountry = country, readModels = debugReadModels, clock = clock) }
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` via the same per-country stacks the /debug page

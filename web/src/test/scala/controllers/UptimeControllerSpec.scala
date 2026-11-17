@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
-import services.UptimeMonitor
+import services.{EnrichmentUptimeService, UptimeMonitor}
 import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 
 import java.time.Instant
@@ -30,8 +30,10 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   private val fallbackStore = new InMemoryFallbackStore
   private val closures      = new services.closure.InMemoryClosureLedger
-  private def controllerFor(country: models.Country) =
-    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, closures, country, clock = _root_.tools.SpecClock.Pinned)
+  private def controllerFor(country: models.Country) = {
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new ImageLoadBeacon(monitor), fallbackStore, closures, country, clock = _root_.tools.SpecClock.Pinned)
+  }
   private val controller = controllerFor(models.Country.Poland)
   private val triage     = new UptimeTriage(models.Country.Poland)
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
@@ -102,7 +104,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   "groupRows" should "attach a cinema's |enrichment service as a sub-row, never in Other" in {
-    val enrich = UptimeMonitor.enrichmentService(cinema)
+    val enrich = EnrichmentUptimeService.forCinema(cinema)
     val active = Set(cinema, enrich, "Some Other Service")
 
     val sections = triage.groupRows(active, noStatuses, noErrors, fakeRow)
@@ -229,7 +231,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   it should "promote a cinema whose enrichment sub-row is failing, keeping the pair together" in {
-    val enrich = UptimeMonitor.enrichmentService(cinema)
+    val enrich = EnrichmentUptimeService.forCinema(cinema)
     val statuses = statusesFrom(Map(cinema -> Seq("green", "green", "green"), enrich -> Seq("red", "red", "red")))
     val sections = triage.groupRows(Set(cinema, enrich), statuses, noErrors, fakeRow)
     val failing = sections.failing
@@ -374,7 +376,8 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "403 a logged-in user whose email is not on the allowlist" in {
     val outsider = new UptimeController(Helpers.stubControllerComponents(),
-      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+      new ImageLoadBeacon(new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)), fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     status(outsider.index(adminSession)) shouldBe FORBIDDEN
   }
 
@@ -401,7 +404,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   private def imgController = {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
-    (new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
+    (new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new ImageLoadBeacon(monitor),
       fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), monitor)
   }
 
@@ -459,7 +462,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "stop an anonymous caller growing the monitor a row at a time" in {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
-    val ctl = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
+    val ctl = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new ImageLoadBeacon(monitor),
       fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     // The host is client-controlled and becomes a KEY — one bucket map and one
     // Mongo document per distinct value. Past the cap they all share a row.
@@ -600,7 +603,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // together, and a live enrichment failure is worth acting on even though the
   // venue's own page is gone.
   it should "go back to failing when its enrichment is failing too" in {
-    val enrichment = UptimeMonitor.enrichmentService(cinema)
+    val enrichment = EnrichmentUptimeService.forCinema(cinema)
     val sections = triage.groupRows(Set(cinema, enrichment),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"), enrichment -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(NotFound, NotFound))), fakeRow)

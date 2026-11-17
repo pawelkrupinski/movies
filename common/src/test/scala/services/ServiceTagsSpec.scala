@@ -16,4 +16,23 @@ class ServiceTagsSpec extends AnyFlatSpec with Matchers {
 
     tags.snapshot() shouldBe Map("Kino Rialto" -> Set("shared:HeliosClient"))
   }
+
+  "urlFromTags" should "extract the venue source page from the url: tag, ignoring other tags" in {
+    ServiceTags.urlFromTags(Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/cinema/-1714")) shouldBe
+      Some("https://www.filmweb.pl/cinema/-1714")
+    ServiceTags.urlFromTags(Set("custom:RialtoClient")) shouldBe None
+    ServiceTags.urlFromTags(Set.empty) shouldBe None
+  }
+
+  "cinemaUrls" should "map every service carrying a url: tag to its URL, skipping the rest" in {
+    val snapshot = Map(
+      "DKF Rumcajs"              -> Set("shared:FilmwebShowtimesClient", "url:https://www.filmweb.pl/cinema/-1714"),
+      "Multikino Stary Browar"  -> Set("shared:MultikinoClient"),
+      "Kino Rialto"             -> Set("custom:RialtoClient", "url:https://www.kinorialto.poznan.pl"),
+    )
+    ServiceTags.cinemaUrls(snapshot) shouldBe Map(
+      "DKF Rumcajs" -> "https://www.filmweb.pl/cinema/-1714",
+      "Kino Rialto" -> "https://www.kinorialto.poznan.pl",
+    )
+  }
 }

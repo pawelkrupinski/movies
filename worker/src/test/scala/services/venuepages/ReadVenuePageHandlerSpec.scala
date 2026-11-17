@@ -3,7 +3,7 @@ package services.venuepages
 import models.KinoApollo
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.UptimeMonitor
+import services.{EnrichmentUptimeService, UptimeMonitor}
 import services.cinemas.FakeDetailEnricher
 import services.cinemas.common.FilmDetail
 import services.events.{RecordingEventBus, VenueDetailRead}
@@ -34,7 +34,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     store.get(VenuePageKey("kino-apollo", Page)).map(_.outcome) shouldBe Some(VenuePage.Read(Detail))
     freshness.isFresh(EnrichDetailsTasks.pageRead("kino-apollo", Page), FreshnessKind.DetailEnrich, clock.instant()) shouldBe true
     bus.published should contain (VenueDetailRead("kino-apollo", Page))
-    uptime.history(UptimeMonitor.enrichmentService(KinoApollo.displayName)).map(_.successes).sum shouldBe 1
+    uptime.history(EnrichmentUptimeService.forCinema(KinoApollo.displayName)).map(_.successes).sum shouldBe 1
   }
 
   it should "leave a page that failed for now unread, and record the failure" in {
@@ -44,7 +44,7 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     new ReadVenuePageHandler(Map("kino-apollo" -> enricher), new VenuePageReader(store, new InMemoryFreshnessStore, _ => (), clock), uptime, new InMemoryFreshnessStore, clock)
       .handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
     store.get(VenuePageKey("kino-apollo", Page)) shouldBe None
-    uptime.history(UptimeMonitor.enrichmentService(KinoApollo.displayName)).map(_.failures).sum shouldBe 1
+    uptime.history(EnrichmentUptimeService.forCinema(KinoApollo.displayName)).map(_.failures).sum shouldBe 1
   }
 
   it should "ask again for a page venue_pages did not take, neither stamping it tried nor announcing it" in {

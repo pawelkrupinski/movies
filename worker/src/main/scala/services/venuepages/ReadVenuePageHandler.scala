@@ -1,7 +1,7 @@
 package services.venuepages
 
 import play.api.Logging
-import services.UptimeMonitor
+import services.UptimeRecorder
 import services.cinemas.common.DetailEnricher
 import services.tasks.{EnqueueResult, EnrichDetailsTasks, HandlerOutcome, Task, TaskHandler, TaskProducer, TaskType}
 
@@ -20,7 +20,7 @@ object ReadVenuePageTasks {
 /** Reads one venue page into venue_pages (`VenuePageReader`) and records it on /uptime. A page that
  *  failed for now is left unread: the listing waiting for it is taken in at its wait's limit. One the
  *  store did not take is asked again. */
-final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeMonitor,
+final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeRecorder,
                                  freshness: services.freshness.FreshnessStore, clock: java.time.Clock)
     extends TaskHandler with Logging {
 

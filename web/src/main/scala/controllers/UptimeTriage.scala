@@ -1,7 +1,7 @@
 package controllers
 
 import models.Cinema
-import services.UptimeMonitor
+import services.EnrichmentUptimeService
 
 /** Which section of the /uptime page each monitored service lands in — the triage
  *  verdicts (failing, gone upstream, no screenings, thin) and the healthy homes
@@ -93,7 +93,7 @@ final class UptimeTriage(country: models.Country) {
                                errorsOf: String => Seq[String], row: String => ServiceRow) {
 
     private def cinemaRow(displayName: String): ServiceRow = {
-      val enrichService = UptimeMonitor.enrichmentService(displayName)
+      val enrichService = EnrichmentUptimeService.forCinema(displayName)
       row(displayName).copy(enrichment = Option.when(active.contains(enrichService))(row(enrichService)))
     }
 
@@ -101,7 +101,7 @@ final class UptimeTriage(country: models.Country) {
     // A cinema unit is the WORST of its scrape row and its enrichment sub-row, so
     // a failing enrichment surfaces the cinema too (keeping the pair together).
     private def cinemaHealthOf(displayName: String): Health = {
-      val enrichService = UptimeMonitor.enrichmentService(displayName)
+      val enrichService = EnrichmentUptimeService.forCinema(displayName)
       val enrichHealth =
         if (active.contains(enrichService)) verdict(enrichService) else Healthy
       worse(verdict(displayName), enrichHealth)
@@ -123,7 +123,7 @@ final class UptimeTriage(country: models.Country) {
     private val serviceVerdicts = enrichmentNames.filter(active.contains).map(n => n -> verdict(n))
     // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
     private val otherVerdicts = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
-      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(n => n -> verdict(n))
+      .filterNot(EnrichmentUptimeService.matches).toSeq.sorted.map(n => n -> verdict(n))
 
     // Flat triage sections, in the order cinemas → enrichment services → other,
     // each carrying the city it belongs to (None for non-cinema rows).

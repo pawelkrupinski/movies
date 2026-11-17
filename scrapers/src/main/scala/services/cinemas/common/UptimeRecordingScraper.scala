@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import models.CinemaMovie
-import services.UptimeMonitor
+import services.UptimeRecorder
 
 import java.time.Clock
 import scala.util.control.NonFatal
@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
  */
 class UptimeRecordingScraper(
   delegate: CinemaScraper,
-  monitor:  UptimeMonitor,
+  monitor:  UptimeRecorder,
   listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp,
   clock:    Clock
 ) extends DelegatingCinemaScraper(delegate) {

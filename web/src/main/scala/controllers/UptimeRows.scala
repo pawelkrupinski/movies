@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.{JsString, Json, Writes}
-import services.UptimeMonitor
+import services.ServiceTags
 
 case class BarData(
   service: String,
@@ -162,5 +162,5 @@ case class ServiceRow(
 ) {
   /** The venue's public source-page URL, parsed out of the `url:` tag — the
    *  href the name links to. Same extractor /debug uses (one source of truth). */
-  def url: Option[WebHref] = UptimeMonitor.urlFromTags(tags).flatMap(WebHref.of)
+  def url: Option[WebHref] = ServiceTags.urlFromTags(tags).flatMap(WebHref.of)
 }

@@ -4,7 +4,7 @@ import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc._
-import services.UptimeMonitor
+import services.{UptimeHistory, UptimeMonitor}
 import services.UptimeMonitor._
 import services.fallback.{FallbackState, FallbackStore}
 
@@ -14,14 +14,13 @@ import java.util.Locale
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore,
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeHistory,
+                       // Where an `imgEvent` beacon's records go — see the endpoint's own comment for why it is anonymous at all.
+                       imageLoads: ImageLoadBeacon, filmwebFallback: FallbackStore,
                        closures: services.closure.ClosureLedgerReader, country: models.Country, clock: java.time.Clock)(using mat: Materializer) extends AbstractController(cc) {
 
   // Which section each service lands in, for this deployment's roster.
   private val triage = new UptimeTriage(country)
-
-  // Where an `imgEvent` beacon's records go — see the endpoint's own comment for why it is anonymous at all.
-  private val imageLoads = new ImageLoadBeacon(monitor)
 
   // SSE batching: a poll cycle can flip one bucket per active service at once.
   // Buffer generously (drop oldest under a burst), then coalesce everything that

@@ -1,5 +1,5 @@
 @import controllers.{DroppedRow, FallbackRow, FlaggedRow, ServiceRow}
-@import services.UptimeMonitor
+@import services.{ServiceTags, UptimeMonitor}
 @(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, hiddenThin: Int = 0, dropped: Seq[DroppedRow] = Seq.empty, current: models.Country)
 <!DOCTYPE html>
 <html lang="en">
@@ -527,7 +527,7 @@
   <div class="row" data-service="@s.name">
     <div class="name" title="@s.name" data-city="@city.getOrElse("")">
       @_serviceNameLink(s.name, s.url, "name-label")
-      @for(t <- s.tags.toSeq.sorted if !t.startsWith(UptimeMonitor.UrlTagPrefix)) {
+      @for(t <- s.tags.toSeq.sorted if !t.startsWith(ServiceTags.UrlTagPrefix)) {
         @defining(t.split(":", 2)) { parts =>
           @if(parts.head == "custom") {
             <span class="tag tag-custom" title="@parts.last">Custom</span>

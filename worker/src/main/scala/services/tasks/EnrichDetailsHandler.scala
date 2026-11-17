@@ -5,7 +5,7 @@ import models.{CinemaShowing, Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
-import services.UptimeMonitor
+import services.UptimeRecorder
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey}
 
@@ -80,7 +80,7 @@ class EnrichDetailsHandler(
   enrichersByGroup: Map[String, DetailEnricher],
   cache:            MovieCache,
   freshness:        FreshnessStore,
-  uptime:           UptimeMonitor,
+  uptime:           UptimeRecorder,
   bus:              EventBus,
   // SAME instance the DetailReaper enqueues on — see the class doc / [[DueWindow]].
   dueWindow:        DueWindow,

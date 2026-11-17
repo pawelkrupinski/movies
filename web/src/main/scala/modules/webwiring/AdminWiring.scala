@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{AdminAction, EnvConfigController, TasksController, UptimeController}
 import modules.Wiring
-import services.UptimeMonitor
+import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
 
@@ -11,16 +11,16 @@ import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQ
  *  and the read-only views of worker-owned state they render. */
 trait AdminWiring { self: Wiring =>
 
-  // surfaceExternalWrites: the worker records all scraper + enrichment metrics
+  // UptimeTier.Surfacing: the worker records all scraper + enrichment metrics
   // and writes them (batched) to the shared uptimeBuckets collection. This
   // serving process POLLS that collection every ~10s so /uptime reflects the
   // worker's activity — a fixed, bounded cost rather than reacting to every
   // write (the per-write change stream pegged the serving vCPU at multi-city
-  // scrape volume).
-  // `surfaceExternalWrites = true` also means this tier does NOT own the bucket TTL index and
-  // will not rebuild it — see `UptimeMonitor.ownsIndexes`.
+  // scrape volume). It also means this tier does NOT own the bucket TTL index and
+  // will not rebuild it — see `UptimeTier`.
   lazy val uptimeMonitor = managedResources.register("uptime monitor",
-    new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true, clock = clock, ticks = ticks))(_.close())
+    new UptimeMonitor(mongoConnection.database, tier = UptimeTier.Surfacing(), clock = clock,
+      bucketStore = new UptimeMonitor.BucketStore(), ticks = ticks))(_.close())
 
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
   // pages (/uptime, /tasks) and the rehydrate trigger. Empty
@@ -44,7 +44,7 @@ trait AdminWiring { self: Wiring =>
   /** The worker's closure sweep's verdicts (`venue_closures`), for /uptime's dropped-venue section. */
   lazy val closureLedger: services.closure.ClosureLedgerReader =
     mongoConnection.database.fold[services.closure.ClosureLedgerReader](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
-  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore, closureLedger, country, clock)(using materializer)
+  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, new controllers.ImageLoadBeacon(uptimeMonitor), filmwebFallbackStore, closureLedger, country, clock)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
   // Live config: install the override cache as Env's source + publish web's knobs
   // to the shared registry, and serve the /admin/config page (see EnvConfigService).

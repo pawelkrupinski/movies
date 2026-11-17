@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.mvc._
-import services.UptimeMonitor
+import services.UptimeHistory
 import services.UptimeMonitor.RecentTotals
 import services.fallback.{FallbackState, FallbackStore}
 import services.metrics.WebJvmMetrics
@@ -34,7 +34,7 @@ import services.metrics.WebJvmMetrics
  * failed over to its Flicks fallback individually, so nothing paged for over a
  * day. Grouped by `client` (the SAME `shared:<Client>` marker
  * `services.cinemas.common.CinemaClientMarkers` computes and the worker pushes
- * to Mongo's `uptimeServiceTags` — read here via `UptimeMonitor.serviceTagsSnapshot()`
+ * to Mongo's `uptimeServiceTags` — read here via `UptimeHistory.serviceTagsSnapshot()`
  * rather than re-derived) so an alert can ask "what fraction of THIS chain is
  * on fallback right now", not just "is any one venue". `custom:` (bespoke,
  * single-venue) markers are excluded: with exactly one venue their ratio is
@@ -52,7 +52,7 @@ import services.metrics.WebJvmMetrics
  * now the tier's ONLY signal for request rate, latency, and how close the box
  * is to full.
  */
-class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallbackStore: FallbackStore,
+class MetricsController(cc: ControllerComponents, monitor: UptimeHistory, fallbackStore: FallbackStore,
   movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String,
   clock: java.time.Clock) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
@@ -141,7 +141,7 @@ object MetricsController {
    *  supplies the already-polled tag snapshot and the fallback store's
    *  already-hydrated mirror.
    *
-   *  `serviceTags` is `UptimeMonitor.serviceTagsSnapshot()` (cinema name ->
+   *  `serviceTags` is `UptimeHistory.serviceTagsSnapshot()` (cinema name ->
    *  its tags, one of which is the `shared:<Client>`/`custom:<Client>` marker
    *  `CinemaClientMarkers` computed on the worker); `fallbackStates` is
    *  `FallbackStore.findAll()`. Two families rather than one pre-divided

@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.JsObject
-import services.UptimeMonitor
+import services.UptimeRecorder
 
 /** Browser-reported image load outcomes (`POST /uptime/img-event`) recorded as the
  *  `img:` rows of the uptime monitor — see `UptimeController.imgEvent` for what each
@@ -9,7 +9,7 @@ import services.UptimeMonitor
  *
  *  [[ImageOriginRoster]] bounds the rows a caller can create and
  *  [[UptimeController.MaxEventsPerBeacon]] the records one beacon can carry. */
-final class ImageLoadBeacon(monitor: UptimeMonitor) {
+final class ImageLoadBeacon(monitor: UptimeRecorder) {
 
   private val imageOrigins = new ImageOriginRoster()
 

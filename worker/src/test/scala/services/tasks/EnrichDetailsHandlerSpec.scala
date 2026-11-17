@@ -8,7 +8,7 @@ import services.cinemas.FakeDetailEnricher
 import services.events.RecordingEventBus
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.UptimeMonitor
+import services.{EnrichmentUptimeService, UptimeMonitor}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import tools.HttpStatusException
@@ -52,7 +52,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       EnrichDetailsTasks.payload(enricher, key, "http://ref"), attempts = 1)
   }
 
-  private val EnrichmentService = UptimeMonitor.enrichmentService(KinoApollo.displayName)
+  private val EnrichmentService = EnrichmentUptimeService.forCinema(KinoApollo.displayName)
   private def successes(m: UptimeMonitor, service: String) = m.history(service).map(_.successes).sum
   private def failures(m: UptimeMonitor, service: String)  = m.history(service).map(_.failures).sum
 
@@ -240,7 +240,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     record.genres   shouldBe Seq("Sci-Fi")
     // Health recorded once under the global name, not per venue.
     successes(uptime, "Cinema City Enrichment") shouldBe 1
-    uptime.services should not contain UptimeMonitor.enrichmentService(CinemaCityPoznanPlaza.displayName)
+    uptime.services should not contain EnrichmentUptimeService.forCinema(CinemaCityPoznanPlaza.displayName)
   }
 
   it should "land a market-wide group's page on every venue slot naming that page, and on no other venue" in {
