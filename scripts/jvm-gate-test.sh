@@ -218,6 +218,10 @@ printf '#!/bin/sh\nexit 2\n' > "$work/old-agentctl"; chmod +x "$work/old-agentct
 KINOWO_GOVERNOR_BIN="$work/old-agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin || echo old-none >> "$work/got"
 check "...KINOWO_GOVERNOR=0 keeps the slots; on Linux (CI) there is no governor; nor with an agentctl without one" "1.flock|linux-none|old-none|0" \
   "$(paste -sd'|' "$work/got")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
+mkdir -p "$work/split/lib/agentctl"; printf '#!/bin/sh\nexit 0\n' > "$work/split/agentctl"; chmod +x "$work/split/agentctl"
+printf 'def cmd_gov(a):\n    pass\n' > "$work/split/lib/agentctl/gov.py"
+check "...and an agentctl split into a package, its governor in lib/agentctl/gov.py, governs" "$work/split/agentctl" \
+  "$(KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/split/agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin)"
 
 # --- a tool JVM's cores
 check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-XX:ActiveProcessorCount=4|-XX:ActiveProcessorCount=6" \

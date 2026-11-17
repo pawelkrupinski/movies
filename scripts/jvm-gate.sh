@@ -106,9 +106,11 @@ lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
 
 governor_bin() {
   local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl}
-  # an agentctl from before the governor has no `gov`: the slots stay
+  # an agentctl from before the governor has no `gov`: the slots stay. Since agentctl's split into a package
+  # (2026-10-29) `cmd_gov` lives in lib/agentctl/gov.py beside it, not in the script: read only the script and the
+  # governor never governed, and idle kept sbt servers held every slot while a landing's precheck waited (2026-11-17).
   [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] &&
-    grep -q 'def cmd_gov' "$g" 2> /dev/null && echo "$g"
+    grep -qs 'def cmd_gov' "$g" "$(dirname "$g")/lib/agentctl/gov.py" && echo "$g"
 }
 gov_class() { # <label>
   if [ -n "${KINOWO_GOV_CLASS:-}" ]; then echo "$KINOWO_GOV_CLASS"; return 0; fi
