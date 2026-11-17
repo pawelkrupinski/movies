@@ -104,11 +104,24 @@ except OSError:
 }
 lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
 
+# An agentctl from before the governor has no `gov`: the slots stay. ASKED, never grepped: the probe was `grep 'def
+# cmd_gov' ~/bin/agentctl`, and agentctl's split (2026-10-29) moved cmd_gov into lib/agentctl/gov.py, so from then on
+# every tool here fell back to the 4 fixed slots, which idle kept sbt servers held for their 10 idle minutes where the
+# governor evicts them: 11 of the fast precheck's 16 lint timeouts in 153 runs (2026-11-14..17) were "all 4 JVM slots
+# busy" for the whole 300 s, and the governor admitted 25 JVMs in 7 days. One `gov --help` (~0.3 s) a process: the
+# answer is kept per agentctl path (_GOVERNOR_PROBED, exported to the tools this one starts).
 governor_bin() {
   local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl}
-  # an agentctl from before the governor has no `gov`: the slots stay
-  [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] &&
-    grep -q 'def cmd_gov' "$g" 2> /dev/null && echo "$g"
+  [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] || return 1
+  case "${_GOVERNOR_PROBED:-}" in
+    "$g=yes") echo "$g"; return 0 ;;
+    "$g=no") return 1 ;;
+  esac
+  if "$g" gov --help > /dev/null 2>&1; then
+    export _GOVERNOR_PROBED="$g=yes"; echo "$g"; return 0
+  fi
+  export _GOVERNOR_PROBED="$g=no"
+  return 1
 }
 gov_class() { # <label>
   if [ -n "${KINOWO_GOV_CLASS:-}" ]; then echo "$KINOWO_GOV_CLASS"; return 0; fi

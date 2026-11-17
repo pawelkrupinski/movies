@@ -175,7 +175,8 @@ kill "$a" 2>/dev/null
 # --- THE GOVERNOR (~/bin/agentctl gov): a stub that records its call and takes the lock on the descriptor it was given
 cat > "$work/agentctl" <<'STUB'
 #!/usr/bin/env bash
-# def cmd_gov: the line an agentctl with the governor has
+# an agentctl with the governor answers `gov --help` (its governor lives in lib/agentctl/gov.py, not in this file)
+[ "$*" = "gov --help" ] && exit 0
 printf '%s\n' "$*" >> "$GOV_CALLS"
 case " $* " in *" --try "*) [ -n "${GOV_STUB_FULL:-}" ] && exit 1 ;; esac
 python3 -I -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
@@ -218,6 +219,13 @@ printf '#!/bin/sh\nexit 2\n' > "$work/old-agentctl"; chmod +x "$work/old-agentct
 KINOWO_GOVERNOR_BIN="$work/old-agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin || echo old-none >> "$work/got"
 check "...KINOWO_GOVERNOR=0 keeps the slots; on Linux (CI) there is no governor; nor with an agentctl without one" "1.flock|linux-none|old-none|0" \
   "$(paste -sd'|' "$work/got")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
+check "...an agentctl whose file never names cmd_gov (agentctl's split, 2026-10-29) is asked: the governor governs" \
+  "$work/agentctl|no-text" "$(KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin)|$(grep -q 'cmd_gov' "$work/agentctl" && echo text || echo no-text)"
+printf '#!/bin/sh\necho probed >> "$GOV_CALLS"\nexit 0\n' > "$work/counted-agentctl"; chmod +x "$work/counted-agentctl"
+: > "$GOV_CALLS"
+( KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/counted-agentctl" KINOWO_JVM_GATE_OS=Darwin
+  governor_bin > /dev/null; governor_bin > /dev/null; governor_bin > /dev/null )
+check "...asked once a process, not on every keeper poll" "1" "$(grep -c probed "$GOV_CALLS")"
 
 # --- a tool JVM's cores
 check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-XX:ActiveProcessorCount=4|-XX:ActiveProcessorCount=6" \
