@@ -12,7 +12,7 @@ import models.ResolvedMovie
  * are the FIRST-PUBLISH GATE: a link-preview scraper (Facebook above all) fetches `og:image`
  * once and caches the answer for about a month, so a film that goes public before its card
  * exists keeps the fallback image wherever it was shared in that window. The projector holds a
- * brand-new card back (bounded, see [[ReadModelProjector]]) until [[readyToPublish]] says yes.
+ * brand-new card back (bounded, see [[ShareCardGate]]) until [[readyToPublish]] says yes.
  */
 trait ShareCardLedger {
 

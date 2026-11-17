@@ -31,7 +31,7 @@ class ReadModelProjectionCostSpec extends AnyFlatSpec with Matchers {
     val projector  = new ReadModelProjector(
       Work.counting(classOf[MovieRepository], repository, work),
       Work.counting(classOf[ReadModelWriter], readModel, work),
-      Work.counting(classOf[ReadModelReader], readModel, work), clock = tools.SpecClock.Pinned)
+      Work.counting(classOf[ReadModelReader], readModel, work), scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
     val sweeper = new ReadModelSweeper(projector.projection)
     sweeper.reconcile()
     readModel.findAllMovies() should have size corpus.toLong

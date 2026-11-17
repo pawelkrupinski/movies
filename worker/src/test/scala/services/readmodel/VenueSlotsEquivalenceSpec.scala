@@ -63,7 +63,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def projector(rm: InMemoryReadModelRepository, bootStudy: Option[BootCorpusStudy] = None,
                         source: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) =
-    new ReadModelProjector(source, rm, rm, clock = clock, bootStudy = bootStudy)
+    new ReadModelProjector(source, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = clock, bootStudy = bootStudy)
 
   "A change at some venues" should "write from those venues alone exactly what projecting the whole film writes" in {
     var accepted, declined = 0

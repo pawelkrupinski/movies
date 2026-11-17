@@ -51,14 +51,14 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
         val complete = super.foreachRecordWithSlots(f)
         if (written.compareAndSet(false, true)) {
           repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
-          new ReadModelProjector(repository, rm, rm, clock = specClock)
+          new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
             .onMovieUpsert(repository.findAll().find(_.record.tmdbId.contains(2)).get)
         }
         complete
       }
     }
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     sweeper.reconcile()
     val cards = rm.findAllMovieIds().toSet
@@ -99,7 +99,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     val cinemas = Cinema.all.distinct.filter(City.forCinema(_).nonEmpty).take(22)
     cinemas should have size 22
@@ -147,7 +147,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector  = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // delivered at t0
     sweeper.reconcile()
@@ -179,7 +179,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector  = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // open, and never delivers:
     // every write below goes past the cursor, as a stalled one lets it
@@ -212,7 +212,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector  = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     sweeper.reconcile()
@@ -250,7 +250,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector  = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     sweeper.reconcile()
@@ -280,7 +280,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
         if (failing) throw new RuntimeException("read model unreachable") else super.upsertMovie(movie)
     }
     val m         = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
     clock.advanceSeconds(60)
@@ -316,7 +316,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
   "the reconcile-sweep metric" should "meter only the prune sweep, never the reproject seed" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     sweeper.reconcile()                                    // seed Foo — NOT metered

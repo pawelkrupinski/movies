@@ -6,10 +6,7 @@ import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
-import settings.ShareCardFirstHold
-import tools.DaemonExecutors
 
-import java.util.concurrent.TimeUnit
 import scala.util.Try
 
 /**
@@ -50,7 +47,7 @@ import scala.util.Try
  *
  * The change-stream callback and the sweeper's passes are serialised by one lock,
  * so the in-memory last-projection state needs no further synchronisation. This class owns
- * the per-row projection, its memo and the share-card hold; [[ReadModelSweeper]] the passes
+ * the per-row projection and its memo; its [[ShareCardGate]] the share-card hold; [[ReadModelSweeper]] the passes
  * over the whole corpus, which drive it through its [[projection]]. The projector builds no
  * sweeper: the composition root builds one over [[projection]] and schedules its passes.
  */
@@ -59,13 +56,12 @@ class ReadModelProjector(
   writer:    ReadModelWriter,
   reader:    ReadModelReader,
   metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
-  scheduler: java.util.concurrent.ScheduledExecutorService = DaemonExecutors.scheduler("read-model-projector"),
+  // The projector's thread — its learning off the boot thread; stopped by [[stop]].
+  scheduler: java.util.concurrent.ScheduledExecutorService,
   cpuClock:  tools.ThreadCpuClock = tools.ThreadCpuClock.threadMxBean,
-  // Where each card's `shareCard` comes from, and the first-publish gate — see [[ShareCardLedger]].
-  shareCards: ShareCardLedger = ShareCardLedger.none,
-  // How long a brand-new card may be held back waiting for its share card before it is published
-  // anyway, with the fallback image and `shareCardPending` set. Never indefinitely.
-  firstCardHold: ShareCardFirstHold = ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold),
+  // Where each card's `shareCard` comes from, and the first-publish gate that holds a brand-new card
+  // back (bounded) waiting for its share card — see [[ShareCardGate]].
+  shareCardGate: ShareCardGate = ShareCardGate.ungated,
   // No default: the rolling content check numbers its slice by this clock, so a spec left on the
   // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
   clock:     java.time.Clock,
@@ -125,19 +121,11 @@ class ReadModelProjector(
   // bytes per doc) this holds the ResolvedMovie object graph resident — but only for rows
   // actually projected, ~corpus-sized (few MB on the 320m heap), and evicted on prune.
   private val lastMetadata   = scala.collection.mutable.Map.empty[String, (Int, Seq[ResolvedMovie])]
-  // THE FIRST-PUBLISH GATE. Per card not yet served (see `gate`): its source row and the instant its hold
-  // ends. A link-preview scraper caches `og:image` for about a month on its first fetch, so a card
-  // must not go public before its share card exists — but no film waits longer than
-  // `firstCardHold` for one (see [[releaseExpiredHolds]]).
-  private val held           = scala.collection.mutable.Map.empty[String, HeldCard]
   // Each projected row's display-title groups and the card each files its venues under, from its last
   // projection: what lets [[onVenueSlots]] place a venue without the rest of the film. A few entries a row.
   private val lastGroups     = scala.collection.mutable.Map.empty[String, RowGroups]
   // Whether the boot seed has run: [[learn]] vouches venue rows against it.
   @volatile private var seeded  = false
-  // Cards published by an expired hold that still have no share card: `shareCardPending` on their
-  // documents, and seeded from them at boot, so a later projection keeps the mark until the card lands.
-  private val pendingCards   = scala.collection.mutable.Set.empty[String]
   private val lock           = new AnyRef
 
   // The sweeper over [[projection]], when one is: what this projector tells it of each change it applies,
@@ -185,7 +173,7 @@ class ReadModelProjector(
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
       // A row it could not read keeps its hold for the next sweep — see `releaseExpired`.
-      if (held.nonEmpty) releaseExpired()
+      if (shareCardGate.holdsAny) releaseExpired()
       ()
     }
 
@@ -208,7 +196,7 @@ class ReadModelProjector(
       case Right(byCard) =>
         sweep.noteApplied(rowId)
         byCard.foreach(applyVenues)
-        if (held.nonEmpty) releaseExpired()
+        if (shareCardGate.holdsAny) releaseExpired()
         services.movies.VenueVerdict.Applied
     }
   }
@@ -264,7 +252,7 @@ class ReadModelProjector(
       }
       val byCard = planned.toSeq.groupMap(_._1)(_._2)
       byCard.keys.foreach { card =>
-        if (held.contains(card)) refuse(Why.ProjectorCardHeld)
+        if (shareCardGate.holds(card)) refuse(Why.ProjectorCardHeld)
         if (!lastMovie.contains(card)) refuse(Why.ProjectorCardUnpublished)
       }
       Right(byCard)
@@ -315,7 +303,7 @@ class ReadModelProjector(
     val drift   = Option.when(trigger == ProjectTrigger.Content)(new RowDriftLog)
     val now     = clock.millis()
     val publish = variants.flatMap { case (projected, screenings) =>
-      gate(rowId, projected, screened = screenings.nonEmpty, now).map(_ -> screenings)
+      shareCardGate.admit(rowId, projected, screened = screenings.nonEmpty, served = served(projected._id), now).map(_ -> screenings)
     }
     val written = publish.map { case (movie, screenings) => writeVariant(movie, screenings, drift) }.sum
     retireVariantsGone(rowId, publish.map(_._1._id).toSet)
@@ -329,7 +317,7 @@ class ReadModelProjector(
     lastGroups.remove(rowId)
     healedClean.remove(rowId)
     lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
-    dropHoldsNotProducedBy(rowId, Set.empty)
+    shareCardGate.dropHoldsNotProducedBy(rowId, Set.empty)
   }
 
   /** Run a pure projection and measure it BOTH ways: wall-clock answers "how long did it take" (the
@@ -352,7 +340,7 @@ class ReadModelProjector(
     val variants  = projected.map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
     lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
       projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
-    dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
+    shareCardGate.dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     variants
   }
 
@@ -383,19 +371,19 @@ class ReadModelProjector(
     parts
   }
 
-  /** Caller holds `lock`. Remember a card as written at `hash`, and tell the share-card ledger. */
+  /** Caller holds `lock`. Remember a card as written at `hash`, and tell the share-card gate. */
   private def rememberCard(movie: ResolvedMovie, hash: CardHash, screened: Boolean): Unit = {
     lastMovie.update(movie._id, hash)
-    shareCards.onProjected(movie, screened = screened)
+    shareCardGate.cardWritten(movie, screened = screened)
   }
 
   /** Caller holds `lock`. A variant card this row produced last time and no longer does — its
    *  decorated listing vanished — is retired here, by the path that knows, not by the prune. A card
    *  still held by the first-publish gate was never produced. A card held back while its unserved
-   *  document stands (see `gate`) is not gone either. */
+   *  document stands (see [[ShareCardGate.admit]]) is not gone either. */
   private def retireVariantsGone(rowId: String, produced: Set[String]): Unit = {
     val before   = lastCardsByRow.getOrElse(rowId, Set.empty)
-    val kept     = produced ++ before.filter(held.contains)
+    val kept     = produced ++ before.filter(shareCardGate.holds)
     (before -- kept).foreach(retireCard(_, RetireReason.VariantGone))
     lastCardsByRow.update(rowId, kept)
     // A venue this projection wrote is no phantom any more: if its row goes missing now, that
@@ -404,60 +392,16 @@ class ReadModelProjector(
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
   }
 
-  /** Caller holds `lock`. The document to write for `projected` — its share card filled in — or
-   *  None while the first-publish gate holds it back.
-   *
-   *  Only a card that is about to be SERVED for the first time — it has screenings, and this process
-   *  has never written it with any (the read model does not hold it served: `lastMovie` and
-   *  `lastScreenings` are seeded from it) — is gated: a card whose inputs merely CHANGE keeps its
-   *  current share card until the new one exists, which [[ShareCardLedger.current]] already
-   *  answers. That covers a film coming BACK on screen: its document outlived its screenings (and
-   *  the daily prune its card), and nothing about the document changes when they return. A held
-   *  card is asked for its share card on every projection, and published with `shareCardPending`
-   *  once its hold has run out. */
-  private def gate(rowId: String, projected: ResolvedMovie, screened: Boolean, now: Long): Option[ResolvedMovie] = {
-    val id       = projected._id
-    val served   = lastMovie.contains(id) && lastScreenings.holdsAny(id)
-    val firstOne = screened && !served && !shareCards.readyToPublish(projected)
-    val hold     = Option.when(firstOne)(held.getOrElseUpdate(id, HeldCard(rowId, now + firstCardHold.value.toMillis)))
-    if (!firstOne) held.remove(id)
-    val expired  = hold.exists(_.until <= now)
-    if (firstOne && !expired) {
-      shareCards.requestFirstCard(projected, java.time.Instant.ofEpochMilli(hold.get.until))
-      None
-    } else {
-      if (expired) {
-        held.remove(id)
-        pendingCards += id
-        logger.warn(s"share card: published $id without its card — none was ready within ${firstCardHold.value.toSeconds}s.")
-      }
-      Some(withShareCard(projected))
-    }
-  }
-
-  /** Caller holds `lock`. `projected` as the read model serves it: its current share card filled
-   *  in. A card published pending (see `gate`) whose share card has landed since stops being
-   *  pending, and the ledger hears of it. */
-  private def withShareCard(projected: ResolvedMovie): ResolvedMovie = {
-    val id        = projected._id
-    val shareCard = shareCards.current(projected)
-    if (shareCard.nonEmpty && pendingCards.remove(id)) shareCards.onPendingCardLanded(id)
-    projected.copy(shareCard = shareCard, shareCardPending = pendingCards.contains(id))
-  }
-
-  /** Caller holds `lock`. Forget the first-publish holds on `rowId`'s cards that its projection no
-   *  longer produces — it lost its readiness, or its display title moved to another card. Only
-   *  `gate` releases a hold on a card still produced; a hold nothing produces was otherwise never
-   *  released, and once expired it cost a read and a full re-projection of its row on every change
-   *  event (see `releaseExpired`). */
-  private def dropHoldsNotProducedBy(rowId: String, produced: Set[String]): Unit =
-    held.filterInPlace((card, hold) => hold.row != rowId || produced(card))
+  /** Caller holds `lock`. Whether the read model serves card `id`: this process wrote it with
+   *  screenings (or seeded it so — `lastMovie` and `lastScreenings` are seeded from the read model).
+   *  Only a card not yet served is the first-publish gate's to hold. */
+  private def served(id: String): Boolean = lastMovie.contains(id) && lastScreenings.holdsAny(id)
 
   /** Re-project the row behind card `filmId` so its document picks up the share-card store's
    *  current state — what the renderer calls once a card is written, which is also what
    *  publishes a card the first-publish gate was holding. */
   def refreshShareCard(filmId: String): Unit = lock.synchronized {
-    val row = held.get(filmId).map(_.row).getOrElse(filmId.takeWhile(_ != '~'))
+    val row = shareCardGate.heldRow(filmId).getOrElse(filmId.takeWhile(_ != '~'))
     // A card held for its share card and published by the render landing is in flight like a
     // stream event: a sweep between the two found it absent (see [[ReadModelSweeper]]'s `verdictOnSweep`).
     sweep.noteApplied(row)
@@ -467,15 +411,14 @@ class ReadModelProjector(
   /** End the hold on card `filmId` now — its card can't be made (every poster failed for good) —
    *  and publish it with the fallback. */
   def releaseShareCardHold(filmId: String): Unit = lock.synchronized {
-    held.get(filmId).foreach { card =>
-      held.update(filmId, card.copy(until = clock.millis()))
-      movieRepository.findById(services.movies.FilmId(card.row)).foreach(projectRow(_, ProjectTrigger.HoldRelease))
+    shareCardGate.expireNow(filmId, clock.millis()).foreach { row =>
+      movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.HoldRelease))
     }
   }
 
   /** Publish every held card whose hold has run out — asked by the task the ledger schedules for
    *  the end of each hold, so a card whose render never finishes (or whose row never changes
-   *  again) still goes public after `firstCardHold`. */
+   *  again) still goes public after its first-publish hold. */
   def releaseExpiredHolds(): Unit = {
     val unread = releaseExpired()
     // Throw so the task that asked retries: the holds are still there to release.
@@ -488,18 +431,18 @@ class ReadModelProjector(
    *  the hold was dropped, and the card was never published. */
   private def releaseExpired(): Set[String] = lock.synchronized {
     val now  = clock.millis()
-    val rows = held.valuesIterator.filter(_.until <= now).map(_.row).toSet
+    val rows = shareCardGate.expiredRows(now)
     rows.filter { row =>
       movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
         case tools.ReadOutcome.Answered(whole)     => projectRow(whole, ProjectTrigger.HoldRelease); false
-        case tools.ReadOutcome.Absent(_)  => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
+        case tools.ReadOutcome.Absent(_)  => shareCardGate.dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
         case tools.ReadOutcome.Failed(_)  => true                                                       // unreadable: keep the hold
       }
     }
   }
 
   /** Test seam: the cards the first-publish gate is holding. */
-  private[readmodel] def heldCards: Set[String] = lock.synchronized(held.keySet.toSet)
+  private[readmodel] def heldCards: Set[String] = lock.synchronized(shareCardGate.heldCards)
 
   /** Caller holds `lock`. Remove one card and its screenings on the change-stream path. */
   private def retireCard(cardId: String, reason: String): Unit = {
@@ -604,7 +547,7 @@ class ReadModelProjector(
     // screenings delete then throws — remembered, the row coming back unchanged would skip writing
     // the card, and nothing would retire its files again. Screenings left behind belong to no live
     // card; the prune removes them while it stays retired.
-    shareCards.onRetired(filmId)
+    shareCardGate.cardRetired(filmId)
     tools.AnyThrowable.rethrownAfter(screeningIds.foreach(writer.deleteScreening))(_ => forgetCard(filmId))
     // The point a film actually leaves the served site (web_movies + its
     // web_screenings). During a "cards vanish" episode this names every dropped
@@ -629,8 +572,8 @@ class ReadModelProjector(
   private def projectCards(partition: ReadModelProjection.Partition): Int = {
     if (!partition.stored.record.readyToProject) return 0
     val cards = timedProjection(ProjectTrigger.Derivation)(projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1))
-    cards.filter(card => lastMovie.contains(card._id) && !held.contains(card._id)).count { projected =>
-      val movie   = withShareCard(projected)
+    cards.filter(card => lastMovie.contains(card._id) && !shareCardGate.holds(card._id)).count { projected =>
+      val movie   = shareCardGate.withShareCard(projected)
       val hash    = CardHash.of(movie)
       val changed = !lastMovie.get(movie._id).contains(hash)
       if (changed) {
@@ -655,7 +598,7 @@ class ReadModelProjector(
         Seq.empty
       }.foreach { m =>
         lastMovie.update(m._id, CardHash.of(m))
-        if (m.shareCardPending) pendingCards += m._id
+        if (m.shareCardPending) shareCardGate.seedPending(m._id)
       }
       // Page by page, keeping each row's id and hash only: read whole, US's screenings were
       // ~400 MB live beside the identity take-up. The content is known, the slots it was
@@ -836,8 +779,7 @@ class ReadModelProjector(
     healedClean.get(rowId).collect { case (hash, phantoms) if hash == metadataHash => phantoms }.getOrElse(Set.empty)
   private def forgetCard(filmId: String): Unit = {
     lastMovie.remove(filmId)
-    held.remove(filmId)
-    pendingCards.remove(filmId)
+    shareCardGate.forget(filmId)
     lastScreenings.forgetCard(filmId)
   }
 
@@ -850,12 +792,4 @@ class ReadModelProjector(
     watchHandle.foreach(h => Try(h.close()))
     scheduler.shutdown()
   }
-}
-
-object ReadModelProjector {
-  /** Two minutes: a render is a poster fetch (up to ~35s against a slow cinema origin) plus a
-   *  composite, so this covers a cold one with room to spare while keeping a new film's first
-   *  appearance close to its scrape. */
-  val DefaultFirstCardHold: scala.concurrent.duration.FiniteDuration =
-    scala.concurrent.duration.Duration(120L, TimeUnit.SECONDS)
 }

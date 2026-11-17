@@ -59,10 +59,6 @@ private[readmodel] object Lesson {
 private[readmodel] final case class BootRow(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String],
                                             metadataHash: Int, lesson: Lesson)
 
-/** A card held back by the first-publish gate: the source row that projects it, and when its
- *  hold ends (epoch millis). */
-private[readmodel] final case class HeldCard(row: String, until: Long)
-
 /** What the projector remembers about a written card: one hash per part, so the next
  *  write can name the parts that moved ([[ReadModelProjectionMetrics.CardPart]]). Equal
  *  when every part is equal, which is exactly "the card did not change". */

@@ -50,7 +50,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
                      marker: ReadModelDerivationMarker,
                      metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
                      history: Seq[Derivation] = ReadModelDerivation.History): (ReadModelProjector, ReadModelSweeper) = {
-    val projector = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
+    val projector = new ReadModelProjector(repository, rm, rm, metrics, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
     val sweeper   = new ReadModelSweeper(projector.projection, derivationMarker = marker, derivationHistory = history)
     projector.start(sweeper)   // seeds its memo from the store, as a restart does
     (projector, sweeper)
@@ -327,7 +327,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
       def onRetired(filmId: String): Unit                        = ()
     }
     val marker    = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val projector = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, shareCards = ledger)
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
     val sweeper   = new ReadModelSweeper(projector.projection, derivationMarker = marker, derivationHistory = history(DerivationScope.Cards))
     projector.start(sweeper)
     sweeper.pruneOrphans()

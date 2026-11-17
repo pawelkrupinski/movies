@@ -42,6 +42,11 @@ trait ReadModelProjectorFixtures {
   protected def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm   = new InMemoryReadModelRepository()
-    (new ReadModelProjector(repository, rm, rm, clock = specClock), repository, rm)
+    (new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock), repository, rm)
   }
+}
+
+object ReadModelProjectorFixtures {
+  /** A projector's own thread, as the worker's composition root gives it one (`readModelScheduler`). */
+  def scheduler(): java.util.concurrent.ScheduledExecutorService = tools.ThreadPools.Unmanaged.scheduler("read-model-projector")
 }

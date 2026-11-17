@@ -5,7 +5,7 @@ import settings.ShareCardFirstHold
 import modules.WorkerWiring
 import services.identity.{EvidenceRatingGate, IdentityCalibration}
 import services.readmodel.RatingGate
-import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter}
+import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter, ShareCardGate}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections
@@ -22,8 +22,12 @@ trait ReadModelWiring { self: WorkerWiring =>
     managedResources.executor("read-model projector")(tools.DaemonExecutors.scheduler("read-model-projector"))
   lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     scheduler = readModelScheduler,
-    shareCards = shareCardLedger, firstCardHold = configuration.shareCardFirstHold(ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold)), clock = clock,
+    shareCardGate = readModelShareCardGate, clock = clock,
     ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
+  // The first-publish gate: a brand-new card is held back waiting for its share card, at most this long,
+  // then published anyway with the fallback image and `shareCardPending` set.
+  lazy val readModelShareCardGate: ShareCardGate = new ShareCardGate(shareCardLedger,
+    configuration.shareCardFirstHold(ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
   // The whole-corpus passes over the projector's read model — its boot heal, the prune sweep and the
   // derivation pass — under its lock. The worker's boot schedules them once the projector watches.
   lazy val readModelSweeper: ReadModelSweeper = new ReadModelSweeper(readModelProjector.projection,
