@@ -23,13 +23,23 @@ dir="${XCUITEST_DIR:-ios/KinowoUITests}"
 # sorts first, every run CardShareMenuUITests (#74 a press read as a tap in the same stall). The workflow boots the
 # Simulator first; this installs the built app and launches it once, outside any test. A warm-up that fails or hangs
 # only warns: the classes still say for themselves whether they pass.
+# It launches as FixtureLaunch.intoGrid does (the UI-test flags, a pinned country, language and city, the fixture
+# listing): a bare launch asked for the location (Order independence #82: "Allow “Showtimes” to use your location?" was
+# still up when CardShareMenuUITests began, handled by XCUITest's "Don't Allow", and its second test's launch then
+# failed to terminate the first's app). No test ever meets that prompt; the warm-up must not leave it either.
 # shellcheck source=scripts/tool-conventions.sh
 . "$here/../tool-conventions.sh"
 udid="${DESTINATION##*id=}"
 app="${XCUITEST_APP:-build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app}"
 bundle="${XCUITEST_BUNDLE_ID:-dev.kinowo.Kinowo}"
 started=$SECONDS
-if bounded 300 xcrun simctl install "$udid" "$app" && bounded 300 xcrun simctl launch "$udid" "$bundle"; then
+# simctl hands a SIMCTL_CHILD_<name> variable to the app as <name>
+launch_as_a_test() {
+    SIMCTL_CHILD_KINOWO_UITEST_FIXTURE=1 SIMCTL_CHILD_KINOWO_FORCE_DETECTED_CITY=warszawa \
+        bounded 300 xcrun simctl launch "$udid" "$bundle" -UITests 1 -selectedCountryCode pl -selectedLanguageCode pl \
+        -AppleLanguages "(pl)" -AppleLocale pl -selectedCity warszawa
+}
+if bounded 300 xcrun simctl install "$udid" "$app" && launch_as_a_test; then
     echo "warmed the Simulator: $bundle installed and launched once in $((SECONDS - started))s"
     bounded 60 xcrun simctl terminate "$udid" "$bundle" || echo "::warning::could not end the warm-up launch of $bundle"
 else

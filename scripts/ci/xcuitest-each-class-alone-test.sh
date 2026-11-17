@@ -34,7 +34,11 @@ SH
 # xcrun simctl <...>: the warm-up, recorded in order with the classes; fails when $WARMUP_FAILS.
 cat >"$tmp/bin/xcrun" <<'SH'
 #!/usr/bin/env bash
-if [ "$1" = simctl ]; then echo "$*" >>"$CALLS.order"; [ -z "${WARMUP_FAILS:-}" ]; exit; fi
+if [ "$1" = simctl ]; then
+  echo "$*" >>"$CALLS.order"
+  [ "$2" = launch ] && echo "fixture=${SIMCTL_CHILD_KINOWO_UITEST_FIXTURE:-} city=${SIMCTL_CHILD_KINOWO_FORCE_DETECTED_CITY:-}" >>"$CALLS.order"
+  [ -z "${WARMUP_FAILS:-}" ]; exit
+fi
 cat "$TREE"
 SH
 chmod +x "$tmp/bin/xcodebuild" "$tmp/bin/xcrun"
@@ -72,9 +76,9 @@ check "and so does the job summary" "XCUITest classes that fail when run alone: 
 
 alone "" "$tmp/tests"
 check "all passing: the step passes" "0" "$code"
-check "the built app is installed and launched once on the destination before the first class, then ended" \
-  "simctl install SIM build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app|simctl launch SIM dev.kinowo.Kinowo|simctl terminate SIM dev.kinowo.Kinowo|xcodebuild AlphaUITests" \
-  "$(head -4 "$tmp/calls.order" | paste -sd '|' -)"
+check "the built app is installed and launched once on the destination before the first class, as a test launches it (#82: a bare launch asked for the location), then ended" \
+  "simctl install SIM build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app|simctl launch SIM dev.kinowo.Kinowo -UITests 1 -selectedCountryCode pl -selectedLanguageCode pl -AppleLanguages (pl) -AppleLocale pl -selectedCity warszawa|fixture=1 city=warszawa|simctl terminate SIM dev.kinowo.Kinowo|xcodebuild AlphaUITests" \
+  "$(head -5 "$tmp/calls.order" | paste -sd '|' -)"
 WARMUP_FAILS=1 alone "" "$tmp/tests"
 check "a failed warm-up only warns: every class still runs and the step passes" "0 3 1" \
   "$code $(grep -c '^xcodebuild ' "$tmp/calls.order") $(printf '%s\n' "$out" | grep -c '::warning::the Simulator warm-up launch')"
