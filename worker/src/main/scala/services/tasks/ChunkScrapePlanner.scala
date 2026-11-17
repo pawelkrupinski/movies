@@ -163,7 +163,7 @@ object ChunkScrapePlanner {
 
   /** [[ChunkScrapePlanner.pageKnownGone]] read from the scrape archive: the venue's barren marker
    *  has said gone for at least [[GoneUpstream.MinimumAge]] ([[GoneUpstream.isGone]]). */
-  def knownGoneIn(archive: services.scrapes.ScrapeArchiveRepository, clock: Clock): models.Cinema => Boolean =
+  def knownGoneIn(archive: services.scrapes.ScrapeArchiveReader, clock: Clock): models.Cinema => Boolean =
     cinema => archive.find(cinema).exists(GoneUpstream.isGone(_, clock.instant()))
 
   /** How long a chunked run may go without finishing before it is abandoned and re-planned. */

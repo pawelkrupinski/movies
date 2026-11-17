@@ -2,7 +2,7 @@ package services.identity
 
 import models.{Cinema, CinemaMovie, VenueClock}
 import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink, TitleNormalizer}
-import services.scrapes.{LeanListing, ScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.{LeanListing, ScrapeArchiveReader, ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class IdentityListingIntake(
   accepted:      ScrapeArchiveRepository,
-  archive:       ScrapeArchiveRepository,
+  archive:       ScrapeArchiveReader,
   guards:        ScrapeGuardLedger,
   normalizer:    TitleNormalizer,
   maxRejections: Int,
@@ -201,7 +201,7 @@ object IdentityListingIntake {
 
     /** The listings of `wanted`'s venues in `repository` now, re-read for those whose stamp moved, whose venue is
      *  another object or that were `written`, or all of them when `whole`; empty when a read could not complete. */
-    def refresh(repository: ScrapeArchiveRepository, wanted: Map[String, Cinema], written: Set[String], read: Read,
+    def refresh(repository: ScrapeArchiveReader, wanted: Map[String, Cinema], written: Set[String], read: Read,
                 project: (Cinema, Seq[(CinemaMovie, Int)]) => Seq[ProjectedListing]): Map[String, Option[Seq[ProjectedListing]]] = {
       val current: Cinema => Boolean = c => wanted.get(c.displayName).exists(_ eq c)
       val (keep, reread) = read match {
@@ -309,7 +309,7 @@ object IdentityListingIntake {
 
   /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time, its values held
    *  in `values` (`None`: it listed nothing) — `lean`, without showtimes; empty when the scan could not complete. */
-  private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean, values: ListingValuePool,
+  private def lastListings(repository: ScrapeArchiveReader, keep: Cinema => Boolean, values: ListingValuePool,
                            lean: Boolean, onRow: LeanListing => Unit): Map[Cinema, Option[Seq[CinemaMovie]]] = {
     val byVenue = Map.newBuilder[Cinema, Option[Seq[CinemaMovie]]]
     def add(cinema: Cinema, films: Seq[CinemaMovie]): Seq[CinemaMovie] = {

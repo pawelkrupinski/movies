@@ -4,7 +4,7 @@ import play.api.Logging
 import services.freshness.{Freshness, FreshnessStore}
 import models.Cinema
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
-import services.scrapes.{GoneUpstream, ScrapeArchiveRepository}
+import services.scrapes.{GoneUpstream, ScrapeArchiveReader, ScrapeArchiveRepository}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._
@@ -41,7 +41,7 @@ class ScrapeCinemaHandler(
   // Read to tell a venue that is BROKEN from one that is GONE — a page 404ing for
   // over a day. Defaults to the no-op archive, under which nothing is ever gone
   // and this handler behaves exactly as it did before.
-  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty,
+  scrapeArchive: ScrapeArchiveReader = ScrapeArchiveRepository.empty,
   // Where a plain scrape records its cost (one task) for the cost-spaced schedule;
   // a chunked venue's is recorded by the planner, which knows its fan-out.
   costs:         ScrapeCostStore = ScrapeCostStore.Discarding

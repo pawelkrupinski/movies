@@ -4,7 +4,7 @@ import models.Cinema
 import play.api.Logging
 import services.fallback.FallbackStore
 import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal, Verdict}
-import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository, VenueClosure}
+import services.scrapes.{ArchivedScrape, ScrapeArchiveReader, VenueClosure}
 
 import java.time.{Clock, Instant, LocalDate, ZoneOffset}
 import scala.util.control.NonFatal
@@ -32,7 +32,7 @@ final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Op
  * reached is not a venue with no evidence. The venue checks ([[VenueChecks]]) run only
  * for the few venues whose sources dropped them.
  */
-class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchiveRepository, fallbacks: FallbackStore,
+class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchiveReader, fallbacks: FallbackStore,
                    checks: VenueChecks, ledger: ClosureLedger, sendAlert: String => Unit, dispatch: Option[RetirementDispatch],
                    clock: Clock)
   extends Logging {

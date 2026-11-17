@@ -6,7 +6,7 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.cinemas.common.CinemaScraper
-import services.scrapes.{BarrenAttempt, ContentStamp, ForwardingScrapeArchive, ScrapeArchiveRepository, SuccessfulScrape}
+import services.scrapes.{BarrenAttempt, ContentStamp, ForwardingScrapeArchive, ScrapeArchiveReader, ScrapeArchiveRepository, SuccessfulScrape}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._
@@ -74,7 +74,7 @@ import scala.jdk.CollectionConverters._
  */
 class CinemaContentCensus(
   scrapers:     Seq[CinemaScraper],
-  archive:      ScrapeArchiveRepository,
+  archive:      ScrapeArchiveReader,
   oldestAge:    Gauge,
   neverContent: Gauge,
   staleVenues:  Gauge,

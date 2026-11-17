@@ -196,49 +196,16 @@ case class ArchivedScrape(
 }
 
 /**
- * The last content-bearing scrape of every cinema, one row per cinema, plus the
- * newest barren attempt on top of it. Sized for the whole corpus: ~2,700 rows /
- * ~28 MB across the three countries (each country's worker writes its own
- * database).
- *
- * Two implementations share this contract: [[MongoScrapeArchiveRepository]]
- * (durable) and [[InMemoryScrapeArchiveRepository]] (tests / Mongo-less dev).
- * The rules either could get wrong — content is never replaced by nothing, a
- * stale barren marker never lands on a fresher listing — live in [[record]]
- * here, above the seam, so neither implementation can diverge on them.
+ * The read side of the scrape archive: a venue's row, scans of them all, and the content stamps.
+ * A component that only reads the archive (the closure sweep, the content census, the gone-venue
+ * check, the identity intake's fallback copy) takes this; [[ScrapeArchiveRepository]] extends it
+ * with the writes and their rules.
  */
-trait ScrapeArchiveRepository {
+trait ScrapeArchiveReader {
 
   /** Is there anywhere to write? `false` when Mongo is absent, which makes every
    *  write a silent no-op rather than an error. */
   def enabled: Boolean
-
-  /** File one scrape attempt.
-   *
-   *  With films, it becomes the row's content and clears any barren marker — the
-   *  cinema is healthy again. Without films it is recorded as a marker only,
-   *  never overwriting the listing already stored: a blank or throwing scrape is
-   *  almost always a failed read (a blocked host, a changed layout, a 503), and
-   *  a failed read is not data. The last good listing is the whole point of this
-   *  collection, so nothing barren is ever allowed to consume it. `lastBarren.at`
-   *  is what tells you how long the cinema has been in that state. */
-  final def record(attempt: ScrapeAttempt): Unit = attempt.outcome match {
-    case ScrapeOutcome.Ok =>
-      storeSuccess(attempt.cinema, attempt.city,
-        SuccessfulScrape(attempt.at, attempt.listingComplete, attempt.films))
-    case barren =>
-      storeBarren(attempt.cinema, attempt.city, BarrenAttempt(attempt.at, barren, attempt.error,
-        noScheduleListed = barren == ScrapeOutcome.Empty && attempt.noScheduleListed, sourceKey = attempt.sourceKey))
-  }
-
-  /** Persist a scrape that HAS content: replace the row's listing and drop any
-   *  barren marker. */
-  protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit
-
-  /** Record an attempt that produced nothing, leaving any stored listing intact.
-   *  Ignored when the row's listing is NEWER than `attempt` — an out-of-order
-   *  arrival must not make a current row look stale. */
-  protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit
 
   def find(cinema: Cinema): Option[ArchivedScrape]
 
@@ -295,6 +262,49 @@ trait ScrapeArchiveRepository {
    *  measuring which cinemas have gone quiet, and a short read would hand it a
    *  pile of cinemas that merely weren't fetched. A failed read is not data. */
   def contentStamps(): Map[String, ContentStamp]
+}
+
+
+/**
+ * The last content-bearing scrape of every cinema, one row per cinema, plus the
+ * newest barren attempt on top of it. Sized for the whole corpus: ~2,700 rows /
+ * ~28 MB across the three countries (each country's worker writes its own
+ * database).
+ *
+ * Two implementations share this contract: [[MongoScrapeArchiveRepository]]
+ * (durable) and [[InMemoryScrapeArchiveRepository]] (tests / Mongo-less dev).
+ * The rules either could get wrong — content is never replaced by nothing, a
+ * stale barren marker never lands on a fresher listing — live in [[record]]
+ * here, above the seam, so neither implementation can diverge on them.
+ */
+trait ScrapeArchiveRepository extends ScrapeArchiveReader {
+
+  /** File one scrape attempt.
+   *
+   *  With films, it becomes the row's content and clears any barren marker — the
+   *  cinema is healthy again. Without films it is recorded as a marker only,
+   *  never overwriting the listing already stored: a blank or throwing scrape is
+   *  almost always a failed read (a blocked host, a changed layout, a 503), and
+   *  a failed read is not data. The last good listing is the whole point of this
+   *  collection, so nothing barren is ever allowed to consume it. `lastBarren.at`
+   *  is what tells you how long the cinema has been in that state. */
+  final def record(attempt: ScrapeAttempt): Unit = attempt.outcome match {
+    case ScrapeOutcome.Ok =>
+      storeSuccess(attempt.cinema, attempt.city,
+        SuccessfulScrape(attempt.at, attempt.listingComplete, attempt.films))
+    case barren =>
+      storeBarren(attempt.cinema, attempt.city, BarrenAttempt(attempt.at, barren, attempt.error,
+        noScheduleListed = barren == ScrapeOutcome.Empty && attempt.noScheduleListed, sourceKey = attempt.sourceKey))
+  }
+
+  /** Persist a scrape that HAS content: replace the row's listing and drop any
+   *  barren marker. */
+  protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit
+
+  /** Record an attempt that produced nothing, leaving any stored listing intact.
+   *  Ignored when the row's listing is NEWER than `attempt` — an out-of-order
+   *  arrival must not make a current row look stale. */
+  protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit
 
   def close(): Unit = ()
 }
