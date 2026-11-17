@@ -142,7 +142,7 @@ tzf=(PATH="$gate/notzf/bin:$PATH" KINOWO_TIMEZONEFINDER_VENVS="$gate/tzf-venvs" 
 check "no timezonefinder and its venv cannot be built: the roster drift check BLOCKS, with the build's error and the fix" "1 1 1" \
   "$(tool_push data/pl/venues.json drift "${tzf[@]}" STUB_PIP_FAIL=1) $(grep -c 'No matching distribution' "$gate/err") $(grep -c 'Fix: scripts/timezonefinder-python' "$gate/err")"
 check "no timezonefinder on PATH's python3: the check builds the pinned venv and runs the generators with its python3" "0 1" \
-  "$(tool_push data/pl/venues.json drift "${tzf[@]}") $(case "$(cat "$gate/drift-python" 2>/dev/null)" in "$gate/tzf-venvs/"*/bin/python3) echo 1 ;; *) echo 0 ;; esac)"
+  "$(tool_push data/pl/venues.json drift "${tzf[@]}") $(case "$(cat "$gate/drift-python" 2>/dev/null)" in ("$gate/tzf-venvs/"*/bin/python3) echo 1 ;; (*) echo 0 ;; esac)"
 rm -rf "$grepo/scripts" "$gate/tzf-venvs" "$gate/drift-python"
 check "python3 missing: the dashboards check BLOCKS, with the fix" "1 1" \
   "$(tool_push infra/test/test_dashboards.py dashboards PATH="$(path_without python3)") $(grep -c 'python3 not found' "$gate/err")"

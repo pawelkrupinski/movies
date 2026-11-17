@@ -24,7 +24,7 @@ run() { PATH="$base/bin:$PATH" "$tool" 2>"$base/err"; }
 
 out="$(run)"; rc=$?
 check "no timezonefinder on PATH's python3: the pinned venv is built, its bin printed" "0 1" \
-  "$rc $(case "$out" in "$base/venvs/py3.15-"*/bin) echo 1 ;; *) echo "0 ($out)" ;; esac)"
+  "$rc $(case "$out" in ("$base/venvs/py3.15-"*/bin) echo 1 ;; (*) echo "0 ($out)" ;; esac)"
 check "...whose python3 imports timezonefinder" "0" "$("$out/python3" -c 'import timezonefinder' 2>/dev/null; echo $?)"
 check "...and no build directory left behind" "0" "$(find "$base/venvs" -maxdepth 1 -name '.build.*' | wc -l | tr -d ' ')"
 first="$out"
