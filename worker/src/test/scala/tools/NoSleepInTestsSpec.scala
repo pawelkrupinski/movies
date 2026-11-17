@@ -60,6 +60,7 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
 
   private val Allowlist: Map[String, String] = Map(
     "worker/src/test/scala/tools/NoSleepInTestsSpec.scala" -> SelfTest,
+    "worker/src/test/scala/tools/NoUnwiredThreadsAndWaitsSpec.scala" -> SelfTest,
     "testkit/src/main/scala/tools/Eventually.scala" ->
       "THE polling primitive: it sleeps between probes of a condition, never instead of one",
     "testkit/src/test/scala/tools/EventuallySpec.scala" ->

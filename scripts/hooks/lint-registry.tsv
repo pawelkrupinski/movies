@@ -196,6 +196,7 @@ worker:tools.NoUnboundedConcurrencyPrimitiveSpec	@repo *.scala
 worker:tools.NoUnboundedMongoReadSpec	@repo *.scala
 worker:tools.NoUnguardedReadModifyWriteSpec	@repo *.scala
 worker:tools.NoUnmanagedWiringExecutorSpec	@repo *.scala
+worker:tools.NoUnwiredThreadsAndWaitsSpec	@repo *.scala
 worker:tools.NoWallClockInTestsSpec	*
 worker:tools.PerformanceBudgetsSpec	@repo *.scala
 worker:tools.ProxiedMainsAllowTunnelAuthSpec	@repo *.scala
