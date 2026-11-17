@@ -136,7 +136,7 @@ object ServedOutputInvariants {
         r.rottenTomatoes.filterNot(v => v >= 0 && v <= 100).map(v => s"rotten-tomatoes-out-of-range: $v") ++
         r.filmweb.filterNot(v => v >= 1 && v <= 10).map(v => s"filmweb-out-of-range: $v") ++
         Option.when(r.imdb.isDefined && r.imdbUrl.isEmpty)("imdb-rating-without-link") ++
-        r.imdbUrl.filter(_ => record.isDefined).filterNot(u => record.flatMap(_.imdbUrl).contains(u)).map(u => s"imdb-link-not-the-film's: $u (imdbId ${record.flatMap(_.imdbId).getOrElse("—")})") ++
+        r.imdbUrl.filter(_ => record.isDefined).filterNot(u => record.flatMap(models.RatingLinks.imdb).contains(u)).map(u => s"imdb-link-not-the-film's: $u (imdbId ${record.flatMap(_.imdbId).getOrElse("—")})") ++
         record.flatMap(_.imdbId).filterNot(ImdbId.matches).map(id => s"imdb-id-malformed: $id") ++
         siteLink("metacritic", r.metascore, r.metacriticUrl, "www.metacritic.com", "/movie/") ++
         siteLink("rotten-tomatoes", r.rottenTomatoes, r.rottenTomatoesUrl, "www.rottentomatoes.com", "/m/") ++

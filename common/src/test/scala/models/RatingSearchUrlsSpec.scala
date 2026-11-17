@@ -19,28 +19,28 @@ class RatingSearchUrlsSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Killhouse"), originalTitle = Some("Кіллхаус"), englishTitle = Some("Killhouse")),
       Imdb -> SourceData(originalTitle = Some("Кіллхаус"))))
-    record.metacriticHref("Killhouse PL") shouldBe "https://www.metacritic.com/search/Killhouse/?category=2"
-    record.rottenTomatoesHref("Killhouse PL") shouldBe "https://www.rottentomatoes.com/search?search=Killhouse"
+    RatingLinks.metacritic(record, "Killhouse PL") shouldBe "https://www.metacritic.com/search/Killhouse/?category=2"
+    RatingLinks.rottenTomatoes(record, "Killhouse PL") shouldBe "https://www.rottentomatoes.com/search?search=Killhouse"
   }
 
   it should "fall back to a romanised original, then the shown title, when TMDB has no English title" in {
     val romanised = MovieRecord(data = Map[Source, SourceData](
       Tmdb -> SourceData(originalTitle = Some("Кіллхаус")), Imdb -> SourceData(originalTitle = Some("Killkhaus"))))
-    romanised.metacriticHref("Zabójczy dom") shouldBe "https://www.metacritic.com/search/Killkhaus/?category=2"
+    RatingLinks.metacritic(romanised, "Zabójczy dom") shouldBe "https://www.metacritic.com/search/Killkhaus/?category=2"
     val shown = MovieRecord(data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Кіллхаус"))))
-    shown.metacriticHref("Killhouse") shouldBe "https://www.metacritic.com/search/Killhouse/?category=2"
+    RatingLinks.metacritic(shown, "Killhouse") shouldBe "https://www.metacritic.com/search/Killhouse/?category=2"
   }
 
   "a Latin-script original" should "stay the search title, as before" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       Tmdb -> SourceData(originalTitle = Some("Le Comte de Monte-Cristo"), englishTitle = Some("The Count of Monte Cristo"))))
-    record.metacriticHref("Hrabia Monte Christo") shouldBe
+    RatingLinks.metacritic(record, "Hrabia Monte Christo") shouldBe
       RatingSearchUrls.metacritic("Le Comte de Monte-Cristo")
   }
 
   "Filmweb" should "keep searching by the original, whatever its script" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       Tmdb -> SourceData(originalTitle = Some("Кіллхаус"), englishTitle = Some("Killhouse"))))
-    record.filmwebHref("Killhouse") shouldBe RatingSearchUrls.filmweb("Кіллхаус")
+    RatingLinks.filmweb(record, "Killhouse") shouldBe RatingSearchUrls.filmweb("Кіллхаус")
   }
 }

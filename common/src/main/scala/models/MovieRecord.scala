@@ -95,8 +95,6 @@ case class MovieRecord(
   // Some(true) or absent; defaulted and last, like `tmdbBasis`, so every older row decodes as decided.
   tmdbProvisional:   Option[Boolean] = None
 ) {
-  def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
-  def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
 
   /** Equal-weight average of every external rating we hold, each normalised
    *  to a 0–10 scale so the four sources are comparable (Metacritic and
@@ -568,26 +566,6 @@ case class MovieRecord(
   def distinctOriginalTitle(displayed: String)(using services.movies.LatestTitleYear): Option[String] =
     anyOriginalTitle.map(_.trim).filter(_.nonEmpty)
       .filterNot(_.equalsIgnoreCase(displayed.trim))
-
-  /** Display-time URL: validated stored URL if we have one, else an on-the-fly
-   *  search URL (for legacy records that pre-date URL persistence). */
-  def metacriticHref(fallbackTitle: String): String =
-    metacriticUrl.getOrElse(RatingSearchUrls.metacritic(englishSiteSearchTitle(fallbackTitle)))
-
-  def rottenTomatoesHref(fallbackTitle: String): String =
-    rottenTomatoesUrl.getOrElse(RatingSearchUrls.rottenTomatoes(englishSiteSearchTitle(fallbackTitle)))
-
-  /** What the English-language rating sites are searched by: the original title, unless it is
-   *  not Latin script, then TMDB's English title, IMDb's or Filmweb's original (usually a
-   *  romanisation), or `fallbackTitle` ([[RatingSearchUrls.englishSiteTitle]]). */
-  private def englishSiteSearchTitle(fallbackTitle: String): String =
-    RatingSearchUrls.englishSiteTitle(
-      originalTitle.getOrElse(fallbackTitle),
-      data.get(Tmdb).flatMap(_.englishTitle).toSeq ++
-        Seq(Imdb, Filmweb).flatMap(s => data.get(s).flatMap(_.originalTitle)) :+ fallbackTitle)
-
-  def filmwebHref(fallbackTitle: String): String =
-    filmwebUrl.getOrElse(RatingSearchUrls.filmweb(originalTitle.getOrElse(fallbackTitle)))
 }
 
 object MovieRecord {

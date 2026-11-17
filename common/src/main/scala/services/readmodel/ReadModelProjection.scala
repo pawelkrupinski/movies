@@ -117,17 +117,17 @@ object ReadModelProjection {
   /** Materialise a record's per-source ratings + their click-through URLs into
    *  the flat [[ResolvedRatings]] the web renders. Shared by [[resolve]] and the
    *  `/debug` table so both show identical rating links. `title` is the display
-   *  title the `*Href` fallbacks key off when a source supplies no direct URL. */
+   *  title the [[models.RatingLinks]] fallbacks key off when a source supplies no direct URL. */
   def ratingsFor(r: MovieRecord, title: String): ResolvedRatings =
     ResolvedRatings(
       imdb              = r.imdbRating,
-      imdbUrl           = r.imdbUrl,
+      imdbUrl           = RatingLinks.imdb(r),
       metascore         = r.metascore,
-      metacriticUrl     = r.metacriticHref(title),
+      metacriticUrl     = RatingLinks.metacritic(r, title),
       rottenTomatoes    = r.rottenTomatoes,
-      rottenTomatoesUrl = r.rottenTomatoesHref(title),
+      rottenTomatoesUrl = RatingLinks.rottenTomatoes(r, title),
       filmweb           = r.filmwebRating,
-      filmwebUrl        = r.filmwebHref(title)
+      filmwebUrl        = RatingLinks.filmweb(r, title)
     )
 
   /** One `CityScreening` per (city, cinema) the film currently screens in.
