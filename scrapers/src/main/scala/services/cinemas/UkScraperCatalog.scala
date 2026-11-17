@@ -39,7 +39,7 @@ final class UkScraperCatalog(egress: CinemaEgress, venueClock: VenueClock, flick
       // `vueFetch` (host-sticky, for its token cookie), Odeon via `odeonFetch`.
       // Showcase/Everyman still reach the origin directly, so they use `http`. Any
       // proxy failure rolls to the flicks fallback.
-      case UkFeed.Cineworld(slug) => new CineworldClient(flicksFetch, slug, cinema, today = today)
+      case UkFeed.Cineworld(slug) => new CineworldClient(flicksFetch, CineworldClient.listing(flicksFetch, slug, cinema, today))
       case UkFeed.Vue(id) => new VueCinemasPlatformClient(vueFetch, VueCinemasPlatformClient.MyVueBaseUrl, id, cinema)
       case UkFeed.Showcase(id) =>
         new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.ShowcaseBaseUrl, id, cinema, today = today)

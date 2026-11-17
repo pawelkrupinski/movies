@@ -40,7 +40,7 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues wi
   private val fake    = new FakeHttpFetch("cineworld")
 
   private def client(http: tools.HttpFetch = fake) =
-    new CineworldClient(http, Barnsley, UkRoster("CineworldBarnsley"), today = Today)
+    new CineworldClient(http, CineworldClient.listing(http, Barnsley, UkRoster("CineworldBarnsley"), today = Today))
 
   private lazy val films = client().fetch()
   private def film(title: String) = films.find(_.movie.title == title).value

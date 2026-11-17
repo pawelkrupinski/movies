@@ -23,7 +23,8 @@ import java.time.LocalDate
  * (`curl` against both, no cookies, identical response shape). So the listing
  * scrape is a plain [[GatsbyBoxOfficeClient]] this class COMPOSES rather than
  * re-implements — see that class's doc for the two-request shape (chain
- * catalogue + one schedule call spanning the whole horizon).
+ * catalogue + one schedule call spanning the whole horizon). The composition root
+ * builds it ([[CineworldClient.listing]]) and hands it in.
  *
  * What's different from Showcase/Everyman, and why Cineworld still needs its
  * own class: the listing/catalogue query never carries synopsis, cast,
@@ -50,30 +51,16 @@ import java.time.LocalDate
  */
 class CineworldClient(
   http: HttpFetch,
-  // The venue's slug from `/cinemas/` (e.g. "g01hn-cineworld-cinema-barnsley").
-  // The platform id the schedule/catalogue calls need is derived from it
-  // (see `theaterId` below) rather than carried as a second constructor
-  // parameter, so the venue map has one column to drift, not two.
-  slug: String,
-  override val cinema: Cinema,
-  today: => LocalDate
+  // The listing scrape, unchanged from how Showcase/Everyman already do it —
+  // see class doc. Composed rather than duplicated: this class adds only what
+  // is unique to Cineworld (the detail enrichment below). Built by
+  // `CineworldClient.listing`.
+  listing: CinemaScraper
 ) extends CinemaScraper with DetailEnricher {
 
   import CineworldClient._
 
-  /** The platform's own venue id — the slug's leading dash-delimited segment,
-   *  uppercased. Verified against all 87 venues in the site's `/cinemas/`
-   *  roster 2026-09-18: `relatedEntity.id` matched this derivation on every
-   *  one, so there is no case this can silently get wrong for a venue the
-   *  roster already agrees with. */
-  private val theaterId: String = slug.takeWhile(_ != '-').toUpperCase(Locale.ROOT)
-
-  /** The listing scrape, unchanged from how Showcase/Everyman already do it —
-   *  see class doc. Composed rather than duplicated: this class adds only what
-   *  is unique to Cineworld (the detail enrichment below). */
-  private val listing = new GatsbyBoxOfficeClient(
-    http, BaseUrl, theaterId, cinema, venuePath = Some(s"/cinemas/$slug/"), today = today)
-
+  def cinema: Cinema = listing.cinema
   def scrapeHosts: Set[String] = listing.scrapeHosts
   override def sourceUrl: Option[String] = listing.sourceUrl
 
@@ -118,6 +105,19 @@ class CineworldClient(
 object CineworldClient {
 
   val BaseUrl = "https://www.cineworld.co.uk"
+
+  /** The venue's listing scrape on the chain's Gatsby box office, from its slug off `/cinemas/` (e.g.
+   *  "g01hn-cineworld-cinema-barnsley"). The platform id the schedule/catalogue calls need is derived from the slug
+   *  ([[theaterIdOf]]) rather than carried as a second roster column, so the venue map has one column to drift, not two. */
+  def listing(http: HttpFetch, slug: String, cinema: Cinema, today: => LocalDate): GatsbyBoxOfficeClient =
+    new GatsbyBoxOfficeClient(http, BaseUrl, theaterIdOf(slug), cinema, venuePath = Some(s"/cinemas/$slug/"), today = today)
+
+  /** The platform's own venue id — the slug's leading dash-delimited segment,
+   *  uppercased. Verified against all 87 venues in the site's `/cinemas/`
+   *  roster 2026-09-18: `relatedEntity.id` matched this derivation on every
+   *  one, so there is no case this can silently get wrong for a venue the
+   *  roster already agrees with. */
+  def theaterIdOf(slug: String): String = slug.takeWhile(_ != '-').toUpperCase(Locale.ROOT)
 
   /** Cast members the `movies` endpoint returns per film. The old detail
    *  page's `<noscript>` block carried the whole billed cast with no cap; the

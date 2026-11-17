@@ -84,7 +84,12 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     // A German venue's fallback chain; a chain of one is that one source.
     classOf[FirstAnsweringScraper] -> ((d: CinemaScraper) => new FirstAnsweringScraper(Seq(d)), Set.empty[String]),
     // A listing with its second feed's facts lent: it reaches both feeds' hosts, and is its primary otherwise.
-    classOf[SecondFeedFacts] -> ((d: CinemaScraper) => new SecondFeedFacts(d, PreScrapedCinemaScraper.of(d, () => Seq.empty), _ => scala.util.Success(Nil)), Set.empty[String])
+    classOf[SecondFeedFacts] -> ((d: CinemaScraper) => new SecondFeedFacts(d, PreScrapedCinemaScraper.of(d, () => Seq.empty), _ => scala.util.Success(Nil)), Set.empty[String]),
+    // A client composing its listing scrape (handed in by the catalog): the venue, its hosts and its public page are
+    // the listing's (its source key derives from that page, as for any client); everything else is the client's own.
+    classOf[services.cinemas.uk.CineworldClient] -> ((d: CinemaScraper) => new services.cinemas.uk.CineworldClient(new clients.tools.ScriptedByUrlHttpFetch(_ => ""), d),
+      Set("sourceKey", "listingFeed", "maxFetchAttempts", "chainVenueId", "chunkedScraper", "listingStructure", "emptyListing",
+        "clientName", "sourceUrlResolving"))
   )
 
   "The CinemaScraper members under test" should "include every member a decorator has to carry" in {

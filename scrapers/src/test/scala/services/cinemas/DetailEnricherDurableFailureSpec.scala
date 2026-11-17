@@ -59,7 +59,7 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     "Amondo"             -> new AmondoClient(http),
     "Bilety24Organizer"  -> new Bilety24OrganizerClient(http, "https://x/org", KinoApollo, titles = titleNormalizer),
     "CinemaCity"         -> new CinemaCityScraper(new CinemaCityClient(http, titles = titleNormalizer), "1081", CinemaCityKinepolis),
-    "Cineworld"          -> new CineworldClient(http, "x001-cineworld-cinema-test", KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
+    "Cineworld"          -> new CineworldClient(http, CineworldClient.listing(http, "x001-cineworld-cinema-test", KinoApollo, today = _root_.tools.SpecClock.PinnedDay)),
     "Cytadela"           -> new CytadelaClient(http),
     "Dcf"                -> new DcfClient(http),
     "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
