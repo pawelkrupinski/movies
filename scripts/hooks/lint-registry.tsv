@@ -206,4 +206,5 @@ worker:tools.ProxiedMainsAllowTunnelAuthSpec	@repo *.scala
 worker:tools.RegisteredCollectionListsSpec	@repo *.scala docs/fleet-database-migration.md
 worker:tools.RenderSafetyLintSpec	@repo *.scala web/src/main/twirl/*
 worker:tools.ScalaSourceScanSpec	@repo *.scala
+worker:tools.ScraperTypeTestLintSpec	@repo *.scala
 worker:tools.SourceTokenTablesSpec	@repo *.scala
