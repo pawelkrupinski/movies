@@ -33,6 +33,18 @@ class RealFamilyPartsSpec extends AnyFlatSpec with Matchers {
     (1 to SliceParts.Count).flatMap(SliceParts.of(_, dirs)).sortBy(_.toString) shouldBe dirs.sortBy(_.toString)
   }
 
+  /** The parts are cut by measured cost (2026-11-17: by a hash of the name, Part2 held the two heaviest identity slices,
+   *  ~263 of ~700 cpu-s, and at 635 s on Main was `test (worker-identity-2)`'s floor while Part3 ran ~95). */
+  they should "be split by measured cost, no part far over an even share, every costed slice a committed one" in {
+    val dirs  = PopulationMonotonicitySpec.sliceDirs
+    val names = dirs.map(PopulationMonotonicitySpec.relative).toSet
+    SliceParts.costs.keySet.filterNot(names) shouldBe empty
+    SliceParts.costs should not be empty
+    val load = (1 to SliceParts.Count).map(k => SliceParts.of(k, dirs).map(SliceParts.costOf).sum)
+    val even = load.sum / SliceParts.Count
+    withClue(s"part costs ${load.map(l => f"$l%.0f").mkString(", ")} against an even ${even.round}: ")(load.max should be <= even * 1.15)
+  }
+
   families.foreach { case (name, whole, parts) =>
     s"$name's parts" should s"be ${SliceParts.Count} classes, Part1 to Part${SliceParts.Count}" in {
       parts.map(_().getClass.getName) shouldBe (1 to SliceParts.Count).map(k => s"services.identity.${name}Part${k}Spec")

@@ -1,0 +1,15 @@
+# THE REAL-FAMILY SPECS' SLICE COSTS (SliceParts): seconds of one warm JVM's single thread per slice, the population
+# walk (PopulationMonotonicitySpec.walked) plus ReadSetClosureSpec's checks, measured 2026-11-17 on a laptop. Only
+# SliceParts' balance reads them: a slice not listed weighs SliceParts.UnmeasuredSeconds (most walk in 1-3 s), and a
+# stale row moves a slice to another part, never out of the check. Refresh when a slice lands that walks for long.
+# slice	seconds
+identity-slices/de--herr-der-ringe-741b6a98	76.8
+identity-slices/de-kinopolis-main-taunus-der-herr-der-ringe-3-extended-version--5b1ec336	56.5
+identity-slices/de-cinestar-hagen-herr-der-ringe-rückkehr-des-königs-ext--1ee3d4fd	56.0
+identity-slices/pl-kino-świt-baranek-shaun-i-kudłata-7e966c64	55.1
+drift-slices/uk/plough-arts-centre-torrington-dracula-625b65d9	38.6
+identity-slices/de-wittenberg-panem-mockingjay-1-2-236c0540	28.6
+identity-slices/de-capitol-heidenheim-der-herr-der-ringe-die-zwei-türme-extende-0679855b	25.2
+identity-slices/uk--the-hunger-games-sunrise-of-the-reaping-5b9f463b	21.7
+identity-slices/uk-filmhouse-newlyn-fallen-angels-by-noël-coward-589c0f0d	19.0
+drift-slices/uk/old-market-hall-shrewsbury-starlight-express-live-on-stage-6a5f8f29	12.4
