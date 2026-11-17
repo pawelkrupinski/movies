@@ -48,14 +48,20 @@ def cpus(text):
     return rs.parse_cpu_list(text)
 
 
-# ci-runner's slices (bitcashier infra, movies-runners.nix): checks on CCD0 less two cores, measurements and light jobs
-# on CCD1 plus those two cores (6-7 and their hyperthreads 22-23)
+# ci-runner's slices until 2026-11-17 (bitcashier infra, movies-runners.nix), which the recordings below ran on: checks
+# on CCD0 less two cores, measurements and light jobs on CCD1 plus those two cores (6-7 and their hyperthreads 22-23)
 CHECK_CPUS, MEASURE_CPUS = cpus("0-5,16-21"), cpus("6-15,22-31")
+# and the config they ran under: a check charged 4 cores, at most 2 borrowed, and no peak below the 4-core charge
+BEFORE_A1 = dataclasses.replace(CFG, job_cpus={"check": 4, "measure": 4, "light": 1}, borrow_max_checks=2,
+                                check_peak_cpus=4.0)
+# since 2026-11-17 (the owner's "A2"): checks on CCD0 and CCD1's first core (0-8,16-24), measurements and light jobs on
+# CCD1's other seven (9-15,25-31)
+CHECK_CPUS_A2, MEASURE_CPUS_A2 = cpus("0-8,16-24"), cpus("9-15,25-31")
 
 
-def on_cpusets(check_busy, measure_busy):
-    return {"check": rs.ClassCpu(CHECK_CPUS, check_busy), "measure": rs.ClassCpu(MEASURE_CPUS, measure_busy),
-            "light": rs.ClassCpu(MEASURE_CPUS, measure_busy)}
+def on_cpusets(check_busy, measure_busy, check_cpus=CHECK_CPUS, measure_cpus=MEASURE_CPUS):
+    return {"check": rs.ClassCpu(check_cpus, check_busy), "measure": rs.ClassCpu(measure_cpus, measure_busy),
+            "light": rs.ClassCpu(measure_cpus, measure_busy)}
 
 
 def memory_room(cfg, bc, r, pending_gib):
@@ -216,7 +222,7 @@ class RecordedReadingsTest(unittest.TestCase):
                                              NOW), 2.7)
         self.assertAlmostEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "measure", True, NOW, NOW - 100, cpu_cores=1.0,
                                                                  cpu_seconds=90), NOW), 3.7)
-        self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "check", True, NOW, NOW - 900), NOW), 4)
+        self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "check", True, NOW, NOW - 900), NOW), 3)
         # past its cap (GC threads): all of it is in the reading, it owes nothing
         self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "measure", True, NOW, NOW - 900, cpu_cores=4.6), NOW), 0)
         self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "light", True, NOW, NOW - 900, cpu_cores=0.2), NOW), 0.8)
@@ -319,7 +325,7 @@ class AfterTheCpusetDeployTest(unittest.TestCase):
     def at(self, check_busy, measure_busy, ours, lane_free):
         r = rs.Readings(111, 108, {"measure": 94}, check_busy + measure_busy, CORES, (4,) * 9, 300,
                         on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
-        d = rs.decide(CFG, rs.Bitcashier(9, 1), queued(check=4, measure=60), ours, NOW, r)
+        d = rs.decide(BEFORE_A1, rs.Bitcashier(9, 1), queued(check=4, measure=60), ours, NOW, r)
         self.assertEqual(d.limits["check_lane"], f"{lane_free} x 10 GiB 4 cores")
         return d
 
@@ -342,7 +348,8 @@ class AfterTheCpusetDeployTest(unittest.TestCase):
     def test_a_check_past_the_lane_is_still_held_by_its_cpus(self):
         two = [rs.Instance(s, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=4, cpu_seconds=3600) for s in (1, 2)]
         d = self.at(check_busy=10, measure_busy=0, ours=two, lane_free=0)
-        self.assertNotIn("check", [c for _, c in d.starts])
+        # none on the checks' own CPUs (it may borrow the idle measure ones ahead of optional measurements: A3)
+        self.assertEqual([s for s, c in d.starts if c == "check" and s not in d.borrowed], [])
 
 
 class HalfIdleCpusetsTest(unittest.TestCase):
@@ -352,7 +359,7 @@ class HalfIdleCpusetsTest(unittest.TestCase):
     check 2.8 (the owner: "allow even more in parallel as long as mem and cpu are not maxed out"). A settled runner is
     in the reading; only one of them ramping up is charged past it."""
 
-    def at(self, check_busy, measure_busy, available, ci_free, measure_free, ours, demand, bc=0, cfg=CFG):
+    def at(self, check_busy, measure_busy, available, ci_free, measure_free, ours, demand, bc=0, cfg=BEFORE_A1):
         r = rs.Readings(available, ci_free, {"measure": measure_free}, check_busy + measure_busy, CORES, (4.0,) * bc,
                         300, on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
         return rs.decide(cfg, rs.Bitcashier(bc, 0), demand, ours, NOW, r)
@@ -392,9 +399,12 @@ class HalfIdleCpusetsTest(unittest.TestCase):
         # measurement's terms, and the measure cpuset had room while the check one was full
         # (since 2026-11-16 that check borrows the idle measure CPUs: BorrowedCheckTest; here without borrowing)
         ours = [self.settled(1, "check", 6, 5.0), self.settled(2, "check", 6, 5.0)]
-        d = self.at(11, 2, 100, 95, 90, ours, queued(check=3), cfg=dataclasses.replace(CFG, borrow_max_checks=0))
+        d = self.at(11, 2, 100, 95, 90, ours, queued(check=3), cfg=dataclasses.replace(BEFORE_A1, borrow_max_checks=0))
         self.assertEqual(rs.starved(CFG, d, queued(check=3), {"check": 1500}),
                          ["STARVED check: 3 queued, the oldest 25 min, held by cpu"])
+
+
+LANDING_ROW = {"movies-landing": 1}  # one queued measurement, a landing check's row
 
 
 class BorrowedCheckTest(unittest.TestCase):
@@ -406,10 +416,10 @@ class BorrowedCheckTest(unittest.TestCase):
     never more than borrow_max_checks, and always leaving measure_reserve_jobs measurements' cores, memory, slice caps
     and slots free."""
 
-    def at(self, ours, demand, check_busy=11, measure_busy=3, measure_free=80, cfg=CFG):
+    def at(self, ours, demand, check_busy=11, measure_busy=3, measure_free=80, cfg=BEFORE_A1, lanes=None):
         r = rs.Readings(100, 95, {"measure": measure_free}, check_busy + measure_busy, CORES, (), 300,
                         on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
-        return rs.decide(cfg, IDLE, demand, ours, NOW, r)
+        return rs.decide(cfg, IDLE, demand, ours, NOW, r, lanes)
 
     @staticmethod
     def settled(slot, cls, cores, pool=""):
@@ -424,15 +434,32 @@ class BorrowedCheckTest(unittest.TestCase):
         d = self.at(self.two_full_checks(), queued(check=3))
         self.assertEqual((d.starts, d.borrowed), (((3, "check"), (4, "check")), (3, 4)))
 
-    def test_a_check_borrows_only_once_every_queued_measurement_has_its_runner(self):
-        # one measurement queued and started: one check borrows what is left past it and the kept measurement
-        d = self.at(self.two_full_checks(), queued(check=3, measure=1))
+    def test_a_check_borrows_only_once_every_queued_landing_measurement_has_its_runner(self):
+        # one landing check's measurement queued and started: one check borrows what is left past it and the kept one
+        d = self.at(self.two_full_checks(), queued(check=3, measure=1), lanes=LANDING_ROW)
         self.assertEqual((d.starts, d.borrowed), (((3, "measure"), (4, "check")), (4,)))
         # one held by its slice (10.5 GiB past the margin: a check's 10 fit, a measurement's 11 not): no check takes
         # its place, even with nothing kept for measurements
-        no_reserve = dataclasses.replace(CFG, measure_reserve_jobs=0)
-        d = self.at(self.two_full_checks(), queued(check=3, measure=1), measure_free=16.5, cfg=no_reserve)
+        no_reserve = dataclasses.replace(BEFORE_A1, measure_reserve_jobs=0)
+        d = self.at(self.two_full_checks(), queued(check=3, measure=1), measure_free=16.5, cfg=no_reserve,
+                    lanes=LANDING_ROW)
         self.assertEqual(d.starts, ())
+
+    def test_a_check_borrows_ahead_of_an_optional_measurement(self):
+        # the owner, 2026-11-17 ("A3"): the same tick with the measurement an optional one (movies-measure) -- the
+        # checks borrow first, and the measurement then finds no room past the one kept for a landing's row
+        d = self.at(self.two_full_checks(), queued(check=3, measure=1))
+        self.assertEqual((d.starts, d.borrowed), (((3, "check"), (4, "check")), (3, 4)))
+
+    def test_optional_measurements_leave_the_kept_room_while_a_check_is_borrowed(self):
+        # one borrowed check settled at 2 cores, 5 of 20 busy: 17 - 5 - 2 (its rest) = 10 holds two 4-core
+        # measurements, but one of them is kept for a landing's row: one optional measurement starts
+        ours = self.two_full_checks() + [self.settled(3, "check", 2.0, pool="measure")]
+        d = self.at(ours, queued(measure=5), measure_busy=5)
+        self.assertEqual(d.starts, ((4, "measure"),))
+        # a landing's rows take the kept room too
+        d = self.at(ours, queued(measure=5), measure_busy=5, lanes={"movies-landing": 5})
+        self.assertEqual(d.starts, ((4, "measure"), (5, "measure")))
 
     def test_every_job_on_the_measure_cpus_is_counted_at_its_cap_for_a_borrow(self):
         # two measurements reading 1 core each on a quiet cpuset: 2 x 4 + 4 for the check + 4 kept for a measurement
@@ -471,13 +498,19 @@ class BorrowedCheckTest(unittest.TestCase):
         first = self.at(self.two_full_checks(), queued(check=3))
         ours = self.two_full_checks() + [rs.Instance(s, "check", True, NOW, NOW - 30, mem_gib=2, cpu_cores=1,
                                                      cpu_seconds=30, slice_class="measure") for s in first.borrowed]
-        d = self.at(ours, queued(check=1, measure=4), measure_busy=4, measure_free=60)
-        self.assertEqual(d.starts, ((5, "measure"),))
+        d = self.at(ours, queued(check=1, measure=4), measure_busy=4, measure_free=60,
+                    lanes={"movies-red-fix": 1, "movies-measure": 3})
+        self.assertEqual((d.starts, d.labels), (((5, "measure"),), ((5, "movies-red-fix"),)))
 
-    def test_an_idle_borrowed_runner_gives_way_to_a_queued_measurement(self):
+    def test_an_idle_borrowed_runner_gives_way_to_a_queued_landing_measurement(self):
+        idle = rs.Instance(3, "check", False, NOW, NOW - 60, slice_class="measure")
+        d = self.at(self.two_full_checks() + [idle], queued(check=1, measure=1), lanes=LANDING_ROW)
+        self.assertIn(3, d.stops)
+
+    def test_an_idle_borrowed_runner_stays_for_an_optional_measurement(self):
         idle = rs.Instance(3, "check", False, NOW, NOW - 60, slice_class="measure")
         d = self.at(self.two_full_checks() + [idle], queued(check=1, measure=1))
-        self.assertIn(3, d.stops)
+        self.assertNotIn(3, d.stops)
 
     def test_an_idle_borrowed_runner_stays_while_every_queued_measurement_has_its_runner(self):
         # the measurement's own runner waits for it (GitHub hands it over within the tick): stopping the borrowed check's
@@ -492,6 +525,64 @@ class BorrowedCheckTest(unittest.TestCase):
         r = readings(cpu_busy=0, cores=CORES)
         d = rs.decide(CFG, IDLE, queued(check=5), self.two_full_checks() + [self.settled(3, "check", 5)], NOW, r)
         self.assertEqual(d.borrowed, ())
+
+
+class ChargedCheckTest(unittest.TestCase):
+    """The owner, 2026-11-17 ("A1", "A2"): checks waited ~20 min for a slot and ran ~10. Their 12 threads held three,
+    each charged its JVM's 4 cores, though a settled check used 2.6 at the median (ci-runner's journal, 2026-11-15..17,
+    6297 busy readings); so a check is charged 3, on 18 threads (0-8,16-24) -- the measurements keep CCD1's other 14.
+    The p90 holds the line: a check burns 5.7 cores at its p90 (two at once 9.3, three 13.9), so its own cpuset never
+    holds more than its threads fit at check_peak_cpus, and the live reading still stops every start at
+    cpu_start_below."""
+
+    def at(self, ours, n, check_busy, measure_busy=7, cfg=CFG, check_cpus=CHECK_CPUS_A2, measure_cpus=MEASURE_CPUS_A2):
+        r = rs.Readings(111, 101, {"measure": 95}, check_busy + measure_busy, CORES, (4.0,), 300,
+                        on_cpusets(check_busy, measure_busy, check_cpus, measure_cpus), {"measure": 96})
+        return rs.decide(cfg, rs.Bitcashier(1, 0), queued(check=n), ours, NOW, r)
+
+    @staticmethod
+    def check(slot, cores):
+        return rs.Instance(slot, "check", True, NOW, NOW - 900, mem_gib=4, cpu_cores=cores, cpu_seconds=cores * 900)
+
+    def home_starts(self, d):
+        return [s for s, c in d.starts if c == "check" and s not in d.borrowed]
+
+    def test_150558_seven_checks_queued_beside_two_settled_ones(self):
+        # 2026-11-17 15:05:58Z: checks 3.6 and 1.8 cores, the check CPUs 8 of 12 busy, 7 checks queued 22 min "held by
+        # cpu": 10.2 - 8 - (4 - 1.8) < 4, none. On 18 threads at 3 each: 15.3 - 8 - 1.2 = 6.1 holds two more
+        ours = [self.check(1, 3.6), self.check(2, 1.8)]
+        before = self.at(ours, 7, check_busy=8, cfg=dataclasses.replace(BEFORE_A1, borrow_max_checks=0),
+                         check_cpus=CHECK_CPUS, measure_cpus=MEASURE_CPUS)
+        self.assertEqual(self.home_starts(before), [])
+        self.assertEqual(self.home_starts(self.at(ours, 7, check_busy=8)), [3, 4])
+
+    def test_a_landings_burst_starts_no_more_than_the_threads_hold_at_the_p90(self):
+        # a landing queues its check jobs at once, the check CPUs idle: 15.3 // 3 would start five (~23 cores at the
+        # p90 on 18 threads); 18 // 4.5 starts four
+        d = self.at([], 6, check_busy=0.5)
+        self.assertEqual(self.home_starts(d), [1, 2, 3, 4])
+        self.assertEqual(d.limits["check"]["peak"], 4)
+
+    def test_checks_reading_their_p90_hold_the_next_back(self):
+        # three settled checks reading 13.9 cores together: 15.3 - 13.9 < 3, the reading holds a fourth back
+        ours = [self.check(s, c) for s, c in ((1, 4.6), (2, 4.6), (3, 4.7))]
+        self.assertEqual(self.home_starts(self.at(ours, 3, check_busy=14.5)), [])
+
+    def test_on_the_old_12_threads_the_peak_holds_two(self):
+        # why A2 lands with (never after) A1: charged 3 on 12 threads, the p90 would hold only the lane's two
+        d = self.at([self.check(1, 2.6), self.check(2, 2.6)], 3, check_busy=5.5, cfg=dataclasses.replace(CFG, borrow_max_checks=0),
+                    check_cpus=CHECK_CPUS, measure_cpus=MEASURE_CPUS)
+        self.assertEqual(self.home_starts(d), [])
+
+    def test_more_than_two_borrow_where_the_measure_cpus_hold_them(self):
+        # borrow_max_checks 4 (A3: more than 2): on the old 20 measure threads, idle, four borrow -- 4 x 3 + 4 kept
+        # = 16 of 17 -- and the cap holds a fifth. On A2's 14 the cores and the kept measurement allow two: 3 x 3 + 4
+        # = 13 > 11.9.
+        full = [self.check(1, 5.2), self.check(2, 5.2)]
+        d = self.at(full, 6, check_busy=11, measure_busy=1, cfg=dataclasses.replace(CFG, check_peak_cpus=4.0),
+                    check_cpus=CHECK_CPUS, measure_cpus=MEASURE_CPUS)
+        self.assertEqual(d.borrowed, (3, 4, 5, 6))
+        self.assertEqual(self.at(full, 6, check_busy=17, measure_busy=1).borrowed, (3, 4))
 
 
 class DriftBurstTest(unittest.TestCase):

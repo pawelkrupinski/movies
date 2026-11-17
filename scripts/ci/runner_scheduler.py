@@ -79,8 +79,12 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     cpuset cannot hold may start in the measure slice (RUNNER_SLICE; its label stays movies-check) when every job of
     ours there at its whole cap, plus the check's and one measurement's, fits cpu_start_below of the measure CPUs and
     the live reading holds them too -- the check gets its full share, never the 2026-11-03 oversubscription (a check's
-    test phase 6 -> 16 min beside measurements) -- only while every queued measurement has its runner, at most
-    borrow_max_checks at once, and always leaving one measurement's cores, memory, slice cap and slot (borrow_check).
+    test phase 6 -> 16 min beside measurements) -- only while every queued red-fix or landing measurement has its
+    runner, at most borrow_max_checks at once, and always leaving one measurement's cores, memory, slice cap and slot
+    (borrow_check). Optional measurements (movies-measure) wait behind a borrow (the owner, 2026-11-17, "A3").
+  * CHECK CAPACITY (the owner, 2026-11-17, "A1-3": checks waited ~20 min for a slot and ran ~10): a check is charged 3
+    cores, not its JVM's 4 (a settled one used 2.6 at the median), its cpuset is 18 threads (bitcashier infra), and
+    its own cpuset never holds more checks than its threads fit at their p90, check_peak_cpus (the 2026-11-03 lesson).
   * THE MEASURE LANES (2026-11-16: Main red, and its fix's pre-push drift check -- Identity takes 43816825023, ten rows
     on movies-measure -- ran 1-3 rows at a time for 80+ min while 14-27 optional measurement jobs shared the label;
     GitHub hands a runner to any job its labels match). A measurement runner registers ONE lane's label
@@ -143,9 +147,12 @@ LANES_MARKER = "movies-lanes"
 # fix's checks ask for movies-check-red-fix (precommit-check.yml: agentctl pushes them to check/red-<id>).
 CHECK_LANES = ("movies-check-red-fix", LABELS["check"])
 LANES = {"check": CHECK_LANES, "measure": MEASURE_LANES}
+# The measure lanes on a landing's path (a gate-red fix's rows, a landing check's): served ahead of a borrowed check.
+# The last lane's optional measurements are not (the owner, 2026-11-17, "A3"): a landing check borrows ahead of them.
+LANDING_MEASURE_LANES = MEASURE_LANES[:-1]
 CLASS_OF = {label: cls for cls, label in LABELS.items()} | {lane: cls for cls, order in LANES.items() for lane in order}
 # The limits that hold a measurement, in whole jobs (Decision.limits; the other entries there only explain them).
-ADMISSION_LIMITS = ("memory", "slice", "caps", "cpu", "slots")
+ADMISSION_LIMITS = ("memory", "slice", "caps", "cpu", "slots", "peak")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -155,9 +162,18 @@ class Config:
     # ADMISSION -- every number of the rule in the module docstring, here and nowhere else
     # Each class's expected working set and cores: a measurement holds 10-11 GiB (2026-11-07: 31 GiB for 3, peaks 13);
     # a landing check 4 GiB at its median and at most 9 (ci-runner's journal, 2026-11-05..08: 2361 busy readings, p99 8),
-    # so 10; both on the JVM's 4 cores. A light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
+    # so 10; a measurement at the JVM's 4 cores. A landing check is charged 3 of its JVM's 4 (the owner, 2026-11-17,
+    # "A1"): a settled check used 2.8 cores at the median (2026-11-15/16), and charged 4 three of them filled their 12
+    # threads while the cpuset read half idle. The live reading still stops every start at cpu_start_below, and a
+    # settling check owes the rest of its 3 until it shows them, so a burst never starts past that line either
+    # (ChargedCheckTest). A light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
     job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 10, "measure": 11, "light": 1})
-    job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 4, "measure": 4, "light": 1})
+    job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 3, "measure": 4, "light": 1})
+    # THE CHECKS' PEAK: what a busy check burns at its p90 -- its sbt forks and docker past the JVM's 4 (ci-runner's
+    # journal 2026-11-15..17: two checks 9.3 cores at the p90, three 13.9). Its own cpuset never holds more checks
+    # than its threads fit at this, the lane's included: charged 3, a landing's burst of check jobs would otherwise
+    # start five on 18 threads, ~23 cores at that p90 -- the 2026-11-03 slowdown (a test phase 6 -> 16 min).
+    check_peak_cpus: float = 4.5
     # Every movies runner container's --memory (bitcashier infra passes this same number to the unit). A class whose
     # slice has a memory.max never holds more runners than that many caps fit: what admission charges a job in its
     # slice is what its container may take, so the slice's own OOM killer never fires (2026-11-07 07:40-08:22Z: nine
@@ -170,8 +186,9 @@ class Config:
     check_lane_jobs: int = 2
     # BORROWED CHECKS (the owner, 2026-11-16): a landing check its own cpuset cannot hold may run in the measure slice,
     # at most this many at once, and only while the measure pool keeps measure_reserve_jobs measurements' cores,
-    # memory, slice caps and slots past it (borrow_check: what holds one, and the bound on a measurement's delay)
-    borrow_max_checks: int = 2
+    # memory, slice caps and slots past it (borrow_check: what holds one, and the bound on a measurement's delay).
+    # Four (the owner, 2026-11-17, "A3": more than 2): the cores and the kept measurement bind first.
+    borrow_max_checks: int = 4
     measure_reserve_jobs: int = 1
     light_cpu_start_below: float = 0.95  # the light lane's CPU ceiling: a light job starts on a busy host, not a full one
     memory_margin_gib: float = 6  # left free beyond every reserve, for the running jobs' growth
@@ -402,7 +419,8 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
                   lanes: dict) -> list:
     """Bitcashier saturated: the idle heavy runners (a light lane runner is too small to hold bitcashier back). Past
     max_slots, or memory short of what our settling runners still owe: idle ones, lowest class first. An idle borrowed
-    check while a queued measurement has no runner of its lane waiting (it holds that one's slot, cap and cores). And an idle runner whose
+    check while a queued landing-path measurement has no runner of its lane waiting (it holds that one's slot, cap and
+    cores). And an idle runner whose
     class has nothing queued for longer than idle_stop_seconds."""
     rank = {c: i for i, c in enumerate(CLASSES)}
     idle = [i for i in instances if not i.busy]
@@ -416,9 +434,10 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
             stops.append(inst.slot)
             excess -= 1
             short -= memory_charge(cfg, inst)
-    # a measurement with no runner of its lane waiting for it (one that has its runner needs nothing the borrow holds)
+    # a landing-path measurement with no runner of its lane waiting for it (one that has its runner needs nothing the
+    # borrow holds; an optional measurement waits behind a borrowed check, LANDING_MEASURE_LANES)
     waiting_for = sum(max(0, n - sum(1 for i in idle if i.cls == "measure" and i.lane == lane and i.slot not in stops))
-                      for lane, n in lanes.items() if lane in MEASURE_LANES)
+                      for lane, n in lanes.items() if lane in LANDING_MEASURE_LANES)
     stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and waiting_for > 0]
     return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, lanes) == 0
                     and now - i.idle_since >= cfg.idle_stop_seconds]
@@ -465,6 +484,16 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
                    - sum(1 for s, c in starts if c == "check" and s not in borrowed))
         return free, free * cfg.job_expected_gib["check"], free * cfg.job_cpus["check"]
 
+    def peak_room() -> int | None:
+        """How many more checks the checks' own cpuset holds at their peak (check_peak_cpus), less the checks on it,
+        running or starting (a borrowed one runs on the measure CPUs); None: the cpuset was not read."""
+        own = r.class_cpu.get("check")
+        if own is None:
+            return None
+        return (_whole_jobs(len(own.cpus), cfg.check_peak_cpus)
+                - sum(1 for i in alive if i.cls == "check" and not i.borrowed)
+                - sum(1 for s, c in starts if c == "check" and s not in borrowed))
+
     lane_slots, lane_gib, lane_cpus = lane()
     limits = {"memory": _whole_jobs(memory - lane_gib, size),
               "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
@@ -480,7 +509,8 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
                         "slice": None if held["check"] is None else _whole_jobs(held["check"], cfg.job_expected_gib["check"]),
                         "caps": caps.get("check"),
                         "cpu": None if lane_slots else _whole_jobs(cpu["check"], cfg.job_cpus["check"]),
-                        "slots": len(heavy_slots)}}
+                        "slots": len(heavy_slots),
+                        "peak": peak_room()}}
 
     labels = {}  # slot -> the lane a measurement start registers
 
@@ -490,11 +520,11 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
                                                 and not i.busy)
                    - sum(1 for lane_label in labels.values() if lane_label == label))
 
-    def unserved(cls: str) -> int:
+    def unserved(cls: str, among: tuple | None = None) -> int:
         """Queued jobs of `cls` with no runner waiting for them or starting this tick (a check's or measurement's in its
-        lane)."""
+        lane; `among`: in those of its lanes alone)."""
         if cls in LANES:
-            return sum(lane_unserved(label) for label in LANES[cls])
+            return sum(lane_unserved(label) for label in (among or LANES[cls]))
         return max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy)
                    - sum(1 for _, c in starts if c == cls))
 
@@ -514,12 +544,18 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             if share_cpus(r, other, home):
                 cpu[other] -= cores
 
-    def admit(cls: str, slots: list) -> None:
-        need = unserved(cls)
+    def admit(cls: str, slots: list, among: tuple | None = None, keep_measurements: int = 0) -> None:
+        """Start runners for `cls`'s unserved jobs (`among`: of those lanes alone) while everything holds one, past
+        what is kept: the check lane from a measurement, and `keep_measurements` measurements' room."""
+        need = unserved(cls, among)
         size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
         # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
         keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
         keep_cpus = keep_cpus if lane_shares_cpus else 0
+        keep_slots += keep_measurements
+        keep_gib += keep_measurements * cfg.job_expected_gib["measure"]
+        keep_cpus += keep_measurements * cfg.job_cpus["measure"]
+        keep_held = keep_measurements * cfg.job_expected_gib["measure"]
         def cpu_holds() -> bool:
             """The CPUs hold the job -- or it is a check inside the lane, which the CPU never holds: a lane check waits
             for nothing (2026-11-08 18:55-18:57Z: lane checks queued 57 min "held by cpu" on 5-8 of 12 busy cores; a
@@ -527,7 +563,8 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             return cpu[cls] - keep_cpus >= cores or (cls == "check" and lane()[0] > 0)
 
         while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu_holds()
-               and (held[cls] is None or held[cls] >= size) and caps.get(cls, 1) >= 1):
+               and (cls != "check" or peak_room() is None or peak_room() > 0)
+               and (held[cls] is None or held[cls] - keep_held >= size) and caps.get(cls, 1) - keep_measurements >= 1):
             take(slots.pop(0), cls, cls)
             need -= 1
 
@@ -539,12 +576,15 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             plus this check's, plus measure_reserve_jobs measurements', fits cpu_start_below of those CPUs -- so no job
             of ours there can grow into the check's cores -- AND the live reading (cpu_owed, a borrowed check at its
             whole cap) holds the check and the kept measurements.
-          * MEASUREMENTS FIRST: none starts while a queued measurement has no runner, an idle borrowed runner is
-            stopped when a measurement queues with no runner (_idle_to_stop), and at most borrow_max_checks run at once.
-          * THE BOUND: each borrow leaves measure_reserve_jobs measurements' cores, memory, slice caps and slots, so a
-            measurement queued beside borrowed checks starts on the next tick whatever they do; only measurements
-            beyond those may wait, each for at most the end of one borrowed check (a landing-check job, under 20 min),
-            and only where the CPUs would have held them -- never more of them than borrow_max_checks."""
+          * LANDING-PATH MEASUREMENTS FIRST: none starts while a queued red-fix or landing measurement
+            (LANDING_MEASURE_LANES) has no runner, an idle borrowed runner is stopped when one queues with no runner
+            (_idle_to_stop), and at most borrow_max_checks run at once. An optional measurement (movies-measure) is
+            admitted AFTER the borrows (the owner, 2026-11-17, "A3": a landing check ahead of optional measurements).
+          * THE BOUND: each borrow leaves measure_reserve_jobs measurements' cores, memory, slice caps and slots --
+            optional measurements too leave them while a borrowed check runs -- so a landing-path measurement queued
+            beside borrowed checks starts on the next tick whatever they do; only measurements beyond those may wait,
+            each for at most the end of one borrowed check (a landing-check job, under 20 min), and only where the
+            CPUs would have held them -- never more of them than borrow_max_checks."""
         if share_cpus(r, "check", "measure") or "measure" not in r.class_cpu:
             return  # one cpuset (or unknown ones): nothing to borrow
         measure_cpus = len(r.class_cpu["measure"].cpus)
@@ -555,7 +595,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             # every job of ours on the measure CPUs, alive or starting this tick, at its whole cap
             ledger = (sum(cfg.job_cpus[i.cls] for i in alive if share_cpus(r, "measure", i.runs_in))
                       + sum(cfg.job_cpus[c] for s, c in starts if c != "check" or s in borrowed))
-            if (unserved("measure") or sum(1 for i in alive if i.borrowed) + len(borrowed) >= cfg.borrow_max_checks
+            if (unserved("measure", LANDING_MEASURE_LANES) or sum(1 for i in alive if i.borrowed) + len(borrowed) >= cfg.borrow_max_checks
                     or ledger + check_cores + keep_cores > cfg.cpu_start_below * measure_cpus
                     or cpu["measure"] - keep_cores < check_cores
                     or memory - keep_gib < cfg.job_expected_gib["check"]
@@ -568,9 +608,12 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             need -= 1
 
     if not full:
-        for cls in CLASSES[:-1]:
-            admit(cls, heavy_slots)
+        admit("check", heavy_slots)
+        admit("measure", heavy_slots, LANDING_MEASURE_LANES)
         borrow_check(heavy_slots)
+        # optional measurements after the borrows, leaving the kept measurements' room while a borrowed check runs
+        any_borrowed = borrowed or any(i.borrowed for i in alive)
+        admit("measure", heavy_slots, keep_measurements=cfg.measure_reserve_jobs if any_borrowed else 0)
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
     room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
