@@ -152,7 +152,28 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
   whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
   `LANDED <sha>` and goes on to its watch (stage 4). A failing batch is searched prefix by prefix and only the first
   failing change rejected.
-- **Not for**: tools-only changes and `Fixes-Red:` fixes (they land while red), or anything while main is green.
+- **Not for**: tools-only changes and `Fixes-Red:` fixes (they land while red).
+
+## Stage 2c: the backlog batch, while changes queue at green
+
+The owner (2026-11-17): "batch whenever there's a backlog, not only on red". With 6-8 changes queued, each paid a
+30-40 min check of its own, most of it waiting for a ci-runner check slot. So at green, with no batch open, 2 or more
+queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTCTL.md`, "THE BACKLOG BATCH"):
+
+- **Who joins**: up to 4, in queue order (`Fixes-Red:` first). Never an identity change (what this hook's `--plan`
+  selects the `identity` area for, or a G5 identity-model commit), a change landed with `agentctl land --no-batch`, a
+  red fix, or a combined-tree verification round: those are checked alone, beside the batch. A change that does not
+  apply on top of the others is left out and checked alone.
+- **The check**: the batch's tip gets the FULL landing check a change gets (`--range`; on ci-runner a precommit-check
+  round on `check/batch-<tip>`, area tests and heavy rows included), not `--fast-only`: no member was checked alone. It
+  takes ONE check tree.
+- **Pass**: one push (the check's run vouches for it, `PREPUSH_REMOTE_RUN`); each change is `LANDED`, with its own
+  watch (stage 4) and its own landing record (`batch_id`, `batch` size).
+- **Fail**: searched prefix by prefix; the culprit is rejected only after its prefix fails again AND the failure is its
+  own (a test that fails on main too, a time cap or an infra failure sends it to a check of its own instead); the
+  changes before it land at once; the rest queue again for the next batch.
+- While it checks, no other change pushes (a push would move main under it), except a red fix, which keeps its own
+  check tree and lands alone. A change queued meanwhile joins the next batch.
 
 ## Stage 3: the pre-push hook
 
