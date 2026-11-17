@@ -35,7 +35,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
     cinemeta = Some(new CinemetaClient(enrichmentFetch)), retriesFailures = imdbIdRetriesFailures, stopwatch = stopwatch,
-    retries = threadPools.scheduler("imdb-id-retry")))
+    retries = threadPools.scheduler("imdb-id-retry"), sleep = sleep))
   /** Whether a failed IMDb-id lookup is asked again later ([[ImdbIdResolver]]'s `retriesFailures`): always, but over a
    *  hermetic replay, which overrides it. */
   protected def imdbIdRetriesFailures: Boolean = true

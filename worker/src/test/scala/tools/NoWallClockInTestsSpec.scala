@@ -253,9 +253,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // the time only where it is wired, and passes it down.
 
   private val CompositionRoot = "a composition root: reads the process's clock and stopwatch once and hands them down"
-  private val WaitPrimitive   =
-    "a blocking wait's deadline (Object.wait / Thread.sleep): it must be read on the real time the wait blocks on, so a " +
-      "passed stopwatch a spec steps would only desynchronise the two"
 
   /** Main-source file → why it may read the process's time directly. */
   private val MainTimeSources: Map[String, String] = Map(
@@ -272,9 +269,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
         "`timed`), and reached from every client of that same diagnostic door"),
     "http/src/main/scala/tools/AddressFailover.scala"               ->
       ("a composition root: the JDK's resolver SPI loads FailoverAddressResolverProvider by ServiceLoader, with no wiring " +
-        "to hand it a clock, and the JVM's one failover state is built there"),
-    "worker/src/main/scala/services/tasks/TaskWorker.scala"         -> WaitPrimitive,
-    "worker/src/main/scala/services/readmodel/ReadModelSweeper.scala" -> WaitPrimitive
+        "to hand it a clock, and the JVM's one failover state is built there")
   )
 
   /** A read of the process's time in production code: the wall clock's, or the monotonic one's. */
@@ -302,7 +297,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.scala",
     "worker/src/main/scala/tools/AdaptiveParallel.scala",
     "worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala",
-    "worker/src/main/scala/services/tasks/TaskWorker.scala",
     "worker/src/main/scala/services/identity/adapters/IdentityProjection.scala",
     "worker/src/main/scala/services/identity/adapters/IdentityModelService.scala",
     "worker/src/main/scala/services/readmodel/ReadModelProjector.scala",

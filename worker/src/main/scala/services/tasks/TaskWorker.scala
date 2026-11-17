@@ -94,7 +94,12 @@ class TaskWorker(
   clock:             java.time.Clock,
   // Where each completed lease reap is reported (`ScheduledTickStale`).
   ticks:             TickRecorder = TickRecorder.Unrecorded,
-  threadPools:       ThreadPools
+  threadPools:       ThreadPools,
+  // The retry back-off's sleep, and the monotonic source the idle wait's deadline, a handler's duration and the stop's
+  // join grace are read on: the root's `sleep` and `stopwatch`. The idle wait blocks on the doorbell's monitor in real
+  // time, so a spec that leaves the worker idle passes a stopwatch that moves (a frozen one never reaches the deadline).
+  sleep:             scala.concurrent.duration.FiniteDuration => Unit,
+  stopwatch:         tools.Stopwatch
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -115,7 +120,7 @@ class TaskWorker(
   // Decouples the change-stream producer from the worker threads: producers ring,
   // idle workers park on it. Carries no task — the claim is still the source of
   // truth.
-  private val doorbell: TaskDoorbell           = new TaskDoorbell
+  private val doorbell: TaskDoorbell           = new TaskDoorbell(stopwatch)
   // Handle to the queue's new-task push; closed on stop().
   private var watchHandle: Option[AutoCloseable] = None
   // Reaping is global, so one shared thread does it for the whole pool — and it
@@ -201,7 +206,7 @@ class TaskWorker(
   /** Sleep, honouring a stop interrupt. */
   private def sleepFor(ms: Long): Unit =
     if (running.get())
-      try Thread.sleep(ms)
+      try sleep(scala.concurrent.duration.Duration(ms, java.util.concurrent.TimeUnit.MILLISECONDS))
       catch { case _: InterruptedException => Thread.currentThread().interrupt() }
 
   /** Claim a single waiting task for `workerId` and run its handler to
@@ -237,7 +242,7 @@ class TaskWorker(
       observer.onFinished(task, Outcome.NoHandler, 0L)
       PollResult.Returned
     case Some(h) =>
-      val handled = tools.Stopwatch.timed(Try(tools.HttpPath.within(TaskWorker.httpPathOf(task.taskType))(h.handle(task))))
+      val handled = stopwatch.timed(Try(tools.HttpPath.within(TaskWorker.httpPathOf(task.taskType))(h.handle(task))))
       val (outcome, millis) = (handled.value, handled.millis)
       outcome match {
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
@@ -337,7 +342,7 @@ class TaskWorker(
     reaper.shutdownNow()           // the reap, and every hold's pending ring with it
     doorbell.ringAll()             // wake every parked worker so it sees running=false
     workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep or fetch
-    val waited = tools.Stopwatch.start()
+    val waited = stopwatch.start()
     workers.foreach(t => Try(t.join((stopGrace - waited.elapsed).toMillis.max(1L))))
     val held = inFlight.asScala.toSeq
     held.foreach { case (workerId, task) =>
@@ -457,7 +462,7 @@ object TaskWorker {
  * ~one trailing empty claim per burst. `ringAll()` (used only by `stop`) still
  * wakes everyone.
  */
-private[tasks] final class TaskDoorbell {
+private[tasks] final class TaskDoorbell(stopwatch: tools.Stopwatch) {
   private val lock = new Object
   private var gen  = 0L
 
@@ -474,12 +479,12 @@ private[tasks] final class TaskDoorbell {
   /** Park until `generation` moves past `since`, or `timeoutMs` elapses
    *  (whichever first). Interrupt-safe so `stop()` can break it. */
   def awaitSince(since: Long, timeoutMs: Long): Unit = lock.synchronized {
-    val deadline  = System.nanoTime() + timeoutMs * 1000000L
+    val deadline  = stopwatch.nanoTime() + timeoutMs * 1000000L
     var remaining = timeoutMs
     try
       while (gen <= since && remaining > 0L) {
         lock.wait(remaining)
-        remaining = (deadline - System.nanoTime()) / 1000000L
+        remaining = (deadline - stopwatch.nanoTime()) / 1000000L
       }
     catch { case _: InterruptedException => Thread.currentThread().interrupt() }
   }

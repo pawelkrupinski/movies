@@ -30,7 +30,7 @@ object AdaptiveParallel {
   }
 
   def map[A, B](items: Seq[A], workers: Int, backoff: FiniteDuration = 2.seconds, maxAttempts: Int = 4,
-                sleep: FiniteDuration => Unit = d => Thread.sleep(d.toMillis))
+                sleep: FiniteDuration => Unit)
                (isThrottle: Throwable => Boolean)(f: A => B): (Seq[(A, Try[B])], Stats) = {
     val started  = Stopwatch.start()
     val queue    = new ConcurrentLinkedQueue[(Int, Int)]()   // (item index, attempts so far)

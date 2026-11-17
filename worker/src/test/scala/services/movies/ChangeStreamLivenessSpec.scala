@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.ReadModelSweeper
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 
 /**
@@ -31,7 +32,7 @@ class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
 
   "awaitStreamApplied" should "not wait at all when no cursor ever subscribed" in {
     val started = System.nanoTime()
-    ReadModelSweeper.awaitStreamApplied(new ChangeStreamLiveness(tools.SpecClock.Pinned), grace = 10.seconds, timeout = 10.seconds)
+    ReadModelSweeper.awaitStreamApplied(new ChangeStreamLiveness(tools.SpecClock.Pinned), tools.Sleep.Blocking, grace = 10.seconds, timeout = 10.seconds)
     (System.nanoTime() - started).nanos should be < 5.seconds
   }
 
@@ -40,8 +41,17 @@ class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
     liveness.watching(ChangeStreamLiveness.Movies)
     liveness.queued(ChangeStreamLiveness.Movies)                             // never applied
     val started = System.nanoTime()
-    ReadModelSweeper.awaitStreamApplied(liveness, grace = Duration.Zero, timeout = 200.millis)
+    ReadModelSweeper.awaitStreamApplied(liveness, tools.Sleep.Blocking, grace = Duration.Zero, timeout = 200.millis)
     (System.nanoTime() - started).nanos should (be >= 200.millis and be < 5.seconds)
+  }
+
+  it should "wait on the sleep it is handed, so a spec's sleep that waits nothing still ends the wait" in {
+    val liveness = new ChangeStreamLiveness(tools.SpecClock.Pinned)
+    liveness.watching(ChangeStreamLiveness.Movies)
+    liveness.queued(ChangeStreamLiveness.Movies)                             // never applied
+    val slept = scala.collection.mutable.ListBuffer.empty[FiniteDuration]
+    ReadModelSweeper.awaitStreamApplied(liveness, slept += _, grace = 3.seconds, timeout = 200.millis)
+    slept.toList shouldBe (3.seconds :: List.fill(4)(50.millis))            // the grace, then the timeout's polls
   }
 
   it should "wait past the longest a debounce holds a film's re-read, so a held film is not called a miss" in {

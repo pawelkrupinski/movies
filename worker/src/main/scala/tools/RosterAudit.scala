@@ -78,7 +78,7 @@ object RosterAudit {
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, city => catalog.byCity.getOrElse(city, Nil))
     println(s"RosterAudit: ${venues.size} Polish venue source pages to read")
 
-    val (results, stats) = AdaptiveParallel.map(venues, Workers)(RosterSourceReader.isThrottle)(
+    val (results, stats) = AdaptiveParallel.map(venues, Workers, sleep = Sleep.Blocking)(RosterSourceReader.isThrottle)(
       RosterSourceReader.read(http.getPage))
     val pageReadings = results.map {
       case (venue, Success(reading)) => venue -> reading

@@ -31,7 +31,7 @@ class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools
         coll.insertOne(Document("_id" -> id, "kind" -> FreshnessKind.DetailEnrich.label, "lastFetchedAt" -> at)).toFuture(),
         SpecTimeouts.Io))
       // Construction kicks off the two-phase hydrate on a daemon thread; batchSize 2 → 3 pages.
-      val store = new MongoFreshnessStore(Some(db), hydrateBatchSize = 2)
+      val store = new MongoFreshnessStore(Some(db), hydrateBatchSize = 2, sleep = tools.Sleep.Blocking)
       Await.result(store.whenReady(FreshnessKind.DetailEnrich), SpecTimeouts.Io) // restReady = enrichment phase done
       ids.foreach(id => withClue(s"$id should have hydrated across page boundaries: ")(
         store.lastFetchedAt(id) shouldBe defined))

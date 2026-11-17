@@ -69,7 +69,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
       def handle(task: Task): HandlerOutcome = handler(task)
     })
     new TaskWorker(queue, handlers, processingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
-      poolSize = settings.WorkerPoolSize(1), clock = clock, threadPools = tools.ThreadPools.Unmanaged).claimAndRun("w0") shouldBe TaskWorker.PollResult.Completed
+      poolSize = settings.WorkerPoolSize(1), clock = clock, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking, stopwatch = tools.SpecStopwatch.Frozen).claimAndRun("w0") shouldBe TaskWorker.PollResult.Completed
   }
 
   "The identity model's lookup fill" should "ask its gaps on the `fill` path" in {
@@ -138,7 +138,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(
       Seq(("Film bez IMDb", Some(2026), MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Tmdb -> SourceData())))),
       normalizer = titleNormalizer), normalizer = titleNormalizer, clock = tools.SpecClock.Pinned)
-    new ImdbIdResolver(cache, new ImdbClient(wire.fetch), stopwatch = _root_.tools.SpecStopwatch.Frozen, retries = tools.DaemonExecutors.scheduler("imdb-id-retry"), executionContext = tools.DaemonExecutors.virtualThreadEC("imdb-id-resolver"))
+    new ImdbIdResolver(cache, new ImdbClient(wire.fetch), stopwatch = _root_.tools.SpecStopwatch.Frozen, retries = tools.DaemonExecutors.scheduler("imdb-id-retry"), executionContext = tools.DaemonExecutors.virtualThreadEC("imdb-id-resolver"), sleep = tools.Sleep.Blocking)
       .resolveSync("Film bez IMDb", Some(2026), "Film bez IMDb")
     scala.util.Try(new MovieService(cache, new InProcessEventBus(), wire.tmdb, clock = tools.SpecClock.Pinned)
       .withFilmDetails(MovieRecord(), 7))

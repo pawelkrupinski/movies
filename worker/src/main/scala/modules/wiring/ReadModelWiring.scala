@@ -29,6 +29,7 @@ trait ReadModelWiring { self: WorkerWiring =>
   lazy val readModelSweeper: ReadModelSweeper = new ReadModelSweeper(readModelProjector.projection,
     pruneInterval  = configuration.readModelPruneInterval(ReadModelSweeper.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelSweeper.DefaultPruneBootDelay),
+    awaitStreamApplied = ReadModelSweeper.awaitStreamApplied(_, sleep),
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock))
   // What the projector's boot reads take from the cache's boot hydrate (see BootCorpusStudy).
   lazy val readModelBootStudy: BootCorpusStudy = new BootCorpusStudy(titleNormalizer)

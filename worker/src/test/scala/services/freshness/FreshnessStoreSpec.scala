@@ -129,7 +129,8 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     val t = new Thread(() => MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => { synchronized { order = order :+ "scrape" }; true },
       scrapeReady = ready,
-      loadRest    = () => { restStarted.countDown(); restMayFinish.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); synchronized { order = order :+ "rest" } }
+      loadRest    = () => { restStarted.countDown(); restMayFinish.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); synchronized { order = order :+ "rest" } },
+      sleep       = _ => ()
     ))
     t.setDaemon(true); t.start()
     restStarted.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true

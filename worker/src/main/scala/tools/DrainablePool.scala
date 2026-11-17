@@ -23,7 +23,9 @@ import scala.concurrent.duration.FiniteDuration
  * pool is not, which is why the drain order (publishers before subscribers) still
  * matters and is still the caller's to choose.
  */
-final class DrainablePool(executionContext: ExecutionContextExecutorService, stopwatch: Stopwatch) {
+final class DrainablePool(executionContext: ExecutionContextExecutorService, stopwatch: Stopwatch,
+                          // The wait between looks at what is still in flight: the root's `sleep`.
+                          sleep: scala.concurrent.duration.FiniteDuration => Unit) {
 
   private val inFlight = new AtomicInteger(0)
 
@@ -35,7 +37,7 @@ final class DrainablePool(executionContext: ExecutionContextExecutorService, sto
   }
 
   /** Block until nothing submitted here is still running. The pool stays usable. */
-  def drain(): Unit = while (inFlight.get() > 0) Thread.sleep(PollInterval.toMillis)
+  def drain(): Unit = while (inFlight.get() > 0) sleep(PollInterval)
 
   /** Drain for at most `within`, then end the pool, interrupting what still runs and dropping what
    *  is still queued. Returns how many submitted tasks were abandoned that way. After this every
@@ -46,7 +48,7 @@ final class DrainablePool(executionContext: ExecutionContextExecutorService, sto
    *  Only for work that is recomputable — whatever enqueued it must ask again later. */
   def stop(within: FiniteDuration): Int = {
     val started = stopwatch.start()
-    while (inFlight.get() > 0 && started.elapsed < within) Thread.sleep(PollInterval.toMillis)
+    while (inFlight.get() > 0 && started.elapsed < within) sleep(PollInterval)
     val abandoned = inFlight.get()
     executionContext.shutdownNow()
     executionContext.awaitTermination(PollInterval.toMillis * 20, TimeUnit.MILLISECONDS)

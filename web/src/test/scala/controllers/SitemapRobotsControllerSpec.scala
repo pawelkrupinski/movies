@@ -162,7 +162,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(TestCityControllers.now.plusDays(1), None)))
 
   private class StubReadModel(repository: InMemoryReadModelRepository, stamps: Map[String, Instant])
-      extends WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, threadPools = _root_.tools.ThreadPools.Unmanaged) {
+      extends WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, threadPools = _root_.tools.ThreadPools.Unmanaged, sleep = _root_.tools.Sleep.Blocking) {
     override def lastModifiedFor(citySlug: String): Instant = stamps.getOrElse(citySlug, Instant.EPOCH)
   }
 
@@ -225,7 +225,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
       repository.upsertScreening(
         CityScreening(s"s-$i", id, "poznan", Multikino.displayName, None, Seq(models.Showtime(now, None))))
     }
-    val readModel = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
+    val readModel = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
     readModel.reload()
     TestCityControllers.build(Nil, readModel = Some(readModel)).crawler
   }

@@ -48,7 +48,9 @@ class WebReadModel(
     servingCountry:    Option[Country] = None,
     // Where each completed backstop and cold-retry tick is reported (`ScheduledTickStale`).
     ticks:             TickRecorder = TickRecorder.Unrecorded,
-    threadPools:       ThreadPools) extends Stoppable with Logging {
+    threadPools:       ThreadPools,
+    // The wait before a drift is confirmed (`driftSettle`): the root's `sleep`; a spec passes one that skips it.
+    sleep:             FiniteDuration => Unit) extends Stoppable with Logging {
 
   private val formerSlugs: String => Seq[String] = servingCountry.fold((_: String) => Seq.empty[String])(c => c.formerSlugs)
 
@@ -488,7 +490,7 @@ class WebReadModel(
       // same minute as a worker prune burst, never at two consecutive ticks) -- a full corpus
       // decode bought for an event already on its way. A lost event is still missing after
       // the settle; an in-flight one is not.
-      Thread.sleep(driftSettle.value.toMillis)
+      sleep(driftSettle.value)
       drift() match {
         case Some(confirmed) =>
           logger.info(s"WebReadModel backstop: drift detected — reloading ($confirmed).")

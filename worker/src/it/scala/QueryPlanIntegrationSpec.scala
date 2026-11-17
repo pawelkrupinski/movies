@@ -212,7 +212,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     import services.tasks.{MongoScrapeCostStore, ScrapeCost}
     assertIndexed(plansOf("by-id") { db =>
       val keys = (1 to 10).map(n => s"imdb|tmdb:$n")
-      val freshness = new MongoFreshnessStore(Some(db))
+      val freshness = new MongoFreshnessStore(Some(db), sleep = tools.Sleep.Blocking)
       Await.result(freshness.whenReady(FreshnessKind.ImdbRating), SpecTimeouts.Io)
       keys.foreach(freshness.markFresh(_, FreshnessKind.ImdbRating, Far))
       freshness.invalidate(keys.head)

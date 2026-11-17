@@ -37,7 +37,8 @@ class ReadModelSweeper(
   pruneBootDelay:  ReadModelPruneBootDelay = ReadModelSweeper.DefaultPruneBootDelay,
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
   // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnSweep`).
-  awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_),
+  // The root passes the wait on its own `sleep`; the default serves the specs that build a sweeper bare.
+  awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_, tools.Sleep.Blocking),
   // Which derivation the stored read model was last re-projected whole under — see
   // [[ReadModelDerivationMarker]] and `advanceDerivationPass`. `none` owes no pass.
   derivationMarker:  ReadModelDerivationMarker = ReadModelDerivationMarker.none,
@@ -776,15 +777,21 @@ object ReadModelSweeper {
    *  subscribed (a Mongo-less boot, a test wiring) means nothing is in flight. */
   def awaitStreamApplied(
     liveness: ChangeStreamLiveness,
+    sleep:    scala.concurrent.duration.FiniteDuration => Unit,
     grace:    scala.concurrent.duration.FiniteDuration = InFlightDeliveryGrace,
     timeout:  scala.concurrent.duration.FiniteDuration = InFlightApplyTimeout
   ): Unit =
     if (ChangeStreamLiveness.Collections.exists(liveness.isWatching)) {
-      Thread.sleep(grace.toMillis)
+      sleep(grace)
       val handedOff = liveness.lastTicket
-      val deadline  = System.nanoTime() + timeout.toNanos
-      while (!liveness.appliedThrough(handedOff) && System.nanoTime() < deadline) Thread.sleep(50)
+      // Bounded by polls, not a deadline: the check is a field read, so `timeout / AppliedPoll` polls wait `timeout`,
+      // and a spec's sleep that skips the wait still ends the loop.
+      val polls = math.max(1L, timeout.toNanos / AppliedPoll.toNanos)
+      Iterator.range(0L, polls).takeWhile(_ => !liveness.appliedThrough(handedOff)).foreach(_ => sleep(AppliedPoll))
     }
+
+  /** How often [[awaitStreamApplied]] looks again at what the apply thread has applied. */
+  private val AppliedPoll = scala.concurrent.duration.Duration(50L, java.util.concurrent.TimeUnit.MILLISECONDS)
 
   /** The most unlisted venue rows one sweep prunes: 20, or 1% of the read model's venue rows when
    *  that is more. A stream's missed removals come a few at a time (one on 2026-09-30); past this,

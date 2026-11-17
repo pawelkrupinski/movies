@@ -76,6 +76,9 @@ class MongoConnection(
     // Starts the background reconnect (named, runnable). A daemon thread in production;
     // the seam lets a test decide when that thread runs relative to construction.
     startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon,
+    // The background reconnect's back-off between probes: blocking, on the reconnect's own daemon thread; the seam
+    // lets a test run the retry loop without waiting it out.
+    reconnectWait: FiniteDuration => Unit = tools.Sleep.Blocking,
     // Connections in the pool this connection builds for itself (unused when it
     // borrows `sharedClient`) — see [[MongoTuning]].
     maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(MongoConnection.DefaultMaxPoolSize),
@@ -168,7 +171,7 @@ class MongoConnection(
         var waitSeconds = 5L
         var givenUp     = false
         while (!closed && !givenUp && initResult._2.isEmpty) {
-          Thread.sleep(waitSeconds * 1000L)
+          reconnectWait(waitSeconds.seconds)
           if (!closed)
             connect(connectionString) match {
               case Success((client, db)) =>

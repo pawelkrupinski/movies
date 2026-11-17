@@ -26,7 +26,7 @@ class MongoStampedRowsIntegrationSpec extends AnyFlatSpec with Matchers with Int
 
   "a Mongo freshness store's retention" should "scan by stamp and delete only what is unchanged since the scan" in {
     Await.result(database.getCollection("freshness").drop().toFuture(), SpecTimeouts.Io)
-    val store = new MongoFreshnessStore(Some(database))
+    val store = new MongoFreshnessStore(Some(database), sleep = tools.Sleep.Blocking)
     try {
       Await.result(store.whenReady(FreshnessKind.ImdbRating), SpecTimeouts.Io)
       store.markFresh("imdb|tmdb:1", FreshnessKind.ImdbRating, old)

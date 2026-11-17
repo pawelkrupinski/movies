@@ -166,7 +166,7 @@ trait TestWiring extends WorkerWiring {
    *  rather than on one harness because every end-to-end shape — fixture replay
    *  and archive replay alike — has to be able to render through the SAME seam
    *  the web app serves from, not through the raw worker cache. */
-  lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country), threadPools = tools.ThreadPools.Unmanaged)
+  lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country), threadPools = threadPools, sleep = sleep)
 
   /** Every venue whose scrape THREW inside [[cutoverTick]], as `venue: exception`,
    *  over the wiring's life. The tick carries on past a throwing venue, as production's

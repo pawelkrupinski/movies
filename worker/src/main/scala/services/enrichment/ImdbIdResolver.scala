@@ -74,7 +74,8 @@ class ImdbIdResolver(
   val retriesFailures: Boolean = true,
   random: () => Double = () => scala.util.Random.nextDouble(),
   // The wiring's monotonic clock: how long a `drain` has waited on the resolver's pool.
-  stopwatch: tools.Stopwatch
+  stopwatch: tools.Stopwatch,
+  sleep: scala.concurrent.duration.FiniteDuration => Unit
 )(using LatestTitleYear) extends Drainable with Logging {
 
   /**
@@ -106,7 +107,7 @@ class ImdbIdResolver(
         imdb.findId(query, year)))
       .nextOption()
 
-  private val pool = new tools.DrainablePool(executionContext, stopwatch)
+  private val pool = new tools.DrainablePool(executionContext, stopwatch, sleep)
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint

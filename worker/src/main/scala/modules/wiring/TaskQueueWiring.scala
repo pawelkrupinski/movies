@@ -22,7 +22,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // itself is consumed through the `TaskQueue` abstraction below.
   lazy val taskDedupCache: CachingTaskQueue = new CachingTaskQueue(new MongoTaskQueue(mongoConnection.database))
   lazy val taskQueue: TaskQueue = new MeteredTaskQueue(taskDedupCache, taskMetrics)
-  lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
+  lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database, sleep = sleep)
 
   // THE REAPER-BACKOFF THROTTLE IS GONE, and the shape of what it was is worth a
   // paragraph because the enqueue caps it shared are still here.
@@ -71,7 +71,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics
-  , clock = clock, ticks = ticks, threadPools = threadPools))
+  , clock = clock, ticks = ticks, threadPools = threadPools,
+    sleep = sleep, stopwatch = stopwatch))
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

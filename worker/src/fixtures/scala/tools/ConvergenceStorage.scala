@@ -159,7 +159,7 @@ object ConvergenceStorage {
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared, stopwatch = _root_.tools.Stopwatch.System)
     override lazy val archive    = new MongoScrapeArchiveRepository(shared)
     override lazy val tasks: TaskQueue              = new MongoTaskQueue(shared)
-    override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared)
+    override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared, sleep = tools.Sleep.Blocking)
     override lazy val chunkScrape: ChunkScrapeStore = new MongoChunkScrapeStore(shared)
     override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared)
 

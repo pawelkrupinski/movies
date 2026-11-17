@@ -14,7 +14,7 @@ class WebReadModelStreamMetricsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     @volatile var model: WebReadModel = null
     val metrics = new WebReadModelStreamMetrics(registry, "pl", collection => model.streamLive(collection))
-    model = new WebReadModel(repository, streamMetrics = metrics, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
+    model = new WebReadModel(repository, streamMetrics = metrics, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
     model.start()
     try {
       PrometheusExposition.render(registry) should include ("""kinowo_web_readmodel_stream_live{collection="web_movies",country="pl"} 1""")

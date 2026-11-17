@@ -440,7 +440,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     store.upsertMovie(resolved("belle|2021", "Belle"))
     store.upsertScreening(models.CityScreening("s-waw", "belle|2021", "warszawa", "Muranow", None, Nil))
     store.upsertScreening(models.CityScreening("s-poz", "belle|2021", "poznan", "Malta", None, Nil))
-    val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
+    val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
     readModel.start()
     (TestCityControllers.build(Seq.empty, readModel = Some(readModel)).api, store, readModel)
   }

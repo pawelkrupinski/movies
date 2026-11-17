@@ -108,7 +108,9 @@ class InMemoryFreshnessStore extends FreshnessStore {
 class MongoFreshnessStore(
   db:               Option[MongoDatabase] = None,
   // Page size for the keyset-paged boot hydrate; injectable so tests force multiple pages.
-  hydrateBatchSize: Int = 2000
+  hydrateBatchSize: Int = 2000,
+  // The wait between failed scrape-phase hydrate attempts: the root's `sleep`.
+  sleep:            FiniteDuration => Unit
 ) extends FreshnessStore with Logging {
   private val mirror = new ConcurrentHashMap[String, Instant]()
   // Relaxed `{w:1, j:false}` like the task queue: freshness stamps are a cache
@@ -209,7 +211,8 @@ class MongoFreshnessStore(
       loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),
       scrapeReady = scrapeReady,
       loadRest    = () => { hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment"); () },
-      restReady   = restReady
+      restReady   = restReady,
+      sleep       = sleep
     )
   }
 
@@ -282,7 +285,7 @@ object MongoFreshnessStore {
     restReady:         Promise[Unit] = Promise[Unit](),
     maxScrapeAttempts: Int = 5,
     retryDelay:        FiniteDuration = 5.seconds,
-    sleep:             FiniteDuration => Unit = d => Thread.sleep(d.toMillis)
+    sleep:             FiniteDuration => Unit
   ): Unit =
     try {
       var attempt = 1

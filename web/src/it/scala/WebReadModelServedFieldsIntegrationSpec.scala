@@ -80,7 +80,7 @@ class WebReadModelServedFieldsIntegrationSpec extends AnyFlatSpec with Matchers 
       // beats the asynchronous cursor open and is never delivered. This client's Java-default
       // codec registry once made every checkpoint here fail.
       repository.streamCheckpoint().answered shouldBe defined
-      val model = new WebReadModel(repository, clock = tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
+      val model = new WebReadModel(repository, clock = tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
       model.start()
       try {
         model.hydrated shouldBe true

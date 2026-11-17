@@ -11,7 +11,7 @@ class DrainablePoolSpec extends AnyFlatSpec with Matchers {
 
   // `stopwatch` is the real monotonic clock where the drain's deadline is the point (the budget must elapse while a task
   // never ends), and a frozen one where the work finishes by itself.
-  private def singleThreadPool(stopwatch: Stopwatch) = new DrainablePool(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor()), stopwatch)
+  private def singleThreadPool(stopwatch: Stopwatch) = new DrainablePool(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor()), stopwatch, sleep = tools.Sleep.Blocking)
 
   // A shutdown drain used to wait for every SUBMITTED task, queued ones included, however long the
   // backlog: past the pod's 30 s grace to the SIGKILL, skipping every close after it. What is queued
