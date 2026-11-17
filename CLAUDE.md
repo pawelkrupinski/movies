@@ -17,11 +17,18 @@ CI is the safety net, not the test plan: land once the layers are green locally,
 |---|---|
 | `sbt testUnit` | any change under `web/`, `worker/`, `scrapers/`, `common/`, `geodata/` or `identity/` `src/main/` that isn't pure view markup (controllers, services, enrichment, the cinema scrapers, models, the generated rosters, the identity resolver) |
 | `sbt itAll` (`*/src/it/scala/`, fakes + real cache/repository) | enrichment pipelines, cache layering, the read-model projection, anything crossing the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam |
-| `sbt web/PageTest/test` (real Chrome over CDP, Twirl fixtures) | `web/src/main/assets/js/`, the inline `<script>` blocks in the repertoire templates, the rendered HTML shape those blocks read |
-| Playwright (`page-tests-playwright`; mobile + desktop × Chromium / Chrome / WebKit in CI, Firefox local-only) | visible UX changes — card-tap, pill rows, gestures, the empty / loading states |
+| `sbt web/PageTest/test` (real Chrome over CDP, Twirl fixtures) | *recommended, not required before landing* (below): `web/src/main/assets/js/`, the inline `<script>` blocks in the repertoire templates, the rendered HTML shape those blocks read |
+| Playwright (`page-tests-playwright`; mobile + desktop × Chromium / Chrome / WebKit in CI, Firefox local-only) | *recommended, not required before landing* (below): visible UX changes — card-tap, pill rows, gestures, the empty / loading states |
 | iOS LocalServer (iOS decoders `[Film]`, `[FilmDetails]`, `CinemaCatalog` against a live fixture-server `/{city}/api/*`) | either side of that contract: the `MovieApiController` JSON shape or the iOS `Codable` models |
 | `swift test --package-path ios` | any iOS model / parser logic, whether or not LocalServer is also needed |
 | `scripts/run-script-tests` (every `<tool>-test.sh` / `<tool>_test.py`, found by name — a new self-test needs no wiring) | any change under `scripts/`, `.github/scripts/`, `.github/actions/` or the mobile `*/scripts/`; `--changed <base>` narrows, `--linux` runs CI's ubuntu container |
+
+**The page layers and e2e run after landing, on Main** (the owner, 2026-11-17, "B1": in a week of landing checks the
+page area failed 0 of 14, ~23 min each, and `e2e (rest)` 0 of 95). Neither the pre-push hook nor the landing check runs
+them, and landing does not require them; Main's `page-tests-*` and `e2e (*)` rows are gate rows, so a failure there is
+a normal gate red with a fixer. When you change UI, still run the page layer you touched locally as cheap insurance
+(`scripts/page-tests-local`, `web/PageTest/test`) -- and the commit gate's fail-before/pass-after test for a visible
+change is still a PageTest or Playwright test you run yourself.
 
 Exact commands, module scoping and `testOnly` / `-z` narrowing: `test-layers` skill. Run sbt through
 `scripts/sbt-warm` (`agent-ops` skill).
@@ -155,7 +162,7 @@ green branch); if some specific area (browser / page, identity) is touched, run 
 it takes longer than 15 mins), then merge to main and test everything there". So every change — identity included —
 lands with `agentctl land`: the pre-push hook runs the basic tests (path-selected lints, generated artefacts, every
 test config compiled, the snapshot and deploy specs) and, when the push touches an AREA, that area's local tests
-(`scripts/hooks/local-tests.txt`: `identity`, `page`; each under 15 min warm; the identity set narrowed to the specs and
+(`scripts/hooks/local-tests.txt`: `identity`, under 15 min warm -- the `page` area moved to Main on 2026-11-17, above; the identity set narrowed to the specs and
 countries the change can reach, `scripts/ci/identity_impact.py`, proved by `scripts/identity-impact-check`). Merge on green means MAIN green: the
 red gate below; while main is red, a production change waits on the one local `waiting` branch (`land` prints
 `WAITING <sha>`, keeps running, and lands it with the others in one push once main is green). Nothing waits for a branch CI run; `scripts/identity-landing-check` and `identity-measure` are optional

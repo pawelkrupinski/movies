@@ -25,6 +25,9 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
 - **Landing:** rebase onto main → every relevant layer green locally → land → `git worktree remove <path>` and
   `git branch -d <branch>` (your own, merged: `-d` refuses an unmerged one; never `-D`). Deleting a branch you didn't
   create, or an unmerged one, needs the user's OK first.
+  The page layers (PageTest, Playwright) and `e2e (rest)` are not landing requirements since 2026-11-17 (the owner's
+  "B1"): neither the hook nor the landing check runs them; Main does, after landing, as gate rows. Run the page layer
+  locally when you change UI -- cheap insurance, not a gate.
   - *While GitHub is suspended* (fetch/push 403): land with `git merge --ff-only <branch>` in the clean root
     checkout on `main`; nothing is pushed.
   - *When GitHub is back:* `git fetch && git rebase origin/main`, then push the named commit from your own

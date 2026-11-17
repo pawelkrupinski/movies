@@ -49,12 +49,14 @@
 #                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
 #                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
 #                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
-#   `itrest` `itidentity` `e2e` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
+#   `itrest` `itidentity` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
 #                 `heavy` job, one row a job): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
-#                 against the job's throwaway MongoDB, $MONGODB_URI), `e2e (rest)` (`sbt e2eRest`) and, with the identity row,
-#                 `e2e (corpus)` (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
+#                 against the job's throwaway MongoDB, $MONGODB_URI) and, with the identity row, `e2e (corpus)`
+#                 (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
 #                 code reds in the five days to 2026-10-30 were in rows nothing ran before main (ci-failures-2026-10-30
-#                 §2.1). Never on the laptop: off CI the variable is unset and none is selected
+#                 §2.1). Never on the laptop: off CI the variable is unset and none is selected. `e2e (rest)` is no longer
+#                 one (the owner, 2026-11-17, "B1": 0 failures in 95 landing checks, 303 runner-min a week): it runs
+#                 after landing, on Main, as the page tests do
 #   `basic`       NOT a check of its own: scripts/hooks/local-tests.txt's `basic` lines (all test configs compiled, the
 #                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
 #                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
@@ -71,8 +73,9 @@
 #                 only a flip the base lacks (or a known row cured) refuses -- the listing, slice and chain named
 #                 Its rows are kept per digest of its code and data (sbt identityWalkDigest) and per slice content:
 #                 a change leaving both as a checked commit had them walks only the slices whose files differ
-#   `page`        local-tests.txt's `page` lines, on a change to the page paths (is_page_path): the page specs and the
-#                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
+#   (no `page` check: the page specs and the Playwright rows run after landing, on Main's `page-tests-*` rows -- the
+#                 owner, 2026-11-17, "B1": 0 failures in 14 landing checks, ~23 min each. scripts/page-tests-local runs
+#                 them on the laptop, by hand, for a UI change)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
 #                 `Red-Unrelated:`) and touch a drift path (.github/identity-drift-paths.txt): the red's own failed
 #                 `takes-drift-1|2 (<country>)` rows, run drift-only on CI, ~12-16 min. A
@@ -333,9 +336,9 @@ coupling_paths() { # stdin: changed paths -> the ones that select the coupling s
 # `<set> sh <command>`. The sets:
 #   basic     rides the `sbt` check's one sbt run, whenever that runs (any Scala, build, script, test or workflow change)
 #   identity  the `identity` check, on a change to the identity paths below
-#   page      the `page` check, on a change to the page paths below
+# The page area is gone (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main.
 # Each area's set holds only what runs in under 15 min on the laptop, warm (measured, in local-tests.txt); the rest
-# (convergence, the takes measure, WebKit) is main's CI's. scripts/identity-landing-check is an optional manual tool now:
+# (convergence, the takes measure, the page tests) is main's CI's. scripts/identity-landing-check is an optional manual tool now:
 # nothing requires its LANDABLE.
 LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
 has_local_tests() { # <set>
@@ -361,19 +364,12 @@ is_drift_path() { # <path>
     esac
     return 1
 }
-# The page paths: the browser JS and CSS, the templates that render what it reads, the page specs and the Playwright suite.
-is_page_path() { # <path>
-    case "$1" in
-        web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*|page-tests-playwright/*) return 0 ;;
-    esac
-    return 1
-}
 
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0
+    local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0
     local tools script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
     # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
@@ -395,6 +391,9 @@ plan() {
         case "$path" in
             *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
         esac
+        # The templates and the browser assets: compiled into web, and read by its unit specs (PageSnapshotSpec's
+        # expected-*.html) -- the page area selected the sbt check for them until it moved to Main (2026-11-17).
+        case "$path" in web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*) sbt=1 ;; esac
         # The coupling baseline is the ratchet's (check_sbt's coupling step): a hand edit is judged as any growth.
         case "$path" in test/resources/coupling-baseline.tsv) sbt=1 ;; esac
         # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
@@ -445,15 +444,12 @@ plan() {
             test/resources/fixtures/drift-gate-seeds.tsv|test/resources/fixtures/drift-slices/*|\
             test/resources/fixtures/identity-slices/*|scripts/ci/population_walk_diff*.py) flipbacklog=1 ;;
         esac
-        is_page_path "$path" && page=1
         case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
         case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
     done
     # an area runs only when local-tests.txt (beside this hook) names tests for it
     has_local_tests identity || identity=0
-    has_local_tests page || page=0
     [ $identity = 1 ] && sbt=1
-    [ $page = 1 ] && sbt=1
     [ $judgements = 1 ] && echo judgements
     [ $allowlists = 1 ] && echo allowlists
     [ $newchecks = 1 ] && echo newchecks
@@ -469,20 +465,18 @@ plan() {
     [ $sbt = 1 ] && echo sbt
     [ $flipbacklog = 1 ] && echo flipbacklog
     [ $identity = 1 ] && echo identity
-    [ $page = 1 ] && echo page
     [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
     [ "${PREPUSH_HEAVY_ROWS:-}" = 1 ] && [ $sbt = 1 ] && heavy_rows "$all_paths"
     return 0
 }
 
-# THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2e`), one per line:
+# THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2ecorpus`), one per line:
 #   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
 #               spec but the identity row's (build.sbt's IT_ROW split)
 #   itidentity  an identity path, the build, or the fixtures the hard-cluster convergence replays
 #   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them --
 #               only while `basic` does not already run them (corpus_in_basic)
-#   e2e         what ci.yml's own scope (scripts/ci/ci-row-scope.sh e2e) says the e2e rows can move
 # build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
 corpus_in_basic() {
     local build line specs="" basic=" " spec
@@ -512,8 +506,7 @@ heavy_rows() { # <paths, one per line>
     # rides the `sbt` check every heavy row comes with (none without it: plan): once there, not twice (FilmScheduleEndToEnd
     # ran 252 s in the rest's sbt AND 160 s on this row: precommit-check run 41627361428)
     [ $itidentity = 1 ] && ! corpus_in_basic && echo e2ecorpus
-    # unreadable: every row runs, as ci.yml's scope job does
-    [ "$(printf '%s\n' "$1" | bash scripts/ci/ci-row-scope.sh e2e 2>/dev/null || echo true)" = false ] || echo e2e
+    return 0
 }
 
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
@@ -1148,7 +1141,7 @@ FastChecks='^(sbt|shellcheck|actionlint)$'
 # path selects run too, bar the area tests and heavy rows no batch runs. 2026-11-05: 81469b9c1 moved Lowther's
 # Nutcracker judgements, 2a4ac45c4 (checked on the older main: `judgements` consistent) re-added them, batch 957f4776f's
 # rebase kept both, its pass ran `sbt` alone and the push reused it: Tool self-tests #74-#76 red on "a second row".
-AreaChecks='^(identity|page|itrest|itidentity|e2e|e2ecorpus)$'
+AreaChecks='^(identity|itrest|itidentity|e2ecorpus)$'
 union_changed() { # the changed paths the pushed tree merges by union; every changed path when git cannot say (fail closed)
     local attrs
     attrs="$(printf '%s\n' "$changed" | git check-attr --source="$head_sha" --stdin merge)" \
@@ -1226,7 +1219,7 @@ if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-path
     { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
 fi
 # THE SPLIT CHECK (.github/workflows/precommit-check.yml): the landing check's jobs share the selected checks and run at
-# once, so the page area's ~40 min no longer queues behind the rest under one 80-min cap (run 4025 ran out of it with
+# once, so the identity area's shards no longer queue behind the rest under one 80-min cap (run 4025 ran out of it with
 # oldrefs, ios and identitydrift still to go). PREPUSH_ONLY="<checks>": this run runs only those of the selected checks;
 # PREPUSH_ELSEWHERE="<checks>": every selected check but those, a sibling job's. A check left to another job is said.
 split_out() { # <check> -> true when this run leaves it to another job
@@ -1830,7 +1823,6 @@ check_flipbacklog() {
     sed -nE 's/^\[info\] //; /^(# )?(drift|identity)-slices\//p' "$tmp/flipbacklog.log" > "$tmp/flipbacklog.walk"
     python3 scripts/ci/population_walk_diff.py judge-walk "$tmp/flipbacklog.walk"
 }
-check_page() { run_local_tests page; }
 
 # THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB.
 heavy_row() { # <check> <sbt command> [env...]
@@ -1847,7 +1839,6 @@ heavy_row() { # <check> <sbt command> [env...]
 }
 check_itrest() { heavy_row itrest itAll IT_ROW=rest; }
 check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
-check_e2e() { heavy_row e2e e2eRest; }
 check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
 
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
@@ -1939,7 +1930,7 @@ live_sbt_in_checkout() {
 isolate_reason="" sbt_client=0
 if ! in_place; then
     isolate_reason="the working tree is not ${head_sha:0:9}"
-elif printf '%s\n' "$checks" | grep -qxE 'sbt|identity|page' && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
+elif printf '%s\n' "$checks" | grep -qxE 'sbt|identity' && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
     # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
     # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
     if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
@@ -1951,7 +1942,7 @@ elif printf '%s\n' "$checks" | grep -qxE 'sbt|identity|page' && ! skipped sbt &&
 fi
 # The area tests run through scripts/sbt-warm: in place, the sbt check joins them in the checkout's kept server (one warm
 # JVM for both) instead of a JVM of its own.
-area_tests="$(printf '%s\n' "$checks" | grep -xE 'identity|page' | tr '\n' ' ')"
+area_tests="$(printf '%s\n' "$checks" | grep -xE 'identity' | tr '\n' ' ')"
 if [ -z "$isolate_reason" ] && [ -n "$area_tests" ]; then sbt_client=1; fi
 if [ -n "$isolate_reason" ]; then
     tree="$tmp/tree"

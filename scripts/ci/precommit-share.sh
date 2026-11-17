@@ -5,7 +5,7 @@
 #   precommit-share.sh env <share>     the job's hook environment, KEY=VALUE lines for $GITHUB_ENV
 #   precommit-share.sh checks <share>  the checks the hook runs for <share>, space-separated (none: an empty line)
 #
-# <share>: `rest` (every selected check but the other shares'), `identity`, `oldrefs`, `page`, `heavy` (the heavy rows
+# <share>: `rest` (every selected check but the other shares'), `identity`, `oldrefs`, `heavy` (the heavy rows
 # named by $ROWS), or `plan` (every check, the heavy rows among them: the plan job's). The mode is the branch's:
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
@@ -19,11 +19,11 @@
 # hook step still runs, so a check this missed fails there for want of sbt rather than going unchecked.
 set -euo pipefail
 
-usage() { echo "usage: $0 env|checks rest|identity|oldrefs|page|heavy|plan" >&2; exit 2; }
+usage() { echo "usage: $0 env|checks rest|identity|oldrefs|heavy|plan" >&2; exit 2; }
 [ $# -eq 2 ] || usage
 what=$1 share=$2
 case "$what" in env|checks) ;; *) usage ;; esac
-case "$share" in rest|identity|oldrefs|page|heavy|plan) ;; *) usage ;; esac
+case "$share" in rest|identity|oldrefs|heavy|plan) ;; *) usage ;; esac
 
 ref="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
 # a gate-red fix's check is check/red-<the rest>: the prefix names the runner lane (precommit-check.yml), not the mode
@@ -41,7 +41,7 @@ fi
 vars=("PREPUSH_MODE=$mode" "PREPUSH_RANGE=$range")
 case "$share" in
     rest)
-        elsewhere="page oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"
+        elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"
         vars+=("PREPUSH_ELSEWHERE=$elsewhere") ;;
     heavy) vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ONLY=${ROWS:?heavy: ROWS names the rows}") ;;
     plan) vars+=("PREPUSH_HEAVY_ROWS=1") ;;

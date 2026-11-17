@@ -23,8 +23,13 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
   branch stay, exit 3 = still running, collect with `--run <id>`; `--cancel-on-timeout` cancels instead.
 - **Before merging: the basic tests**, locally, by the pre-push hook: the path-selected lints and checks (stage 3) and
   `local-tests.txt`'s `basic` set, riding the `sbt` check.
-- **An area touched: its local tests**, if they fit in 15 minutes on the laptop, warm: `identity` and `page` (measured
-  times in stage 3). What does not fit (convergence, the takes measure, the integration suites) is main's.
+- **An area touched: its local tests**, if they fit in 15 minutes on the laptop, warm: `identity` (measured times in
+  stage 3). What does not fit (convergence, the takes measure, the integration suites) is main's.
+- **The page tests and `e2e (rest)` run after landing, on Main** (the owner, 2026-11-17, "B1": a week of landing checks
+  saw 0 failures in 14 page-area runs, 317 runner-minutes, and 0 in 95 `e2e` runs, 303). The `page` area left the hook
+  and `local-tests.txt`, `check (page)` and the `e2e` heavy row left the landing check. Main's `page-tests-*` and
+  `e2e (*)` rows are gate rows (`.github/gating-checks.tsv`): a failure is a normal gate red with a fixer. Running the
+  page layer locally for a UI change (`scripts/page-tests-local`) is recommended insurance, not a landing requirement.
 - **Merge on green = main green**: the red gate (stage 3, step 3). Tools-only commits and `Fixes-Red:` fixes land
   while red, as before. A production change while main is red WAITS: "when waiting for main to go green, merge all
   waiting changes into one waiting branch (always use the same name) and merge it when main is green" (the owner,
@@ -208,10 +213,9 @@ queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTC
 8. **Area selection.** A change on the identity paths (`is_identity_path`: `identity/`,
    `worker/src/{main,test}/scala/services/identity/`, `common/src/main/resources/title-{rules,words}.tsv`,
    `common/src/main/scala/services/titlerules/`, `common/src/main/scala/services/movies/TitleNormalizer.scala`,
-   `test/resources/fixtures/identity-*`) selects `identity`; one on the
-   page paths (`is_page_path`: `web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`,
-   `page-tests-playwright/`) selects `page`. Each also selects `sbt` (so the basic tests run). The hook no longer asks
-   for an identity-landing-check LANDABLE.
+   `test/resources/fixtures/identity-*`) selects `identity`, and `sbt` with it (so the basic tests run). The page
+   paths (`web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`) select `sbt` only: no `page` area since
+   2026-11-17. The hook no longer asks for an identity-landing-check LANDABLE.
 9. **The path checks**, in this order; a failure is recorded and the rest still run:
 
 | Check | Runs when the push changes | What it runs | Typical time |
@@ -229,10 +233,9 @@ queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTC
 | `actionlint` | workflow files, composite actions | actionlint (+ shellcheck on `run:` blocks) | seconds |
 | `schedules` | workflow files, `infra/nix/files/scheduled-workflows.json`, `infra/nix/files/scheduled_dispatch.py` | `infra/nix/files/scheduled_dispatch.py check`: monitoring-1's dispatch timers match the workflows' own crons, and every covered workflow treats the external scheduler's `repository_dispatch` as its schedule | < 1 s |
 | `shellcheck` | `*.sh`, `scripts/hooks/*` | shellcheck; fails only on warnings the push adds | seconds |
-| `sbt` (+ basic) | Scala/Java, `build.sbt`, `project/`, Grafana dashboards, scripts/workflows under `scripts/`, `.github/`, `infra/`; and anything the lint specs read (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`, `build.sbt`, `project/`, `*/src/test/`, `*/src/it/`, page specs, worker fixtures, `testkit/`) | one sbt run: the Test/It/Page compiles of every touched module and its dependants (`--compile-plan`), the five standing lints, and on a repo-read change every `deploy/*Spec` and `tools/{No*,*Lint*}Spec` (`--lint-plan`) bar the server-booting ones; GitOps-reading specs only after `infra/bin/fetch-gitops` succeeds; then THE BASIC TESTS, `local-tests.txt`'s `basic` lines, in the same run | lints ~30 s + basic ~5 min warm; more cold |
+| `sbt` (+ basic) | Scala/Java, `build.sbt`, `project/`, Grafana dashboards, templates and browser assets (`web/src/main/{twirl,assets}/`, `web/src/page/`), scripts/workflows under `scripts/`, `.github/`, `infra/`; and anything the lint specs read (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`, `build.sbt`, `project/`, `*/src/test/`, `*/src/it/`, page specs, worker fixtures, `testkit/`) | one sbt run: the Test/It/Page compiles of every touched module and its dependants (`--compile-plan`), the five standing lints, and on a repo-read change every `deploy/*Spec` and `tools/{No*,*Lint*}Spec` (`--lint-plan`) bar the server-booting ones; GitOps-reading specs only after `infra/bin/fetch-gitops` succeeds; then THE BASIC TESTS, `local-tests.txt`'s `basic` lines, in the same run | lints ~30 s + basic ~5 min warm; more cold |
 | `sbt`'s coupling step | a deployed module's `src/main` (`geodata base http common identity scrapers worker web`), `build.sbt`, `coupling.sbt`, `project/*.scala`, `test/resources/coupling-baseline.tsv`, `scripts/ci/coupling_ratchet.py` (`--coupling-plan < paths` prints them) | in the sbt check's one run, `couplingReport` (the production class graph from Zinc's analyses, `project/Coupling.scala`), then `scripts/ci/coupling_ratchet.py check` against the baseline: a new package cycle edge, a new cross-module edge kind, a package's Ce -- the outside packages it uses -- past its row (a package without one: past 8), a class's fan-out past its row (without one: reaching 30) refuses; so does a baseline grown in the pushed range unless a commit changing it carries `Coupling: <why>`. Falls are said and pass (`scripts/coupling-report --update` records them, no trailer). `PREPUSH_SKIP=coupling` skips it | ~0.2 s after the compiles warm (all eight modules' Compile analyses; an out-of-date module compiles first) |
 | `identity` | the identity paths (step 8) | FIRST `scripts/identity-slice-coverage` (local-tests.txt's `identity first` line: SLICE ANSWER COVERAGE -- every pinned slice case and drift slice replayed at the pushed code, every request one asks that its fixture lacks named at once; a failure ends the area there, naming each slice, request and `scripts/identity-slice-coverage --repin`, which pins them all from their recordings), then `scripts/hooks/local-tests.txt`'s `identity` sbt lines, one `scripts/sbt-warm` call | coverage ~30 s warm (~2.5 min under load); then ~5 min warm (`identity/test` 52 s; the services.identity.*/titlerules.*/scripts.* aggregate ~4 min; the scraper specs the change reaches, ~12 s: a title-rule change reaches every scraper spec that cleans titles with the rules, Main #2266) |
-| `page` | the page paths (step 8) | `local-tests.txt`'s `page` lines: `web/PageTest/test` through `scripts/sbt-warm`, then `scripts/page-tests-local all` (fixture server + CI's Chromium and WebKit Playwright rows) | ~11 min warm (`web/PageTest/test` ~2.7 min, Chromium rows ~1.5 min, WebKit ~7 min) |
 | `oldrefs` | a file in `identity-slice`'s or `title-trace`'s `TOOL_FILES` | `scripts/identity-slice-old-ref-test.sh` | incremental; minutes the first time |
 | `ios` | `ios/` | `scripts/ios-compile-check.sh` | minutes |
 
@@ -268,10 +271,10 @@ either can break them -- with no area tests and no red gate.
 
 **The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
 jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
-`check (oldrefs)`, `check (page)`, and the `heavy rows` job running each of Main's heavy rows the change can move
-(`PREPUSH_HEAVY_ROWS=1`): `itrest` / `itidentity` (`IT_ROW=<row> sbt itAll` against a throwaway MongoDB), `e2e`
-(`sbt e2eRest`) and `e2ecorpus` (`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not
-selected). Before 2026-10-30 Main was the first place those rows ran, and 8 of
+`check (oldrefs)`, and the `heavy rows` job running each of Main's heavy rows the change can move
+(`PREPUSH_HEAVY_ROWS=1`): `itrest` / `itidentity` (`IT_ROW=<row> sbt itAll` against a throwaway MongoDB) and `e2ecorpus` (`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not
+selected). `check (page)` and the `e2e` row (`sbt e2eRest`) are gone since 2026-11-17: Main runs them after landing.
+Before 2026-10-30 Main was the first place those rows ran, and 8 of
 its 14 code reds in five days were there. The laptop's own push never selects them.
 
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in
@@ -356,7 +359,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, a failing registry lint; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
 | `NOT LANDED: the pre-push checks failed` | the dry run (basic or area tests, a path check) failed | read the tail and the land log, fix forward, commit, land again |
 | `COUPLING GREW past test/resources/coupling-baseline.tsv` / `THE COUPLING BASELINE GREW … with no \`Coupling: <why>\` trailer` (`blocked by: sbt`) | the change adds a package cycle edge or a cross-module edge kind, or raises a package's Ce or a class's fan-out past its row | cut the dependency (`scripts/coupling-report` names the class references behind each edge); or, when the coupling is right, `scripts/coupling-report --update` and commit the baseline with `Coupling: <why>` (CLAUDE.md, Design rules) |
-| `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
+| `blocked by: identity` | the area's local tests failed | as above; the area log's path is in the tail |
 | `blocked by: identity` with `SLICE ANSWERS MISSING` | the change asks requests pinned slices do not hold (named) | `scripts/identity-slice-coverage --repin`, check the takes still hold (`IdentitySliceCasesSpec`), commit the slices' `http.jsonl.gz` with the change |
 | `WATCH RED: <workflow> #n …` (exit 3) | main's CI is red on a run containing your commit | read the ci-why summary; yours → fix forward now with `Fixes-Red: <n>`; not yours → say so in your report |
 | `WATCH UNKNOWN …` (exit 2) | undecided after 3 h, or GitHub unreadable | `agentctl ci-why` later; report it |

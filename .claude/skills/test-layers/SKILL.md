@@ -48,6 +48,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   — mobile + desktop × Chromium / Chrome / WebKit (CI runs these; the
   Firefox projects stay in `playwright.config.ts` for local runs only).
   `--project` narrows to one; `--list` shows which exist.
+- **Neither page layer gates landing** (the owner, 2026-11-17, "B1"): the pre-push hook and the landing check no
+  longer run them, nor `e2e (rest)`; Main runs all three after landing, as gate rows. For a UI change run them locally
+  anyway (`scripts/page-tests-local [chromium|webkit|all]` boots the fixture server and runs CI's Playwright rows).
 - **iOS LocalServer** — `scripts/sbt-warm --serve 'web/PageTest/runMain
   tools.FixtureServerMain <port-file>'` in the background (`--serve`: keeps
   the checkout's sbt server, and so its one JVM slot, in use until stopped —

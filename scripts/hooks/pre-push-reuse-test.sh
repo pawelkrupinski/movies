@@ -85,7 +85,7 @@ going_run="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","co
 going_push() { reuse_push "$rbase..$going_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 \
   STUB_RUN="$going_run" STUB_RUN_JOBS="{\"jobs\":[$1]}"; }
 job() { printf '{"status":"%s","conclusion":%s,"name":"%s"}' "$1" "$2" "$3"; }
-checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)'),$(job completed '"skipped"' 'check (page)')"
+checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)'),$(job completed '"skipped"' 'check (oldrefs)')"
 # Every jobs list is built here, at the top level: under bash 3.2 (the floor the hook's scripttests check runs these at,
 # run-script-tests --bash /bin/bash) a \" or a quoted ')' inside a $(...) nested in a "$(...)" reached the stub mangled,
 # its jq read nothing, and all four cases below failed in the push while passing under bash 5 (2026-11-07)

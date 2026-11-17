@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PAGE TESTS, LOCALLY: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this
-# checkout's kept sbt server -- the pre-push hook's `page` area tests (scripts/hooks/local-tests.txt), so a page change
-# is tested before it merges (the owner, 2026-10-26: no pre-merge CI; an area's local tests when they fit in 15 min).
+# checkout's kept sbt server, by hand: a UI change's cheap insurance before it lands. No longer the pre-push hook's
+# `page` area (the owner, 2026-11-17, "B1"): the page tests run after landing, on Main's `page-tests-*` rows.
 #
 # usage: scripts/page-tests-local [chromium|webkit|all]      (default all)
 #   chromium  CI's `pw phones` (chromium) and `pw behaviour + desktop` rows: the three Chromium phones' viewport

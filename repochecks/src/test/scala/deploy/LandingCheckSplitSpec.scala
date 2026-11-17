@@ -6,7 +6,8 @@ import org.scalatest.matchers.should.Matchers
 /**
  * THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the landing check's jobs share the hook's
  * selected checks and run at once. In one job they ran one after another under one 80-minute cap, and landing check run
- * 4025 (a 124-path batch) ran out of it with three checks still to go after the page area's 37 minutes.
+ * 4025 (a 124-path batch) ran out of it with three checks still to go after the page area's 37 minutes (the page area
+ * has since moved to Main: below).
  */
 class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
@@ -25,35 +26,53 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     names should not be empty
     names.filterNot(n => globs.exists(matches(_, n))) shouldBe empty
     // an expanded matrix name is one too
-    Seq("check (identity 1/2)", "heavy rows (itrest itidentity e2e)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+    Seq("check (identity 1/2)", "heavy rows (itrest itidentity)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
   }
 
-  "the landing check" should "run the page area and the old refs in jobs of their own, each with a cap of its own" in {
-    Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs", "check-page" -> "page").foreach { case (job, share) =>
+  "the landing check" should "run identity and the old refs in jobs of their own, each with a cap of its own" in {
+    Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs").foreach { case (job, share) =>
       jobs(job) should include(s"SHARE: $share")
       jobs(job) should include("""scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"""")
       jobs(job) should include("""timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
     }
     val share = RepoFile.read("scripts/ci/precommit-share.sh")
-    // page and old refs are another job's in every mode; identity only for a change's own checks (--checks-only): the
+    // old refs are another job's in every mode; identity only for a change's own checks (--checks-only): the
     // fast-only and verify-only sets carry no identity area, and verify-only's identity unit tests ride the rest's sbt
-    share should include("""elsewhere="page oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"""")
+    share should include("""elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"""")
     share should include("PREPUSH_LIST=1")
     jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
-    jobs("check-page") should include("needs: [ plan, check, check-identity, check-oldrefs, heavy ]")
-    jobs("check-page") should include("needs.check-identity.result != 'failure' && needs.check-identity.result != 'cancelled'")
+  }
+
+  /** The owner, 2026-11-17 ("B1"): the page area and `e2e (rest)` run only after landing, on Main's own rows -- in a week
+   *  of landing checks the page area failed 0 of 14 (317 runner-minutes, ~23 min each) and e2e 0 of 95 (303). Neither
+   *  the landing check, its plan, the hook's areas nor its heavy rows may bring them back before the push; Main still
+   *  runs both, and THE GATE reads their rows (.github/gating-checks.tsv). */
+  "the landing check" should "leave the page tests and e2e (rest) to Main, after landing" in {
+    jobs.keySet should not contain "check-page"
+    jobs("plan") should not include "outputs.page"
+    jobs("plan") should include("grep -xE 'itrest|itidentity|e2ecorpus'")
+    RepoFile.read("scripts/ci/precommit-share.sh") should not include "|page|"
+    RepoFile.read("scripts/hooks/local-tests.txt").linesIterator.filter(_.startsWith("page ")).toSeq shouldBe empty
+    val hook = RepoFile.read("scripts/hooks/pre-push")
+    hook should not include "check_page()"
+    hook should not include "check_e2e()"
+    hook.linesIterator.map(_.trim).filter(_.endsWith("echo e2e")).toSeq shouldBe empty
+    val gate = RepoFile.read(".github/gating-checks.tsv")
+    gate should include("main.yml\te2e (rest)")
+    gate should include("main.yml\tpage-tests-chrome (stable)")
+    val ci = RepoFile.read(".github/workflows/ci.yml")
+    ci should include("cmd: e2eRest")
   }
 
   /** A job sets up sbt, Node and the tools only when the hook would run a check of its share there (the hook's own
    *  selection, PREPUSH_LIST=1: precommit-share.sh); its hook step always runs, so a selection the cheap step missed
-   *  fails there rather than going unchecked. The jobs the plan does not name (old refs, page, heavy rows) are skipped. */
+   *  fails there rather than going unchecked. The jobs the plan does not name (old refs, heavy rows) are skipped. */
   "every check job" should "set up only for a share with checks, its hook step never skipped" in {
-    Seq("check", "check-identity", "check-oldrefs", "check-page").foreach { job =>
+    Seq("check", "check-identity", "check-oldrefs").foreach { job =>
       RepoFile.step(jobs(job), "The pre-push hook's checks of the change") should not include "if:"
       jobs(job) should include("if: steps.share.outputs.checks != ''")
     }
     jobs("check-oldrefs") should include("if: ${{ needs.plan.outputs.oldrefs == 'true' }}")
-    jobs("check-page") should include("needs.plan.outputs.page == 'true'")
   }
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
@@ -92,7 +111,6 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     val hook = RepoFile.read("scripts/hooks/pre-push")
     hook should include("check_itrest() { heavy_row itrest itAll IT_ROW=rest; }")
     hook should include("check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }")
-    hook should include("check_e2e() { heavy_row e2e e2eRest; }")
     hook should include("check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }")
     val ci = RepoFile.read(".github/workflows/ci.yml")
     ci should include("run: sbt itAll")

@@ -10,8 +10,8 @@ printf '\033[36m▸\033[0m pre-push --plan\n'
 # plan <path>... -> the selected checks, space-separated
 plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\n' ' ' | sed 's/ $//'; }
 
-check "production JS runs ESLint, and the page area's tests" "eslint sbt page" "$(plan web/src/main/assets/js/shared.js)"
-check "a page spec's JS runs ESLint, and the page area's tests" "eslint sbt page" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
+check "production JS runs ESLint and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint sbt" "$(plan web/src/main/assets/js/shared.js)"
+check "a page spec's JS runs ESLint and the sbt check" "eslint sbt" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a roster source runs the generated-artefact drift check, and the roster generators' self-tests" "drift scripttests" "$(plan data/pl/venues.json)"
@@ -35,16 +35,17 @@ check "a composite action runs actionlint (its run blocks' shellcheck), the self
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
-# THE HEAVY ROWS: Main's integration-test and e2e rows, in the landing check only (PREPUSH_HEAVY_ROWS=1)
+# THE HEAVY ROWS: Main's integration-test rows and e2e (corpus), in the landing check only (PREPUSH_HEAVY_ROWS=1); e2e (rest)
+# runs after landing, on Main (the owner, 2026-11-17, "B1")
 heavy() { printf '%s\n' "$@" | PREPUSH_HEAVY_ROWS=1 "$REPO_ROOT/scripts/hooks/pre-push" --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ $//'; }
 check "THE HEAVY ROWS: none without PREPUSH_HEAVY_ROWS (the laptop's push)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
-check "...a worker change runs the rest integration row and the e2e rest row" "itrest e2e" "$(heavy worker/src/main/scala/services/movies/A.scala)"
-check "...an identity change the identity row too (e2e corpus's spec already runs in basic)" "itrest itidentity e2e" "$(heavy identity/src/main/scala/services/identity/R.scala)"
-check "...an integration spec runs the integration rows" "itrest" "$(heavy worker/src/it/scala/services/XIntegrationSpec.scala | sed 's/ e2e//')"
-check "...the build runs every row but e2e corpus (basic runs its spec)" "itrest itidentity e2e" "$(heavy build.sbt)"
-check "...an http-module change the rest rows, never the identity row (no identity digest lists an http/ source)" "itrest e2e" "$(heavy http/src/main/scala/tools/RealHttpFetch.scala)"
-check "...an HTTP fetcher left in common the identity row too, as any common source" "itrest itidentity e2e" "$(heavy common/src/main/scala/tools/PacedHttpFetch.scala)"
-check "...a base helper the identity row too: the resolver reads base's text folds" "itrest itidentity e2e" "$(heavy base/src/main/scala/tools/TextNormalization.scala)"
+check "...a worker change runs the rest integration row, never e2e (rest)" "itrest" "$(heavy worker/src/main/scala/services/movies/A.scala)"
+check "...an identity change the identity row too (e2e corpus's spec already runs in basic)" "itrest itidentity" "$(heavy identity/src/main/scala/services/identity/R.scala)"
+check "...an integration spec runs the integration rows" "itrest" "$(heavy worker/src/it/scala/services/XIntegrationSpec.scala)"
+check "...the build runs every row but e2e corpus (basic runs its spec)" "itrest itidentity" "$(heavy build.sbt)"
+check "...an http-module change the rest rows, never the identity row (no identity digest lists an http/ source)" "itrest" "$(heavy http/src/main/scala/tools/RealHttpFetch.scala)"
+check "...an HTTP fetcher left in common the identity row too, as any common source" "itrest itidentity" "$(heavy common/src/main/scala/tools/PacedHttpFetch.scala)"
+check "...a base helper the identity row too: the resolver reads base's text folds" "itrest itidentity" "$(heavy base/src/main/scala/tools/TextNormalization.scala)"
 check "...a docs change none" "" "$(heavy docs/landing-process.md)"
 check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
@@ -56,7 +57,7 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "newchecks schedules driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
+check "checks come out once each, in run order" "newchecks schedules driftguards eslint snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
@@ -78,11 +79,12 @@ check "...and so do the flip backlog (with the identity area), the struck flips 
   "allowlists driftguards sbt flipbacklog identity|flipbacklog|flipbacklog" \
   "$(plan test/resources/fixtures/identity-flip-backlog.tsv)|$(plan test/resources/fixtures/drift-gate-seeds.tsv)|$(plan scripts/ci/population_walk_diff.py | grep -o flipbacklog)"
 check "an identity spec runs them (and, a spec, the self-tests reading every spec)" "driftguards scripttests sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
-check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
-check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"
-check "a Playwright spec runs ESLint and them" "eslint sbt page" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
-check "a page spec runs them" "sbt page" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"
-check "a change in both areas runs both" "driftguards eslint sbt identity page" \
+# NO PAGE AREA (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main's page-tests rows
+check "a template runs the sbt check (web compiles it, PageSnapshotSpec reads it), no page area" "sbt" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
+check "a stylesheet runs it" "sbt" "$(plan web/src/main/assets/css/main.css)"
+check "a Playwright spec runs ESLint alone" "eslint" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
+check "a page spec runs the sbt check" "sbt" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"
+check "an identity and a page change run the identity area alone" "driftguards eslint sbt identity" \
   "$(plan identity/src/main/scala/services/identity/R.scala web/src/main/assets/js/a.js)"
 check "a web controller is neither area: the basic sbt check only" "sbt" "$(plan web/src/main/scala/controllers/MovieController.scala)"
 check "a worker source outside identity is neither area (the drift guards: a drift fix may be worker code)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
@@ -465,8 +467,8 @@ else
 fi
 
 # ── THE BASIC AND AREA TESTS RUN (scripts/hooks/local-tests.txt), AND NO LANDING CHECK IS ASKED FOR ───────────────
-# The owner, 2026-10-26: no pre-merge CI. An identity change runs the identity set, a page change the page set, a docs
-# change neither (nor the basic set, which rides the sbt check); identity-landing-check's LANDABLE is required nowhere.
+# The owner, 2026-10-26: no pre-merge CI. An identity change runs the identity set, a page change only the basic set
+# (the page tests run on Main since 2026-11-17), a docs change neither (nor the basic set, which rides the sbt check); identity-landing-check's LANDABLE is required nowhere.
 # A fake scripts/sbt-warm records each call; a fake sbt and java stand in for need_jvm.
 printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
@@ -480,9 +482,8 @@ basic sbt Test/compile
 identity first [ -z "${FIRST_FAILS:-}" ] || { echo "SLICE ANSWERS MISSING: uk-halstead lacks 2 answer(s)"; exit 1; }; echo first-check >> "$AREA_CALLS"
 identity sbt identity/test
 identity sbt worker/testOnly services.identity.*
-page sbt web/PageTest/test
-page sh cat > /dev/null; echo stdin-reader >> "$AREA_CALLS"
-page sh echo playwright-chromium >> "$AREA_CALLS"
+identity sh cat > /dev/null; echo stdin-reader >> "$AREA_CALLS"
+identity sh echo area-sh-line >> "$AREA_CALLS"
 TESTS
 cat > "$area/scripts/sbt-warm" <<'STUB'
 #!/usr/bin/env bash
@@ -523,8 +524,9 @@ area_push() { # <path> [env...]: commits <path> (message $AREA_MESSAGE, default 
 calls() { grep -c -- "$1" "$AREA_CALLS"; }
 basic_ran() { grep -cE '(\[|; )Test/compile(\]|;)' "$AREA_CALLS"; } # the basic line, in the sbt check's run (plain or warm)
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala)"
-check "an identity change runs the identity set in one sbt-warm call, and the basic set in the sbt check's run" "0 1 1 0 0" \
-  "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
+check "an identity change runs the identity set in one sbt-warm call, then its sh lines, and the basic set in the sbt check's run" "0 1 1 1 1" \
+  "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(calls stdin-reader) $(calls area-sh-line) $(basic_ran)"
+check "...the sh lines after the sbt lines" "area-sh-line" "$(grep -E '^area-sh-line$|\[identity/test\]' "$AREA_CALLS" | tail -1)"
 check "...its first line before the area's sbt lines" "first-check" "$(grep -E '^first-check$|\[identity/test\]' "$AREA_CALLS" | head -1 | cut -c1-11)"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala FIRST_FAILS=1)"
 check "a first line failing fails the area there, its output shown, no identity spec run" "1 1 0" \
@@ -541,13 +543,13 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala KINOW
 check "...and none without one: every slice walks" "0 0 1" \
   "$code $(calls 'population.cache=') $(grep -c 'no population walk digest' "$testroot/area-out")"
 code="$(area_push web/src/main/assets/js/a.js)"
-check "a page change runs the page set -- its sbt lines, then its sh lines -- and the basic set, not the identity set" \
-  "0 1 1 1 0" "$code $(calls '\[web/PageTest/test\]') $(calls playwright-chromium) $(basic_ran) $(calls identity/test)"
+check "a page change runs the basic set only: the page tests run after landing, on Main (the owner, 2026-11-17)" \
+  "0 1 0 0" "$code $(basic_ran) $(calls identity/test) $(calls area-sh-line)"
 code="$(area_push docs/landing-process.md)"
 check "a docs change runs neither area nor the basic set" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
 code="$(area_push worker/src/main/scala/services/movies/A.scala)"
-check "a code change outside the areas runs the basic set only" "0 1 0 0" \
-  "$code $(basic_ran) $(calls identity/test) $(calls PageTest)"
+check "a code change outside the areas runs the basic set only" "0 1 0" \
+  "$code $(basic_ran) $(calls identity/test)"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='identity services.identity.ResolverSpec\nworker services.identity.AdapterSpec\nworker tools.OtherSpec\n')"
 check "TEST-IMPACT SELECTION: the identity set narrowed to the classes the change reaches, each line's own" "0 1 0 0" \
   "$code $(calls '\[identity/testOnly services.identity.ResolverSpec -- -Didentity.population.candidates=[^]]*\] \[worker/testOnly services.identity.AdapterSpec -- -Didentity.population.candidates=[^]]*\]') $(calls '\[identity/test\]') $(calls OtherSpec)"
@@ -623,22 +625,19 @@ scratch_git "$area" commit -qm "the flip backlog checks, undone"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_FAILS=identity/test)"
 check "a failing identity set blocks the push, naming the check and the failure" "1 1 1" \
   "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'Failed 1' "$testroot/area-out")"
-code="$(area_push web/src/main/twirl/views/x.scala.html PREPUSH_SKIP="eslint lintspecs page")"
-check "PREPUSH_SKIP=page skips the page set, said out loud" "0 0 1" \
-  "$code $(calls PageTest) $(grep -c 'page SKIPPED' "$testroot/area-out")"
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=mongodb://x)"
 check "THE HEAVY ROWS: the landing check's itrest job runs Main's itAll command, nothing else" "0 1 0" \
   "$code $(calls '\[-batch\] \[itAll\]') $(basic_ran)"
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=)"
 check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1" \
   "$code $(grep -c 'no \$MONGODB_URI' "$testroot/area-out")"
-code="$(area_push web/src/main/assets/js/b.js PREPUSH_ELSEWHERE=page)"
-check "THE SPLIT CHECK: PREPUSH_ELSEWHERE=page leaves the page set to the other job, said, and runs the rest" "0 0 1 1" \
-  "$code $(calls PageTest) $(basic_ran) $(grep -c "left to the landing check's other job(s): page" "$testroot/area-out")"
-code="$(area_push web/src/main/assets/js/b.js PREPUSH_ONLY=page)"
-check "...and PREPUSH_ONLY=page runs the page set alone" "0 1 0" "$code $(calls PageTest) $(basic_ran)"
-code="$(area_push worker/src/main/scala/services/movies/B.scala PREPUSH_ONLY=page)"
-check "...which a push selecting no page check passes with nothing run" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
+code="$(area_push identity/src/main/scala/services/identity/S.scala PREPUSH_ELSEWHERE=identity)"
+check "THE SPLIT CHECK: PREPUSH_ELSEWHERE=identity leaves the identity set to the other job, said, and runs the rest" "0 0 1 1" \
+  "$code $(calls identity/test) $(basic_ran) $(grep -c "left to the landing check's other job(s): identity" "$testroot/area-out")"
+code="$(area_push identity/src/main/scala/services/identity/S.scala PREPUSH_ONLY=identity)"
+check "...and PREPUSH_ONLY=identity runs the identity set alone" "0 1 0" "$code $(calls '\[identity/test\]') $(basic_ran)"
+code="$(area_push worker/src/main/scala/services/movies/B.scala PREPUSH_ONLY=identity)"
+check "...which a push selecting no identity check passes with nothing run" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
 # THE LANDING CHECK'S PLAN: PREPUSH_LIST=1 prints the checks (the job's share of them), runs none
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_LIST=1)"
 check "PREPUSH_LIST=1 prints the selected checks and runs none" "0 driftguards sbt identity 0" \
