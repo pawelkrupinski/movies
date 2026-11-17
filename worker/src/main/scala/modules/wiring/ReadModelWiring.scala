@@ -19,7 +19,7 @@ trait ReadModelWiring { self: WorkerWiring =>
   // The projector's thread — its learning off the boot thread — and the sweeper's paced passes; the wiring's
   // stop() shuts it down, as does the projector's.
   lazy val readModelScheduler: java.util.concurrent.ScheduledExecutorService =
-    managedResources.executor("read-model projector")(tools.DaemonExecutors.scheduler("read-model-projector"))
+    threadPools.scheduler("read-model-projector")
   lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     scheduler = readModelScheduler,
     shareCardGate = readModelShareCardGate, clock = clock,

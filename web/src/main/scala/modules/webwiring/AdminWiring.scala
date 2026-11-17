@@ -20,7 +20,7 @@ trait AdminWiring { self: Wiring =>
   // will not rebuild it — see `UptimeTier`.
   lazy val uptimeMonitor = managedResources.register("uptime monitor",
     new UptimeMonitor(mongoConnection.database, tier = UptimeTier.Surfacing(), clock = clock,
-      bucketStore = new UptimeMonitor.BucketStore(), ticks = ticks))(_.close())
+      bucketStore = new UptimeMonitor.BucketStore(), ticks = ticks, threadPools = threadPools))(_.close())
 
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
   // pages (/uptime, /tasks) and the rehydrate trigger. Empty

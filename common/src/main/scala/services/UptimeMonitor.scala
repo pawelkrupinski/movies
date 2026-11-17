@@ -46,7 +46,9 @@ class UptimeMonitor(
   // worker passes its process's one set, which its gauge reads.
   ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches,
   // Where each completed flush / poll / tag reload is reported (`ScheduledTickStale`).
-  ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
+  ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  // Where its flusher / poller scheduler comes from: the root's managed pools; a spec's own threads otherwise.
+  threadPools: tools.ThreadPools = tools.ThreadPools.Unmanaged
 ) extends UptimeRecorder with UptimeHistory with Logging {
   import UptimeMonitor._
 
@@ -81,7 +83,7 @@ class UptimeMonitor(
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
       // state before the on-disk base is loaded would overwrite Mongo with just
       // this process's fresh increments.
-      val exec = tools.DaemonExecutors.scheduler("uptime-monitor", threads = 2)
+      val exec = threadPools.scheduler("uptime-monitor", threads = 2)
       scheduler.set(exec)
       backgroundSchedule(Some(c), tagColl).foreach { job =>
         val tick   = s"uptime-${job.name}"
