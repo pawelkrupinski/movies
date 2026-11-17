@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """coupling_ratchet.py: measured coupling past the baseline fails (a new cross-module edge kind, a new package cycle
 edge, a package's Ce past its row or the new-package limit, a class's fan-out past its row or reaching the limit, any package edge into a higher layer);
-a baseline grown in a range passes only when a commit changing it carries `Coupling: <why>`; falls pass and are said.
+a baseline grown in a range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table
+loosened in a range (an `allow` row added, a package moved to another layer); falls pass and are said.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -17,6 +18,14 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.environ.get("COUPLING_RATCHET_UNDER_TEST") or os.path.join(HERE, "coupling_ratchet.py")
 BASELINE = "test/resources/coupling-baseline.tsv"
+LAYERS = "test/resources/coupling-layers.tsv"
+
+LAYER_ROWS = """# a comment
+layer\t0\ttools\tgeneric
+layer\t1\tmodels\tthe data
+layer\t3\tservices\tthe application
+layer\t4\tcontrollers\tthe web tier
+"""
 
 ROWS = """# a comment
 limit\tfanout\t30
@@ -41,7 +50,7 @@ class CouplingRatchetTest(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.repo = os.path.join(self.dir.name, "repo")
         self.scratch("scratch_repo", "-q")
-        self.base = self.commit({BASELINE: ROWS}, "base")
+        self.base = self.commit({BASELINE: ROWS, LAYERS: LAYER_ROWS}, "base")
 
     def tearDown(self):
         self.dir.cleanup()
@@ -174,6 +183,39 @@ class CouplingRatchetTest(unittest.TestCase):
         shrunk = rows("ce\tmodels\t5", drop=("ce\tmodels", "cycle-edge"))
         head = self.commit({BASELINE: shrunk}, "models uses less")
         self.assert_passes(shrunk, rng=f"{self.base}..{head}")
+
+    def test_an_allowed_upward_edge_without_a_trailer_fails(self):
+        head = self.commit({LAYERS: LAYER_ROWS + "allow\tservices.movies->controllers\tthe view reads it\n"}, "allow it")
+        self.assert_fails(ROWS, "THE LAYER TABLE LOOSENED", "allow services.movies->controllers added",
+                          rng=f"{self.base}..{head}")
+
+    def test_an_allowed_upward_edge_with_a_trailer_passes(self):
+        head = self.commit({LAYERS: LAYER_ROWS + "allow\tservices.movies->controllers\tthe view reads it\n"},
+                           "allow it\n\nCoupling: the view model is the one seam")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_a_package_moved_to_another_layer_without_a_trailer_fails(self):
+        head = self.commit({LAYERS: LAYER_ROWS.replace("layer\t1\tmodels", "layer\t3\tmodels")}, "models up")
+        self.assert_fails(ROWS, "THE LAYER TABLE LOOSENED", "models moved from layer 1 to 3", rng=f"{self.base}..{head}")
+
+    def test_a_sub_package_lifted_by_a_new_row_without_a_trailer_fails(self):
+        head = self.commit({LAYERS: LAYER_ROWS + "layer\t5\tservices.identity\tlifted\n"}, "lift identity")
+        self.assert_fails(ROWS, "services.identity moved from layer 3 to 5", rng=f"{self.base}..{head}")
+
+    def test_a_trailer_on_a_commit_not_changing_the_layer_table_does_not_count(self):
+        self.commit({LAYERS: LAYER_ROWS + "allow\tmodels->services\tx\n"}, "allow")
+        head = self.commit({BASELINE: ROWS + "# touched\n"}, "baseline\n\nCoupling: not the table's")
+        self.assert_fails(ROWS, "allow models->services added", rng=f"{self.base}..{head}")
+
+    def test_a_new_top_level_package_row_needs_no_trailer(self):
+        head = self.commit({LAYERS: LAYER_ROWS + "layer\t5\tdiagnostics\tcommand-line programs\n"}, "a new package")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_a_dropped_allow_row_needs_no_trailer(self):
+        self.commit({LAYERS: LAYER_ROWS + "allow\tmodels->services\tx\n"}, "allow\n\nCoupling: once")
+        mid = self.scratch("scratch_git", "rev-parse", "HEAD")
+        head = self.commit({LAYERS: LAYER_ROWS}, "cut it")
+        self.assert_passes(ROWS, rng=f"{mid}..{head}")
 
     def test_a_malformed_row_is_an_error_not_a_pass(self):
         rc, out = self.check(ROWS + "ce\tmodels\n")

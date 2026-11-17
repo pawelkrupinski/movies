@@ -4,24 +4,28 @@
 # checked-in baseline (test/resources/coupling-baseline.tsv) -- no new package cycle edge, no new cross-module edge
 # kind, no package's Ce (the outside packages its classes use) past its row (or past the new-package limit), no
 # class's fan-out past its row (or, without a row, to the limit), no package edge into a higher layer (the layering,
-# test/resources/coupling-layers.tsv: a `layer-violation` row fails whatever the baseline says) -- and the baseline itself may grow only in a commit
-# carrying `Coupling: <why>`. A fall needs no
-# trailer: `scripts/coupling-report --update` writes the measured rows, every fall included.
+# test/resources/coupling-layers.tsv: a `layer-violation` row fails whatever the baseline says) -- and the baseline itself
+# may grow, and the layer table loosen (an `allow` row added, a package moved to another layer: either lets an edge
+# through that failed before), only in a commit changing that file carrying `Coupling: <why>`. A fall needs no trailer:
+# `scripts/coupling-report --update` writes the measured rows, every fall included; a new top-level package's row, or a
+# row dropped, loosens nothing.
 #
-#   coupling_ratchet.py check --current <rows> --baseline <file> [--range A..B ...]
-#       violations: the measured rows past the baseline (exit 1), and, for each range, a baseline grown between A and B
-#       with no commit in the range that changed it carrying `Coupling:` (exit 1). Falls not yet recorded are said, and
-#       pass.
+#   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--range A..B ...]
+#       violations: the measured rows past the baseline (exit 1), and, for each range, a baseline grown or a layer table
+#       loosened between A and B with no commit in the range that changed it carrying `Coupling:` (exit 1). Falls not
+#       yet recorded are said, and pass.
 #
 # A row is `kind<TAB>key<TAB>value`; `#` lines are comments (project/Coupling.scala's BaselineHeader has the kinds).
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from typing import Dict, List, Tuple
 
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
+LAYERS_PATH = "test/resources/coupling-layers.tsv"
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information
 VALUED = ("ce", "fanout")
 DEFAULT_LIMITS = {"fanout": 30, "new-package-ce": 8}
@@ -119,22 +123,57 @@ def falls(current: Rows, baseline: Rows) -> List[str]:
     return out
 
 
+Layers = Tuple[Dict[str, int], set]
+
+
+def parse_layers(text: str) -> Layers:
+    """The layer table's `layer` rows (prefix -> layer) and `allow` edges (project/Coupling.scala's Layers.parse is the
+    one that judges the table's shape; this reads only what loosening compares)."""
+    rows: Dict[str, int] = {}
+    allowed = set()
+    for line in text.splitlines():
+        cols = line.split("\t")
+        if cols[0] == "layer" and len(cols) >= 3 and cols[1].isdigit():
+            rows[cols[2]] = int(cols[1])
+        elif cols[0] == "allow" and len(cols) >= 2:
+            allowed.add(cols[1])
+    return rows, allowed
+
+
+def layer_of(rows: Dict[str, int], pkg: str):
+    """A package's layer: the longest prefix row naming it (Coupling.Layers.layerOf), None for none."""
+    named = [p for p in rows if pkg == p or pkg.startswith(p + ".")]
+    return rows[max(named, key=len)] if named else None
+
+
+def loosening(old: Layers, new: Layers) -> List[str]:
+    """How the layer table loosened from `old` to `new`: an `allow` edge added, or a package that had a layer given
+    another (up, its own edges may point higher; down, lower packages may reach it). A new package taking its first
+    layer, or a row dropped (its packages unlayered: a violation), loosens nothing."""
+    out = [f"allow {edge} added" for edge in sorted(new[1] - old[1])]
+    for prefix in sorted(set(old[0]) | set(new[0])):
+        was, now = layer_of(old[0], prefix), layer_of(new[0], prefix)
+        if was is not None and now is not None and was != now:
+            out.append(f"{prefix} moved from layer {was} to {now}")
+    return out
+
+
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
 
 
-def baseline_at(rev: str) -> Rows:
-    shown = subprocess.run(["git", "show", f"{rev}:{BASELINE_PATH}"], capture_output=True, text=True)
-    return parse(shown.stdout) if shown.returncode == 0 else {}
+def file_at(rev: str, path: str) -> str:
+    shown = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
+    return shown.stdout if shown.returncode == 0 else ""
 
 
-def justified(rng: str) -> bool:
-    """Whether a commit of `rng` changing the baseline carries a non-empty `Coupling:` trailer."""
-    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x20)", rng, "--", BASELINE_PATH)
+def justified(rng: str, path: str = BASELINE_PATH) -> bool:
+    """Whether a commit of `rng` changing `path` carries a non-empty `Coupling:` trailer."""
+    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x20)", rng, "--", path)
     return any(entry.strip() for entry in log.split("\x00"))
 
 
-def check(current_path: str, baseline_path: str, ranges: List[str]) -> int:
+def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH) -> int:
     with open(current_path) as f:
         current = parse(f.read())
     with open(baseline_path) as f:
@@ -150,12 +189,21 @@ def check(current_path: str, baseline_path: str, ranges: List[str]) -> int:
         print("  it: scripts/coupling-report --update, committed with a `Coupling: <why this coupling is right>` trailer.")
     for rng in ranges:
         base = rng.split("..")[0]
-        grown = growth(baseline_at(base), baseline)
+        grown = growth(parse(file_at(base, BASELINE_PATH)), baseline)
         if grown and not justified(rng):
             failed = True
             print(f"THE COUPLING BASELINE GREW in {rng} with no `Coupling: <why>` trailer on the commit changing it:")
             for g in grown:
                 print(f"  - {g}")
+        if os.path.exists(layers_path):
+            with open(layers_path) as f:
+                loosened = loosening(parse_layers(file_at(base, LAYERS_PATH)), parse_layers(f.read()))
+            if loosened and not justified(rng, LAYERS_PATH):
+                failed = True
+                print(f"THE LAYER TABLE LOOSENED in {rng} ({layers_path}) with no `Coupling: <why>` trailer on the commit"
+                      " changing it:")
+                for item in loosened:
+                    print(f"  - {item}")
     down = falls(current, baseline)
     if down:
         print(f"coupling fell ({len(down)} rows below the baseline, not yet recorded: scripts/coupling-report --update"
@@ -175,10 +223,11 @@ def main(argv: List[str]) -> int:
     c = sub.add_parser("check")
     c.add_argument("--current", required=True)
     c.add_argument("--baseline", default=BASELINE_PATH)
+    c.add_argument("--layers", default=LAYERS_PATH)
     c.add_argument("--range", action="append", default=[])
     args = parser.parse_args(argv)
     try:
-        return check(args.current, args.baseline, args.range)
+        return check(args.current, args.baseline, args.range, args.layers)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)
         return 2

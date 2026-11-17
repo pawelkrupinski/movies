@@ -30,11 +30,15 @@ mutants=(
             out.append(f"ce'
   'a raised fan-out row is no growth @@ if fan > old_fan.get(key, old_lim["fanout"] - 1): @@ if False:'
   'the trailer is not read @@ return any(entry.strip() for entry in log.split("\x00")) @@ return True'
-  'any commit counts for the trailer @@ rng, "--", BASELINE_PATH) @@ rng)'
   'growth never fails @@ if grown and not justified(rng): @@ if False:'
   'violations never fail @@     if found:
         failed = True @@     if found:
         failed = False'
+  'an added allow row is no loosening @@ out = [f"allow {edge} added" for edge in sorted(new[1] - old[1])] @@ out = []'
+  'a moved layer is no loosening @@ if was is not None and now is not None and was != now: @@ if False:'
+  'a sub-package lifted by a new row is no loosening @@ named = [p for p in rows if pkg == p or pkg.startswith(p + ".")] @@ named = [p for p in rows if pkg == p]'
+  'a loosened layer table never fails @@ if loosened and not justified(rng, LAYERS_PATH): @@ if False:'
+  'any commit counts for the layer table trailer @@ rng, "--", path) @@ rng)'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
 )
 

@@ -1,7 +1,8 @@
 # THE LAYERING (CLAUDE.md, Design rules; project/Coupling.scala `Layers`, `sbt couplingReport`, scripts/coupling-report):
 # every production package's layer, bottom (0) up. A package may depend only on its own layer or a lower one; the
 # coupling ratchet (scripts/ci/coupling_ratchet.py) fails on any package edge into a higher layer, and on a package no
-# row names -- a new top-level package takes its place here in the commit that adds it.
+# row names -- a new top-level package takes its place here in the commit that adds it. Loosening the table -- an `allow`
+# row added, a package given another layer -- lands only in a commit carrying `Coupling: <why>` (the ratchet checks it).
 #
 #   layer<TAB><n><TAB><package prefix><TAB><why it sits there>   the longest prefix naming a package decides
 #   allow<TAB><from>-><to><TAB><why>                          an upward edge kept on purpose (keep this list short)
