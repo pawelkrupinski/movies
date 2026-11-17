@@ -30,6 +30,7 @@ STUB
 cat > "$repo/scripts/sbt-warm" <<STUB
 #!/usr/bin/env bash
 echo "sbt-warm \$*" >> "$log"
+echo "class=\${KINOWO_GOV_CLASS:-}" >> "$log"
 [ -z "\${SBT_OUT:-}" ] || echo "\$SBT_OUT"
 [ -z "\${SBT_FAIL:-}" ]
 STUB
@@ -60,41 +61,30 @@ precheck() { (cd "$repo" && scripts/land-precheck > "$testroot/out" 2>&1); echo 
 printf '\033[36m▸\033[0m a clean change passes, every step named and timed\n'
 : > "$log"
 check "exit 0" "0" "$(precheck)"
-check "each step reports PASS, the script self-tests skipped: no script changed" "3 1 0" \
-  "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out") $(grep -c '^precheck scripttests SKIP' "$testroot/out") $(grep -c '^run-script-tests' "$log")"
+check "each step reports PASS" "3" "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out")"
 check "the hook runs once, alone on the commit-rule and linter checks, over origin/main..HEAD, never reusing a pass" \
   "1 yes yes" "$(grep -c '^hook' "$log") $(grep -q -- '--checks-only [0-9a-f]*\.\.[0-9a-f]* only=allowlists driftguards newchecks judgements shellcheck actionlint oldrefs reuse=1' "$log" && echo yes || echo no) $(grep -q 'trailers\|redgate' "$log" && echo no || echo yes)"
 check "the selected lints run in one sbt-warm call, a testOnly per module, the GitOps-reading specs among them once fetched" \
   "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec deploy.AGitopsSpec" \
   "$(grep '^sbt-warm' "$log")"
+check "...admitted by the governor as a landing check's JVM" "class=check" "$(grep '^class=' "$log")"
 
 printf '\033[36m▸\033[0m a refusal\n'
 : > "$log"
 check "a failing commit rule: exit 1, named" "1 1" "$(HOOK_FAIL=1 precheck) $(grep -c 'precheck rules FAIL' "$testroot/out")"
 check "...with the hook's own line" "1" "$(grep -c 'Drift-Slice missing' "$testroot/out")"
-check "...and nothing slow run after it: no sbt, the lints and self-tests skipped as refused already" "0 2" \
-  "$(: > "$log"; HOOK_FAIL=1 precheck > /dev/null; grep -c '^sbt-warm' "$log") $(grep -c '^precheck \(lints\|scripttests\) SKIP (0 s): refused already by rules' "$testroot/out")"
+check "...and nothing slow run after it: no sbt, the lints skipped as refused already" "0 1" \
+  "$(: > "$log"; HOOK_FAIL=1 precheck > /dev/null; grep -c '^sbt-warm' "$log") $(grep -c '^precheck lints SKIP (0 s): refused already by rules' "$testroot/out")"
 check "a failing lint: exit 1" "1 1" "$(SBT_FAIL=1 SBT_OUT='[info] *** FAILED *** x' precheck) $(grep -c 'precheck lints FAIL' "$testroot/out")"
 check "sbt that could not run (no test failed): exit 2, could not check" "2 1" \
   "$(SBT_FAIL=1 SBT_OUT='sbt server did not start within 90 seconds' precheck) $(grep -c 'precheck lints UNCHECKED' "$testroot/out")"
 
-printf '\033[36m▸\033[0m the script self-tests of a changed script\n'
+printf '\033[36m▸\033[0m a changed script: its self-tests are left to the landing check\n'
 mkdir -p "$repo/scripts/ci"; printf 'echo x\n' > "$repo/scripts/ci/x.sh"
 scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "a script change"
 : > "$log"
-check "a changed script runs the self-tests run-script-tests --changed selects against the base" "0 1 yes" \
-  "$(precheck) $(grep -c '^precheck scripttests PASS' "$testroot/out") $(grep -qE '^run-script-tests --changed [0-9a-f]{40}$' "$log" && echo yes || echo no)"
-check "a failing self-test: exit 1, named" "1 1 1" \
-  "$(SCRIPTTESTS_FAIL=1 precheck) $(grep -c 'precheck scripttests FAIL' "$testroot/out") $(grep -c 'scripts/x-test.sh' "$testroot/out")"
-
-printf '\033[36m▸\033[0m a push of thousands of paths still runs them\n'
-# grep -q quit at the first script path and git diff, writing the rest, died of SIGPIPE: under pipefail the pipeline
-# failed, and a mass change's self-tests were skipped as "no script changed"
-mkdir -p "$repo/scripts/many"
-for i in $(seq 1 3000); do : > "$repo/scripts/many/a-script-with-a-name-long-enough-to-fill-the-pipe-$i.sh"; done
-scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "a mass change"
-: > "$log"
-check "a 3000-path change runs the self-tests" "0 1" "$(precheck) $(grep -c '^precheck scripttests PASS' "$testroot/out")"
+check "exit 0, no self-test run, no scripttests step" "0 0 0" \
+  "$(precheck) $(grep -c '^run-script-tests' "$log") $(grep -c 'scripttests' "$testroot/out")"
 scratch_git "$repo" reset -q --hard HEAD~1
 
 printf '\033[36m▸\033[0m the rebase dry run\n'

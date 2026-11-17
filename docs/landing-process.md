@@ -115,9 +115,10 @@ visible now?" in ~20-60 s on a warm checkout:
 - **rules**: the hook's own `allowlists driftguards newchecks judgements shellcheck actionlint oldrefs` checks
   (`PREPUSH_ONLY`, `--checks-only`, so not the red gate), the stranded-trailer rule with them;
 - **lints**: the specs the LINT REGISTRY (`scripts/hooks/lint-registry.tsv`) selects for the pushed paths, in one
-  `scripts/sbt-warm` call.
-- **scripttests**: the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
-  a script-test root (seconds to minutes; beside the queue, so no landing time).
+  `scripts/sbt-warm` call, its JVM admitted by the governor as a landing check's (`KINOWO_GOV_CLASS=check`).
+
+Not the script self-tests (2026-11-17): the landing check runs them on every change, so the precheck's run was the same
+tests twice (148 s beside the check's 125 s).
 
 A rebase or rules refusal ends the precheck at once: the lints and self-tests are skipped (`refused already`), so that
 refusal comes back in seconds rather than after the lints' wait on sbt and a JVM slot.
@@ -331,7 +332,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `NOT LANDED: still racing after 3 retries` | main is busy | land again in a minute |
 | `waiting for the landing lock (…), held by: …` | another agent is landing | nothing: land continues once it is free |
 | `NOT LANDED: timed out waiting for the landing lock` | a lander held it 4 h | `agentctl land` again; if it repeats, report the holder |
-| `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, a failing registry lint or script self-test; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
+| `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, a failing registry lint; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
 | `NOT LANDED: the pre-push checks failed` | the dry run (basic or area tests, a path check) failed | read the tail and the land log, fix forward, commit, land again |
 | `COUPLING GREW past test/resources/coupling-baseline.tsv` / `THE COUPLING BASELINE GREW … with no \`Coupling: <why>\` trailer` (`blocked by: sbt`) | the change adds a package cycle edge or a cross-module edge kind, or raises a package's Ce or a class's fan-out past its row | cut the dependency (`scripts/coupling-report` names the class references behind each edge); or, when the coupling is right, `scripts/coupling-report --update` and commit the baseline with `Coupling: <why>` (CLAUDE.md, Design rules) |
 | `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |

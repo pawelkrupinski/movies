@@ -5,7 +5,7 @@
 #
 #   scripts/land-precheck [--base <ref>] [--head <ref>]
 #
-# Four steps, each printed `precheck <step> PASS|FAIL|UNCHECKED|SKIP (<n> s)`, a FAIL with the lines that say why:
+# Three steps, each printed `precheck <step> PASS|FAIL|UNCHECKED|SKIP (<n> s)`, a FAIL with the lines that say why:
 #   rebase  the change replayed onto <base> (default origin/main) with `git replay`, touching no ref and no file; a
 #           conflict names its files (docs and CLAUDE.md collide most)
 #   rules   the pre-push hook's own commit-rule and linter checks over <base>..<head>, alone (PREPUSH_ONLY): allowlists,
@@ -13,16 +13,18 @@
 #           the shellcheck and actionlint checks, and oldrefs (the tool files compiled into the older refs, only when they changed);
 #           the stranded-trailer rule runs too. Not the red gate: a red main makes a change WAIT, not fail.
 #   lints   the lint specs the hook's registry (scripts/hooks/lint-registry.tsv) selects for the pushed paths, in one
-#           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first)
-#   scripttests  the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
-#           a script-test root (the hook's `scripttests` paths); seconds to minutes, beside the queue like the rest
-# A rebase or rules FAIL ends the precheck there: the lints and self-tests are SKIPped (`refused already`), so a refusal
-# the cheap steps find comes back in seconds, never after the lints' wait on sbt.
+#           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first), admitted by the governor as a
+#           landing check's JVM (KINOWO_GOV_CLASS=check, scripts/jvm-gate.sh)
+# A rebase or rules FAIL ends the precheck there: the lints are SKIPped (`refused already`), so a refusal the cheap
+# steps find comes back in seconds, never after the lints' wait on sbt.
+# NOT the script self-tests (dropped 2026-11-17): the landing check runs them on every change, on CI's Linux when it runs
+# remotely, so here they were the same tests a second time (148 s here beside 125 s in the check, 80 runs of 153 in
+# 2026-11-14..17) on the laptop's CPU, for 3 early refusals.
 # Last line: `PRECHECK PASS (<n> s)`, `PRECHECK FAIL: <steps> (<n> s)` or `PRECHECK UNCHECKED: <steps> (<n> s)`.
 # Exit 0 pass, 1 a step refused the change, 2 a step could not run (sbt never came up, a bound ran out): agentctl land
 # queues the change anyway then, and the landing check judges it.
 #
-# Bounds: PRECHECK_RULES_SECONDS (300), PRECHECK_LINT_SECONDS (300), PRECHECK_SCRIPTTESTS_SECONDS (600).
+# Bounds: PRECHECK_RULES_SECONDS (300), PRECHECK_LINT_SECONDS (300).
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$here/tool-conventions.sh"
@@ -82,10 +84,9 @@ esac
 # ── refused already: the slow steps are not run ──
 # A change the rebase or the commit rules refuse comes back now, in seconds: the lints wait on sbt (and on a JVM slot
 # first), so a missing trailer came back 308 s after queueing (2026-11-17). Fix it and land again; the next precheck
-# runs the lints and self-tests then.
+# runs the lints then.
 if [ -n "$failed" ]; then
     echo "precheck lints SKIP (0 s): refused already by$failed"
-    echo "precheck scripttests SKIP (0 s): refused already by$failed"
     echo "PRECHECK FAIL:$failed ($((SECONDS - started)) s)"
     exit 1
 fi
@@ -109,7 +110,9 @@ else
         specs="$(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')"
         [ -n "$specs" ] && line+="$module/Test/testOnly $specs; "
     done
-    bounded "${PRECHECK_LINT_SECONDS:-300}" scripts/sbt-warm "${line%; }" > "$tmp/lints" 2>&1
+    # a landing check's JVM to the governor, which evicts an idle kept server for it (scripts/jvm-gate.sh)
+    KINOWO_GOV_CLASS="${KINOWO_GOV_CLASS:-check}" \
+        bounded "${PRECHECK_LINT_SECONDS:-300}" scripts/sbt-warm "${line%; }" > "$tmp/lints" 2>&1
     rc=$?
     if [ $rc = 0 ]; then
         report lints PASS $t
@@ -120,22 +123,6 @@ else
         grep -E '\*\*\* FAILED|Failed tests:|\[error\]|should' "$tmp/lints" > "$tmp/lints-why" || cp "$tmp/lints" "$tmp/lints-why"
         report lints FAIL $t "$tmp/lints-why"
     fi
-fi
-
-# ── scripttests: the self-tests run-script-tests --changed selects, when a pushed path is under a script-test root ──
-# grep reads the whole list, never -q: quitting at the first match SIGPIPEs a long `git diff`, failing the pipeline
-t=$SECONDS
-if ! git diff --name-only --no-renames "$base_sha...$head_sha" \
-        | grep -E '^(scripts/|\.github/scripts/|\.github/actions/|android/scripts/|ios/scripts/|infra/bin/|data/)' > /dev/null; then
-    report scripttests SKIP $t
-else
-    bounded "${PRECHECK_SCRIPTTESTS_SECONDS:-600}" scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests" 2>&1
-    case $? in
-        0) report scripttests PASS $t ;;
-        124|137) report scripttests UNCHECKED $t "$tmp/scripttests" ;;
-        *) grep -E '^(FAIL|TIMEOUT)|✗' "$tmp/scripttests" > "$tmp/scripttests-why" || cp "$tmp/scripttests" "$tmp/scripttests-why"
-           report scripttests FAIL $t "$tmp/scripttests-why" ;;
-    esac
 fi
 
 took=$((SECONDS - started))
