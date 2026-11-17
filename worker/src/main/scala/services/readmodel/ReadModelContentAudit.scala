@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 import models.{CityScreening, ResolvedMovie}
 import services.readmodel.RatingGate
-import services.movies.{FilmId, MovieRepository}
+import services.movies.{FilmId, MovieRepositoryReader}
 
 /**
  * STORED CONTENT MATCHES A FRESH RE-READ: a sampled card's `web_movies` document and its
@@ -31,7 +31,7 @@ object ReadModelContentAudit {
   /** The card's differences, named — `Some(Nil)` when it matches — or None when it cannot be
    *  judged: a read failed, or its row no longer projects this card (unready, re-keyed, gone),
    *  which is the prune's and the heal's business and already has its own signals. */
-  def differences(cardId: String, movies: MovieRepository, reader: ReadModelReader,
+  def differences(cardId: String, movies: MovieRepositoryReader, reader: ReadModelReader,
                   ratingGate: RatingGate = RatingGate.off)(using LatestTitleYear): Option[Seq[String]] = {
     for {
       stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.record.readyToProject)

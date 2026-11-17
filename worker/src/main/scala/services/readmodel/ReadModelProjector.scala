@@ -5,7 +5,7 @@ import services.movies.LatestTitleYear
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
-import services.movies.{MovieRepository, StoredMovieRecord}
+import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
 import settings.ShareCardFirstHold
 import tools.DaemonExecutors
 
@@ -55,7 +55,7 @@ import scala.util.Try
  * sweeper: the composition root builds one over [[projection]] and schedules its passes.
  */
 class ReadModelProjector(
-  movieRepository: MovieRepository,
+  movieRepository: MovieRepositoryReader & MovieChangeFeed,
   writer:    ReadModelWriter,
   reader:    ReadModelReader,
   metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
@@ -147,7 +147,7 @@ class ReadModelProjector(
   /** What a [[ReadModelSweeper]] drives — this projector's stores, its lock, its per-row projection
    *  and its memo. The composition root builds the sweeper over it; a projector constructs none. */
   val projection: ReadModelSweeper.Projection = new ReadModelSweeper.Projection {
-    def movieRepository: MovieRepository = ReadModelProjector.this.movieRepository
+    def movieRepository: MovieRepositoryReader & MovieChangeFeed = ReadModelProjector.this.movieRepository
     def writer: ReadModelWriter = ReadModelProjector.this.writer
     def reader: ReadModelReader = ReadModelProjector.this.reader
     def metrics: ReadModelProjectionMetrics = ReadModelProjector.this.metrics

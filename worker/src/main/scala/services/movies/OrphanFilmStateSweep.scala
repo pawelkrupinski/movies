@@ -74,7 +74,7 @@ object OrphanFilmStateSweep {
 
   /** The tmdbIds of every film the repository holds, or `None` when it could not be read whole — read
    *  from `movies` alone, the cheapest scan there is: a tmdbId is the row's own field, not a side row's. */
-  def liveTmdbIds(repository: MovieRepository): () => Option[Set[Int]] = () => {
+  def liveTmdbIds(repository: MovieRepositoryReader): () => Option[Set[Int]] = () => {
     val ids      = Set.newBuilder[Int]
     val complete = repository.foreachRecordWithoutShowtimes(_.record.tmdbId.foreach(ids += _))
     Option.when(complete.isComplete)(ids.result())

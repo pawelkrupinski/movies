@@ -3,7 +3,7 @@ package services.readmodel
 import tools.{ScheduledTick, TickRecorder, TickRun}
 
 import play.api.Logging
-import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
+import services.movies.{ChangeStreamLiveness, MovieChangeFeed, MovieRepository, MovieRepositoryReader, StoredMovieRecord}
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -670,7 +670,7 @@ object ReadModelSweeper {
    *  is the truth. Every method but the stores, `exclusively` and `partition` expects the lock held. */
   trait Projection {
     /** The source store the projection reads. */
-    def movieRepository: MovieRepository
+    def movieRepository: MovieRepositoryReader & MovieChangeFeed
     /** The read model it writes, and reads back. */
     def writer: ReadModelWriter
     def reader: ReadModelReader

@@ -14,7 +14,7 @@ import scala.util.Try
  * `store` / `evict` stay the only ways into it (see `CaffeineMovieCache.corpusIndex`).
  */
 private[movies] trait MirroredCorpus {
-  def repository: MovieRepository
+  def repository: MovieRepositoryReader & MovieChangeFeed
   def normalizer: TitleNormalizer
   /** How a row is shaped to be held resident ([[ResidentRecords]]). */
   def shape: ResidentRecords

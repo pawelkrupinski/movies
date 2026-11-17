@@ -69,7 +69,7 @@ import scala.util.Try
  */
 class UnscreenedCleanup(
   cache:      MovieCache,
-  repository: MovieRepository,
+  repository: MovieRepositoryReader,
   scheduler:  ScheduledExecutorService
 )(using LatestTitleYear) extends Stoppable with Logging {
 

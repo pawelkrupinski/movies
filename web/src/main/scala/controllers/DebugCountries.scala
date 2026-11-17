@@ -7,7 +7,7 @@ import play.api.mvc.{Cookie, RequestHeader}
 import services.MirrorFreshness
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
-import services.movies.{MovieRepository, StoredMovieRecord}
+import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
 import services.tasks.TaskQueue
 
 
@@ -29,7 +29,7 @@ import services.tasks.TaskQueue
  */
 final class DebugStack(
   val country:               Country,
-  val movieRepository:       MovieRepository,
+  val movieRepository:       MovieRepositoryReader & MovieChangeFeed,
   val taskQueue:             TaskQueue,
   val ratingCadenceReader:   RatingCadenceReader,
   val attemptReader:         EnrichmentAttemptReader,
@@ -68,7 +68,7 @@ object DebugCorpusTable {
 final case class CorpusListing(table: DebugCorpusTable, titleByTmdb: Map[Int, String])
 
 object CorpusListing {
-  def read(movieRepository: MovieRepository)(using latestYear: services.movies.LatestTitleYear): CorpusListing = {
+  def read(movieRepository: MovieRepositoryReader)(using latestYear: services.movies.LatestTitleYear): CorpusListing = {
     val records = movieRepository.findAllForListing()
     // The table is the global corpus; its only use for a city is the /movie fallback
     // link on a row with no live showtimes anywhere — the default city, as before.
