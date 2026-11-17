@@ -101,6 +101,17 @@ check "...a testOnly of it/ specs too" "rc=2" \
 (cd "$scratch/fresh" && unset MONGODB_URI && "$REPO_ROOT/scripts/sbt-warm" "IntegrationTest/compile" >/dev/null 2>&1)
 check "...but compiling the it/ sources needs no Mongo, nor a run with MONGODB_URI set" "--client IntegrationTest/compile|--client itAll" \
   "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)|$(cd "$scratch/fresh" && MONGODB_URI=mongodb://x "$REPO_ROOT/scripts/sbt-warm" itAll >/dev/null 2>&1; tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+# 2026-11-17: a fresh worktree's first testUnit failed every deploy spec, its GitOps manifests never fetched
+mkdir -p "$scratch/fresh/infra/bin"
+printf '#!/bin/sh\necho fetched >> "%s/gitops-calls"; mkdir -p "$KINOWO_GITOPS_DEST"\n' "$scratch" > "$scratch/fresh/infra/bin/fetch-gitops"
+chmod +x "$scratch/fresh/infra/bin/fetch-gitops"
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a command running no tests fetches no GitOps manifests" "0" "$(cat "$scratch/gitops-calls" 2>/dev/null | wc -l | tr -d ' ')"
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" testUnit >/dev/null 2>&1)
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly deploy.X" >/dev/null 2>&1)
+check "a test command in a checkout without them fetches them into its infra/kubernetes, once" "1 yes --client worker/testOnly deploy.X" \
+  "$(wc -l < "$scratch/gitops-calls" | tr -d ' ') $([ -d "$scratch/fresh/infra/kubernetes" ] && echo yes || echo no) $(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+rm -rf "$scratch/fresh/infra"
 echo stale > "$scratch/fresh/worker/target/scala-3.x/zinc/from"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.x/zinc/from")"

@@ -467,6 +467,20 @@ if [ -z "${MONGODB_URI:-}" ] && printf '%s\n' "$@" | grep -qE '(^|[;[:space:]/])
   exit 2
 fi
 
+# THE GITOPS MANIFESTS the deploy specs read (repochecks/ and worker/ `deploy.*`) live in movies-gitops, fetched into
+# the gitignored infra/kubernetes by infra/bin/fetch-gitops -- which a fresh worktree has never run, so its first
+# testUnit failed a dozen deploy specs "missing because the GitOps manifests are no longer in this repository"
+# (2026-11-17). A test command in a checkout without them fetches them first, once (bounded:
+# KINOWO_SBT_WARM_GITOPS_SECONDS, 90); a fetch that fails is said and the command runs anyway, those specs failing as
+# before. KINOWO_SBT_WARM_GITOPS=0 never fetches.
+if [ "${KINOWO_SBT_WARM_GITOPS:-1}" != 0 ] && [ ! -d "$root/infra/kubernetes" ] && [ -x "$root/infra/bin/fetch-gitops" ] &&
+    printf '%s\n' "$@" | grep -qE '(^|[;[:space:]/])test[A-Za-z]*([;[:space:]]|$)'; then
+  log "no GitOps manifests in $root: fetching them for the deploy specs (infra/bin/fetch-gitops)"
+  if ! KINOWO_GITOPS_DEST="$root/infra/kubernetes" bounded "${KINOWO_SBT_WARM_GITOPS_SECONDS:-90}" "$root/infra/bin/fetch-gitops" > /dev/null 2>&1; then
+    log "the GitOps fetch failed: the deploy specs will fail on the missing manifests (run infra/bin/fetch-gitops)"
+  fi
+fi
+
 # ONE STARTER per checkout: two calls finding no server would each start one (sbt --client starts it in the background,
 # outliving the call). The first holds a lock until its command ends, the others wait for it and then find the
 # server it started. The lock is the kernel's (jvm-gate.sh's jvm_lock): free the moment its holder has gone, killed or
