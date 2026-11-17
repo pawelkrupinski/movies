@@ -1,6 +1,9 @@
 package services.identity
 
 import kinowo.build.ReaderNames
+import java.nio.file.{Files, Path}
+import scala.jdk.CollectionConverters.*
+import scala.util.Using
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -31,7 +34,18 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
     reads("""Paths.get("worker/src/mainline")""", "worker/src/main/scala/services/movies/MovieService.scala") shouldBe false
   }
 
-  it should "never make a file named by its one-file tokens" in {
+  // review round 5: ProvenanceSpec walked a tree built from its parts (`"identity", "src", "main", ...`), which no one
+  // literal names, so a
+  // change to any identity source but its class dependencies' left it out of the narrowed unit tests
+  "a source walking a module's tree" should "name it in one literal, never build it from parts" in {
+    val PartsPath = """(?:Path\.of|Paths\.get)\(\s*"[^"/]+"\s*,\s*"src"""".r
+    val sources = Using.resource(Files.list(Path.of(".")))(_.iterator.asScala.toList).map(_.resolve("src")).filter(Files.isDirectory(_))
+      .flatMap(src => Using.resource(Files.walk(src))(_.iterator.asScala.filter(_.toString.endsWith(".scala")).toList))
+    sources should not be empty
+    sources.filter(file => PartsPath.findFirstIn(Files.readString(file)).isDefined).map(_.toString) shouldBe empty
+  }
+
+  "a tree walker's literal" should "never make a file named by its one-file tokens" in {
     // a tree's walker never says which file it reads: a fixture under a walked tree that no literal opens by name still
     // has an unknown reader, so the selection runs every test
     ReaderNames.tokens("test/resources/fixtures/flicks/x/day.html") should not contain "test/resources/fixtures/flicks"

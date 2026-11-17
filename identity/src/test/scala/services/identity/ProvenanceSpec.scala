@@ -38,7 +38,7 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
   // the identity code reading provenance -- a listing's kept mark, a backer's, a denial's credit or house -- anywhere but
   // the table: a rule re-deriving what the table says (Keswick #629's siblingDenying beside ClusterVoting.onlyWithdrawn)
   "Every rule site" should "read provenance through the table, never re-derive it" in {
-    val root  = Path.of("identity", "src", "main", "scala", "services", "identity")
+    val root  = Path.of("identity/src/main/scala/services/identity")
     val files = Files.walk(root).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq
     // where a provenance is DEFINED or carried, not weighed: the table, the listing and its codec, retention's mark, the
     // backer's key, the denials' kinds and the scoring that makes them
