@@ -5,7 +5,7 @@ import services.movies.LatestTitleYear
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.freshness.{FreshnessKind, FreshnessStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
@@ -65,12 +65,13 @@ class DetailReaper(
   // the pipeline, every page a venue slot names for a cut-over country's identity model.
   pages:     DetailPages = DetailPages.PerVenue,
   // Where each completed run is reported (`ScheduledTickStale`).
-  ticks: TickRecorder = TickRecorder.Unrecorded
+  ticks: TickRecorder = TickRecorder.Unrecorded,
+  threadPools: ThreadPools
 ) extends Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("detail-reaper")
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler("detail-reaper")
 
   /** Enrichers indexed by the venue they enrich, so a row is matched against only the
    *  venues that actually carry it instead of against every enricher there is.

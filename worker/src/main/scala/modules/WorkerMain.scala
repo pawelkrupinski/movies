@@ -123,7 +123,9 @@ object WorkerMain extends Logging {
       // only, others headless" gap — every country writes its own `country="…"` slice
       // and ALL of them surface on the single /metrics endpoint.
       val metrics = boot.step("metrics bundle")(new services.metrics.WorkerMetrics(
-        countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize)))
+        countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize),
+        // The process-wide bundle outlives every country's wiring; its own stop() shuts its sampler.
+        tools.ThreadPools.Unmanaged))
       // Every country's stores report their failed writes and refused grants here: one client, one count.
       services.MongoWriteErrors.bind(metrics.mongoWriteErrors)
       // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
@@ -342,7 +344,7 @@ object WorkerMain extends Logging {
         wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
           w.movieRepository.changeStreamLiveness)),
-        clock.instant()), clock = clock)
+        clock.instant()), clock = clock, scheduler = tools.DaemonExecutors.scheduler("worker-metrics-refresh"))
     snapshot.start()
     server.createContext("/metrics", exchange => {
       val body = snapshot.serve()

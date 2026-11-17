@@ -347,7 +347,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val registry    = new PrometheusRegistry()
     val census      = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),
       WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
-      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(allSeasonal, mixed, yearRound), clock)
+      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(allSeasonal, mixed, yearRound), clock, threadPools = tools.ThreadPools.Unmanaged)
     def offSeason(city: City): Option[Double] =
       PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
 
@@ -374,7 +374,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val registry  = new PrometheusRegistry()
     val census    = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),
       WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
-      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(seasonalTown, yearRound), clock)
+      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(seasonalTown, yearRound), clock, threadPools = tools.ThreadPools.Unmanaged)
     def offSeason(city: City): Option[Double] =
       PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
 

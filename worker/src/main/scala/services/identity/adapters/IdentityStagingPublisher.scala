@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagedFact, StagedListing, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
 import services.movies.ListingKey
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -48,7 +48,8 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
                                      read: () => Iterator[Listing] = () => Iterator.empty,
                                      /** A cluster's key: the agreement stage's ([[agreement.AgreementStage.keyOf]]), which
                                       *  a listing sorting first, or leaving, does not move. */
-                                     clusterKey: ResolverDecision => String = decision => StoredFamily.idOf(decision.members))
+                                     clusterKey: ResolverDecision => String = decision => StoredFamily.idOf(decision.members),
+                                     threadPools: ThreadPools)
     extends Stoppable with Logging {
   import IdentityStagingPublisher.*
 
@@ -62,7 +63,7 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
   private var unwritten = Vector.empty[StagingEvent]
   /** The events let go since the last written beat: by the feed, full, or past [[UnwrittenCap]] while publishes fail. */
   private var dropped = 0L
-  private lazy val scheduler = DaemonExecutors.scheduler(s"identity-staging-$country")
+  private lazy val scheduler = threadPools.scheduler(s"identity-staging-$country")
 
   def start(interval: FiniteDuration = Interval): Unit = {
     ticks.started(TickName, interval, interval)

@@ -156,7 +156,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** Runs [[outstandingQuestions]] every [[services.identity.adapters.OutstandingQuestions.Interval]]. */
   lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => outstandingQuestions.reask().enqueued.run,
-      services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks))
+      services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks, threadPools = threadPools))
   /** The staging screen's store (`identity_staging`), in this country's database, which the local screen reads beside
    *  every other country's; in memory without one. */
   lazy val identityStaging: services.identity.staging.IdentityStaging =
@@ -169,7 +169,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
-      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read())))
+      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()), threadPools = threadPools))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps

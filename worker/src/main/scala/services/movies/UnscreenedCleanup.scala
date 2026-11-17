@@ -3,7 +3,6 @@ package services.movies
 import models.{MovieRecord, SourceData}
 import play.api.Logging
 import services.Stoppable
-import tools.DaemonExecutors
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService}
@@ -71,7 +70,7 @@ import scala.util.Try
 class UnscreenedCleanup(
   cache:      MovieCache,
   repository: MovieRepository,
-  scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("unscreened-cleanup")
+  scheduler:  ScheduledExecutorService
 )(using LatestTitleYear) extends Stoppable with Logging {
 
   // Keys a write nominated that no drain has judged yet, and whether a drain is queued for them.

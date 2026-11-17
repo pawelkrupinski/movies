@@ -63,7 +63,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
                         clusterKey: ResolverDecision => String = d => StoredFamily.idOf(d.members)) =
     new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => feed.drain(),
       d => waits.getOrElse(d.members.toSet, WaitingOn.model(d)), qs => outcomes.view.filterKeys(qs).toMap, clock, window = 6.hours,
-      stagingCap = stagingCap, takeMetrics = metrics, storedFilm = storedFilm, read = read, clusterKey = clusterKey)
+      stagingCap = stagingCap, takeMetrics = metrics, storedFilm = storedFilm, read = read, clusterKey = clusterKey, threadPools = tools.ThreadPools.Unmanaged)
 
   /** What the screen reads of the country: its staging clusters and its resolutions. */
   private def shown(docs: StagingDocuments): Seq[StagedCluster] =
@@ -385,7 +385,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       def dropped(events: Long): Unit                                        = ()
     }
     val live = new IdentityStagingPublisher("pl", new IdentityStaging(new InMemoryStagingDocuments, clock), () => taken, () => feed.drain(),
-      d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics)
+      d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics, threadPools = tools.ThreadPools.Unmanaged)
     taken = Some(resolution(decision(Seq(belle), None, ResolverDecision.Basis.Vetoed), decision(Seq(dune, dune2), Some(438631), ResolverDecision.Basis.Agreed)))
     live.publish()
     heldBy.last shouldBe ((Map("Vetoed" -> 1, "Agreed" -> 1), Map("Vetoed" -> 1, "Agreed" -> 2)))
@@ -456,7 +456,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       def dropped(events: Long): Unit                                        = counted += events
     }
     val live = new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => small.drain(),
-      d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics)
+      d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics, threadPools = tools.ThreadPools.Unmanaged)
     waits = Map.empty
     taken = Some(resolution(decision(Seq(dune, dune2, belle), Some(438631), ResolverDecision.Basis.OwnMatch)))
     small.offer(Seq(dune, dune2, belle).map(l => StagingEvent.Changed(decidedOn(l, Some(438631)), 1, clock.millis())))

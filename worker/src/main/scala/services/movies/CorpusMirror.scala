@@ -2,10 +2,10 @@ package services.movies
 
 import models.MovieRecord
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.Try
 
 /**
@@ -47,6 +47,8 @@ private[movies] trait MirroredCorpus {
  * @param bootReaders the boot's other whole-corpus readers, handed the boot hydrate's read so the
  *        boot reads the corpus once (see [[BootCorpusReader]]). None for specs and a lone cache.
  * @param ticks where each completed cold-retry and backstop tick is reported (`ScheduledTickStale`).
+ * @param threadPools where each attached mirror's refresh scheduler comes from: the root's managed pools.
+ * @param sleep the wait between boot-hydrate attempts ([[tools.Sleep.Blocking]] from the root).
  */
 final class CorpusMirror(
   bootHydrateMaxAttempts: BootHydrateMaxAttempts   = BootHydrateMaxAttempts(0),
@@ -54,7 +56,9 @@ final class CorpusMirror(
   cacheMetrics:           CacheSyncMetrics         = CacheSyncMetrics.noop,
   rehydrateInterval:      CacheRehydrateInterval   = CacheRehydrateInterval(6.hours),
   bootReaders:            Seq[BootCorpusReader]    = Nil,
-  ticks:                  TickRecorder             = TickRecorder.Unrecorded
+  ticks:                  TickRecorder             = TickRecorder.Unrecorded,
+  threadPools:            ThreadPools,
+  sleep:                  FiniteDuration => Unit
 ) {
   /** This mirror over one cache's corpus — once per cache: the result holds the hydrate's state,
    *  scheduler and change-stream watch. */
@@ -99,7 +103,7 @@ final class CorpusMirror(
       while (read == 0 && attempt < bootHydrateMaxAttempts.value) {
         bootReaders.foreach(_.bootReadEnded(BootReadEnd.Retrying))
         attempt += 1
-        Thread.sleep(bootHydrateRetry.value.toMillis) // an interrupt (shutdown mid-boot) ends the construction
+        sleep(bootHydrateRetry.value) // an interrupt (shutdown mid-boot) ends the construction
         read = rehydrateFrom(offer).getOrElse(0)
       }
       bootReaders.foreach(_.bootReadEnded(if (read > 0) BootReadEnd.Whole else BootReadEnd.GaveUp))
@@ -287,7 +291,7 @@ final class CorpusMirror(
     // The scheduler + watch only start when `start()` is called (Wiring does,
     // tests don't), so unit tests still get a single one-shot hydrate at
     // construction unless they opt into the live sync.
-    private val refreshScheduler        = DaemonExecutors.scheduler("movie-cache-refresh")
+    private val refreshScheduler        = threadPools.scheduler("movie-cache-refresh")
     private val BackstopIntervalSeconds = rehydrateInterval.value.toSeconds
     @volatile private var watchHandle: Option[AutoCloseable] = None
 

@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.Logging
-import tools.DaemonExecutors
+import tools.ThreadPools
 
 import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
@@ -49,7 +49,8 @@ class JvmVitalsSampler(
   registry:       PrometheusRegistry,
   sampleInterval: FiniteDuration  = JvmVitalsSampler.DefaultSampleInterval,
   readNmtSummary: () => String    = JvmVitalsSampler.readNmtSummaryViaMBean,
-  readProcStatus: () => String    = JvmVitalsSampler.readProcSelfStatus
+  readProcStatus: () => String    = JvmVitalsSampler.readProcSelfStatus,
+  threadPools: ThreadPools
 ) extends Logging {
   import JvmVitalsSampler._
 
@@ -77,7 +78,7 @@ class JvmVitalsSampler(
   processRss.set(0.0)
   offbookGap.set(0.0)
 
-  private val scheduler = DaemonExecutors.scheduler("worker-jvm-vitals")
+  private val scheduler = threadPools.scheduler("worker-jvm-vitals")
   private var tick      = 0L
 
   /** Read NMT, publish per-category committed bytes, and (every `LogEveryTicks`

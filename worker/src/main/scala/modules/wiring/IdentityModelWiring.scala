@@ -73,7 +73,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); tools.TickRun.Completed },
-      services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks))
+      services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
   lazy val identityTmdbStore: services.identity.adapters.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer =
     new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies,
@@ -88,7 +88,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   lazy val identityTmdbChangesSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => identityTmdbChanges.tick().run,
       services.identity.adapters.TmdbChangesSweep.TickInterval,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks, threadPools = threadPools))
   /** An operator's TMDB films just edited, fetched again with the questions of the families they reach
    *  (`TmdbFilmRefresh`, the `tmdb-films` source of a `RefreshSource` task), through the lookup chain (`enrichmentFetch`). */
   lazy val identityTmdbFilmRefresh: services.identity.adapters.TmdbFilmRefresh =
@@ -245,7 +245,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     lookupFill.schedule(identityLookupFillInterval.value,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore))
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, threadPools = threadPools))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def lookupFillSleep: Long => Unit = Thread.sleep

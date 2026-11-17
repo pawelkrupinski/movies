@@ -35,7 +35,7 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val corpusCensus: CorpusCensus = managedResources.stopping(
     new CorpusCensus(movieCache, workerMetrics.corpusGauge, workerMetrics.servedGauge, workerMetrics.showtimesGauge,
       workerMetrics.widestSlotsGauge, workerMetrics.cityOffSeasonGauge, country.code, country.cities, clock,
-      CorpusCensusMetrics.prometheus(workerMetrics.corpusCensusIncomplete, country.code), ticks = ticks))
+      CorpusCensusMetrics.prometheus(workerMetrics.corpusCensusIncomplete, country.code), ticks = ticks, threadPools = threadPools))
   // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
   // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.
   // Only over the venues read through an upstream known to copy feeds; None where there are none.
@@ -45,7 +45,7 @@ trait MetricsWiring { self: WorkerWiring =>
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: RatingRunCensus = managedResources.stopping(
-    new RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country, clock = clock, ticks = ticks))
+    new RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country, clock = clock, ticks = ticks, threadPools = threadPools))
   // Worst-case scrape staleness across this country's roster — the cinema that has
   // gone longest without a successful scrape, plus the never-scraped count. Reads
   // the SAME freshness stamps the ScrapeReaper schedules from, so the metric and
@@ -56,17 +56,17 @@ trait MetricsWiring { self: WorkerWiring =>
       workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, workerMetrics.scrapeAgeQuantileGauge,
       workerMetrics.scrapeDueVenuesGauge, scrapeDueWindow,
       cinema => chunkScrapers.contains(services.tasks.ScrapeCinemaHandler.scraperKey(cinema)),
-      country, clock = clock, ticks = ticks))
+      country, clock = clock, ticks = ticks, threadPools = threadPools))
   // The other half of that picture: cinemas that scrape FINE and produce nothing.
   // A drifted selector keeps its scrape fresh, so the census above reads it as
   // healthy — only the archive remembers when a cinema last had real content.
   lazy val cinemaContentCensus: CinemaContentCensus = managedResources.stopping(
     new CinemaContentCensus(cinemaScrapers, scrapeArchive,
       workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, workerMetrics.contentStaleVenuesGauge,
-      workerMetrics.seasonalNotReopenedGauge, country, clock = clock, ticks = ticks))
+      workerMetrics.seasonalNotReopenedGauge, country, clock = clock, ticks = ticks, threadPools = threadPools))
   // Side rows a venue left behind when it was dropped from the roster — nothing serves them and
   // nothing deleted them (Kino Etiuda OBK, 2026-09). The watchdog for the cleanup that should.
   lazy val retiredVenueCensus: RetiredVenueCensus = managedResources.stopping(
     new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
-      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country, clock = clock, ticks = ticks))
+      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country, clock = clock, ticks = ticks, threadPools = threadPools))
 }

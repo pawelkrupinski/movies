@@ -51,7 +51,7 @@ class CaffeineMovieCache(
   // How the cache is kept in step with its store — the boot hydrate, the rehydrates and the
   // change-stream mirror ([[CorpusMirror]]). The worker's root builds it with its retry budget,
   // cadence, metrics and boot readers; specs and a lone cache take the defaults.
-  mirror: CorpusMirror = new CorpusMirror()
+  mirror: CorpusMirror = new CorpusMirror(threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
 ) extends MovieCache with Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)

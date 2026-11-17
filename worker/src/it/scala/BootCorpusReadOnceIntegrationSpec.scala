@@ -90,11 +90,11 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val sweeper    = new ReadModelSweeper(projector.projection)
     val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned,
-      mirror = new services.movies.CorpusMirror(bootReaders = readers))
+      mirror = new services.movies.CorpusMirror(bootReaders = readers, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking))
     projector.prepare(sweeper)
     val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
-      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned)
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
     census.start()
     org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(SpecTimeouts.Settle)) {
       census.reading().subset(WorkerCorpusMetrics.Subset.Total) shouldBe Films

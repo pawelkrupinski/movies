@@ -336,7 +336,7 @@ lazy val common = (project in file("common"))
 // and identity's own specs need them too, but neither can depend on testkit (testkit depends on both), so those sources
 // are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
 // never meet.
-lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
+lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/SpecThreadPools", "tools/Eventually", "tools/SpecClock",
   "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
   "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository", "settings/HarnessConfiguration", "settings/HarnessValues",
   "testsupport/SourceTrees").map { name =>

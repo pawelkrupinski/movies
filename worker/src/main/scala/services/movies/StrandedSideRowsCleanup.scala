@@ -2,7 +2,7 @@ package services.movies
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, TickRecorder}
+import tools.{TickRecorder}
 
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
 
@@ -47,7 +47,7 @@ class StrandedSideRowsCleanup(
   retiredVenues: () => RetiredVenueRows,
   afterSweeps:   () => Unit,
   strandedDue:   () => Boolean,
-  scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup"),
+  scheduler:     ScheduledExecutorService,
   // Where each completed daily tick is reported (`ScheduledTickStale`).
   ticks:         TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {

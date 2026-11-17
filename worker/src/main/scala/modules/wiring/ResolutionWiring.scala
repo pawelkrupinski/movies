@@ -34,7 +34,8 @@ trait ResolutionWiring { self: WorkerWiring =>
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
     omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(enrichmentFetch)), retriesFailures = imdbIdRetriesFailures, stopwatch = stopwatch))
+    cinemeta = Some(new CinemetaClient(enrichmentFetch)), retriesFailures = imdbIdRetriesFailures, stopwatch = stopwatch,
+    retries = threadPools.scheduler("imdb-id-retry")))
   /** Whether a failed IMDb-id lookup is asked again later ([[ImdbIdResolver]]'s `retriesFailures`): always, but over a
    *  hermetic replay, which overrides it. */
   protected def imdbIdRetriesFailures: Boolean = true
@@ -85,6 +86,6 @@ trait ResolutionWiring { self: WorkerWiring =>
     managedResources.stopping(new SettleReaper(() => settleTick(),
     interval = SettleInterval(services.identity.adapters.IdentityProjection.ReconcileEvery),
     initialDelay = SettleReaper.InitialDelay(services.identity.adapters.IdentityProjection.ReconcileEvery),
-    runStore = scheduledRunStore, clock = clock, ticks = ticks))
+    runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools))
   }
 }

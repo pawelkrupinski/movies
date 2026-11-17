@@ -58,5 +58,5 @@ trait DetailWiring { self: WorkerWiring =>
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
     runStore = scheduledRunStore, clock = clock, ticks = ticks,
     // The model reads every listing's page.
-    pages = services.tasks.DetailPages.PerPage))
+    pages = services.tasks.DetailPages.PerPage, threadPools = threadPools))
 }

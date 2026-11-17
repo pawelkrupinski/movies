@@ -1,5 +1,7 @@
 package services.tasks
 
+import tools.ThreadPools
+
 import settings.SettleInterval
 
 import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
@@ -24,9 +26,10 @@ class SettleReaper(
   initialDelay: SettleReaper.InitialDelay,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
-  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded
+  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  threadPools:  tools.ThreadPools
 ) extends ClaimedPeriodicTask("settle", () => { settle(); tools.TickRun.Completed }, interval.value, initialDelay.value, runStore,
-    clock, ticks)
+    clock, ticks, threadPools)
 
 object SettleReaper {
 

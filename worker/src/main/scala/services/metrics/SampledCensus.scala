@@ -1,7 +1,7 @@
 package services.metrics
 
 import play.api.Logging
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -41,7 +41,10 @@ trait SampledCensus extends services.Stoppable with Logging {
    *  its gauges flat, which reads exactly like health. */
   protected def ticks: TickRecorder = TickRecorder.Unrecorded
 
-  private lazy val scheduler = DaemonExecutors.scheduler(censusName)
+  /** Where this census's scheduler comes from: the wiring's managed pools. */
+  protected def threadPools: ThreadPools
+
+  private lazy val scheduler = threadPools.scheduler(censusName)
 
   /** Which of [[SampledCensus.Slots]] this census takes its first reading in: 0 for a light one. */
   protected def firstSampleSlot: Int = 0

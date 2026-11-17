@@ -9,7 +9,7 @@ import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -83,12 +83,13 @@ class EnrichmentReaper(
   // passes `Some(...)` of the SAME instance it hands `MovieService` for the newcomer kick.
   enqueuer: Option[RatingEnqueuer] = None,
   // Where each completed run is reported (`ScheduledTickStale`).
-  ticks: TickRecorder = TickRecorder.Unrecorded
+  ticks: TickRecorder = TickRecorder.Unrecorded,
+  threadPools: ThreadPools
 ) extends Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler("enrichment-reaper")
 
   private val ratingEnqueuer: RatingEnqueuer =
     enqueuer.getOrElse(new RatingEnqueuer(queue, freshness, dueWindow))

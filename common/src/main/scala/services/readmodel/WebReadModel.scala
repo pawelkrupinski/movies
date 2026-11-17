@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.jdk.CollectionConverters._
@@ -47,7 +47,8 @@ class WebReadModel(
     // one country's fixture rows — takes every row and no former slugs.
     servingCountry:    Option[Country] = None,
     // Where each completed backstop and cold-retry tick is reported (`ScheduledTickStale`).
-    ticks:             TickRecorder = TickRecorder.Unrecorded) extends Stoppable with Logging {
+    ticks:             TickRecorder = TickRecorder.Unrecorded,
+    threadPools:       ThreadPools) extends Stoppable with Logging {
 
   private val formerSlugs: String => Seq[String] = servingCountry.fold((_: String) => Seq.empty[String])(c => c.formerSlugs)
 
@@ -513,7 +514,7 @@ class WebReadModel(
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
-  private val scheduler       = DaemonExecutors.scheduler("web-read-model")
+  private val scheduler       = threadPools.scheduler("web-read-model")
   private val BackstopSeconds  = reloadInterval.value.toSeconds
   // Far tighter than the backstop because the state it recovers from is a blank site, not
   // drift. Once hydrated a tick is one field read; until then each is a full reload, which is

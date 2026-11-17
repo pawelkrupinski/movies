@@ -8,7 +8,7 @@ import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClo
 import play.api.Logging
 import services.movies.{CacheKey, CinemaCorroboration, MovieCache, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.readmodel.ReadModelProjection
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -60,7 +60,8 @@ final class CorpusCensus(
   metrics:         CorpusCensusMetrics = CorpusCensusMetrics.noop,
   publishInterval: FiniteDuration    = CorpusCensus.DefaultPublishInterval,
   // Where each completed publish is reported (`ScheduledTickStale`): a dead census leaves its gauges flat.
-  ticks:           TickRecorder      = TickRecorder.Unrecorded
+  ticks:           TickRecorder      = TickRecorder.Unrecorded,
+  threadPools:     ThreadPools
 ) extends services.Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -83,7 +84,7 @@ final class CorpusCensus(
   widest.labelValues(countryCode).set(0.0)
   publishSeasons()
 
-  private val scheduler = DaemonExecutors.scheduler("corpus-census")
+  private val scheduler = threadPools.scheduler("corpus-census")
 
   /** Note the film `key` now holds (`None`: gone), for the next drain to derive. Called under the cache's lock for
    *  the key, on the writer's thread — so it only notes: deriving a film's part is linear in its slots, and a wide

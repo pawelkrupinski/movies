@@ -71,7 +71,9 @@ trait CorpusWiring { self: WorkerWiring =>
       rehydrateInterval      = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
       // The boot's other whole-corpus readers take the hydrate's read rather than read it again.
       bootReaders            = Seq(readModelBootStudy),
-      ticks                  = ticks)
+      ticks                  = ticks,
+      threadPools            = threadPools,
+      sleep                  = sleep)
 
   /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)
@@ -86,7 +88,7 @@ trait CorpusWiring { self: WorkerWiring =>
   // dedup doesn't skip the re-fetch. See QueueEnrichmentRetrigger / MergeRetrigger.
   lazy val enrichmentRetrigger = new services.tasks.QueueEnrichmentRetrigger(taskQueue, freshnessStore, country, titleNormalizer, clock)
 
-  lazy val unscreenedCleanup = managedResources.stopping(new UnscreenedCleanup(movieCache, movieRepository))
+  lazy val unscreenedCleanup = managedResources.stopping(new UnscreenedCleanup(movieCache, movieRepository, scheduler = threadPools.scheduler("unscreened-cleanup")))
 
   // Daily: side-collection rows filed under a venue this country's roster no longer lists. Weekly, on
   // the same tick: the backstop for rows whose film is gone, which a film's delete carries with it.
@@ -95,6 +97,7 @@ trait CorpusWiring { self: WorkerWiring =>
       VenueRoster.venuesOf(country), now = clock.instant()),
     afterSweeps = () => retiredVenueCensus.sample(),
     strandedDue = StrandedSideRowsCleanup.weekly(scheduledRunStore, clock),
+    scheduler = threadPools.scheduler("stranded-side-rows-cleanup"),
     ticks = ticks))
 
   /** Rating stamps, last attempts and cadence of films gone from the corpus (`OrphanFilmStateSweep`). */
@@ -104,5 +107,5 @@ trait CorpusWiring { self: WorkerWiring =>
     services.movies.OrphanFilmStateSweep.liveTmdbIds(movieRepository), clock)
   lazy val orphanFilmStateSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => tools.TickRun.completedWhen(orphanFilmStateSweep.sweep().isDefined),
-      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock, ticks))
+      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools))
 }

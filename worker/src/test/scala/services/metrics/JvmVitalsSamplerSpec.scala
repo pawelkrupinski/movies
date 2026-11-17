@@ -77,7 +77,7 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
   "JvmVitalsSampler.sample" should "publish per-category committed bytes onto the registry" in {
     val registry = new PrometheusRegistry()
     val sampler  = new JvmVitalsSampler(
-      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus)
+      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus, threadPools = tools.ThreadPools.Unmanaged)
 
     sampler.sample()
     val text = PrometheusExposition.render(registry)
@@ -91,7 +91,7 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
   it should "publish RSS and the RSS − NMT-committed off-book gap" in {
     val registry = new PrometheusRegistry()
     val sampler  = new JvmVitalsSampler(
-      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus)
+      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus, threadPools = tools.ThreadPools.Unmanaged)
 
     sampler.sample()
     val text = PrometheusExposition.render(registry)
@@ -104,7 +104,7 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
 
   it should "seed the common categories at 0 before the first sample" in {
     val registry = new PrometheusRegistry()
-    new JvmVitalsSampler(registry, readNmtSummary = () => "") // constructed, not sampled
+    new JvmVitalsSampler(registry, readNmtSummary = () => "", threadPools = tools.ThreadPools.Unmanaged) // constructed, not sampled
     val text = PrometheusExposition.render(registry)
 
     JvmVitalsSampler.SeedCategories.foreach { c =>

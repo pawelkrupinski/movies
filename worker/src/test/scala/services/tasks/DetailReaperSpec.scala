@@ -43,7 +43,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   }
 
   private def reaper(cache: CaffeineMovieCache, queue: InMemoryTaskQueue, fresh: InMemoryFreshnessStore) =
-    new DetailReaper(Seq(enricher), cache, queue, fresh, clock = specClock)
+    new DetailReaper(Seq(enricher), cache, queue, fresh, clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
 
   // The tick asked every cached film for its detail pages every minute, re-deriving each film's
   // venues (`cinemaData`) though almost none had changed — 2.6% of the UK worker's CPU (JFR
@@ -58,7 +58,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val cache  = cacheWith(Some("http://kinoapollo/dune"))
     val queue  = new InMemoryTaskQueue
     val r      = new DetailReaper(Seq(enricher), cache, queue, new InMemoryFreshnessStore,
-      pages = counting, clock = specClock)
+      pages = counting, clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     r.tick().added shouldBe 1
     derived shouldBe 1
     r.tick()
@@ -135,7 +135,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
         FreshnessKind.DetailEnrich, Instant.ofEpochMilli(t0))
     }
     val r = new DetailReaper(Seq(enricher), cache, queue, fresh,
-      dueWindow = new DueWindow(6.hours), clock = specClock)
+      dueWindow = new DueWindow(6.hours), clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     val ticks = (6.hours.toMillis / delta.toMillis).toInt
     (1 to ticks).map(k => r.tick(t0 + k * delta.toMillis).added)
   }
@@ -174,9 +174,9 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       cache
     }
     val (perVenue, perPage) = (new InMemoryTaskQueue, new InMemoryTaskQueue)
-    new DetailReaper(Seq(enricher), cacheWithTwoPages, perVenue, new InMemoryFreshnessStore, clock = specClock).tick().added shouldBe 1
+    new DetailReaper(Seq(enricher), cacheWithTwoPages, perVenue, new InMemoryFreshnessStore, clock = specClock, threadPools = tools.ThreadPools.Unmanaged).tick().added shouldBe 1
     new DetailReaper(Seq(enricher), cacheWithTwoPages, perPage, new InMemoryFreshnessStore, clock = specClock,
-      pages = DetailPages.PerPage).tick().added shouldBe 2
+      pages = DetailPages.PerPage, threadPools = tools.ThreadPools.Unmanaged).tick().added shouldBe 2
   }
 
   // The regression that took EVERY cinema's detail enrichment down for 16h on
@@ -223,7 +223,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     var cap = 1
     val r = new DetailReaper(Seq(enricher), cacheWithMany(10), queue, fresh,
-      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(cap), clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(cap), clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     r.tick().added shouldBe 1   // cap = 1
     cap = 4
     r.tick().added shouldBe 4   // live re-read picks up the new cap (a captured Int would still be 1)
@@ -232,7 +232,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "enqueue at most maxEnqueuePerTick details when a whole cohort is stale (anti-burst cap)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh,
-      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     r.tick().added shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
@@ -240,7 +240,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "drain the rest of the stale cohort over subsequent capped ticks" in {
     val (cache, queue, fresh) = (cacheWithMany(5), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cache, queue, fresh,
-      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     r.tick().added shouldBe 2 // films 1–2
     r.tick().added shouldBe 2 // 1–2 still waiting (deduped), next 2 fresh cohort members
     r.tick().added shouldBe 1 // last one
@@ -251,14 +251,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   "DetailReaper.tickIfClaimed" should "not enqueue when another machine has claimed the occurrence" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh,
-      runStore = NeverClaimScheduledRunStore, clock = specClock).tickIfClaimed().added shouldBe 0
+      runStore = NeverClaimScheduledRunStore, clock = specClock, threadPools = tools.ThreadPools.Unmanaged).tickIfClaimed().added shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 
   it should "tick when it wins the occurrence claim" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh,
-      runStore = new InMemoryScheduledRunStore, clock = specClock).tickIfClaimed().added shouldBe 1
+      runStore = new InMemoryScheduledRunStore, clock = specClock, threadPools = tools.ThreadPools.Unmanaged).tickIfClaimed().added shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
@@ -272,7 +272,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
     }
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, hydrating,
-      runStore = new InMemoryScheduledRunStore, clock = specClock).tickIfClaimed().added shouldBe 0
+      runStore = new InMemoryScheduledRunStore, clock = specClock, threadPools = tools.ThreadPools.Unmanaged).tickIfClaimed().added shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 
@@ -288,7 +288,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val window = new DueWindow(6.hours)
     val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
-    val r = new DetailReaper(Seq(gone), cache, queue, fresh, dueWindow = window, clock = specClock)
+    val r = new DetailReaper(Seq(gone), cache, queue, fresh, dueWindow = window, clock = specClock, threadPools = tools.ThreadPools.Unmanaged)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
       new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned, enrichmentLanguage = models.Country.Poland.language)
 

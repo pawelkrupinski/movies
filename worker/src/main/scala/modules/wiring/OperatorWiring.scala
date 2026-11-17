@@ -22,7 +22,8 @@ trait OperatorWiring { self: WorkerWiring =>
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
     tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds)),
-    ticks        = ticks))
+    ticks        = ticks,
+    threadPools  = threadPools))
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by
@@ -53,10 +54,10 @@ trait OperatorWiring { self: WorkerWiring =>
     // walks. Without this the walk re-derives from the very answers it exists to
     // re-check — the same trap the per-film re-enrich had, where a wrong URL was
     // replayed from `resolve_*` rather than re-probed (see `ResolutionCache.forgetAll`).
-    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore, clock),
-    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore, clock),
-    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore, clock),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { val _ = identityProjection.projectQuietly(); BulkRefreshResult.message("projection complete") }, bulkTaskResultStore, clock),
+    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh")),
+    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh")),
+    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh")),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { val _ = identityProjection.projectQuietly(); BulkRefreshResult.message("projection complete") }, bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh")),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
@@ -65,9 +66,9 @@ trait OperatorWiring { self: WorkerWiring =>
   ) ++
     // The Filmweb bulk-refresh button only when this country's Filmweb path is on.
     Option.when(filmwebEnabled)(
-      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => { filmwebLinkCache.forgetAll(); filmwebRatings.refreshAllNow() }, bulkTaskResultStore, clock)) ++
+      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => { filmwebLinkCache.forgetAll(); filmwebRatings.refreshAllNow() }, bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh"))) ++
     // OMDb identifier sweep as a coarse task — only when the feature is on
     // (`omdbBackfill` is `Some`). Enqueued daily by `omdbBackfillReaper`, run here
     // off a background EC like the other corpus-wide refreshes.
-    omdbBackfill.map(ob => new BulkRefreshHandler(TaskType.RefreshAllOmdb, "OMDb", () => ob.refreshAllNow(), bulkTaskResultStore, clock)).toSeq
+    omdbBackfill.map(ob => new BulkRefreshHandler(TaskType.RefreshAllOmdb, "OMDb", () => ob.refreshAllNow(), bulkTaskResultStore, clock, threadPools.virtualThreadEC("bulk-refresh"))).toSeq
 }

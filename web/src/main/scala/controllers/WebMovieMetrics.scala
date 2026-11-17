@@ -2,7 +2,7 @@ package controllers
 
 import models.{City, Country}
 import play.api.Logging
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -42,6 +42,7 @@ class WebMovieMetrics(
   // Where each completed sample is reported (`ScheduledTickStale`): a dead sampler serves its
   // last counts for ever, which the films-served alerts read as a steady country.
   ticks: TickRecorder = TickRecorder.Unrecorded,
+  threadPools: ThreadPools
 ) extends services.Stoppable with Logging {
   private val cities: Seq[City] = servingCountry.cities
   private val country: String   = servingCountry.code
@@ -51,7 +52,7 @@ class WebMovieMetrics(
   )
   // None until the first sample: a poster census of zero films would read as every poster lost.
   private val posters = new AtomicReference[Option[WebMovieMetrics.PosterCensus]](None)
-  private val scheduler = DaemonExecutors.scheduler("web-movie-metrics")
+  private val scheduler = threadPools.scheduler("web-movie-metrics")
 
   /** Recompute every city's served-film counts from the live read model. Cheap
    *  (the read model is in-memory), and bounded to once a minute by the

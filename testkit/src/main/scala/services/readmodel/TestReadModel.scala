@@ -33,7 +33,7 @@ object TestReadModel {
    *  `FilmId`, so a spec that matches rendered rows back to cache rows must project
    *  the cache's own rows, not rebuild them from (title, year, record). */
   def fromRows(rows: Seq[StoredMovieRecord], clock: Clock = tools.SpecClock.Pinned): WebReadModel = {
-    val readModel = new WebReadModel(storeRows(rows), clock = clock)
+    val readModel = new WebReadModel(storeRows(rows), clock = clock, threadPools = tools.ThreadPools.Unmanaged)
     readModel.reload()
     readModel
   }

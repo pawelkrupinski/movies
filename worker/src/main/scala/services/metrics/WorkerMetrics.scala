@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.ThreadPools
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
@@ -24,7 +26,7 @@ import models.Country
  * Built once in [[modules.WorkerMain]] and injected into every wiring; a
  * single-country boot / test uses [[WorkerMetrics.singleCountry]].
  */
-class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize) {
+class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize, threadPools: tools.ThreadPools) {
 
   val registry: PrometheusRegistry = new PrometheusRegistry()
 
@@ -37,7 +39,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val mongoWriteErrors: services.MongoWriteErrors.Series = services.MongoWriteErrors.Series.worker(registry)
 
   // Native-memory + vitals sampler — one JVM, so a single process-level sampler.
-  val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry)
+  val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry, threadPools = threadPools)
 
   // The intern pool every country's movie cache interns its slot strings into — one per
   // process, so a string Poland interned is the instance Germany gets back — and its
@@ -189,6 +191,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
 object WorkerMetrics {
   /** A single-country bundle — the default for a one-country boot and for the
    *  wiring/test constructs that don't inject a shared one. */
-  def singleCountry(country: Country, poolSize: settings.WorkerPoolSize): WorkerMetrics =
-    new WorkerMetrics(Seq(country.code), poolSize)
+  def singleCountry(country: Country, poolSize: settings.WorkerPoolSize, threadPools: tools.ThreadPools): WorkerMetrics =
+    new WorkerMetrics(Seq(country.code), poolSize, threadPools)
 }

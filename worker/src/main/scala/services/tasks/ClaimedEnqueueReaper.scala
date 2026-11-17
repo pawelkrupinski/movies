@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -34,11 +34,11 @@ class ClaimedEnqueueReaper(
   timing:       ClaimedEnqueueReaper.Timing = ClaimedEnqueueReaper.Timing.FromBoot,
   // Where each completed run is reported (`ScheduledTickStale`).
   ticks: TickRecorder = TickRecorder.Unrecorded,
-  // Builds the reaper's scheduler from its name; a spec hands in a stepped one.
-  newScheduler: String => ScheduledExecutorService = DaemonExecutors.scheduler(_)
+  // Where the reaper's scheduler comes from (named after it); a spec hands in a stepped one.
+  threadPools: ThreadPools
 ) extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = newScheduler(s"$occurrence-reaper")
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler(s"$occurrence-reaper")
 
   def start(): Unit = {
     scheduleNext(initialDelay)

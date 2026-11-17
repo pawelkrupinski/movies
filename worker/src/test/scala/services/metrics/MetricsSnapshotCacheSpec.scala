@@ -18,7 +18,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
 
   "current()" should "serve the last rendered snapshot WITHOUT re-invoking the (slow) renderer" in {
     val renders = new AtomicInteger(0)
-    val cache = new MetricsSnapshotCache(render = () => s"snapshot-v${renders.incrementAndGet()}", clock = _root_.tools.SpecClock.Pinned)
+    val cache = new MetricsSnapshotCache(render = () => s"snapshot-v${renders.incrementAndGet()}", clock = _root_.tools.SpecClock.Pinned, scheduler = tools.DaemonExecutors.scheduler("worker-metrics-refresh"))
 
     cache.refresh()
     renders.get() shouldBe 1
@@ -33,7 +33,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
   it should "keep serving the last good snapshot when a refresh fails" in {
     @volatile var fail = false
     val cache = new MetricsSnapshotCache(render = () =>
-      if (fail) throw new RuntimeException("mongo timeout") else "good", clock = _root_.tools.SpecClock.Pinned)
+      if (fail) throw new RuntimeException("mongo timeout") else "good", clock = _root_.tools.SpecClock.Pinned, scheduler = tools.DaemonExecutors.scheduler("worker-metrics-refresh"))
 
     cache.refresh()
     new String(cache.current(), "UTF-8") shouldBe "good"
@@ -49,7 +49,7 @@ class MetricsSnapshotCacheSpec extends AnyFlatSpec with Matchers {
     val calls    = new AtomicInteger(0)
     val cache = new MetricsSnapshotCache(render = () =>
       if (calls.incrementAndGet() == 1) "first"
-      else { inRender.countDown(); release.await(); "second" }, clock = _root_.tools.SpecClock.Pinned)
+      else { inRender.countDown(); release.await(); "second" }, clock = _root_.tools.SpecClock.Pinned, scheduler = tools.DaemonExecutors.scheduler("worker-metrics-refresh"))
 
     cache.refresh() // first render → "first"
     new String(cache.current(), "UTF-8") shouldBe "first"

@@ -16,6 +16,7 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
     val sampled = new CountDownLatch(1)
     @volatile var sampledOn: String = ""
     protected def censusName: String = "blocking-census"
+    protected def threadPools: tools.ThreadPools = tools.ThreadPools.Unmanaged
     protected def sampleInterval: FiniteDuration = 1.hour
     override protected def firstSampleDelay: FiniteDuration = delay
     def sample(): Unit = { sampledOn = Thread.currentThread().getName; release.await(); sampled.countDown() }
@@ -59,6 +60,7 @@ class SampledCensusSpec extends AnyFlatSpec with Matchers {
 object SampledCensusSpec {
   final class Slotted(slot: Int) extends SampledCensus {
     protected def censusName: String = "slotted-census"
+    protected def threadPools: tools.ThreadPools = tools.ThreadPools.Unmanaged
     protected def sampleInterval: FiniteDuration = 1.hour
     override protected def firstSampleSlot: Int = slot
     def sample(): Unit = ()
@@ -66,6 +68,7 @@ object SampledCensusSpec {
   }
   final class Quick extends SampledCensus {
     protected def censusName: String = "quick-census"
+    protected def threadPools: tools.ThreadPools = tools.ThreadPools.Unmanaged
     protected def sampleInterval: FiniteDuration = 30.seconds
     def sample(): Unit = ()
     def delay: FiniteDuration = firstSampleDelay

@@ -1,7 +1,6 @@
 package services.tasks
 
 import play.api.Logging
-import tools.DaemonExecutors
 
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
@@ -36,7 +35,7 @@ class BulkRefreshHandler(
   run:                   () => BulkRefreshResult,
   resultStore:           BulkTaskResultStore,
   clock:                 Clock,
-  executionContext:      ExecutionContext    = DaemonExecutors.virtualThreadEC("bulk-refresh")
+  executionContext:      ExecutionContext
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 

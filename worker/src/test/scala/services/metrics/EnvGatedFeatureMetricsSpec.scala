@@ -41,7 +41,7 @@ class EnvGatedFeatureMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   "WorkerMetrics" should "register both gauges on the shared registry" in {
-    val metrics = WorkerMetrics.singleCountry(models.Country.Poland, poolSize = settings.WorkerPoolSize(1))
+    val metrics = WorkerMetrics.singleCountry(models.Country.Poland, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
     metrics.envGatedFeatures.recordAlerters("pl", Seq(on))
     metrics.envGatedFeatures.recordIntegrations(Seq(on))
     val text = PrometheusExposition.render(metrics.registry)

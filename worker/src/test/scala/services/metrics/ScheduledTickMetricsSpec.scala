@@ -17,7 +17,7 @@ class ScheduledTickMetricsSpec extends AnyFlatSpec with Matchers {
 
   "ScheduledTickMetrics" should "seed a loop with its first run's due time, then stamp each completed run" in {
     val clock    = new MutableClock(Instant.parse("2026-10-24T10:00:00Z"))
-    val metrics  = WorkerMetrics.singleCountry(models.Country.Poland, poolSize = settings.WorkerPoolSize(1))
+    val metrics  = WorkerMetrics.singleCountry(models.Country.Poland, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
     val ticks    = metrics.scheduledTicks.forCountry("pl", clock)
     val armedAt  = clock.instant().getEpochSecond.toDouble
 

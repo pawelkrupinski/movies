@@ -279,7 +279,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     def scheduled(fill: LookupFill)(during: => Unit): Unit = {
       val clock     = new tools.MutableClock(TestWiring.FixedInstant)
       val scheduler = new tools.ManualScheduler(clock)
-      val schedule  = fill.schedule(30.minutes, 1.milli, new services.schedule.InMemoryScheduledRunStore, _ => scheduler)
+      val schedule  = fill.schedule(30.minutes, 1.milli, new services.schedule.InMemoryScheduledRunStore, tools.SpecThreadPools.scheduling(scheduler))
       schedule.start()
       try { scheduler.advance(java.time.Duration.ofMillis(1)); during } finally schedule.stop()
     }

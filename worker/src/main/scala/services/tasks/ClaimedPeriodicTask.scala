@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -20,11 +20,11 @@ import scala.concurrent.duration._
 class ClaimedPeriodicTask(name: String, run: () => TickRun, interval: => FiniteDuration, initialDelay: FiniteDuration,
                           runStore: ScheduledRunStore, clock: Clock,
                           ticks: TickRecorder,
-                          // Builds the task's scheduler from its name; a spec hands in a stepped one.
-                          newScheduler: String => ScheduledExecutorService = DaemonExecutors.scheduler(_))
+                          // Where the task's scheduler comes from (named after it); a spec hands in a stepped one.
+                          threadPools: ThreadPools)
     extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = newScheduler(name)
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler(name)
 
   def start(): Unit = {
     scheduleNext(initialDelay)

@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.ThreadPools
+
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
@@ -81,7 +83,8 @@ class CinemaContentCensus(
   clock:        Clock,
   override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval,
   rereadInterval: FiniteDuration = CinemaContentCensus.RereadInterval,
-  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  override protected val threadPools: tools.ThreadPools
 ) extends SampledCensus {
   import CinemaContentCensus._
 

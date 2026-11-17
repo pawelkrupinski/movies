@@ -47,7 +47,7 @@ class WorkerMetricsAtBootSpec extends AnyFlatSpec with Matchers {
 
   /** (family, countries with a series, values) for every `kinowo_*` family on a freshly built registry. */
   private lazy val atBoot: Seq[(String, Set[String], Seq[Double])] =
-    new WorkerMetrics(countries, settings.WorkerPoolSize(1)).registry.scrape().asScala.toSeq
+    new WorkerMetrics(countries, settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged).registry.scrape().asScala.toSeq
       .filter(_.getMetadata.getPrometheusName.startsWith("kinowo_"))
       .map { snapshot =>
         val points = snapshot.getDataPoints.asScala.toSeq
@@ -82,7 +82,7 @@ class WorkerMetricsAtBootSpec extends AnyFlatSpec with Matchers {
    *  one declaration of each family — its labels and seeded values, and which families read NaN at boot. */
   it should "be written out as infra/test/app-metrics-catalogue/worker.json" in {
     val rendered = services.metrics.MetricCatalogue.render(
-      new WorkerMetrics(countries, settings.WorkerPoolSize(1)).registry.scrape(), "worker")
+      new WorkerMetrics(countries, settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged).registry.scrape(), "worker")
     services.metrics.MetricCatalogue.check(java.nio.file.Path.of("infra/test/app-metrics-catalogue/worker.json"), rendered,
       "worker/testOnly deploy.WorkerMetricsAtBootSpec") shouldBe None
   }

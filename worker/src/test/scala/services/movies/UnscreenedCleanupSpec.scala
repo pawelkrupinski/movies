@@ -73,7 +73,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     ))
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
-    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened()
 
     removed                                              shouldBe 1
     cache.get(cache.keyOf("With",    Some(2026)))        should not be empty
@@ -91,7 +91,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       ("Erupcja", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot("Erupcja"))))
     ))
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val cleanup = new UnscreenedCleanup(cache, repository)
+    val cleanup = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup"))
 
     cleanup.removeUnscreened()                 shouldBe 0
     cleanup.removeUnscreened()                 shouldBe 0  // second pass: still no-op
@@ -108,7 +108,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Husk", Some(2025)), husk)
 
-    new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 1
+    new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 1
     cache.get(cache.keyOf("Husk", Some(2025))) shouldBe empty
   }
 
@@ -121,14 +121,14 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.put(cache.keyOf("Showing", Some(2025)), showing)
 
-    new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
+    new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 0
     cache.get(cache.keyOf("Showing", Some(2025))) should not be empty
   }
 
   it should "count rows correctly when called on an empty cache" in {
     val (repository, _) = splitRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
+    new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 0
   }
 
   it should "KEEP a MIGRATED row whose cinemas the durable store still holds in movie_slots" in {
@@ -140,7 +140,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     slots.upsertSlot(filmId("Filipinana", Some(2026)), Helios.displayName, cinemaSlot("Filipinana"))
 
-    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened()
 
     removed                                                    shouldBe 0
     cache.get(cache.keyOf("Filipinana", Some(2026)))     should not be empty
@@ -157,7 +157,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.putEmbeddedOutOfBand("Clarissa", Some(2026), mkRecord("tt8", Map(Helios -> cinemaSlot("Clarissa"))))
 
-    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened()
 
     removed                                                  shouldBe 0
     cache.get(cache.keyOf("Clarissa", Some(2026)))     should not be empty
@@ -172,7 +172,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val repository = new UnreadableByIdMovieRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))), titleNormalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
-    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened()
 
     removed                                                      shouldBe 0
     cache.get(cache.keyOf("Blogoslawieni", Some(2026)))    should not be empty
@@ -184,7 +184,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     val (repository, _) = splitRepository(Seq(("Dkfzakopeta", Some(2026), mkRecord("tt6", Map.empty))))
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
-    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened()
 
     removed                                                     shouldBe 1
     cache.get(cache.keyOf("Dkfzakopeta", Some(2026)))     shouldBe None

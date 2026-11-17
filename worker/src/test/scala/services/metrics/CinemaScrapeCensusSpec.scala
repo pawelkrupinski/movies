@@ -58,7 +58,7 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
   private def censusOver(registry: PrometheusRegistry, cinemas: Seq[Cinema], chunked: Cinema => Boolean = _ => false) = {
     val (oldestAge, neverScraped, ageQuantile, dueVenues) = gauges(registry)
     new CinemaScrapeCensus(cinemas.map(new StubCinemaScraper(_)), freshness(), oldestAge, neverScraped, ageQuantile,
-      dueVenues, dueWindow, chunked, Country.Poland, Clock.fixed(now, ZoneOffset.UTC))
+      dueVenues, dueWindow, chunked, Country.Poland, Clock.fixed(now, ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged)
   }
 
   "census" should "report the age of the least recently scraped cinema" in {

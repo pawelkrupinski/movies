@@ -5,7 +5,7 @@ import settings.WorkerPoolSize
 import services.Stoppable
 import services.metrics.TaskObserver
 import services.metrics.WorkerTaskMetrics.Outcome
-import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
+import tools.{ThreadPools, TickRecorder, ScheduledTick}
 import play.api.Logging
 
 import java.net.InetAddress
@@ -93,7 +93,8 @@ class TaskWorker(
   // forever, so a harness that starts the task worker must give the wiring a moving clock.
   clock:             java.time.Clock,
   // Where each completed lease reap is reported (`ScheduledTickStale`).
-  ticks:             TickRecorder = TickRecorder.Unrecorded
+  ticks:             TickRecorder = TickRecorder.Unrecorded,
+  threadPools:       ThreadPools
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -119,7 +120,7 @@ class TaskWorker(
   private var watchHandle: Option[AutoCloseable] = None
   // Reaping is global, so one shared thread does it for the whole pool — and it
   // must keep ticking while every worker is busy, which a per-worker reap can't.
-  private val reaper: ScheduledExecutorService = DaemonExecutors.scheduler("task-reaper")
+  private val reaper: ScheduledExecutorService = threadPools.scheduler("task-reaper")
 
   def start(): Unit = {
     running.set(true)

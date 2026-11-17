@@ -245,10 +245,10 @@ final class LookupFill(
   /** The fill's own claimed schedule: [[start]] every `interval`, first after `initialDelay`, on the replica that wins
    *  the window's claim. It records only that it started: [[round]] completes the tick, not the hand-off. */
   def schedule(interval: => FiniteDuration, initialDelay: FiniteDuration, runStore: services.schedule.ScheduledRunStore,
-               newScheduler: String => java.util.concurrent.ScheduledExecutorService = tools.DaemonExecutors.scheduler(_))
+               threadPools: tools.ThreadPools)
       : services.tasks.ClaimedPeriodicTask =
     new services.tasks.ClaimedPeriodicTask(LookupFill.Tick, () => { start(); tools.TickRun.Completed }, interval, initialDelay, runStore, clock,
-      tools.TickRecorder.completedByTheWork(ticks), newScheduler)
+      tools.TickRecorder.completedByTheWork(ticks), threadPools)
 
   /** Start a round in the background unless one is running. A worker's shutdown interrupts a round
    *  mid-sleep or mid-fetch: that ends it, interrupt re-asserted, rather than escaping `NonFatal` as an

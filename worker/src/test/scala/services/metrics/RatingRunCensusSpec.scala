@@ -76,7 +76,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   "RatingRunCensus.sample" should "publish per-site backlog gauges onto the registry, seeded at 0" in {
     val registry           = new PrometheusRegistry()
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
-    val census   = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.Poland, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+    val census   = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.Poland, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged)
 
     // Before sampling, every site series exists at 0 (no Grafana gaps).
     val seeded = PrometheusExposition.render(registry)
@@ -95,7 +95,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   it should "NOT publish a Filmweb series at all for a non-Filmweb country (UK)" in {
     val registry            = new PrometheusRegistry()
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
-    val census = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.UnitedKingdom, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+    val census = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.UnitedKingdom, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged)
 
     census.sample()
     val text = PrometheusExposition.render(registry)
@@ -122,7 +122,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
     val clock               = new tools.MutableClock(now)
     val census = new RatingRunCensus(
-      cacheOf(Seq(imdbOnly -> recordImdbOnly)), freshness(), notRun, oldestAge, Country.Poland, clock)
+      cacheOf(Seq(imdbOnly -> recordImdbOnly)), freshness(), notRun, oldestAge, Country.Poland, clock, threadPools = tools.ThreadPools.Unmanaged)
 
     census.sample()
     gauge(PrometheusExposition.render(registry), RatingRunCensus.NotRunName, "imdb")    shouldBe Some(1.0)
@@ -143,7 +143,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     val clock               = new tools.MutableClock(now)
     val f                   = freshness()
     val census = new RatingRunCensus(
-      cacheOf(Seq(imdbOnly -> recordImdbOnly)), f, notRun, oldestAge, Country.Poland, clock)
+      cacheOf(Seq(imdbOnly -> recordImdbOnly)), f, notRun, oldestAge, Country.Poland, clock, threadPools = tools.ThreadPools.Unmanaged)
 
     val stamp = RatingTasks.dedupKey(FreshnessKind.ImdbRating, imdbOnly, None)
 

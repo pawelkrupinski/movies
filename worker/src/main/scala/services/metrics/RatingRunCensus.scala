@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.ThreadPools
+
 import services.movies.LatestTitleYear
 
 import io.prometheus.metrics.core.metrics.Gauge
@@ -44,7 +46,8 @@ class RatingRunCensus(
   country:        Country,
   clock:          Clock,
   override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval,
-  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  override protected val threadPools: tools.ThreadPools
 ) extends SampledCensus {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)

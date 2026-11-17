@@ -26,7 +26,7 @@ class UnscreenedCleanupCostSpec extends AnyFlatSpec with Matchers {
       normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val work  = new Work
-    new UnscreenedCleanup(cache, Work.counting(classOf[MovieRepository], repository, work)).removeUnscreened() shouldBe 3
+    new UnscreenedCleanup(cache, Work.counting(classOf[MovieRepository], repository, work), scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 3
     work.reads
   }
 

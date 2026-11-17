@@ -1,5 +1,7 @@
 package services.tasks
 
+import tools.ThreadPools
+
 import settings.OmdbBackfillInterval
 
 import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
@@ -34,8 +36,9 @@ class OmdbBackfillReaper(
   initialDelay: OmdbBackfillReaper.InitialDelay = OmdbBackfillReaper.InitialDelay(OmdbBackfillReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
-  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded
-) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval.value, initialDelay.value, runStore, clock, ticks = ticks)
+  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  threadPools:  tools.ThreadPools
+) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval.value, initialDelay.value, runStore, clock, ticks = ticks, threadPools = threadPools)
 
 object OmdbBackfillReaper {
 

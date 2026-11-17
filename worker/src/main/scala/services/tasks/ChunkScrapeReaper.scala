@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, RejectedExecutionException, ScheduledExecutorService, TimeUnit}
@@ -40,7 +40,7 @@ class ChunkScrapeReaper(
   staleAfter:   ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
-  scheduler:    ScheduledExecutorService = DaemonExecutors.scheduler("chunk-scrape-reaper"),
+  scheduler:    ScheduledExecutorService,
   // Where each completed sweep is reported (`ScheduledTickStale`).
   ticks:        TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {

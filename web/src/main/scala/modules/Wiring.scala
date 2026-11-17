@@ -55,6 +55,8 @@ trait Wiring
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
   /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
   lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
+  /** The one blocking sleep this wiring's waits and back-offs are built on — the stopwatch's twin for waiting. */
+  lazy val sleep: scala.concurrent.duration.FiniteDuration => Unit = tools.Sleep.Blocking
 
   /** The latest year a title may name, read off [[clock]] at each ask: what the record accessors the debug pages
    *  render (a venue's representative slot, the display title) cap a title's year by. */
@@ -82,6 +84,9 @@ trait Wiring
 
   /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
   lazy val managedResources: tools.ManagedResources = new tools.ManagedResources(stopwatch)
+  /** Where every service this wiring builds takes its scheduler and threads from, each registered with
+   *  [[managedResources]] as it is built, so [[stop]] shuts it even when nothing stops its service. */
+  lazy val threadPools: tools.ThreadPools = tools.ThreadPools.managedBy(managedResources)
 
   protected def stop(): Unit = {
     // Every service and pool the wiring built (the config ticker, the uptime monitor, the metrics sampler,

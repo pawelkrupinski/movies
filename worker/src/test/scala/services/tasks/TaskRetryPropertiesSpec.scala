@@ -40,7 +40,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
     val clock  = new MutableClock(t0)
     val queue  = new InMemoryTaskQueue
     queue.enqueue(TaskType.ResolveImdbId, "resolve-imdbid|x|2026", submittedAt = t0)
-    val worker = new TaskWorker(queue, Seq(handler), maxAttempts = services.tasks.TaskWorker.MaxAttempts(maxAttempts), clock = clock)
+    val worker = new TaskWorker(queue, Seq(handler), maxAttempts = services.tasks.TaskWorker.MaxAttempts(maxAttempts), clock = clock, threadPools = tools.ThreadPools.Unmanaged)
     var claims = 0
     var ticks  = 0
     while (ticks < maxClaims && queue.countByState().nonEmpty) {
@@ -112,7 +112,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
       val queue = new InMemoryTaskQueue
       queue.enqueue(TaskType.ResolveImdbId, "resolve-imdbid|x|2026", submittedAt = t0)
       (1 to priorAttempts).foreach { _ => val t = queue.claim("w9", 1.minute, clock.instant()).get; queue.release(t.id, "w9") }
-      new TaskWorker(queue, Seq(new CountingHandler(_ => outcome(clock.instant()))), clock = clock).claimAndRun("w0")
+      new TaskWorker(queue, Seq(new CountingHandler(_ => outcome(clock.instant()))), clock = clock, threadPools = tools.ThreadPools.Unmanaged).claimAndRun("w0")
       val parkedUntil = queue.monitor().active.flatMap(_.nextEligibleAt)
       withClue(s"$name after $priorAttempts attempt(s): ") {
         parkedUntil should not be empty

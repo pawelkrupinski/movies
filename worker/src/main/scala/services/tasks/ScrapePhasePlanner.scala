@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, TickRecorder, TickRun, ScheduledTick}
+import tools.{ThreadPools, TickRecorder, TickRun, ScheduledTick}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -30,10 +30,11 @@ final class ScrapePhasePlanner(
   phases:    CostSpacedPhaseOffset,
   estimates: ScrapeCostEstimates,
   // Where each replan is reported (`ScheduledTickStale`).
-  ticks:     TickRecorder = TickRecorder.Unrecorded
+  ticks:     TickRecorder = TickRecorder.Unrecorded,
+  threadPools:ThreadPools
 ) extends Stoppable with Logging {
 
-  private val scheduler = DaemonExecutors.scheduler("scrape-phase-plan")
+  private val scheduler = threadPools.scheduler("scrape-phase-plan")
 
   /** Plan the phases from the recorded costs: [[TickRun.Incomplete]] when they could not be read (the last plan kept). */
   def replan(): TickRun =

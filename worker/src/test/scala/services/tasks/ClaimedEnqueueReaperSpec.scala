@@ -3,7 +3,7 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.schedule.InMemoryScheduledRunStore
-import tools.{LogCapture, ManualScheduler, MutableClock, RecordingTickRecorder, TickRun}
+import tools.{LogCapture, ManualScheduler, MutableClock, RecordingTickRecorder, SpecThreadPools, TickRun}
 
 import java.time.Instant
 import scala.concurrent.duration.*
@@ -14,7 +14,7 @@ class ClaimedEnqueueReaperSpec extends AnyFlatSpec with Matchers {
     val clock    = new MutableClock(Instant.parse(at))
     var enqueued = 0
     val reaper   = new ClaimedEnqueueReaper("job", () => { enqueued += 1; Enqueued(1, 0) }, 24.hours, 5.minutes,
-      new InMemoryScheduledRunStore, clock, timing)
+      new InMemoryScheduledRunStore, clock, timing, threadPools = tools.ThreadPools.Unmanaged)
     def at(instant: String): Unit = clock.advance(java.time.Duration.between(clock.instant(), Instant.parse(instant)))
   }
 
@@ -51,7 +51,7 @@ class ClaimedEnqueueReaperSpec extends AnyFlatSpec with Matchers {
     val scheduler = new ManualScheduler(clock)
     val ticks     = new RecordingTickRecorder
     val reaper    = new ClaimedEnqueueReaper("job", () => Enqueued.of(queue.enqueue(TaskType.AuditReadModelContent, "job",
-      submittedAt = clock.instant())), 1.hour, 0.minutes, new InMemoryScheduledRunStore, clock, ticks = ticks, newScheduler = _ => scheduler)
+      submittedAt = clock.instant())), 1.hour, 0.minutes, new InMemoryScheduledRunStore, clock, ticks = ticks, threadPools = SpecThreadPools.scheduling(scheduler))
     LogCapture.capture(classOf[ClaimedEnqueueReaper].getName) {
       reaper.start()
       scheduler.advance(java.time.Duration.ZERO)

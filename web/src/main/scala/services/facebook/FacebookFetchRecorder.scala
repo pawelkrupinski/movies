@@ -1,7 +1,7 @@
 package services.facebook
 
 import play.api.Logging
-import tools.{DaemonExecutors, LogThrottle, ScheduledTick, TickRecorder, TickRun}
+import tools.{ThreadPools, LogThrottle, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -21,13 +21,14 @@ import scala.util.Try
  */
 final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatch: tools.Stopwatch,
                                   // Where each completed flush is reported (`ScheduledTickStale`).
-                                  ticks: TickRecorder = TickRecorder.Unrecorded) extends services.Stoppable with Logging {
+                                  ticks: TickRecorder = TickRecorder.Unrecorded,
+                                  threadPools: ThreadPools) extends services.Stoppable with Logging {
   import FacebookFetchRecorder.*
 
   private val pending  = new ConcurrentHashMap[String, Instant]()
   private val failures = new LogThrottle(10.minutes.toNanos, stopwatch)
 
-  private val scheduler = DaemonExecutors.scheduler("facebook-fetches")
+  private val scheduler = threadPools.scheduler("facebook-fetches")
   ticks.started("facebook-fetch-flush", FlushEvery, FlushEvery)
   scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("facebook-fetch-flush", FlushEvery, logger, ticks)(flush()),
     FlushEvery.toMillis, FlushEvery.toMillis, TimeUnit.MILLISECONDS)

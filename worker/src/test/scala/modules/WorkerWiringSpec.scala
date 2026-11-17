@@ -33,14 +33,14 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     @volatile var projectionStarted = false
 
     override lazy val scrapeReaper: ScrapeReaper =
-      new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, clock = _root_.tools.SpecClock.Pinned) {
+      new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, clock = _root_.tools.SpecClock.Pinned, scheduler = tools.DaemonExecutors.scheduler("scrape-reaper")) {
         override def start(): Unit = scrapeStarted = true
       }
 
     override lazy val settleReaper: services.tasks.SettleReaper = {
       val runs = scheduledRunStore
       new services.tasks.SettleReaper(() => (), settings.SettleInterval(5.minutes), services.tasks.SettleReaper.InitialDelay(5.minutes),
-          runStore = runs, clock = _root_.tools.SpecClock.Pinned) {
+          runStore = runs, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged) {
         override def start(): Unit = projectionStarted = true
       }
     }
@@ -65,7 +65,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "Constructing WorkerWiring" should "hand every country's movie cache the one intern pool the metrics bundle publishes" in {
-    val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = settings.WorkerPoolSize(1))
+    val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
     def wiringOn(metrics: services.metrics.WorkerMetrics) =
       new WorkerWiring(Country.default, injectedWorkerMetrics = Some(metrics)) with TestWiring
     val (first, second) = (wiringOn(shared), wiringOn(shared))

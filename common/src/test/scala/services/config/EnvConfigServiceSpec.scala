@@ -11,7 +11,7 @@ class EnvConfigServiceSpec extends AnyFlatSpec with Matchers {
     overrides: EnvOverrideStore,
     registry: EnvRegistryStore,
     env: Env = Env.of()
-  ) = new EnvConfigService(app, overrides, registry, env)
+  ) = new EnvConfigService(app, overrides, registry, env, threadPools = tools.ThreadPools.Unmanaged)
 
   /** An Env over `vars` that has already read `longKnobs` (so they sit in its registry). */
   private def envHaving(longKnobs: Seq[String], vars: (String, String)*): Env = {

@@ -20,5 +20,5 @@ trait ClosureWiring { self: WorkerWiring =>
       java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
     clock)
   lazy val closureSchedule = managedResources.stopping(new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
-    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock, ticks))
+    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
 }

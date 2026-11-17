@@ -7,7 +7,7 @@ import services.Drainable
 import services.events.{DomainEvent, ImdbIdMissing}
 import services.movies.MovieCache
 import services.resolution.{ResolutionCache, ResolutionKeys}
-import tools.{AnswerLadder, DaemonExecutors}
+import tools.AnswerLadder
 
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.ExecutionContextExecutorService
@@ -36,7 +36,7 @@ class ImdbIdResolver(
   // cap, if any, sits at the HTTP layer. Defaults to a dedicated unbounded
   // pool (tests/scripts unchanged); `Wiring` injects a shared-budget EC. See
   // `SharedExecutionBudget`.
-  executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver"),
+  executionContext:    ExecutionContextExecutorService,
   // Caches the IMDb suggestion lookup keyed by (search title, year), so the same
   // search resolves once for 24h across every path that asks it.
   // Defaults to passthrough so unit specs resolve live unless they wire one.
@@ -66,7 +66,7 @@ class ImdbIdResolver(
   // Where a lookup that FAILED (IMDb or a backstop down, rate-limited, timing out) waits for its
   // next attempt ([[ImdbIdResolver.retryDelay]]). Nothing else re-asks a missing id outside Poland
   // (Filmweb's refresh does there), so without it one blip cost the film its IMDb rating for good.
-  retries: ScheduledExecutorService = DaemonExecutors.scheduler("imdb-id-retry"),
+  retries: ScheduledExecutorService,
   // Whether a failed lookup waits on [[retries]] at all. False only over a hermetic replay (`ArchiveReplayWiring`),
   // whose wire answers a retry exactly as it answered the first ask: there a retry fired a minute or more later on the
   // WALL clock, so whether its answer landed before a pass was snapshotted decided the film's imdbId, and two passes

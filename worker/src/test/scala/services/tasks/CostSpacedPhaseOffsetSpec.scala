@@ -84,7 +84,7 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
     store.record("scrape|C", ScrapeCost(5))
     val phases    = new CostSpacedPhaseOffset
     val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
-    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates).replan()
+    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates, threadPools = tools.ThreadPools.Unmanaged).replan()
 
     estimates.costOf("scrape|A") shouldBe 20.0
     val expected = CostSpacedPhaseOffset.fractions(roster, Map("scrape|A" -> 20.0, "scrape|B" -> 1.0, "scrape|C" -> 5.0), _ => period.toMillis)
@@ -96,14 +96,14 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
     store.record("scrape|A", ScrapeCost(40))
     val phases    = new CostSpacedPhaseOffset
     val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
-    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates).replan()
+    new ScrapePhasePlanner(roster, store, _ => period, phases, estimates, threadPools = tools.ThreadPools.Unmanaged).replan()
     val planned = roster.map(phases.millis(_, period.toMillis))
 
     val unreadable = new ScrapeCostStore {
       def record(dedupKey: String, cost: ScrapeCost): Unit = ()
       def recent(): Map[String, Seq[ScrapeCost]] = throw new IllegalStateException("Mongo down")
     }
-    new ScrapePhasePlanner(roster, unreadable, _ => period, phases, estimates).replan()
+    new ScrapePhasePlanner(roster, unreadable, _ => period, phases, estimates, threadPools = tools.ThreadPools.Unmanaged).replan()
     roster.map(phases.millis(_, period.toMillis)) shouldBe planned
     estimates.costOf("scrape|A") shouldBe 40.0
   }
@@ -115,7 +115,7 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
       def recent(): Map[String, Seq[ScrapeCost]] = if (readable) Map.empty else throw new IllegalStateException("Mongo down")
     }
     val planner = new ScrapePhasePlanner(Seq("scrape|A"), costs, _ => 1.hour, new CostSpacedPhaseOffset,
-      new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1)))
+      new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1)), threadPools = tools.ThreadPools.Unmanaged)
     val ticks = new tools.RecordingTickRecorder
     def tick(): Unit = tools.ScheduledTick.recorded("scrape-phase-plan", ScrapePhasePlanner.ReplanInterval,
       play.api.Logger(getClass), ticks)(planner.replan())

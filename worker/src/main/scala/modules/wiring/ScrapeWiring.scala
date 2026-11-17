@@ -343,7 +343,7 @@ trait ScrapeWiring { self: WorkerWiring =>
       val released = scrapeFreshnessPolicy.releaseRecoveredProxy()
       workerMetrics.parkedScrapes.recordUnparked(country.code, ProxyParking.Cause.ResidentialProxyDown, released)
       tools.TickRun.Completed
-    }, ProxyParking.ProbeInterval, ProxyParking.ProbeInterval, AlwaysClaimScheduledRunStore, clock, ticks))
+    }, ProxyParking.ProbeInterval, ProxyParking.ProbeInterval, AlwaysClaimScheduledRunStore, clock, ticks, threadPools = threadPools))
   }
 
   /** Report this country's parked venues on `kinowo_worker_scrapes_parked`, and start the proxy's recovery check. */
@@ -361,7 +361,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val scrapeCostEstimates = new ScrapeCostEstimates(scrapeTasksPerVenue)
   lazy val scrapePhasePlanner = managedResources.stopping(new ScrapePhasePlanner(
     cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
-    scrapeCostEstimates, ticks))
+    scrapeCostEstimates, ticks, threadPools = threadPools))
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
@@ -402,5 +402,5 @@ trait ScrapeWiring { self: WorkerWiring =>
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
       chunkSpread = scrapeChunkSpread,
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock, ticks = ticks))
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock, ticks = ticks, scheduler = threadPools.scheduler("scrape-reaper")))
 }

@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, TickRecorder, TickRun, ScheduledTick}
+import tools.{ThreadPools, TickRecorder, TickRun, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
@@ -26,10 +26,11 @@ class WorkerHeartbeat(
   intervalSeconds: Long      = 60,
   now:             () => Long,
   // Where each beat is reported (`ScheduledTickStale`).
-  ticks:           TickRecorder = TickRecorder.Unrecorded
+  ticks:           TickRecorder = TickRecorder.Unrecorded,
+  threadPools:     ThreadPools
 ) extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("worker-heartbeat")
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler("worker-heartbeat")
 
   // Wall-clock of the last scheduler firing — the worker's LIVENESS pulse. The
   // LivenessWatchdog reads it to tell a wedged JVM (heartbeat thread starved/dead,

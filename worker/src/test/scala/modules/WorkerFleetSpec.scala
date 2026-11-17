@@ -26,7 +26,7 @@ class WorkerFleetSpec extends AnyFlatSpec with Matchers {
       lastBeatMillis     = () => start - ageMillis,
       stalenessThreshold = settings.LivenessStaleAfter(5.minutes),
       onWedged           = () => (),
-      now                = () => start)
+      now                = () => start, threadPools = tools.ThreadPools.Unmanaged)
 
   private def fresh = watchdog(1.minute.toMillis)
   private def stale = watchdog(6.minutes.toMillis)

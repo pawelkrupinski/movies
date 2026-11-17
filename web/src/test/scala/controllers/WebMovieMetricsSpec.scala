@@ -39,7 +39,7 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
       ("Wroclaw Tomorrow",   Some(2026), MovieRecord(data = Map[Source, SourceData](HeliosMagnolia -> slot(tomorrow)))),
     )
     val service = new MovieControllerService(TestReadModel.fromRecords(records), clock)
-    new WebMovieMetrics(service, models.Country.Poland, clock = clock)
+    new WebMovieMetrics(service, models.Country.Poland, clock = clock, threadPools = tools.ThreadPools.Unmanaged)
   }
 
   "sample" should "count distinct served films per city, by scope" in {
@@ -97,7 +97,7 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
       ("Shared C",     Some(2026), film(HeliosMagnolia, Some(placeholder))),
     )
     val service = new MovieControllerService(TestReadModel.fromRecords(records), clock)
-    new WebMovieMetrics(service, models.Country.Poland, clock = clock, posterHostFloor = 1)
+    new WebMovieMetrics(service, models.Country.Poland, clock = clock, posterHostFloor = 1, threadPools = tools.ThreadPools.Unmanaged)
   }
 
   "sample" should "count the country's served films by the host their poster is drawn from" in {
@@ -133,7 +133,7 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
       ("C", Some(2026), film(Rialto, Some("https://kinorialto.pl/c.jpg"))),
     )
     val m = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(records), clock),
-      models.Country.Poland, clock = clock, posterHostFloor = 2)
+      models.Country.Poland, clock = clock, posterHostFloor = 2, threadPools = tools.ThreadPools.Unmanaged)
     m.sample()
     val out = m.render()
 

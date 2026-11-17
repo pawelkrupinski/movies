@@ -53,10 +53,10 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
    *  they'd be absent from the render for a reason that has nothing to do with
    *  the naming this spec is checking. */
   private lazy val exposed: String = {
-    val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
+    val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
     new CorpusCensus(services.metrics.CorpusMetricsFixtures.cacheOver(services.metrics.CorpusMetricsFixtures.repositoryOf()),
       metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, metrics.cityOffSeasonGauge, Country.Poland.code,
-      Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusCensusMetrics.prometheus(metrics.corpusCensusIncomplete, Country.Poland.code))
+      Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusCensusMetrics.prometheus(metrics.corpusCensusIncomplete, Country.Poland.code), threadPools = tools.ThreadPools.Unmanaged)
     PrometheusExposition.render(metrics.registry)
   }
 

@@ -1,7 +1,6 @@
 package services.metrics
 
 import play.api.Logging
-import tools.DaemonExecutors
 
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.atomic.AtomicReference
@@ -34,7 +33,7 @@ class MetricsSnapshotCache(
   render:     () => String,
   // The fewest milliseconds between two renders, however often the endpoint is read.
   minRefresh: FiniteDuration           = 10.seconds,
-  scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("worker-metrics-refresh"),
+  scheduler:  ScheduledExecutorService,
   clock:      java.time.Clock
 ) extends Logging {
 

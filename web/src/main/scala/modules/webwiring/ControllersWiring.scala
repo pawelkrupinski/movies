@@ -40,7 +40,7 @@ trait ControllersWiring { self: Wiring =>
    *  re-scrapes (`services.facebook.FacebookFetches`) — none without that database. */
   lazy val facebookFetchRecorder: Option[services.facebook.FacebookFetchRecorder] =
     fleetConnection.database.map(db => managedResources.stopping(new services.facebook.FacebookFetchRecorder(
-      new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection)), clock, stopwatch, ticks)))
+      new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection)), clock, stopwatch, ticks, threadPools = threadPools)))
   // What every `/{city}/…` controller shares: our cities, the city cookie, the
   // deployment's language and the conditional GET over the shared gzip cache.
   lazy val cityRequests = new CityRequests(controllerComponents.messagesApi, country, webReadModel, encodedResponseCache,

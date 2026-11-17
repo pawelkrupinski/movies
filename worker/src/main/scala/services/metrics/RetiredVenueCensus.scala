@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.ThreadPools
+
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
@@ -34,7 +36,8 @@ class RetiredVenueCensus(
   country:         Country,
   clock:           Clock,
   override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval,
-  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  override protected val threadPools: tools.ThreadPools
 ) extends SampledCensus {
 
   override protected def firstSampleSlot: Int = SampledCensus.Slots.RetiredVenues

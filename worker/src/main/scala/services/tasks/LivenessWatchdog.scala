@@ -4,7 +4,7 @@ import settings.LivenessStaleAfter
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -43,11 +43,12 @@ class LivenessWatchdog(
   checkEvery:         LivenessWatchdog.CheckInterval = LivenessWatchdog.CheckInterval(1.minute),
   now:                () => Long,
   // Where each check is reported (`ScheduledTickStale`): a dead watchdog restarts nothing.
-  ticks:              TickRecorder = TickRecorder.Unrecorded
+  ticks:              TickRecorder = TickRecorder.Unrecorded,
+  threadPools:        ThreadPools
 ) extends Stoppable with Logging {
 
   private val fired = new AtomicBoolean(false)
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("liveness-watchdog")
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler("liveness-watchdog")
 
   /** True once the heartbeat pulse has been stale for at least `stalenessThreshold`.
    *  A non-positive pulse (never stamped) is treated as alive — the heartbeat seeds

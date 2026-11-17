@@ -6,7 +6,7 @@ import services.Stoppable
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
+import tools.{ScheduledTick, TickRecorder, TickRun}
 import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
@@ -146,7 +146,7 @@ class ScrapeReaper(
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock,
   // Runs the readiness wait and the ticks; a spec hands in a stepped one to cross the delays by hand.
-  scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper"),
+  scheduler: ScheduledExecutorService,
   // Where each tick whose work ran to its end is reported (`ScheduledTickStale`): by the tick itself, or — when it
   // spreads its batch — by its last slice, never at the hand-off ([[completeTick]]).
   ticks: TickRecorder = TickRecorder.Unrecorded

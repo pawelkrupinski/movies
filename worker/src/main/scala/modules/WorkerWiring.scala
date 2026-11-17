@@ -83,7 +83,7 @@ class WorkerWiring(
    *  self-owned single-country bundle when none was injected (lone boot / test). */
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
-      WorkerMetrics.singleCountry(country, workerPoolSize))
+      WorkerMetrics.singleCountry(country, workerPoolSize, threadPools))
   /** Where this country's periodic loops report each completed run (`ScheduledTickStale`). */
   lazy val ticks: tools.TickRecorder = workerMetrics.scheduledTicks.forCountry(country.code, clock)
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
@@ -141,6 +141,8 @@ class WorkerWiring(
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
   /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
   lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
+  /** The one blocking sleep this wiring's waits and back-offs are built on — the stopwatch's twin for waiting. */
+  lazy val sleep: scala.concurrent.duration.FiniteDuration => Unit = tools.Sleep.Blocking
 
   /** The latest year a title may name, read off [[clock]] at each ask: what every title reader this wiring builds
    *  (and the record accessors they reach) caps a year by. */
@@ -349,6 +351,9 @@ class WorkerWiring(
 
   /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
   lazy val managedResources: tools.ManagedResources = new tools.ManagedResources(stopwatch)
+  /** Where every service this wiring builds takes its scheduler and threads from, each registered with
+   *  [[managedResources]] as it is built, so [[stop]] shuts it even when nothing stops its service. */
+  lazy val threadPools: tools.ThreadPools = tools.ThreadPools.managedBy(managedResources)
 
   def stop(): Unit = {
     // Every reaper, census, schedule, pool and service the wiring built, newest first: a service stops

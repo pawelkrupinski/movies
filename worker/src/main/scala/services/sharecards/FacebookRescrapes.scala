@@ -9,7 +9,7 @@ import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
 import services.MongoErrors
 import services.facebook.{AppUsage, FacebookFetches, FacebookSlots, FacebookUsageBrake, MongoFacebookSlots}
-import tools.{DaemonExecutors, LogThrottle}
+import tools.{ThreadPools, LogThrottle}
 
 import java.time.{Clock, Instant}
 import java.util.Date
@@ -260,7 +260,8 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
                             fetches: FacebookFetches, country: String, metrics: ShareCardMetrics, clock: Clock,
                             stopwatch: tools.Stopwatch,
                             // Where each completed tick is reported (`ScheduledTickStale`).
-                            ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded) extends services.Stoppable with Logging {
+                            ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+                            threadPools: tools.ThreadPools) extends services.Stoppable with Logging {
   import FacebookRescrapeDrain.*
 
   private val brake = new FacebookUsageBrake(store, clock)
@@ -362,7 +363,7 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   def start(): Unit = synchronized {
     if (scheduler.isEmpty) {
-      val s = DaemonExecutors.scheduler(s"facebook-rescrapes-$country")
+      val s = threadPools.scheduler(s"facebook-rescrapes-$country")
       ticks.started("facebook-rescrape-drain", TickEvery, TickEvery)
       s.scheduleWithFixedDelay(() => Try(tick()) match {
         case Success(tools.TickRun.Completed)  => ticks.completed("facebook-rescrape-drain", TickEvery)

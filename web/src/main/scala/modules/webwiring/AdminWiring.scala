@@ -54,6 +54,6 @@ trait AdminWiring { self: Wiring =>
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
     tickInterval = processConfiguration.configRefreshInterval(
-      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds")))))
+      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))), threadPools = threadPools))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 }

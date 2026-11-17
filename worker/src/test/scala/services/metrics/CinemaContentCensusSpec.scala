@@ -65,7 +65,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     val (oldestAge, neverContent) = CinemaContentCensus.gauges(registry)
     val stale       = CinemaContentCensus.staleVenuesGauge(registry)
     val notReopened = CinemaContentCensus.notReopenedGauge(registry)
-    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, notReopened, Country.Poland, clock)
+    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, notReopened, Country.Poland, clock, threadPools = tools.ThreadPools.Unmanaged)
     (c, oldestAge, neverContent, stale, notReopened)
   }
 
@@ -119,7 +119,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val (oldestAge, neverContent) = CinemaContentCensus.gauges(registry)
     new CinemaContentCensus(Seq.empty, new StubArchive(Map.empty), oldestAge, neverContent,
-      CinemaContentCensus.staleVenuesGauge(registry), CinemaContentCensus.notReopenedGauge(registry), Country.Poland, Clock.fixed(now, ZoneOffset.UTC)).sample()
+      CinemaContentCensus.staleVenuesGauge(registry), CinemaContentCensus.notReopenedGauge(registry), Country.Poland, Clock.fixed(now, ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged).sample()
     valueOf(neverContent) shouldBe 0.0
   }
 

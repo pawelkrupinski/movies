@@ -37,7 +37,7 @@ class WebReadModelMongoOutageIntegrationSpec extends AnyFlatSpec with Matchers w
         "&serverSelectionTimeoutMS=1000&connectTimeoutMS=500&socketTimeoutMS=3000")
       val reader = new MongoReadModelRepository(Some(client.getDatabase(db.name)), findAllBatchAttempts = 1,
         findAllBatchBackoff = scala.concurrent.duration.Duration.Zero, stopwatch = _root_.tools.Stopwatch.System)
-      val model  = new WebReadModel(reader, clock = _root_.tools.SpecClock.Pinned)
+      val model  = new WebReadModel(reader, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
       try {
         model.start()
         model.hydrated shouldBe true
