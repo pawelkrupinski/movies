@@ -308,7 +308,7 @@ tool_files() {
 # test, it and page trees, the fixtures.
 read_by_lint_specs() { # <path>
     case "$1" in
-        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|testkit/*) return 0 ;;
+        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|repochecks/src/fixtures/*|testkit/*) return 0 ;;
     esac
     return 1
 }
@@ -508,7 +508,7 @@ heavy_rows() { # <paths, one per line>
 # geodata, base → http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
 # itself touches them all.
 compile_plan() {
-    local common=0 identity=0 testkit=0 scrapers=0 worker=0 web=0 e2e=0 path
+    local common=0 identity=0 testkit=0 scrapers=0 repochecks=0 worker=0 worker_it=0 web=0 e2e=0 path
     while IFS= read -r path; do
         case "$path" in
             build.sbt|project/*)  common=1 ;;
@@ -516,6 +516,10 @@ compile_plan() {
             identity/*.scala|identity/*.java) identity=1 ;;
             testkit/*.scala|testkit/*.java) testkit=1 ;;
             scrapers/*.scala|scrapers/*.java) scrapers=1 ;;
+            # the worker's deploy specs compile against repochecks' fixtures (test->fixtures), its integration deploy
+            # specs against repochecks' specs too (it->test).
+            repochecks/src/fixtures/*)      repochecks=1; worker=1 ;;
+            repochecks/*.scala|repochecks/*.java) repochecks=1; worker_it=1 ;;
             # web's Page config compiles against worker's fixtures config (page->fixtures).
             worker/src/fixtures/*)          worker=1; web=1 ;;
             worker/*.scala|worker/*.java)   worker=1 ;;
@@ -530,11 +534,14 @@ compile_plan() {
     [ $worker = 1 ] && e2e=1
     [ $web = 1 ] && e2e=1
     [ $testkit = 1 ] && web=1
+    [ $testkit = 1 ] && repochecks=1
     [ $common = 1 ] && echo common/Test/compile
     [ $identity = 1 ] && echo identity/Test/compile
     [ $testkit = 1 ] && echo testkit/Test/compile
     [ $scrapers = 1 ] && echo scrapers/Test/compile
+    [ $repochecks = 1 ] && echo repochecks/Test/compile
     [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
+    [ $worker = 0 ] && [ $worker_it = 1 ] && echo worker/It/compile
     [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
     [ $e2e = 1 ] && echo e2e/Test/compile
     return 0
@@ -542,7 +549,7 @@ compile_plan() {
 
 # ── Which unit tests the combined-tree verification runs (--verify-only) ────────────────────────
 # One line per path on stdin; prints sbt test commands, one per line: `<module>/Test/test` for every module with a
-# path under its src/ (base, http, common, identity, testkit, scrapers, web; e2e is the heavy rows', geodata has
+# path under its src/ (base, http, common, identity, testkit, scrapers, repochecks, web; e2e is the heavy rows', geodata has
 # none), the worker's `rest` unit row (worker_rest_row: build.sbt's WORKER_ROW, read from the build), and the worker
 # identity-row specs the paths change, by name.
 #
@@ -588,7 +595,7 @@ worker_rest_row() {
 # source lints are its identity row's `tools.*`). Narrowed to the READS classes only, never run whole.
 unit_universe() {
     local module rows heavy="" kind name
-    for module in base http common identity testkit scrapers web; do echo "$module/Test/test"; done
+    for module in base http common identity testkit scrapers repochecks web; do echo "$module/Test/test"; done
     rows="$(worker_rows)"
     if ! printf '%s\n' "$rows" | grep -q '^heavy '; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
     while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
@@ -603,7 +610,7 @@ unit_universe() {
 source_lint_lines() { # <lints> < plan lines
     local plan module spec cls classes
     plan="$(cat)"
-    for module in base http common identity testkit scrapers web worker; do
+    for module in base http common identity testkit scrapers repochecks web worker; do
         printf '%s\n' "$plan" | grep -qxF "$module/Test/test" && continue
         classes=""
         while IFS= read -r spec; do
@@ -621,7 +628,7 @@ unit_plan() {
     local path module modules=" " specs="" spec
     while IFS= read -r path; do
         module="${path%%/*}"
-        case "$module" in base|http|common|identity|testkit|scrapers|web|worker) ;; *) continue ;; esac
+        case "$module" in base|http|common|identity|testkit|scrapers|repochecks|web|worker) ;; *) continue ;; esac
         case "$path" in "$module"/src/*) ;; *) continue ;; esac
         case "$modules" in *" $module "*) ;; *) modules+="$module " ;; esac
         case "$path" in
@@ -630,7 +637,7 @@ unit_plan() {
         esac
     done
     local rest_row="" rest_suites=""
-    for module in base http common identity testkit scrapers web worker; do
+    for module in base http common identity testkit scrapers repochecks web worker; do
         case "$modules" in *" $module "*) ;; *) continue ;; esac
         if [ "$module" = worker ]; then
             rest_row="$(worker_rest_row)"
@@ -650,7 +657,7 @@ unit_plan() {
 # (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
 # matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; `@repo` rows when the
 # push touches what the repo-reading specs read (read_by_lint_specs: scripts/, .github/, .claude/, CLAUDE.md, build.sbt,
-# project/, */src/test|it|page/, worker/src/fixtures, testkit/; ~30 s warm in all); `@gitops` rows the same, only with
+# project/, */src/test|it|page/, the worker's, scrapers', http's and repochecks' src/fixtures, testkit/; ~30 s warm in all); `@gitops` rows the same, only with
 # the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first);
 # a pattern row (`*.scala`: a source scan) when a pushed path matches it; `-` rows never (a spec booting a server).
 # scripts/hooks/lint-registry-test.sh fails when a repo-reading spec has no row: a new lint spec adds its row.
@@ -1515,7 +1522,7 @@ check_sbt() {
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
-    for module in common scrapers worker web; do
+    for module in common scrapers repochecks worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
     # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints; --fast-only:

@@ -29,7 +29,7 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
     "common/src/test/scala/tools/NoEnvLocalReadersSpec.scala" -> "this lint",
     "worker/src/it/scala/tools/EnvIntegrationSpec.scala" ->
       "writes a .env.local to prove the process-bound Env never reads it",
-    "worker/src/test/scala/deploy/ReleaseLanePublishSpec.scala" ->
+    "repochecks/src/test/scala/deploy/ReleaseLanePublishSpec.scala" ->
       "asserts ios-release.sh does not mention it",
   )
 

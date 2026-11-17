@@ -14,6 +14,9 @@
 //             UptimeMonitor, the HTTP fetchers that read the configuration or Mongo): what more than one module
 //             builds on. Code only one app uses lives in that app. Plain Scala lib. dependsOn(geodata, base, http).
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
+//   repochecks — the repository-text checks (package `deploy`: workflows, scripts, nix and monitoring config read as
+//             text; not deployed). dependsOn(testkit). Its `fixtures` config holds their helpers (RepoFile, WorkflowText),
+//             which the worker's few deploy specs that also read a worker class reuse via "test->fixtures".
 //   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
 //             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
 //             an app: the worker depends on it and ships its classes. Its `fixtures` config
@@ -446,6 +449,33 @@ lazy val itkit = (project in file("itkit"))
   )
   .settings(noApiDocs)
 
+// ── Repository checks (not deployed) ─────────────────────────────────────────
+//
+// The specs that read the repository as TEXT -- workflows, actions, scripts, the nix and monitoring config, the gitops
+// manifests, build.sbt -- and check their wiring (package `deploy`): no app code of their own to exercise, so a module
+// of their own, built on testkit alone (SourceTrees, the one way a spec walks a source tree; MetricCatalogue), keeps
+// them out of the worker's Test compile and out of its recompiles. Their helpers (RepoFile, WorkflowText,
+// ShellCommands, RunnerLabel, ...) live in this module's `fixtures` config (src/fixtures/scala), as the scrapers' and
+// the worker's shared doubles do: the worker's own deploy specs -- the ones that read a worker class beside the text
+// (WorkerMetrics, ScrapeCadence, WorkerMain) -- use them through "test->fixtures".
+lazy val repochecks = (project in file("repochecks"))
+  .dependsOn(testkit)
+  .configs(Fixtures)
+  .settings(
+    name := "repochecks",
+    publish / skip := true,
+    libraryDependencies ++= Seq(scalatestPlay % Test),
+    inConfig(Fixtures)(Defaults.configSettings),
+    Fixtures / scalaSource := baseDirectory.value / "src" / "fixtures" / "scala",
+    Test / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
+  )
+  .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
+  .settings(noApiDocs)
+  // the worker's and the web's image inputs, for ImagePathGateSpec
+  .settings(ImageInputs.staged(Test, LocalProject("worker"), LocalProject("web")))
+
 // ── Cinema scrapers ──────────────────────────────────────────────────────────
 //
 // Every venue client (`services.cinemas.{pl,uk,us,de,es,roster}`), the catalogues that list them, and the scrape
@@ -492,7 +522,10 @@ lazy val worker = (project in file("worker"))
   // `test->fixtures` on scrapers: the worker's specs drive its scrape tasks through the scrapers' own test doubles
   // (`StubCinemaScraper`, `ScriptedCinemaScraper`, `FakeDetailEnricher`) and recording tools, which live in the
   // scrapers' narrow `Fixtures` config, so the worker's Test does not compile the scraper specs.
-  .dependsOn(common, identity, scrapers % "compile->compile;test->fixtures", testkit % "test,it,fixtures->compile", itkit % "it,fixtures->compile")
+  // `repochecks`: the worker's own deploy specs build on the repository checks' helpers, its integration deploy specs
+  // -- WorkflowScriptsRunnableIntegrationSpec, K8sTierPathGatingIntegrationSpec -- on their companions too.
+  .dependsOn(common, identity, scrapers % "compile->compile;test->fixtures", testkit % "test,it,fixtures->compile", itkit % "it,fixtures->compile",
+    repochecks % "test->fixtures;it->test;it->fixtures")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(
@@ -572,8 +605,6 @@ lazy val worker = (project in file("worker"))
   .settings(noApiDocs, heapDumpScript)
   .settings(launcherOptions("worker.options"))
   .settings(ImageInputs.deployableSettings)
-  // the worker's and the web's image inputs, for ImagePathGateSpec
-  .settings(ImageInputs.staged(Test, LocalProject("worker"), LocalProject("web")))
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -699,7 +730,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(geodata, base, http, common, identity, scrapers, testkit, itkit, web, worker, e2e)
+  .aggregate(geodata, base, http, common, identity, scrapers, testkit, itkit, repochecks, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,
@@ -714,7 +745,7 @@ ForkedTests.forkSlots
 // instead of stopping at the first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "; all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
+addCommandAlias("testUnit", "; all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test ; e2eShared")
 // The e2e module MINUS the country-scoped specs. Those install a country's
 // TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
 // Polish whole-corpus specs (or with each other) silently normalises the wrong
@@ -728,9 +759,9 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
-addCommandAlias("testUnitNoE2e", "all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitNoE2e", "all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test")
 addCommandAlias("testUnitWorker", "worker/Test/test")
-addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test scrapers/Test/test")
+addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test scrapers/Test/test repochecks/Test/test")
 addCommandAlias("testUnitRest", "all base/Test/test http/Test/test common/Test/test identity/Test/test testkit/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged

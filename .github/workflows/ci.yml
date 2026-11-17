@@ -140,12 +140,12 @@ jobs:
     # its HEAVY suites (build.sbt `HeavyRows`, 2026-10-28): the ones that re-decide a recording's slices or re-resolve
     # the checked-in captures, which the owner wants out of the unit rows but still run before every deploy -- they do:
     # main.yml's publish jobs `needs: ci`, this job's rows included. `worker-identity` runs the resolver's other specs,
-    # the tools' and the identity tooling's, and `worker` the worker's rest beside the web and scrapers modules. Each
+    # the tools' and the identity tooling's, and `worker` the worker's rest beside the web, scrapers and repochecks modules. Each
     # row is cut to roughly equal time from per-suite JUnit times (measure run 3419 and after). One runner running all
     # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The non-sbt checks
     # (roster drift, the read-model stamp, actionlint, …) ride `heavy1`, the lightest row (Main runs 3614-3623: heavy1
     # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests run off the gate, in
-    # tool-self-tests.yml; the gitops manifests ride `worker`, whose deploy specs read them.
+    # tool-self-tests.yml; the gitops manifests ride `worker`, whose deploy specs (the worker's and repochecks') read them.
     test:
         # No `name:`: github.com names a row `test (<shard>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `test` -- a `name:` naming a matrix value renders raw then
@@ -184,7 +184,7 @@ jobs:
             # write path of every deploy. A shallow clone of this repository is 93.5s and a 1.3 GB
             # tree of 18,806 files, to reach 420 KB of manifests in 36 of them.
             #
-            # ⚠️ THE `path:` IS THE WHOLE TRICK. Nine specs in worker/src/test/scala/deploy/ compare
+            # ⚠️ THE `path:` IS THE WHOLE TRICK. Nine specs in repochecks/ and worker/src/test/scala/deploy/ compare
             # those manifests against this repository's workflow and nix config -- heap sizes against
             # node capacity, NodePorts against the Prometheus scrape config, the image tag CI builds
             # against the ImagePolicy that selects it. Landing the checkout at the OLD PATH means the

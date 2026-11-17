@@ -42,7 +42,7 @@ class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers with Sc
 
   private val WorkerOnlyPush = Seq(
     "worker/src/main/scala/services/scrape/ScrapeReaper.scala",
-    "worker/src/test/scala/deploy/K8sTierPathGatingSpec.scala",
+    "worker/src/test/scala/deploy/WorkerRolloutStaggerSpec.scala",
   )
 
   "a web-only push" should "not match the worker's filter set, so nothing rebuilds or restarts the worker" in {
@@ -126,7 +126,7 @@ class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers with Sc
   // ran the same code. Tests still run in ci on every push; only the image's publish is gated here.
   "a push that only changes worker or common tests" should "not rebuild or restart the worker" in {
     matches(workerFilter, Seq(
-      "worker/src/test/scala/deploy/K8sTierPathGatingSpec.scala",
+      "worker/src/test/scala/deploy/WorkerRolloutStaggerSpec.scala",
       "worker/src/it/scala/services/movies/VenueReadIntegrationSpec.scala",
       "worker/src/fixtures/scala/tools/FixturePipeline.scala",
       "common/src/test/scala/services/movies/StringPoolSpec.scala",

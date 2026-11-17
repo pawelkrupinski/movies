@@ -8,7 +8,7 @@
 # working tree of 18,806 files, to reach 420 KB of manifests in 36 of them.
 #
 # The checkout lands at the OLD PATH on purpose. Nine specs in
-# worker/src/test/scala/deploy/ compare those manifests against this repository's
+# repochecks/src/test/scala/deploy/ (and worker/src/test/scala/deploy/) compare those manifests against this repository's
 # CI workflow and nix config, and keeping the path identical means the split cost
 # them no changes at all. The directory is gitignored here.
 #

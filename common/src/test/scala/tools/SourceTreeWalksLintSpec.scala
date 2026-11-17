@@ -90,9 +90,9 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
       ("a file committed in the spec's own scratch repository", Set("worker/src/main/Change$n.scala")),
     "worker/src/it/scala/deploy/ConvergenceDispatchGateSpec.scala" ->
       ("a probe path fed to the workflow's path filter, never opened", Set("$dir/src/main/Probe.scala", "$dir/src/fixtures/Probe.scala")),
-    "worker/src/test/scala/deploy/DiscoveryPullRequestArtefactsSpec.scala" ->
+    "repochecks/src/test/scala/deploy/DiscoveryPullRequestArtefactsSpec.scala" ->
       ("a path the discovery workflow's `git add` names, compared as text", Set("geodata/src/main/resources/generated")),
-    "worker/src/test/scala/deploy/SharedMachineStateLintSpec.scala" ->
+    "repochecks/src/test/scala/deploy/SharedMachineStateLintSpec.scala" ->
       ("a prefix that classifies a walked path as test code; the walk itself is declared", Set("testkit/src/")),
     "worker/src/test/scala/scripts/IdentityCapture.scala" ->
       ("prefixes a change's paths are matched against (which changes move a decision), nothing read",
@@ -205,8 +205,8 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
       "worker/src/test/scala/services/movies/ListingConstraintsRoutingSpec.scala")
     readersOf("identity/src/main/scala/services/identity/Authority.scala") should contain (
       "identity/src/test/scala/services/identity/ProvenanceSpec.scala")
-    readersOf("worker/src/test/scala/deploy/RepoFile.scala") should contain (
-      "worker/src/test/scala/deploy/StressAndEmulatorScheduleSpec.scala")
+    readersOf("repochecks/src/test/scala/deploy/RepoFileSpec.scala") should contain (
+      "repochecks/src/test/scala/deploy/StressAndEmulatorScheduleSpec.scala")
   }
 
   it should "select every declarer in the repository, for a file under each tree it declares" in {

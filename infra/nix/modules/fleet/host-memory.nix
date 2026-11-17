@@ -1,7 +1,7 @@
 # What every host does when it runs short of memory: compressed swap, how eagerly to use it, and --
 # on the k3s nodes -- how much of the machine the kubelet keeps back from pods.
 #
-# THE NUMBERS ARE IN ../../files/host-memory.json, NOT HERE, because NodeMemoryBudgetSpec (worker/
+# THE NUMBERS ARE IN ../../files/host-memory.json, NOT HERE, because NodeMemoryBudgetSpec (repochecks/
 # src/test/scala/deploy/) has to read the same kubelet reserves: they shrink k3s-worker-1's
 # allocatable memory, and that spec is the ledger that proves every kinowo pod plus the web tier's
 # rolling-surge pod still fits on it. One file, read by both, so the two cannot disagree.

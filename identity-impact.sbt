@@ -15,14 +15,28 @@ lazy val impactUnits = Def.task {
     TestImpact.Unit("worker", (impactModule("worker") / Compile / compile).value),
     TestImpact.Unit("worker", (impactModule("worker") / ImpactFixtures / compile).value), TestImpact.Unit("worker", (impactModule("worker") / Test / compile).value),
     TestImpact.Unit("web", (impactModule("web") / Compile / compile).value), TestImpact.Unit("web", (impactModule("web") / Test / compile).value),
-    TestImpact.Unit("e2e", (impactModule("e2e") / Compile / compile).value), TestImpact.Unit("e2e", (impactModule("e2e") / Test / compile).value))
+    TestImpact.Unit("e2e", (impactModule("e2e") / Compile / compile).value), TestImpact.Unit("e2e", (impactModule("e2e") / Test / compile).value)) ++
+    impactRepoChecksUnits.value
+}
+// repochecks (the repository-text checks): only at a commit that has the module -- identity-impact-check lays this file
+// over older commits, which predate it.
+lazy val impactHasRepoChecks = Def.setting(((LocalRootProject / baseDirectory).value / "repochecks").isDirectory)
+lazy val impactRepoChecksUnits = Def.taskDyn {
+  if (!impactHasRepoChecks.value) Def.task(Seq.empty[TestImpact.Unit])
+  else Def.task(Seq(TestImpact.Unit("repochecks", (impactModule("repochecks") / ImpactFixtures / compile).value),
+    TestImpact.Unit("repochecks", (impactModule("repochecks") / Test / compile).value)))
+}
+lazy val impactRepoChecksTests = Def.taskDyn {
+  if (!impactHasRepoChecks.value) Def.task(Map.empty[String, Seq[String]])
+  else Def.task(Map("repochecks" -> (impactModule("repochecks") / Test / definedTestNames).value))
 }
 lazy val impactTests = Def.task {
   Map(
     "geodata" -> (impactModule("geodata") / Test / definedTestNames).value, "common" -> (impactModule("common") / Test / definedTestNames).value,
     "identity" -> (impactModule("identity") / Test / definedTestNames).value, "testkit" -> (impactModule("testkit") / Test / definedTestNames).value,
     "scrapers" -> (impactModule("scrapers") / Test / definedTestNames).value, "worker" -> (impactModule("worker") / Test / definedTestNames).value,
-    "web" -> (impactModule("web") / Test / definedTestNames).value, "e2e" -> (impactModule("e2e") / Test / definedTestNames).value)
+    "web" -> (impactModule("web") / Test / definedTestNames).value, "e2e" -> (impactModule("e2e") / Test / definedTestNames).value) ++
+    impactRepoChecksTests.value
 }
 // the identity stamps' digested paths (identity's resourceGenerators)
 lazy val impactStamps = Def.task((impactModule("identity") / Compile / managedResources).value.filter(_.getName.endsWith("-sources.txt")))

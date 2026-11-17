@@ -37,12 +37,12 @@ has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 out="$(lints worker/src/main/scala/services/A.scala)"
 check "a production Scala source runs the source scans the name patterns missed, and the standing lints" "yes yes yes" \
   "$(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" worker:tools.InMemoryStoresRoundTripSpec) $(has "$out" worker:tools.NoWallClockInTestsSpec)"
-check "...but not a spec reading only scripts and workflows" "no" "$(has "$out" worker:deploy.WorkflowPlanSpec)"
+check "...but not a spec reading only scripts and workflows" "no" "$(has "$out" repochecks:deploy.WorkflowPlanSpec)"
 out="$(lints scripts/x.sh)"
 check "a script runs the @repo specs, not a @gitops one without the manifests, never a '-' one" "yes no no" \
-  "$(has "$out" worker:deploy.WorkflowPlanSpec) $(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootOverlapSpec)"
+  "$(has "$out" repochecks:deploy.WorkflowPlanSpec) $(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" repochecks:deploy.FixtureServerBootOverlapSpec)"
 check "...the manifests in place (PREPUSH_GITOPS=1), the @gitops specs too" "yes" \
-  "$(has "$(printf 'scripts/x.sh\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" worker:deploy.NodeCpuBudgetSpec)"
+  "$(has "$(printf 'scripts/x.sh\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" repochecks:deploy.NodeCpuBudgetSpec)"
 check "every selected spec is a registry row" "" \
   "$(comm -23 <(printf '%s\n' scripts/x.sh worker/src/main/scala/A.scala | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u) | tr '\n' ' ' | sed 's/ $//')"
 printf '\033[36m▸\033[0m a row selects its spec for every path the spec reads\n'
@@ -51,5 +51,5 @@ printf '\033[36m▸\033[0m a row selects its spec for every path the spec reads\
 check "no spec reads a path its row would not select (add the path's glob to the row)" "" \
   "$(python3 scripts/ci/lint_registry_reads.py | tr '\t\n' ': ' | sed 's/ $//')"
 check "a push of tools/devpanel/scripts/devpanel.py selects DevServerHeapCanarySpec" "yes" \
-  "$(has "$(lints tools/devpanel/scripts/devpanel.py)" worker:deploy.DevServerHeapCanarySpec)"
+  "$(has "$(lints tools/devpanel/scripts/devpanel.py)" repochecks:deploy.DevServerHeapCanarySpec)"
 spec_summary

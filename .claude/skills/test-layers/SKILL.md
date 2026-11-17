@@ -15,7 +15,8 @@ is that the local toolchain is missing (e.g. no full Xcode for
 
 - **`sbt testUnit`** — every module's unit specs in one run; or
   `sbt web/Test/test` / `worker/Test/test` / `scrapers/Test/test` (the cinema scrapers) / `common/Test/test` / `identity/Test/test` (the resolver) /
-  `testkit/Test/test` / `e2e/Test/test` to scope to one module.
+  `testkit/Test/test` / `repochecks/Test/test` (the repository-text checks: workflows, scripts, nix and monitoring
+  config; package `deploy`) / `e2e/Test/test` to scope to one module.
   Unit specs for controllers, services, enrichment, clients, models.
   Each unit module runs in its own forked, heap-capped test JVM (`project/ForkedTests.scala`; web's
   fork is Play's), so nothing a run leaves behind stays in the kept sbt server; only `e2eShared`

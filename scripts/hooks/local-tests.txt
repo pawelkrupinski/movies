@@ -22,10 +22,12 @@
 basic sbt Test/compile
 basic sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
 basic sbt e2e/testOnly services.movies.FilmScheduleEndToEndSpec tools.ReadModelSnapshotSpec
-basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.CinemaScrapeStalenessAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.LauncherJvmFlagsSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
+basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.CinemaScrapeStalenessAlertSpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
+basic sbt repochecks/testOnly deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec
 fast sbt Test/compile
 fast sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
-fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.WorkflowScriptsRunnableSpec deploy.SharedFileLayoutSpec deploy.WorkflowPlanSpec deploy.OverdueIsNotRedSpec
+fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.OverdueIsNotRedSpec
+fast sbt repochecks/testOnly deploy.WorkflowScriptsRunnableSpec deploy.SharedFileLayoutSpec deploy.WorkflowPlanSpec
 
 # identity: the identity module whole (agreement/equivalence specs included: IncrementalWholeEquivalence,
 # LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titlerules.* / worker

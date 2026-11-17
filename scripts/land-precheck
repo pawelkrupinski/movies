@@ -92,7 +92,7 @@ if [ -z "$lints" ]; then
     report lints SKIP $t
 else
     line=""
-    for module in common scrapers worker web; do
+    for module in common scrapers repochecks worker web; do
         specs="$(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')"
         [ -n "$specs" ] && line+="$module/Test/testOnly $specs; "
     done

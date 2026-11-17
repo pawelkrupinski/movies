@@ -133,7 +133,9 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     }.dropWhile(_._2.nonEmpty).next()._1 ++ deps("e2e")
 
     reached.map(_._1) should contain allOf ("common", "identity", "worker", "testkit", "web")
-    val required = reached.toSeq.flatMap { (module, mapping) =>
+    // repochecks, the repository-text checks: no main code, and only the worker's Test and it configs build on its
+    // fixtures -- never the worker's fixtures config, the one e2e reaches -- so nothing of it runs in a leg.
+    val required = reached.toSeq.filterNot(_._1 == "repochecks").flatMap { (module, mapping) =>
       val dir = modules(module)._1
       (if (module == "web") Nil else Seq(s"$dir/src/main/Probe.scala")) ++
         (if (mapping.contains("->fixtures")) Seq(s"$dir/src/fixtures/Probe.scala") else Nil)

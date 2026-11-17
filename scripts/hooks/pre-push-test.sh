@@ -112,18 +112,22 @@ check "worker's fixtures config also compiles web's, whose Page config builds on
   "$(compiles worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 check "a scraper compiles the scrapers' tests and the worker's and e2e's over them" \
   "scrapers/Test/compile worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles scrapers/src/main/scala/services/cinemas/A.scala)"
+check "a repository check compiles repochecks, and the worker's it/ deploy specs built on its specs" \
+  "repochecks/Test/compile worker/It/compile" "$(compiles repochecks/src/test/scala/deploy/ASpec.scala)"
+check "repochecks' fixtures compile the worker's tests too, whose deploy specs use them" \
+  "repochecks/Test/compile worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles repochecks/src/fixtures/scala/deploy/RepoFile.scala)"
 check "an e2e spec compiles e2e alone" "e2e/Test/compile" "$(compiles e2e/src/test/scala/A.scala)"
 check "common compiles every module's test configs" \
-  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile repochecks/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles common/src/main/scala/A.scala)"
 check "a geodata table adapter compiles what common does, every module over it" \
-  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile repochecks/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles geodata/src/main/scala/models/UsRosterData.scala)"
 check "the build compiles every module's test configs" \
-  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile repochecks/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles build.sbt)"
 check "an identity source compiles identity and every module built on it" \
-  "identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "identity/Test/compile testkit/Test/compile scrapers/Test/compile repochecks/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles identity/src/main/scala/services/identity/A.scala)"
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
@@ -132,26 +136,26 @@ check "a dashboard alone compiles nothing extra" "" \
 # read (lint-registry-test.sh holds the registry complete).
 printf '\033[36m▸\033[0m pre-push --lint-plan\n'
 lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
-Always="scrapers:services.cinemas.NoWallClockInClientsSpec web:deploy.GrafanaWebMetricCoverageSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec worker:tools.NoWallClockInTestsSpec"
+Always="scrapers:services.cinemas.NoWallClockInClientsSpec web:deploy.GrafanaWebMetricCoverageSpec worker:deploy.GrafanaMetricCoverageSpec repochecks:deploy.NoSilencedGhCurlSpec worker:tools.NoWallClockInTestsSpec"
 has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 out="$(lints worker/src/main/scala/A.scala)"
 check "a production Scala source runs the standing lints and the source scans (the registry's *.scala rows), not the workflow specs" \
-  "yes yes yes no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" worker:deploy.WorkflowPlanSpec)"
+  "yes yes yes no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" repochecks:deploy.WorkflowPlanSpec)"
 for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \
   worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
   out="$(lints "$changed")"
   # The script self-test and dispatch-gate specs spawn bash and git, so they are `it` specs now (unit specs reach no
   # real dependency, 2026-10-27): main's integration-test row runs them, this unit lint plan no longer can.
   check "$changed runs the literal-wait, raw-git, sleep and real-dependency lints, not the it-side self-test and dispatch-gate specs" \
-    "yes yes yes yes no no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec)"
+    "yes yes yes yes no no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec)"
 done
 out="$(lints scripts/x.sh)"
 check "...and the common source lints" "yes" "$(has "$out" common:tools.SourceControlCharactersLintSpec)"
 check "...but not a spec that needs the GitOps manifests, nor one that boots a server" "no no" \
-  "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
+  "$(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
 out="$(PREPUSH_GITOPS=1 lints scripts/x.sh)"
 check "...the GitOps manifests in place (PREPUSH_GITOPS=1), the specs reading them too, still none that boots a server" "yes no" \
-  "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
+  "$(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
 # A @gitops row naming paths of its own (the alert-rule specs read the rules AND the worker overlays) is still a GitOps
 # reader: without the manifests in place it is left out, never run against a checkout that lacks them (2026-11-10: a
 # rules-only push ran CinemaScrapeStalenessAlertSpec with no infra/kubernetes, red in CI's pre-commit check).
@@ -188,7 +192,7 @@ check "a resource counts, each module once, in dependency order" "scrapers/Test/
 # the universe a test-side reader's tests (TestImpact's READS lines) join the verification from, in any module: every
 # module's unit tests, the worker's every suite but its heavy rows' (its source lints are its identity row's tools.*)
 check "every module's unit tests are the readers' universe, the worker's less its heavy rows, read from the build" \
-  "base/Test/test|http/Test/test|common/Test/test|identity/Test/test|testkit/Test/test|scrapers/Test/test|web/Test/test|worker/testOnly * -services.identity.IdentitySliceCasesSpec" \
+  "base/Test/test|http/Test/test|common/Test/test|identity/Test/test|testkit/Test/test|scrapers/Test/test|repochecks/Test/test|web/Test/test|worker/testOnly * -services.identity.IdentitySliceCasesSpec" \
   "$("$REPO_ROOT/scripts/hooks/pre-push" --unit-universe | tr '\n' '|' | sed 's/|$//' | sed 's/IdentitySliceCasesSpec .*/IdentitySliceCasesSpec/')"
 # the lints walking every module's sources, which join a verification no selection narrowed: each module's, less what
 # the plan and the lint specs already run
@@ -295,18 +299,18 @@ if command -v shellcheck >/dev/null; then
     "$(grep -c '^worker/It/compile$' "$scratch/sbt-args" 2>/dev/null) $(grep -cx 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\*' "$scratch/sbt-args" 2>/dev/null)"
   # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (GitHub
   # unreachable), the push is blocked, never checked against a stale checkout.
-  mkdir -p "$repo/worker/src/test/scala/deploy" "$repo/infra/bin"
-  echo 'class NodeCpuBudgetSpec' > "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
+  mkdir -p "$repo/repochecks/src/test/scala/deploy" "$repo/infra/bin"
+  echo 'class NodeCpuBudgetSpec' > "$repo/repochecks/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
   printf '#!/usr/bin/env bash\necho "$KINOWO_GITOPS_DEST" > "%s/gitops-dest"\n' "$scratch" > "$repo/infra/bin/fetch-gitops"
   chmod +x "$repo/infra/bin/fetch-gitops"
-  scratch_git "$repo" add worker infra; scratch_git "$repo" commit -qm "adds a GitOps-reading spec"
+  scratch_git "$repo" add repochecks infra; scratch_git "$repo" commit -qm "adds a GitOps-reading spec"
   rm -f "$scratch/sbt-args"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" 2>&1)"
   check "fetches the GitOps manifests into the checkout the lints run in" "$(cd "$repo" && pwd -P)/infra/kubernetes" \
     "$(cat "$scratch/gitops-dest" 2>/dev/null | sed "s|^$repo|$(cd "$repo" && pwd -P)|")"
   check "...and runs the specs reading them" "1" "$(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null)"
   printf '#!/usr/bin/env bash\nexit 1\n' > "$repo/infra/bin/fetch-gitops"
-  echo '// unreachable' >> "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
+  echo '// unreachable' >> "$repo/repochecks/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
   scratch_git "$repo" commit -qam "the manifests unreachable"
   rm -f "$scratch/sbt-args"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" 2>&1)"
