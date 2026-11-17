@@ -28,6 +28,7 @@ object TextNormalization {
   private val HorizontalGaps   = Pattern.compile("[ \\t\\x0B\\f\\r]+")
   private val SpacedNewline    = Pattern.compile(" ?\\n ?")
   private val BlankLineRuns    = Pattern.compile("\\n{3,}")
+  private val NotAsciiAlphanumeric = Pattern.compile("[^a-z0-9]+")
 
   /** A letter or a number, as `\p{L}` and `\p{N}` read a code point: the five letter categories
    *  and the three number ones. */
@@ -90,6 +91,12 @@ object TextNormalization {
     if (isAscii(s)) s
     else CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
       .replace('ł', 'l').replace('Ł', 'l')
+
+  /** `s` [[deburr]]ed, lower-cased and kept to its ASCII letters and digits — the shape a title-only resolver's
+   *  corroboration compares a query with a candidate's name in ("Vaiana " and "vaiana", "Amélie" and "AMELIE" alike).
+   *  Anything outside ASCII that `deburr` does not fold (Cyrillic, CJK) is dropped. */
+  def alphanumericFold(s: String): String =
+    NotAsciiAlphanumeric.matcher(deburr(s).toLowerCase(Locale.ROOT)).replaceAll("")
 
   // Cyrillic → Latin transliteration for the EXTERNAL-SEARCH title tier only
   // (`TitleNormalizer.apiQuery`). Ukrainian-dubbed releases list under their

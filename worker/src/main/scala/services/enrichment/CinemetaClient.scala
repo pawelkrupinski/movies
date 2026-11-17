@@ -1,11 +1,10 @@
 package services.enrichment
 
 import services.enrichment.scraping.JsonScalars
-import java.util.Locale
 
 import play.api.libs.json._
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{HttpFetch, HttpRead, ReadOutcome}
+import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -53,7 +52,7 @@ class CinemetaClient(http: HttpFetch) {
     } yield Candidate(id, name, (meta \ "releaseInfo").asOpt[String].flatMap(firstYear))
 
   private def corroborated(c: Candidate, queryTitle: String, year: Option[Int]): Boolean = {
-    val q = norm(queryTitle); val n = norm(c.name)
+    val q = TextNormalization.alphanumericFold(queryTitle); val n = TextNormalization.alphanumericFold(c.name)
     val exact         = q.nonEmpty && q == n
     val titleContains = TitleMatch.oneStartsWithTheOther(q, n)
     val yearMatch     = YearWindow.agrees(year, c.year, YearTolerance).contains(true)
@@ -86,10 +85,4 @@ object CinemetaClient {
   /** `releaseInfo` is a year ("2026") or a range ("2011-2019"); take the first year. */
   private def firstYear(releaseInfo: String): Option[Int] =
     raw"(\d{4})".r.findFirstIn(releaseInfo).map(_.toInt)
-
-  /** Deburred, case-folded, alnum-only — the same shape the other resolvers'
-   *  corroboration uses so "Vaiana" vs "Vaiana " vs "vaiana" all match. */
-  private def norm(s: String): String =
-    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "")
 }

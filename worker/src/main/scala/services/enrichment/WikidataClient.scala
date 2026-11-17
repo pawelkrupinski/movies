@@ -1,10 +1,9 @@
 package services.enrichment
 
-import java.util.Locale
 
 import play.api.libs.json._
 import services.resolution.YearWindow
-import tools.{HttpFetch, HttpRead, ReadOutcome}
+import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -111,7 +110,7 @@ class WikidataClient(http: HttpFetch) {
    *  queried year. A year gap of >1 vetoes even an exact label. */
   private def titleCorroborates(queryTitle: String, label: Option[String], queryYear: Option[Int], pubYear: Option[Int]): Boolean =
     label.exists { l =>
-      val q = norm(queryTitle); val n = norm(l)
+      val q = TextNormalization.alphanumericFold(queryTitle); val n = TextNormalization.alphanumericFold(l)
       val exact           = q.nonEmpty && q == n
       val titleContains   = q.nonEmpty && n.nonEmpty && (q.startsWith(n) || n.startsWith(q))
       val yearMatch       = YearWindow.agrees(queryYear, pubYear, YearTolerance).contains(true)
@@ -326,12 +325,6 @@ object WikidataClient {
     val c = (byte & 0xff).toChar
     if ((c.isLetterOrDigit && c < 128) || "_.-~".contains(c)) c.toString else f"%%${byte & 0xff}%02X"
   }.mkString
-
-  /** Deburred, case-folded, alnum-only — matches the shape the other resolvers'
-   *  corroboration uses so label/title comparison is diacritic/case-insensitive. */
-  private def norm(s: String): String =
-    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "")
 
   val UserAgentHeader: Map[String, String] =
     Map("User-Agent" -> "kinowo/1.0 (pawel.krupinski@gmail.com)")

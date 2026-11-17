@@ -6,6 +6,18 @@ import org.scalatest.matchers.should.Matchers
 /** The case that runs a Turkish-locale child JVM is in [[TextNormalizationIntegrationSpec]]. */
 class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
+  "alphanumericFold" should "fold case, diacritics and punctuation away, so a query and a candidate's name compare alike" in {
+    TextNormalization.alphanumericFold("Vaiana ") shouldBe "vaiana"
+    TextNormalization.alphanumericFold("Amélie") shouldBe TextNormalization.alphanumericFold("AMELIE")
+    TextNormalization.alphanumericFold("Top Gun: Maverick") shouldBe "topgunmaverick"
+    TextNormalization.alphanumericFold("Blade Runner 2049") shouldBe "bladerunner2049"
+  }
+
+  it should "fold Polish ł as deburr does, and drop what deburr leaves outside ASCII" in {
+    TextNormalization.alphanumericFold("Łódź") shouldBe "lodz"
+    TextNormalization.alphanumericFold("Ваяна 2") shouldBe "2"
+  }
+
   "romanizeCyrillic" should "transliterate a Ukrainian-dubbed title to its Latin search form" in {
     // The live bug: "Ваяна" (Vaiana, Ukrainian dub) must romanize to "Vaiana" so
     // it shares a search title / TMDB query with the Latin listing.
