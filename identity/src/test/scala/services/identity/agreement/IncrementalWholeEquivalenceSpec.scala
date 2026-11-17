@@ -399,7 +399,7 @@ object IncrementalWholeEquivalenceSpec {
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys, perApply: Int) =
       new AgreementStage(world.families, world.lookups, normalizer, IdentityCalibration.resolver, world.tmdbOf, stored, clock = world.clock,
         posters = world.posters, tmdb = Some(world.lookups), identities = Seq(VoterFamily.Wiki), rules = of.rules, correctionsPerApply = perApply,
-        attempted = world.tried, givenUp = if (everythingGivenUp) _ => true else world.gaveUp, keyStore = keyStore)
+        attempted = world.tried, givenUp = if (everythingGivenUp) _ => true else world.gaveUp, clusterKeys = new ClusterKeys(keyStore))
     private var model = newModel()
     private var stage = newStage(verdicts, keys, budget.perApply)
     private def listingOf(key: ListingKey) = held.get(key)

@@ -311,7 +311,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val keys     = new InMemoryAgreementKeys
     def stageOver(perApply: Int, keyStore: AgreementKeys) =
       new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
-        clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply, keyStore = keyStore)
+        clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply, clusterKeys = new ClusterKeys(keyStore))
     // a cluster sorting before the take's, keyed first, then gone: the take's key is the counter's second
     val before  = FilmTable.listing(Multikino, "Akira")
     val both    = Resolution(ResolverDecision(Seq(before.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)() +: model.decisions, 2,

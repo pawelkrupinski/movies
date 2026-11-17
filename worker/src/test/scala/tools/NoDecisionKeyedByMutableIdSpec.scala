@@ -65,8 +65,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   /** `file#field` → why the kept map is safe. */
   private val Reviewed: Map[String, Kept] = Map(
     // ── the agreement stage
-    s"${A}AgreementStage.scala#live"           -> Name("each live cluster key's model decision, re-keyed every apply"),
-    s"${A}AgreementStage.scala#firsts"         -> Store("keyStore's rows: each live key's first listing"),
+    s"${A}ClusterKeys.scala#live"              -> Name("each live cluster key's model decision, re-keyed every apply"),
+    s"${A}ClusterKeys.scala#firsts"            -> Store("the key store's rows: each live key's first listing"),
     s"${A}AgreementStage.scala#held"           -> Digested("listings", "a Memo: heldFor compares StoredVerdict.listings, and an entry is checked under the listings' digest"),
     s"${A}AgreementStage.scala#heldByDigest"   -> Content("the held verdicts by their listings' digest"),
     s"${A}AgreementStage.scala#askedNow"       -> Content("the shapes (listings' digests) asked inline, no key"),

@@ -191,7 +191,7 @@ object LateInputs {
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys) =
       new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, stored, clock = _root_.tools.SpecClock.Pinned,
         changes = changes, posters = posters, tmdb = Some(lookups), identities = s.identities, rules = s.rules, catalogue = catalogue,
-        correctionsPerApply = Int.MaxValue, correctionPostersAtOnce = Int.MaxValue, attempted = tried, keyStore = keyStore,
+        correctionsPerApply = Int.MaxValue, correctionPostersAtOnce = Int.MaxValue, attempted = tried, clusterKeys = new ClusterKeys(keyStore),
         metrics = applied => drifted += applied.drifted, fullValidationEvery = 1)
     /** The kept verdicts the stage's dirty index called standing whose receipt had moved, every apply a full validation
      *  ([[services.identity.Memo]]): none, or the index is unsound. */

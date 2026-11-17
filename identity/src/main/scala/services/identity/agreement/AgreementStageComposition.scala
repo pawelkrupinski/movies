@@ -57,6 +57,6 @@ object AgreementStageComposition {
         .getOrElse(if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionsPerApply),
       backfillPerApply = if (unbudgeted) Int.MaxValue else AgreementStage.BackfillPerApply,
       askNow = effects.askNow, attempted = sources.attempted, givenUp = sources.givenUp, attemptsMarked = sources.attemptsMarked,
-      staging = effects.staging, keyStore = sources.keys, pressed = effects.pressed)
+      staging = effects.staging, clusterKeys = new ClusterKeys(sources.keys), pressed = effects.pressed)
   }
 }
