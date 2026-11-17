@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# POST-COMMIT: the commit rules the landing checks judge (scripts/ci/commit_rules.py: allowlists, driftguards --
+# Fixes-Red / Gauges / Drift-Slice / Identity-Design trailers), run over the commit just made, in about 0.1 s each.
+# A refusal is only SAID here -- a made commit cannot be refused -- so the author amends the unpublished commit at once
+# instead of learning it from `agentctl land`'s precheck minutes later (2026-11-17: a missing `Gauges:` trailer came
+# back 308 s after queueing, the precheck's lints having waited on a JVM slot first).
+#
+# Never fails and never blocks the commit; silent when the rules pass or cannot run (no python3, no rules file, a
+# root commit). Off: KINOWO_POST_COMMIT_RULES=0.
+set -uo pipefail
+[ "${KINOWO_POST_COMMIT_RULES:-1}" = 0 ] && exit 0
+top="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+rules="$top/scripts/ci/commit_rules.py"
+[ -f "$rules" ] && command -v python3 > /dev/null || exit 0
+git rev-parse -q --verify HEAD^ > /dev/null || exit 0
+for rule in allowlists driftguards; do
+  if ! out="$(cd "$top" && python3 "$rules" "$rule" --range HEAD^..HEAD 2>&1)"; then
+    {
+      echo "post-commit: the commit just made breaks the '$rule' rule the landing precheck refuses on:"
+      printf '%s\n' "$out" | sed 's/^/  /'
+      echo "  fix it now with 'git commit --amend' (unpublished), before 'agentctl land'"
+    } >&2
+  fi
+done
+exit 0

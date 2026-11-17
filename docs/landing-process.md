@@ -66,7 +66,9 @@ Never the root checkout (`scripts/hooks/pre-commit` refuses a commit there; the 
 when the root is off `main` or dirty, via `scripts/root-checkout-check`). Install the hooks once per clone with
 `scripts/install-hooks.sh`: it sets `core.hooksPath=scripts/hooks`, relative, so each worktree runs its own copy. The
 hook resets an absolute `core.hooksPath` that points at this clone, and a hook run for another checkout hands over to
-that checkout's copy.
+that checkout's copy. `scripts/hooks/post-commit` runs the commit rules the precheck refuses on (`allowlists`,
+`driftguards`: Fixes-Red / Gauges / Drift-Slice trailers) over each commit as it is made, in ~0.1 s, and says what to
+amend; it never blocks the commit (`KINOWO_POST_COMMIT_RULES=0` turns it off).
 
 Before landing: `git diff --stat origin/main...HEAD` lists only your files, and the test layers your change touches
 are green locally (CLAUDE.md, "Run the relevant test layers").
@@ -116,6 +118,9 @@ visible now?" in ~20-60 s on a warm checkout:
   `scripts/sbt-warm` call.
 - **scripttests**: the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
   a script-test root (seconds to minutes; beside the queue, so no landing time).
+
+A rebase or rules refusal ends the precheck at once: the lints and self-tests are skipped (`refused already`), so that
+refusal comes back in seconds rather than after the lints' wait on sbt and a JVM slot.
 
 A refusal cancels the queued change and puts `NOT LANDED: the fast precheck refused <id> (<sha>): PRECHECK FAIL:
 <steps>` in the inbox, its lines in the tail: fix, commit, land again. A precheck that could not run (exit 2: sbt never

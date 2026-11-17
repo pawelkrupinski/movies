@@ -72,6 +72,8 @@ printf '\033[36m▸\033[0m a refusal\n'
 : > "$log"
 check "a failing commit rule: exit 1, named" "1 1" "$(HOOK_FAIL=1 precheck) $(grep -c 'precheck rules FAIL' "$testroot/out")"
 check "...with the hook's own line" "1" "$(grep -c 'Drift-Slice missing' "$testroot/out")"
+check "...and nothing slow run after it: no sbt, the lints and self-tests skipped as refused already" "0 2" \
+  "$(: > "$log"; HOOK_FAIL=1 precheck > /dev/null; grep -c '^sbt-warm' "$log") $(grep -c '^precheck \(lints\|scripttests\) SKIP (0 s): refused already by rules' "$testroot/out")"
 check "a failing lint: exit 1" "1 1" "$(SBT_FAIL=1 SBT_OUT='[info] *** FAILED *** x' precheck) $(grep -c 'precheck lints FAIL' "$testroot/out")"
 check "sbt that could not run (no test failed): exit 2, could not check" "2 1" \
   "$(SBT_FAIL=1 SBT_OUT='sbt server did not start within 90 seconds' precheck) $(grep -c 'precheck lints UNCHECKED' "$testroot/out")"
@@ -106,6 +108,8 @@ check "a conflict with origin/main: exit 1, the file named" "1 1" "$(precheck) $
 check "...and the branch is left as it was" "$before $(scratch_git "$repo" rev-parse --abbrev-ref HEAD)" \
   "$(scratch_git "$repo" rev-parse HEAD) $(scratch_git "$repo" rev-parse --abbrev-ref HEAD)"
 check "...with nothing to do on the tree" "" "$(scratch_git "$repo" status --porcelain)"
+check "...and, refused already, no sbt run" "0" "$(: > "$log"; precheck > /dev/null; grep -c '^sbt-warm' "$log")"
+scratch_git "$repo" reset -q --hard HEAD~1   # the conflict resolved: the steps below run on a change that rebases
 printf '\033[36m▸\033[0m the GitOps manifests: fetched before the lints, as the hook does, or their specs left to it\n'
 : > "$log"; precheck > /dev/null
 check "infra/bin/fetch-gitops runs once, into the checkout's infra/kubernetes" "1 yes" \

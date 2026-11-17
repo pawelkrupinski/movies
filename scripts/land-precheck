@@ -16,6 +16,8 @@
 #           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first)
 #   scripttests  the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
 #           a script-test root (the hook's `scripttests` paths); seconds to minutes, beside the queue like the rest
+# A rebase or rules FAIL ends the precheck there: the lints and self-tests are SKIPped (`refused already`), so a refusal
+# the cheap steps find comes back in seconds, never after the lints' wait on sbt.
 # Last line: `PRECHECK PASS (<n> s)`, `PRECHECK FAIL: <steps> (<n> s)` or `PRECHECK UNCHECKED: <steps> (<n> s)`.
 # Exit 0 pass, 1 a step refused the change, 2 a step could not run (sbt never came up, a bound ran out): agentctl land
 # queues the change anyway then, and the landing check judges it.
@@ -76,6 +78,17 @@ case $? in
     124|137) report rules UNCHECKED $t "$tmp/rules" ;;
     *) report rules FAIL $t "$tmp/rules" ;;
 esac
+
+# ── refused already: the slow steps are not run ──
+# A change the rebase or the commit rules refuse comes back now, in seconds: the lints wait on sbt (and on a JVM slot
+# first), so a missing trailer came back 308 s after queueing (2026-11-17). Fix it and land again; the next precheck
+# runs the lints and self-tests then.
+if [ -n "$failed" ]; then
+    echo "precheck lints SKIP (0 s): refused already by$failed"
+    echo "precheck scripttests SKIP (0 s): refused already by$failed"
+    echo "PRECHECK FAIL:$failed ($((SECONDS - started)) s)"
+    exit 1
+fi
 
 # ── lints: the registry's selection for the pushed paths, in the checkout's kept sbt server ──
 t=$SECONDS
