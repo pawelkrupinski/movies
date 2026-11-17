@@ -68,13 +68,13 @@ import scala.util.control.NonFatal
  * the /uptime/fallback page; `onEvent` fires on ENTER / PROBE_FAILED / RECOVERED /
  * UNCOVERED for alerting.
  *
- * `listingIsComplete` stays the PRIMARY's answer (via [[DelegatingCinemaScraper]])
+ * `listingStructure` stays the PRIMARY's answer (via [[DelegatingCinemaScraper]])
  * even on a tick served from the fallback, where what we actually returned is the
  * fallback's always-whole listing. The two errors are not symmetric: reporting a short
  * listing as whole lets the cache prune films it never looked at, while reporting a
  * whole one as short only defers a prune by one tick. Delegating unconditionally takes
  * the recoverable side and needs no per-tick state, which a `fetch()`-then-
- * `listingIsComplete` read would otherwise have to carry between two calls.
+ * `listingStructure` read would otherwise have to carry between two calls.
  *
  * Which of the two SERVED is reported per tick by [[fetchWithSource]], returned with the
  * listing so no state spans two calls. A fallback tick is NOT a change of source — the

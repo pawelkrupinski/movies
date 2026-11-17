@@ -5,6 +5,7 @@ import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.SourceUrlResolution
 import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -137,10 +138,10 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     noInfo.resolveSourceUrl() shouldBe None
   }
 
-  "resolveAll" should "map each resolvable venue to its canonical link, dropping failures" in {
+  "SourceUrlResolution" should "map each resolvable venue to its canonical link, dropping failures" in {
     val ok   = new FilmwebShowtimesClient(http, 633, Multikino)
     val fail = new FilmwebShowtimesClient(http, 4242, KinoTatry)
-    val urls = FilmwebShowtimesClient.resolveAll(Seq(ok, fail))
+    val urls = new SourceUrlResolution(scala.concurrent.ExecutionContext.parasitic).resolveAll(Seq(ok, fail))
     urls("Multikino Stary Browar") shouldBe "https://www.filmweb.pl/showtimes/Pozna%C5%84/Multikino+Stary+Browar-633"
     urls.keySet should not contain "Kino Tatry"
   }

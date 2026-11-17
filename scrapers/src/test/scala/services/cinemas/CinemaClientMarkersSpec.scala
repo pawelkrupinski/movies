@@ -70,7 +70,7 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   "source URLs" should "give a Filmweb-backed venue its /cinema/-<id> fallback link" in {
     // The PURE catalog map carries the no-network `/cinema/-<id>` fallback; the
     // worker upgrades it to the canonical `/showtimes/<City>/<Name>-<id>` at boot
-    // (FilmwebShowtimesClient.resolveAll, covered in FilmwebShowtimesClientSpec).
+    // (SourceUrlResolution, covered in FilmwebShowtimesClientSpec).
     sourceUrls("Kino Zachęta") shouldBe "https://www.filmweb.pl/cinema/-2405"
   }
 

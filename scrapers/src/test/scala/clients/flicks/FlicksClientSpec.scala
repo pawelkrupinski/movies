@@ -1,5 +1,6 @@
 package clients.flicks
 
+import services.cinemas.common.EmptyListing
 import models.UkRoster
 import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
@@ -218,7 +219,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "planSchedule" should "say the source listed no schedule for a closed drive-in's page" in {
     val plan = planOf(closedDriveInPage)
     plan.keys shouldBe empty
-    plan.noScheduleListed shouldBe true
+    plan.emptyListing shouldBe EmptyListing.NoScheduleListed
   }
 
   it should "vouch for nothing when the timetable block is bare — no tabs, but no notice either" in {
@@ -226,7 +227,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     FlicksClient.hasTimetable(bare) shouldBe true
     val plan = planOf(bare)
     plan.keys shouldBe empty
-    plan.noScheduleListed shouldBe false
+    plan.emptyListing shouldBe EmptyListing.Unvouched
   }
 
   // A parser break must still be caught: a page that is not the programme page still throws,
@@ -240,7 +241,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val withDays = new FlicksClient(new ScriptedByUrlHttpFetch(_ => programmePage),
       "odeon-cinema-norwich", UkRoster("OdeonNorwich"), Uk, detailHttp = noFilmPages, today = LocalDate.of(2026, 7, 11)).planSchedule()
     withDays.keys should not be empty
-    withDays.noScheduleListed shouldBe false
+    withDays.emptyListing shouldBe EmptyListing.Unvouched
   }
 
   // ── chunked scrape: one chunk per day, one AJAX call each ─────────────────

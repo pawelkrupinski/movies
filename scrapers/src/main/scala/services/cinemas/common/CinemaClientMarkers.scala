@@ -41,28 +41,17 @@ object CinemaClientMarkers {
       sourceUrl.map(u => ServiceTags.UrlTagPrefix + u) ++
       (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
-  /** The raw scraper's client class as the marker label. For the multi-venue
-   *  chains this is the per-venue adapter (`CinemaCityScraper`); for a venue read
-   *  off several listings ([[MultiListingScraper]]) it is the client reading them
-   *  (`BiletynaClient` for Końskie's two halls), not the combinator; for
-   *  everything else it's the client itself (`FilmwebShowtimesClient`,
-   *  `RialtoClient`, …). */
-  def clientOf(scraper: CinemaScraper): String = scraper match {
-    case venue: MultiListingScraper => clientOf(venue.listings.head)
-    case single                     => single.getClass.getSimpleName
-  }
-
   /** `cinema displayName -> "<kind>:<ClientClass>"`, derived from the raw
    *  (unwrapped) scrapers. Reusability is counted over `scrapers`, so pass the
    *  full catalog set. A cinema with more than one scraper keeps the marker of
    *  its first (catalog order). */
   def markers(scrapers: Seq[CinemaScraper]): Map[String, String] = {
-    val counts = scrapers.groupBy(clientOf).view.mapValues(_.size).toMap
+    val counts = scrapers.groupBy(_.clientName).view.mapValues(_.size).toMap
     scrapers.foldLeft(Map.empty[String, String]) { (acc, s) =>
       val name = s.cinema.displayName
       if (acc.contains(name)) acc
       else {
-        val client = clientOf(s)
+        val client = s.clientName
         val kind   = if (counts.getOrElse(client, 0) > 1) SharedKind else CustomKind
         acc + (name -> s"$kind:$client")
       }

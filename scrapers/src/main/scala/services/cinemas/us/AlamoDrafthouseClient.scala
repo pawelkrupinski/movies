@@ -1,7 +1,7 @@
 package services.cinemas.us
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
@@ -84,7 +84,7 @@ class AlamoDrafthouseClient(
 
   /** A national chain fed by one central schedule service, so the per-cinema
    *  aggregator fallback shouldn't shadow it (see `FallbackEligibility`). */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/theater/$venueSlug")
 

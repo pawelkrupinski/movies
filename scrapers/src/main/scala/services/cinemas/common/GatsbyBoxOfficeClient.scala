@@ -81,7 +81,7 @@ class GatsbyBoxOfficeClient(
   /** Both brands are national chains fed by one central box-office backend, so
    *  the Filmweb per-cinema fallback shouldn't shadow them (see
    *  `FallbackEligibility`). */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   override def sourceUrl: Option[String] = venuePath.map(p => s"$baseUrl$p")
   // The venue path is optional; the platform's own theatre id always identifies it.

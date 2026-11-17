@@ -1,7 +1,7 @@
 package services.cinemas.es
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -26,7 +26,7 @@ class ArtesieteClient(http: HttpFetch, pageUrl: String, override val cinema: Cin
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
 
   /** A chain's own box office, not a single independent venue. */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   override def sourceUrl: Option[String] = Some(pageUrl)
 

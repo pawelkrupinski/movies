@@ -54,7 +54,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
 
   it should "mark a partial listing so a replay knows not to trust it as complete" in {
     val archive = new InMemoryScrapeArchiveRepository
-    runnerWith(archive).run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")), listingIsComplete = false))
+    runnerWith(archive).run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")), listingStructure = ListingStructure.Partial))
 
     archive.find(Multikino).getOrElse(fail("nothing archived"))
       .lastSuccess.map(_.listingComplete) shouldBe Some(false)
@@ -66,7 +66,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
     val archive = new InMemoryScrapeArchiveRepository
     val runner  = runnerWith(archive)
     runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune"))))
-    val vouched = PreScrapedCinemaScraper.of(new StubCinemaScraper(Multikino), () => Seq.empty, noScheduleListed = true)
+    val vouched = PreScrapedCinemaScraper.of(new StubCinemaScraper(Multikino), () => Seq.empty, emptyListing = EmptyListing.NoScheduleListed)
     runner.run(new UptimeRecordingScraper(vouched, new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned))
 
     archive.find(Multikino).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)

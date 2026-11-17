@@ -95,7 +95,7 @@ class ListingReadsSpec extends AnyFlatSpec with Matchers {
     val told = scala.collection.mutable.ListBuffer.empty[(models.Cinema, ListingCompleteness)]
     val runner = new CinemaScrapeRunner(DiscardingScrapeSink, tools.SpecClock.Pinned, completeness = (cinema, verdict) => { told += cinema -> verdict; () })
     runner.run(new StubCinemaScraper(Multikino, { ListingReads.pageFailed(down); Seq(film("Dune")) }))
-    runner.run(new StubCinemaScraper(KinoMuza, Seq(film("Anora")), listingIsComplete = false))
+    runner.run(new StubCinemaScraper(KinoMuza, Seq(film("Anora")), listingStructure = ListingStructure.Partial))
     runner.run(new StubCinemaScraper(models.KinoApollo, Seq(film("Alien"))))
     told.toSeq shouldBe Seq(Multikino -> ListingCompleteness.PageFailed, KinoMuza -> ListingCompleteness.ChunkIncomplete,
       models.KinoApollo -> ListingCompleteness.Complete)

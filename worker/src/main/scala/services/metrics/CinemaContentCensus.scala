@@ -44,7 +44,7 @@ import scala.jdk.CollectionConverters._
  *     client-wide parser break takes (one skin change, every venue on it). A venue
  *     whose newest scrape was its own source AFFIRMATIVELY listing no schedule (a
  *     page that parsed and says it has nothing on — see
- *     `CinemaScraper.noScheduleListed`) is left out: 17 US drive-ins closing for
+ *     `CinemaScraper.emptyListing`) is left out: 17 US drive-ins closing for
  *     the season held `CinemaContentStaleVenuesGrowing` firing for 44 hours
  *     (2026-09-27..29). A parser break still counts, because it throws or comes
  *     back empty with nothing vouching for it.

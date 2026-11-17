@@ -4,16 +4,15 @@ import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
 
 import models._
-import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
+import tools.{HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ListingFeed, ListingPages, ScraperParse, SourceUrlResolving}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalTime}
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Try}
 
 /**
@@ -58,13 +57,15 @@ class FilmwebShowtimesClient(
   override val cinema: Cinema,
   // How long the seances page may take before it counts as failed.
   pageTimeout: FiniteDuration = 1.minute
-) extends CinemaScraper {
+) extends CinemaScraper with SourceUrlResolving {
 
   import FilmwebShowtimesClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
 
-  override def readsFilmwebListing: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Filmweb
+
+  override def sourceUrlResolving: Option[SourceUrlResolving] = Some(this)
 
   // The browser-renderable public page is the canonical
   // `/showtimes/<City>/<Name>-<id>`, resolved at boot from `/info` by
@@ -175,7 +176,7 @@ class FilmwebShowtimesClient(
     }
 }
 
-object FilmwebShowtimesClient extends play.api.Logging {
+object FilmwebShowtimesClient {
   private val ApiBase     = "https://www.filmweb.pl/api/v1"
   private val PosterBase  = "https://fwcdn.pl/fpo"
 
@@ -203,24 +204,6 @@ object FilmwebShowtimesClient extends play.api.Logging {
     s"https://www.filmweb.pl/showtimes/${enc(city)}/${enc(name)}-$cinemaId"
   }
 
-  /** Resolve the canonical /uptime link for every Filmweb venue among `scrapers`, in
-   *  parallel and tolerant — a venue whose `/info` fails is simply absent (the
-   *  caller keeps its `/cinema/-<id>` fallback). Bounded concurrency keeps us
-   *  well under Filmweb's soft limits; a 60s overall cap stops a slow/down
-   *  Filmweb from stalling worker boot (the unresolved venues fall back). */
-  def resolveAll(scrapers: Seq[CinemaScraper], maxConcurrent: Int = 5): Map[String, String] = {
-    val clients = scrapers.collect { case client: FilmwebShowtimesClient => client }
-    if (clients.isEmpty) return Map.empty
-    val executionContext = DaemonExecutors.boundedEC("filmweb-source-urls", maxConcurrent)
-    try {
-      val futures = clients.map(c => Future(c.cinema.displayName -> c.resolveSourceUrl())(using executionContext))
-      val pairs   = Try(Await.result(Future.sequence(futures)(using implicitly, executionContext), 60.seconds))
-        .getOrElse { logger.warn("filmweb source-url resolve timed out; using fallbacks"); Seq.empty }
-      val resolved = pairs.collect { case (name, Some(url)) => name -> url }.toMap
-      logger.debug(s"filmweb source URLs: resolved ${resolved.size}/${clients.size} canonical links")
-      resolved
-    } finally executionContext.shutdown()
-  }
   private val HourPat     = raw"""^${ScraperParse.ClockPartsDotted}$$""".r
 
   /** Language-version flags Filmweb sets on a seance, mapped to the project's

@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, PreScrapedCinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, ListingStructure, PreScrapedCinemaScraper}
 
 import java.time.Clock
 
@@ -59,7 +59,7 @@ class ScrapeChunkReduceHandler(
         try {
           // …and not whole either when a read inside the plan (`markers`) or a chunk failed.
           val readsComplete = markers.isEmpty && partialSlices == 0
-          publishScrape(PreScrapedCinemaScraper.of(scraper, () => movies, listingComplete = missing.isEmpty && readsComplete))
+          publishScrape(PreScrapedCinemaScraper.of(scraper, () => movies, structure = ListingStructure.wholeWhen(missing.isEmpty && readsComplete)))
           val horizon = VenueScrapeCadence.remainingHorizonOf(scraper.cinema, movies, clock)
           scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema), Some(horizon))
           store.completeRun(cinema, runId)

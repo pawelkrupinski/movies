@@ -2,7 +2,7 @@ package services.cinemas.us
 
 import models.{Cinema, CinemaMovie, RegalChain, Source}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome,
-  FilmDetail, ScrapeHorizon}
+  FilmDetail, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
@@ -73,7 +73,7 @@ class RegalClient(
   private val batch: Seq[String] = RegalVenues.batchFor(theatreCode)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   /** The venue's public page. Regal's canonical URL is
    *  `/theatres/<slug>-<code>` and the slug is NOT derivable from the theatre

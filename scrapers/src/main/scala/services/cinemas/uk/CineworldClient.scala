@@ -3,7 +3,7 @@ package services.cinemas.uk
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient, ListingFeed}
 import tools.HttpFetch
 
 import java.time.LocalDate
@@ -80,7 +80,7 @@ class CineworldClient(
   /** A national chain fed by one central platform, so the Filmweb per-cinema
    *  fallback shouldn't shadow it (see `FallbackEligibility`) — unchanged from
    *  the old client. */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   def fetch(): Seq[CinemaMovie] = listing.fetch()
 

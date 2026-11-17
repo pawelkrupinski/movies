@@ -18,23 +18,23 @@ import models.{Cinema, CinemaMovie}
 class PreScrapedCinemaScraper(
   standsFor: CinemaScraper,
   result:    () => Seq[CinemaMovie],
-  // False when the chunked run this was reduced from was missing chunks — see
-  // `CinemaScraper.listingIsComplete`.
-  listingComplete: Boolean = true,
-  // True when the plan this stands for was the source listing no schedule — see
-  // `CinemaScraper.noScheduleListed`.
-  noSchedule: Boolean = false
+  // Partial when the chunked run this was reduced from was missing chunks — see
+  // `CinemaScraper.listingStructure`.
+  structure: ListingStructure = ListingStructure.Whole,
+  // NoScheduleListed when the plan this stands for was the source listing no schedule — see
+  // `CinemaScraper.emptyListing`.
+  empty: EmptyListing = EmptyListing.Unvouched
 ) extends DelegatingCinemaScraper(standsFor) {
   def fetch(): Seq[CinemaMovie] = result()
-  override def listingIsComplete: Boolean = listingComplete
-  override def noScheduleListed: Boolean  = noSchedule
+  override def listingStructure: ListingStructure = structure
+  override def emptyListing: EmptyListing = empty
 }
 
 object PreScrapedCinemaScraper {
   /** `result`, standing in for the live scrape of `scraper`. */
-  def of(scraper: CinemaScraper, result: () => Seq[CinemaMovie], listingComplete: Boolean = true,
-         noScheduleListed: Boolean = false): PreScrapedCinemaScraper =
-    new PreScrapedCinemaScraper(scraper, result, listingComplete, noScheduleListed)
+  def of(scraper: CinemaScraper, result: () => Seq[CinemaMovie], structure: ListingStructure = ListingStructure.Whole,
+         emptyListing: EmptyListing = EmptyListing.Unvouched): PreScrapedCinemaScraper =
+    new PreScrapedCinemaScraper(scraper, result, structure, emptyListing)
 
   /** `movies`, a whole listing of `cinema` read from no live source — an archived
    *  corpus replayed into the pipeline. It has no hosts, source or chain identity. */

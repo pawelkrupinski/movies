@@ -131,7 +131,7 @@ object CopiedFeedDetector {
 
   /** The venues among `scrapers` read through a client [[KnownToCopy]]. */
   def watchedVenues(scrapers: Seq[services.cinemas.common.CinemaScraper]): Set[Cinema] =
-    scrapers.filter(s => KnownToCopy(services.cinemas.common.CinemaClientMarkers.clientOf(s))).map(_.cinema).toSet
+    scrapers.filter(s => KnownToCopy(s.clientName)).map(_.cinema).toSet
 
   /** How long after boot the seed reads the archive: past the take-up that settles a US boot. */
   val SeedDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")

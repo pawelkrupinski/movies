@@ -1,5 +1,6 @@
 package services.cinemas
 
+import services.cinemas.common.ListingFeed
 import clients.tools.ScriptedByUrlHttpFetch
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,11 +14,11 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 
   private val noHttp: HttpFetch = new ScriptedByUrlHttpFetch(_ => "")
 
-  "CinemaScraper.chain" should "be true for the chain clients and false by default" in {
-    new MultikinoClient(noHttp, titles = titleNormalizer).chain                                                shouldBe true
-    new HeliosClient(titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).chain                                                         shouldBe true
-    new CinemaCityScraper(new CinemaCityClient(noHttp, titles = titleNormalizer), "1907", Multikino).chain     shouldBe true
-    ScriptedCinemaScraper(List(Right(Seq.empty))).chain                              shouldBe false
+  "CinemaScraper.listingFeed" should "be a chain's for the chain clients and the venue's own source by default" in {
+    new MultikinoClient(noHttp, titles = titleNormalizer).listingFeed                                                shouldBe ListingFeed.Chain
+    new HeliosClient(titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).listingFeed                                                         shouldBe ListingFeed.Chain
+    new CinemaCityScraper(new CinemaCityClient(noHttp, titles = titleNormalizer), "1907", Multikino).listingFeed     shouldBe ListingFeed.Chain
+    ScriptedCinemaScraper(List(Right(Seq.empty))).listingFeed                              shouldBe ListingFeed.OwnSource
   }
 
   "FallbackEligibility" should "exclude chain scrapers" in {
@@ -32,7 +33,7 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 
   it should "exclude a Filmweb-fed primary seen through a decorator (its listing source is forwarded, not its class)" in {
     val decorated = new RetryingCinemaScraper(new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino))
-    decorated.readsFilmwebListing shouldBe true
+    decorated.listingFeed shouldBe ListingFeed.Filmweb
     FallbackEligibility.eligible(decorated) shouldBe false
   }
 

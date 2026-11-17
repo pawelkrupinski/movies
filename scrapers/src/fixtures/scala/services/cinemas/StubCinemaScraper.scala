@@ -1,5 +1,6 @@
 package services.cinemas
 
+import services.cinemas.common.ListingStructure
 import models.{Cinema, CinemaMovie, Multikino}
 import services.cinemas.common.CinemaScraper
 
@@ -17,7 +18,7 @@ class StubCinemaScraper(
   val cinema:                     Cinema = Multikino,
   listing:                        => Seq[CinemaMovie] = Seq.empty,
   val scrapeHosts:                Set[String] = Set.empty,
-  override val listingIsComplete: Boolean = true,
+  override val listingStructure: ListingStructure = ListingStructure.Whole,
   override val sourceUrl:         Option[String] = None
 ) extends CinemaScraper {
   private val fetched = new AtomicInteger(0)

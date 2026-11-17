@@ -1,7 +1,7 @@
 package services.cinemas.es
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
@@ -42,7 +42,7 @@ class TaquillaClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
   /** A chain multiplex read through an aggregator: chain-run, not independent. */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   override def sourceUrl: Option[String] = Some(s"$BaseUrl${venue.path}")
 

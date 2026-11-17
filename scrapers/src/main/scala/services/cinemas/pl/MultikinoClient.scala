@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Multikino}
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingFeed}
 import services.movies.TitleNormalizer
 
 /**
@@ -40,7 +40,7 @@ class MultikinoClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/cinemas/$cinemaId")
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
   override def chainVenueId: Option[String] = Some(cinemaId)
 
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema, titles)

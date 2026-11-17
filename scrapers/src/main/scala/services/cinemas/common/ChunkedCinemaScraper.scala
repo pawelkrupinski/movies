@@ -5,14 +5,14 @@ import models.{CinemaMovie, Showtime}
 /** One chunked scrape's plan: the chunk keys, and — only when there are none — whether the
  *  source said so itself. Built through [[ChunkPlan.of]] or [[ChunkPlan.NoScheduleListed]], so
  *  a plan with keys can never claim the venue has nothing on. */
-final case class ChunkPlan private (keys: Seq[String], noScheduleListed: Boolean)
+final case class ChunkPlan private (keys: Seq[String], emptyListing: EmptyListing)
 
 object ChunkPlan {
   /** Keys, empty or not, that vouch for nothing beyond themselves. */
-  def of(keys: Seq[String]): ChunkPlan = ChunkPlan(keys, noScheduleListed = false)
+  def of(keys: Seq[String]): ChunkPlan = ChunkPlan(keys, EmptyListing.Unvouched)
 
   /** The venue's page parsed and says it has no schedule. */
-  val NoScheduleListed: ChunkPlan = ChunkPlan(Seq.empty, noScheduleListed = true)
+  val NoScheduleListed: ChunkPlan = ChunkPlan(Seq.empty, EmptyListing.NoScheduleListed)
 }
 
 /**
@@ -37,7 +37,7 @@ trait ChunkedCinemaScraper extends CinemaScraper {
   def planChunks(): Seq[String]
 
   /** [[planChunks]], and whether an empty plan is the source affirmatively listing no
-   *  schedule (see `CinemaScraper.noScheduleListed`). What the production planner calls.
+   *  schedule (see `CinemaScraper.emptyListing`). What the production planner calls.
    *  The default vouches for nothing; override only where the page itself says it has
    *  nothing on, so a drifted page cannot pass for a closed venue. */
   def planSchedule(): ChunkPlan = ChunkPlan.of(planChunks())
@@ -47,6 +47,10 @@ trait ChunkedCinemaScraper extends CinemaScraper {
    *  throw reschedules just this chunk's task (the per-chunk retry), so don't
    *  swallow a failure you'd want retried. */
   def fetchChunk(key: String): Seq[CinemaMovie]
+
+  /** This scraper as a [[PagedChunkScraper]], if each chunk is one fetched page — what lets `ScrapeChunkHandler`
+   *  skip parsing a page it parsed before. */
+  def pagedChunks: Option[PagedChunkScraper] = None
 
   /** Aggregate every chunk's slice into the cinema's full listing. The default
    *  merges films by identity (`filmUrl`, else title) and unions their
@@ -64,6 +68,7 @@ trait ChunkedCinemaScraper extends CinemaScraper {
  *  [[services.tasks.ChunkPageMemo]]). `pageParser` names what [[parseChunkPage]] makes of a page — it
  *  must change with any change to that, or a remembered parse outlives the code that made it. */
 trait PagedChunkScraper extends ChunkedCinemaScraper {
+  final override def pagedChunks: Option[PagedChunkScraper] = Some(this)
   /** The chunk's page. Throws as [[fetchChunk]] does. */
   def fetchChunkPage(key: String): String
   /** What a page of chunk `key` holds. */

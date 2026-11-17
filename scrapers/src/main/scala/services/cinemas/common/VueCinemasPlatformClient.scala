@@ -61,7 +61,7 @@ class VueCinemasPlatformClient(
 
   /** Vue and CinemaxX are chains fed by their own API — excluded from the
    *  Filmweb per-cinema fallback like Multikino / Cinema City / Helios. */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   /** The venue's public page is `{base}/cinema/<slug>/whats-on`, and the slug
    *  lives only in the roster endpoint we deliberately don't fetch at scrape

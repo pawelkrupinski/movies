@@ -331,7 +331,7 @@ case class ScrapeAttempt(
   films:           Seq[CinemaMovie],
   error:           Option[String] = None,
   // The scraper's source affirmatively said there is no schedule (see
-  // `CinemaScraper.noScheduleListed`). Read only when the attempt is EMPTY.
+  // `CinemaScraper.emptyListing`). Read only when the attempt is EMPTY.
   noScheduleListed: Boolean = false,
   // The scraper's `CinemaScraper.sourceKey`, kept on a barren marker ([[BarrenAttempt.sourceKey]]).
   sourceKey:       Option[String] = None

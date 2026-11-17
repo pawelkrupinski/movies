@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, FilmDetail, ListingFeed}
 
 /**
  * Adapter for `CinemaCityClient`, whose `fetch(cinemaId, cinema)` serves
@@ -49,6 +49,6 @@ class CinemaCityScraper(
   override def detailTarget: Source = CinemaCityChain
   override def enrichmentServiceOverride: Option[String] = Some("Cinema City Enrichment")
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
   override def chainVenueId: Option[String] = Some(cinemaId)
 }

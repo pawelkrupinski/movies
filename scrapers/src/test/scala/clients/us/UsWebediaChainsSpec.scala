@@ -1,5 +1,6 @@
 package clients.us
 
+import services.cinemas.common.ListingFeed
 import clients.tools.FakeHttpFetch
 import models.{Cinema, CinemaMovie, UsRoster}
 import org.scalatest.OptionValues
@@ -242,8 +243,8 @@ class UsWebediaChainsSpec extends AnyFlatSpec with Matchers with OptionValues {
     // back-offs independent — and why each needs its own HostPolicy row.
     showcase().scrapeHosts shouldBe Set("www.showcasecinemas.com")
     landmark().scrapeHosts shouldBe Set("www.landmarktheatres.com")
-    showcase().chain shouldBe true
-    landmark().chain shouldBe true
+    showcase().listingFeed shouldBe ListingFeed.Chain
+    landmark().listingFeed shouldBe ListingFeed.Chain
   }
 
   it should "not collide with the UK Showcase brand's host" in {

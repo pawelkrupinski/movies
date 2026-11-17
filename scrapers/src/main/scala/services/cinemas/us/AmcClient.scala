@@ -1,7 +1,7 @@
 package services.cinemas.us
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
@@ -95,7 +95,7 @@ class AmcClient(
   import AmcClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(SiteUrl, GraphUrl)
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   /** The venue's public page — the same URL `planChunks` reads its day list
    *  from, so the /uptime link and the scrape cannot drift. */

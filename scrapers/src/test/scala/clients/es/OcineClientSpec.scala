@@ -1,5 +1,6 @@
 package clients.es
 
+import services.cinemas.common.ListingFeed
 import clients.tools.FakeHttpFetch
 import models.{Cinema, CinemaMovie, SpanishRoster}
 import org.scalatest.OptionValues
@@ -147,7 +148,7 @@ class OcineClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     client.scrapeHosts shouldBe Set("tickets.ocinegirona.es")
     client.sourceUrl.value shouldBe "https://tickets.ocinegirona.es/"
     client.chainVenueId.value shouldBe "tickets.ocinegirona.es"
-    client.chain shouldBe true
+    client.listingFeed shouldBe ListingFeed.Chain
   }
 
   // ── pure rules, for combinations the capture does not hold ─────────────────

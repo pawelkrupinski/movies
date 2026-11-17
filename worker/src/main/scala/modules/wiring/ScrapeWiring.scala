@@ -7,7 +7,7 @@ import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.de.GermanFeed
-import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
+import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, ListingFeed, RetryingCinemaScraper, SourceFallbackScraper, SourceUrlResolution, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
@@ -123,9 +123,12 @@ trait ScrapeWiring { self: WorkerWiring =>
   // browser-renderable `/showtimes/<City>/<Name>-<id>` page, resolved once from
   // Filmweb's /info at boot (city + name aren't in our model); tolerant, so a
   // venue whose resolve fails keeps the fallback.
-  protected lazy val sourceUrls: Map[String, String] = {
-    CinemaClientMarkers.sourceUrls(countryScrapers) ++ FilmwebShowtimesClient.resolveAll(countryScrapers)
-  }
+  protected lazy val sourceUrls: Map[String, String] =
+    CinemaClientMarkers.sourceUrls(countryScrapers) ++ new SourceUrlResolution(sourceUrlPool).resolveAll(countryScrapers)
+
+  // Bounded: five at a time keeps the boot's canonical-link resolve well under Filmweb's soft limits.
+  private lazy val sourceUrlPool =
+    managedResources.executor("source urls")(DaemonExecutors.boundedEC("source-urls", 5))
 
   // Fired on each ENTER / PROBE_FAILED / RECOVERED / UNCOVERED transition: alerts on the
   // page-worthy ones (FallbackAlert: a spell a day old, its recovery, and UNCOVERED) when
@@ -144,7 +147,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // going empty means migrate it to an own-site scraper).
   lazy val filmwebOnlyCinemas: Set[String] =
     countryScrapers.groupBy(_.cinema)
-      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.readsFilmwebListing) =>
+      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.listingFeed == ListingFeed.Filmweb) =>
         c.displayName }
       .toSet
 

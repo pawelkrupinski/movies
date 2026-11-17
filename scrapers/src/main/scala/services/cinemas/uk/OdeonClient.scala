@@ -2,7 +2,7 @@ package services.cinemas.uk
 
 import tools.{HttpFetch, HttpRead, HttpStatusException}
 import models._
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 
 import java.time.LocalDate
 
@@ -50,7 +50,7 @@ class OdeonClient(
 
   import OdeonClient._
 
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
 

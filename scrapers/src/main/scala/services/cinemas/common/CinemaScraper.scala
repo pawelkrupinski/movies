@@ -49,18 +49,11 @@ trait CinemaScraper {
    *  no-retry attempt for every cinema. */
   def maxFetchAttempts: Int = 3
 
-  /** Whether this scraper is a *chain* (Cinema City, Helios, Multikino) rather
-   *  than a single independent venue. Chains are excluded from the Filmweb
-   *  fallback (`FallbackEligibility`): they're large, reliably-fed networks
-   *  whose own API is the source of truth, and Filmweb's per-cinema feed
-   *  doesn't model them venue-for-venue. Defaults to false — every ordinary
-   *  single-venue scraper is fallback-eligible. */
-  def chain: Boolean = false
-
-  /** Whether the listing this scraper reads is Filmweb's (the venue's own site, ticketing system or chain API
-   *  otherwise): a Filmweb-fed venue gets no Filmweb fallback (`FallbackEligibility`), and one fed only by Filmweb is a
-   *  migration candidate (`ScrapeWiring.filmwebOnlyCinemas`). */
-  def readsFilmwebListing: Boolean = false
+  /** What feeds the listing this scraper reads — the venue's own source, a chain's network or Filmweb
+   *  ([[ListingFeed]]). Only a venue fed by its own source gets the Filmweb fallback (`FallbackEligibility`), and
+   *  one fed only by Filmweb is a migration candidate (`ScrapeWiring.filmwebOnlyCinemas`). Defaults to
+   *  [[ListingFeed.OwnSource]] — every ordinary single-venue scraper. */
+  def listingFeed: ListingFeed = ListingFeed.OwnSource
 
   /** The [[ChunkedCinemaScraper]] this venue is scraped through, if it is scraped in chunks (`ChunkScrapePlanner`'s
    *  fan-out, each chunk its own bounded task) rather than in one `fetch()`: a chunked scraper itself, and through a
@@ -69,22 +62,32 @@ trait CinemaScraper {
   def chunkedScraper: Option[ChunkedCinemaScraper] = None
 
   /** Whether `fetch()` returned the venue's WHOLE listing as far as the scraper's own
-   *  structure knows — false for a chunked scrape reduced from some of its date-chunks. Only
-   *  the shared wrappers in this package answer it; a client never does
+   *  structure knows — [[ListingStructure.Partial]] for a chunked scrape reduced from some of its
+   *  date-chunks. Only the shared wrappers in this package answer it; a client never does
    *  (`ListingCompletenessSpec`). A page that failed to read makes a listing incomplete on top
    *  of this, decided from the read outcomes ([[ListingReads]], [[Scraped.complete]]). The
    *  cache skips its prune on a short listing, so a film that merely wasn't looked at is not
    *  mistaken for one that stopped screening. */
-  def listingIsComplete: Boolean = true
+  def listingStructure: ListingStructure = ListingStructure.Whole
 
-  /** Whether an EMPTY `fetch()` is the venue's own source affirmatively listing no
-   *  schedule — its page parsed, and says it has nothing on (a drive-in closed for the
-   *  season) — rather than an empty result nothing vouches for, which is just as often
-   *  a parser that stopped matching. True only where the client can tell the two apart
-   *  (a chunked plan answering [[ChunkPlan.NoScheduleListed]]). Archived with the
-   *  attempt, so the content census can leave a closed venue out of its stale count
-   *  while still counting a silent parser break. */
-  def noScheduleListed: Boolean = false
+  /** What an EMPTY `fetch()` means: [[EmptyListing.NoScheduleListed]] when it is the venue's own
+   *  source affirmatively listing no schedule — its page parsed, and says it has nothing on (a
+   *  drive-in closed for the season) — rather than an empty result nothing vouches for, which is
+   *  just as often a parser that stopped matching. Vouched only where the client can tell the two
+   *  apart (a chunked plan answering [[ChunkPlan.NoScheduleListed]]). Archived with the attempt,
+   *  so the content census can leave a closed venue out of its stale count while still counting a
+   *  silent parser break. */
+  def emptyListing: EmptyListing = EmptyListing.Unvouched
+
+  /** The client a venue is scraped by, as the /uptime marker names it (`CinemaClientMarkers`): the scraper's own
+   *  class by default (`FilmwebShowtimesClient`, `RialtoClient`, the per-venue adapter `CinemaCityScraper` for a
+   *  multi-venue chain); a venue read off several listings ([[MultiListingScraper]]) names the client reading them,
+   *  and a decorator its delegate's. */
+  def clientName: String = getClass.getSimpleName
+
+  /** This scraper's [[SourceUrlResolving]] capability, if its canonical public page can only be resolved over the
+   *  network (a Filmweb venue's `/showtimes/<City>/<Name>-<id>`). Read at boot by [[SourceUrlResolution]]. */
+  def sourceUrlResolving: Option[SourceUrlResolving] = None
 
   /** A public, human-facing page for the venue we scrape — its own repertoire
    *  page for a bespoke own-site client, the Filmweb showtimes page for a

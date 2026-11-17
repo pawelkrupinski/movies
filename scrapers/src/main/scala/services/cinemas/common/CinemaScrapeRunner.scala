@@ -48,7 +48,7 @@ class CinemaScrapeRunner(
     // `fetch()` is the live scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
     // the already-reduced chunks.
     // Complete only when the scraper's structure says so AND every page it read answered.
-    val verdict  = ListingCompleteness.of(scraper.listingIsComplete, readsComplete)
+    val verdict  = ListingCompleteness.of(scraper.listingStructure, readsComplete)
     val complete = verdict == ListingCompleteness.Complete
     completeness.landed(cinema, verdict)
     try sink.recordCinemaScrape(cinema, movies, complete, scraper.sourceKey, viaFallback)
@@ -67,7 +67,7 @@ class CinemaScrapeRunner(
       listingComplete  = listingComplete,
       films            = movies,
       error            = error,
-      noScheduleListed = scraper.noScheduleListed,
+      noScheduleListed = scraper.emptyListing == EmptyListing.NoScheduleListed,
       sourceKey        = scraper.sourceKey
     ))
 

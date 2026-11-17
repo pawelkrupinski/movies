@@ -6,7 +6,7 @@ package services.cinemas.common
  *
  * A scraper qualifies when it's a non-chain venue whose primary feed ISN'T
  * already Filmweb:
- *   - Chains (Cinema City / Helios / Multikino, flagged via `CinemaScraper.chain`)
+ *   - Chains (Cinema City / Helios / Multikino, `ListingFeed.Chain`)
  *     are excluded — their own networks are the source of truth, are reliably
  *     fed, and Filmweb doesn't model them venue-for-venue.
  *   - A primary that reads Filmweb's listing is excluded too — falling a Filmweb
@@ -18,5 +18,5 @@ package services.cinemas.common
  */
 object FallbackEligibility {
   def eligible(s: CinemaScraper): Boolean =
-    !s.chain && !s.readsFilmwebListing
+    s.listingFeed == ListingFeed.OwnSource
 }

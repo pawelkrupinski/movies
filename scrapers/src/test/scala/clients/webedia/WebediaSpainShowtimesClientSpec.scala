@@ -1,5 +1,6 @@
 package clients.webedia
 
+import services.cinemas.common.EmptyListing
 import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import models.SpanishCinema
 import org.scalatest.OptionValues
@@ -311,20 +312,20 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   "planSchedule" should "say the source listed no schedule for a venue page advertising no day" in {
     val plan = clientOver(new ScriptedByUrlHttpFetch(_ => noDaysPage)).planSchedule()
     plan.keys shouldBe empty
-    plan.noScheduleListed shouldBe true
+    plan.emptyListing shouldBe EmptyListing.NoScheduleListed
   }
 
   it should "vouch for nothing when the page advertises days, only none inside the horizon" in {
     val farOut = new WebediaShowtimesClient(new ScriptedByUrlHttpFetch(_ => venuePage), WebediaMarket.Spain, "E0291", venue,
       today = LocalDate.of(2027, 1, 1)).planSchedule()
     farOut.keys shouldBe empty
-    farOut.noScheduleListed shouldBe false
+    farOut.emptyListing shouldBe EmptyListing.Unvouched
   }
 
   it should "not claim no schedule for a venue with days" in {
     val plan = clientOver(new ScriptedByUrlHttpFetch(_ => venuePage)).planSchedule()
     plan.keys should not be empty
-    plan.noScheduleListed shouldBe false
+    plan.emptyListing shouldBe EmptyListing.Unvouched
   }
 
   it should "still throw for a page that lost the days attribute" in {

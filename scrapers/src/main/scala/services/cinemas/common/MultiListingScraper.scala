@@ -18,11 +18,12 @@ class MultiListingScraper(override val cinema: Cinema, val listings: Seq[CinemaS
 
   def scrapeHosts: Set[String] = listings.flatMap(_.scrapeHosts).toSet
   override def maxFetchAttempts: Int = listings.map(_.maxFetchAttempts).max
-  override def chain: Boolean = listings.exists(_.chain)
-  /** Filmweb's listing only when every listing is Filmweb's. */
-  override def readsFilmwebListing: Boolean = listings.forall(_.readsFilmwebListing)
-  override def listingIsComplete: Boolean = listings.forall(_.listingIsComplete)
-  override def noScheduleListed: Boolean  = listings.forall(_.noScheduleListed)
+  override def listingFeed: ListingFeed = ListingFeed.of(listings.map(_.listingFeed))
+  override def listingStructure: ListingStructure = ListingStructure.of(listings.map(_.listingStructure))
+  override def emptyListing: EmptyListing = EmptyListing.of(listings.map(_.emptyListing))
+  /** The client reading the listings (`BiletynaClient` for Końskie's two halls), not this combinator. */
+  override def clientName: String = listings.head.clientName
+  override def sourceUrlResolving: Option[SourceUrlResolving] = listings.flatMap(_.sourceUrlResolving).headOption
   override def sourceUrl: Option[String] = listings.flatMap(_.sourceUrl).headOption
   /** The listings' keys together. The roster audit reads [[listings]] to hold
    *  each one unique on its own. */

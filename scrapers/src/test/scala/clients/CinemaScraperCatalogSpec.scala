@@ -1,5 +1,6 @@
 package clients
 
+import services.cinemas.common.ListingFeed
 import clients.tools.{FailingHttpFetch, FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models._
 import org.scalatest.{LoneElement, OptionValues}
@@ -493,7 +494,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       val primary = c.all.find(_.cinema == cin).value
       primary should not be a [FlicksClient]      // moved off the aggregator…
       // …onto an own-site chain source, or an independent's own box office.
-      primary.chain shouldBe !ChainFlicksFallback.ukOwnSiteSlugs.contains(cin)
+      (primary.listingFeed == ListingFeed.Chain) shouldBe !ChainFlicksFallback.ukOwnSiteSlugs.contains(cin)
     }
   }
 

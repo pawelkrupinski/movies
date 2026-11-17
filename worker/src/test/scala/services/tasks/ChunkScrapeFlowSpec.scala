@@ -1,5 +1,6 @@
 package services.tasks
 
+import services.cinemas.common.{EmptyListing, ListingStructure}
 import models.{CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
 import services.events.TaskFinished
 import org.scalatest.matchers.should.Matchers
@@ -41,7 +42,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val published    = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val noSchedule   = mutable.ListBuffer.empty[Boolean]
     private val stack = new ChunkScrapeHarness(scraper, s => {
-      noSchedule += s.noScheduleListed
+      noSchedule += s.emptyListing == EmptyListing.NoScheduleListed
       val scraped = scala.util.Try(s.fetch())
       published += scraped.getOrElse(Seq.empty)
       if (!fallbackServes) scraped.get
@@ -448,7 +449,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val blipOnce = failingWrites("a", 1)
     val completeness = mutable.ListBuffer.empty[Boolean]
     val stack = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25))), pageFailsOnceIn = Set("a")),
-      s => { completeness += s.listingIsComplete; () }, Clock.fixed(now, ZoneOffset.UTC), blipOnce, staleAfter = stale)
+      s => { completeness += s.listingStructure == ListingStructure.Whole; () }, Clock.fixed(now, ZoneOffset.UTC), blipOnce, staleAfter = stale)
     stack.planner.plan(cinemaName) shouldBe 1
     val runId = stack.store.activeRun(cinemaName).value.runId
     val chunk = Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a"), 1)
@@ -495,7 +496,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   it should "keep a retry's whole slice when the stalled attempt it replaced lands late" in {
     val published = mutable.ListBuffer.empty[(Seq[String], Boolean)]
     val whole = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25), film("Odyseja", 25)))),
-      s => { published += ((s.fetch().map(_.movie.title).sorted, s.listingIsComplete)); () }, Clock.fixed(now, ZoneOffset.UTC), staleAfter = stale)
+      s => { published += ((s.fetch().map(_.movie.title).sorted, s.listingStructure == ListingStructure.Whole)); () }, Clock.fixed(now, ZoneOffset.UTC), staleAfter = stale)
     val stalled = whole.rescraping(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25))), pageFailsIn = Set("a")))
     whole.planner.plan(cinemaName) shouldBe 1
     val runId = whole.store.activeRun(cinemaName).value.runId

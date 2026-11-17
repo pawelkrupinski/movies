@@ -1,5 +1,6 @@
 package clients.vue
 
+import services.cinemas.common.ListingFeed
 import clients.tools.{FakeHttpFetch, FixtureFile, RequestLogHttpFetch}
 import models.UkRoster
 import org.scalatest.OptionValues
@@ -194,7 +195,7 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
   it should "declare its scrape host and count as a chain" in {
     val scraper = client(new FakeHttpFetch("vue"))
     scraper.scrapeHosts shouldBe Set("www.myvue.com")
-    scraper.chain       shouldBe true
+    scraper.listingFeed       shouldBe ListingFeed.Chain
     scraper.cinema      shouldBe UkRoster("VueCinemasIslington")
   }
 

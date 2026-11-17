@@ -1,7 +1,7 @@
 package services.cinemas.es
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, ZoneId}
@@ -52,7 +52,7 @@ class OcineClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
 
   /** A chain fed by its own box-office system, not a single independent venue. */
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
 
   /** The venue's cartelera as the public sees it — the same app the API serves. */
   override def sourceUrl: Option[String] = Some(s"$baseUrl/")

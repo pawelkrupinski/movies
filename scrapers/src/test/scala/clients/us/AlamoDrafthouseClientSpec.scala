@@ -1,5 +1,6 @@
 package clients.us
 
+import services.cinemas.common.ListingFeed
 import clients.tools.FakeHttpFetch
 import models.{CinemaMovie, UsRoster}
 import org.scalatest.OptionValues
@@ -264,6 +265,6 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
     client.scrapeHosts shouldBe Set("drafthouse.com")
     // A national chain fed by one central service: the per-cinema Filmweb
     // fallback must not shadow it.
-    client.chain shouldBe true
+    client.listingFeed shouldBe ListingFeed.Chain
   }
 }

@@ -14,7 +14,7 @@ import scala.util.matching.Regex
  * Completeness is decided from the outcome of every page the scrape read
  * (`services.cinemas.common.ListingReads`) and from the scraper's structure (a chunked
  * reduce missing chunks), in the shared wrappers alone. A client that overrode
- * `listingIsComplete`, built its own `Scraped`/`PreScrapedCinemaScraper`, or answered
+ * `listingStructure`, built its own `Scraped`/`PreScrapedCinemaScraper`, or answered
  * `fetchWithSource` itself could claim "complete" for a listing whose page failed — and the
  * cache's prune would retire the films that page held. Only the files in [[Allowlist]] —
  * the wrappers that compose completeness, each with WHY — may touch those members.
@@ -24,11 +24,11 @@ class ListingCompletenessSpec extends AnyFlatSpec with Matchers {
   private val Root = SourceTrees("scrapers/src/main/scala/services/cinemas")
 
   private val Declares: Regex =
-    """\b(?:override\s+(?:def|val|lazy\s+val)\s+listingIsComplete|override\s+def\s+fetchWithSource|PreScrapedCinemaScraper\s*[.(]|CinemaScraper\s*\.\s*Scraped\s*\(|\bScraped\s*\()""".r
+    """\b(?:override\s+(?:def|val|lazy\s+val)\s+listingStructure|override\s+def\s+fetchWithSource|PreScrapedCinemaScraper\s*[.(]|CinemaScraper\s*\.\s*Scraped\s*\(|\bScraped\s*\()""".r
 
   private val Allowlist: Map[String, String] = Map(
     Root.file("common/CinemaScraper.scala").toString ->
-      "the contract: defines listingIsComplete, Scraped and the default fetchWithSource, which reads completeness off ListingReads",
+      "the contract: defines listingStructure, Scraped and the default fetchWithSource, which reads completeness off ListingReads",
     Root.file("common/CinemaScrapeRunner.scala").toString ->
       "consumes the verdict: destructures Scraped and ANDs it with the scraper's structure; never builds one",
     Root.file("common/DelegatingCinemaScraper.scala").toString ->
@@ -61,12 +61,12 @@ class ListingCompletenessSpec extends AnyFlatSpec with Matchers {
   "The lint" should "see every way to declare completeness, and not a mention in a comment" in {
     val src =
       """class A extends CinemaScraper {
-        |  override def listingIsComplete: Boolean = true
-        |  override val listingIsComplete = true
+        |  override def listingStructure: ListingStructure = ListingStructure.Whole
+        |  override val listingStructure = ListingStructure.Whole
         |  override def fetchWithSource() = CinemaScraper.Scraped(fetch(), viaFallback = false, complete = true)
         |  val b = PreScrapedCinemaScraper.of(this, () => Nil)
-        |  // override def listingIsComplete: Boolean = true
-        |  def listingIsCompleteOfOther = other.listingIsComplete
+        |  // override def listingStructure: ListingStructure = ListingStructure.Whole
+        |  def listingStructureOfOther = other.listingStructure
         |}""".stripMargin
     declarations(src) shouldBe 5
   }

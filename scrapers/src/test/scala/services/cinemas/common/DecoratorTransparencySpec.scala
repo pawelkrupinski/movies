@@ -19,7 +19,7 @@ import java.util.concurrent.Executors
  * but `WorkerWiring.publishScrape` wraps that in a recording/fallback decorator before
  * `CinemaScrapeRunner` reads the flag, and every decorator hand-copied `cinema` +
  * `scrapeHosts` while silently inheriting `CinemaScraper`'s default for the rest. All
- * three answered `listingIsComplete = true`, so the signal never reached the cache and
+ * three answered `listingIsComplete = true` (now `listingStructure`), so the signal never reached the cache and
  * every film that only screened on a missing date was pruned as "stopped screening".
  * `chainVenueId` later shipped dropped the same way.
  *
@@ -54,6 +54,9 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     case (_: Set[?], name)          => Set(s"$name.sentinel.test")
     case (_: String, name)          => s"sentinel-$name"
     case (_: Cinema, _)             => Multikino
+    case (feed: ListingFeed, _)     => ListingFeed.values.find(_ != feed).get
+    case (s: ListingStructure, _)   => ListingStructure.values.find(_ != s).get
+    case (e: EmptyListing, _)       => EmptyListing.values.find(_ != e).get
     case (other, name) =>
       fail(s"CinemaScraper.$name answers a ${other.getClass.getName}; teach unlikeTheDefault a value of that type")
   }
@@ -74,7 +77,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     // The chunked reduce publishes its listing as a stand-in for the live scraper; only
     // whether that listing is whole, and whether its emptiness is the source saying so, are
     // its own (checked on their own below).
-    classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingIsComplete", "noScheduleListed")),
+    classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingStructure", "emptyListing")),
     // A composite rather than a decorator, but over ONE listing it is that listing — except
     // that it fetches its listings in one `fetch()`, never through the chunk fan-out.
     classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set("chunkedScraper")),
@@ -85,8 +88,9 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
   )
 
   "The CinemaScraper members under test" should "include every member a decorator has to carry" in {
-    members.map(_.getName) should contain allOf ("cinema", "scrapeHosts", "chain", "listingIsComplete",
-      "maxFetchAttempts", "sourceUrl", "sourceKey", "chainVenueId", "readsFilmwebListing", "chunkedScraper")
+    members.map(_.getName) should contain allOf ("cinema", "scrapeHosts", "listingFeed", "listingStructure",
+      "emptyListing", "maxFetchAttempts", "sourceUrl", "sourceKey", "chainVenueId", "chunkedScraper", "clientName",
+      "sourceUrlResolving")
     members.foreach(m => withClue(s"${m.getName}: ")(m.invoke(delegate) should not equal m.invoke(bare)))
   }
 
@@ -108,19 +112,19 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
   }
 
   "PreScrapedCinemaScraper" should "answer for its own listing's completeness" in {
-    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, listingComplete = false).listingIsComplete shouldBe false
-    PreScrapedCinemaScraper.of(delegate, () => Seq.empty).listingIsComplete shouldBe true
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, structure = ListingStructure.Partial).listingStructure shouldBe ListingStructure.Partial
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty).listingStructure shouldBe ListingStructure.Whole
   }
 
   it should "answer for whether its empty listing is the source listing no schedule" in {
-    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, noScheduleListed = true).noScheduleListed shouldBe true
-    PreScrapedCinemaScraper.of(delegate, () => Seq.empty).noScheduleListed shouldBe false
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, emptyListing = EmptyListing.NoScheduleListed).emptyListing shouldBe EmptyListing.NoScheduleListed
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty).emptyListing shouldBe EmptyListing.Unvouched
   }
 
   it should "reach MovieCache as a short listing once the reduce says so" in {
     // End to end over the seam that broke: the reduce's PreScraped listing, wrapped the way
     // `publishScrape` wraps it, is what the runner reads the flag off.
-    val partial = PreScrapedCinemaScraper.of(delegate, () => Seq.empty[CinemaMovie], listingComplete = false)
-    new UptimeRecordingScraper(partial, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned).listingIsComplete shouldBe false
+    val partial = PreScrapedCinemaScraper.of(delegate, () => Seq.empty[CinemaMovie], structure = ListingStructure.Partial)
+    new UptimeRecordingScraper(partial, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), clock = _root_.tools.SpecClock.Pinned).listingStructure shouldBe ListingStructure.Partial
   }
 }

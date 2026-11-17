@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, ListingReads, PagedChunkScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, ListingReads}
 import tools.{AllBackendsFailedException, CircuitOpenException, ReadOutcome}
 
 import java.time.Clock
@@ -103,8 +103,8 @@ class ScrapeChunkHandler(
    *  from the page this chunk last parsed, or when the parser has changed since: most day pages are
    *  byte-identical from one scrape to the next (75 of 80 UK and US Flicks pages two hours apart,
    *  2026-10-01), and parsing them was 7% of the US worker's CPU (JFR, same day). */
-  private def sliceOf(cinema: String, key: String, scraper: ChunkedCinemaScraper): String = scraper match {
-    case paged: PagedChunkScraper =>
+  private def sliceOf(cinema: String, key: String, scraper: ChunkedCinemaScraper): String = scraper.pagedChunks match {
+    case Some(paged) =>
       val page   = paged.fetchChunkPage(key)
       val digest = ChunkPageMemo.digest(page)
       val known  = pageMemo.recall(cinema, key)
@@ -119,7 +119,7 @@ class ScrapeChunkHandler(
           pageMemo.remember(cinema, key, ChunkPageMemo.Entry(digest, paged.pageParser, slice))
           slice
       }
-    case other => CinemaMovieJson.encode(other.fetchChunk(key))
+    case None => CinemaMovieJson.encode(scraper.fetchChunk(key))
   }
 }
 

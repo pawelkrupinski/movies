@@ -6,7 +6,7 @@ import java.util.Locale
 import tools.{HeliosFetch, HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ListingPages}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ListingPages, ListingFeed}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
 
 import java.time.format.DateTimeFormatter
@@ -34,7 +34,7 @@ class HeliosClient(
 ) extends CinemaScraper {
 
   override val cinema: Cinema = config.cinema
-  override def chain: Boolean = true
+  override def listingFeed: ListingFeed = ListingFeed.Chain
   private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   private val sourceId   = config.sourceId

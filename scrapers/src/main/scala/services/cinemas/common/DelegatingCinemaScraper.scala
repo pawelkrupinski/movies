@@ -11,11 +11,11 @@ import models.Cinema
  * WHY it is one place. Each decorator used to hand-copy `cinema` + `scrapeHosts` and
  * silently inherit `CinemaScraper`'s DEFAULT for every other member. So a field added
  * to the trait was live on the client and dead through the chain, with nothing failing:
- * `listingIsComplete` shipped exactly that way. `ScrapeChunkReduceHandler` publishes a
- * partial reduce as `PreScrapedCinemaScraper(listingComplete = false)`, but
+ * `listingIsComplete` (now `listingStructure`) shipped exactly that way. `ScrapeChunkReduceHandler` publishes a
+ * partial reduce as `PreScrapedCinemaScraper(structure = Partial)`, but
  * `WorkerWiring.publishScrape` wraps it before `CinemaScrapeRunner` reads the flag — and
  * all three wrappers answered the default `true`, so the cache never learned the listing
- * was short and pruned every film that only screened on a missing date. `chain`,
+ * was short and pruned every film that only screened on a missing date. `chain` (now `listingFeed`),
  * `maxFetchAttempts` and `sourceUrl` were in the same state and merely happened to be
  * read off the undecorated scraper at every call site.
  *
@@ -26,11 +26,12 @@ abstract class DelegatingCinemaScraper(delegate: CinemaScraper) extends CinemaSc
   val cinema: Cinema                      = delegate.cinema
   def scrapeHosts: Set[String]            = delegate.scrapeHosts
   override def maxFetchAttempts: Int      = delegate.maxFetchAttempts
-  override def chain: Boolean             = delegate.chain
-  override def readsFilmwebListing: Boolean = delegate.readsFilmwebListing
+  override def listingFeed: ListingFeed  = delegate.listingFeed
   override def chunkedScraper: Option[ChunkedCinemaScraper] = delegate.chunkedScraper
-  override def listingIsComplete: Boolean = delegate.listingIsComplete
-  override def noScheduleListed: Boolean  = delegate.noScheduleListed
+  override def listingStructure: ListingStructure = delegate.listingStructure
+  override def emptyListing: EmptyListing = delegate.emptyListing
+  override def clientName: String         = delegate.clientName
+  override def sourceUrlResolving: Option[SourceUrlResolving] = delegate.sourceUrlResolving
   override def sourceUrl: Option[String]  = delegate.sourceUrl
   override def sourceKey: Option[String]  = delegate.sourceKey
   override def chainVenueId: Option[String] = delegate.chainVenueId
