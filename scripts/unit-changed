@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# The unit tests of the modules a change touches, in this checkout's warm sbt server -- the iteration loop between
+# edits, minutes where `sbt testUnit` is ~16 (2026-11-17, warm). The selection is the pre-push hook's own
+# (`scripts/hooks/pre-push --unit-plan`, what agentctl's combined-tree verification runs): `<module>/Test/test` for each
+# module with a changed source, the worker's rest row, and the identity-row specs the paths name.
+#
+#   scripts/unit-changed [--base <ref>] [--plan]
+#
+# The paths: everything committed since the merge base with <base> (default origin/main), plus the uncommitted and the
+# untracked. --plan prints the sbt commands and runs nothing. Nothing touched under a module's sources: says so, exit 0.
+#
+# NOT the gate: a change that CLAUDE.md's table sends to `sbt testUnit` still runs it before it is reported done; this is
+# for the loop before that.
+set -uo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$here/tool-conventions.sh"
+# shellcheck disable=SC2034 # read by tool-conventions.sh's die
+TOOL_NAME=unit-changed
+
+base=origin/main plan=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --base) flag_value "$@"; base="$2"; shift 2 ;;
+        --plan) plan=1; shift ;;
+        -h|--help) usage_from_header; exit 0 ;;
+        *) usage_error "unknown argument $1" ;;
+    esac
+done
+cd "$(git rev-parse --show-toplevel)" || exit 2
+merge_base="$(git merge-base "$base" HEAD 2>/dev/null)" || die "no merge base of $base and HEAD"
+commands="$({ git diff --name-only --no-renames "$merge_base"; git ls-files --others --exclude-standard; } \
+    | sort -u | scripts/hooks/pre-push --unit-plan)" || die "scripts/hooks/pre-push --unit-plan failed"
+if [ -z "$commands" ]; then
+    echo "unit-changed: no module source changed since $base: no unit tests to run"
+    exit 0
+fi
+if [ "$plan" = 1 ]; then printf '%s\n' "$commands"; exit 0; fi
+args=()
+while IFS= read -r command; do args+=("$command"); done <<< "$commands"
+echo "unit-changed: ${#args[@]} command(s): $(printf '%s; ' "${args[@]}" | sed 's/; $//')"
+exec scripts/sbt-warm "${args[@]}"

@@ -23,6 +23,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   runs inside the server (the write-failure tripwire needs it). `testUnit` used to die with "sbt
   server disconnected" on a warm server's second or third run — the unforked specs' leftovers,
   not a flake: investigate, don't rerun.
+- **`scripts/unit-changed`** (`--plan` to see it) — between edits, only the unit tests of the modules the change
+  touches (committed since origin/main, uncommitted and untracked), in the warm server: the hook's own `--unit-plan`
+  selection, minutes where `testUnit` is ~16 warm. The loop, not the gate: the layers above still run before "done".
 - **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
   `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
   fakes + the real cache/repository. Locally run it as
