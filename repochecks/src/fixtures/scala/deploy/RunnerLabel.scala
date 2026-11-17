@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `startsWith(a, b)` (GitHub's: ignoring case), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `github.run_id`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `startsWith(a, b)` (GitHub's: ignoring case), `format(fmt, args...)` (`{N}` placeholders), `fromJSON(s)` of a string or an array of strings (a job asking for several labels, read back as them joined by `,`), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -25,26 +25,30 @@ object RunnerLabel {
       vars: Map[String, String] = Map.empty,
       workflow: String = "",
       workflowRun: Map[String, String] = Map.empty,
-      steps: Map[String, String] = Map.empty
+      steps: Map[String, String] = Map.empty,
+      runId: String = "1"
   )
 
   private enum Value {
     case Str(s: String)
     case Bool(b: Boolean)
+    case Labels(all: Seq[String])
     case Null
   }
   import Value.*
 
   private def truthy(v: Value): Boolean = v match {
-    case Str(s)  => s.nonEmpty
-    case Bool(b) => b
-    case Null    => false
+    case Str(s)    => s.nonEmpty
+    case Bool(b)   => b
+    case Labels(_) => true
+    case Null      => false
   }
 
   private def text(v: Value): String = v match {
-    case Str(s)  => s
-    case Bool(b) => b.toString
-    case Null    => ""
+    case Str(s)      => s
+    case Bool(b)     => b.toString
+    case Labels(all) => all.mkString(",")
+    case Null        => ""
   }
 
   private val Expression = """\$\{\{(.*)}}""".r
@@ -66,6 +70,19 @@ object RunnerLabel {
       throw new AssertionError(s"runner expression `$expr`: $why (RunnerLabel reads only the subset its doc names)")
 
     private def peek: Option[String] = tokens.lift(at)
+
+    private def quoted(json: String): Boolean = json.length >= 2 && json.startsWith("\"") && json.endsWith("\"")
+
+    /** A call's parenthesised, comma-separated arguments. */
+    private def arguments(name: String): Seq[Value] = {
+      if (next() != "(") fail(s"`$name` without `(`")
+      val args = Seq.newBuilder[Value]
+      args += or()
+      while (peek.contains(",")) { next(); args += or() }
+      if (next() != ")") fail(s"unbalanced `$name(`")
+      args.result()
+    }
+
     private def next(): String = {
       val t = peek.getOrElse(fail("ends early"))
       at += 1
@@ -110,6 +127,7 @@ object RunnerLabel {
       case lit if lit.startsWith("'")         => Str(lit.drop(1).dropRight(1).replace("''", "'"))
       case "github.server_url"                => Str(ctx.server)
       case "github.ref"                       => Str(ctx.ref)
+      case "github.run_id"                    => Str(ctx.runId)
       case "github.workflow"                  => Str(ctx.workflow)
       case s"github.event.workflow_run.$field" => ctx.workflowRun.get(field).fold(Null)(Str(_))
       case s"inputs.$name"                    => ctx.inputs.get(name).fold(Null)(Str(_))
@@ -124,6 +142,20 @@ object RunnerLabel {
         val prefix = text(or())
         if (next() != ")") fail("unbalanced `startsWith(`")
         Bool(whole.toLowerCase.startsWith(prefix.toLowerCase))
+      case "format"                           =>
+        val args = arguments("format").map(text)
+        if (args.isEmpty) fail("`format` without a format")
+        Str(args.tail.zipWithIndex.foldLeft(args.head) { case (acc, (arg, i)) => acc.replace(s"{$i}", arg) })
+      case "fromJSON"                         =>
+        arguments("fromJSON").map(text) match {
+          case Seq("")                                              => Null // an output left unset
+          case Seq(json) if quoted(json)                            => Str(json.drop(1).dropRight(1))
+          case Seq(json) if json.startsWith("[") && json.endsWith("]") =>
+            val items = json.drop(1).dropRight(1).split(",").map(_.trim).toSeq
+            if (!items.forall(quoted)) fail(s"fromJSON of `$json`: not an array of strings")
+            Labels(items.map(_.drop(1).dropRight(1)))
+          case other => fail(s"fromJSON of `${other.mkString(", ")}`: not a string or an array of strings")
+        }
       case other                              => fail(s"`$other` is outside the subset")
     }
   }
