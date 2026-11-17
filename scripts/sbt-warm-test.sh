@@ -24,6 +24,10 @@ unset KINOWO_SBT_WARM_SEED
 unset KINOWO_STALL_FILE KINOWO_PROGRESS_FILE
 # this checkout's gate, not local main's; a server's keeper polling fast, done 2 s after its server is gone
 export KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=2
+# the slots are this spec's own (under KINOWO_IDENTITY_CACHE), never the machine's governor (agentctl gov, which governs
+# again since 39bcef0ed): its stub servers are no JVMs, and admission held while the laptop's load is over 1.5x its
+# cores ate the stall cases' 40 s bound before their client even started ("124 no: ... server none: starting one")
+export KINOWO_GOVERNOR=0
 mkdir -p "$scratch/bin"
 # the stub is sbt --client: it runs the commands in the server project/target/active.json names (as sbt does while that
 # server lives), starting one in the current checkout when there is none, and logs which sources that server sees
