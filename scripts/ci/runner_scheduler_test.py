@@ -906,6 +906,85 @@ class CheckLanesTest(unittest.TestCase):
                          (queued(check=2), {"movies-check-red-fix": 1, "movies-check": 1}))
 
 
+def check_job(run, created, lane="movies-check", status="queued"):
+    """A precommit-check job as the jobs API lists it: its lane and its run's pin label (precommit-check.yml)."""
+    return {"status": status, "labels": [lane, f"{rs.PIN_PREFIX}{run}"], "created_at": created, "run_id": run}
+
+
+def pinned_runner(slot, run, lane="movies-check", busy=False, idle_for=0):
+    return dataclasses.replace(lane_runner(slot, lane, busy=busy, idle_for=idle_for, cls="check"),
+                               pin=f"{rs.PIN_PREFIX}{run}")
+
+
+class OldestFirstTest(unittest.TestCase):
+    """2026-11-17: precommit-check run 44061032302's `heavy rows (e2e)`, created 10:09Z, queued until 10:45Z while later
+    landings' check jobs started. A runner registered with the lane's label alone was handed WHICHEVER queued job of the
+    lane GitHub chose, so under a backlog one change's jobs were overtaken again and again (W1 alerts). Every check job
+    now also asks for its run's pin label (movies-run-<run id>), and a check runner registers the lane's label plus the
+    pin of the OLDEST queued job no runner already waits for: it can take that run's jobs alone."""
+
+    def test_a_check_runner_is_pinned_to_the_oldest_queued_jobs_run(self):
+        # newer landings' jobs listed first, as the API lists the newest runs first
+        jobs = [check_job(300, "2026-11-17T10:30:00Z"), check_job(300, "2026-11-17T10:30:05Z"),
+                check_job(200, "2026-11-17T10:20:00Z"), check_job(100, "2026-11-17T10:09:00Z")]
+        queue = rs.queue_of(jobs)
+        d = rs.decide(rs.Config(max_slots=1), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=queue)
+        self.assertEqual((d.starts, dict(d.labels), dict(d.pins)),
+                         (((1, "check"),), {1: "movies-check"}, {1: f"{rs.PIN_PREFIX}100"}))
+
+    def test_starts_go_oldest_first_one_runner_per_queued_job(self):
+        jobs = [check_job(300, "2026-11-17T10:30:00Z"), check_job(100, "2026-11-17T10:09:00Z"),
+                check_job(200, "2026-11-17T10:20:00Z"), check_job(100, "2026-11-17T10:09:30Z")]
+        d = rs.decide(rs.Config(max_slots=3), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual([p for _, p in d.pins], [f"{rs.PIN_PREFIX}{r}" for r in (100, 100, 200)])
+
+    def test_a_runner_waiting_for_a_newer_run_never_counts_for_the_oldest(self):
+        # before: an idle movies-check runner counted against the lane's whole queue, whoever's job it would get
+        jobs = [check_job(100, "2026-11-17T10:09:00Z"), check_job(300, "2026-11-17T10:30:00Z")]
+        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [pinned_runner(1, 300)], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual(dict(d.pins), {2: f"{rs.PIN_PREFIX}100"})
+        covered = rs.decide(CFG, IDLE, rs.demand_of(jobs), [pinned_runner(1, 300), pinned_runner(2, 100)], NOW, ROOMY,
+                            queue=rs.queue_of(jobs))
+        self.assertEqual(covered.starts, ())
+
+    def test_the_red_fix_lane_still_goes_first_then_oldest_within_each_lane(self):
+        jobs = [check_job(100, "2026-11-17T10:09:00Z"), check_job(400, "2026-11-17T10:40:00Z", "movies-check-red-fix"),
+                check_job(200, "2026-11-17T10:20:00Z")]
+        d = rs.decide(rs.Config(max_slots=2), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual(dict(d.labels), {1: "movies-check-red-fix", 2: "movies-check"})
+        self.assertEqual(dict(d.pins), {1: f"{rs.PIN_PREFIX}400", 2: f"{rs.PIN_PREFIX}100"})
+
+    def test_a_job_with_no_pin_is_served_as_before(self):
+        # a check branch pushed before its workflow asked for a pin, or any other job of the lane
+        jobs = [{"status": "queued", "labels": ["movies-check"], "created_at": "2026-11-17T10:00:00Z"},
+                check_job(100, "2026-11-17T10:09:00Z")]
+        d = rs.decide(rs.Config(max_slots=2), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual(dict(d.pins), {1: "", 2: f"{rs.PIN_PREFIX}100"})
+
+    def test_a_borrowed_check_is_pinned_to_the_oldest_too(self):
+        jobs = [check_job(300, "2026-11-17T10:30:00Z"), check_job(100, "2026-11-17T10:09:00Z")]
+        borrowing = BorrowedCheckTest()
+        r = rs.Readings(100, 95, {"measure": 80}, 14, CORES, (), 300, on_cpusets(check_busy=11, measure_busy=3),
+                        {"measure": 96})
+        d = rs.decide(BEFORE_A1, IDLE, rs.demand_of(jobs), borrowing.two_full_checks(), NOW, r, queue=rs.queue_of(jobs))
+        self.assertEqual((d.borrowed, d.pins), ((3, 4), ((3, f"{rs.PIN_PREFIX}100"), (4, f"{rs.PIN_PREFIX}300"))))
+
+    def test_an_idle_runner_whose_run_has_nothing_queued_gives_its_slot_back(self):
+        # its run cancelled (a re-pushed check branch): the lane's other runs' jobs are no reason to keep it
+        jobs = [check_job(300, "2026-11-17T10:30:00Z")]
+        stale = pinned_runner(1, 100, idle_for=CFG.idle_stop_seconds)
+        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [stale], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual((d.stops, dict(d.pins)), ((1,), {2: f"{rs.PIN_PREFIX}300"}))
+
+    def test_a_pinned_runner_registers_its_pin_and_is_read_back_with_it(self):
+        host = HostTest.make_host(self, FakeDocker(["Runner.Listener"]))
+        host.start(4, "check", "", "movies-check", f"{rs.PIN_PREFIX}100")
+        with open(os.path.join(host.cfg.state_dir, "4.env")) as f:
+            self.assertIn(f"RUNNER_LABELS=movies-check,{rs.PIN_PREFIX}100\n", f.read())
+        i = next(i for i in host.instances(NOW) if i.slot == 4)
+        self.assertEqual((i.lane, i.pin), ("movies-check", f"{rs.PIN_PREFIX}100"))
+
+
 class StarvedTest(unittest.TestCase):
     """A class whose oldest queued job has waited past `starve_report_seconds` while nothing of it starts is said, with
     the limit that holds it -- Scala Steward #145 (2026-11-08) sat queued for an hour on movies-measure while every tick
@@ -995,13 +1074,17 @@ class HostTest(unittest.TestCase):
     rows were stopped mid-job at idle_stop_seconds."""
 
     def host(self, docker):
+        return HostTest.make_host(self, docker)
+
+    @staticmethod
+    def make_host(case, docker):
         state = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, state)
+        case.addCleanup(shutil.rmtree, state)
         with open(os.path.join(state, "2.env"), "w") as f:
             f.write("RUNNER_CLASS=check\n")
         patcher = unittest.mock.patch.object(rs, "_run", docker)
         patcher.start()
-        self.addCleanup(patcher.stop)
+        case.addCleanup(patcher.stop)
         return rs.Host(rs.Config(state_dir=state, class_cgroup=os.path.join(state, "cg", "ci-movies-{cls}.slice")))
 
     def container(self, host, current_gib, inactive_gib, cpu_seconds):
