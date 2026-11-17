@@ -905,6 +905,48 @@ groups:
             will open the same hole again until it is found.
 
       # -----------------------------------------------------------------------------------------
+      # A WEB POD'S CHANGE STREAM THAT DID NOT REOPEN.
+      #
+      # Every web pod keeps its read model current through one change stream per collection
+      # (`WebReadModel`); `kinowo_web_readmodel_stream_live` is computed AT SCRAPE TIME, 1 while
+      # the stream delivers and 0 once it has ended. A mongod restart, a primary change or a
+      # network cut ends it (error 11600 on 2026-11-17's kexec of mongo-1), and the cold-retry
+      # tick reopens it -- within a tick, backing off 1, 3, 7, ... ticks while Mongo stays away.
+      # Until it does, that pod sees the collection's writes only through the backstop catch-up
+      # read: its pages go up to that interval stale, and nothing else is red.
+      #
+      # WHY IT EXISTS: until 2026-11-17 NO rule read this gauge. That day's reboot reopened every
+      # stream by itself, and a stream that had not would have served stale showtimes silently.
+      # The rolling-reboot tool now waits for every series to read 1 after a mongod reboot
+      # (fleetkit's MetricHolds); this is the same question asked at every other moment.
+      #
+      # TEN MINUTES: a mongod kexec is down for about a minute and the backoff after a short
+      # outage is a few ticks, so a few minutes at 0 is the outage itself, not a failed reopen.
+      # Per pod and collection (raw, no aggregation): with more than one replica, one stuck pod
+      # is still one pod serving stale. Its absence while the web answers is the generated
+      # AppMetricAbsent rule (app-metrics-absent.rules).
+      # -----------------------------------------------------------------------------------------
+      - alert: WebReadModelStreamDown
+        expr: kinowo_web_readmodel_stream_live == 0
+        for: 10m
+        labels:
+          severity: warning
+          domain: serving
+        annotations:
+          summary: "{{ $labels.instance }}'s {{ $labels.collection }} change stream has been down for 10 minutes"
+          description: >-
+            The read model in {{ $labels.instance }} ({{ $labels.country }}) has had no live
+            `{{ $labels.collection }}` change stream for ten minutes: it ended (a Mongo outage, a
+            primary change, mongod restarted) and every reopen since has failed or is held back by
+            its backoff. Until it reopens the pod sees that collection's writes only through the
+            backstop catch-up read, so its pages can be up to that interval stale with nothing
+            else red. `kinowo_web_readmodel_stream_reopens_total` climbing is a stream that cannot
+            stay open; the pod's WARN lines ("WebReadModel", "reopening") say why. If Mongo is
+            healthy and it does not recover, restart the web deployment for {{ $labels.country }}
+            (`kubectl -n kinowo rollout restart deployment/web-{{ $labels.country }}`) -- a
+            rollout keeps a pod serving throughout.
+
+      # -----------------------------------------------------------------------------------------
       # THE CURSOR DELIVERS, AND THE APPLY THREAD IS NOT KEEPING UP.
       #
       # `ChangeStreamMoviesCursorSilent` above asks whether a cursor DELIVERS. This asks the other

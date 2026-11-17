@@ -1282,3 +1282,37 @@ tests:
             exp_annotations:
               summary: "pl's worker boot re-projected 376 films the read model was missing"
               description: "The boot check in \"pl\" found that many ready films with no card or no venue in the read model and projected them. A handful per boot is the old pod's last minutes; this many means the read model had been serving WITHOUT them -- for however long it took a restart to come along -- and that the change-stream path dropped them first. The boot's WARN line names the ids (\"projected N ready row(s) missing a card or a venue\"); ask what retired their cards before the restart (`kinowo_worker_readmodel_cards_retired_total` by reason, `RemovalAudit` lines for the same ids). Healed now, so this is a post-mortem, not an outage -- but the same miss will open the same hole again until it is found."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A WEB POD'S CHANGE STREAM THAT DOES NOT REOPEN -- the 2026-11-17 rolling reboot's question.
+  # mongo-1 kexec'd at 15:48Z; the streams ended (11600) and reopened within a cold-retry tick, so
+  # a stream at 0 for a few minutes is the reboot itself and must stay quiet. One still at 0 ten
+  # minutes on serves writes only through the 30-minute backstop: that fires, by pod and collection.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a web change stream stuck at 0 fires, one that reopens after a mongod reboot does not
+    input_series:
+      # de/web_movies never reopens.
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-de",country="de",collection="web_movies"}'
+        values: '1x5 0x30'
+      # pl/web_screenings is down for three minutes (mongod's kexec) and reopens.
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-pl",country="pl",collection="web_screenings"}'
+        values: '1x5 0x3 1x27'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: WebReadModelStreamDown
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: WebReadModelStreamDown
+        exp_alerts:
+          - exp_labels:
+              domain: serving
+              severity: warning
+              job: kinowo-web
+              instance: kinowo-web-de
+              country: de
+              collection: web_movies
+            exp_annotations:
+              summary: "kinowo-web-de's web_movies change stream has been down for 10 minutes"
+              description: "The read model in kinowo-web-de (de) has had no live `web_movies` change stream for ten minutes: it ended (a Mongo outage, a primary change, mongod restarted) and every reopen since has failed or is held back by its backoff. Until it reopens the pod sees that collection's writes only through the backstop catch-up read, so its pages can be up to that interval stale with nothing else red. `kinowo_web_readmodel_stream_reopens_total` climbing is a stream that cannot stay open; the pod's WARN lines (\"WebReadModel\", \"reopening\") say why. If Mongo is healthy and it does not recover, restart the web deployment for de (`kubectl -n kinowo rollout restart deployment/web-de`) -- a rollout keeps a pod serving throughout."
+

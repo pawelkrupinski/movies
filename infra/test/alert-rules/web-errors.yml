@@ -252,3 +252,37 @@ tests:
                 disagree with them. Dedupe the rows, then restart a web pod: it converts the plain `userId_1`
                 to unique in place. If the reason is that the credential may not run collMod, run the two
                 collMods (prepareUnique, then unique) by hand -- never drop the index.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A COUNTRY WITH NO WEB POD ANSWERING -- 2026-11-17 15:17-15:19Z, when the rolling reboot drained
+  # k3s-worker-1 with every web-<cc> single-replica on it: every country's `up` read 0 in four
+  # scrapes (~90 s of samples), and nothing paged (TargetDown and ProbeFailing hold 10 minutes).
+  # One scrape failing (a GC pause, a scrape timeout) must stay quiet; that outage's four fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 30s
+    name: no web pod of a country answering for four scrapes fires, one missed scrape does not
+    input_series:
+      - series: 'up{job="kinowo-web",instance="kinowo-web-pl",country="pl"}'
+        values: '1x10 0x3 1x20'
+      - series: 'up{job="kinowo-web",instance="kinowo-web-de",country="de"}'
+        values: '1x10 0 1x25'
+    alert_rule_test:
+      # `1x10` is eleven samples, so pl reads 0 at 5m30..7m: pending at the 6m evaluation, firing
+      # at 7m once held a minute, resolved by 9m. de's one 0 (5m30) falls between evaluations.
+      - eval_time: 6m30s
+        alertname: WebCountryDown
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: WebCountryDown
+        exp_alerts:
+          - exp_labels:
+              domain: serving
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "no web pod for pl has answered for a minute"
+              description: "Prometheus has scraped no web pod for pl for a minute: the country's site is DOWN (every request through Caddy is a 502), not slow. A rollout never does this (maxUnavailable 0). Look at `kubectl -n kinowo get pods -l country=pl -o wide`: a pod OOM-killed or crash-looping (`describe pod`, the last state), a node drained or rebooting with every replica on it (the 2026-11-17 rolling reboot), or a pod Pending for want of memory (NodeMemoryBudgetSpec). TargetDown and ProbeFailing name the same outage after ten minutes; this is the page that says it while it is happening."
+      - eval_time: 9m
+        alertname: WebCountryDown
+        exp_alerts: []
+

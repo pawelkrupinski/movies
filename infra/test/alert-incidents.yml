@@ -385,3 +385,39 @@ incidents:
     # 11-05 ~10:30Z to 11-06 ~10:40Z, quiet the rest of the 14 days), and its promtool case
     # (alert-rules/k3s.yml) pins the incident's shape.
     expect_firing: [WorkerHttpManyHostsCircuitOpen]
+
+  - id: k3s-worker-1-hand-reboot-web-outage-2026-11-10
+    description: >-
+      k3s-worker-1 was rebooted by hand (`sudo systemctl reboot` as root over ssh, no drain, not
+      through bin/rolling-reboot) at 03:12:14Z with every web-<cc> single-replica on it: every
+      country's site down ~2 minutes, nothing paged. Found by WebCountryDown's backtest -- the
+      same outage as 11-17's by another door, which the rolling-reboot refusal cannot close.
+    source: k3s-worker-1 journal (boot -2) `COMMAND=/run/current-system/sw/bin/systemctl reboot` 03:12:14Z; up{job="kinowo-web"} == 0 per country 03:12:30..03:14:45Z
+    start: 2026-11-10T03:12:00Z
+    end: 2026-11-10T03:15:00Z
+    grace: 10m
+    expect_firing: [WebCountryDown]
+
+  - id: rolling-reboot-web-outage-2026-11-17
+    description: >-
+      `infra/bin/rolling-reboot --yes --only k3s-worker-1,monitoring-1,mongo-1` drained k3s-worker-1
+      with every web-<cc> a single replica on it (monitoring-1 carries the control-plane taint, so
+      nothing could reschedule) and rebooted it: every country's site was down for ~2 minutes.
+      Nothing paged -- TargetDown and ProbeFailing both hold ten minutes. WebCountryDown was
+      written for this. mongo-1's kexec at 15:48Z ended the web change streams, which reopened
+      within a tick: WebReadModelStreamDown must stay quiet through that.
+    source: up{job="kinowo-web"} == 0 per country from 15:16:56Z (pl) .. 15:17:20Z (uk), back 15:18:56Z .. 15:19:20Z; node_boot_time_seconds k3s-worker-1 15:17:10Z, mongo-1 15:48:13Z
+    start: 2026-11-17T15:16:30Z
+    end: 2026-11-17T15:20:00Z
+    grace: 10m
+    expect_firing: [WebCountryDown]
+
+  - id: mongo-1-kexec-streams-reopened-2026-11-17
+    description: >-
+      mongo-1 kexec'd at 15:48:07Z; every web pod's change streams ended (11600 InterruptedAtShutdown)
+      and reopened by themselves (WebReadModel "reopening, attempt 1"). A reboot that the streams
+      survive is not a stuck stream.
+    source: node_boot_time_seconds{instance=~"10.20.0.13.*"} 15:48:13Z; kinowo_web_readmodel_stream_live 1 for all 10 series after
+    start: 2026-11-17T15:45:00Z
+    end: 2026-11-17T16:30:00Z
+    expect_quiet: [WebReadModelStreamDown, WebCountryDown]

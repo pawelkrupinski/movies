@@ -49,6 +49,38 @@
 groups:
   - name: web-errors
     rules:
+      # A COUNTRY WITH NO WEB POD ANSWERING AT ALL -- the site is down, not slow.
+      #
+      # 2026-11-17 15:17-15:19Z: the rolling reboot drained k3s-worker-1 with every web-<cc> a
+      # single replica on it, and every country's site was down for about two minutes. Nothing
+      # paged: TargetDown and ProbeFailing both hold ten minutes, so an outage shorter than that
+      # is never seen. `up` is scraped by monitoring-1's Prometheus straight at the country's
+      # NodePort, which answers only while a READY pod is behind it -- it does not depend on
+      # kube-state-metrics, which runs on the same node and went down with it.
+      #
+      # ONE MINUTE (three failed scrapes in a row): a rollout never gets here (maxUnavailable 0)
+      # and one missed scrape is a GC pause. NOT two: 2026-11-17's outage read 0 in four scrapes
+      # (15:16:56..15:18:26Z for pl), 90 seconds of samples, so a two-minute hold would have
+      # stayed quiet through the very outage it was written for. `max by (country)`, so with
+      # more than one replica it fires only when none answers.
+      - alert: WebCountryDown
+        expr: max by (country) (up{job="kinowo-web"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: serving
+        annotations:
+          summary: "no web pod for {{ $labels.country }} has answered for a minute"
+          description: >-
+            Prometheus has scraped no web pod for {{ $labels.country }} for a minute: the
+            country's site is DOWN (every request through Caddy is a 502), not slow. A rollout
+            never does this (maxUnavailable 0). Look at `kubectl -n kinowo get pods -l
+            country={{ $labels.country }} -o wide`: a pod OOM-killed or crash-looping (`describe
+            pod`, the last state), a node drained or rebooting with every replica on it (the
+            2026-11-17 rolling reboot), or a pod Pending for want of memory
+            (NodeMemoryBudgetSpec). TargetDown and ProbeFailing name the same outage after ten
+            minutes; this is the page that says it while it is happening.
+
       - alert: WebServerErrorsServed
         # A SHARE **AND** AN ABSOLUTE FLOOR, because either alone is wrong. The share alone fires
         # when a tier serving six requests a minute happens to throw one; the absolute rate alone
