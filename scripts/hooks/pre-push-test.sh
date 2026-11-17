@@ -99,6 +99,20 @@ check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan work
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
 # it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of
 # every module the push touches AND every module that depends on one, in its one sbt run.
+# THE COUPLING RATCHET rides the sbt check (CLAUDE.md, Design rules): any deployed module's production source, the
+# build, the baseline or the ratchet selects it; a test source, a fixture or a script does not.
+printf '\033[36m▸\033[0m pre-push --coupling-plan\n'
+couplings() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --coupling-plan | tr '\n' ' ' | sed 's/ $//'; }
+check "a production source of every deployed module selects the coupling step" \
+  "geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala web/src/main/java/A.java" \
+  "$(couplings geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala web/src/main/java/A.java)"
+check "...so do the build, the baseline and the ratchet" \
+  "build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv scripts/ci/coupling_ratchet.py" \
+  "$(couplings build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv scripts/ci/coupling_ratchet.py)"
+check "...never test code, a test kit, a fixture, a template or a script" "" \
+  "$(couplings worker/src/test/scala/A.scala testkit/src/main/scala/A.scala e2e/src/main/scala/A.scala worker/src/fixtures/scala/A.scala web/src/main/twirl/a.scala.html scripts/x.sh)"
+check "the baseline alone runs the sbt check (where the coupling step rides)" "sbt" "$(plan test/resources/coupling-baseline.tsv)"
+
 printf '\033[36m▸\033[0m pre-push --compile-plan\n'
 compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }
 check "a worker source compiles worker's Test and It configs, and e2e's tests over it" \

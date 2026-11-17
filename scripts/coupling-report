@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# THE COUPLING REPORT (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record
+# (`sbt couplingReport`, project/Coupling.scala), through this checkout's kept sbt server (scripts/sbt-warm).
+#
+#   scripts/coupling-report             the markdown report (module matrix, packages' Ca/Ce/I/A/D, package cycles with
+#                                       the class references behind every edge, top fan-in/fan-out classes, god hubs,
+#                                       split packages) to stdout, then the ratchet's verdict against the baseline
+#   scripts/coupling-report --update    the same, then the measured rows written to test/resources/coupling-baseline.tsv:
+#                                       every fall recorded; a rise must be committed with `Coupling: <why>`
+#   scripts/coupling-report --out DIR   keep rows.tsv and report.md in DIR (default: a temporary directory)
+#
+# The pre-push hook's `coupling` check runs the same task and scripts/ci/coupling_ratchet.py over the pushed range.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+update="" out=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --update) update=1 ;;
+        --out) out="$2"; shift ;;
+        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "coupling-report: unknown argument $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
+mkdir -p "$out"
+cd "$root"
+"$root/scripts/sbt-warm" "couplingReport $out/rows.tsv $out/report.md" > "$out/sbt.log" 2>&1 \
+    || { tail -30 "$out/sbt.log" >&2; echo "coupling-report: sbt couplingReport failed (log: $out/sbt.log)" >&2; exit 2; }
+cat "$out/report.md"
+echo
+rc=0
+python3 "$root/scripts/ci/coupling_ratchet.py" check --current "$out/rows.tsv" || rc=$?
+if [ -n "$update" ]; then
+    cp "$out/rows.tsv" "$root/test/resources/coupling-baseline.tsv"
+    echo "coupling-report: wrote test/resources/coupling-baseline.tsv -- a rise is committed with a \`Coupling: <why>\` trailer"
+    exit 0
+fi
+exit "$rc"

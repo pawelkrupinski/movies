@@ -226,6 +226,16 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
   `InMemoryMovieRepository`, `HttpFilmwebClient`). With only one implementation and no good name, you don't need the
   trait yet — collapse it until a second appears. Test: would a reader guess from the name what it does?
 
+**Coupling is reviewed on every change, and only falls unless a commit says why.** `scripts/coupling-report` measures
+the production code from Zinc's own class-dependency record (`sbt couplingReport`, `project/Coupling.scala`): the
+module matrix, each package's Ca/Ce/instability/abstractness/distance, the package cycles with the class references
+behind every edge, the top fan-in/fan-out classes and god hubs, split packages. The pre-push `sbt` check holds the
+code to `test/resources/coupling-baseline.tsv` (`scripts/ci/coupling_ratchet.py`): no new package cycle edge, no new
+cross-module edge kind, no package's Ce past its row, no class's fan-out past its row or the limit. Prefer cutting the
+dependency (a trait at the seam, the class moved to the package that owns it); when the coupling is right, run
+`scripts/coupling-report --update` and commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer:
+`--update` records it, so the ratchet tightens.
+
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
 is broken. Read the `writing-fakes` skill before writing any `Fake*` / `Stub*` / `InMemory*`.
