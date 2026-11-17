@@ -223,7 +223,7 @@ check "...an agentctl whose file never names cmd_gov (agentctl's split, 2026-10-
   "$work/agentctl|no-text" "$(KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin)|$(grep -q 'cmd_gov' "$work/agentctl" && echo text || echo no-text)"
 printf '#!/bin/sh\necho probed >> "$GOV_CALLS"\nexit 0\n' > "$work/counted-agentctl"; chmod +x "$work/counted-agentctl"
 : > "$GOV_CALLS"
-( KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/counted-agentctl" KINOWO_JVM_GATE_OS=Darwin
+( export KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/counted-agentctl" KINOWO_JVM_GATE_OS=Darwin
   governor_bin > /dev/null; governor_bin > /dev/null; governor_bin > /dev/null )
 check "...asked once a process, not on every keeper poll" "1" "$(grep -c probed "$GOV_CALLS")"
 
