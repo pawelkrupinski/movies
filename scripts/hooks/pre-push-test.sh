@@ -34,6 +34,10 @@ check "a composite action runs actionlint (its run blocks' shellcheck), the self
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+# a tool with no extension is shellchecked by its shell shebang: 50 under scripts/ (sbt-warm, gitops-specs, ...) never
+# were, and sbt-warm's new SC2046 (d56231908, 2026-11-17) landed unseen
+check "a bash tool with no extension runs shellcheck too" "scripttests shellcheck sbt" "$(plan scripts/sbt-warm)"
+check "...but not a Python tool with no extension" "scripttests sbt" "$(plan scripts/identity-ratchet-report)"
 check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
 # THE HEAVY ROWS: Main's integration-test rows and e2e (corpus), in the landing check only (PREPUSH_HEAVY_ROWS=1); e2e (rest)
 # runs after landing, on Main (the owner, 2026-11-17, "B1")

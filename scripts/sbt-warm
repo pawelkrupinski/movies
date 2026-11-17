@@ -638,15 +638,15 @@ client_tree_state() {
 # (2026-11-07: an sbtn client of a vanished server, the laptop in swap); a process that survives even KILL (uninterruptible)
 # is abandoned, never waited for.
 end_client() {
-  local pids i
+  local pids _
   pids=$(stall_tree_pids "$client")
   # shellcheck disable=SC2086 # one pid per word
   kill $pids 2> /dev/null
   # the client's own end is no proof its tree ended (the sbt-guard wrapper ends on TERM, the sbt under it may ignore it)
-  for i in 1 2 3 4 5 6 7 8 9 10; do tree_running $pids || break; sleep 0.5; done
+  for _ in 1 2 3 4 5 6 7 8 9 10; do tree_running $pids || break; sleep 0.5; done
   # shellcheck disable=SC2086
   tree_running $pids && kill -9 $pids 2> /dev/null
-  for i in 1 2 3 4; do client_running || break; sleep 0.5; done
+  for _ in 1 2 3 4; do client_running || break; sleep 0.5; done
   if client_running; then log "client pid $client survives KILL: abandoned"; else wait "$client" 2> /dev/null; fi
 }
 # whether one of the <pid>s runs (an ended one not yet waited for, a zombie, does not)
@@ -702,7 +702,7 @@ watch_client() {
     # progress: CPU, a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh), the trees
     # shrinking since the last poll's listing (a wind-down; one replacing its processes is no progress), or one the last
     # poll measured too ended before this measure was done (a spawn loop's new `sleep` ending mid-measure is none)
-    # shellcheck disable=SC2086
+    # shellcheck disable=SC2086,SC2046 # pid lists, split on purpose
     if [ $((now - last)) -ge "$need" ] || stall_any_runnable $pids || stall_tree_shrank "$lastpids" "$pids" ||
       stall_any_gone $(stall_kept_pids "$lastpids" "$pids"); then
       quiet=0

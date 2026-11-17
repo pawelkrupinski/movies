@@ -44,8 +44,8 @@
 #                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
-#   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
-#                 file that was already noisy can still be edited
+#   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
+#                 fails only on warnings the push ADDS, so a file that was already noisy can still be edited
 #   `oldrefs`     scripts/identity-slice-old-ref-test.sh, on a change to a file identity-slice or title-trace drops into
 #                 the refs they decide under (each tool's TOOL_FILES, read from the tool): each tool compiles into its
 #                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
@@ -358,6 +358,13 @@ is_identity_path() { # <path>
     esac
     return 1
 }
+# What shellcheck reads: a .sh, the hooks, and a tool with no extension whose shebang names a shell (sbt-warm,
+# gitops-specs, ...: 50 under scripts/ were never shellchecked, and sbt-warm's SC2046 of d56231908 landed unseen).
+is_shell_path() { # <path>
+    case "$1" in *.sh|scripts/hooks/*) return 0 ;; esac
+    case "${1##*/}" in *.*) return 1 ;; esac
+    [ -f "$1" ] && head -n 1 "$1" 2> /dev/null | grep -qE '^#!.*[/ ](ba|da|k)?sh( |$)'
+}
 # What a fix to a drift or flip red touches: the identity paths, the worker's code, the drift harness and its slices.
 is_drift_path() { # <path>
     is_identity_path "$1" && return 0
@@ -427,9 +434,7 @@ plan() {
         case "$path" in
             .github/workflows/*.yml|.github/workflows/*.yaml|.github/actions/*/action.yml|.github/actions/*/action.yaml) actionlint=1 ;;
         esac
-        case "$path" in
-            *.sh|scripts/hooks/*) shellcheck=1 ;;
-        esac
+        is_shell_path "$path" && shellcheck=1
         case "$path" in
             ios/*) ios=1 ;;
         esac
@@ -1477,8 +1482,8 @@ check_actionlint() {
 check_shellcheck() {
     need shellcheck shellcheck "brew install shellcheck" || return 1
     local f before after rc=0
-    for f in $(changed_matching '(\.sh$|^scripts/hooks/)'); do
-        [ -f "$f" ] || continue
+    while IFS= read -r f; do
+        [ -f "$f" ] && is_shell_path "$f" || continue
         case "$f" in *.txt|*.tsv) continue ;; esac # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
         after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
         if git cat-file -e "$base_sha:$f" 2>/dev/null; then
@@ -1492,7 +1497,7 @@ check_shellcheck() {
             shellcheck -S warning "$f" >&2
             rc=1
         fi
-    done
+    done <<< "$changed"
     return $rc
 }
 
