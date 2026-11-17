@@ -108,6 +108,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
                            private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
                            private[agreement] val clusterKeys: ClusterKeys = new ClusterKeys(new InMemoryAgreementKeys),
+                           private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking,
                            private[agreement] val pressed: () => Boolean = () => false,
                            private[agreement] val fullValidationEvery: Int = AgreementStage.FullValidationEvery)
     extends AgreementCorrections, AgreementTakes, AgreementCandidates {
@@ -213,11 +214,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** Does a verdict the stage keeps read the TMDB record or search a filing under `id` comes as? Then that filing must
    *  reach the stage, as every answer it read does: the verdict is a cache of what it read. Read from any thread. */
-  def reads(id: String): Boolean = held.reads(id) || (id match {
-    case Dependency.QueryFiled => queriedNow
-    case _ if id.startsWith(AgreementStage.FindPrefix) => findsNow.contains(id)
-    case _ => AgreementStage.recordOf(id).exists(film => recordsNow.contains(film))
-  })
+  def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
 
   /** The receipt the decision being made notes what it reads in ([[Noting]]): set by [[receipting]] on the applying
    *  thread. */
@@ -228,16 +225,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     receipt = into
     try decide finally receipt = was
   }
-  /** What the current apply's takes read of TMDB — its records, whether a search, the IMDb ids found — and what the last
-   *  apply's did ([[reads]]): what a take reads afresh on every apply must reach it when filed, as a verdict's receipt
-   *  does. */
-  private[agreement] var recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer]()
-  private[agreement] var findsReading   = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
-  private[agreement] var queriedReading = false
-  @volatile private var recordsNow: java.util.Set[Integer] = java.util.Collections.emptySet()
-  @volatile private var findsNow: java.util.Set[String]    = java.util.Collections.emptySet()
-  @volatile private var queriedNow = false
-
   /** The venues' lookups: their pages, and nothing of TMDB's, whatever `venuePages` answers besides ([[AgreementStage.PagesOnly]]) —
    *  what the worker hands the stage there (VenueDetailLookups), so a harness handing one lookups for both roles reads
    *  as production reads. Handed TMDB's records through this role, every harness read the model's vote by its facts
@@ -256,9 +243,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (receipt != null) receipt(Dependency.Lookup(via, aspect, question)) = Dependency.digest(answer)
       answer
     }
-    private def record[A](aspect: Dependency.Aspect, tmdbId: Int, answer: Answer[A]): Answer[A] = { recordsReading.add(tmdbId); noted(aspect, Question.FilmRecord(tmdbId), answer) }
+    private def record[A](aspect: Dependency.Aspect, tmdbId: Int, answer: Answer[A]): Answer[A] = { tmdbReads.record(tmdbId); noted(aspect, Question.FilmRecord(tmdbId), answer) }
     override def detail(listing: Listing): Answer[Option[DetailFacts]]               = noted(Dependency.Aspect.Answer, Question.VenuePage(listing.key), inner.detail(listing))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { queriedReading = true; noted(Dependency.Aspect.Answer, Question.Candidate(query), inner.candidates(query)) }
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { tmdbReads.queried(); noted(Dependency.Aspect.Answer, Question.Candidate(query), inner.candidates(query)) }
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]            = record(Dependency.Aspect.Answer, tmdbId, inner.film(tmdbId))
     override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record(Dependency.Aspect.Release, tmdbId, inner.releaseDay(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record(Dependency.Aspect.Cast, tmdbId, inner.cast(tmdbId))
@@ -417,8 +404,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
     applying = version
     val waitedBefore = staging.map(_ => waitingClusters)
-    recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer](); findsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
-    queriedReading = false
+    tmdbReads.begin()
     validating(pass)
     val decisions = AgreementStage.inContentOrder(resolution.decisions)(decide(_, listingOf, pass))
     // what the stage took a decision as is keyed as the decision is: the projection's takes are these
@@ -429,7 +415,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     forgetGone(resolution, pass)
     val served = standing(resolution, decisions, pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
-    recordsNow = recordsReading; findsNow = findsReading; queriedNow = queriedReading
+    tmdbReads.publish()
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
     // read before the questions are: a mark landing while they are read moves it, and the next apply reads them again
@@ -1043,7 +1029,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  ([[Agreement.tmdbFound]]), which a reader decides on as naming none ([[Answer.failedAs]]). */
   private[agreement] def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[Question]): Answer[Option[Int]] =
     tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None)) { id =>
-      findsReading.add(AgreementStage.FindPrefix + id)
+      tmdbReads.find(id)
       Agreement.tmdbFound(tmdbOf, id, finding, attempted)
     })(film => Answer.Known(Some(film)))
 }

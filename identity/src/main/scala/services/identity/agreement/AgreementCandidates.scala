@@ -135,10 +135,10 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     if (now.blindAt.isDefined) blindReads += 1
     // kept, its reads are this apply's too, and the receipt's being made
     if (kept.isDefined) now.reads.keysIterator.foreach {
-      case Dependency.Lookup(_, _, Question.FilmRecord(film)) => recordsReading.add(film)
+      case Dependency.Lookup(_, _, Question.FilmRecord(film)) => tmdbReads.record(film)
       case _                                                  => ()
     }
-    if (kept.isDefined && now.reads.keysIterator.exists { case Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false }) queriedReading = true
+    if (kept.isDefined && now.reads.keysIterator.exists { case Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false }) tmdbReads.queried()
     if (receipt != null) receipt ++= now.reads
     now.films
   }

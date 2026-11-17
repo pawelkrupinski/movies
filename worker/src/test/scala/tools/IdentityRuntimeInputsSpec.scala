@@ -187,6 +187,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       "attemptsMarked" -> Inert("how many attempts were marked: when to read the receipts again"),
       "ask"         -> Inert("asking"), "askNow" -> Inert("asking, inline"), "metrics" -> Inert("metrics"),
       "staging"     -> Inert("the staging screen"), "clusterKeys" -> Inert("names: no verdict is found by its key"),
+      "tmdbReads"   -> Inert("which TMDB filings reach the stage: when to read a take again, never what it decides"),
       "correctionPostersAtOnce" -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "correctionsPerApply"     -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "backfillPerApply"        -> Inert("a budget: delays a decision, never moves its result"),
