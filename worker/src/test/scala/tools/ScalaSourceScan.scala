@@ -1,20 +1,19 @@
 package tools
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
-import scala.jdk.CollectionConverters._
-import scala.util.Using
+import java.nio.file.{Files, Path}
+import testsupport.SourceTrees
 
 /** Text-level helpers for the source lints (`NoWallClockInTestsSpec`, `NoSwallowedFailureSpec`,
  *  `DocCommentPlacementSpec`, `CollectionRetentionSpec` and the other lints under `tools`): they read
- *  the repository's own `.scala` files from the build root (these specs run unforked, so the working
- *  directory is the repo root). */
+ *  the repository's own `.scala` files from the build root through the trees they declare (testsupport.SourceTrees),
+ *  so the test-impact selection runs them on a change under any of those trees. */
 object ScalaSourceScan {
 
-  val MainRoots: Seq[String] = Seq("base/src/main", "common/src/main", "geodata/src/main", "http/src/main", "identity/src/main", "scrapers/src/main", "web/src/main", "worker/src/main")
+  val MainRoots: SourceTrees = SourceTrees("base/src/main", "common/src/main", "geodata/src/main", "http/src/main", "identity/src/main", "scrapers/src/main", "web/src/main", "worker/src/main")
 
   /** Every test-side tree: specs, integration and page specs, fixtures, the shared testkit and the it trees' itkit. */
-  val TestRoots: Seq[String] = Seq(
+  val TestRoots: SourceTrees = SourceTrees(
     "base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src", "itkit/src", "web/src/test", "web/src/it", "web/src/page",
     "worker/src/test", "worker/src/it", "worker/src/fixtures", "e2e/src/test")
 
@@ -29,7 +28,7 @@ object ScalaSourceScan {
 
   /** Every defaulted parameter of every class/trait/def signature under `roots`, each
    *  clause of a curried signature included — what the default-parameter lints scan. */
-  def parameterDefaults(roots: Seq[String]): Seq[ParameterDefault] = scalaFiles(roots).flatMap { path =>
+  def parameterDefaults(roots: SourceTrees): Seq[ParameterDefault] = scalaFiles(roots).flatMap { path =>
     val src = codeOf(path)
     Header.findAllMatchIn(src).flatMap { header =>
       // Every clause of the signature: `(a)(b)(using c)`.
@@ -46,20 +45,14 @@ object ScalaSourceScan {
     }.toSeq
   }
 
-  def scalaFiles(roots: Seq[String]): Seq[Path] = filesEndingWith(roots, ".scala")
+  def scalaFiles(roots: SourceTrees): Seq[Path] = roots.scalaFiles
 
   /** The Twirl templates under `roots` — Scala expressions spliced into HTML and JS. */
-  def twirlFiles(roots: Seq[String]): Seq[Path] = filesEndingWith(roots, ".scala.html")
+  def twirlFiles(roots: SourceTrees): Seq[Path] = roots.files(".scala.html")
 
   /** The browser-side sources under `roots` — plain `.js` and non-Twirl `.html`, which run as JavaScript, not Scala. */
-  def browserFiles(roots: Seq[String]): Seq[Path] =
-    (filesEndingWith(roots, ".js") ++ filesEndingWith(roots, ".html").filterNot(_.toString.endsWith(".scala.html"))).sortBy(_.toString)
-
-  private def filesEndingWith(roots: Seq[String], suffix: String): Seq[Path] =
-    roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
-      // `Files.walk` holds a directory handle open per level until the stream is closed.
-      Using.resource(Files.walk(root))(_.iterator.asScala.filter(_.toString.endsWith(suffix)).toList)
-    }.sortBy(_.toString)
+  def browserFiles(roots: SourceTrees): Seq[Path] =
+    (roots.files(".js") ++ roots.files(".html").filterNot(_.toString.endsWith(".scala.html"))).sortBy(_.toString)
 
   /** A runnable program under a test tree — `def main` outside a `*Spec.scala`: a backfill, recorder,
    *  probe or bench run by an operator, not a spec. The spec lints skip it; the program rules hold it. */

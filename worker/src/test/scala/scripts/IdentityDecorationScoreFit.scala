@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import tools.CommandLine
 import play.api.libs.json.Json
 import services.identity.DecorationScore
@@ -19,7 +20,7 @@ import scala.jdk.CollectionConverters._
 object IdentityDecorationScoreFit {
 
   val Training: Path = Paths.get("test/resources/fixtures/identity-decorations/training.tsv")
-  val Artefact: Path = Paths.get("worker/src/test/resources", DecorationScore.ResourcePath)
+  val Artefact: Path = SourceTrees("worker/src/test/resources").file(DecorationScore.ResourcePath)
   val Header: String = "key\taligned\trecurring\tvenues\tprefix\ttokens\tformatShare\tinnerResolved\tmatchedShare\tgood\tbad"
 
   val commandLine: CommandLine = CommandLine("IdentityDecorationScoreFit", "Re-fits the candidate-decoration score from the detector's outcomes.",

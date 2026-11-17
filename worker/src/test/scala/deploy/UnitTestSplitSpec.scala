@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -107,7 +108,7 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     val names = Named.findAllMatchIn(block.takeWhile(_ != ')')).map(_.group(1)).toSeq
     names should not be empty
     names.foreach { name =>
-      withClue(name)(RepoFile.exists(s"worker/src/it/scala/${name.stripPrefix("integration.")}.scala") shouldBe true)
+      withClue(name)(SourceTrees("worker/src/it/scala").file(s"${name.stripPrefix("integration.")}.scala").toFile.exists shouldBe true)
     }
   }
 }

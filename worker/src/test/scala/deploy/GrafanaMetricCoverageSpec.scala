@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -177,7 +178,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  name may not be interpolated (see the lint below), so a class `WorkerMetrics` stops
    *  wiring cannot drop out of [[workerFamilies]] unnoticed. */
   private lazy val workerFamiliesNamedInSource: Seq[String] =
-    Seq("worker", "scrapers").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
+    SourceTrees("worker/src/main/scala", "scrapers/src/main/scala").scalaFiles.map(_.toFile)
       .flatMap(f => NameLiteral.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
       .distinct
       .sorted
@@ -398,7 +399,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  refused in any main source file that touches the Prometheus client. */
   "a metric name" should "never be interpolated, so the source scans can see every family" in {
     val prometheusSources =
-      Seq("worker", "scrapers", "web", "common", "identity").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
+      SourceTrees("worker/src/main/scala", "scrapers/src/main/scala", "web/src/main/scala", "common/src/main/scala", "identity/src/main/scala").scalaFiles.map(_.toFile)
         .filter(f => RepoFile.read(f.getPath).contains("io.prometheus"))
     prometheusSources.size should be > 10 // the walk reaches the metric classes
     val offenders = prometheusSources.filter(f => InterpolatedName.findFirstIn(RepoFile.read(f.getPath)).isDefined).map(_.getPath)

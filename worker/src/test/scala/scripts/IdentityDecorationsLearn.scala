@@ -1,12 +1,13 @@
 package scripts
 
+import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.Json
 import services.identity.{TitleDecorations, TitleDecorationsLearner}
 import scripts.IdentityCalibrationData.{ProdSnapshot, listings, queries}
 import tools.CommandLine
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 
 /**
  * Learns the identity resolver's VENUE DECORATIONS (`TitleDecorationsLearner.learn`) from the recorded
@@ -21,7 +22,7 @@ import java.nio.file.{Files, Path, Paths}
  */
 object IdentityDecorationsLearn {
 
-  val Artefact: Path = Paths.get("identity/src/main/resources", TitleDecorations.ResourcePath)
+  val Artefact: Path = SourceTrees("identity/src/main/resources").file(TitleDecorations.ResourcePath)
 
   val commandLine: CommandLine = CommandLine("IdentityDecorationsLearn", "Learns the title decorations from every country's recorded corpora.",
     RecordedCorpora.options ++ Seq(

@@ -1,9 +1,10 @@
 package services.movies
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Files
 import scala.jdk.CollectionConverters._
 
 /**
@@ -18,7 +19,7 @@ import scala.jdk.CollectionConverters._
  */
 class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
 
-  private val Roots = Seq("common/src/main", "identity/src/main", "scrapers/src/main", "worker/src/main", "web/src/main", "worker/src/fixtures")
+  private val Roots = SourceTrees("common/src/main", "identity/src/main", "scrapers/src/main", "worker/src/main", "web/src/main", "worker/src/fixtures")
 
   /** The files allowed to name the predicates: where they are defined, and the model itself. */
   private val Owners = Set(
@@ -28,15 +29,6 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
   private val Vetoes = Seq("deniesFilm", "wouldAddASecondFilm", "describeDifferentFilms")
   private val Direct = s"""MixedFilmDetector\\s*\\.\\s*(${Vetoes.mkString("|")})\\b""".r
 
-  private def sources(root: String): Seq[Path] = {
-    val dir = Paths.get(root)
-    if (!Files.isDirectory(dir)) Nil
-    else {
-      val walk = Files.walk(dir)
-      try walk.iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq finally walk.close()
-    }
-  }
-
   /** Code, not commentary: a doc comment citing the predicate by name is fine. */
   private def isComment(line: String): Boolean = {
     val t = line.trim
@@ -44,7 +36,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "production code" should "ask ListingConstraints, never a MixedFilmDetector veto directly" in {
-    val offenders = Roots.flatMap(sources).filterNot(p => Owners.contains(p.toString)).flatMap { path =>
+    val offenders = Roots.scalaFiles.filterNot(p => Owners.contains(p.toString)).flatMap { path =>
       Files.readAllLines(path).asScala.zipWithIndex.collect {
         case (line, i) if !isComment(line) && Direct.findFirstIn(line).isDefined => s"$path:${i + 1}: ${line.trim}"
       }
@@ -54,7 +46,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
 
   it should "find the files it guards" in {
     // A positive control: a moved tree would make the guard pass vacuously.
-    Roots.flatMap(sources).map(_.toString) should contain allOf (
+    Roots.scalaFiles.map(_.toString) should contain allOf (
       "common/src/main/scala/services/movies/ListingConstraints.scala",
       "worker/src/main/scala/services/movies/MovieService.scala",
       "worker/src/fixtures/scala/tools/ServedCorpusInvariants.scala")

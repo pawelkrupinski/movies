@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import java.nio.file.Path
 
 import ScalaSourceScan.{MainRoots, codeOf, scalaFiles}
@@ -25,7 +26,7 @@ object CollectionNames {
   /** Every name `source` spells literally. */
   def namesIn(source: String): Set[String] = Spellings.flatMap(_.findAllMatchIn(source).map(_.group(1))).toSet
 
-  private val Fixtures = Seq("worker/src/fixtures")
+  private val Fixtures = SourceTrees("worker/src/fixtures")
 
   private lazy val sources: Map[Path, String] = scalaFiles(MainRoots ++ Fixtures).map(p => p -> codeOf(p)).toMap
 

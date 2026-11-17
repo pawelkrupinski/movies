@@ -322,8 +322,9 @@ lazy val common = (project in file("common"))
       scalatestPlay % Test,
       scalatestScalaCheck % Test,
     ),
-    // The shared time doubles (`sharedTestDoubles`).
-    Test / unmanagedSources ++= sharedTestDoubles.value
+    // The shared time doubles (`sharedTestDoubles`), and the test-impact selection's reader names, which
+    // SourceTreeWalksLintSpec reads source-tree declarations with exactly as the build does.
+    Test / unmanagedSources ++= sharedTestDoubles.value :+ (LocalRootProject / baseDirectory).value / "project" / "ReaderNames.scala"
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
@@ -331,13 +332,14 @@ lazy val common = (project in file("common"))
   .settings(noApiDocs)
 
 // The hand-stepped time doubles, the polling helper, the recording tick recorder, the one-country title normalizer, the property specs' base,
-// the split booking-URL row shapes and the stored-rows repository live ONCE, in testkit, beside every other shared fake. common's
+// the split booking-URL row shapes, the stored-rows repository and the source-tree declaration live ONCE, in testkit, beside every other shared fake. common's
 // and identity's own specs need them too, but neither can depend on testkit (testkit depends on both), so those sources
 // are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
 // never meet.
 lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
   "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
-  "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository", "settings/HarnessConfiguration", "settings/HarnessValues").map { name =>
+  "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository", "settings/HarnessConfiguration", "settings/HarnessValues",
+  "testsupport/SourceTrees").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
 

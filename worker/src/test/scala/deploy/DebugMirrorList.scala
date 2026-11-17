@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
@@ -10,7 +11,7 @@ import services.DebugMirror
  *  `sbt 'worker/Test/runMain deploy.DebugMirrorList'`. */
 object DebugMirrorList {
 
-  val Path = s"common/src/main/resources/${DebugMirror.ListResource}"
+  val Path = SourceTrees("common/src/main/resources").file(DebugMirror.ListResource).toString
 
   def main(args: Array[String]): Unit = {
     Files.write(Paths.get(Path), DebugMirror.rendered.getBytes(StandardCharsets.UTF_8))

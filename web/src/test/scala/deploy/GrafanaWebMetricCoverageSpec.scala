@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -87,7 +88,7 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  two can be compared. Complete because no metric name may be interpolated (the worker's
    *  `GrafanaMetricCoverageSpec` lints all three modules for that). */
   private lazy val familiesNamedInSource: Seq[String] =
-    filesUnder(RepoFile.locate("web/src/main/scala"), ".scala")
+    SourceTrees("web/src/main/scala").scalaFiles.map(_.toFile)
       .flatMap(f => NameLiteral.findAllMatchIn(RepoFile.read(f)).map(_.group(1)))
       .distinct
       .sorted

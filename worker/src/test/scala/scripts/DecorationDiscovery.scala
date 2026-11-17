@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import models.Country
 import services.identity._
 import services.identity.ListingShape
@@ -61,7 +62,7 @@ object DecorationDiscovery {
   /** The marker line in the title-rule table (`title-rules.tsv`) the kept proposals are inserted above: the end of
    *  the lookup tier. */
   val Marker = "# decoration-discovery: proposals are inserted above this line"
-  val RulesSource: Path = Path.of("common/src/main/resources", services.titlerules.TitleRuleTable.Resource)
+  val RulesSource: Path = SourceTrees("common/src/main/resources").file(services.titlerules.TitleRuleTable.Resource)
 
   // ── mining ────────────────────────────────────────────────────────────────────────────────
 

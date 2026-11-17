@@ -1,5 +1,6 @@
 package services.cinemas
 
+import testsupport.SourceTrees
 import clients.tools.FixtureFile
 import models._
 import org.scalatest.OptionValues
@@ -18,7 +19,7 @@ import services.cinemas.pl.FilmwebCinemaIdResolver._
 class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def fixture(name: String): String =
-    FixtureFile.read(s"scrapers/src/test/resources/fixtures/filmweb-city-cinemas/$name")
+    FixtureFile.read(SourceTrees("scrapers/src/test/resources/fixtures/filmweb-city-cinemas").file(name).toString)
 
   // Filmweb town ids, from the captured cities.json.
   private val KrakowId = 2

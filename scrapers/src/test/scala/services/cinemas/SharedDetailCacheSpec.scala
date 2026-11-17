@@ -1,10 +1,11 @@
 package services.cinemas
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -39,7 +40,7 @@ import scala.jdk.CollectionConverters._
  */
 class SharedDetailCacheSpec extends AnyFlatSpec with Matchers {
 
-  private val CinemasDirectory: Path = Paths.get("scrapers/src/main/scala/services/cinemas")
+  private val CinemasDirectory: Path = SourceTrees("scrapers/src/main/scala/services/cinemas").path
 
   /** The composition root: the only place allowed to name a detail cache at all,
    *  and there only as the `chainDetailCache` seam's diagnostic default. */

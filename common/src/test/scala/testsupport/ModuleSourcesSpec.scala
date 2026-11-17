@@ -12,7 +12,7 @@ class ModuleSourcesSpec extends AnyFlatSpec with Matchers {
 
   "the source walk" should "reach every module build.sbt declares, and nothing else" in {
     declared should contain allOf ("geodata", "common", "identity", "scrapers", "testkit", "worker", "web", "e2e")
-    ModuleSources.configDirectories().map(dir => ModuleSources.named(dir).takeWhile(_ != '/')).toSet shouldBe declared
+    ModuleSources.scalaDirectories().map(dir => ModuleSources.named(dir).takeWhile(_ != '/')).toSet shouldBe declared
   }
 
   it should "leave the test-support modules out of production" in {

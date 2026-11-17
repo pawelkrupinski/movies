@@ -3,7 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 
 /**
  * Every Mongo find or aggregate read to completion asks for a bounded batch ([[MongoReplies]]).
@@ -53,7 +53,7 @@ class NoUnboundedMongoReadSpec extends AnyFlatSpec with Matchers {
   }
 
   "a Mongo find or aggregate read to completion" should "ask for a bounded batch" in {
-    MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
+    withClue("every tree must exist (run from the repo root): ")(MainRoots.missing shouldBe empty)
     val offenders = for {
       file  <- scalaFiles(MainRoots)
       text   = new String(Files.readAllBytes(file), "UTF-8")

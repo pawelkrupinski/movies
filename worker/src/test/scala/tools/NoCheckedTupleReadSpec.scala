@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -18,7 +19,7 @@ import ScalaSourceScan.{MainRoots, codeOf, scalaFiles}
  */
 class NoCheckedTupleReadSpec extends AnyFlatSpec with Matchers {
 
-  private val Roots = MainRoots :+ "testkit/src/main"
+  private val Roots = MainRoots ++ SourceTrees("testkit/src/main")
 
   private val CheckedTuple = """\bdef\s+(\w+Checked)\s*(?:\[[^\]]*\])?\s*\([^)]*\)\s*:\s*\([^)]*,\s*Boolean\s*\)""".r
 

@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -38,7 +39,7 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{argumentsAt, code, codeOf, read, scalaFiles}
 
-  private val ItRoots = Seq("web/src/it", "worker/src/it", "common/src/it", "e2e/src/it")
+  private val ItRoots = SourceTrees("web/src/it", "worker/src/it", "common/src/it", "e2e/src/it")
 
   /** file → why it may still name the shared database. */
   private val SharedDatabaseAllowlist: Map[String, String] = Map(

@@ -1,9 +1,10 @@
 package services.enrichment
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Files
 import scala.jdk.CollectionConverters._
 
 /** Regression guard for the retired Trakt (api.trakt.tv) integration.
@@ -27,26 +28,22 @@ import scala.jdk.CollectionConverters._
  */
 class NoTraktIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  private val ScannedRoots: Seq[Path] =
-    Seq("worker/src/main/scala", "scrapers/src/main/scala", "common/src/main/scala", "http/src/main/scala", "web/src/main/scala").map(Paths.get(_))
+  private val ScannedRoots =
+    SourceTrees("worker/src/main/scala", "scrapers/src/main/scala", "common/src/main/scala", "http/src/main/scala", "web/src/main/scala")
 
   private val TraktReference = """(?i)trakt""".r
 
   "The worker" should "carry no Trakt integration — client, resolver, credential or host" in {
-    ScannedRoots.foreach(root => withClue(s"$root should exist: ")(Files.exists(root) shouldBe true))
+    ScannedRoots.missing shouldBe empty
 
     val offenders: Seq[String] =
-      ScannedRoots.flatMap { root =>
-        Files.walk(root).iterator.asScala.toSeq
-          .filter(p => p.getFileName.toString.endsWith(".scala"))
-          .sortBy(_.toString)
+      ScannedRoots.scalaFiles
           .flatMap { path =>
             Files.readAllLines(path).asScala.zipWithIndex.collect {
               case (line, index) if TraktReference.findFirstIn(line).isDefined =>
                 s"$path:${index + 1}: ${line.trim}"
             }
           }
-      }
 
     withClue(
       "Trakt was retired (see the scaladoc above). These lines reintroduce it — client, resolver, " +

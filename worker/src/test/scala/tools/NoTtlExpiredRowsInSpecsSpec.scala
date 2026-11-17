@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -22,7 +23,7 @@ class NoTtlExpiredRowsInSpecsSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{MainRoots, codeOf, read, scalaFiles}
 
-  private val ItRoots      = Seq("web/src/it", "worker/src/it")
+  private val ItRoots      = SourceTrees("web/src/it", "worker/src/it")
   private val TtlIndexCall = """MongoTtlIndex\.(?:ensure|reconcile)\(|IndexOptions\(\)\s*\.expireAfter\(""".r
   private val Declaration  = """\b(?:class|object)\s+([\w$]+)""".r
   private val PastPinned   = """\bSpecClock\.Pinned\b""".r

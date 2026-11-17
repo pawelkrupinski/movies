@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.ModuleSources
+import testsupport.{ModuleSources, SourceTrees}
 
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
@@ -42,14 +42,14 @@ class DeepExpressionLintSpec extends AnyFlatSpec with Matchers {
     }._1
 
   /** Every `<module>/src/<config>/scala` directory under the repository root. */
-  private def sourceRoots: Seq[Path] = ModuleSources.configDirectories().map(_.resolve("scala"))
+  private def sourceRoots: Seq[Path] = ModuleSources.scalaDirectories()
 
   "Every compiled source root" should "chain no more concatenations in a row than the compiler can walk" in {
     val roots = sourceRoots
-    roots.map(ModuleSources.named) should contain allOf (
+    roots.map(ModuleSources.named) should contain allElementsOf SourceTrees(
       "common/src/main/scala", "common/src/test/scala", "web/src/main/scala", "web/src/test/scala", "web/src/it/scala",
       "web/src/page/scala", "identity/src/main/scala", "identity/src/test/scala", "scrapers/src/main/scala", "scrapers/src/test/scala", "scrapers/src/fixtures/scala", "worker/src/main/scala", "worker/src/test/scala", "worker/src/it/scala",
-      "worker/src/fixtures/scala")
+      "worker/src/fixtures/scala").declared
     val sources = roots.flatMap(root => Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq)
     val deep = sources.map(p => p -> longestChain(Files.readAllLines(p).asScala.toSeq)).filter(_._2 > MaxChain)
     deep.map { case (p: Path, n) => s"$p: $n" } shouldBe empty

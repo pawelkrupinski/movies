@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.{ModuleSources, RepoRoot}
+import testsupport.{ModuleSources, RepoRoot, SourceTrees}
 
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
@@ -69,12 +69,12 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
   )
 
   /** Every module's production sources and the worker's shared fixture harness. */
-  private val ProductionDirectories = ModuleSources.configDirectories("main", "fixtures")
+  private val ProductionDirectories = SourceTrees("*/src/main", "*/src/fixtures").directories
 
   /** Every spec, integration spec, page test, e2e suite and the tool/script mains that live
    *  beside them. A spec is the root of its own run: it resolves ONE ProcessConfiguration
    *  (`tools.SuiteConfiguration`) or builds the typed values it needs directly. */
-  private val SpecDirectories = ModuleSources.configDirectories("test", "it", "page")
+  private val SpecDirectories = SourceTrees("*/src/test", "*/src/it", "*/src/page").directories
 
   private def sources(directories: Seq[Path]): Seq[Path] =
     for {
@@ -96,9 +96,8 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
 
   private def offenders(pattern: scala.util.matching.Regex, allowed: Map[String, String],
                         directories: Seq[Path] = ProductionDirectories): Seq[String] = {
-    val root = RepoRoot.dir.toPath
     sources(directories).flatMap { path =>
-      val relative = root.relativize(path).toString
+      val relative = ModuleSources.named(path)
       if (allowed.contains(relative)) Nil
       else code(Files.readString(path)).linesIterator.zipWithIndex.collect {
         case (line, index) if pattern.findFirstIn(line).isDefined => s"$relative:${index + 1}: ${line.trim}"

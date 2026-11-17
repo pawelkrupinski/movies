@@ -194,7 +194,7 @@ check "every module's unit tests are the readers' universe, the worker's less it
 # the plan and the lint specs already run
 sourcelints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --source-lints "common:tools.DeepExpressionLintSpec"; }
 check "every module's source-walking lints, by the walkers they are built on" "1 1 1" \
-  "$(sourcelints scrapers/Test/test | grep -c '^worker/testOnly .*tools\.NoDefaultZoneSpec') $(sourcelints scrapers/Test/test | grep -c '^common/testOnly .*testsupport\.ModuleSourcesSpec') $(sourcelints | grep -c '^identity/testOnly services\.identity\.ReaderNamesSpec$')"
+  "$(sourcelints scrapers/Test/test | grep -c '^worker/testOnly .*tools\.NoDefaultZoneSpec') $(sourcelints scrapers/Test/test | grep -c '^common/testOnly .*testsupport\.ModuleSourcesSpec') $(sourcelints | grep -c '^identity/testOnly .*services\.identity\.ReaderNamesSpec\b')"
 check "...less a module the plan runs whole, a class it names, and a lint spec the run runs" "0 0 0" \
   "$(sourcelints common/Test/test | grep -c '^common/') $(sourcelints 'worker/testOnly scripts.A tools.NoDefaultZoneSpec' | grep -c 'NoDefaultZoneSpec') $(sourcelints | grep -c DeepExpressionLintSpec)"
 check "no module path, no unit tests (e2e is the heavy rows')" "" \

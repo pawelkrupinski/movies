@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import tools.CommandLine
 import services.identity.UnifiedEvidence
 
@@ -263,7 +264,7 @@ object IdentityUnifiedStrategies {
     }.toMap
   }
 
-  val RulesArtefact: Path = Paths.get("identity/src/main/resources", services.identity.UnifiedRules.ResourcePath)
+  val RulesArtefact: Path = SourceTrees("identity/src/main/resources").file(services.identity.UnifiedRules.ResourcePath)
 
   val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
 

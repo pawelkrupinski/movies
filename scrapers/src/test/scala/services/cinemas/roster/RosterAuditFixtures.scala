@@ -1,5 +1,6 @@
 package services.cinemas.roster
 
+import testsupport.SourceTrees
 import clients.tools.FixtureFile
 
 /** Venue source pages recorded 2026-09-23 for the online roster audit's reader
@@ -14,7 +15,7 @@ import clients.tools.FixtureFile
  */
 object RosterAuditFixtures {
   def page(name: String): String =
-    FixtureFile.read(s"scrapers/src/test/resources/fixtures/roster-audit/$name")
+    FixtureFile.read(SourceTrees("scrapers/src/test/resources/fixtures/roster-audit").file(name).toString)
 
   val Sroda477      = "bilety24-organiser-477-sroda-wielkopolska.html"
   val Ostrowiec1389 = "bilety24-organiser-1389-ostrowiec.html"

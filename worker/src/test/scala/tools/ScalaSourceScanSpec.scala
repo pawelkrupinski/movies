@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.Paths
+import testsupport.SourceTrees
 
 class ScalaSourceScanSpec extends AnyFlatSpec with Matchers {
 
@@ -17,11 +18,9 @@ class ScalaSourceScanSpec extends AnyFlatSpec with Matchers {
   // 2026-10-19: the geodata module's ~20k lines of generated tables sat outside MainRoots, so every source lint (the
   // zone-literal rule among them) silently stopped reading them when they moved out of common.
   "MainRoots" should "name every module's main sources (testkit's, test-side code, being among TestRoots)" in {
-    val modules = Option(Paths.get(".").toFile.listFiles).toSeq.flatten
-      .filter(module => Paths.get(module.getName, "src", "main").toFile.isDirectory).map(_.getName)
-    modules should not be empty
-    modules.map(module => s"$module/src/main")
-      .filterNot(root => ScalaSourceScan.MainRoots.contains(root) || ScalaSourceScan.TestRoots.exists(test => root.startsWith(s"$test/")))
+    val mains = SourceTrees("*/src/main").directories.map(_.toString)
+    mains should not be empty
+    mains.filterNot(root => ScalaSourceScan.MainRoots.declared.contains(root) || ScalaSourceScan.TestRoots.declared.exists(test => root.startsWith(s"$test/")))
       .shouldBe(empty)
   }
 

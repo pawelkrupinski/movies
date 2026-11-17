@@ -1,13 +1,12 @@
 package integration
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.users.UserStateRepository
 import tools.contracts.Implementations
 
-import java.io.File
 import java.nio.file.Files
-import scala.jdk.CollectionConverters.*
 
 /**
  * Every [[UserStateRepository]] implementation on the class path is held to
@@ -22,13 +21,8 @@ import scala.jdk.CollectionConverters.*
  */
 class UserStateRepositoryCoverageSpec extends AnyFlatSpec with Matchers {
 
-  private val repoRoot: File =
-    Iterator.iterate(new File(".").getCanonicalFile)(_.getParentFile).takeWhile(_ != null)
-      .find(dir => new File(dir, "build.sbt").exists()).getOrElse(fail("no build.sbt above the working directory"))
-
   private val contractRuns: String =
-    Seq("web/src/test/scala", "web/src/it/scala").map(new File(repoRoot, _).toPath).filter(Files.isDirectory(_))
-      .flatMap(dir => Files.walk(dir).iterator().asScala.filter(_.toString.endsWith(".scala")).map(Files.readString).toSeq)
+    SourceTrees("web/src/test/scala", "web/src/it/scala").scalaFiles.map(Files.readString)
       .mkString("\n")
 
   "every UserStateRepository implementation" should "run UserStateWritesContract" in {

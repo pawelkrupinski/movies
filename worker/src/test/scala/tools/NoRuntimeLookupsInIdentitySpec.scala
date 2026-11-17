@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -24,7 +25,7 @@ class NoRuntimeLookupsInIdentitySpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{code, read, scalaFiles}
 
-  private val Roots = Seq("identity/src/main", "worker/src/main/scala/services/identity")
+  private val Roots = SourceTrees("identity/src/main", "worker/src/main/scala/services/identity")
 
   /** A runtime lookup, by what it reads. */
   private val Lookups: Seq[(String, scala.util.matching.Regex)] = Seq(

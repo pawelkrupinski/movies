@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ScreeningTokens
@@ -21,7 +22,7 @@ class SourceTokenTablesSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, scalaFiles}
 
-  private val Roots = Seq("scrapers/src/main/scala/services/cinemas", "common/src/main/scala", "identity/src/main/scala")
+  private val Roots = SourceTrees("scrapers/src/main/scala/services/cinemas", "common/src/main/scala", "identity/src/main/scala")
   private val Vocabulary = "common/src/main/scala/services/movies/ScreeningTokens.scala"
 
   /** `file: TOKEN` → why that table may map onto a token the vocabulary drops. */

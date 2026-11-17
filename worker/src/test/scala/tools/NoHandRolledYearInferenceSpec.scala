@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -25,20 +26,20 @@ class NoHandRolledYearInferenceSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, read, scalaFiles}
 
-  private val ClientRoot = "scrapers/src/main/scala/services/cinemas"
+  private val ClientRoot = SourceTrees("scrapers/src/main/scala/services/cinemas")
 
   /** file → why it may still derive a year itself. */
   private val Allowlist: Map[String, String] = Map(
-    s"$ClientRoot/common/ScraperParse.scala" -> "the shared year rule itself",
-    s"$ClientRoot/pl/KinoZamekClient.scala" -> (
+    ClientRoot.file("common/ScraperParse.scala").toString -> "the shared year rule itself",
+    ClientRoot.file("pl/KinoZamekClient.scala").toString -> (
       "a cycle page lists the whole season, so a yearless date is the occurrence NEAREST today (June's opening night " +
         "read in August is past, not eleven months ahead) — the opposite of upcomingDate's next-occurrence rule"),
-    s"$ClientRoot/pl/KinoPortClient.scala" -> (
+    ClientRoot.file("pl/KinoPortClient.scala").toString -> (
       "walks one post's day headers in order and rolls the year when the month goes backwards, re-anchored by any " +
         "month header that prints a year: the post's own order decides, not today"),
-    s"$ClientRoot/pl/KinoDKFRumcajsClient.scala" ->
+    ClientRoot.file("pl/KinoDKFRumcajsClient.scala").toString ->
       "a monthly post whose title prints its year; today's year is only the fallback for a title without one",
-    s"$ClientRoot/pl/MuranowClient.scala" ->
+    ClientRoot.file("pl/MuranowClient.scala").toString ->
       "the calendar header prints the month's year; today's year is only the fallback for a header without one",
   )
 
@@ -50,7 +51,7 @@ class NoHandRolledYearInferenceSpec extends AnyFlatSpec with Matchers {
       .flatMap(_.findAllMatchIn(src).map(m => src.substring(0, m.start).count(_ == '\n') + 1))
       .distinct.sorted
 
-  private lazy val sources = scalaFiles(Seq(ClientRoot)).map(p => p.toString -> codeOf(p))
+  private lazy val sources = scalaFiles(ClientRoot).map(p => p.toString -> codeOf(p))
 
   "the year-rule matchers" should "catch each hand-rolled year rule the clients carried" in {
     yearRules("val year = if (month < today.getMonthValue) today.getYear + 1 else today.getYear") shouldBe Seq(1)

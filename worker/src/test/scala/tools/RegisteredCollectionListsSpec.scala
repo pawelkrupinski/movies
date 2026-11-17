@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import java.nio.file.{Files, Path, Paths}
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -15,11 +16,10 @@ import ScalaSourceScan.{codeOf, scalaFiles}
  */
 class RegisteredCollectionListsSpec extends AnyFlatSpec with Matchers {
 
-  private val FixtureRoot = "worker/src/fixtures"
   private val Recorder    = Paths.get("worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala")
   private val LiveDrift   = Paths.get("worker/src/test/scala/scripts/IdentityLiveDrift.scala")
 
-  private lazy val fixtureObjects: Map[String, Path] = scalaFiles(Seq(FixtureRoot)).flatMap { path =>
+  private lazy val fixtureObjects: Map[String, Path] = scalaFiles(SourceTrees("worker/src/fixtures")).flatMap { path =>
     """\bobject\s+(\w+)""".r.findAllMatchIn(codeOf(path)).map(_.group(1) -> path)
   }.toMap
 

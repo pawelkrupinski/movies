@@ -3,7 +3,6 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.Paths
 
 /**
  * Heap allocation is measured in ONE way: production through `tools.ThreadAllocation`, specs through
@@ -44,7 +43,7 @@ class NoHandRolledAllocationMeasurementSpec extends AnyFlatSpec with Matchers {
   } yield file.toString
 
   "allocation" should "be read only through ThreadAllocation and AllocationMeter" in {
-    (MainRoots ++ TestRoots).foreach(root => withClue(s"$root must exist (run from the repo root)")(java.nio.file.Files.isDirectory(Paths.get(root)) shouldBe true))
+    withClue("every tree must exist (run from the repo root): ")((MainRoots ++ TestRoots).missing shouldBe empty)
     val unexplained = offenders.filterNot(Allowed.contains)
     withClue("measure a spec's allocation with tools.costs.AllocationMeter against a tools.costs.PerformanceBudgets budget, " +
       "and production's with tools.ThreadAllocation:\n" + unexplained.mkString("\n") + "\n")(unexplained shouldBe empty)

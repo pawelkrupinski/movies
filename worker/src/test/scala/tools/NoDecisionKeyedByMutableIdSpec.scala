@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -40,7 +41,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   private final case class Pass(why: String)                     extends Kept
   private final case class Store(why: String)                    extends Kept
 
-  private val Roots = Seq("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identity")
+  private val Roots = SourceTrees("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identity")
 
   /** Key types that are content by construction: what they name cannot change under them. */
   private val ContentKeys = Set("Question", "PosterQuestion", "CandidateQuery", "Dependency", "ResolverDecision",

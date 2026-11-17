@@ -2,7 +2,7 @@
 # The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`,
 # one a line; nothing when every one has its row. Run from the root of the checkout it judges. A repo-reading spec is
 # a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper (ScalaSourceScan, ModuleSources,
-# RepoRoot, WorkflowText): the hook's sbt check selects lint specs from the registry alone, so one without a row never
+# SourceTrees, RepoRoot, WorkflowText): the hook's sbt check selects lint specs from the registry alone, so one without a row never
 # runs before a push. The one reading of it: lint-registry-test.sh's check and pre-push's sbt check (Tool self-tests
 # #158 and #166: two new deploy specs landed rowless, seen only on main). Both lists are sorted in C order, and comm
 # compares in C order too: under the laptop's en_NZ.UTF-8 it missed a row in place (2026-11-09).
@@ -17,7 +17,7 @@ candidates() {
         find "$tree" -name '*Spec.scala' -type f | sed 's|^\./||' | while IFS= read -r f; do
             rel="${f#*/src/test/scala/}"
             case "$rel" in tools/No*|tools/*Lint*|deploy/*) ;; *)
-                grep -qE '\b(ScalaSourceScan|ModuleSources|RepoRoot|WorkflowText)\b' "$f" || continue ;;
+                grep -qE '\b(ScalaSourceScan|ModuleSources|SourceTrees|RepoRoot|WorkflowText)\b' "$f" || continue ;;
             esac
             printf '%s:%s\n' "${f%%/*}" "$(printf '%s' "${rel%.scala}" | tr / .)"
         done

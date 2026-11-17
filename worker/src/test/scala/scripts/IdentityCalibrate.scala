@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import services.identity.{Backer, SourceReliability, StageRelays, VenueBacking}
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
@@ -50,7 +51,7 @@ import scala.util.hashing.MurmurHash3
 object IdentityCalibrate {
 
   /** Where a refit writes: the RESOLVER's artefact, never the rating gate's pinned one. */
-  val ResolverArtefact: Path = Paths.get("identity/src/main/resources", IdentityCalibration.ResolverResourcePath)
+  val ResolverArtefact: Path = SourceTrees("identity/src/main/resources").file(IdentityCalibration.ResolverResourcePath)
 
   final case class Config(inputs: RecordedCorpora, prod: Option[Path], weightsOut: Path,
                           labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,

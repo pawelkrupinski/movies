@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -25,7 +26,7 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
   private lazy val e2eJob   = RepoFile.block(ciYml, "e2e")
 
   private lazy val specs: Vector[(String, String)] =
-    RepoFile.listed("e2e/src/test/scala/services/movies")(_.getName.endsWith("Spec.scala"))
+    RepoFile.listed(SourceTrees("e2e/src/test/scala/services/movies").path.toString)(_.getName.endsWith("Spec.scala"))
       .map(f => f.getName.stripSuffix(".scala") -> RepoFile.read(f.getPath))
       .toVector
 

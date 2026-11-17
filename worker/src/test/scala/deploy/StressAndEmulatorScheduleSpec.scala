@@ -1,10 +1,10 @@
 package deploy
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Paths}
-import scala.jdk.CollectionConverters._
+import java.nio.file.Files
 
 /**
  * WHERE the luck-dependent suites run: the race harnesses and the WebKit phones nightly, many
@@ -30,12 +30,15 @@ class StressAndEmulatorScheduleSpec extends AnyFlatSpec with Matchers {
     harnesses.map(_._1).toSet should contain allOf ("worker/Test", "worker/IntegrationTest")
   }
 
+  /** Where a harness class lives: its module's spec or integration tree. */
+  private val SpecTrees = SourceTrees("*/src/test", "*/src/it")
+
   it should "list only classes that exist where it says" in {
     val missing = harnesses.filterNot { case (target, cls) =>
       val module = target.takeWhile(_ != '/')
-      val dir    = Paths.get(module, "src", if (target.endsWith("IntegrationTest")) "it" else "test")
+      val config = if (target.endsWith("IntegrationTest")) "it" else "test"
       val simple = cls.split('.').last
-      Files.walk(dir).iterator().asScala.filter(_.toString.endsWith(".scala"))
+      SpecTrees.scalaFiles.filter(p => p.getName(0).toString == module && p.getName(2).toString == config)
         .exists(p => Files.readString(p).linesIterator.exists(_.matches(s""".*\\bclass $simple\\b.*""")))
     }
     withClue("harnesses stress-races.sh names that are gone: ")(missing shouldBe empty)

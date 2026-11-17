@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -98,8 +99,8 @@ class NoRealDependenciesInUnitSpecsSpec extends AnyFlatSpec with Matchers {
 object NoRealDependenciesInUnitSpecsSpec {
 
   /** The unit configs' trees: what `testUnit` compiles and runs. */
-  val UnitRoots: Seq[String] =
-    Seq("base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src/test", "web/src/test", "worker/src/test")
+  val UnitRoots: SourceTrees =
+    SourceTrees("base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src/test", "web/src/test", "worker/src/test")
 
   /** This spec: its self-test feeds the matchers these shapes as string literals. */
   private val Self = "worker/src/test/scala/tools/NoRealDependenciesInUnitSpecsSpec.scala"

@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -177,7 +178,7 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
   "the stepped-time doubles" should "exist once, in testkit" in {
     Seq("MutableClock", "ManualScheduler").foreach { name =>
       val declaring = sources.collect { case (p, src) if s"""\\bclass\\s+$name\\b""".r.findFirstIn(src).isDefined => p.toString }
-      declaring shouldBe Seq(s"testkit/src/main/scala/tools/$name.scala")
+      declaring shouldBe Seq(SourceTrees("testkit/src/main/scala/tools").file(s"$name.scala").toString)
     }
   }
 }

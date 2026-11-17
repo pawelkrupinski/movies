@@ -17,7 +17,7 @@ import java.io.File
  */
 class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
 
-  private val cards: File = testsupport.RepoRoot.file("web/src/main/assets/img")
+  private val cards: File = testsupport.SourceTrees("web/src/main/assets/img").path.toFile
 
   private def missing(names: Seq[String]): Seq[String] = names.filterNot(new File(cards, _).exists())
 

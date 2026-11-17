@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -71,8 +72,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "the `> /tmp/aot-classes.txt && mv` is the regeneration command a failure message prints for a person to run, not one the spec runs",
   )
 
-  private val Roots = Seq("scripts", ".github", "data", "android", "ios", "infra", "tools", "page-tests-playwright",
-    "common/src", "identity/src", "web/src", "worker/src", "testkit/src", "e2e/src")
+  private val Roots = Seq("scripts", ".github", "data", "android", "ios", "infra", "tools", "page-tests-playwright").map(Paths.get(_)) ++
+    SourceTrees("common/src", "identity/src", "web/src", "worker/src", "testkit/src", "e2e/src").directories
 
   /** Never descended into: dependencies, build output, test resources (recorded response bodies by
    *  the ten thousand, no test code), and the GitOps checkout `fetch-gitops` links in. */
@@ -98,7 +99,7 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     else None
   }
 
-  private lazy val testFiles: Seq[(String, Language)] = Roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
+  private lazy val testFiles: Seq[(String, Language)] = Roots.filter(Files.isDirectory(_)).flatMap { root =>
     Using.resource(Files.walk(root)) { paths =>
       paths.iterator.asScala.filter(Files.isRegularFile(_))
         .filterNot(path => path.iterator.asScala.exists(part => SkippedDirectories.contains(part.toString)))

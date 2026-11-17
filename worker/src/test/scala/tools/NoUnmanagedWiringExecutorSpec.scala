@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -17,7 +18,7 @@ import ScalaSourceScan.{code, read, scalaFiles}
  */
 class NoUnmanagedWiringExecutorSpec extends AnyFlatSpec with Matchers {
 
-  private val WiringRoots = Seq("worker/src/main/scala/modules", "web/src/main/scala/modules")
+  private val WiringRoots = SourceTrees("worker/src/main/scala/modules", "web/src/main/scala/modules")
   private val Pool        = """\bDaemonExecutors\s*\.\s*\w+\s*\(""".r
   private val Member      = """^\s*(?:(?:private|protected)(?:\[\w+\])?\s+|override\s+|final\s+|implicit\s+)*(?:lazy\s+val|val|def)\s""".r
   private val Registered  = """\bmanagedResources\s*\.\s*(?:executor|register)\s*[(\[]""".r

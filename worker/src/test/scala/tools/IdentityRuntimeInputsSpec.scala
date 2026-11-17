@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoCollections, ResolveRole}
@@ -31,13 +32,13 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
 
   // ── 1. collections ─────────────────────────────────────────────────────────
 
-  private val IdentityRoots = Seq("identity/src/main", "worker/src/main/scala/services/identity")
-  private val Wiring        = "worker/src/main/scala/modules"
+  private val IdentityRoots = SourceTrees("identity/src/main", "worker/src/main/scala/services/identity")
+  private val Wiring        = SourceTrees("worker/src/main/scala/modules")
 
   /** The wiring that builds the identity path: all of the identity projection's, and the identity model wiring's
    *  definitions that build the model and its lookups. */
-  private val IdentityWiring     = Paths.get(s"$Wiring/wiring/IdentityProjectionWiring.scala")
-  private val ModelWiring        = Paths.get(s"$Wiring/wiring/IdentityModelWiring.scala")
+  private val IdentityWiring     = Wiring.file("wiring/IdentityProjectionWiring.scala")
+  private val ModelWiring        = Wiring.file("wiring/IdentityModelWiring.scala")
   private val WorkerIdentityDefs = Seq("identityModel", "storedLookups", "cutoverLookups", "venueDetailLookups", "identityQuestionMemory",
     "identityTmdbLayer", "venuePageIndex", "newVenuePageStore")
 
@@ -56,7 +57,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
 
   /** The wiring's values, by name, that build a Mongo store: what an identity definition naming one opens. */
   private lazy val wiredStores: Map[String, Seq[String]] =
-    scalaFiles(Seq(Wiring)).flatMap(p => definitions(codeOf(p))).filter(_._2.contains("new Mongo"))
+    scalaFiles(Wiring).flatMap(p => definitions(codeOf(p))).filter(_._2.contains("new Mongo"))
       .groupBy(_._1).map { case (name, defs) => name -> defs.map(_._2) }
 
   /** The text of the identity path's code: its sources, and the wiring's identity definitions with the stores they name. */

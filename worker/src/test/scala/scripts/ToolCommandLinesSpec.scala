@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.CommandLine
@@ -182,7 +183,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     // `def main(args)(using LatestTitleYear)` compiles to main(String[], LatestTitleYear): `runMain` finds no entry point
     val Package = """(?m)^package ([\w.]+)""".r
     val Object  = """(?m)^object (\w+)""".r
-    val programs = tools.ScalaSourceScan.scalaFiles(Seq("worker/src/test", "scrapers/src/fixtures")).filter(tools.ScalaSourceScan.isProgram)
+    val programs = tools.ScalaSourceScan.scalaFiles(SourceTrees("worker/src/test", "scrapers/src/fixtures")).filter(tools.ScalaSourceScan.isProgram)
     programs.size should be > 20
     val unstartable = programs.filterNot { path =>
       val source = tools.ScalaSourceScan.read(path)

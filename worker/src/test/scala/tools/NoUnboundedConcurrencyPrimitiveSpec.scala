@@ -5,7 +5,6 @@ import org.scalatest.matchers.should.Matchers
 
 import ScalaSourceScan.{MainRoots, code, read, scalaFiles}
 
-import java.nio.file.{Files, Paths}
 
 /**
  * Caches, queues and pools are built bounded, through their factories.
@@ -56,7 +55,7 @@ class NoUnboundedConcurrencyPrimitiveSpec extends AnyFlatSpec with Matchers {
   } yield (file.toString, line, text, fix)
 
   "Main sources" should "build caches, queues and pools only through their bounded factories, outside the allowlist" in {
-    MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
+    withClue("every tree must exist (run from the repo root): ")(MainRoots.missing shouldBe empty)
     val unexplained = found.filterNot { case (file, _, text, _) => Allowlist.contains(file -> text) }
     withClue(unexplained.map { case (file, line, text, fix) => s"$file:$line: $text — $fix" }.mkString(
       "\nBound each of these through its factory, or, where unbounded is right, add (file, trimmed line) -> WHY to Allowlist:\n",

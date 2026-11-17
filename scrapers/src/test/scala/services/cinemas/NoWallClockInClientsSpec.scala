@@ -1,9 +1,10 @@
 package services.cinemas
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 
 /** Regression guard for the "wall-clock leak": a cinema scraper must derive
@@ -20,7 +21,7 @@ import scala.jdk.CollectionConverters._
  *  built without `today`, drifting the whole-corpus snapshot day by day. */
 class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
 
-  private val ClientsDirectory: Path = Paths.get("scrapers/src/main/scala/services/cinemas")
+  private val ClientsDirectory: Path = SourceTrees("scrapers/src/main/scala/services/cinemas").path
 
   private val NowCall = """Local(?:Date|DateTime)\.now\(""".r
 

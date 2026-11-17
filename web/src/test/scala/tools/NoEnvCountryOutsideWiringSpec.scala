@@ -1,10 +1,11 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -23,10 +24,7 @@ import scala.jdk.CollectionConverters._
  */
 class NoEnvCountryOutsideWiringSpec extends AnyFlatSpec with Matchers {
 
-  // Forked tests run in `web/`, unforked ones at the repository root.
-  private val webMain: Path =
-    Seq(Paths.get("web/src/main"), Paths.get("src/main")).find(Files.isDirectory(_))
-      .getOrElse(fail("web/src/main not found from " + Paths.get("").toAbsolutePath))
+  private val webMain: Path = SourceTrees("web/src/main").path
 
   private val CompositionRoot = webMain.resolve("scala/modules")
   private val EnvCountry      = """\bCountry\.fromEnv\b""".r

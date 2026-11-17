@@ -1,5 +1,6 @@
 package deploy
 
+import testsupport.SourceTrees
 import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -97,8 +98,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   // tomorrow must be listed too: every web source it reaches, by the top-level names it
   // mentions, transitively.
   it should "list every web source the legs' schedule reader reaches" in {
-    val sources = java.nio.file.Files.walk(Paths.get("web/src/main/scala")).iterator().asScala
-      .filter(_.toString.endsWith(".scala")).map(p => p.toString -> Files.readString(p)).toMap
+    val sources = SourceTrees("web/src/main/scala").scalaFiles.map(p => p.toString -> Files.readString(p)).toMap
     val Defined = """(?m)^(?:(?:final|sealed|abstract|private(?:\[\w+\])?|implicit)\s+)*(?:case\s+class|class|object|trait|enum)\s+(\w+)""".r
     val definedIn: Map[String, Set[String]] = sources.toSeq
       .flatMap { case (path, src) => Defined.findAllMatchIn(src).map(_.group(1) -> path) }
@@ -158,8 +158,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
       .flatMap(f => RunMain.findAllMatchIn(RepoFile.read(f)).map(_.group(1))).distinct
     tools should contain allOf ("IdentityResolveDump", "UnmatchedClustersRatchet", "HardClusterRecord")
     val files = tools.flatMap { tool =>
-      val walk = Files.walk(Paths.get("worker/src"))
-      try walk.iterator.asScala.map(_.toString).filter(_.endsWith(s"/$tool.scala")).toList finally walk.close()
+      SourceTrees("worker/src").scalaFiles.map(_.toString).filter(_.endsWith(s"/$tool.scala"))
     }
     files should have size tools.size.toLong
     files.filterNot(covered) shouldBe empty

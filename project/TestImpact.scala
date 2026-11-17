@@ -13,10 +13,13 @@ import xsbti.VirtualFileRef
  *    (a hyphenated one also by each leading run of two or more of its words: `cinema-scrapes-hard-clusters-pl.json.gz`
  *    is read through `s"cinema-scrapes-$key"`), or a directory between its resource root and it
  *    (`identity-unmatched/pl.json.gz` through `Path.of(..., "identity-unmatched")`) -- `ReaderNames.tokens`;
- *  - any changed file, a source included, also seeds every source whose literals name its path or a directory above
- *    it (`ReaderNames.treeNames`): a spec walking `worker/src/main` for a call reads every source under it, which no
- *    class dependency records -- and every source with a tree GLOB literal matching such a directory (
- *    testsupport.ModuleSources walks every module's sources, so the lints built on it read a `common` change);
+ *  - a changed file under a module's source tree (`<module>/src/...`), a source included, also seeds every source
+ *    DECLARING a tree that holds it (`testsupport.SourceTrees("worker/src/main")` or a glob of every module's `src/<config>/scala`:
+ *    `ReaderNames.declaredTrees`) and every source whose literal is its very path: a spec walking `worker/src/main` for
+ *    a call reads every source under it, which no class dependency records. A test reaches a source tree only through
+ *    such a declaration (SourceTreeWalksLintSpec), so the declarations are every walk;
+ *  - any other changed file also seeds every source whose literals name its path or a directory above it
+ *    (`ReaderNames.treeNames`: a walk of `test/resources/fixtures/flicks`);
  *  - a changed path a generated identity stamp digests (`<name>-sources.txt`, `IdentityRulesSources`) changes that
  *    stamp, read by name like any resource;
  *  - a resource or fixture no literal names has an UNKNOWN reader, and so has a deleted source (its old dependents are
@@ -41,7 +44,12 @@ object TestImpact {
     else id
   }
 
-  import kinowo.build.ReaderNames.{globWalks, isResource, isTreeGlob, literals, tokens, treeNames}
+  import kinowo.build.ReaderNames.{isResource, source, tokens, walkers}
+
+  /** Every module source with its string literals and the source trees it declares (`ReaderNames.Source`). */
+  private def scan(repo: File): Seq[kinowo.build.ReaderNames.Source] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
+    ((module / "src") ** ("*.scala" || "*.java")).get
+  }.map(f => source(IO.relativize(repo, f).get, IO.read(f)))
 
   /**
    * THE REVERSE OF [[select]]: every path a change to which [[select]] would let reach a class of `roots` (repository paths
@@ -70,19 +78,17 @@ object TestImpact {
     var classes = roots.flatMap(classesOf); var frontier = classes
     while (frontier.nonEmpty) { val next = frontier.flatMap(depends) -- classes; classes ++= next; frontier = next }
     val reached = classes.flatMap(sourceOf) ++ roots
-    val sources: Seq[(String, Set[String])] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
-      ((module / "src") ** ("*.scala" || "*.java")).get
-    }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
-    val reachedLiterals = sources.collect { case (src, lits) if reached(src) => lits }.flatten.toSet
-    val anyLiterals     = sources.flatMap(_._2).toSet
+    val sources = scan(repo)
+    val reachedSources  = sources.filter(s => reached(s.path))
+    val reachedLiterals = reachedSources.flatMap(_.literals).toSet
+    val anyLiterals     = sources.flatMap(_.literals).toSet
     // every tracked file but a source: one a reached literal names, and data no literal names; and any file, a source
-    // included, under a tree a reached literal walks
+    // included, under a tree a reached source declares (a source tree) or a reached literal names (any other)
     val data = tracked.filterNot(p => p.endsWith(".scala") || p.endsWith(".java")).filter { path =>
       val names = tokens(path)
       names.exists(reachedLiterals) || (isResource(path) && !names.exists(anyLiterals))
     }
-    val reachedGlobs    = reachedLiterals.filter(isTreeGlob)
-    val walked = tracked.filter(path => treeNames(path).exists(reachedLiterals) || reachedGlobs.exists(globWalks(_, path)))
+    val walked = tracked.filter(path => walkers(path, reachedSources).nonEmpty)
     val build = (repo * "*.sbt").get ++ (repo / "project" * ("*.scala" || "*.sbt" || "*.properties")).get
     val stamped = stamps.filter(_.exists).filter(list => tokens(list.getName.stripSuffix("-sources.txt") + "-version.txt").exists(reachedLiterals))
       .flatMap(IO.readLines(_)).filter(_.nonEmpty)
@@ -110,15 +116,9 @@ object TestImpact {
 
     val why = Seq.newBuilder[String]
     val seeds = Set.newBuilder[String]
-    lazy val sources: Seq[(String, Set[String])] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
-      ((module / "src") ** ("*.scala" || "*.java")).get
-    }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
-    def readers(names: Set[String]): Seq[String] = sources.collect { case (src, lits) if lits.exists(names) => src }
-    // a tree glob (testsupport.ModuleSources.SourceTrees) walks every tree it matches
-    lazy val globs: Seq[(String, Set[String])] = sources.map { case (src, lits) => src -> lits.filter(isTreeGlob) }.filter(_._2.nonEmpty)
-    def walkers(path: String): Seq[String] =
-      readers(treeNames(path)) ++ globs.collect { case (src, gs) if gs.exists(globWalks(_, path)) => src }
-    // the classes of a TEST-side source reading a changed file by name or walking a tree holding it (a lint, its scan
+    lazy val sources = scan(repo)
+    def readers(names: Set[String]): Seq[String] = sources.collect { case s if s.literals.exists(names) => s.path }
+    // the classes of a TEST-side source reading a changed file by name or declaring a tree holding it (a lint, its scan
     // helper): what `READS` lines name, wherever their module -- a scrapers change runs the worker's lints over it
     val readSeeds = Set.newBuilder[String]
     def seedReaders(srcs: Seq[String]): scala.Unit = srcs.foreach { src =>
@@ -137,7 +137,7 @@ object TestImpact {
     (changed ++ stamped).distinct.foreach { path =>
       if ((path.endsWith(".sbt") && !path.contains("/")) || path.startsWith("project/")) why += s"ALL the build changed: $path"
       else if (path.endsWith(".scala") || path.endsWith(".java")) {
-        seedReaders(walkers(path))
+        seedReaders(walkers(path, sources))
         classesOf.get(path) match {
           case Some(cls) => seeds ++= cls
           case None if new File(repo, path).exists && !path.matches("[^/]+/src/.*") => () // not compiled by a module
@@ -149,7 +149,7 @@ object TestImpact {
       } else {
         val by = readers(tokens(path))
         if (by.isEmpty && isResource(path)) why += s"ALL a resource no literal names (its reader is unknown): $path"
-        seedReaders(by ++ walkers(path))
+        seedReaders(by ++ walkers(path, sources))
       }
     }
     val reasons = why.result()

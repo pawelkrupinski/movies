@@ -597,7 +597,7 @@ unit_universe() {
 # THE LINTS WALKING EVERY MODULE'S SOURCES, for a verification with no narrowed selection to say who reads the change
 # (TestImpact's `ALL`, a cold check, no answer: review round 7 -- the READS lints the selection adds were left out where
 # coverage should be widest): the specs built on the source walkers (the worker's ScalaSourceScan and StatefulFieldScan,
-# common's ModuleSources), as `<module>/testOnly <classes>` lines. Stdin: the plan's lines -- a module it runs whole
+# common's ModuleSources, and testsupport.SourceTrees, the one way a test walks a source tree), as `<module>/testOnly <classes>` lines. Stdin: the plan's lines -- a module it runs whole
 # (`<module>/Test/test`), or a class it names, already runs them; $1: the lint specs this run runs (lint_plan's
 # `<module>:<class>`), never twice. Every walker's spec is a fast source scan.
 source_lint_lines() { # <lints> < plan lines
@@ -612,7 +612,7 @@ source_lint_lines() { # <lints> < plan lines
             printf '%s\n' "${1:-}" | grep -qxF "$module:$cls" && continue
             printf '%s\n' "$plan" | grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" && continue
             classes+=" $cls"
-        done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
+        done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources|SourceTrees' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
         [ -z "$classes" ] || echo "$module/testOnly${classes}"
     done
     return 0

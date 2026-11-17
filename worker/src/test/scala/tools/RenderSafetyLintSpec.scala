@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -70,7 +71,7 @@ class RenderSafetyLintSpec extends AnyFlatSpec with Matchers {
   }
 
   "Web Scala sources" should "build raw HTML and hand-written links only where listed" in {
-    val scala = scalaFiles(Seq("web/src/main/scala"))
+    val scala = scalaFiles(SourceTrees("web/src/main/scala"))
     val found = sites(scala)(source => rawSplices(source) ++ handWrittenLinks(source))
     withClue("Build markup in a Twirl template (it escapes) and links as controllers.WebHref; if this Scala source " +
       "must build it, list (file, expression) -> what vets the value in AllowedScalaMarkup: ")(
@@ -79,17 +80,17 @@ class RenderSafetyLintSpec extends AnyFlatSpec with Matchers {
   }
 
   "the dev-only exemption" should "name only templates that exist" in {
-    val names = twirlFiles(Seq(Views)).map(_.getFileName.toString).toSet
+    val names = twirlFiles(Views).map(_.getFileName.toString).toSet
     withClue("No such template — drop from DevOnlyTemplates: ")(DevOnlyTemplates.keySet.diff(names) shouldBe empty)
   }
 
   private def templates: Seq[Path] =
-    twirlFiles(Seq(Views)).filterNot(path => DevOnlyTemplates.contains(path.getFileName.toString))
+    twirlFiles(Views).filterNot(path => DevOnlyTemplates.contains(path.getFileName.toString))
 }
 
 object RenderSafetyLintSpec {
 
-  private val Views = "web/src/main/twirl"
+  private val Views = SourceTrees("web/src/main/twirl")
 
   /** A site: the file it is in (by name) and the expression it splices. */
   type Site = (String, String)

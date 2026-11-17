@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -29,8 +30,8 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, read, scalaFiles}
 
-  private val ClientRoot = "scrapers/src/main/scala/services/cinemas"
-  private val Source     = s"$ClientRoot/common/ScraperParse.scala"
+  private val ClientRoot = SourceTrees("scrapers/src/main/scala/services/cinemas")
+  private val Source     = ClientRoot.file("common/ScraperParse.scala").toString
 
   private val ClockLiteral =
     """\\d\{(?:1,2|2)\}\)?(?::|\\\.|\[[.:]{2}\])\(?\\d\{2\}(?!\)?\\\.)""".r
@@ -67,7 +68,7 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
   }
 
   "the cinema clients" should "spell and read a clock only through ScraperParse" in {
-    val sources = scalaFiles(Seq(ClientRoot)).filterNot(_.toString == Source)
+    val sources = scalaFiles(ClientRoot).filterNot(_.toString == Source)
     sources.size should be > 100
     val found = sources.flatMap { path =>
       clockRules(codeOf(path)).map(line => s"$path:$line: ${read(Paths.get(path.toString)).linesIterator.drop(line - 1).next().trim}")

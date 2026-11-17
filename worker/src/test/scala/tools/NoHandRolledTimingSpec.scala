@@ -3,7 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -23,7 +23,7 @@ class NoHandRolledTimingSpec extends AnyFlatSpec with Matchers {
   private val ElapsedByHand = """(System\.nanoTime|System\.currentTimeMillis)\(\)\s*-\s*\w""".r
 
   "production code and programs" should "time code with Stopwatch, not by subtracting clock reads" in {
-    MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
+    withClue("every tree must exist (run from the repo root): ")(MainRoots.missing shouldBe empty)
     val offenders = for {
       file          <- scalaFiles(MainRoots) ++ scalaFiles(TestRoots).filter(isProgram)
       if !file.endsWith("tools/Stopwatch.scala")

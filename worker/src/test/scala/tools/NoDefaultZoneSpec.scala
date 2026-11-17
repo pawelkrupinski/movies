@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -55,7 +56,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   // The testkit too: its fakes stand in for production classes, and one that defaults to the live clock
   // puts every spec that forgets to pass a clock back on the wall clock (`InMemoryMovieRepository` did).
   private lazy val clockDefaults: Seq[String] =
-    parameterDefaults(MainRoots :+ "testkit/src/main").collect { case d if LiveClockDefault.findFirstIn(d.default).isDefined => d.label }
+    parameterDefaults(MainRoots ++ SourceTrees("testkit/src/main")).collect { case d if LiveClockDefault.findFirstIn(d.default).isDefined => d.label }
 
   private val LocalNow     = """\b(?:LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|OffsetTime|YearMonth|Year|MonthDay)\.now\(""".r
   private val DefaultZone  =

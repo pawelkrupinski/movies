@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -80,7 +81,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "ScanStitchedPagingSpec",
     "ScreeningsRewriteOnUpsertIntegrationSpec", "SideRowIdScanPagingSpec", "SlotsWatchProjectionIntegrationSpec",
     "UnreadyRoundTripProjectionIntegrationSpec"
-  ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
+  ).map(spec => SourceTrees("worker/src/it/scala").file(s"$spec.scala").toString -> MongoPath)
 
   import ScalaSourceScan.{TestRoots, argumentsAt, code, isProgram, read, scalaFiles}
 

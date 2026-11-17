@@ -1,10 +1,11 @@
 package services.identity
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Files
 import scala.jdk.CollectionConverters._
 
 /**
@@ -38,8 +39,7 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
   // the identity code reading provenance -- a listing's kept mark, a backer's, a denial's credit or house -- anywhere but
   // the table: a rule re-deriving what the table says (Keswick #629's siblingDenying beside ClusterVoting.onlyWithdrawn)
   "Every rule site" should "read provenance through the table, never re-derive it" in {
-    val root  = Path.of("identity/src/main/scala/services/identity")
-    val files = Files.walk(root).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq
+    val files = SourceTrees("identity/src/main/scala/services/identity").scalaFiles
     // where a provenance is DEFINED or carried, not weighed: the table, the listing and its codec, retention's mark, the
     // backer's key, the denials' kinds and the scoring that makes them
     val definers = Set("Authority.scala", "IdentityModel.scala", "ListingBson.scala", "ListingRetention.scala", "VenueBacking.scala",

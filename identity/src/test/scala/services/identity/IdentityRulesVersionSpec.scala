@@ -1,5 +1,6 @@
 package services.identity
 
+import testsupport.SourceTrees
 import kinowo.build.SourceDigest
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -55,7 +56,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   // A film id only NAMES a film (docs/design/identity-no-drift.md): neither the resolver nor the agreement stage reaches the
   // code that hands one out, so no grouping or take can read one.
   it should "leave out the projection's film ids, which neither the resolver nor the agreement stage may read" in {
-    val ids = Set("IdAssigner", "FilmIdCounters", "IdSeeding").map(name => s"identity/src/main/scala/services/identity/$name.scala")
+    val ids = Set("IdAssigner", "FilmIdCounters", "IdSeeding").map(name => SourceTrees("identity/src/main/scala/services/identity").file(s"$name.scala").toString)
     ids.filterNot(path => Files.exists(main.resolve(path))) shouldBe empty
     digested.filter(ids) shouldBe empty
     resource("/services/identity/agreement-rules-sources.txt").linesIterator.filter(ids).toSeq shouldBe empty

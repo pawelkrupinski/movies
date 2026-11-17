@@ -1,10 +1,10 @@
 package services.movies
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
-import scala.jdk.CollectionConverters.*
+import java.nio.file.{Files, Path}
 
 /** Every pipeline an e2e spec boots is one [[StopsItsWirings]] stops: e2e runs inside the kept sbt server, where an
  *  unstopped wiring's threads pin the run's classloader and all it built, run after run. Read off the sources, since
@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 class E2eWiringsStoppedSpec extends AnyFlatSpec with Matchers {
 
   private val sources: Map[Path, String] =
-    Files.walk(Paths.get("e2e/src/test/scala")).iterator.asScala.filter(_.toString.endsWith(".scala"))
+    SourceTrees("e2e/src/test/scala").scalaFiles
       .map(path => path -> Files.readString(path)).toMap
 
   /** FixtureTestWiring and every e2e class extending it, transitively. */

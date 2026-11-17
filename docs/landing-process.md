@@ -227,9 +227,10 @@ again in full but once on the rebased tip, on a `check/verify-<full base>-<id>` 
 landed and the change together, plus the unit tests of every module either side touches (`--unit-plan < paths` prints
 them; the worker's are its `rest` row as build.sbt's `WORKER_ROW` defines it, read from the build, never its identity
 or heavy rows) -- through the checkout's kept sbt server, narrowed to the classes the combined change can reach
-(`identityImpact`, project/TestImpact.scala: Zinc's class dependencies, and the specs whose literals name a changed
-file or a tree above it, as a lint walking `worker/src/main` does, or a tree glob matching one, as
-`testsupport.ModuleSources` does; a cold check runs them all), plus, in ANY module, the tests a test-side reader of a
+(`identityImpact`, project/TestImpact.scala: Zinc's class dependencies, and the specs DECLARING a source tree that holds a
+changed file, `testsupport.SourceTrees("worker/src/main")` or a glob as `testsupport.ModuleSources` declares -- the one
+way a test walks a source tree, SourceTreeWalksLintSpec -- or whose literals name any other changed file or a tree above
+it; a cold check runs them all), plus, in ANY module, the tests a test-side reader of a
 changed file reaches (`READS` lines: the worker's source lints over a scrapers-only change; `--unit-universe` is where
 they may come from, the worker's heavy rows never; with no selection to name them -- `ALL`, a cold check, no answer --
 every module's specs built on the source walkers join instead, `--source-lints`, ~15 s warm), less the lint specs the

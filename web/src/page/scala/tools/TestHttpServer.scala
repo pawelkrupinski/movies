@@ -1,10 +1,11 @@
 package tools
 
+import testsupport.SourceTrees
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.util.control.NonFatal
 
 /**
@@ -38,6 +39,8 @@ class TestHttpServer(
   concurrent: Boolean = false,
 ) extends AutoCloseable {
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+  /** The web assets the `/assets/` routes serve, as Play's Assets controller does. */
+  private val AssetsDirectory = SourceTrees("web/src/main/assets").path
 
   // THE CLASSLOADER OF WHOEVER BUILT THIS SERVER, pinned onto every handler
   // thread below. Under `sbt runMain` the application's classes and its
@@ -97,10 +100,10 @@ class TestHttpServer(
           try os.write(bytes) finally os.close()
         } else if (path.startsWith("/assets/")) {
           val rel  = path.stripPrefix("/assets/")
-          val file = Paths.get("web/src/main/assets").resolve(rel).toAbsolutePath
+          val file = AssetsDirectory.resolve(rel).toAbsolutePath
           // Guard against `../` traversal — only serve files under the
           // assets directory (resolve + startsWith).
-          val publicRoot = Paths.get("web/src/main/assets").toAbsolutePath
+          val publicRoot = AssetsDirectory.toAbsolutePath
           if (!file.startsWith(publicRoot) || !Files.exists(file)) {
             exception.sendResponseHeaders(404, -1)
           } else {

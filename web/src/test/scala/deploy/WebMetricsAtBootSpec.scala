@@ -1,9 +1,9 @@
 package deploy
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.io.File
 import scala.jdk.CollectionConverters._
 
 /**
@@ -48,7 +48,7 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
 
   /** (method, path) of every route in the routes file. */
   private lazy val routes: Seq[(String, String)] =
-    RepoFile.read(RepoFile.locate("web/src/main/resources/routes")).linesIterator.collect {
+    RepoFile.read(SourceTrees("web/src/main/resources/routes").path.toFile).linesIterator.collect {
       case RouteLine(method, path) => method -> path
     }.toSeq
 
@@ -70,12 +70,7 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
       .toMap
 
   private lazy val namedInSource: Seq[String] = {
-    def walk(d: File): Seq[File] = Option(d.listFiles()).getOrElse(Array.empty[File]).toSeq.flatMap {
-      case sub if sub.isDirectory          => walk(sub)
-      case f if f.getName.endsWith(".scala") => Seq(f)
-      case _                               => Nil
-    }
-    walk(RepoFile.locate("web/src/main/scala"))
+    SourceTrees("web/src/main/scala").scalaFiles.map(_.toFile)
       .flatMap(f => raw""""(kinowo_[a-z0-9_]+)"""".r.findAllMatchIn(RepoFile.read(f)).map(_.group(1).stripSuffix("_total")))
       .distinct.sorted
   }

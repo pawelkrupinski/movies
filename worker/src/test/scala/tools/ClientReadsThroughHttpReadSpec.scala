@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -23,7 +24,7 @@ import scala.util.matching.Regex
  */
 class ClientReadsThroughHttpReadSpec extends AnyFlatSpec with Matchers {
 
-  private val Roots = Seq("worker/src/main/scala/services/enrichment", "scrapers/src/main/scala/services/cinemas")
+  private val Roots = SourceTrees("worker/src/main/scala/services/enrichment", "scrapers/src/main/scala/services/cinemas")
   private val Files = Seq("worker/src/main/scala/services/TmdbClient.scala")
 
   /** A call on a receiver named like a fetch (`http`, `httpFetch`, `bnFetch`, `detailFetch`…). */

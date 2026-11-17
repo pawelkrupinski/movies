@@ -1,5 +1,6 @@
 package scripts
 
+import testsupport.SourceTrees
 import tools.CommandLine
 import play.api.libs.json.Json
 import services.identity.{LogisticFit, UnifiedEvidence, UnifiedWeights}
@@ -32,8 +33,8 @@ object IdentityUnifiedFit {
   /** The rows of [[Training]]'s emit today's stack takes, re-emitted as the code moves (`scripts/identity-calibrate.sh
    *  --takes`) without moving the rows the weights and rules are fitted from: what `MatchedTakesLabelSpec` grades. */
   val Takes: Path = Paths.get("test/resources/fixtures/identity-unified/takes.tsv.gz")
-  val Artefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.ResourcePath)
-  val HybridArtefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.HybridResourcePath)
+  val Artefact: Path = SourceTrees("worker/src/test/resources").file(UnifiedWeights.ResourcePath)
+  val HybridArtefact: Path = SourceTrees("worker/src/test/resources").file(UnifiedWeights.HybridResourcePath)
   val L2    = 1.0
   val Folds = 5
 

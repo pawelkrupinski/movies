@@ -1,5 +1,6 @@
 package tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -31,7 +32,7 @@ class NoDefaultTitleNormalizerSpec extends AnyFlatSpec with Matchers {
   )
 
   private lazy val offenders: Seq[String] =
-    parameterDefaults(MainRoots :+ "testkit/src/main").collect {
+    parameterDefaults(MainRoots ++ SourceTrees("testkit/src/main")).collect {
       case p if NormalizerDefault.findFirstIn(p.default).isDefined => p.label
     }.distinct
 

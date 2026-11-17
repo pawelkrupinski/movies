@@ -1,10 +1,10 @@
 package clients.tools
 
+import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.{Files, Path, Paths}
-import scala.jdk.CollectionConverters._
+import java.nio.file.{Files, Path}
 
 /** The scrapers' recording and writing tools (`Record*`, `Write*`, `MeasureStartup`) are started by `runMain`, so each
  *  needs a `main(Array[String])` the JVM finds: a `def main(args)(using X)` compiles to `main(String[], X)` and starts
@@ -12,7 +12,6 @@ import scala.jdk.CollectionConverters._
  *  classpath) to the same; the scrapers' test tree is on this module's classpath only, so its programs are held here. */
 class ToolMainsSpec extends AnyFlatSpec with Matchers {
 
-  private val Root          = Paths.get("scrapers/src/test/scala")
   private val Package       = """(?m)^package ([\w.]+)""".r
   private val Object        = """(?m)^object (\w+)""".r
   private val MainDefinition = """(?m)^\s*(?:override\s+)?def main\(""".r
@@ -22,8 +21,8 @@ class ToolMainsSpec extends AnyFlatSpec with Matchers {
     source.linesIterator.filterNot(line => line.trim.startsWith("*") || line.trim.startsWith("/*") || line.trim.startsWith("//")).mkString("\n")
 
   "every program under the scrapers' test tree" should "have a main the JVM can start" in {
-    val programs: Seq[(Path, String)] = Files.walk(Root).iterator.asScala.toSeq
-      .filter(p => p.toString.endsWith(".scala") && !p.toString.endsWith("Spec.scala"))
+    val programs: Seq[(Path, String)] = SourceTrees("scrapers/src/test/scala").scalaFiles
+      .filterNot(_.toString.endsWith("Spec.scala"))
       .map(p => p -> Files.readString(p))
       .filter { case (_, source) => MainDefinition.findFirstIn(code(source)).isDefined }
     programs.size should be > 20
