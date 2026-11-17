@@ -30,6 +30,13 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("REVIEW_LABELS_FILE" -> "  ").reviewLabelsFile shouldBe None
   }
 
+  it should "resolve the Wikidata User-Agent from WIKIDATA_USER_AGENT, else a generic client name" in {
+    resolvedFrom("WIKIDATA_USER_AGENT" -> "kinowo-dev/1.0 (+https://example.test)").wikidataUserAgent shouldBe
+      settings.WikidataUserAgent("kinowo-dev/1.0 (+https://example.test)")
+    resolvedFrom().wikidataUserAgent shouldBe settings.WikidataUserAgent.Default
+    settings.WikidataUserAgent.Default.value should not include "@"
+  }
+
   it should "resolve the identity retention window in days, its default for an unset or unusable value" in {
     import scala.concurrent.duration.*
     val default = IdentityRetentionWindow(7.days)

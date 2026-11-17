@@ -130,7 +130,7 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers with ScratchDirec
         threads = 1, sign = FillCredentials(None).sign).fill(Seq(gap(search), gap("https://www.flicks.us/movie/a/")), 1.minute)
 
     outcome.fetched shouldBe 2
-    live.headers.asScala.toSeq shouldBe Seq(services.enrichment.WikidataClient.UserAgentHeader)
+    live.headers.asScala.toSeq shouldBe Seq(settings.WikidataUserAgent.Default.header)
     MissingFixtureFill.heldIn(out, Tree)(gap(search)) shouldBe true
   }
 

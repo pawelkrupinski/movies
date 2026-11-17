@@ -113,6 +113,8 @@ final class ProcessConfiguration(val env: Env) {
   // ── Third-party credentials and ids ─────────────────────────────────────────
   def tmdbApiKey: Option[TmdbApiKey]                         = text("TMDB_API_KEY").map(TmdbApiKey(_))
   def omdbApiKey: Option[OmdbApiKey]                         = text("OMDB_API_KEY").map(OmdbApiKey(_))
+  /** `WIKIDATA_USER_AGENT`, else [[WikidataUserAgent.Default]]. */
+  def wikidataUserAgent: WikidataUserAgent = text("WIKIDATA_USER_AGENT").map(WikidataUserAgent(_)).getOrElse(WikidataUserAgent.Default)
   def zyteApiKey: Option[ZyteApiKey]                         = text("ZYTE_API_KEY").map(ZyteApiKey(_))
   def proxyUser: Option[ProxyUser]                           = text("DECODO_PROXY_USER").map(ProxyUser(_))
   def proxyPassword: Option[ProxyPassword]                   = text("DECODO_PROXY_PASS").map(ProxyPassword(_))

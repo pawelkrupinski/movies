@@ -84,6 +84,15 @@ final case class TmdbApiKey(value: String) extends AnyVal {
 }
 /** `OMDB_API_KEY`. */
 final case class OmdbApiKey(value: String) extends AnyVal
+/** `WIKIDATA_USER_AGENT` — the User-Agent every Wikidata request carries. Wikimedia's policy refuses a request without a
+ *  meaningful one (a client name and a way to reach its operator); the default names the client and its public site, so
+ *  no personal contact lives in code. */
+final case class WikidataUserAgent(value: String) extends AnyVal {
+  def header: Map[String, String] = Map("User-Agent" -> value)
+}
+object WikidataUserAgent {
+  val Default: WikidataUserAgent = WikidataUserAgent("kinowo/1.0 (+https://kinowo.net)")
+}
 /** `ZYTE_API_KEY`. */
 final case class ZyteApiKey(value: String) extends AnyVal
 // (ProxyUser and ProxyPassword live in the http module, beside RealHttpFetch.ProxyConfig.)

@@ -115,9 +115,9 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     val missing = new MissingFixtures
     val leaf    = new HermeticHttpLeaf(missing)
     val search  = "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Broder&language=de&format=json"
-    an [Exception] should be thrownBy leaf.get(search, services.enrichment.WikidataClient.UserAgentHeader)
-    an [Exception] should be thrownBy leaf.get(s"$search&x=1", services.enrichment.WikidataClient.UserAgentHeader + ("Authorization" -> "Bearer x"))
-    an [Exception] should be thrownBy leaf.get("https://api.test/ua", services.enrichment.WikidataClient.UserAgentHeader)
+    an [Exception] should be thrownBy leaf.get(search, settings.WikidataUserAgent.Default.header)
+    an [Exception] should be thrownBy leaf.get(s"$search&x=1", settings.WikidataUserAgent.Default.header + ("Authorization" -> "Bearer x"))
+    an [Exception] should be thrownBy leaf.get("https://api.test/ua", settings.WikidataUserAgent.Default.header)
 
     val file = tempDirectory("refetch").resolve("enrichment-de.refetch.tsv")
     missing.writeRefetches(file) shouldBe 1

@@ -3,6 +3,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.resolution.YearWindow
+import settings.WikidataUserAgent
 import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder
@@ -28,14 +29,15 @@ import java.nio.charset.StandardCharsets
  *   2. `action=wbgetentities&ids=Q…&props=claims`
  *      → fetches the external-id claims from those Q-IDs.
  *
- * Wikimedia's User-Agent policy requires a meaningful UA; `HttpFetch.get(url,
- * headers)` passes it through — test fakes safely ignore the extra headers.
+ * Wikimedia's User-Agent policy requires a meaningful UA (`userAgent`, the process's
+ * `WIKIDATA_USER_AGENT`); `HttpFetch.get(url, headers)` passes it through — test fakes
+ * safely ignore the extra headers.
  *
  * "No item" is an answer (`None`); a read that failed — a throttle, a 5xx, Wikimedia's
  * 200 `{"error":…}` document (maxlag), a body that is not the API's JSON — throws, so the
  * resolver ladders never read an outage as "Wikidata has no such film".
  */
-class WikidataClient(http: HttpFetch) {
+class WikidataClient(http: HttpFetch, userAgent: WikidataUserAgent = WikidataUserAgent.Default) {
   import WikidataClient._
 
   /** IMDb tt-id for the given Filmweb entity id, or None when Wikidata has no
@@ -81,7 +83,7 @@ class WikidataClient(http: HttpFetch) {
 
   /** The item ids a `list=search` query returned — empty when nothing matched. */
   private def searchHits(url: String): Seq[String] =
-    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+    HttpRead.jsonObject(http, url, userAgent.header) { js =>
       (js \ "query" \ "search").asOpt[JsArray] match {
         case Some(hits) =>
           ReadOutcome.Answered(hits.value.toSeq.flatMap(entry => (entry \ "title").asOpt[String]).filter(_.startsWith("Q")))
@@ -91,7 +93,7 @@ class WikidataClient(http: HttpFetch) {
 
   /** The `entities` a `wbgetentities` call returned, by item id. */
   private def entitiesOf(url: String): collection.Map[String, JsValue] =
-    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+    HttpRead.jsonObject(http, url, userAgent.header) { js =>
       (js \ "entities").asOpt[JsObject] match {
         case Some(entities) => ReadOutcome.Answered(entities.value)
         case None           => ReadOutcome.unexpectedBody(url, "no entities", js.toString)
@@ -172,7 +174,7 @@ class WikidataClient(http: HttpFetch) {
     if (values.isEmpty || properties.isEmpty) Map.empty
     else {
       val url = s"$SparqlBase?format=json&query=${quote(catalogueQuery(properties, values))}"
-      HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+      HttpRead.jsonObject(http, url, userAgent.header) { js =>
         (js \ "results" \ "bindings").asOpt[Seq[JsObject]] match {
           case Some(rows) => ReadOutcome.Answered(statingItems(rows))
           case None       => ReadOutcome.unexpectedBody(url, "no results.bindings", js.toString.take(300))
@@ -190,7 +192,7 @@ class WikidataClient(http: HttpFetch) {
 
   /** The items a `wbsearchentities` search returned, with their labels. */
   private def entitySearch(url: String): Seq[(String, String)] =
-    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+    HttpRead.jsonObject(http, url, userAgent.header) { js =>
       (js \ "search").asOpt[Seq[JsObject]] match {
         case Some(hits) => ReadOutcome.Answered(hits.flatMap(hit => (hit \ "id").asOpt[String].map(_ -> (hit \ "label").asOpt[String].getOrElse(""))))
         case None       => ReadOutcome.unexpectedBody(url, "no search", js.toString)
@@ -325,9 +327,6 @@ object WikidataClient {
     val c = (byte & 0xff).toChar
     if ((c.isLetterOrDigit && c < 128) || "_.-~".contains(c)) c.toString else f"%%${byte & 0xff}%02X"
   }.mkString
-
-  val UserAgentHeader: Map[String, String] =
-    Map("User-Agent" -> "kinowo/1.0 (pawel.krupinski@gmail.com)")
 
   /** Extract the numeric Filmweb entity id from a canonical Filmweb film/serial
    *  URL (`…/film/Title-Year-<id>` or `…/serial/…`). Returns None for

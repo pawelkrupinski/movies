@@ -150,7 +150,7 @@ trait HttpWiring { self: WorkerWiring =>
   // `ImdbIdResolver` (after Wikidata) as a last-resort fallback.
   lazy val letterboxdClient     = new LetterboxdClient(enrichmentFetch)
   lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
-  lazy val wikidataClient = new WikidataClient(enrichmentFetch)
+  lazy val wikidataClient = new WikidataClient(enrichmentFetch, configuration.wikidataUserAgent)
 }
 
 object HttpWiring {

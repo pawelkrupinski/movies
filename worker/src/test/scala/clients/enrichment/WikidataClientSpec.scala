@@ -69,6 +69,21 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     client.findImdbIdByFilmwebId("1118") shouldBe Some("tt0052080")
   }
 
+  it should "send the User-Agent it is configured with (WIKIDATA_USER_AGENT) on every request" in {
+    val routed = new clients.tools.UrlFragmentHttpFetch(Seq(
+      "haswbstatement" -> FixtureFile.resource("/fixtures/wikidata/search_filmwebid_1118.json"),
+      "wbgetentities"  -> FixtureFile.resource("/fixtures/wikidata/entities_Q722281.json")))
+    val sent = scala.collection.mutable.ListBuffer.empty[Map[String, String]]
+    val recording = new tools.HttpFetch {
+      def get(url: String): String = routed.get(url)
+      def post(url: String, body: String, contentType: String): String = routed.post(url, body, contentType)
+      override def get(url: String, headers: Map[String, String]): String = { sent += headers; routed.get(url, headers) }
+    }
+    val agent = settings.WikidataUserAgent("kinowo-test/1.0 (+https://example.test)")
+    new WikidataClient(recording, agent).findImdbIdByFilmwebId("1118") shouldBe Some("tt0052080")
+    sent.toSeq.distinct shouldBe Seq(Map("User-Agent" -> agent.value))
+  }
+
   it should "return None when no Wikidata item matches the Filmweb id" in {
     val client = wikidataStub(Map(
       "haswbstatement" -> FixtureFile.resource("/fixtures/wikidata/search_filmwebid_notfound.json"),

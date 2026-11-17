@@ -110,7 +110,7 @@ object MissingFixtures {
    *  ([[FillCredentials.sign]]), so a GET asked with exactly these is listed as a bare one. Wikidata's: Wikimedia refuses
    *  a request without a meaningful User-Agent, and before this every one of its gaps went unlisted — DE's six searches
    *  over recording 3166 (verify run 3240) listed "0 fetchable gap(s)" and no fill could ever close them. */
-  val ResentHeaders: Map[String, Map[String, String]] = Map("www.wikidata.org" -> services.enrichment.WikidataClient.UserAgentHeader)
+  val ResentHeaders: Map[String, Map[String, String]] = Map("www.wikidata.org" -> settings.WikidataUserAgent.Default.header)
 
   /** The headers the fill sends again for `url`'s host ([[ResentHeaders]]), none for any other. */
   def resentHeaders(url: String): Map[String, String] =
