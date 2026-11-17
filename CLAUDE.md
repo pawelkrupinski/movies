@@ -201,7 +201,9 @@ tools for your own confidence, not merge requirements. The merge queue (`agentct
   push when a coherent change is locally green, not per commit; if your previous push's run is under ~10 minutes
   old, keep committing and push once; judge `main` by the newest completed run.
 - **Downtime:** workers may go fully down (≲15 min, just do it); the web tier must not go fully down if there is any
-  way not to — and if it was, say so. Policy: `agent-ops` skill.
+  way not to — and if it was, say so. The one accepted exception (the owner, 2026-11-18): rebooting k3s-worker-1,
+  where every web pod runs, is a ~2 min full web outage, taken with `infra/bin/rolling-reboot --accept-outage --only
+  k3s-worker-1` (a second node was declined). Policy: `agent-ops` skill.
 
 ## Design rules
 

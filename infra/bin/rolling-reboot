@@ -10,7 +10,10 @@
 # THE WEB TIER MAY NOT GO DOWN (the owner's downtime policy). Since 2026-11-17 the movies profile
 # names `Deployment kinowo/web-*` MUST-SERVE: a node holding every pod of one, with no second
 # replica a PodDisruptionBudget keeps, is REFUSED in the plan -- k3s-worker-1 is, while every web
-# pod is pinned there. `--accept-outage` is the operator taking that outage on purpose (say so).
+# pod is pinned there. `--accept-outage` is the operator taking that outage on purpose (say so):
+# the owner ACCEPTED it for k3s-worker-1 reboots on 2026-11-18 (~2 minutes of every country's site
+# down; a second node was declined), so `--yes --accept-outage --only k3s-worker-1` is the way that
+# node reboots. The flag covers every host in the run: keep it to that node.
 # After mongo-1 the turn waits for every web pod's `kinowo_web_readmodel_stream_live` to read 1.
 #
 # THE CODE IS THE DASHBOARD'S PINNED COPY: infra/version-dashboard/node_modules/fleetkit, the tag

@@ -160,6 +160,12 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   rolling deploy that keeps one pod serving; when moving or resizing a node, bring the replacement up first. A brief
   5xx window during a rolling deploy is fine, and so is a genuinely unavoidable short full outage (a host move) — keep
   it short and say out loud afterwards that the tier was fully down. No elaborate zero-downtime orchestration.
+- **The accepted outage (the owner, 2026-11-18): a k3s-worker-1 reboot.** Every web pod runs on k3s-worker-1
+  (monitoring-1 carries the control-plane taint), so its drain takes every country's site down for ~2 minutes;
+  `infra/bin/rolling-reboot` refuses that node unless told `--accept-outage`. The owner accepted that outage for
+  k3s-worker-1 reboots (`infra/bin/rolling-reboot --yes --accept-outage --only k3s-worker-1`) and declined adding a
+  second node to avoid it. Reboot it on its own, never with `--accept-outage` across a whole-fleet run, and say
+  afterwards that the web tier was down (WebCountryDown pages for it).
 - This is about lifecycle only. Destructive data ops (dropping a collection, truncating, deleting a branch you
   didn't create or one not merged) still need explicit confirmation.
 - Ops entry points: Grafana <https://grafana.kinowo.net> (dashboards in
