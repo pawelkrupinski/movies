@@ -7,6 +7,12 @@
 #   bin/rolling-reboot --dry-run           # the plan and every pre-check; touches nothing
 #   bin/rolling-reboot --yes --only mongo-1
 #
+# THE WEB TIER MAY NOT GO DOWN (the owner's downtime policy). Since 2026-11-17 the movies profile
+# names `Deployment kinowo/web-*` MUST-SERVE: a node holding every pod of one, with no second
+# replica a PodDisruptionBudget keeps, is REFUSED in the plan -- k3s-worker-1 is, while every web
+# pod is pinned there. `--accept-outage` is the operator taking that outage on purpose (say so).
+# After mongo-1 the turn waits for every web pod's `kinowo_web_readmodel_stream_live` to read 1.
+#
 # THE CODE IS THE DASHBOARD'S PINNED COPY: infra/version-dashboard/node_modules/fleetkit, the tag
 # package-lock.json names (npm ci there first). The /nixos page's "Reboot N machines that need
 # it" runs this file. SIGTERM (signal.SIGTERM, and a first Ctrl-C) is a "stop requested": the host in
