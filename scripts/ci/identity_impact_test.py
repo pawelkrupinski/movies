@@ -188,6 +188,35 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(ii.plan(["worker/testOnly * -services.identity.* -scripts.*", "worker/testOnly scripts.B"], [],
                                  tests, None), ["worker/testOnly modules.C scripts.B"])
 
+    # review round 6: the combined-tree verification ran only the touched modules' tests, so the worker's source lints
+    # over a scrapers-only change (NoDefaultZoneSpec, through ScalaSourceScan's `scrapers/src/main`) never ran
+    def test_a_readers_test_runs_in_any_module_of_the_reads_universe(self):
+        tests = {"scrapers": {"services.cinemas.A"}, "worker": {"tools.NoDefaultZoneSpec", "modules.C"}}
+        reads = {"worker": {"tools.NoDefaultZoneSpec"}}
+        universe = ["scrapers/Test/test", "worker/testOnly * -services.identity.IdentitySliceCasesSpec"]
+        self.assertEqual(ii.plan(["scrapers/Test/test"], [], tests, None, reads=reads, reads_lines=universe),
+                         ["scrapers/testOnly services.cinemas.A", "worker/testOnly tools.NoDefaultZoneSpec"])
+
+    def test_a_readers_test_outside_the_reads_universe_stays_out(self):
+        reads = {"worker": {"services.identity.IdentitySliceCasesSpec"}}
+        self.assertEqual(ii.plan(["scrapers/Test/test"], [], {}, None, reads=reads,
+                                 reads_lines=["worker/testOnly * -services.identity.IdentitySliceCasesSpec"]), [])
+
+    def test_a_class_another_line_of_the_run_runs_is_left_out(self):
+        # the sbt check's lint specs (lint_plan, `module:Spec`) run in the same sbt call: never twice
+        tests = {"common": {"tools.DeepExpressionLintSpec", "models.A"}}
+        self.assertEqual(ii.plan(["common/Test/test"], [], tests, None, excluded={("common", "tools.DeepExpressionLintSpec")}),
+                         ["common/testOnly models.A"])
+
+    def test_reads_lines_are_read_apart_from_the_selection(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".impact", delete=False) as fh:
+            fh.write("scrapers services.cinemas.A\nworker tools.NoDefaultZoneSpec\nREADS worker tools.NoDefaultZoneSpec\n")
+        try:
+            self.assertEqual(ii.read_impact(fh.name), ([], {"scrapers": {"services.cinemas.A"}, "worker": {"tools.NoDefaultZoneSpec"}}))
+            self.assertEqual(ii.read_reads(fh.name), {"worker": {"tools.NoDefaultZoneSpec"}})
+        finally:
+            os.unlink(fh.name)
+
     def test_a_line_that_runs_no_classes_is_kept(self):
         self.assertEqual(ii.plan(["Test/compile"] + SET, [], {}, None), ["Test/compile"])
 

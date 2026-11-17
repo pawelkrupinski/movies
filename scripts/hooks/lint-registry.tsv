@@ -25,6 +25,7 @@ common:tools.NoEnvLocalReadersSpec	@repo *.scala
 common:tools.ProcessAccessLintSpec	@repo *.scala
 common:tools.ProcessConfigurationSpec	@repo *.scala
 common:tools.SourceControlCharactersLintSpec	@repo *.scala
+identity:services.identity.ReaderNamesSpec	-	the test-impact selection's naming rules, reading ModuleSources' glob: identity's unit tests run it (the lint plan runs no identity spec)
 scrapers:services.cinemas.NoWallClockInClientsSpec	*
 web:deploy.GrafanaWebMetricCoverageSpec	*
 web:deploy.LogbackVersionParitySpec	@repo

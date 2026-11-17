@@ -1,7 +1,8 @@
 package testsupport
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{FileSystems, Files, Path}
 import scala.jdk.CollectionConverters.*
+import scala.util.Using
 
 /** The build's source directories, found by walking the repository rather than named module by module.
  *
@@ -12,14 +13,23 @@ object ModuleSources {
 
   val root: Path = RepoRoot.dir.toPath
 
-  /** Every `<module>/src/<config>` directory of a module, sorted; only the `configs` named (`main`, `test`, `it`,
-   *  `page`, `fixtures`), or all of them when none are. */
+  /** The trees every lint built on this walks: each module's `src/<config>/scala`. A GLOB, never module names, and one
+   *  literal: the test-impact selection (project/ReaderNames.scala, `globWalks`) reads it as these lints reading every
+   *  file under the trees it matches, so a change in any module selects them (ReaderNamesSpec). */
+  val SourceTrees: String = "*/src/*/scala"
+
+  /** The directories `glob` matches under the root, one `/`-separated segment at a time. */
+  private def expand(glob: String): Seq[Path] =
+    glob.split('/').toSeq.foldLeft(Seq(root)) { (dirs, segment) =>
+      val matcher = FileSystems.getDefault.getPathMatcher("glob:" + segment)
+      dirs.flatMap(dir => Using.resource(Files.list(dir))(_.iterator.asScala.toList))
+        .filter(path => Files.isDirectory(path) && matcher.matches(path.getFileName))
+    }
+
+  /** Every `<module>/src/<config>` directory of a module ([[SourceTrees]]), sorted; only the `configs` named (`main`,
+   *  `test`, `it`, `page`, `fixtures`), or all of them when none are. */
   def configDirectories(configs: String*): Seq[Path] =
-    Files.list(root).iterator.asScala.toSeq
-      .map(_.resolve("src"))
-      .filter(Files.isDirectory(_))
-      .flatMap(src => Files.list(src).iterator.asScala.toSeq)
-      .filter(dir => Files.isDirectory(dir.resolve("scala")))
+    expand(SourceTrees).map(_.getParent)
       .filter(dir => configs.isEmpty || configs.contains(dir.getFileName.toString))
       .sorted
 

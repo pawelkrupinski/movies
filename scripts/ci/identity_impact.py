@@ -32,6 +32,8 @@ Two halves, each sound on its own:
 Usage:
   identity_impact.py countries <base> <head> [< paths]   the countries, comma-separated (pl,uk,de,us,es order), or ""
   identity_impact.py plan --impact FILE [--countries CSV] < set's sbt lines   the sbt commands to run, one a line
+      [--reads FILE]  and the READS classes (a test-side reader of a changed file reaches) any of FILE's lines runs
+      [--except FILE] less the `<module>:<class>` classes another line of the same run runs
 
 Proof: scripts/identity-impact-check (replay of history, mutations).
 """
@@ -265,10 +267,30 @@ def read_impact(path):
                 continue
             if line.startswith("ALL"):
                 why.append(line[4:])
+            elif line.startswith("READS "):
+                continue  # read_reads
             else:
                 module, cls = line.split(" ", 1)
                 tests.setdefault(module, set()).add(cls)
     return why, tests
+
+
+def read_reads(path):
+    """{module: set of test classes} of the `READS` lines: what a test-side reader of a changed file reaches, in any
+    module (TestImpact.select)."""
+    reads = {}
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            words = line.split()
+            if len(words) == 3 and words[0] == "READS":
+                reads.setdefault(words[1], set()).add(words[2])
+    return reads
+
+
+def read_excluded(path):
+    """{(module, class)} of `<module>:<class>` lines (pre-push's lint plan): classes another line of the run runs."""
+    with open(path, encoding="utf-8") as fh:
+        return {tuple(l.strip().split(":", 1)) for l in fh if ":" in l}
 
 
 def universe(line, modules):
@@ -287,21 +309,26 @@ def universe(line, modules):
     return [(mod, globs) for mod in ([module] if module else modules)]
 
 
-def plan(lines, why, tests, scope):
+def plan(lines, why, tests, scope, reads=None, reads_lines=(), excluded=frozenset()):
+    """`lines` narrowed to the selected `tests`; plus the `reads` classes (read_reads) any of `reads_lines` runs, in
+    whichever module (the combined-tree verification's: every module's unit lines); less the `excluded` (module, class)
+    pairs, which another line of the same run runs."""
     suffix = f" -- -Didentity.countries={','.join(scope)}" if scope is not None and len(scope) < len(COUNTRIES) else ""
     if why:
         return [line + suffix if line.split()[0].endswith("testOnly") and "--" not in line.split() else line for line in lines]
     chosen, rest = {}, []
-    modules = sorted(tests)
-    for line in lines:
-        pairs = universe(line, modules)
-        if pairs is None:
-            rest.append(line)
-            continue
-        for module, globs in pairs:
-            for cls in tests.get(module, ()):
-                if runs(cls, globs):
-                    chosen.setdefault(module, set()).add(cls)
+    modules = sorted(set(tests) | set(reads or {}))
+    for selected, among, keep in ((tests, lines, True), (reads or {}, reads_lines, False)):
+        for line in among:
+            pairs = universe(line, modules)
+            if pairs is None:
+                if keep:
+                    rest.append(line)
+                continue
+            for module, globs in pairs:
+                for cls in selected.get(module, ()):
+                    if runs(cls, globs) and (module, cls) not in excluded:
+                        chosen.setdefault(module, set()).add(cls)
     out = []
     for m in sorted(chosen):
         groups = {}
@@ -337,6 +364,8 @@ def main(argv):
     p = sub.add_parser("plan")
     p.add_argument("--impact", required=True)
     p.add_argument("--countries", help="the countries in scope, comma-separated (default: every country)")
+    p.add_argument("--reads", help="a file of every module's unit lines: the READS classes any of them runs join the plan")
+    p.add_argument("--except", dest="excluded", help="a file of `<module>:<class>` lines another line of the run runs")
     a = ap.parse_args(argv)
     if a.cmd == "countries":
         paths = [l.strip() for l in sys.stdin if l.strip()] if not sys.stdin.isatty() else \
@@ -345,7 +374,10 @@ def main(argv):
         return 0
     why, tests = read_impact(a.impact)
     scope = None if a.countries is None else [cc for cc in a.countries.split(",") if cc]
-    for line in plan([l.rstrip("\n") for l in sys.stdin if l.strip()], why, tests, scope):
+    reads_lines = [l.strip() for l in open(a.reads, encoding="utf-8") if l.strip()] if a.reads else []
+    excluded = read_excluded(a.excluded) if a.excluded else frozenset()
+    for line in plan([l.rstrip("\n") for l in sys.stdin if l.strip()], why, tests, scope,
+                     reads=read_reads(a.impact), reads_lines=reads_lines, excluded=excluded):
         print(line)
     return 0
 

@@ -228,7 +228,10 @@ landed and the change together, plus the unit tests of every module either side 
 them; the worker's are its `rest` row as build.sbt's `WORKER_ROW` defines it, read from the build, never its identity
 or heavy rows) -- through the checkout's kept sbt server, narrowed to the classes the combined change can reach
 (`identityImpact`, project/TestImpact.scala: Zinc's class dependencies, and the specs whose literals name a changed
-file or a tree above it, as a lint walking `worker/src/main` does; a cold check runs them all) -- and the self-tests that hold repo-wide files to a rule (`# script-test-reads:`; `run-script-tests
+file or a tree above it, as a lint walking `worker/src/main` does, or a tree glob matching one, as
+`testsupport.ModuleSources` does; a cold check runs them all), plus, in ANY module, the tests a test-side reader of a
+changed file reaches (`READS` lines: the worker's source lints over a scrapers-only change; `--unit-universe` is where
+they may come from, the worker's heavy rows never), less the lint specs the same run already runs -- and the self-tests that hold repo-wide files to a rule (`# script-test-reads:`; `run-script-tests
 --readers`) when the combined change touches what they read -- the two sides share no file, yet a .py or a spec of
 either can break them -- with no area tests and no red gate.
 

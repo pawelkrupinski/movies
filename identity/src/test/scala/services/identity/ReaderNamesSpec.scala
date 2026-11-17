@@ -45,6 +45,29 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
     sources.filter(file => PartsPath.findFirstIn(Files.readString(file)).isDefined).map(_.toString) shouldBe empty
   }
 
+  private def globReads(source: String, path: String): Boolean =
+    ReaderNames.literals(source).exists(ReaderNames.globWalks(_, path))
+
+  // review round 6: the seven lints built on testsupport.ModuleSources walk every module's sources by no module's name,
+  // so the narrowed unit tests of a `common`-only change left every one of them out
+  "the walker of every module's sources" should "read a change in any module, by its tree glob" in {
+    val moduleSources = Files.readString(Path.of("common/src/test/scala/testsupport/ModuleSources.scala"))
+    globReads(moduleSources, "common/src/main/scala/clients/TmdbJson.scala") shouldBe true
+    globReads(moduleSources, "scrapers/src/test/scala/services/cinemas/AnySpec.scala") shouldBe true
+    globReads(moduleSources, "common/src/main/resources/application.conf") shouldBe false
+    globReads(moduleSources, "docs/README.md") shouldBe false
+  }
+
+  "a tree glob" should "match a directory above the path segment by segment, and no route or package glob" in {
+    ReaderNames.globWalks("*/src/*/scala", "web/src/main/scala/A.scala") shouldBe true
+    ReaderNames.globWalks("*/src/*/scala", "web/src/main/resources/a.conf") shouldBe false
+    ReaderNames.globWalks("test/**/flicks", "test/resources/fixtures/flicks/a.html") shouldBe true
+    ReaderNames.globWalks("worker/src/main/scala/*.scala", "worker/src/main/scala/A.scala") shouldBe true
+    ReaderNames.globWalks("/*/movies", "pl/movies") shouldBe false
+    ReaderNames.globWalks("*", "web/src/main/scala/A.scala") shouldBe false
+    ReaderNames.globWalks("services.identity.*", "services.identity.X") shouldBe false
+  }
+
   "a tree walker's literal" should "never make a file named by its one-file tokens" in {
     // a tree's walker never says which file it reads: a fixture under a walked tree that no literal opens by name still
     // has an unknown reader, so the selection runs every test

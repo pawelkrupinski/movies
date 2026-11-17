@@ -11,6 +11,8 @@ package kinowo.build
  *    (ListingConstraintsRoutingSpec) reads every source under it, which no class dependency records, so a changed
  *    `MovieService.scala` must select it. A tree's walker never says WHICH file it reads, so these names only add
  *    readers: they never make a file "named" (one no [[tokens]] literal names still has an unknown reader).
+ *  - [[globWalks]]: a walker naming its trees by a GLOB (`testsupport.ModuleSources.SourceTrees`: every
+ *    module's `src/<config>/scala`, the seven lints built on it naming no module) reaches every file under a tree the glob matches.
  *
  * Compiled twice: into the build (Scala 2.12) and into identity's tests (Scala 3), which check it -- so it is written in
  * the syntax both accept.
@@ -65,5 +67,25 @@ object ReaderNames {
     val segments = path.split('/').toSeq.filter(_.nonEmpty)
     val dirs     = (2 until segments.size).map(k => segments.take(k).mkString("/"))
     (dirs ++ dirs.map(_ + "/") :+ path).toSet
+  }
+
+  /** Whether a literal is a tree GLOB: two or more `/`-separated segments, a `*` in one and one without any, no leading
+   *  `/` (a URL route) and no whitespace -- ModuleSources.SourceTrees, never `*` or `services.identity.*`. */
+  def isTreeGlob(literal: String): Boolean = {
+    val segments = literal.split('/').toSeq.filter(_.nonEmpty)
+    literal.contains('*') && !literal.startsWith("/") && !literal.exists(_.isWhitespace) && segments.size >= 2 &&
+      segments.exists(!_.contains('*'))
+  }
+
+  /** Whether the tree glob `literal` walks `path`: its segments match the path's leading ones (`*` any run of
+   *  characters but `/`, a `**` segment any number of segments), so it names a directory above the path, or the path. */
+  def globWalks(literal: String, path: String): Boolean =
+    isTreeGlob(literal) && leads(literal.split('/').toList.filter(_.nonEmpty), path.split('/').toList.filter(_.nonEmpty))
+
+  private def leads(glob: List[String], path: List[String]): Boolean = (glob, path) match {
+    case (Nil, _)               => true
+    case ("**" :: rest, _)      => leads(rest, path) || (path.nonEmpty && leads(glob, path.tail))
+    case (g :: rest, p :: tail) => p.matches(g.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString("[^/]*")) && leads(rest, tail)
+    case (_, Nil)               => false
   }
 }

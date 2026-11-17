@@ -199,7 +199,8 @@
 # the --fast-only set over those paths, plus the unit tests of every module they touch (`--unit-plan < paths` prints
 # them; the worker's are its `rest` unit row -- its identity row is the `identity` area's, its heavy rows no unit
 # stage's -- and any worker identity-row spec the paths change, by name; through the kept server narrowed to the
-# classes the combined change reaches, test_impact), plus the self-tests holding repo-wide files
+# classes the combined change reaches, test_impact, joined by the tests in ANY module a test-side reader of a changed
+# file reaches: `--unit-universe`), plus the self-tests holding repo-wide files
 # to a rule (`run-script-tests --readers`) when those paths touch what they read. `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
@@ -221,7 +222,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
 # THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
 # check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
-is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--unit-plan|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--unit-plan|--unit-universe|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
 is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
 case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
 case "$dry_run" in
@@ -550,9 +551,9 @@ compile_plan() {
 # (`Seq(...).exists(suite.startsWith)`, the `identity` area's) and the heavy rows (HeavyRows, no unit stage's), plus
 # the suites the rest row runs instead (WorkerRestSuites). A build whose definition this cannot read prints a command
 # sbt refuses -- the verification fails closed, never runs a row it guessed.
-worker_rest_row() {
-    local rows prefixes exclusions="" suites="" kind name
-    rows="$(awk '
+# build.sbt's worker rows, one `<kind> <name>` a line: `prefix` (the identity row's), `heavy`, `rest` (WorkerRestSuites)
+worker_rows() {
+    awk '
         function quoted(kind, s) { sub(/\/\/.*/, "", s); while (match(s, /"[^"]*"/)) {
             n = substr(s, RSTART + 1, RLENGTH - 2); if (kind == "prefix" || n ~ /\./) print kind " " n; s = substr(s, RSTART + RLENGTH) } }
         /^lazy val HeavyRows/ { block = "heavy" } /^lazy val HeavySuites/ { block = "" }
@@ -560,7 +561,12 @@ worker_rest_row() {
         block == "row" && /exists\(suite\.startsWith\)/ { quoted("prefix", $0) }
         block == "heavy" || block == "rest" { quoted(block, $0) }
         block == "rest" && /\)[[:space:]]*(\/\/.*)?$/ { block = "" }
-        block == "row" && /^[^[:space:]]/ { if ($0 !~ /^lazy val workerRowSettings/) block = "" }' build.sbt 2>/dev/null)"
+        block == "row" && /^[^[:space:]]/ { if ($0 !~ /^lazy val workerRowSettings/) block = "" }' build.sbt 2>/dev/null
+    return 0
+}
+worker_rest_row() {
+    local rows prefixes exclusions="" suites="" kind name
+    rows="$(worker_rows)"
     prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
     if [ -z "$prefixes" ] || ! printf '%s\n' "$rows" | grep -q '^rest '; then
         echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
@@ -576,6 +582,17 @@ worker_rest_row() {
     done <<< "$rows"
     echo "worker/testOnly *$exclusions"
     printf '%s\n' "${suites# }"
+}
+# EVERY MODULE'S UNIT TESTS, the universe a test-side reader's tests (TestImpact's `READS` lines) join the verification
+# from, whichever module they live in: every module's Test/test, and the worker's every suite but its heavy rows' (its
+# source lints are its identity row's `tools.*`). Narrowed to the READS classes only, never run whole.
+unit_universe() {
+    local module rows heavy="" kind name
+    for module in base http common identity testkit scrapers web; do echo "$module/Test/test"; done
+    rows="$(worker_rows)"
+    if ! printf '%s\n' "$rows" | grep -q '^heavy '; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
+    while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
+    echo "worker/testOnly *$heavy"
 }
 unit_plan() {
     local path module modules=" " specs="" spec
@@ -699,6 +716,7 @@ case "${1:-}" in
     --plan)         plan; exit 0 ;;
     --compile-plan) compile_plan; exit 0 ;;
     --unit-plan)    unit_plan; exit 0 ;;
+    --unit-universe) unit_universe; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
     --failure-summary) failure_summary "$2"; exit 0 ;;
 esac
@@ -1485,10 +1503,16 @@ check_sbt() {
         # THE COMBINED TREE'S UNIT TESTS, NARROWED TO WHAT THE CHANGE REACHES (TEST-IMPACT SELECTION, as the identity
         # area's): the worker's whole rest row cost every worker-touching verification ~70-90 s for the few specs the
         # change can reach. Through the kept server only (one more call to the warm compiler that runs the check); a
-        # cold `sbt -batch` check, or no answer, runs every touched module's unit tests, as before.
+        # cold `sbt -batch` check, or no answer, runs every touched module's unit tests, as before. The selection also
+        # adds, in ANY module, the tests a test-side reader of a changed file reaches (its `READS` lines: the worker's
+        # source lints over a scrapers change, through ScalaSourceScan's `scrapers/src/main`), and leaves out the lint
+        # specs this run already runs, so none runs twice.
         printf '%s\n' "$changed" | unit_plan > "$tmp/unit.plan"
+        unit_universe > "$tmp/unit.universe"
+        printf '%s\n' "$lints" > "$tmp/unit.lints"
         if [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ] && test_impact unit > "$tmp/unit.select.log" 2>&1 \
-                && python3 scripts/ci/identity_impact.py plan --impact "$tmp/unit.impact" < "$tmp/unit.plan" > "$tmp/unit.narrowed"; then
+                && python3 scripts/ci/identity_impact.py plan --impact "$tmp/unit.impact" --reads "$tmp/unit.universe" \
+                    --except "$tmp/unit.lints" < "$tmp/unit.plan" > "$tmp/unit.narrowed"; then
             log "verify: the unit tests the combined change reaches: $(grep -c . "$tmp/unit.narrowed" | tr -d ' ') sbt line(s)$(grep -m1 '^ALL' "$tmp/unit.impact" | sed 's/^ALL/, every one:/')" >&2
             mv "$tmp/unit.narrowed" "$tmp/unit.plan"
         elif [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ]; then

@@ -15,7 +15,8 @@ import xsbti.VirtualFileRef
  *    (`identity-unmatched/pl.json.gz` through `Path.of(..., "identity-unmatched")`) -- `ReaderNames.tokens`;
  *  - any changed file, a source included, also seeds every source whose literals name its path or a directory above
  *    it (`ReaderNames.treeNames`): a spec walking `worker/src/main` for a call reads every source under it, which no
- *    class dependency records;
+ *    class dependency records -- and every source with a tree GLOB literal matching such a directory (
+ *    testsupport.ModuleSources walks every module's sources, so the lints built on it read a `common` change);
  *  - a changed path a generated identity stamp digests (`<name>-sources.txt`, `IdentityRulesSources`) changes that
  *    stamp, read by name like any resource;
  *  - a resource or fixture no literal names has an UNKNOWN reader, and so has a deleted source (its old dependents are
@@ -40,7 +41,7 @@ object TestImpact {
     else id
   }
 
-  import kinowo.build.ReaderNames.{isResource, literals, tokens, treeNames}
+  import kinowo.build.ReaderNames.{globWalks, isResource, isTreeGlob, literals, tokens, treeNames}
 
   /**
    * THE REVERSE OF [[select]]: every path a change to which [[select]] would let reach a class of `roots` (repository paths
@@ -80,14 +81,18 @@ object TestImpact {
       val names = tokens(path)
       names.exists(reachedLiterals) || (isResource(path) && !names.exists(anyLiterals))
     }
-    val walked = tracked.filter(path => treeNames(path).exists(reachedLiterals))
+    val reachedGlobs    = reachedLiterals.filter(isTreeGlob)
+    val walked = tracked.filter(path => treeNames(path).exists(reachedLiterals) || reachedGlobs.exists(globWalks(_, path)))
     val build = (repo * "*.sbt").get ++ (repo / "project" * ("*.scala" || "*.sbt" || "*.properties")).get
     val stamped = stamps.filter(_.exists).filter(list => tokens(list.getName.stripSuffix("-sources.txt") + "-version.txt").exists(reachedLiterals))
       .flatMap(IO.readLines(_)).filter(_.nonEmpty)
     (reached.toSeq ++ data ++ walked ++ build.map(f => IO.relativize(repo, f).get) ++ stamped).distinct.filterNot(exclude).sorted
   }
 
-  /** The verdict: `ALL <why>` lines (every test), else the affected test classes as `<module> <class>` lines. */
+  /** The verdict: `ALL <why>` lines (every test), else the affected test classes as `<module> <class>` lines, then, as
+   *  `READS <module> <class>` lines, those of them a test-side reader of a changed file reaches (its readers by name or
+   *  tree, and the tests built on them): the combined-tree verification runs these in every module, not only the
+   *  touched ones' (pre-push --verify-only). */
   def select(repo: File, units: Seq[Unit], tests: Map[String, Seq[String]], stamps: Seq[File],
              changed: Seq[String]): Seq[String] = {
     val all = units.map(u => u -> u.analysis.asInstanceOf[sbt.internal.inc.Analysis].relations)
@@ -109,7 +114,18 @@ object TestImpact {
       ((module / "src") ** ("*.scala" || "*.java")).get
     }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
     def readers(names: Set[String]): Seq[String] = sources.collect { case (src, lits) if lits.exists(names) => src }
-    def seedReaders(srcs: Seq[String]): scala.Unit = srcs.foreach(src => seeds ++= classesOf.getOrElse(src, Set.empty))
+    // a tree glob (testsupport.ModuleSources.SourceTrees) walks every tree it matches
+    lazy val globs: Seq[(String, Set[String])] = sources.map { case (src, lits) => src -> lits.filter(isTreeGlob) }.filter(_._2.nonEmpty)
+    def walkers(path: String): Seq[String] =
+      readers(treeNames(path)) ++ globs.collect { case (src, gs) if gs.exists(globWalks(_, path)) => src }
+    // the classes of a TEST-side source reading a changed file by name or walking a tree holding it (a lint, its scan
+    // helper): what `READS` lines name, wherever their module -- a scrapers change runs the worker's lints over it
+    val readSeeds = Set.newBuilder[String]
+    def seedReaders(srcs: Seq[String]): scala.Unit = srcs.foreach { src =>
+      val cls = classesOf.getOrElse(src, Set.empty)
+      seeds ++= cls
+      if (src.matches("[^/]+/src/test/.*")) readSeeds ++= cls
+    }
     // a changed path a stamp digests changes the stamp
     val stamped = stamps.filter(_.exists).flatMap { list =>
       val digested = IO.readLines(list).toSet
@@ -121,7 +137,7 @@ object TestImpact {
     (changed ++ stamped).distinct.foreach { path =>
       if ((path.endsWith(".sbt") && !path.contains("/")) || path.startsWith("project/")) why += s"ALL the build changed: $path"
       else if (path.endsWith(".scala") || path.endsWith(".java")) {
-        seedReaders(readers(treeNames(path)))
+        seedReaders(walkers(path))
         classesOf.get(path) match {
           case Some(cls) => seeds ++= cls
           case None if new File(repo, path).exists && !path.matches("[^/]+/src/.*") => () // not compiled by a module
@@ -133,15 +149,20 @@ object TestImpact {
       } else {
         val by = readers(tokens(path))
         if (by.isEmpty && isResource(path)) why += s"ALL a resource no literal names (its reader is unknown): $path"
-        seedReaders(by ++ readers(treeNames(path)))
+        seedReaders(by ++ walkers(path))
       }
     }
     val reasons = why.result()
     if (reasons.nonEmpty) reasons.distinct
     else {
-      var affected = seeds.result(); var frontier = affected
-      while (frontier.nonEmpty) { val next = frontier.flatMap(c => dependents.getOrElse(c, Set.empty[String])) -- affected; affected ++= next; frontier = next }
-      tests.toSeq.sortBy(_._1).flatMap { case (module, names) => names.filter(affected).sorted.map(n => s"$module $n") }
+      def closure(from: Set[String]): Set[String] = {
+        var affected = from; var frontier = affected
+        while (frontier.nonEmpty) { val next = frontier.flatMap(c => dependents.getOrElse(c, Set.empty[String])) -- affected; affected ++= next; frontier = next }
+        affected
+      }
+      def lines(affected: Set[String], prefix: String): Seq[String] =
+        tests.toSeq.sortBy(_._1).flatMap { case (module, names) => names.filter(affected).sorted.map(n => s"$prefix$module $n") }
+      lines(closure(seeds.result()), "") ++ lines(closure(readSeeds.result()), "READS ")
     }
   }
 }

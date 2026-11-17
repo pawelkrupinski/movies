@@ -185,6 +185,11 @@ check "...a rest-row suite the paths change, once" \
   "$(units worker/src/test/scala/scripts/IdentityDriftSlicesShard3Spec.scala)"
 check "a resource counts, each module once, in dependency order" "scrapers/Test/test|web/Test/test" \
   "$(units web/src/main/A.scala scrapers/src/test/resources/x.json web/src/test/scala/B.scala)"
+# the universe a test-side reader's tests (TestImpact's READS lines) join the verification from, in any module: every
+# module's unit tests, the worker's every suite but its heavy rows' (its source lints are its identity row's tools.*)
+check "every module's unit tests are the readers' universe, the worker's less its heavy rows, read from the build" \
+  "base/Test/test|http/Test/test|common/Test/test|identity/Test/test|testkit/Test/test|scrapers/Test/test|web/Test/test|worker/testOnly * -services.identity.IdentitySliceCasesSpec" \
+  "$("$REPO_ROOT/scripts/hooks/pre-push" --unit-universe | tr '\n' '|' | sed 's/|$//' | sed 's/IdentitySliceCasesSpec .*/IdentitySliceCasesSpec/')"
 check "no module path, no unit tests (e2e is the heavy rows')" "" \
   "$(units docs/a.md scripts/x.sh e2e/src/test/scala/A.scala geodata/src/main/scala/G.scala worker/README.md)"
 
@@ -201,6 +206,9 @@ check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/r
 check "a build.sbt whose worker rows the unit plan cannot read fails closed: a command sbt refuses, never a silent row" \
   "worker/build.sbt-WORKER_ROW-unreadable" \
   "$(cd "$planrepo" && printf 'worker/src/test/scala/ASpec.scala\n' | scripts/hooks/pre-push --unit-plan | tr '\n' '|' | sed 's/|$//')"
+check "...and so does the readers' universe: never the worker's heavy rows by a build it cannot read" \
+  "worker/build.sbt-HeavyRows-unreadable" \
+  "$(cd "$planrepo" && scripts/hooks/pre-push --unit-universe | tail -1)"
 check "with no local-tests.txt beside the hook, no area is selected" "driftguards sbt" \
   "$(cd "$planrepo" && printf 'identity/src/main/scala/A.scala\n' | scripts/hooks/pre-push --plan | tr '\n' ' ' | sed 's/ $//')"
 
