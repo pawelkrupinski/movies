@@ -445,9 +445,11 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
 
     def lane() -> tuple:
         """(slots, GiB, cores) the check lane still holds: check_lane_jobs less the checks running or starting, each at
-        what a new check is charged (none settled: job_cpus, so measured cores would leave a fresh one short)."""
-        free = max(0, cfg.check_lane_jobs - sum(1 for i in alive if i.cls == "check")
-                   - sum(1 for _, c in starts if c == "check"))
+        what a new check is charged (none settled: job_cpus, so measured cores would leave a fresh one short). Only
+        the checks on their OWN cpuset count: a borrowed one runs on the measure CPUs (2026-11-17 09:23Z: two
+        borrowed checks held the lane at 0 while the checks' 12 threads were 3 busy and 6 checks queued 21 min)."""
+        free = max(0, cfg.check_lane_jobs - sum(1 for i in alive if i.cls == "check" and not i.borrowed)
+                   - sum(1 for s, c in starts if c == "check" and s not in borrowed))
         return free, free * cfg.job_expected_gib["check"], free * cfg.job_cpus["check"]
 
     lane_slots, lane_gib, lane_cpus = lane()
