@@ -87,20 +87,40 @@ object ConstraintSolver {
     val canonical   = presentation == Presentation.Canonical
     val sortedNodes = if (canonical) nodes.distinct.sorted else nodes.distinct
     val index       = sortedNodes.zipWithIndex.toMap
-    val parent      = Array.tabulate(sortedNodes.size)(identity)
+    val partition   = new Partition(sortedNodes.size,
+      constraints.iterator.filterNot(_.must).map(c => (index(c.a), index(c.b))),
+      sortedNodes.indices.flatMap(i => films.get(sortedNodes(i)).map(i -> _)))
+    val must = mustLinks(constraints, index)
+    if (!canonical) must.foreach { case (_, a, b) => partition.join(a, b) }
+    else {
+      val tiers = new TieredJoins(partition, ambiguousTogether)
+      must.distinct.sorted.groupBy(_._1).toSeq.sortBy(_._1).foreach { case (_, tierEdges) => tiers.joinTier(tierEdges.sorted) }
+    }
+    sortedNodes.indices.groupBy(partition.find).values.toSeq
+      .map(_.map(sortedNodes).sorted)
+      .sortBy(_.head)
+  }
+
+  /** The must-links as `(tier, smaller rank, larger rank)`, a node's link to itself dropped. */
+  private def mustLinks[K](constraints: Seq[Constraint[K]], index: Map[K, Int]): Seq[(Int, Int, Int)] =
+    constraints.filter(_.must).map { c =>
+      val (a, b) = (index(c.a), index(c.b))
+      (c.tier, math.min(a, b), math.max(a, b))
+    }.filter { case (_, a, b) => a != b }
+
+  /** The partition being built: a union-find over the nodes' ranks that keeps, for each ROOT, its cannot-links and its
+   *  film through every union (rule 1). */
+  private final class Partition(val size: Int, cannotLinks: Iterator[(Int, Int)], films: Iterable[(Int, Int)]) {
+    private val parent = Array.tabulate(size)(identity)
+    val cannot         = scala.collection.mutable.HashMap.empty[Int, scala.collection.mutable.Set[Int]]
+    val film           = scala.collection.mutable.HashMap.from(films)
+    cannotLinks.foreach { case (a, b) => if (a != b) { cannotOf(a) += b; cannotOf(b) += a } }
+
+    private def cannotOf(r: Int) = cannot.getOrElseUpdate(r, scala.collection.mutable.Set.empty[Int])
+
     def find(i: Int): Int = { var r = i; while (parent(r) != r) { parent(r) = parent(parent(r)); r = parent(r) }; r }
 
-    // Cannot-links between ROOTS, maintained through every union.
-    val cannot = scala.collection.mutable.HashMap.empty[Int, scala.collection.mutable.Set[Int]]
-    def cannotOf(r: Int) = cannot.getOrElseUpdate(r, scala.collection.mutable.Set.empty[Int])
-    constraints.iterator.filterNot(_.must).foreach { c =>
-      val (a, b) = (index(c.a), index(c.b))
-      if (a != b) { cannotOf(a) += b; cannotOf(b) += a }
-    }
-    // Each ROOT's film, maintained through every union.
-    val film = scala.collection.mutable.HashMap.from(sortedNodes.indices.flatMap(i => films.get(sortedNodes(i)).map(i -> _)))
-    def forbidden(ra: Int, rb: Int): Boolean = ConstraintSolver.forbids(cannot, film, ra, rb)
-    def union(ra: Int, rb: Int): Unit = {
+    private def union(ra: Int, rb: Int): Unit = {
       // The smaller rank survives: a choice by the node's place in the total order.
       val (keep, gone) = if (ra < rb) (ra, rb) else (rb, ra)
       parent(gone) = keep
@@ -110,46 +130,48 @@ object ConstraintSolver {
         cannotOf(keep) ++= gs
       }
     }
+
     def join(a: Int, b: Int): Unit = {
       val (ra, rb) = (find(a), find(b))
-      if (ra != rb && !forbidden(ra, rb)) union(ra, rb)
+      if (ra != rb && !ConstraintSolver.forbids(cannot, film, ra, rb)) union(ra, rb)
     }
 
-    val must = constraints.filter(_.must).map { c =>
-      val (a, b) = (index(c.a), index(c.b))
-      (c.tier, math.min(a, b), math.max(a, b))
-    }.filter { case (_, a, b) => a != b }
+    /** Whether `node` is a side of an ambiguity reaching `roots`: it holds a film, or is cannot-linked to one of them. */
+    def sideOf(node: Int, roots: Set[Int]): Boolean = film.contains(find(node)) || cannot.get(find(node)).exists(_.exists(roots))
+  }
 
-    if (!canonical) must.foreach { case (_, a, b) => join(a, b) }
-    else {
-      // Rule 3's ambiguity, kept through the weaker tiers: a node a stronger tier found ambiguous is not settled by
-      // weaker evidence.
-      val ambiguous = scala.collection.mutable.Set.empty[Int]
-      val sides     = scala.collection.mutable.Set.empty[Int]
-      must.distinct.sorted.groupBy(_._1).toSeq.sortBy(_._1).foreach { case (_, tierEdges) =>
-        val edges = tierEdges.sorted
-        // Rule 3, judged against the components as they stand at the START of the tier.
-        val reach = scala.collection.mutable.HashMap.empty[Int, Set[Int]]
-        edges.foreach { case (_, a, b) =>
-          reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
-          reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
-        }
-        val ambiguousNow = reach.collect { case (node, roots) if ConstraintSolver.anyForbidden(roots, cannot, film) => node -> roots }
-        ambiguous ++= ambiguousNow.keys
-        // A side of its own ambiguity: a node holding a film, or cannot-linked to a component it reaches.
-        sides ++= ambiguousNow.collect { case (node, roots) if film.contains(find(node)) || cannot.get(find(node)).exists(_.exists(roots)) => node }
-        edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
-        // Rule 4: ambiguous nodes that are no side join each other, in components holding no other node.
-        if (ambiguousTogether) {
-          def bare(node: Int) = ambiguous(node) && !sides(node)
-          val mixed = scala.collection.mutable.Set.from(sortedNodes.indices.iterator.filterNot(bare).map(find))
-          edges.foreach { case (_, a, b) => if (bare(a) && bare(b) && !mixed(find(a)) && !mixed(find(b))) join(a, b) }
-        }
+  /** Rules 2 to 4 over the tiers, strongest first: each tier's must-links joined but an ambiguous node's, the ambiguity
+   *  kept through the weaker tiers -- a node a stronger tier found ambiguous is not settled by weaker evidence. */
+  private final class TieredJoins(partition: Partition, ambiguousTogether: Boolean) {
+    private val ambiguous = scala.collection.mutable.Set.empty[Int]
+    private val sides     = scala.collection.mutable.Set.empty[Int]
+
+    def joinTier(edges: Seq[(Int, Int, Int)]): Unit = {
+      markAmbiguous(edges)
+      edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) partition.join(a, b) }
+      if (ambiguousTogether) joinBare(edges)
+    }
+
+    /** Rule 3, judged against the components as they stand at the START of the tier. */
+    private def markAmbiguous(edges: Seq[(Int, Int, Int)]): Unit = {
+      import partition.find
+      val reach = scala.collection.mutable.HashMap.empty[Int, Set[Int]]
+      edges.foreach { case (_, a, b) =>
+        reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
+        reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
       }
+      val ambiguousNow = reach.collect { case (node, roots) if ConstraintSolver.anyForbidden(roots, partition.cannot, partition.film) => node -> roots }
+      ambiguous ++= ambiguousNow.keys
+      sides ++= ambiguousNow.collect { case (node, roots) if partition.sideOf(node, roots) => node }
     }
 
-    sortedNodes.indices.groupBy(find).values.toSeq
-      .map(_.map(sortedNodes).sorted)
-      .sortBy(_.head)
+    /** Rule 4: ambiguous nodes that are no side join each other, in components holding no other node. */
+    private def joinBare(edges: Seq[(Int, Int, Int)]): Unit = {
+      import partition.find
+      val mixed = scala.collection.mutable.Set.from((0 until partition.size).iterator.filterNot(bare).map(find))
+      edges.foreach { case (_, a, b) => if (bare(a) && bare(b) && !mixed(find(a)) && !mixed(find(b))) partition.join(a, b) }
+    }
+
+    private def bare(node: Int) = ambiguous(node) && !sides(node)
   }
 }
