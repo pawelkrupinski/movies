@@ -297,6 +297,16 @@ else
   failed=1
 fi
 
+step "prometheus reload"
+# A rule edit reloads prometheus.service, a scrape or flag edit restarts it, and a refused reload
+# fails the switch (roles/prometheus.nix). See test_prometheus_reload.sh.
+if out="$(bash test/test_prometheus_reload.sh 2>&1)"; then
+  echo "$out" | tail -1 | sed 's/^/  /'
+else
+  echo "$out" | sed 's/^/  /'
+  failed=1
+fi
+
 step "host memory safety"
 # zram, vm.swappiness and the k3s kubelet's reserves, read back out of each host's evaluated config.
 # The toplevel eval below proves nix/modules/fleet/host-memory.nix evaluates; it cannot notice a host

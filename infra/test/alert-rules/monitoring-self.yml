@@ -135,9 +135,10 @@ tests:
               description: >-
                 The process is serving the LAST GOOD config, so everything looks normal while the change
                 that was just deployed is not in effect -- including any new scrape target or rule file.
-                Check `journalctl -u prometheus` for the parse error. Note that on this host a config change
-                restarts the unit rather than reloading it (restartTriggers in roles/prometheus.nix), so
-                this firing means the restarted process rejected what activation wrote.
+                Check `journalctl -u prometheus` for the parse error. On this host a rule file edit RELOADS
+                the unit (reloadTriggers in roles/prometheus.nix) and its ExecReload fails the switch when
+                the reload is refused, so this firing means a reload nobody watched -- a hand `systemctl
+                reload`, or a SIGHUP -- was refused.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A RULE GROUP THAT FAILS EVERY EVALUATION. The failure counter for one group climbs by one

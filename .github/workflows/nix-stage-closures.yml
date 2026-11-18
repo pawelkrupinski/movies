@@ -267,6 +267,10 @@ jobs:
         working-directory: infra
         run: bash test/test_heap_dumps.sh
 
+      - name: A Prometheus rule edit reloads, never restarts, and a refused reload fails the switch
+        working-directory: infra
+        run: bash test/test_prometheus_reload.sh
+
       # zram, vm.swappiness and the k3s kubelet's memory reserves, read back from each host's
       # evaluated config: the eval below proves host-memory.nix evaluates, not that a host still
       # has swap or that the kubelet kept its memory eviction threshold.

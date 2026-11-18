@@ -64,6 +64,25 @@ let
     fi
   '';
 
+  promtool = "${lib.getOutput "cli" cfg.package}/bin/promtool";
+
+  # A RULE FILE THAT DOES NOT PARSE NEVER REACHES THE HOST. A rule edit RELOADS Prometheus (see
+  # `reloadTriggers` below), and a reload that fails keeps the old rules running -- so the build
+  # refuses the file first, with the promtool the host runs. infra/test/test_alert_rules.sh runs
+  # the same check (and the rules' unit tests) before a push; this one holds for any closure built.
+  renderRules = name: src: pkgs.runCommand name { } ''
+    ${promtool} check rules ${render name src}
+    cp ${render name src} $out
+  '';
+
+  # prometheus.service's ExecReload: promtool first, then SIGHUP, then wait for Prometheus's own
+  # verdict, exiting non-zero on any refusal (files/prometheus-reload.sh says why each step).
+  reloadPrometheus = pkgs.writeShellApplication {
+    name = "prometheus-reload";
+    runtimeInputs = [ pkgs.coreutils pkgs.curl pkgs.gawk ];
+    text = builtins.readFile ../../files/prometheus-reload.sh;
+  };
+
   # THE NODE TARGETS, GENERATED FROM AN OPTION RATHER THAN WRITTEN INTO THE YAML.
   #
   # Hetzner Cloud service discovery would be the other way to do this (it is what the bitcashier
@@ -692,6 +711,12 @@ in
     # missing folder. Hit on monitoring-1's first deploy, 2026-08-29, on a freshly formatted volume
     # whose only content was lost+found.
     #
+    # A RULE EDIT RELOADS prometheus.service (`reloadTriggers` below), and an unattended switch
+    # applies it -- set here, in the role, the way public-proxy.nix sets caddy's. THE SENTENCE
+    # WRITTEN OUT: a reload at an arbitrary moment costs no scrape and no alert state, and a refused
+    # one fails the switch (ExecReload). A restart is still a host's own `restartableUnits` call.
+    fleet.autoApply.reloadableUnits = [ "prometheus.service" ];
+
     # 0700 and owned by the service user: the TSDB and the alert silences are not readable by
     # anything else on the box, which on this host includes a k3s control plane and whatever it runs.
     systemd.tmpfiles.rules = [
@@ -756,7 +781,7 @@ in
         render "kinowo-apps.yaml" ../../files/monitoring/scrape-kinowo-apps.yaml;
     } // lib.listToAttrs (map
       (n: lib.nameValuePair "prometheus/rules/${n}.rules" {
-        source = render "${n}.rules" (../../files/monitoring/rules + "/${n}.rules");
+        source = renderRules "${n}.rules" (../../files/monitoring/rules + "/${n}.rules");
       })
       ruleNames);
 
@@ -775,9 +800,19 @@ in
       # /api/v1/targets until a restart. A new alert rule that never loads is silent in precisely
       # the way an unloaded rule file is.
       #
-      # `restartTriggers` and not `reloadTriggers`: `--web.enable-lifecycle` is deliberately NOT set
-      # below, so POST /-/reload answers 404 and there is no reload path to use. A restart costs a
-      # few seconds of scrape gap and loses nothing -- the TSDB is on disk and the WAL is replayed.
+      # THE CONFIGURATION AND SCRAPE FILES RESTART; THE RULE FILES RELOAD (the owner, 2026-11-18).
+      # A restart is not free: a scrape gap, a WAL replay, every `for:` timer and alert state reset,
+      # and at 16:49Z 2026-11-17 a discarded m-mapped chunk set the WAL had to recover -- three of
+      # them on 2026-11-18 for rule edits alone, comments included. A rule edit needs none of that:
+      # SIGHUP re-reads the rule files in place and keeps each unchanged alert's pending/firing
+      # state. prometheus.yaml (which also lists `rule_files`, so ADDING a rule file restarts),
+      # the scrape files, the flags and the binary still restart, as before.
+      #
+      # A RULE FILE THAT DOES NOT PARSE IS REFUSED TWICE, never reloaded silently: `renderRules`
+      # fails the build, and ExecReload (files/prometheus-reload.sh) runs promtool again and then
+      # waits for Prometheus's own `prometheus_config_last_reload_successful`, exiting non-zero --
+      # which makes switch-to-configuration fail -- unless the new rules were taken.
+      reloadTriggers = map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
       restartTriggers = [
         config.environment.etc."prometheus/prometheus.yaml".source
         config.environment.etc."prometheus/scrape.d/node-targets.yaml".text
@@ -786,8 +821,7 @@ in
         config.environment.etc."prometheus/scrape.d/flux-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/coredns-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kinowo-apps.yaml".source
-      ]
-      ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
+      ];
 
       serviceConfig = {
         User = "prometheus";
@@ -808,8 +842,14 @@ in
           # NOT --web.enable-admin-api, and not --web.enable-lifecycle. The first exposes
           # POST /api/v1/admin/tsdb/delete_series -- a delete button on the only copy of this
           # fleet's metric history, reachable by anything on the private network. The second
-          # exposes /-/quit beside the reload it would provide, and the restartTriggers above make
-          # reload unnecessary.
+          # exposes /-/quit beside the reload it would provide; ExecReload reloads by SIGHUP instead.
+        ];
+        ExecReload = lib.concatStringsSep " " [
+          "${reloadPrometheus}/bin/prometheus-reload"
+          promtool
+          "/etc/prometheus/prometheus.yaml"
+          "$MAINPID"
+          "http://${cfg.listenAddress}:9090/metrics"
         ];
 
         # SEE THE HEADER. This is the process that has to still be recording when its neighbour

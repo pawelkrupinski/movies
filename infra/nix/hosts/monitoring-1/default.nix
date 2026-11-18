@@ -155,12 +155,12 @@ in
   #
   # PROMETHEUS EARNED ITS LINE THE WAY THIS COMMENT PREDICTED IT WOULD. It used to say that
   # prometheus.service "would be equally cheap to bounce, but nothing has yet needed it to be";
-  # cinema-scrape.rules is what needed it. Every alert-rule edit rewrites prometheus.service the
-  # same way a dashboard edit rewrites grafana.service -- roles/prometheus.nix puts each rule file
-  # in `restartTriggers` deliberately, because a rule written into /etc and never re-read is silent
-  # in precisely the way an unloaded rule file is -- so without this line the applier would refuse
-  # the closure and every unrelated change staged for this machine along with it, SILENTLY, exactly
-  # as the missing Grafana entry did on 2026-08-30.
+  # cinema-scrape.rules is what needed it. Every alert-rule edit then restarted prometheus.service.
+  # SINCE 2026-11-18 A RULE EDIT ONLY RELOADS IT (`reloadTriggers` in roles/prometheus.nix, which
+  # also forgives that reload for the applier), so this line now covers what still restarts it: a
+  # change to prometheus.yaml (including a rule file added to `rule_files`), a scrape file, a flag
+  # or the binary. Without it the applier would refuse those closures and every unrelated change
+  # staged for this machine along with them, SILENTLY, as the missing Grafana entry did on 2026-08-30.
   #
   # THE SENTENCE modules/fleet/default.nix ASKS TO BE WRITTEN OUT FOR EACH ENTRY: a Prometheus
   # restart at an arbitrary moment costs a few seconds of scrape gap and loses no data at all --
