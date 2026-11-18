@@ -244,13 +244,17 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     else {
       val rivals = pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
         .map(candidate => candidate -> overrulingSources(listing, own, candidate))
-      rivals.filter(_._2 >= FeedLink.OverrulingSources).sortBy { case (rival, count) => (-count, rival.tmdbId) }.headOption
-        .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
-        .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
-          .map { case (rival, venues) => FeedLink(id, film, rival, 1, venues) })
-        .orElse(titledRival(node, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
+      overrulingLink(node, id, film, rivals)
     }
   }
+  /** The link of `node` to `film` overruled: by the rival most sources back, past [[FeedLink.OverrulingSources]], else by
+   *  a current release among the backed rivals, else by the one rival the titles alone name. */
+  private def overrulingLink(node: EvidenceNode, id: CatalogueId, film: Int, rivals: Seq[(Candidate, Int)]): Option[FeedLink] =
+    rivals.filter(_._2 >= FeedLink.OverrulingSources).sortBy { case (rival, count) => (-count, rival.tmdbId) }.headOption
+      .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
+      .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
+        .map { case (rival, venues) => FeedLink(id, film, rival, 1, venues) })
+      .orElse(titledRival(node, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
   /** The PRESENT sources' say for `candidate` against a link claimed by `own`: a kept listing ([[Listing.kept]]) keeps its
    *  own film's details alive, never a link a present listing's own sources overrule (DE "Eternity": Caligari's kept
    *  Freyne listing backed Cineamo's link). */
