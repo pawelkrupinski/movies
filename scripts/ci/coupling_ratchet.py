@@ -12,7 +12,15 @@
 # trailer: `scripts/coupling-report --update` writes the measured rows, every fall included; a new package's row, or a
 # row dropped, loosens nothing.
 #
-#   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--range A..B ...]
+# THE LIMITS: a class's fan-out (`limit fanout`, a declared contract's members counted once) and a package's distance D
+# (`limit distance` in hundredths, packages of `limit distance-min-types` types or more) are FROZEN where they were past
+# the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
+# limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
+# and the exemption table may grow or loosen only in a commit changing it carrying `Coupling: <why>`. A frozen class that
+# moves keeps its row under its new name (the same simple name, at or below the old value, the old name gone).
+#
+#   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
+#                             [--range A..B ...]
 #       violations: a package cycle edge and the measured rows past the baseline (exit 1), and, for each range, a
 #       baseline grown or a layer table loosened between A and B with no commit in the range that changed it carrying
 #       `Coupling:` (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
@@ -29,9 +37,11 @@ from typing import Dict, List, Tuple
 
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
+EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
-VALUED = ("ce", "fanout")
-DEFAULT_LIMITS = {"fanout": 30, "new-package-ce": 8}
+VALUED = ("ce", "fanout", "distance")
+FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
+DEFAULT_LIMITS = {"fanout": 9, "new-package-ce": 8, "distance": 20, "distance-min-types": 8}
 
 Rows = Dict[Tuple[str, str], int]
 Edges = Dict[str, List[str]]  # "<from package>-><to package>" -> its class references, "<from class> -> <to class>"
@@ -109,13 +119,48 @@ def violations(current: Rows, baseline: Rows, ranks: Dict[str, int] = None, edge
         if ce > allowed:
             was = f"its baseline {allowed}" if key in base_ce else f"the new-package limit {allowed}"
             out.append(f"package {key}: Ce {ce} past {was}")
-    base_fan = of_kind(baseline, "fanout")
-    for key, fan in sorted(of_kind(current, "fanout").items()):
-        if key in base_fan:
-            if fan > base_fan[key]:
-                out.append(f"class {key}: fan-out {fan} past its baseline {base_fan[key]}")
-        elif fan >= lim["fanout"]:
-            out.append(f"class {key}: fan-out {fan} reaches the limit {lim['fanout']}")
+    for kind, noun, what in FROZEN:
+        base, cur = of_kind(baseline, kind), of_kind(current, kind)
+        for key, value in sorted(cur.items()):
+            if key in base:
+                if value > base[key]:
+                    out.append(f"{noun} {key}: {what} {value} past its frozen row {base[key]} -- a frozen row only falls")
+            elif not moved(key, value, base, cur):
+                out.append(f"{noun} {key}: {what} {value} past the limit {lim[kind]} -- cut it below the limit; only an "
+                           f"exemption row admits it ({EXEMPTIONS_PATH}, with `Coupling: <why>`), never --update")
+    return out
+
+
+def moved(key: str, value: int, old: Dict[str, int], new: Dict[str, int]) -> bool:
+    """Whether `key` is a frozen row that moved: a row of the same simple name, at or above `value`, gone from `new`."""
+    simple = key.rsplit(".", 1)[-1]
+    return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value for k, v in old.items())
+
+
+LIMIT_KEYS = {"fanout": ("fanout",), "distance": ("distance", "distance-min-types")}
+
+
+def refrozen(old: Rows, new: Rows, kind: str) -> bool:
+    """Whether the limits of a frozen kind changed between `old` and `new`: its rows are then taken again, under the new
+    limit -- the change that sets a limit (a raise is growth, needing its trailer; a fall tightens)."""
+    old_lim, new_lim = limits(old), limits(new)
+    return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind])
+
+
+def frozen_growth(old: Rows, new: Rows) -> List[str]:
+    """The frozen rows the baseline gained or raised from `old` to `new` -- never admitted, whatever the trailer, unless
+    the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer)."""
+    out = []
+    for kind, _, _ in FROZEN:
+        if refrozen(old, new, kind):
+            continue
+        before, after = of_kind(old, kind), of_kind(new, kind)
+        for key, value in sorted(after.items()):
+            if key in before:
+                if value > before[key]:
+                    out.append(f"{kind} {key} raised {before[key]} -> {value}")
+            elif not moved(key, value, before, after):
+                out.append(f"{kind} {key} added at {value}")
     return out
 
 
@@ -126,6 +171,9 @@ def growth(old: Rows, new: Rows) -> List[str]:
     for key in sorted(new_lim):
         if new_lim[key] > old_lim.get(key, 0):
             out.append(f"limit {key} raised {old_lim.get(key, 0)} -> {new_lim[key]}")
+    for kind, _, _ in FROZEN:
+        if refrozen(old, new, kind):
+            out.append(f"{kind} rows taken again under new limits ({len(of_kind(new, kind))} frozen)")
     for kind in PRESENCE:
         for key in sorted(set(of_kind(new, kind)) - set(of_kind(old, kind))):
             out.append(f"{kind} {key} added")
@@ -134,10 +182,6 @@ def growth(old: Rows, new: Rows) -> List[str]:
         allowed = old_ce.get(key, old_lim["new-package-ce"])
         if ce > allowed:
             out.append(f"ce {key} raised {allowed} -> {ce}")
-    old_fan = of_kind(old, "fanout")
-    for key, fan in sorted(of_kind(new, "fanout").items()):
-        if fan > old_fan.get(key, old_lim["fanout"] - 1):
-            out.append(f"fanout {key} raised {old_fan.get(key, '<' + str(old_lim['fanout']))} -> {fan}")
     return out
 
 
@@ -150,7 +194,7 @@ def falls(current: Rows, baseline: Rows) -> List[str]:
         cur = of_kind(current, kind)
         for key, value in sorted(of_kind(baseline, kind).items()):
             if cur.get(key, 0) < value:
-                out.append(f"{kind} {key} {value} -> {cur.get(key, 'below the limit' if kind == 'fanout' else 0)}")
+                out.append(f"{kind} {key} {value} -> {cur.get(key, 0 if kind == 'ce' else 'below the limit')}")
     return out
 
 
@@ -196,6 +240,29 @@ def loosening(old: Layers, new: Layers) -> List[str]:
     return out
 
 
+def parse_exemptions(text: str) -> Dict[Tuple[str, str], str]:
+    """The exemption table's rows, (kind, pattern) -> its value (project/Coupling.scala's Exemptions.parse judges the
+    table's shape; this reads only what loosening compares)."""
+    rows: Dict[Tuple[str, str], str] = {}
+    for line in text.splitlines():
+        cols = line.split("\t")
+        if line.strip() and not line.startswith("#") and len(cols) >= 3:
+            rows[(cols[0], cols[1])] = cols[2]
+    return rows
+
+
+def exemption_loosening(old: Dict[Tuple[str, str], str], new: Dict[Tuple[str, str], str]) -> List[str]:
+    """How the exemption table loosened from `old` to `new`: a row added (a class or package let past a limit, or a type
+    folded into a contract), or a row's limit or contract changed. A row dropped tightens."""
+    out = []
+    for key, value in sorted(new.items()):
+        if key not in old:
+            out.append(f"{key[0]} {key[1]} ({value}) added")
+        elif old[key] != value:
+            out.append(f"{key[0]} {key[1]} changed {old[key]} -> {value}")
+    return out
+
+
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
 
@@ -212,7 +279,7 @@ def justified(rng: str, path: str = BASELINE_PATH) -> bool:
 
 
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
-          edges_path: str = "") -> int:
+          edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH) -> int:
     with open(current_path) as f:
         current = parse(f.read())
     with open(baseline_path) as f:
@@ -244,7 +311,15 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         print("  --update, committed with a `Coupling: <why this coupling is right>` trailer.")
     for rng in ranges:
         base = rng.split("..")[0]
-        grown = growth(parse(file_at(base, BASELINE_PATH)), baseline)
+        before = parse(file_at(base, BASELINE_PATH))
+        frozen = frozen_growth(before, baseline)
+        if frozen:
+            failed = True
+            print(f"THE COUPLING BASELINE ADMITS A CLASS OR PACKAGE PAST A LIMIT in {rng}: a frozen row only falls, and no"
+                  " trailer admits a new one -- cut it, or exempt it with its why in " + EXEMPTIONS_PATH + ":")
+            for g in frozen:
+                print(f"  - {g}")
+        grown = growth(before, baseline)
         if grown and not justified(rng):
             failed = True
             print(f"THE COUPLING BASELINE GREW in {rng} with no `Coupling: <why>` trailer on the commit changing it:")
@@ -258,6 +333,17 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                 print(f"THE LAYER TABLE LOOSENED in {rng} ({layers_path}) with no `Coupling: <why>` trailer on the commit"
                       " changing it:")
                 for item in loosened:
+                    print(f"  - {item}")
+    for rng in ranges:
+        base = rng.split("..")[0]
+        if os.path.exists(exemptions_path):
+            with open(exemptions_path) as f:
+                loose = exemption_loosening(parse_exemptions(file_at(base, EXEMPTIONS_PATH)), parse_exemptions(f.read()))
+            if loose and not justified(rng, EXEMPTIONS_PATH):
+                failed = True
+                print(f"THE EXEMPTION TABLE LOOSENED in {rng} ({exemptions_path}) with no `Coupling: <why>` trailer on the"
+                      " commit changing it:")
+                for item in loose:
                     print(f"  - {item}")
     down = falls(current, baseline)
     if down:
@@ -280,10 +366,11 @@ def main(argv: List[str]) -> int:
     c.add_argument("--baseline", default=BASELINE_PATH)
     c.add_argument("--layers", default=LAYERS_PATH)
     c.add_argument("--edges", default="")
+    c.add_argument("--exemptions", default=EXEMPTIONS_PATH)
     c.add_argument("--range", action="append", default=[])
     args = parser.parse_args(argv)
     try:
-        return check(args.current, args.baseline, args.range, args.layers, args.edges)
+        return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)
         return 2

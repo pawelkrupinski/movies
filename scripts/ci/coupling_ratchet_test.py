@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """coupling_ratchet.py: any package cycle edge fails, measured or recorded in the baseline, whatever the trailer; so
 does measured coupling past the baseline (a new cross-module edge kind, a package's Ce past its row or the new-package
-limit, a class's fan-out past its row or reaching the limit), any package edge into a higher layer or, inside an ordered
+limit), a class newly past the fan-out limit or a large package newly past the distance limit (only an exemption
+row admits one, never --update), a frozen fan-out or distance row rising, any package edge into a higher layer or, inside an ordered
 layer, a higher rank (naming the direction allowed), and a package without its layer or rank; a baseline grown in a
 range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table loosened in a range (an
-`allow` row added, a package given another layer or rank); falls pass and are said.
+`allow` row added, a package given another layer or rank) and an exemption table loosened (a row added, a limit
+changed); falls pass and are said.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -21,6 +23,11 @@ SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.environ.get("COUPLING_RATCHET_UNDER_TEST") or os.path.join(HERE, "coupling_ratchet.py")
 BASELINE = "test/resources/coupling-baseline.tsv"
 LAYERS = "test/resources/coupling-layers.tsv"
+EXEMPTIONS = "test/resources/coupling-exemptions.tsv"
+
+EXEMPTION_ROWS = """# kind\tpattern\tlimit|exempt\towner\twhy
+root\tmodules.*\texempt\tcoupling\tthe composition roots
+"""
 
 LAYER_ROWS = """# a comment
 layer\t0\ttools\tgeneric
@@ -32,12 +39,15 @@ rank\t1\tservices.tasks\tthe queue, over the corpus
 """
 
 ROWS = """# a comment
-limit\tfanout\t30
+limit\tfanout\t9
 limit\tnew-package-ce\t15
+limit\tdistance\t20
+limit\tdistance-min-types\t8
 module-edge\tworker->common\t40
 ce\tmodels\t12
 ce\tservices.movies\t20
 fanout\tservices.movies.MovieService\t35
+distance\tservices.movies\t48
 """
 
 
@@ -52,7 +62,7 @@ class CouplingRatchetTest(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.repo = os.path.join(self.dir.name, "repo")
         self.scratch("scratch_repo", "-q")
-        self.base = self.commit({BASELINE: ROWS, LAYERS: LAYER_ROWS}, "base")
+        self.base = self.commit({BASELINE: ROWS, LAYERS: LAYER_ROWS, EXEMPTIONS: EXEMPTION_ROWS}, "base")
 
     def tearDown(self):
         self.dir.cleanup()
@@ -138,15 +148,72 @@ class CouplingRatchetTest(unittest.TestCase):
     def test_a_new_package_within_the_new_package_limit_passes(self):
         self.assert_passes(rows("ce\tservices.fresh\t15"))
 
-    def test_a_class_fan_out_past_its_row_fails(self):
+    # THE LIMITS (mutations the owner named, 2026-11-18): each must fail
+    def test_a_frozen_fan_out_row_rising_fails(self):
         self.assert_fails(rows("fanout\tservices.movies.MovieService\t36", drop=("fanout",)),
-                          "class services.movies.MovieService: fan-out 36 past its baseline 35")
+                          "class services.movies.MovieService: fan-out 36 past its frozen row 35")
 
-    def test_a_class_reaching_the_fan_out_limit_fails(self):
-        self.assert_fails(rows("fanout\tworker.Wiring\t30"), "class worker.Wiring: fan-out 30 reaches the limit 30")
+    def test_a_new_class_with_fan_out_10_fails(self):
+        self.assert_fails(rows("fanout\tworker.Wiring\t10"), "class worker.Wiring: fan-out 10 past the limit 9",
+                          "only an exemption row admits it")
 
-    def test_a_class_below_the_fan_out_limit_passes(self):
-        self.assert_passes(rows("fanout\tworker.Wiring\t29"))
+    def test_a_new_package_with_distance_30_fails(self):
+        self.assert_fails(rows("distance\tservices.fresh\t30"),
+                          "package services.fresh: distance D (hundredths) 30 past the limit 20")
+
+    def test_a_frozen_distance_row_rising_fails(self):
+        self.assert_fails(rows("distance\tservices.movies\t49", drop=("distance",)),
+                          "package services.movies: distance D (hundredths) 49 past its frozen row 48")
+
+    def test_a_frozen_row_falling_passes(self):
+        self.assert_passes(rows("fanout\tservices.movies.MovieService\t20", "distance\tservices.movies\t30",
+                                drop=("fanout", "distance")))
+
+    def test_a_frozen_class_that_moved_keeps_its_row(self):
+        self.assert_passes(rows("fanout\tservices.corpus.MovieService\t35", drop=("fanout",)))
+        self.assert_fails(rows("fanout\tservices.corpus.MovieService\t36", drop=("fanout",)), "past the limit 9")
+
+    def test_update_never_admits_a_class_past_the_limit_whatever_the_trailer(self):
+        grown = rows("fanout\tworker.Wiring\t10")
+        head = self.commit({BASELINE: grown}, "record it\n\nCoupling: it is only one more")
+        self.assert_fails(grown, "ADMITS A CLASS OR PACKAGE PAST A LIMIT", "fanout worker.Wiring added at 10",
+                          rng=f"{self.base}..{head}")
+
+    def test_a_raised_frozen_row_fails_whatever_the_trailer(self):
+        grown = rows("distance\tservices.movies\t50", drop=("distance",))
+        head = self.commit({BASELINE: grown}, "record it\n\nCoupling: the corpus grew")
+        self.assert_fails(grown, "distance services.movies raised 48 -> 50", rng=f"{self.base}..{head}")
+
+    def test_a_lowered_limit_takes_the_rows_again_with_a_trailer(self):
+        tighter = rows("limit\tfanout\t8", "fanout\tworker.Wiring\t9", drop=("limit\tfanout",))
+        head = self.commit({BASELINE: tighter}, "tighten\n\nCoupling: the owner lowered the fan-out limit")
+        self.assert_passes(tighter, rng=f"{self.base}..{head}")
+        later = self.commit({BASELINE: tighter + "fanout\tworker.Other\t9\n"}, "one more\n\nCoupling: no trailer admits it")
+        self.assert_fails(tighter + "fanout\tworker.Other\t9\n", "fanout worker.Other added at 9", rng=f"{head}..{later}")
+
+    def test_a_lowered_limit_without_a_trailer_fails(self):
+        tighter = rows("limit\tfanout\t8", "fanout\tworker.Wiring\t9", drop=("limit\tfanout",))
+        head = self.commit({BASELINE: tighter}, "tighten, no why")
+        self.assert_fails(tighter, "fanout rows taken again under new limits", rng=f"{self.base}..{head}")
+
+    def test_an_exemption_row_added_without_a_trailer_fails(self):
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "registry\tworker.Wiring\texempt\tworker\ta table\n"}, "exempt it")
+        self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED", "registry worker.Wiring (exempt) added", rng=f"{self.base}..{head}")
+
+    def test_an_exemption_row_added_with_a_trailer_passes(self):
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "registry\tworker.Wiring\texempt\tworker\ta table\n"},
+                           "exempt it\n\nCoupling: a venue table, one row a venue")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_an_exemption_limit_raised_without_a_trailer_fails(self):
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "config\tsettings.Config\t40\tcoupling\tthe root\n"},
+                            "limit it\n\nCoupling: the typed-config root")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "config\tsettings.Config\t60\tcoupling\tthe root\n"}, "raise it")
+        self.assert_fails(ROWS, "config settings.Config changed 40 -> 60", rng=f"{first}..{head}")
+
+    def test_an_exemption_row_dropped_needs_no_trailer(self):
+        head = self.commit({EXEMPTIONS: "# empty\n"}, "no roots exempt")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
 
     def test_an_upward_layer_edge_fails_whatever_the_baseline_says(self):
         violation = "layer-violation\tmodels->services.movies\t2"
@@ -191,9 +258,9 @@ class CouplingRatchetTest(unittest.TestCase):
         self.assertTrue(first)
 
     def test_an_empty_trailer_does_not_count(self):
-        grown = rows("fanout\tworker.Wiring\t31")
-        head = self.commit({BASELINE: grown}, "wiring\n\nCoupling: ")
-        self.assert_fails(grown, "fanout worker.Wiring raised <30 -> 31", rng=f"{self.base}..{head}")
+        grown = rows("ce\tmodels\t14", drop=("ce\tmodels",))
+        head = self.commit({BASELINE: grown}, "models reads the clock\n\nCoupling: ")
+        self.assert_fails(grown, "ce models raised 12 -> 14", rng=f"{self.base}..{head}")
 
     def test_a_raised_ce_row_without_a_trailer_fails(self):
         grown = rows("ce\tmodels\t14", drop=("ce\tmodels",))
@@ -203,7 +270,7 @@ class CouplingRatchetTest(unittest.TestCase):
     def test_a_raised_limit_is_growth(self):
         grown = rows("limit\tfanout\t40", drop=("limit\tfanout",))
         head = self.commit({BASELINE: grown}, "looser")
-        self.assert_fails(grown, "limit fanout raised 30 -> 40", rng=f"{self.base}..{head}")
+        self.assert_fails(grown, "limit fanout raised 9 -> 40", rng=f"{self.base}..{head}")
 
     def test_a_new_package_row_within_the_limit_is_no_growth(self):
         grown = rows("ce\tservices.fresh\t4")

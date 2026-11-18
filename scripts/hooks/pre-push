@@ -27,7 +27,8 @@
 #                 code's coupling from Zinc's record (project/Coupling.scala; ~2 s warm) and scripts/ci/coupling_ratchet.py
 #                 holds it to NO package cycle (any cycle edge refuses, naming its class references; no trailer
 #                 excuses one) and to test/resources/coupling-baseline.tsv -- no new cross-module edge kind, package
-#                 Ce past its row, class fan-out past its row or the limit, package edge into a higher layer or, inside
+#                 Ce past its row, class fan-out or package distance D past its frozen row or the limit (9; 0.20 for a package of 8+
+#                 types; only an exemption, test/resources/coupling-exemptions.tsv, admits a new one), package edge into a higher layer or, inside
 #                 an ordered layer, a higher rank, package without its layer or rank (test/resources/coupling-layers.tsv)
 #                 -- and the baseline grows, and the layer table loosens (an `allow` row, a moved layer or rank), only
 #                 in a commit carrying `Coupling: <why>` (scripts/coupling-report --update writes the baseline; falls
@@ -350,7 +351,7 @@ read_by_lint_specs() { # <path>
 
 # THE COUPLING RATCHET'S PATHS (the header's `sbt`; `--coupling-plan` prints them): what can move the production code's coupling or the ratchet's verdict
 coupling_paths() { # stdin: changed paths -> the ones that select the coupling step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers)\.tsv|scripts/ci/coupling_ratchet\.py)$' || true
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers|exemptions)\.tsv|scripts/ci/coupling_ratchet\.py)$' || true
 }
 
 # THE CODE-QUALITY RATCHETS' PATHS (the header's `sbt`; `--quality-plan` prints them): what can move the measured rows or
@@ -435,9 +436,10 @@ plan() {
         # The templates and the browser assets: compiled into web, and read by its unit specs (PageSnapshotSpec's
         # expected-*.html) -- the page area selected the sbt check for them until it moved to Main (2026-11-17).
         case "$path" in web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*) sbt=1 ;; esac
-        # The coupling baseline and the layer table are the ratchet's (check_sbt's coupling step): a hand edit of the
-        # baseline is judged as any growth, an `allow` row or a moved layer as the table loosening.
-        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv) sbt=1 ;; esac
+        # The coupling baseline, the layer table and the exemption table are the ratchet's (check_sbt's coupling step): a
+        # hand edit of the baseline is judged as any growth, an `allow` row or a moved layer as the table loosening, an
+        # exemption row added as the exemptions loosening.
+        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv) sbt=1 ;; esac
         # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
         case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|scripts/ci/quality_ratchet.py) sbt=1 ;; esac
         # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.

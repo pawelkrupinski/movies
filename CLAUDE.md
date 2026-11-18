@@ -248,10 +248,17 @@ composition-root layers, its RANK: a package uses only its own layer and rank or
 a cycle is refused first as an upward edge, saying which direction is allowed; a new package takes its row (and rank) in
 the commit adding it, and an `allow` row, a moved layer or a changed rank needs the same trailer as a baseline rise. The
 ratchet also holds the code to `test/resources/coupling-baseline.tsv`: no new cross-module edge kind, no package's Ce
-past its row, no class's fan-out past its row or the limit. Prefer cutting the dependency (a trait at the seam, the class
-moved to the package that owns it or one rank down); when a Ce or fan-out rise is right, run `scripts/coupling-report
---update` and commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer: `--update` records it, so
-the ratchet tightens.
+past its row. **Two limits** (the owner, 2026-11-18): a class's fan-out ≤ 9 and, for a package of 8+ types, its
+distance D ≤ 0.20. What was past them then is frozen (`fanout` / `distance` rows, which only fall); a class or package
+NEWLY past a limit fails, and neither `--update` nor a trailer admits it -- cut it (a trait at the seam, a leaf value type
+down to `models`, a generic helper to `tools`), or add an exemption row to `test/resources/coupling-exemptions.tsv` with a
+`Coupling: <why>` trailer. Its categories: the composition roots (`modules.*`, `diagnostics.*`), registries (venue
+rosters, scraper catalogues), the typed-config root (`settings.ProcessConfiguration`), the foundation packages (`models`,
+`tools`, `settings`, `services.titles`: stable and concrete on purpose), and the declared scrape contract, whose twelve
+member types a scraper's fan-out counts as ONE dependency. Prefer cutting the dependency (a trait at the seam, the class
+moved to the package that owns it or one rank down); when a Ce rise is right, run `scripts/coupling-report --update` and
+commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer: `--update` records it, so the ratchet
+tightens.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala

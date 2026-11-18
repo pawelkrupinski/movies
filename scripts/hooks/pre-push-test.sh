@@ -120,9 +120,9 @@ couplings() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --couplin
 check "a production source of every deployed module selects the coupling step" \
   "geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala web/src/main/java/A.java" \
   "$(couplings geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala web/src/main/java/A.java)"
-check "...so do the build, the baseline, the layer table and the ratchet" \
-  "build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv scripts/ci/coupling_ratchet.py" \
-  "$(couplings build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv scripts/ci/coupling_ratchet.py)"
+check "...so do the build, the baseline, the layer table, the exemption table and the ratchet" \
+  "build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv test/resources/coupling-exemptions.tsv scripts/ci/coupling_ratchet.py" \
+  "$(couplings build.sbt coupling.sbt project/Coupling.scala test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv test/resources/coupling-exemptions.tsv scripts/ci/coupling_ratchet.py)"
 check "...never test code, a test kit, a fixture, a template or a script" "" \
   "$(couplings worker/src/test/scala/A.scala testkit/src/main/scala/A.scala e2e/src/main/scala/A.scala worker/src/fixtures/scala/A.scala web/src/main/twirl/a.scala.html scripts/x.sh)"
 check "the baseline alone runs the sbt check (where the coupling step rides)" "sbt" "$(plan test/resources/coupling-baseline.tsv)"
@@ -140,6 +140,8 @@ check "a quality baseline alone runs the sbt check (where the quality step rides
 check "...and so does the ratchet (beside its self-tests)" "sbt" "$(plan scripts/ci/quality_ratchet.py | tr ' ' '\n' | grep -x sbt)"
 check "the layer table alone runs the sbt check too: an \`allow\` row or a moved layer is judged by the ratchet" "sbt" \
   "$(plan test/resources/coupling-layers.tsv)"
+check "...and so does the exemption table: an exemption row added is judged by the ratchet" "sbt" \
+  "$(plan test/resources/coupling-exemptions.tsv)"
 
 printf '\033[36m▸\033[0m pre-push --compile-plan\n'
 compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }

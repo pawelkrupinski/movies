@@ -30,15 +30,26 @@ mutants=(
             was @@         if False:
             was'
   'a new package has no limit @@ allowed = base_ce.get(key, lim["new-package-ce"]) @@ allowed = base_ce.get(key, 10**9)'
-  'a fan-out row is not compared @@ if fan > base_fan[key]: @@ if False:'
-  'an unlisted class has no fan-out limit @@ elif fan >= lim["fanout"]: @@ elif False:'
+  'a frozen row is not compared @@ if value > base[key]: @@ if False:'
+  'a class or package newly past a limit passes @@ elif not moved(key, value, base, cur): @@ elif False:'
+  'any frozen row counts as moved @@ return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value @@ return any(True'
   'the baseline limits are not read @@ out.update({key: value for (kind, key), value in rows.items() if kind == "limit"}) @@ pass'
   'a raised limit is no growth @@ if new_lim[key] > old_lim.get(key, 0): @@ if False:'
   'an added edge row is no growth @@ for key in sorted(set(of_kind(new, kind)) - set(of_kind(old, kind))): @@ for key in []:'
   'a raised Ce row is no growth @@         if ce > allowed:
             out.append(f"ce @@         if False:
             out.append(f"ce'
-  'a raised fan-out row is no growth @@ if fan > old_fan.get(key, old_lim["fanout"] - 1): @@ if False:'
+  'a raised frozen row is admitted @@ if value > before[key]: @@ if False:'
+  'a new frozen row is admitted @@ elif not moved(key, value, before, after): @@ elif False:'
+  'every change re-freezes @@ return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind]) @@ return True'
+  'admitted frozen rows never fail @@         if frozen:
+            failed = True @@         if frozen:
+            failed = False'
+  'an added exemption is no loosening @@         if key not in old:
+            out.append(f"{key[0]} {key[1]} ({value}) added") @@         if False:
+            out.append(f"{key[0]} {key[1]} ({value}) added")'
+  'a changed exemption limit is no loosening @@ elif old[key] != value: @@ elif False:'
+  'a loosened exemption table never fails @@ if loose and not justified(rng, EXEMPTIONS_PATH): @@ if False:'
   'the trailer is not read @@ return any(entry.strip() for entry in log.split("\x00")) @@ return True'
   'growth never fails @@ if grown and not justified(rng): @@ if False:'
   'violations never fail @@     if found:
