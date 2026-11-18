@@ -121,16 +121,38 @@ tests:
   # the container name, the country only exists inside the pod name).
   #
   # 2026-09-21 17:40-18:24Z: a restart at 17:55, then 0.61 -> 0.89 of the limit in half an hour and
-  # an OOM kill at 18:25. The alert must be firing before the end of this series.
+  # an OOM kill at 18:25. The line through the restart paged at 18:21Z. A process this young is no
+  # longer fit at all (its boot fill reads as a climb, see the rule), so this kill is
+  # K3sContainerOOMKilled's.
   - interval: 1m
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
         values: '781160448 823533568 823705600 825094144 826163200 834990080 837300224 837443584 838352896 839176192 842727424 849784832 849227776 849264640 849420288 650813440 668217344 692711424 699633664 731328512 739565568 740249600 740843520 757387264 812490752 814231552 814292992 814497792 819363840 873160704 888262656 887955456 888061952 888115200 897404928 930738176 929943552 930058240 930209792 934109184 938385408 939966464 956153856 956174336'
+      - series: 'process_start_time_seconds{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
+        values: '-7200+0x14 900+0x29'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-pl-5c55479c9c-xxn56",container="web",resource="memory",unit="byte"}'
         values: '1073741824+0x44'
     alert_rule_test:
-      # 0.76-0.78 of the limit and rising, but not steeply enough to reach it in 30 minutes yet.
-      - eval_time: 35m
+      # 15 and 28 minutes into the new process: its boot, which no line is fit to.
+      - eval_time: 30m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 43m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+
+  # THE SAME CLIMB FROM A PROCESS UP TWO HOURS PAGES: the RSS after 09-21's restart, flat at its
+  # 0.61 for the quarter hour before and climbing to 0.89 of the limit; the start time unchanged.
+  - interval: 1m
+    input_series:
+      - series: 'process_resident_memory_bytes{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
+        values: '650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 650813440 668217344 692711424 699633664 731328512 739565568 740249600 740843520 757387264 812490752 814231552 814292992 814497792 819363840 873160704 888262656 887955456 888061952 888115200 897404928 930738176 929943552 930058240 930209792 934109184 938385408 939966464 956153856 956174336'
+      - series: 'process_start_time_seconds{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
+        values: '-7200+0x44'
+      - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-pl-5c55479c9c-xxn56",container="web",resource="memory",unit="byte"}'
+        values: '1073741824+0x44'
+    alert_rule_test:
+      - eval_time: 30m
         alertname: JvmResidentNearContainerLimit
         exp_alerts: []
       - eval_time: 43m
@@ -151,6 +173,8 @@ tests:
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
         values: '847925248 847855616 847855616 847855616 847855616 847855616 847855616 847855616 847859712 847859712 847929344 847929344 847929344 847859712 847859712 847933440 847933440 847933440 847941632 847872000 847941632 848007168 847941632 847872000 847872000 847876096 847953920 847884288 847884288 847896576 924250112 924254208 924254208 924254208 924184576 924270592 924336128 924270592 924205056 924205056 924340224 924393472 924323840 924323840 924323840 924323840 924323840 924323840 924381184 924381184 924381184 924385280 924385280 924454912 924434432 924663808 924729344 924680192 924684288 924684288 924753920 924766208 924696576 924696576 924696576 924766208 924766208 924798976 927166464 927096832 927100928 927170560 927166464 927113216 927645696 927154176 927223808 927154176 927223808 927158272 927158272 927158272 927162368 927162368 927162368 927453184 927252480 927252480 927256576 927195136 927260672'
+      - series: 'process_start_time_seconds{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
+        values: '-7200+0x90'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-pl-5c55479c9c-xxn56",container="web",resource="memory",unit="byte"}'
         values: '1073741824+0x90'
     alert_rule_test:
@@ -172,6 +196,8 @@ tests:
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-web-us",job="kinowo-web",app="kinowo",tier="web",country="us"}'
         values: '644245094+42949673x20 1503238553+0x10'
+      - series: 'process_start_time_seconds{instance="kinowo-web-us",job="kinowo-web",app="kinowo",tier="web",country="us"}'
+        values: '0+0x30'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-us-6d4b8c7f9d-abcde",container="web",resource="memory",unit="byte"}'
         values: '2147483648+0x30'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-us-7f8e9a0b1c-fghij",container="web",resource="memory",unit="byte"}'
@@ -187,10 +213,14 @@ tests:
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-worker-pl",job="kinowo-worker",app="kinowo-worker",tier="worker",country="pl"}'
         values: '923000000+0x40'
+      - series: 'process_start_time_seconds{instance="kinowo-worker-pl",job="kinowo-worker",app="kinowo-worker",tier="worker",country="pl"}'
+        values: '-7200+0x40'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="worker-pl-5b9c8d7e6f-klmno",container="worker",resource="memory",unit="byte"}'
         values: '1073741824+0x40'
       - series: 'process_resident_memory_bytes{instance="kinowo-worker-uk",job="kinowo-worker",app="kinowo-worker",tier="worker",country="uk"}'
         values: '858993459+5368709x30 1020054733+0x10'
+      - series: 'process_start_time_seconds{instance="kinowo-worker-uk",job="kinowo-worker",app="kinowo-worker",tier="worker",country="uk"}'
+        values: '-7200+0x40'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="worker-uk-5fd6cb68bb-lmchv",container="worker",resource="memory",unit="byte"}'
         values: '1073741824+0x40'
     alert_rule_test:
@@ -204,6 +234,44 @@ tests:
               country: uk
             exp_annotations:
               summary: "worker-uk RSS is 95% of its container memory limit and climbing toward it"
+              description: "The process's resident memory is climbing toward the cgroup limit fast enough to reach it within half an hour, and the kernel -- not the JVM -- decides what happens then: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that used to be the og-image share cards under a crawler sweep; the worker renders them since 2026-09-24, and its poster shrinks run in a vips subprocess that counts against the same cgroup -- check `kinowo_worker_share_cards_render_total` for a render burst. Raising the limit only buys time if the growth is unbounded."
+
+  # A BOOT IS NOT A CLIMB. worker-pl's REAL RSS and start time, one sample a minute, 2026-11-17
+  # 15:00-15:59Z (the fleet reboot): steady at 0.88 of its 1152Mi, restarted at 15:17:33 (two scrapes
+  # missed), 0.72 -> 0.89 in the boot's first five minutes, then +1 MB a minute. The rule fired at
+  # 15:46-15:49Z on a 30-minute line through the restart's drop and the boot's fill. From minute 60
+  # the same process -- up 42 minutes -- climbs 4 MiB a minute: that must still page.
+  - interval: 1m
+    input_series:
+      - series: 'process_resident_memory_bytes{instance="kinowo-worker-pl",job="kinowo-worker",app="kinowo-worker",tier="worker",country="pl"}'
+        values: '1066790912 1067094016 1066868736 1066586112 1066381312 1067827200 1067134976 1066786816 1066778624 1066987520 1066708992 1067053056 1066565632 1067040768 1067249664 1066917888 1067204608 _ _ 865992704 920494080 993927168 1002057728 1065807872 1066946560 1071964160 1074913280 1074458624 1075023872 1075290112 1076891648 1076224000 1076445184 1076219904 1076441088 1077030912 1077977088 1078272000 1078456320 1078779904 1078878208 1078665216 1079631872 1081245696 1083019264 1083150336 1086279680 1085923328 1085767680 1086074880 1086922752 1087000576 1087107072 1087434752 1088282624 1088401408 1089024000 1088585728 1088835584 1090019328 1094213632 1098407936 1102602240 1106796544 1110990848 1115185152 1119379456 1123573760 1127768064 1131962368 1136156672 1140350976 1144545280 1148739584 1152933888 1157128192 1161322496 1165516800 1169711104 1173905408 1178099712 1182294016 1186488320 1190682624 1194876928'
+      - series: 'process_start_time_seconds{instance="kinowo-worker-pl",job="kinowo-worker",app="kinowo-worker",tier="worker",country="pl"}'
+        values: '-9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 -9456 _ _ 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053 1053'
+      - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="worker-pl-6c9d8b7a5f-qrstu",container="worker",resource="memory",unit="byte"}'
+        values: '1207959552+0x84'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 48m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 52m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 59m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts:
+          - exp_labels:
+              domain: platform
+              severity: warning
+              tier: worker
+              country: pl
+            exp_annotations:
+              summary: "worker-pl RSS is 97.53% of its container memory limit and climbing toward it"
               description: "The process's resident memory is climbing toward the cgroup limit fast enough to reach it within half an hour, and the kernel -- not the JVM -- decides what happens then: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that used to be the og-image share cards under a crawler sweep; the worker renders them since 2026-09-24, and its poster shrinks run in a vips subprocess that counts against the same cgroup -- check `kinowo_worker_share_cards_render_total` for a render burst. Raising the limit only buys time if the growth is unbounded."
 
   # HeapDumpWritten -- web-pl's directory is empty (0) until a dump lands 1h in; worker-us holds an

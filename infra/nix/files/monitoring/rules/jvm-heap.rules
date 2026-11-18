@@ -152,8 +152,23 @@ groups:
       # minutes before 09-21's 18:25Z kill, and on nothing else in either tier; since the web pods
       # got MALLOC_ARENA_MAX=2 (09-24 04:34Z) they sit at 0.54-0.67. A single decode storm can
       # still go from quiet to killed between two 30s scrapes (most of 09-21's seven kills did);
-      # nothing sampled can promise to see that one. The series survives a pod restart (the
-      # target is the country's NodePort), so a restart's drop pulls the line down, not up.
+      # nothing sampled can promise to see that one.
+      #
+      # THE LINE IS FIT TO ONE PROCESS, AFTER ITS BOOT HAS FILLED. The series survives a pod restart
+      # (the target is the country's NodePort), so a window spanning a restart holds the old
+      # process's tail, the drop and the new one's boot fill -- low early, high late, which a
+      # straight line reads as a climb. Once a worker's steady RSS sat above the 0.75 floor (worker-pl
+      # at 0.88-0.93 of 1152Mi since its 592m heap, 2026-11-15) a boot paged that way: 11-17 11:41Z
+      # and 15:46Z, each ~30 minutes after a restart, 0.72 -> 0.89 in the boot's first five minutes
+      # and +1 MB a minute after it, nowhere near the limit. So only a process up 40 minutes is fit,
+      # over its last 30: a boot keeps filling in bounded steps for ~25 minutes (web-de +60 MB 17
+      # minutes in on 11-12, worker-pl +34 MB 23 minutes in on 11-13), and a 10-minute line over
+      # processes 20-40 minutes old paged on those steps (backtest to 11-18). The uptime counts from
+      # the NEWEST start time the window saw, so a scrape missed at the restart, or a rolling deploy's
+      # two pods answering the one NodePort, still reads as a restart. What this gives up: a process
+      # killed in its first 40 minutes -- 09-17's crash loop, 09-21's 18:25Z kill 30 minutes into its
+      # process, which the line through the restart had paged four minutes ahead -- is
+      # K3sContainerOOMKilled's and K3sPodCrashLooping's to report, minutes after the kill.
       - alert: JvmResidentNearContainerLimit
         expr: >-
           (
@@ -168,7 +183,11 @@ groups:
           ) > 0.75
           and on (tier, country)
           (
-            max by (tier, country) (predict_linear(process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}[30m], 1800))
+            max by (tier, country) (
+              predict_linear(process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}[30m], 1800)
+                and on (instance)
+              time() - max_over_time(process_start_time_seconds{job=~"kinowo-web|kinowo-worker"}[40m]) >= 2400
+            )
               >= on (tier, country)
             max by (tier, country) (
               label_replace(
