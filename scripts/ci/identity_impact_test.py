@@ -12,6 +12,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_impact as ii  # noqa: E402
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+
 RULES = "common/src/main/resources/title-rules.tsv"
 HEADER = "# id\tkind\tcinema\tcountries\tflags\teffect\tseason\tpattern\treplacement\tnote\texamples\n"
 
@@ -178,6 +180,32 @@ class PlanTest(unittest.TestCase):
     def test_all_runs_the_set_as_it_is_scoped(self):
         self.assertEqual(ii.plan(SET, ["the build changed"], {}, ["uk"]),
                          ["identity/test", "testOnly services.identity.* scripts.* -- -Didentity.countries=uk"])
+
+    # 2026-11-18: an ALL change ran `identity/test` and then root `testOnly services.identity.*`, every identity-module
+    # spec twice (IncrementalWholeEquivalenceSpec 116-195 s again, 29 of 112 landing checks), and as two unsplittable
+    # lines its shards were ~900 s against ~330 s: with every test class known, ALL runs each one once, by name
+    def test_all_with_every_test_class_known_runs_each_once_by_name(self):
+        every = {"identity": {"services.identity.A", "services.identity.B", "models.M"}, "worker": {"scripts.C", "tools.D"}}
+        self.assertEqual(ii.plan(SET, ["the build changed"], {}, None, every_test=every),
+                         ["identity/testOnly models.M services.identity.A services.identity.B", "worker/testOnly scripts.C"])
+        self.assertEqual(ii.plan(SET, ["the build changed"], {}, ["uk"], every_test=every),
+                         ["identity/testOnly models.M services.identity.A services.identity.B -- -Didentity.countries=uk",
+                          "worker/testOnly scripts.C -- -Didentity.countries=uk"])
+
+    def test_all_reads_every_test_class_from_identityImpacts_list(self):
+        with tempfile.TemporaryDirectory() as d:
+            impact = os.path.join(d, "identity.impact")
+            with open(impact, "w") as fh:
+                fh.write("ALL the build changed: build.sbt\n")
+            with open(impact + ".tests", "w") as fh:
+                fh.write("identity services.identity.A\nworker scripts.C\nworker tools.D\n")
+            out = subprocess.run([sys.executable, os.path.join(HERE, "identity_impact.py"), "plan", "--impact", impact,
+                                  "--every-test", impact + ".tests"],
+                                 input="\n".join(SET) + "\n", capture_output=True, text=True, check=True).stdout
+            self.assertEqual(out.splitlines(), ["identity/testOnly services.identity.A", "worker/testOnly scripts.C"])
+            out = subprocess.run([sys.executable, os.path.join(HERE, "identity_impact.py"), "plan", "--impact", impact],
+                                 input="\n".join(SET) + "\n", capture_output=True, text=True, check=True).stdout
+            self.assertEqual(out.splitlines(), SET)
 
     def test_an_excluding_glob_keeps_its_classes_out(self):
         # the worker's rest unit row (pre-push --unit-plan, build.sbt's WORKER_ROW) is `* -<identity prefixes>`: narrowed

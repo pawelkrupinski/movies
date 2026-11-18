@@ -1739,13 +1739,16 @@ test_impact() {
         || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact failed"; return 1; }
 }
 select_identity_tests() { # <the set's sbt lines>...
-    local mb countries
+    local mb countries every_test=()
     test_impact identity || return 1
+    [ ! -s "$tmp/identity.impact.tests" ] || every_test=(--every-test "$tmp/identity.impact.tests")
     mb="$(git merge-base "$base_sha" "$head_sha")" || return 1
     countries="$(python3 scripts/ci/identity_impact.py countries "$mb" "$head_sha" < "$tmp/identity.changed")" \
         || { echo "the countries could not be read"; return 1; }
+    # ALL (every test) runs each class once and by name (--every-test: identityImpact's list of every test class), so
+    # identity's specs no longer run twice and the landing check's shards split it by class
     printf '%s\n' "$@" | python3 scripts/ci/identity_impact.py plan --impact "$tmp/identity.impact" --countries "$countries" \
-        || { echo "no plan"; return 1; }
+        ${every_test[@]+"${every_test[@]}"} || { echo "no plan"; return 1; }
     if grep -q '^ALL' "$tmp/identity.impact"; then
         echo "every identity spec: $(grep -m1 '^ALL' "$tmp/identity.impact" | cut -c5-)"
     else echo "the specs the change reaches ($(grep -c . "$tmp/identity.impact") test classes in every module)"

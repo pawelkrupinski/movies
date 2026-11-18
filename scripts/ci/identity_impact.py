@@ -9,7 +9,7 @@ Two halves, each sound on its own:
   literals give it), or `ALL <why>` (a build change, a deleted source, a resource no literal names). `plan` narrows each
   of the set's test lines (`<m>/test`, `testOnly <globs>`, `<m>/testOnly <globs>`) to those classes, one
   `<m>/testOnly` per module, each class once (the set ran identity's specs twice: `identity/test`, then root
-  `testOnly services.identity.*`).
+  `testOnly services.identity.*`) -- under ALL too, over every test class (`--every-test`: identityImpact's `<out>.tests`).
 
   THE COUNTRIES (`countries`): what each changed path can reach, by country --
     - title-rules.tsv: per country, the rows its process loads (TitleRuleSet.forCountry: `countries` blank or naming
@@ -34,6 +34,7 @@ Usage:
   identity_impact.py plan --impact FILE [--countries CSV] < set's sbt lines   the sbt commands to run, one a line
       [--reads FILE]  and the READS classes (a test-side reader of a changed file reaches) any of FILE's lines runs
       [--except FILE] less the `<module>:<class>` classes another line of the same run runs
+      [--every-test FILE]  every test class (`<module> <class>` lines): ALL runs each of them once, by name
 
 Proof: scripts/identity-impact-check (replay of history, mutations).
 """
@@ -309,11 +310,16 @@ def universe(line, modules):
     return [(mod, globs) for mod in ([module] if module else modules)]
 
 
-def plan(lines, why, tests, scope, reads=None, reads_lines=(), excluded=frozenset()):
+def plan(lines, why, tests, scope, reads=None, reads_lines=(), excluded=frozenset(), every_test=None):
     """`lines` narrowed to the selected `tests`; plus the `reads` classes (read_reads) any of `reads_lines` runs, in
     whichever module (the combined-tree verification's: every module's unit lines); less the `excluded` (module, class)
-    pairs, which another line of the same run runs."""
+    pairs, which another line of the same run runs. ALL (`why`) selects every test: narrowed to `every_test` class
+    (identityImpact's `<out>.tests`), each class once and by name -- the lines as they are ran identity's specs twice
+    (`identity/test`, then root `testOnly services.identity.*`) and left the landing check's shards
+    (scripts/ci/shard_tests.py) two lines no class weight could split; without it, the lines as they are."""
     suffix = f" -- -Didentity.countries={','.join(scope)}" if scope is not None and len(scope) < len(COUNTRIES) else ""
+    if why and every_test:
+        return plan(lines, [], every_test, scope, reads=reads, reads_lines=reads_lines, excluded=excluded)
     if why:
         return [line + suffix if line.split()[0].endswith("testOnly") and "--" not in line.split() else line for line in lines]
     chosen, rest = {}, []
@@ -366,6 +372,7 @@ def main(argv):
     p.add_argument("--countries", help="the countries in scope, comma-separated (default: every country)")
     p.add_argument("--reads", help="a file of every module's unit lines: the READS classes any of them runs join the plan")
     p.add_argument("--except", dest="excluded", help="a file of `<module>:<class>` lines another line of the run runs")
+    p.add_argument("--every-test", help="identityImpact's `<out>.tests` (every test class): ALL runs each by name, once")
     a = ap.parse_args(argv)
     if a.cmd == "countries":
         paths = [l.strip() for l in sys.stdin if l.strip()] if not sys.stdin.isatty() else \
@@ -373,11 +380,12 @@ def main(argv):
         print(",".join(countries(a.base, a.head, paths, a.tree)))
         return 0
     why, tests = read_impact(a.impact)
+    every_test = read_impact(a.every_test)[1] if why and a.every_test else None
     scope = None if a.countries is None else [cc for cc in a.countries.split(",") if cc]
     reads_lines = [l.strip() for l in open(a.reads, encoding="utf-8") if l.strip()] if a.reads else []
     excluded = read_excluded(a.excluded) if a.excluded else frozenset()
     for line in plan([l.rstrip("\n") for l in sys.stdin if l.strip()], why, tests, scope,
-                     reads=read_reads(a.impact), reads_lines=reads_lines, excluded=excluded):
+                     reads=read_reads(a.impact), reads_lines=reads_lines, excluded=excluded, every_test=every_test):
         print(line)
     return 0
 

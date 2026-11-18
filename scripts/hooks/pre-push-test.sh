@@ -497,6 +497,8 @@ printf 'sbt-warm' >> "$AREA_CALLS"; printf ' [%s]' "$@" >> "$AREA_CALLS"; echo >
 case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Failed 1"; exit 1 ;; esac
 # the test-impact task: the classes $IMPACT_LINES names (unset: no answer, and the hook runs every identity test)
 case "$1" in identityImpact\ *) [ -n "${IMPACT_LINES+x}" ] && printf '%b' "$IMPACT_LINES" > "${1##* }" ;; esac
+# ...and its list of every test class, `<out>.tests` ($IMPACT_TESTS; unset: none written)
+case "$1" in identityImpact\ *) [ -n "${IMPACT_TESTS+x}" ] && printf '%b' "$IMPACT_TESTS" > "${1##* }.tests" ;; esac
 # the population walk's digest task: $WALK_DIGEST (unset: an empty answer, no rows kept)
 case "$1" in identityWalkDigest\ *) printf '%s' "${WALK_DIGEST:-}" > "${1##* }" ;; esac
 # the flip backlog check's walk (PopulationMonotonicitySpec.main): $SBTWARM_WALK printed, as sbt prints a runMain's lines
@@ -559,6 +561,9 @@ check "a code change outside the areas runs the basic set only" "0 1 0" \
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='identity services.identity.ResolverSpec\nworker services.identity.AdapterSpec\nworker tools.OtherSpec\n')"
 check "TEST-IMPACT SELECTION: the identity set narrowed to the classes the change reaches, each line's own" "0 1 0 0" \
   "$code $(calls '\[identity/testOnly services.identity.ResolverSpec -- -Didentity.population.candidates=[^]]*\] \[worker/testOnly services.identity.AdapterSpec -- -Didentity.population.candidates=[^]]*\]') $(calls '\[identity/test\]') $(calls OtherSpec)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='ALL the build changed: build.sbt\n' IMPACT_TESTS='identity services.identity.ResolverSpec\nworker services.identity.AdapterSpec\nworker tools.OtherSpec\n')"
+check "...and ALL runs every class once, by name: identity's specs not again under the worker's glob, the shards able to split it" "0 1 0" \
+  "$code $(calls '\[identity/testOnly services.identity.ResolverSpec -- -Didentity.population.candidates=[^]]*\] \[worker/testOnly services.identity.AdapterSpec -- -Didentity.population.candidates=[^]]*\]') $(calls '\[identity/test\]')"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='web services.movies.ElsewhereSpec\n')"
 check "...and none at all when it reaches no identity spec, said" "0 0 1" \
   "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
