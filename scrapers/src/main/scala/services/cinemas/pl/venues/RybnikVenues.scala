@@ -11,7 +11,7 @@ object RybnikVenues extends PolishVenueRegistry {
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Zory),
+    helios(HeliosVenues.Zory),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-baltyk-1499", KinoBaltyk),
     ekobilet("kino-centrum-jastrzebiezdrj", KinoCentrum),
     systemBiletowy(KinoNaStarowce, "https://bilety.mok.zory.pl"),

@@ -8647,8 +8647,6 @@ services.cinemas.CinemaScraperCatalog$
 services.cinemas.CinemaScraperCatalog$$anon$1
 services.cinemas.CinemaScraperCatalog$Filed
 services.cinemas.CinemaScraperCatalog$Filed$
-services.cinemas.CinemaScraperCatalog$MsiVenue
-services.cinemas.CinemaScraperCatalog$MsiVenue$
 services.cinemas.PolishScraperCatalog
 services.cinemas.UkScraperCatalog
 services.cinemas.common.AdaptiveTimeoutScraper
@@ -8720,14 +8718,12 @@ services.cinemas.common.FilmPageCard$
 services.cinemas.common.FirstAnsweringScraper
 services.cinemas.common.FlicksClient
 services.cinemas.common.FlicksClient$
-services.cinemas.common.FlicksClient$RangesReader
 services.cinemas.common.FlicksClient$RawFlicksSlot
 services.cinemas.common.FlicksClient$RawFlicksSlot$
 services.cinemas.common.FlicksFilmPage
 services.cinemas.common.FlicksFilmPage$
 services.cinemas.common.FlicksFilmPage$$anon$1
 services.cinemas.common.FlicksFilmPage$$anon$2
-services.cinemas.common.FlicksFilmPage$$anon$3
 services.cinemas.common.FlicksMarket
 services.cinemas.common.FlicksMarket$
 services.cinemas.common.FlicksMarket$UnitedKingdom$
@@ -8797,8 +8793,6 @@ services.cinemas.common.ReReleaseBilling
 services.cinemas.common.ReReleaseBilling$
 services.cinemas.common.RetryingCinemaScraper
 services.cinemas.common.RetryingCinemaScraper$
-services.cinemas.common.ScrapeCalendar
-services.cinemas.common.ScrapeCalendar$
 services.cinemas.common.ScrapeErrors
 services.cinemas.common.ScrapeErrors$
 services.cinemas.common.ScrapeHorizon
@@ -8888,7 +8882,6 @@ services.cinemas.common.ZyteClient$
 services.cinemas.common.ZyteFallback
 services.cinemas.common.ZyteFallback$
 services.cinemas.common.ZyteFetch
-services.cinemas.common.ZyteFetch$
 services.cinemas.common.ZyteOriginStatusException
 services.cinemas.de.ArsenalBerlinClient
 services.cinemas.de.ArsenalBerlinClient$
@@ -8924,7 +8917,6 @@ services.cinemas.es.ArtesieteClient
 services.cinemas.es.ArtesieteParser
 services.cinemas.es.ArtesieteParser$
 services.cinemas.es.ArtesieteParser$$anon$1
-services.cinemas.es.ArtesieteParser$$anon$2
 services.cinemas.es.OcineClient
 services.cinemas.es.OcineClient$
 services.cinemas.es.OcineParser
@@ -8940,7 +8932,6 @@ services.cinemas.es.TaquillaParser
 services.cinemas.es.TaquillaParser$
 services.cinemas.es.TaquillaParser$$anon$1
 services.cinemas.es.TaquillaParser$$anon$2
-services.cinemas.es.TaquillaParser$$anon$3
 services.cinemas.es.TaquillaVenue
 services.cinemas.es.TaquillaVenue$
 services.cinemas.pl.AlternatywyClient
@@ -8961,7 +8952,6 @@ services.cinemas.pl.Bilety24Client$
 services.cinemas.pl.Bilety24OrganizerClient
 services.cinemas.pl.Bilety24OrganizerClient$
 services.cinemas.pl.Bilety24SubdomainClient
-services.cinemas.pl.Bilety24SubdomainClient$
 services.cinemas.pl.BiletynaClient
 services.cinemas.pl.BiletynaClient$
 services.cinemas.pl.BiletynaClient$$anon$1
@@ -8980,8 +8970,6 @@ services.cinemas.pl.BokClient
 services.cinemas.pl.BokClient$
 services.cinemas.pl.BokClient$DayShowing
 services.cinemas.pl.BokClient$DayShowing$
-services.cinemas.pl.CharlieClient
-services.cinemas.pl.CharlieClient$
 services.cinemas.pl.CharlieMonroeClient
 services.cinemas.pl.CharlieMonroeClient$ArticleDetails
 services.cinemas.pl.CharlieMonroeClient$ArticleDetails$
@@ -9054,8 +9042,6 @@ services.cinemas.pl.FilmwebProgrammes$$anon$1
 services.cinemas.pl.FilmwebShowtimesClient
 services.cinemas.pl.FilmwebShowtimesClient$
 services.cinemas.pl.FilmwebShowtimesClient$$anon$1
-services.cinemas.pl.FilmwebShowtimesClient$$anon$2
-services.cinemas.pl.FilmwebShowtimesClient$$anon$3
 services.cinemas.pl.FilmwebShowtimesClient$CinemaInfo
 services.cinemas.pl.FilmwebShowtimesClient$CinemaInfo$
 services.cinemas.pl.FilmwebShowtimesClient$FilmInfo
@@ -9071,12 +9057,6 @@ services.cinemas.pl.HeliosCinema$
 services.cinemas.pl.HeliosClient
 services.cinemas.pl.HeliosClient$
 services.cinemas.pl.HeliosClient$$anon$1
-services.cinemas.pl.HeliosClient$ApiMovieInfo
-services.cinemas.pl.HeliosClient$ApiMovieInfo$
-services.cinemas.pl.HeliosClient$ApiScreening
-services.cinemas.pl.HeliosClient$ApiScreening$
-services.cinemas.pl.HeliosClient$RestData
-services.cinemas.pl.HeliosClient$RestData$
 services.cinemas.pl.HeliosNuxt
 services.cinemas.pl.HeliosNuxt$
 services.cinemas.pl.HeliosNuxt$NuxtContext
@@ -9085,6 +9065,18 @@ services.cinemas.pl.HeliosNuxt$NuxtMovie
 services.cinemas.pl.HeliosNuxt$NuxtMovie$
 services.cinemas.pl.HeliosNuxt$NuxtPage
 services.cinemas.pl.HeliosNuxt$NuxtPage$
+services.cinemas.pl.HeliosRest
+services.cinemas.pl.HeliosRest$
+services.cinemas.pl.HeliosRest$ApiMovieInfo
+services.cinemas.pl.HeliosRest$ApiMovieInfo$
+services.cinemas.pl.HeliosRest$ApiScreening
+services.cinemas.pl.HeliosRest$ApiScreening$
+services.cinemas.pl.HeliosRest$RestData
+services.cinemas.pl.HeliosRest$RestData$
+services.cinemas.pl.HeliosRestFeed
+services.cinemas.pl.HeliosRestFeed$
+services.cinemas.pl.HeliosVenues
+services.cinemas.pl.HeliosVenues$
 services.cinemas.pl.IksorisBookingClient
 services.cinemas.pl.IksorisBookingClient$
 services.cinemas.pl.IksorisBookingClient$RawSlot
@@ -9116,10 +9108,6 @@ services.cinemas.pl.KinematografLodzClient
 services.cinemas.pl.KinematografLodzClient$
 services.cinemas.pl.KinoAgrafkaClient
 services.cinemas.pl.KinoAgrafkaClient$
-services.cinemas.pl.KinoAgrafkaClient$MetaInfo
-services.cinemas.pl.KinoAgrafkaClient$MetaInfo$
-services.cinemas.pl.KinoAgrafkaClient$RawSlot
-services.cinemas.pl.KinoAgrafkaClient$RawSlot$
 services.cinemas.pl.KinoAmokClient
 services.cinemas.pl.KinoAmokClient$
 services.cinemas.pl.KinoApolloClient
@@ -9170,7 +9158,6 @@ services.cinemas.pl.KinoDKFRumcajsClient$RawFilm
 services.cinemas.pl.KinoDKFRumcajsClient$RawFilm$
 services.cinemas.pl.KinoDianaClient
 services.cinemas.pl.KinoDianaClient$
-services.cinemas.pl.KinoDianaClient$$anon$1
 services.cinemas.pl.KinoEvaClient
 services.cinemas.pl.KinoEvaClient$
 services.cinemas.pl.KinoEvaClient$RawSlot
@@ -9251,7 +9238,6 @@ services.cinemas.pl.KinoMetalowiecNowaDebaClient$RawSlot$
 services.cinemas.pl.KinoMoskwaClient
 services.cinemas.pl.KinoMoskwaClient$
 services.cinemas.pl.KinoMuzaClient
-services.cinemas.pl.KinoMuzaClient$
 services.cinemas.pl.KinoMuzeumGdanskClient
 services.cinemas.pl.KinoMuzeumGdanskClient$
 services.cinemas.pl.KinoMuzeumGdanskClient$DayLink
@@ -9276,10 +9262,6 @@ services.cinemas.pl.KinoPalacoweClient$ScreeningEntry
 services.cinemas.pl.KinoPalacoweClient$ScreeningEntry$
 services.cinemas.pl.KinoParadoxClient
 services.cinemas.pl.KinoParadoxClient$
-services.cinemas.pl.KinoParadoxClient$Meta
-services.cinemas.pl.KinoParadoxClient$Meta$
-services.cinemas.pl.KinoParadoxClient$RawSlot
-services.cinemas.pl.KinoParadoxClient$RawSlot$
 services.cinemas.pl.KinoParczewClient
 services.cinemas.pl.KinoParczewClient$
 services.cinemas.pl.KinoPatriaClient
@@ -9303,8 +9285,6 @@ services.cinemas.pl.KinoRemusClient$RawSlot
 services.cinemas.pl.KinoRemusClient$RawSlot$
 services.cinemas.pl.KinoRomaClient
 services.cinemas.pl.KinoRomaClient$
-services.cinemas.pl.KinoRomaClient$RawSlot
-services.cinemas.pl.KinoRomaClient$RawSlot$
 services.cinemas.pl.KinoRomaRawaClient
 services.cinemas.pl.KinoRomaRawaClient$
 services.cinemas.pl.KinoSDKSanokClient
@@ -9346,8 +9326,6 @@ services.cinemas.pl.KinoStudioClient$FilmBlock
 services.cinemas.pl.KinoStudioClient$FilmBlock$
 services.cinemas.pl.KinoStudioClient$FilmMeta
 services.cinemas.pl.KinoStudioClient$FilmMeta$
-services.cinemas.pl.KinoStudioClient$RawFilm
-services.cinemas.pl.KinoStudioClient$RawFilm$
 services.cinemas.pl.KinoStudioClient$Scan
 services.cinemas.pl.KinoStudioClient$Scan$
 services.cinemas.pl.KinoStylowyClient
@@ -9367,8 +9345,6 @@ services.cinemas.pl.KinoWarsClient$Post
 services.cinemas.pl.KinoWarsClient$Post$
 services.cinemas.pl.KinoZaRogiemCafeClient
 services.cinemas.pl.KinoZaRogiemCafeClient$
-services.cinemas.pl.KinoZaRogiemCafeClient$RawSlot
-services.cinemas.pl.KinoZaRogiemCafeClient$RawSlot$
 services.cinemas.pl.KinoZaRogiemSiedlecClient
 services.cinemas.pl.KinoZaRogiemSiedlecClient$
 services.cinemas.pl.KinoZaRogiemSiedlecClient$RawSlot
@@ -9389,7 +9365,6 @@ services.cinemas.pl.KinoZamekClient
 services.cinemas.pl.KinoZamekClient$
 services.cinemas.pl.KinoZamekClient$$anon$1
 services.cinemas.pl.KinoZamekClient$$anon$2
-services.cinemas.pl.KinoZamekClient$$anon$3
 services.cinemas.pl.KinoZamekClient$Paragraph
 services.cinemas.pl.KinoZamekClient$Paragraph$
 services.cinemas.pl.KinoZamekClient$Screening

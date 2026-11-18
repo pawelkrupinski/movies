@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Pila: see [[PolishVenueRegistry]]. */
 object PilaVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Pila),   // Piła
+    helios(HeliosVenues.Pila),   // Piła
     bilety24("https://www.bilety24.pl/kino/organizator/waleckie-centrum-kultury-1598", KinoWCKWalcz),   // Wałcz
     bilety24("https://www.bilety24.pl/kino/organizator/kino-osiedlowe-trzcianka-1559", KinoOsiedlowe),   // Trzcianka
     biletyna(KinoRodlo, "https://biletyna.pl/Zlotow/Zlotowskie-Centrum-Aktywnosci-Spolecznej"),   // Złotów

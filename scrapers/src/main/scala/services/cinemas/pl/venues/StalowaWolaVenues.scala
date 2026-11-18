@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Stalowa Wola: see [[PolishVenueRegistry]]. */
 object StalowaWolaVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.StalowaWola),   // Stalowa Wola
+    helios(HeliosVenues.StalowaWola),   // Stalowa Wola
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-stalowa-wola-1419", KinoWrzos),   // Stalowa Wola
     own(kit => new ModernEventsCalendarClient(kit.http, ModernEventsCalendarPage("https://nck.nisko.pl/kino-sokol/repertuar/"), KinoSokolNisko, kit.today)),   // Nisko
     own(kit => new KinoMetalowiecNowaDebaClient(kit.http, KinoMetalowiecNowaDeba, kit.today)),   // Nowa Dęba

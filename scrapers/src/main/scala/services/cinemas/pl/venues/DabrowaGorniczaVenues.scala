@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Dabrowa Gornicza: see [[PolishVenueRegistry]]. */
 object DabrowaGorniczaVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.DabrowaGornicza),
+    helios(HeliosVenues.DabrowaGornicza),
     own(kit => new VisualTicketClient(kit.http, "https://bilety.palac.art.pl", KinoKadr, locationId = 2)),
   )
 

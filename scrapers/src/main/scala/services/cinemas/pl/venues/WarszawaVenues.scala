@@ -18,7 +18,7 @@ object WarszawaVenues extends PolishVenueRegistry {
     multikino("0052", MultikinoReduta),
     multikino("0024", MultikinoTargowek),
     multikino("0025", MultikinoWolaPark),
-    helios(HeliosNuxt.BlueCity),
+    helios(HeliosVenues.BlueCity),
     own(kit => new MuranowClient(kit.http, kit.today)),
     bilety24Subdomain(KinoLuna, "https://kinoluna.bilety24.pl"),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik),
@@ -60,7 +60,7 @@ object WarszawaVenues extends PolishVenueRegistry {
     own(kit => new KinoBajkaBlonieClient(kit.http, KinoBajkaBlonie, kit.today)),   // Błonie
     biletyna(KinoGrojeckiOsrodekKultury, "https://biletyna.pl/Grojec/Grojecki-Osrodek-Kultury"),   // Grójec
     biletyna(KinoUciecha, "https://biletyna.pl/Gora-Kalwaria/Kino-Uciecha"),   // Góra Kalwaria
-    helios(HeliosNuxt.Wolomin),   // Wołomin
+    helios(HeliosVenues.Wolomin),   // Wołomin
     biletyna(KinoKulturaWolomin, "https://biletyna.pl/Wolomin/Kino-Kultura"),   // Wołomin
     filmweb(2079, KinoTeatrKurtyna),   // Sulejówek
     multikino("0039", MultikinoPruszkow),   // Pruszków
@@ -69,7 +69,7 @@ object WarszawaVenues extends PolishVenueRegistry {
     // Dziedzictwa Kulturowego hall; Grajewo's "Dom Kultury" is the Grajewskie
     // Centrum Kultury, whose page mixes films with concerts and plays.
     biletyna(KinoCKiSPruszkow, "https://biletyna.pl/Pruszkow/Sala-widowiskowa-Centrum-Dziedzictwa-Kulturowego"),   // Pruszków
-    helios(HeliosNuxt.Legionowo),   // Legionowo
+    helios(HeliosVenues.Legionowo),   // Legionowo
     biletyna(KinoOaza, "https://biletyna.pl/Otwock/Kino-Oaza-Otwockie-Centrum-Kultury"),   // Otwock
   )
 }

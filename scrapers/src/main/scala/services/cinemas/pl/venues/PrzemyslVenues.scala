@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Przemysl: see [[PolishVenueRegistry]]. */
 object PrzemyslVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Przemysl),
+    helios(HeliosVenues.Przemysl),
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(

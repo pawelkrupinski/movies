@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Plock: see [[PolishVenueRegistry]]. */
 object PlockVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Plock),
+    helios(HeliosVenues.Plock),
     noveKino("przedwiosnie", KinoPrzedwiosnie),
   )
 

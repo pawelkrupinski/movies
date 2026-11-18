@@ -8,10 +8,10 @@ object PiotrkowTrybunalskiVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
     // Smaller towns grouped around their largest one, every venue about an hour's
     // drive from it — the shape Konin already had for Turek, Koło and Słupca.
-    helios(HeliosNuxt.PiotrkowTrybunalski),   // Piotrków Trybunalski
-    helios(HeliosNuxt.Belchatow),   // Bełchatów
+    helios(HeliosVenues.PiotrkowTrybunalski),   // Piotrków Trybunalski
+    helios(HeliosVenues.Belchatow),   // Bełchatów
     own(kit => new IksorisBookingClient(kit.http, IksorisBookingPage(IksorisOrigin("https://bilety.mckbelchatow.pl")), KinoKulturaBelchatow)),   // Bełchatów
-    helios(HeliosNuxt.TomaszowMazowiecki),   // Tomaszów Mazowiecki
+    helios(HeliosVenues.TomaszowMazowiecki),   // Tomaszów Mazowiecki
   )
 
   override val nearbyTowns: Seq[PolishVenue] = Seq(

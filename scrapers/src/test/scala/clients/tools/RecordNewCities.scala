@@ -3,7 +3,7 @@ package clients.tools
 import models._
 import tools.RealHttpFetch
 import services.cinemas._
-import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, KinoZorzaClient, MultikinoClient}
+import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosVenues, KinoZorzaClient, MultikinoClient}
 
 import scala.util.Try
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -50,7 +50,7 @@ object RecordNewCities {
       report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(record, id, c, titles = titleNormalizer).fetch().size)
     }
 
-    Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
+    Seq(HeliosVenues.Radom, HeliosVenues.Sosnowiec, HeliosVenues.Kielce, HeliosVenues.Rzeszow).foreach { config =>
       report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
     }
 

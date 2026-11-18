@@ -4,7 +4,7 @@ import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{Cinema, CinemaMovie, HeliosOutletPark, KinoCkLublin, KinoWisla}
-import services.cinemas.pl.{Bilety24Client, HeliosClient, HeliosNuxt, NoveKinoClient}
+import services.cinemas.pl.{Bilety24Client, HeliosClient, HeliosVenues, NoveKinoClient}
 
 import java.time.LocalDate
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -32,7 +32,7 @@ class GapReuseScrapeSpec extends AnyFlatSpec with Matchers {
     new NoveKinoClient(new FakeHttpFetch("kino-wisla"), "wisla", KinoWisla).fetch())
 
   check("HeliosClient (Helios Outlet Park)", HeliosOutletPark)(
-    new HeliosClient(new FakeHttpFetch("helios-outlet-park"), HeliosNuxt.SzczecinOutletPark, captureDate, titles = titleNormalizer).fetch())
+    new HeliosClient(new FakeHttpFetch("helios-outlet-park"), HeliosVenues.SzczecinOutletPark, captureDate, titles = titleNormalizer).fetch())
 
   check("Bilety24Client (Kino CK Lublin)", KinoCkLublin)(
     new Bilety24Client(new FakeHttpFetch("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titleNormalizer).fetch())

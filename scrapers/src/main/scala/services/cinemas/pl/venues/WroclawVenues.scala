@@ -9,8 +9,8 @@ object WroclawVenues extends PolishVenueRegistry {
     cinemaCity("1097", CinemaCityWroclavia),
     cinemaCity("1067", CinemaCityKorona),
     multikino("0010", MultikinoPasazGrunwaldzki),
-    helios(HeliosNuxt.Magnolia),
-    helios(HeliosNuxt.AlejaBielany),
+    helios(HeliosVenues.Magnolia),
+    helios(HeliosVenues.AlejaBielany),
     own(kit => new NoweHoryzontyClient(kit.http, kit.today)),
     own(kit => new DcfClient(kit.http)),
   )

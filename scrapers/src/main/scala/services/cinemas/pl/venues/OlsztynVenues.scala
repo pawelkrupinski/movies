@@ -11,7 +11,7 @@ object OlsztynVenues extends PolishVenueRegistry {
     // shared platform client: FilmwebShowtimesClient (Filmweb's seances JSON, by
     // internal cinema id — verified to return non-empty seances), Bilety24Client
     // (a bilety24.pl venue), or NoveKinoClient.
-    helios(HeliosNuxt.Olsztyn),
+    helios(HeliosVenues.Olsztyn),
     multikino("0036", MultikinoOlsztyn),
     own(kit => new KinoAwangarda2Client(kit.http, kit.today)),
   )

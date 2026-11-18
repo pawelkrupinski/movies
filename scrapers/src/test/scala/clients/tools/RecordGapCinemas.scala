@@ -34,7 +34,7 @@ object RecordGapCinemas {
     // ── Trójmiasto / Szczecin ──
     report("Cinema1 (Gdańsk)")(new MsiClient(record("cinema1"), "https://bilety.cinemaone.pl", Cinema1Gdansk, today = venueClock.todayInPoland).fetch().size)
     report("Kino Zamek (Szczecin)")(new KinoZamekClient(record("kino-zamek"), KinoZamekSzczecin, today = venueClock.todayInPoland).fetch().size)
-    report("Helios Outlet Park")(new HeliosClient(record("helios-outlet-park"), HeliosNuxt.SzczecinOutletPark, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
+    report("Helios Outlet Park")(new HeliosClient(record("helios-outlet-park"), HeliosVenues.SzczecinOutletPark, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
     // ── Łódź ──
     report("Kinematograf (Łódź)")(new KinematografLodzClient(record("kinematograf-lodz"), KinematografLodz, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
     report("NCKF (Łódź)")(new NckfClient(record("nckf"), Nckf, today = venueClock.todayInPoland).fetch().size)

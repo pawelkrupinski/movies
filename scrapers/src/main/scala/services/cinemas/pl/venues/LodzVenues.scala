@@ -8,7 +8,7 @@ object LodzVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
     cinemaCity("1080", CinemaCityManufaktura),
     multikino("0023", MultikinoLodz),
-    helios(HeliosNuxt.Lodz),
+    helios(HeliosVenues.Lodz),
     // Charlie's homepage (the old CharlieClient) renders today only; its portal lists
     // every booked day. The portal also sells Kino Spójnia's screenings, which
     // KinoSpojniaClient scrapes from Spójnia's own site.
@@ -26,7 +26,7 @@ object LodzVenues extends PolishVenueRegistry {
   override val nearbyTowns: Seq[PolishVenue] = Seq(
     biletyna(KinoMOKGlowno, "https://biletyna.pl/Glowno/Miejski-Osrodek-Kultury"),   // Głowno
     own(kit => new KinoTomiClient(kit.http, KinoTomi)),   // Pabianice
-    helios(HeliosNuxt.Pabianice),   // Pabianice
+    helios(HeliosVenues.Pabianice),   // Pabianice
     msi(KinoGornikLeczyca, "https://kinogornik.eurobilet.pl"),   // Łęczyca
   )
 }

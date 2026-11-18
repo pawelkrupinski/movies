@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Siedlce: see [[PolishVenueRegistry]]. */
 object SiedlceVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Siedlce),   // Siedlce
+    helios(HeliosVenues.Siedlce),   // Siedlce
     noveKino("siedlce", NoveKinoSiedlce),   // Siedlce
     filmweb(2073, KinoSokolSokolowPodlaski),   // Sokołów Podlaski
     // One screen Filmweb split across two ids (1658 "Kino Sława", 1850 "Kino za

@@ -58,7 +58,6 @@ cognitive	scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.
 cognitive	scrapers/src/main/scala/services/cinemas/common/VenueCredits.scala:VenueCredits.factsOf	19
 cognitive	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	17
 cognitive	scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala:CinemaCityClient.parseDay	16
-cognitive	scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala:HeliosClient.mergeDuplicateFilms	29
 cognitive	scrapers/src/main/scala/services/cinemas/pl/KinoAgrafkaClient.scala:KinoAgrafkaClient.parseDocument	18
 cognitive	scrapers/src/main/scala/services/cinemas/pl/KinoPodBaranamiClient.scala:KinoPodBaranamiClient.parseDocument	16
 cognitive	scrapers/src/main/scala/services/cinemas/pl/KinoZorzaClient.scala:KinoZorzaClient.parseContent	19

@@ -24,6 +24,6 @@ object TorunVenues extends PolishVenueRegistry {
   )
 
   override val nearbyTowns: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Grudziadz),   // Grudziądz
+    helios(HeliosVenues.Grudziadz),   // Grudziądz
   )
 }

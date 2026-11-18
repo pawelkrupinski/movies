@@ -6,13 +6,13 @@ import services.cinemas.pl._
 /** The Polish venues wired near Radom: see [[PolishVenueRegistry]]. */
 object RadomVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Radom),
+    helios(HeliosVenues.Radom),
     multikino("0026", MultikinoRadom),
     own(kit => new McswElektrowniaCinemaClient(kit.http, McswElektrowniaCinema, kit.today)),
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Starachowice),
+    helios(HeliosVenues.Starachowice),
     msi(KinoCentrumSkarzyskoKamienna, "https://bilet-mck.skarzysko.pl"),
     bilety24("https://www.bilety24.pl/kino/organizator/szydlowieckie-centrum-kultury-zamek-1320", KinoGornik),
     msi(KinoKozienickiDomKultury, "http://bilety.dkkozienice.pl"),

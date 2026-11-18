@@ -6,9 +6,9 @@ import services.cinemas.pl._
 /** The Polish venues wired near Bialystok: see [[PolishVenueRegistry]]. */
 object BialystokVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Alfa),
-    helios(HeliosNuxt.Biala),
-    helios(HeliosNuxt.Jurowiecka),
+    helios(HeliosVenues.Alfa),
+    helios(HeliosVenues.Biala),
+    helios(HeliosVenues.Jurowiecka),
     own(kit => new KinoForumClient(kit.http, kit.today)),
   )
 

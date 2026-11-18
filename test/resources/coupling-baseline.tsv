@@ -30,9 +30,9 @@ module-edge	identity->base	25
 module-edge	identity->common	491
 module-edge	identity->http	6
 module-edge	scrapers->base	52
-module-edge	scrapers->common	1543
+module-edge	scrapers->common	1544
 module-edge	scrapers->geodata	3
-module-edge	scrapers->http	366
+module-edge	scrapers->http	368
 module-edge	scrapers->identity	8
 module-edge	web->base	31
 module-edge	web->common	573
@@ -105,9 +105,7 @@ fanout	services.cinemas.common.FlicksClient	14
 fanout	services.cinemas.common.SourceFallbackScraper	14
 fanout	services.cinemas.common.WebediaShowtimesClient	11
 fanout	services.cinemas.pl.FilmwebCinemaIdResolver	12
-fanout	services.cinemas.pl.HeliosClient	13
-fanout	services.cinemas.pl.HeliosNuxt	54
-fanout	services.cinemas.pl.venues.PolishTowns	67
+fanout	services.cinemas.pl.HeliosClient	10
 fanout	services.cinemas.roster.CopiedFeedDetector	11
 fanout	services.closure.ClosureSweep	21
 fanout	services.config.EnvConfigService	13

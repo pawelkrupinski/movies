@@ -25,7 +25,6 @@ method-lines	scrapers/src/main/scala/services/cinemas/common/SourceFallbackScrap
 method-lines	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	63
 method-lines	scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala:CinemaCityClient.parseDay	55
 method-lines	scrapers/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala:FilmwebShowtimesClient.fetch	52
-method-lines	scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala:HeliosClient.fetchRestData	74
 method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoBulgarskaClient.scala:KinoBulgarskaClient.parseHtml	52
 method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoGramClient.scala:KinoGramClient.fetch	55
 method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoMuzaClient.scala:KinoMuzaClient.parseHtml	68

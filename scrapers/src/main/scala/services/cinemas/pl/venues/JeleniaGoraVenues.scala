@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Jelenia Gora: see [[PolishVenueRegistry]]. */
 object JeleniaGoraVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.JeleniaGora),
+    helios(HeliosVenues.JeleniaGora),
     bilety24Subdomain(KinoLot, "https://kino-lot.bilety24.pl"),
   )
 

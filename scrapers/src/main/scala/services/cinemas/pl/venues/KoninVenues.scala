@@ -11,7 +11,7 @@ object KoninVenues extends PolishVenueRegistry {
     // it has none. Neighbouring bilety24 organiser ids are different towns: 1626 is
     // Konin's culture centre, 1621 Koło's MDK. Września's Kino Trójka (1698) is
     // intentionally not wired.
-    helios(HeliosNuxt.Konin),
+    helios(HeliosVenues.Konin),
     bilety24Subdomain(KinoOskard, "https://ckis-konin.bilety24.pl"),
     filmweb(2405, KinoZacheta),   // Kleczew
     bilety24("https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoStudyjneCentrum),   // Konin

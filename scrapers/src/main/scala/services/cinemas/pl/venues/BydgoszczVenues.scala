@@ -8,7 +8,7 @@ object BydgoszczVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
     cinemaCity("1086", CinemaCityBydgoszcz),
     multikino("0006", MultikinoBydgoszcz),
-    helios(HeliosNuxt.Bydgoszcz),
+    helios(HeliosVenues.Bydgoszcz),
     own(kit => new KinoOrzelClient(kit.http, KinoOrzel)),
   )
 

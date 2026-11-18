@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Kielce: see [[PolishVenueRegistry]]. */
 object KielceVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Kielce),
+    helios(HeliosVenues.Kielce),
     multikino("0029", MultikinoKielce),
     // iframe639.biletyna.pl 403s our Fly datacenter IP (Cloudflare) on the
     // per-film /artist/view/id detail pages, so route through the biletyna seam

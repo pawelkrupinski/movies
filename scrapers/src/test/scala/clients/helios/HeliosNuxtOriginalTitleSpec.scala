@@ -3,7 +3,7 @@ package clients.helios
 import clients.tools.FixtureFile
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.pl.HeliosNuxt
+import services.cinemas.pl.{HeliosNuxt, HeliosVenues}
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -17,7 +17,7 @@ class HeliosNuxtOriginalTitleSpec extends AnyFlatSpec with Matchers {
     FixtureFile.read("test/resources/fixtures/08-06-2026/helios.pl/poznan/kino-helios/repertuar")
 
   private val byTitle =
-    HeliosNuxt.buildMovies(html, HeliosNuxt.Poznan, titleNormalizer).map(cm => cm.movie.title -> cm).toMap
+    HeliosNuxt.buildMovies(html, HeliosVenues.Poznan, titleNormalizer).map(cm => cm.movie.title -> cm).toMap
 
   "HeliosNuxt.buildMovies" should "set originalTitle from the NUXT titleOriginal field, kept raw" in {
     byTitle.get("Pianista").flatMap(_.movie.originalTitle) shouldBe Some("The Pianist (re-release)")

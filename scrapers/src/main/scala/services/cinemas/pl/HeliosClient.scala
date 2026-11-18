@@ -1,18 +1,14 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
 import java.util.Locale
 
 import tools.{HeliosFetch, HttpFetch, HttpRead}
 import models._
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ListingPages, ListingFeed}
+import services.cinemas.common.{CinemaScraper, ListingFeed}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
+import services.cinemas.pl.HeliosRest.{ApiScreening, RestData}
 
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
-import scala.concurrent.duration._
-import scala.util.Try
+import java.time.LocalDate
 import services.titles.TitleNormalizer
 import tools.Whitespace.collapsedSpaces
 
@@ -22,7 +18,7 @@ import tools.Whitespace.collapsedSpaces
 // wirings pass the fixture's capture date so the recorded URLs still match.
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
-  config:   HeliosCinema = HeliosNuxt.Poznan,
+  config:   HeliosCinema = HeliosVenues.Poznan,
   today: => LocalDate,
   // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
   // `http`; the composition root injects ONE CachingDetailFetch shared across
@@ -35,17 +31,13 @@ class HeliosClient(
 
   override val cinema: Cinema = config.cinema
   override def listingFeed: ListingFeed = ListingFeed.Chain
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
-
-  private val sourceId   = config.sourceId
-  private val PageUrl     = config.pageUrl
-  private val ApiBase    = "https://restapi.helios.pl/api"
-  private val WarsawZone = models.TimeZones.Poland
-  private val OffsetDtf  = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+  private val sourceId = config.sourceId
+  private val PageUrl  = config.pageUrl
+  private val restFeed = new HeliosRestFeed(http, detailHttp.getOrElse(http), sourceId)
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, ApiBase, BookingBase)
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, HeliosRestFeed.ApiBase, BookingBase)
 
   // `config.baseUrl` (`helios.pl/<citySlug>/<cinemaSlug>`) is the venue's public
   // repertoire page — the same URL the NUXT scrape fetches `/repertuar` from.
@@ -53,7 +45,8 @@ class HeliosClient(
   override def chainVenueId: Option[String] = Some(sourceId)
 
   def fetch(): Seq[CinemaMovie] = {
-    val rest = fetchRestData()
+    // `today` is by-name: read ONCE, so the REST windows can't straddle midnight.
+    val rest = restFeed.read(today)
     val nuxt = HeliosNuxt.buildMovies(HttpRead.page(http, PageUrl), config, titles)
     // The NUXT `/repertuar` page is Helios's authoritative full-repertoire source
     // (it lists every screening, well beyond REST's 6-day window). helios.pl
@@ -72,209 +65,6 @@ class HeliosClient(
     val enriched = enrichFromRest(nuxt, rest)
     mergeDuplicateFilms(removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest))).sortBy(_.movie.title)
   }
-
-  private case class RestData(
-    screeningsById: Map[String, ApiScreening],
-    movieDetails:   Map[String, ApiMovieInfo],
-    screenNames:    Map[String, String]
-  )
-
-  private def fetchRestData(): RestData = {
-    // Two windows, not one. The near week is dense (Poznań, measured 2026-08-05:
-    // 247 screenings) and the tail is sparse but real (another 81, which a
-    // today+6 window never saw at all) — so the first request stays exactly as
-    // it was and a second sweeps everything after it, out to the horizon.
-    // Splitting keeps the near-term response small, and leaves the recorded
-    // fixtures for the near window matching byte-for-byte.
-    // `today` is by-name: read ONCE, so the windows can't straddle midnight.
-    val from    = today
-    val nearEnd = from.plusDays(6)
-    val farEnd  = from.plusDays(ScrapeHorizon.MaxDays.toLong)
-    val windows = Seq(
-      s"dateTimeFrom=${from}T00:00:00&dateTimeTo=${nearEnd}T23:59:59",
-      s"dateTimeFrom=${nearEnd.plusDays(1)}T00:00:00&dateTimeTo=${farEnd}T23:59:59"
-    )
-    val screeningsUrls = windows.map(w => s"$ApiBase/cinema/$sourceId/screening?$w")
-    // `/event` honours the SAME date windows as `/screening`. Without a window the
-    // endpoint returns the cinema's ENTIRE event history — ~4400 events, 9 MB,
-    // ~99% of them in the past — and the 18-20s spent hauling-then-discarding
-    // that payload was the single dominant cost of a Helios scrape (the whole
-    // fetch dropped from ~20s to ~1s once windowed). What made it expensive was
-    // the PAST, which `dateTimeFrom` excludes, so reaching forward is cheap. We
-    // only ever use events whose screenings fall in the windows `/screening`
-    // already covers, so the filter loses nothing.
-    val eventsUrls = windows.map(w => s"$ApiBase/cinema/$sourceId/event?$w")
-
-    // `/screening` lists regular film screenings; event screenings (anime, concerts,
-    // sports broadcasts) are excluded from it but carry the same id→screenId mapping
-    // under `/event`. Merge both so room/format enrichment covers events too. The two
-    // sets are disjoint; on the (unexpected) collision the regular screening wins.
-    // Synchronous `get` (NOT getAsync): the two fetches are already sequential (each
-    // `.join()`s immediately), so getAsync bought no concurrency — it just bounced a
-    // BLOCKING GET onto the shared ForkJoinPool.commonPool, where ~30 slow Helios
-    // venues pegged the pool and floored the worker's CPU credit (2026-07-05). Plain
-    // `get` keeps the blocking on the bounded scrape worker (isolated), and the
-    // per-host 4s timeout + circuit breaker bound how long each one holds it.
-    // A window that fails yields nothing rather than killing the scrape — the near
-    // window is what most of the programme lives in, and losing the tail to a blip
-    // must not cost us that — but it is reported as a failed page, so the listing is
-    // incomplete and nothing is pruned on the strength of it (ListingPages.reportFailed).
-    def window(urls: Seq[String])(parse: String => Map[String, ApiScreening]): Map[String, ApiScreening] = {
-      val reads = urls.map(u => Try(parse(HttpRead.page(http, u))))
-      ListingPages.reportFailed(reads)
-      reads.flatMap(_.toOption).foldLeft(Map.empty[String, ApiScreening])(_ ++ _)
-    }
-    val regular         = window(screeningsUrls)(parseApiScreenings)
-    val eventScreenings = window(eventsUrls)(parseEventScreenings)
-    val screeningsById  = eventScreenings ++ regular
-
-    // A movie body is part of the listing: a REST-only film (a Latin-titled UA screening NUXT
-    // lists in Cyrillic) is emitted only from its body, so one that fails can drop a film and
-    // leaves the listing incomplete. A screen body only names a showtime's room: one that fails
-    // drops nothing, and must not keep the venue from pruning.
-    val filmIds        = regular.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct
-    val movieBodies    = ListingPages.readMore("helios-movies", filmIds,
-      (id: String) => s"$ApiBase/movie/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _)).toMap
-    // The film an event names only describes the event the repertoire page already lists: one that fails costs its
-    // details, never a row, and leaves the listing complete.
-    val eventFilmBodies = ListingPages.readEnrichment("helios-event-films",
-      eventScreenings.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct.filterNot(filmIds.contains),
-      (id: String) => s"$ApiBase/movie/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _))
-      .flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
-    val screenBodies   = ListingPages.readEnrichment("helios-screens", screeningsById.values.map(_.screenId).toSeq.distinct,
-      (id: String) => s"$ApiBase/cinema/$sourceId/screen/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _))
-      .flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
-
-    RestData(
-      screeningsById = screeningsById,
-      movieDetails   = (movieBodies ++ eventFilmBodies).flatMap { case (id, body) => parseApiMovieBody(body).map(id -> _) },
-      screenNames    = screenBodies.flatMap { case (id, body) =>
-        Try((Json.parse(body) \ "name").asOpt[String]).toOption.flatten.map(id -> _)
-      }
-    )
-  }
-
-  // ── REST parsing ──────────────────────────────────────────────────────────
-
-  /** One REST screening; `event` when `/event` listed it, `movieId` then the one film the event names (or empty). */
-  private case class ApiScreening(
-    id:       String,
-    movieId:  String,
-    screenId: String,
-    release:  String,
-    dateTime: Option[LocalDateTime],
-    event:    Boolean = false
-  )
-
-  private def parseApiScreenings(body: String): Map[String, ApiScreening] =
-    Try(Json.parse(body).as[JsArray]).map { array =>
-      array.value.flatMap { s =>
-        for {
-          id       <- (s \ "id").asOpt[String]
-          movieId  <- (s \ "movieId").asOpt[String]
-          screenId <- (s \ "screenId").asOpt[String]
-        } yield {
-          val release  = (s \ "release").asOpt[String].getOrElse("")
-          val dateTime = (s \ "screeningTimeFrom").asOpt[String]
-            .flatMap(timestamp => Try(ZonedDateTime.parse(timestamp, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
-          id -> ApiScreening(id, movieId, screenId, release, dateTime)
-        }
-      }.toMap
-    }.getOrElse(Map.empty)
-
-  // The `/event` endpoint returns one entry per event screening (a flat array),
-  // each with its `screeningId`, `screenId` and `release`. We map them
-  // into the same ApiScreening shape used for room/format enrichment. Each entry also
-  // names the film(s) it screens (`items[].movieId`): an event of ONE film takes that
-  // film's REST body — the director, cast and year the repertoire page never states for
-  // an event; a pack of several (a marathon) names none of them, `movieId` empty.
-  private def parseEventScreenings(body: String): Map[String, ApiScreening] =
-    Try(Json.parse(body).as[JsArray]).map { array =>
-      array.value.flatMap { e =>
-        for {
-          id       <- (e \ "screeningId").asOpt[String]
-          screenId <- (e \ "screenId").asOpt[String]
-        } yield {
-          val release  = (e \ "release").asOpt[String].getOrElse("")
-          val dateTime = (e \ "timeFrom").asOpt[String]
-            .flatMap(timestamp => Try(ZonedDateTime.parse(timestamp, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
-          val films = (e \ "items").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap(i => (i \ "movieId").asOpt[String]).distinct
-          id -> ApiScreening(id, movieId = films match { case Seq(only) => only; case _ => "" }, screenId, release, dateTime, event = true)
-        }
-      }.toMap
-    }.getOrElse(Map.empty)
-
-  private case class ApiMovieInfo(
-    title:         Option[String],
-    originalTitle: Option[String],
-    duration:      Option[Int],
-    description:   Option[String],
-    cast:          Seq[String],
-    director:      Seq[String],
-    year:          Option[Int],
-    posterUrl:     Option[String],
-    slug:          Option[String],
-    countries:     Seq[String],
-    genres:        Seq[String],
-    trailerUrl:    Option[String],
-    ageRating:     Option[String]
-  )
-
-  private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
-    Try(Json.parse(body)).toOption.flatMap { js =>
-      (js \ "title").asOpt[String].filter(_.nonEmpty).map { title =>
-        ApiMovieInfo(
-          title         = Some(title),
-          originalTitle = (js \ "originalTitle").asOpt[String].filter(_.nonEmpty),
-          duration      = (js \ "duration").asOpt[Int],
-          description   = (js \ "description").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-          cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-          director      = (js \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-          year          = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
-          posterUrl     = (js \ "posters").asOpt[JsArray]
-                            .flatMap(_.value.headOption)
-                            .flatMap(_.asOpt[String])
-                            .filter(_.startsWith("http")),
-          slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
-          countries     = jsonText(js \ "country")
-                            .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-          // Helios ships `genres: [{id, name, description}]` with lowercase
-          // Polish names ("science fiction", "dramat"). Title-case at the
-          // write boundary so the display layer doesn't have to special-case
-          // this source's casing.
-          genres        = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-                            .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
-                            .map(tools.TextNormalization.titleCaseIfAllLower),
-          // Helios ships `trailers: [<youtube embed URL>]`. Take the first
-          // entry; for non-embed YouTube URLs (live API has been seen to mix
-          // both shapes) we re-canonicalise to the watch URL and let the
-          // view layer convert back to /embed/ via TrailerEmbed.
-          trailerUrl    = (js \ "trailers").asOpt[JsArray]
-                            .flatMap(_.value.headOption).flatMap(_.asOpt[String])
-                            .filter(_.nonEmpty)
-                            .flatMap(u => models.TrailerEmbed.youTubeId(u)
-                              .map(id => s"https://www.youtube.com/watch?v=$id")),
-          ageRating     = parseAgeRating(js)
-        )
-      }
-    }
-
-  // Helios ships `ratings: [{cinemaGroupId, symbol, value, description}]` — the
-  // Polish age certificate. `symbol`/`value` are the clean short form ("15",
-  // "7", "0"); `description` is the verbose "od lat 15" / "b.o.". Take the FIRST
-  // rating's `symbol` (falling back to `value`) as the clean numeric label. The
-  // "no restriction" marker — symbol "0" or description "b.o." (bez ograniczeń) —
-  // is filtered to `None` here before `AgeRating.normalize`, which only strips
-  // blanks/placeholders and can't know Helios's local convention. Empty
-  // `ratings` → `None`.
-  private def parseAgeRating(js: JsValue): Option[String] =
-    (js \ "ratings").asOpt[JsArray].flatMap(_.value.headOption).flatMap { rating =>
-      val symbol      = (rating \ "symbol").asOpt[String].filter(_.nonEmpty)
-                          .orElse((rating \ "value").asOpt[String].filter(_.nonEmpty))
-      val description = (rating \ "description").asOpt[String].map(_.trim)
-      val noRestriction = symbol.contains("0") || description.exists(_.equalsIgnoreCase("b.o."))
-      if (noRestriction) None else symbol
-    }.flatMap(services.cinemas.common.AgeRating.normalize)
 
   // ── REST enrichment of NUXT movies ────────────────────────────────────────
   //
@@ -347,7 +137,7 @@ class HeliosClient(
             director   = info.director,
             trailerUrl = info.trailerUrl,
             ageRating  = info.ageRating,
-            showtimes  = screenings.toSeq.flatMap(restShowtime(_, rest)).distinct.sortBy(_.dateTime)
+            showtimes  = screenings.flatMap(restShowtime(_, rest)).distinct.sortBy(_.dateTime)
           ))
       }
       .filter(_.showtimes.nonEmpty)
@@ -358,12 +148,12 @@ class HeliosClient(
       dateTime   = dt,
       bookingUrl = Some(s"$BookingBase/${s.id}?cinemaId=$sourceId"),
       room       = rest.screenNames.get(s.screenId),
-      format     = s.release.split("/").toList.filter(_.nonEmpty)
+      format     = s.format
     ))
 
   private def enrichShowtime(st: Showtime, rest: RestData): Showtime =
     st.bookingUrl.flatMap(extractScreeningId).flatMap(rest.screeningsById.get) match {
-      case Some(rs) => st.copy(room = rest.screenNames.get(rs.screenId), format = rs.release.split("/").toList.filter(_.nonEmpty))
+      case Some(rs) => st.copy(room = rest.screenNames.get(rs.screenId), format = rs.format)
       case None     => st
     }
 
@@ -393,34 +183,10 @@ class HeliosClient(
    *  the cache's normalised title and merge each group into one entry: keep the
    *  canonical `/filmy` film as the base, fill any field it lacks from the
    *  siblings, and union their showtimes. */
-  private[cinemas] def mergeDuplicateFilms(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
-    def rank(m: CinemaMovie): Int =
-      (if (m.filmUrl.exists(_.contains("/filmy/"))) 4 else 0) +
-        (if (m.filmUrl.isDefined) 2 else 0) +
-        (if (m.movie.releaseYear.isDefined) 1 else 0)
-    movies.groupBy(m => titles.sanitize(m.movie.title)).values.toSeq.map { group =>
-      group.reduce { (a, b) =>
-        val (primary, other) = if (rank(a) >= rank(b)) (a, b) else (b, a)
-        primary.copy(
-          movie = primary.movie.copy(
-            title          = primary.movie.title.trim,
-            releaseYear    = primary.movie.releaseYear.orElse(other.movie.releaseYear),
-            runtimeMinutes = primary.movie.runtimeMinutes.orElse(other.movie.runtimeMinutes),
-            countries      = if (primary.movie.countries.nonEmpty) primary.movie.countries else other.movie.countries,
-            genres         = if (primary.movie.genres.nonEmpty) primary.movie.genres else other.movie.genres
-          ),
-          posterUrl  = primary.posterUrl.orElse(other.posterUrl),
-          filmUrl    = primary.filmUrl.orElse(other.filmUrl),
-          synopsis   = primary.synopsis.orElse(other.synopsis),
-          cast       = if (primary.cast.nonEmpty) primary.cast else other.cast,
-          director   = if (primary.director.nonEmpty) primary.director else other.director,
-          trailerUrl = primary.trailerUrl.orElse(other.trailerUrl),
-          ageRating  = primary.ageRating.orElse(other.ageRating),
-          showtimes  = (primary.showtimes ++ other.showtimes).distinct.sortBy(_.dateTime)
-        )
-      }
-    }
-  }
+  private[cinemas] def mergeDuplicateFilms(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
+    movies.groupBy(m => titles.sanitize(m.movie.title)).values.toSeq.map(_.reduce { (a, b) =>
+      if (HeliosClient.mergeRank(a) >= HeliosClient.mergeRank(b)) HeliosClient.mergeInto(a, b) else HeliosClient.mergeInto(b, a)
+    })
 
   private def removeLessSpecificOverlaps(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
     val timesByTitle = movies.map(m => m.movie.title -> m.showtimes.map(_.dateTime).toSet).toMap
@@ -433,4 +199,34 @@ class HeliosClient(
           timesByTitle(other.movie.title).intersect(times).nonEmpty)
     }
   }
+}
+
+object HeliosClient {
+  /** Which of two listings of one film is the base of their merge: the canonical `/filmy` film page first, then any
+   *  page, then a known year. */
+  private def mergeRank(m: CinemaMovie): Int =
+    Seq(m.filmUrl.exists(_.contains("/filmy/")) -> 4, m.filmUrl.isDefined -> 2, m.movie.releaseYear.isDefined -> 1)
+      .collect { case (true, weight) => weight }.sum
+
+  /** `primary` with every field it lacks taken from `other`, and both's showtimes. */
+  private def mergeInto(primary: CinemaMovie, other: CinemaMovie): CinemaMovie =
+    primary.copy(
+      movie = primary.movie.copy(
+        title          = primary.movie.title.trim,
+        releaseYear    = primary.movie.releaseYear.orElse(other.movie.releaseYear),
+        runtimeMinutes = primary.movie.runtimeMinutes.orElse(other.movie.runtimeMinutes),
+        countries      = orOther(primary.movie.countries, other.movie.countries),
+        genres         = orOther(primary.movie.genres, other.movie.genres)
+      ),
+      posterUrl  = primary.posterUrl.orElse(other.posterUrl),
+      filmUrl    = primary.filmUrl.orElse(other.filmUrl),
+      synopsis   = primary.synopsis.orElse(other.synopsis),
+      cast       = orOther(primary.cast, other.cast),
+      director   = orOther(primary.director, other.director),
+      trailerUrl = primary.trailerUrl.orElse(other.trailerUrl),
+      ageRating  = primary.ageRating.orElse(other.ageRating),
+      showtimes  = (primary.showtimes ++ other.showtimes).distinct.sortBy(_.dateTime)
+    )
+
+  private def orOther(values: Seq[String], other: Seq[String]): Seq[String] = if (values.nonEmpty) values else other
 }

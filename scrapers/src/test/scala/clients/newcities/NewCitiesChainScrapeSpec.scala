@@ -5,7 +5,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas._
-import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, MultikinoClient}
+import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosVenues, MultikinoClient}
 
 import java.time.LocalDate
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -60,12 +60,12 @@ class NewCitiesChainScrapeSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── Helios venues (today pinned to each venue's fixture capture date) ─────────
-  Seq(HeliosNuxt.Kielce, HeliosNuxt.Rzeszow)
+  Seq(HeliosVenues.Kielce, HeliosVenues.Rzeszow)
     .foreach { config =>
       check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDate, titles = titleNormalizer).fetch())
     }
   // Radom + Sosnowiec: re-recorded under the renamed `kino-helios` slug.
-  Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec)
+  Seq(HeliosVenues.Radom, HeliosVenues.Sosnowiec)
     .foreach { config =>
       check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDateRadomSosnowiec, titles = titleNormalizer).fetch())
     }

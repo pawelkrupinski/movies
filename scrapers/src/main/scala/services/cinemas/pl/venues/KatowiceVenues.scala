@@ -9,7 +9,7 @@ object KatowiceVenues extends PolishVenueRegistry {
     cinemaCity("1065", CinemaCityPunkt44),
     cinemaCity("1079", CinemaCitySilesia),
     multikino("0035", MultikinoKatowice),
-    helios(HeliosNuxt.Katowice),
+    helios(HeliosVenues.Katowice),
     // Silesia Film's art-house trio, all Bilety24-hosted: listing at `/repertuar/`
     // linking per-film `/wydarzenie/?id=N` pages, so they reuse the shared Bilety24Client.
     bilety24("https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos),

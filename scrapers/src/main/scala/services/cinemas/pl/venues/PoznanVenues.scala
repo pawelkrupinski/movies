@@ -9,7 +9,7 @@ object PoznanVenues extends PolishVenueRegistry {
     multikino(MultikinoClient.PoznanStaryBrowarId, Multikino),
     own(kit => new CharlieMonroeClient(kit.http)),
     own(kit => new KinoPalacoweClient(kit.http, titles = kit.titles)),
-    helios(HeliosNuxt.Poznan),
+    helios(HeliosVenues.Poznan),
     cinemaCity("1078", CinemaCityPoznanPlaza),
     cinemaCity("1081", CinemaCityKinepolis),
     own(kit => new KinoMuzaClient(kit.http, kit.today, titles = kit.titles)),

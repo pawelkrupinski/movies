@@ -6,14 +6,14 @@ import services.cinemas.pl._
 /** The Polish venues wired near Rzeszow: see [[PolishVenueRegistry]]. */
 object RzeszowVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Rzeszow),
+    helios(HeliosVenues.Rzeszow),
     multikino("0028", MultikinoRzeszow),
     own(kit => new KinoZorzaClient(kit.http, KinoZorza, kit.today)),
     own(kit => new KinoZaRogiemCafeClient(kit.http, KinoZaRogiemCafe, kit.today)),
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Krosno),
+    helios(HeliosVenues.Krosno),
     own(kit => new ArtKinoKrosnoClient(kit.http, KinoArtKino, kit.today)),
     own(kit => new KinoJednoscClient(kit.http, KinoJednosc)),
     msi(KinoMCK, "https://bilety.kinolezajsk.pl"),

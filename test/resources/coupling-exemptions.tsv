@@ -22,6 +22,7 @@ root	diagnostics.*	exempt	coupling	command-line programs built from the whole st
 registry	services.cinemas.*Venues	exempt	scrapers	a city's or chain's venue roster: one entry a venue, each naming the scraper class that reads it -- data, its fan-out is its row count
 registry	services.cinemas.*ScraperCatalog	exempt	scrapers	a country's scraper catalogue: one entry a source, each naming its client class -- data, its fan-out is its row count
 registry	services.cinemas.pl.PolishVenueRegistry	exempt	scrapers	the Polish venues' registry over the city rosters: one reference a roster
+registry	services.cinemas.pl.venues.PolishTowns	exempt	scrapers	the Polish towns in scrape order: one reference a town's venue roster (pl.venues.*Venues) -- data, its fan-out is its row count
 config	settings.ProcessConfiguration	exempt	coupling	the typed-config root: every environment variable is read here once and resolved into its typed setting (typed config conventions), so it names every setting type
 foundation	models	exempt	coupling	the domain data every layer reads: stable (I near 0) and concrete (A near 0), as values are
 foundation	tools	exempt	coupling	generic utilities and the HTTP and Mongo layers, below everything: stable and concrete

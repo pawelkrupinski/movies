@@ -7,9 +7,9 @@ import services.cinemas.pl._
 object TrojmiastoVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
     multikino("0004", MultikinoGdansk),
-    helios(HeliosNuxt.Metropolia),
-    helios(HeliosNuxt.Forum),
-    helios(HeliosNuxt.Riviera),
+    helios(HeliosVenues.Metropolia),
+    helios(HeliosVenues.Forum),
+    helios(HeliosVenues.Riviera),
     own(kit => new KinoSpektrumClient(kit.http, KinoSpektrum)),
     // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — the
     // residential proxy in production, the fixture fake in

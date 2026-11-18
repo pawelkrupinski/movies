@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Bielsko Biala: see [[PolishVenueRegistry]]. */
 object BielskoBialaVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.BielskoBiala),
+    helios(HeliosVenues.BielskoBiala),
     cinemaCity("1088", CinemaCityBielskoBiala),
     own(kit => new KinoKreskaClient(kit.http, KinoKreska)),
   )

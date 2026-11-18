@@ -6,10 +6,10 @@ import services.cinemas.pl._
 /** The Polish venues wired near Szczecin: see [[PolishVenueRegistry]]. */
 object SzczecinVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Szczecin),
+    helios(HeliosVenues.Szczecin),
     multikino("0007", MultikinoSzczecin),
     own(kit => new PionierClient(kit.http, KinoPionier)),
-    helios(HeliosNuxt.SzczecinOutletPark),
+    helios(HeliosVenues.SzczecinOutletPark),
     own(kit => new KinoZamekClient(kit.http, KinoZamekSzczecin, kit.today)),
   )
 

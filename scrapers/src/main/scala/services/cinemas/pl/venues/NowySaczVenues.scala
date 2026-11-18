@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Nowy Sacz: see [[PolishVenueRegistry]]. */
 object NowySaczVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.NowySacz),
+    helios(HeliosVenues.NowySacz),
     bilety24("https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol),
   )
 

@@ -6,7 +6,7 @@ import services.cinemas.pl._
 /** The Polish venues wired near Gorzow Wielkopolski: see [[PolishVenueRegistry]]. */
 object GorzowWielkopolskiVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Gorzow),
+    helios(HeliosVenues.Gorzow),
     multikino("0047", MultikinoGorzow),
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-sztuki-kino-60-krzesel-dkf-megaron-776", Kino60Krzesel),
   )

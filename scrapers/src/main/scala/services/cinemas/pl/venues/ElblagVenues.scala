@@ -11,7 +11,7 @@ object ElblagVenues extends PolishVenueRegistry {
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Tczew),
+    helios(HeliosVenues.Tczew),
     filmweb(2352, KinoBaszta),
     msi(KinoPowisle, "https://kinosztumbilety.pl"),
     biletyna(KinoZulawskiOsrodekKultury, "https://biletyna.pl/Nowy-Dwor-Gdanski/Zulawski-Osrodek-Kultury"),

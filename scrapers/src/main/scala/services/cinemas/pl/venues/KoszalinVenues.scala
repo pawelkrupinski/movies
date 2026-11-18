@@ -10,7 +10,7 @@ object KoszalinVenues extends PolishVenueRegistry {
   val KinoKryteriumUrl = "https://bilety.ck105.koszalin.pl"
 
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Koszalin),
+    helios(HeliosVenues.Koszalin),
     multikino("0015", MultikinoKoszalin),
     msi(KinoKryterium, KinoKryteriumUrl, route = PolishVenue.Route.Zyte),
   )

@@ -6,12 +6,12 @@ import services.cinemas.pl._
 /** The Polish venues wired near Legnica: see [[PolishVenueRegistry]]. */
 object LegnicaVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Legnica),
+    helios(HeliosVenues.Legnica),
     bilety24Subdomain(KinoPiast, "https://kino-piast.bilety24.pl"),
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Lubin),
+    helios(HeliosVenues.Lubin),
     own(kit => new KinoAurumClient(kit.http, KinoAurum)),
     own(kit => new CyfroweKinoClient(kit.http, KinoCyfroweKino, titles = kit.titles)),
     bilety24("https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-w-boleslawcu-1586", KinoForumBoleslawiec),

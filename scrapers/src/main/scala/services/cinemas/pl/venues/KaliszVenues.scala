@@ -6,12 +6,12 @@ import services.cinemas.pl._
 /** The Polish venues wired near Kalisz: see [[PolishVenueRegistry]]. */
 object KaliszVenues extends PolishVenueRegistry {
   val venues: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.Kalisz),
+    helios(HeliosVenues.Kalisz),
     multikino("0042", MultikinoKalisz),
   )
 
   override val filmwebCatchment: Seq[PolishVenue] = Seq(
-    helios(HeliosNuxt.OstrowWielkopolski),
+    helios(HeliosVenues.OstrowWielkopolski),
     systemBiletowy(KinoCentrum3D, "https://kck.systembiletowy.pl"),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-echo-1159", KinoEcho),
     bilety24("https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601", KinoPiastOstrzeszow),
