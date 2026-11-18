@@ -81,7 +81,7 @@ check "scripts/wait-for (bounded by itself)" 0 "$(verdict 'scripts/wait-for /x/l
 check "scripts/ci-wait" 0 "$(verdict 'scripts/ci-wait --workflow main.yml --sha abc')"
 check "agentctl's inbox wait" 0 "$(verdict '~/bin/agentctl inbox wait --since-ack --audience owner')"
 check "sbt-warm --serve (a server, not a loop)" 0 "$(verdict 'scripts/sbt-warm --serve')"
-check "mirror.sh (a repository script is never read)" 0 "$(verdict 'scripts/local-mirror/mirror.sh > /tmp/m.log 2>&1')"
+check "mirror.sh (a repository script is never read)" 0 "$(verdict 'scripts/local-mirror/mirror.sh > mirror.log 2>&1')"
 check "a counter with -lt" 0 "$(verdict 'n=0; while [ $n -lt 60 ]; do grep -q x f && break; n=$((n+1)); sleep 5; done')"
 check "an arithmetic counter" 0 "$(verdict 'i=0; until grep -q x f || (( i > 100 )); do i=$((i+1)); sleep 5; done')"
 check "a date +%s deadline" 0 "$(verdict 'end=$(( $(date +%s) + 600 )); until grep -q x f || [ $(date +%s) -gt $end ]; do sleep 5; done')"
