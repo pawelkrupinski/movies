@@ -6,6 +6,15 @@
   },
   "generatedBy": "infra/nix/files/scheduled_dispatch.py generate (do not edit by hand)",
   "workflows": {
+    "alert-backtest": {
+      "crons": [
+        "41 12 * * *"
+      ],
+      "file": "alert-backtest.yml",
+      "onCalendar": [
+        "*-*-* 12:41:00 UTC"
+      ]
+    },
     "convergence-daily": {
       "crons": [
         "23 3 * * *"

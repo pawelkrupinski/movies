@@ -1,0 +1,122 @@
+name: Alert backtest
+
+# EVERY ALERT RULE IN THE TREE, REPLAYED OVER THE LAST 14 DAYS OF PRODUCTION'S METRICS (infra/bin/backtest-alerts,
+# nix/files/monitoring/README.md) -- on ci-runner, against a throwaway Prometheus over the nightly copy of
+# monitoring-1's blocks (/var/lib/prometheus-snapshot, read-only in the job container; bitcashier infra
+# hosts/ci-runner/prometheus-snapshot.nix pulls it at 01:30 UTC). Production's Prometheus is never asked: the owner's
+# decision of 2026-11-18, after a full run against it took 60-70 min and slowed its rule evaluation from 3 s to 21 s.
+#
+#   daily (the schedule)       refreshes the baseline over main's rules and publishes it as assets of the rolling
+#                              release `alert-backtest` (`alert-backtest.json`, `backtest.log`, a dated copy of each);
+#                              commit that JSON over infra/test/alert-backtest.json to move the checked-in baseline.
+#   any branch, before landing `gh workflow run alert-backtest.yml --ref <branch>`: the branch's rules over the same
+#   a rule change                copy; the result is the run's artifact and summary, beside main's baseline diff.
+#
+# A report, not a gate: a red here is the backtest's own verdict (NOISY / DEAD / an incident contradicted).
+on:
+    schedule:
+        # 12:41 UTC, an hour no other daily job holds; ci-runner's pull ran at 01:30
+        - cron: '41 12 * * *'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py): treated as the schedule.
+    repository_dispatch:
+        types: [scheduled-alert-backtest]
+    workflow_dispatch:
+
+concurrency:
+    group: alert-backtest
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
+jobs:
+    backtest:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 60
+        permissions:
+            contents: write
+        env:
+            BACKTEST_SNAPSHOT: /var/lib/prometheus-snapshot/current
+        steps:
+            - uses: actions/checkout@v5
+            - name: Install the Prometheus production ran
+              # The version comes from the copy (buildinfo.json, captured on monitoring-1 with the rules it had loaded);
+              # the binary from the upstream release, checked against the release's own checksums. backtest-alerts
+              # refuses a replay of any other version.
+              run: |
+                  version="$(jq -er '.data.version' "$BACKTEST_SNAPSHOT/buildinfo.json")"
+                  name="prometheus-$version.linux-amd64"
+                  base="https://github.com/prometheus/prometheus/releases/download/v$version"
+                  cd "$RUNNER_TEMP"
+                  curl -fsSLO "$base/$name.tar.gz"
+                  curl -fsSL "$base/sha256sums.txt" | grep " $name.tar.gz\$" | sha256sum -c -
+                  tar xzf "$name.tar.gz"
+                  echo "BACKTEST_PROMETHEUS_BINARY=$RUNNER_TEMP/$name/prometheus" >> "$GITHUB_ENV"
+            - name: Backtest every rule
+              run: |
+                  yaml_bin="$(scripts/python-venv scripts/pyyaml-requirements.txt yaml)"
+                  set +e
+                  PATH="$yaml_bin:$PATH" infra/bin/backtest-alerts --source snapshot > "$RUNNER_TEMP/backtest.log" 2>&1
+                  status=$?
+                  set -e
+                  cat "$RUNNER_TEMP/backtest.log"
+                  cp infra/test/alert-backtest.json "$RUNNER_TEMP/alert-backtest.json"
+                  {
+                      echo '### Alert backtest'
+                      echo '```'
+                      grep -E '^(backtesting|replay|backtest took|ok$|FAILED|  - )' "$RUNNER_TEMP/backtest.log"
+                      echo '```'
+                      echo '### Against the checked-in baseline'
+                      echo '```'
+                      git diff --stat -- infra/test/alert-backtest.json
+                      echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  exit "$status"
+            - name: Keep the result
+              if: always()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: alert-backtest
+                  overwrite: true
+                  path: |
+                      ${{ runner.temp }}/alert-backtest.json
+                      ${{ runner.temp }}/backtest.log
+                  if-no-files-found: ignore
+            - name: Publish the nightly baseline
+              if: always() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  [ -s "$RUNNER_TEMP/alert-backtest.json" ] || { echo "no baseline was written: nothing to publish"; exit 1; }
+                  rel=alert-backtest
+                  if ! gh release view "$rel" > /dev/null; then
+                      scripts/ci/gh-release.sh create "$rel" --prerelease --title "Alert backtest (rolling)" \
+                          --notes "The nightly alert backtest over main's rules (.github/workflows/alert-backtest.yml, infra/bin/backtest-alerts). Not a version of anything."
+                  fi
+                  day="$(date -u +%F)"
+                  cp "$RUNNER_TEMP/alert-backtest.json" "$RUNNER_TEMP/alert-backtest-$day.json"
+                  cp "$RUNNER_TEMP/backtest.log" "$RUNNER_TEMP/backtest-$day.log"
+                  scripts/ci/gh-release.sh upload "$rel" "$RUNNER_TEMP/alert-backtest.json" "$RUNNER_TEMP/backtest.log" \
+                      "$RUNNER_TEMP/alert-backtest-$day.json" "$RUNNER_TEMP/backtest-$day.log" --clobber
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [backtest]
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

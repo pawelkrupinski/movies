@@ -23,6 +23,7 @@ on:
     workflow_run:
         # every workflow that runs on its own but the three above -- the `name:` of each (RunTimingsWiringSpec)
         workflows:
+            - Alert backtest
             - Android
             - Archive recording
             - Branch CI
