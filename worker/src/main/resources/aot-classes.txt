@@ -10475,8 +10475,6 @@ services.movies.RetriggerKind$ImdbRating$
 services.movies.RetriggerKind$McRating$
 services.movies.RetriggerKind$ResolveImdbId$
 services.movies.RetriggerKind$RtRating$
-services.movies.RuntimeCorroboration$
-services.movies.RuntimeCorroboration$$anon$1
 services.movies.SamePerson$
 services.movies.ScrapeGuardLedger
 services.movies.ScrapeGuardState
@@ -10658,6 +10656,8 @@ services.resolution.ResolutionOutcome$
 services.resolution.ResolutionOutcomeRecorder
 services.resolution.ResolutionStore
 services.resolution.ResolutionStore$
+services.resolution.RuntimeCorroboration$
+services.resolution.RuntimeCorroboration$$anon$1
 services.resolution.Support
 services.resolution.Support$
 services.resolution.Support$$anon$2

@@ -1,4 +1,4 @@
-package services.movies
+package services.resolution
 
 /**
  * Which of several candidate films the CINEMAS' own published runtimes point at.
@@ -12,7 +12,7 @@ package services.movies
  *     folded on a shared imdbId should keep.
  *
  * Runtime is the right evidence for both, and the same evidence
- * [[MixedFilmDetector]] already trusts to tell two films apart: it survives
+ * [[services.movies.MixedFilmDetector]] already trusts to tell two films apart: it survives
  * translation, and two prints of one film agree on it while two different films do
  * not. Crucially it is published by the CINEMAS, so an answer drawn from it is not
  * derived from the resolution being questioned (see
