@@ -131,8 +131,8 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
     services.cinemas.pl.KinoDianaClient.parseFeed("[]") shouldBe empty
   }
 
-  "WebediaShowtimesClient.parsePage" should "throw on a body that is not JSON" in {
-    an[Exception] should be thrownBy services.cinemas.common.WebediaShowtimesClient.parsePage(ErrorPage, services.cinemas.common.WebediaMarket.Germany)
+  "WebediaShowtimesPage.parsePage" should "throw on a body that is not JSON" in {
+    an[Exception] should be thrownBy services.cinemas.common.WebediaShowtimesPage.parsePage(ErrorPage, services.cinemas.common.WebediaMarket.Germany)
   }
 
   "FilmwebShowtimesClient.parseFilmInfo" should "throw on a body that is not JSON" in {

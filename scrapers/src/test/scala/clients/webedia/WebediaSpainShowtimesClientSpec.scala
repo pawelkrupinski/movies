@@ -6,7 +6,7 @@ import models.SpanishCinema
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
+import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient, WebediaShowtimesPage}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -38,7 +38,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   private def venuePage: String = FixtureFile.read("test/resources/fixtures/webedia-es/theater-E0291-venue-page.html")
 
   private val venue = new SpanishCinema("Yelmo Cines Premium Parque Corredor", "Yelmo Parque Corredor")
-  private val page  = WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Spain)
+  private val page  = WebediaShowtimesPage.parsePage(fixture, WebediaMarket.Spain)
 
   "parsePage" should "read every film and the page count" in {
     page.totalPages shouldBe 1
@@ -68,7 +68,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // would have made this read 46 minutes instead of nothing, which is far worse
   // than missing.
   it should "yield no runtime at all when parsed on the German market" in {
-    WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Germany)
+    WebediaShowtimesPage.parsePage(fixture, WebediaMarket.Germany)
       .films.flatMap(_.runtimeMinutes) shouldBe empty
   }
 
@@ -134,16 +134,16 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     val original  = Seq("Localization.Version.Original", "Format.Projection.Digital")
     val dubbed    = Seq("Localization.Version.Spanish", "Format.Projection.Digital")
 
-    WebediaShowtimesClient.formatTokens("original", subtitled, WebediaMarket.Spain) shouldBe List("VOSE")
-    WebediaShowtimesClient.formatTokens("original", original,  WebediaMarket.Spain) shouldBe List("VO")
-    WebediaShowtimesClient.formatTokens("dubbed",   dubbed,    WebediaMarket.Spain) shouldBe List("DOB")
+    WebediaShowtimesPage.formatTokens("original", subtitled, WebediaMarket.Spain) shouldBe List("VOSE")
+    WebediaShowtimesPage.formatTokens("original", original,  WebediaMarket.Spain) shouldBe List("VO")
+    WebediaShowtimesPage.formatTokens("dubbed",   dubbed,    WebediaMarket.Spain) shouldBe List("DOB")
     // The same tags on the German market read OmU/OV/DF — the tokens are the
     // market's, not the tag vocabulary's.
-    WebediaShowtimesClient.formatTokens("original", subtitled, WebediaMarket.Germany) shouldBe List("OmU")
-    WebediaShowtimesClient.formatTokens("original", original,  WebediaMarket.Germany) shouldBe List("OV")
-    WebediaShowtimesClient.formatTokens("dubbed",   dubbed,    WebediaMarket.Germany) shouldBe List("DF")
+    WebediaShowtimesPage.formatTokens("original", subtitled, WebediaMarket.Germany) shouldBe List("OmU")
+    WebediaShowtimesPage.formatTokens("original", original,  WebediaMarket.Germany) shouldBe List("OV")
+    WebediaShowtimesPage.formatTokens("dubbed",   dubbed,    WebediaMarket.Germany) shouldBe List("DF")
 
-    WebediaShowtimesClient.formatTokens(
+    WebediaShowtimesPage.formatTokens(
       "original", Seq("Format.Projection.3d", "Localization.Subtitle.Spanish"),
       WebediaMarket.Spain) shouldBe List("3D", "VOSE")
   }
@@ -152,7 +152,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // live 2026-10-04: its one 3D session that day) — the same tag the Gatsby brands' parser already
   // reads as INFINITY. Unmapped here, the screening read as a plain 3D one.
   it should "badge an Infinity Vision room" in {
-    WebediaShowtimesClient.formatTokens(
+    WebediaShowtimesPage.formatTokens(
       "dubbed", Seq("Format.Projection.3d", "Auditorium.Experience.InfinityVision"),
       WebediaMarket.Spain) shouldBe List("3D", "INFINITY", "DOB")
   }
@@ -164,8 +164,8 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // probe of 120 German venues found seven such screenings in one day.
   it should "tell English subtitles apart from the market's own" in {
     val englishSubs = Seq("Localization.Version.Original", "Localization.Subtitle.English")
-    WebediaShowtimesClient.formatTokens("original", englishSubs, WebediaMarket.Spain)   shouldBe List("VOSI")
-    WebediaShowtimesClient.formatTokens("original", englishSubs, WebediaMarket.Germany) shouldBe List("OmeU")
+    WebediaShowtimesPage.formatTokens("original", englishSubs, WebediaMarket.Spain)   shouldBe List("VOSI")
+    WebediaShowtimesPage.formatTokens("original", englishSubs, WebediaMarket.Germany) shouldBe List("OmeU")
   }
 
   // Berlin's OV houses subtitle a print in BOTH languages (Filmstarts, 2026-10-06: 5 of 25
@@ -174,8 +174,8 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   it should "mark a print subtitled in the market's language AND in English with both tokens" in {
     val both = Seq("Localization.Subtitle.English", "Localization.Subtitle.German", "Localization.Version.Original",
       "Showtime.Accessibility.Subtitled")
-    WebediaShowtimesClient.formatTokens("original_st", both, WebediaMarket.Germany) shouldBe List("OmU", "OmeU")
-    WebediaShowtimesClient.formatTokens("original_st", Seq("Localization.Subtitle.Spanish", "Localization.Subtitle.English"),
+    WebediaShowtimesPage.formatTokens("original_st", both, WebediaMarket.Germany) shouldBe List("OmU", "OmeU")
+    WebediaShowtimesPage.formatTokens("original_st", Seq("Localization.Subtitle.Spanish", "Localization.Subtitle.English"),
       WebediaMarket.Spain) shouldBe List("VOSE", "VOSI")
   }
 
@@ -187,24 +187,24 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   it should "leave a domestic film in its own language unmarked" in {
     val localOriginal = Seq(
       "Format.Projection.Digital", "Localization.Language.Spanish", "Localization.Version.Original")
-    WebediaShowtimesClient.formatTokens("local", localOriginal, WebediaMarket.Spain) shouldBe Nil
+    WebediaShowtimesPage.formatTokens("local", localOriginal, WebediaMarket.Spain) shouldBe Nil
     // …while the SAME tags in the dubbed bucket are a dub into Castilian.
-    WebediaShowtimesClient.formatTokens("dubbed", localOriginal, WebediaMarket.Spain) shouldBe List("DOB")
+    WebediaShowtimesPage.formatTokens("dubbed", localOriginal, WebediaMarket.Spain) shouldBe List("DOB")
   }
 
   // Two thirds of Spain's dubbed screenings carry no `Localization.*` tag at all
   // (1317 of 2198 slots across 172 venues) — the bucket key is the ONLY thing
   // that names them, so a tags-only reading left them permanently unmarked.
   it should "read a dubbed screening off the bucket key alone" in {
-    WebediaShowtimesClient.formatTokens(
+    WebediaShowtimesPage.formatTokens(
       "dubbed", Seq("Format.Projection.Digital"), WebediaMarket.Spain) shouldBe List("DOB")
-    WebediaShowtimesClient.formatTokens("dubbed", Nil, WebediaMarket.Spain) shouldBe List("DOB")
+    WebediaShowtimesPage.formatTokens("dubbed", Nil, WebediaMarket.Spain) shouldBe List("DOB")
   }
 
   // Spain dubs into Catalan as well as Castilian, and the two are different
   // audiences — the badge says which.
   it should "name a Catalan dub rather than calling it the default one" in {
-    WebediaShowtimesClient.formatTokens(
+    WebediaShowtimesPage.formatTokens(
       "dubbed", Seq("Format.Projection.Digital", "Localization.Language.Catalan"),
       WebediaMarket.Spain) shouldBe List("CAT")
   }
@@ -214,7 +214,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // nothing, so `Format.Projection.Digital` and `Format.Sound.DolbyDigital`
   // deliberately produce none.
   it should "surface the screen formats and skip the baseline ones" in {
-    def spain(tags: String*) = WebediaShowtimesClient.formatTokens("dubbed", tags, WebediaMarket.Spain)
+    def spain(tags: String*) = WebediaShowtimesPage.formatTokens("dubbed", tags, WebediaMarket.Spain)
 
     spain("Format.Projection.Digital")                     shouldBe List("DOB")
     spain("Format.Projection.Imax")                        shouldBe List("IMAX", "DOB")
@@ -227,7 +227,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     // and the site sends the plain 3D tag alongside the latter.
     spain("Format.Projection.3d", "Format.Projection.4DE3D") shouldBe List("3D", "4DE", "DOB")
 
-    def germany(tags: String*) = WebediaShowtimesClient.formatTokens("dubbed", tags, WebediaMarket.Germany)
+    def germany(tags: String*) = WebediaShowtimesPage.formatTokens("dubbed", tags, WebediaMarket.Germany)
     germany("Format.Projection.2D", "Format.Projection.Digital")   shouldBe List("2D", "DF")
     germany("Auditorium.Experience.DBox")                          shouldBe List("DBOX", "DF")
     germany("Auditorium.Experience.PLF")                           shouldBe List("PLF", "DF")
@@ -240,7 +240,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // track, not a statement about the audio, and reading it as one would have
   // re-broken exactly the case the bucket key exists to get right.
   it should "ignore the accessibility tags when deciding the version" in {
-    WebediaShowtimesClient.formatTokens(
+    WebediaShowtimesPage.formatTokens(
       "original",
       Seq("Format.Projection.Digital", "Localization.Subtitle.Spanish",
           "Localization.Version.Original", "Showtime.Accessibility.Dubbed"),
@@ -265,7 +265,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // screen, so every branch below is read off a real payload rather than a tag
   // list this spec typed out.
   // Source URL: https://www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1/
-  private lazy val mixedVersionPage = WebediaShowtimesClient.parsePage(FixtureFile.read(
+  private lazy val mixedVersionPage = WebediaShowtimesPage.parsePage(FixtureFile.read(
     "test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1.json"),
     WebediaMarket.Spain)
 

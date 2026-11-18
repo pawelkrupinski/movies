@@ -5,7 +5,7 @@ import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
+import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient, WebediaShowtimesPage}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -33,7 +33,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   private def venuePage: String =
     FixtureFile.read("test/resources/fixtures/webedia-de/theater-A0263-venue-page.html")
 
-  private val page = WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Germany)
+  private val page = WebediaShowtimesPage.parsePage(fixture, WebediaMarket.Germany)
 
   "parsePage" should "read every film and the page count" in {
     page.totalPages shouldBe 1
@@ -61,7 +61,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "leave ageRating None when no release carries a certificate" in {
     val noCert = """{"results":[{"movie":{"internalId":42,"title":"Ungeprüft","releases":[{"name":"kino"}]}}]}"""
-    WebediaShowtimesClient.parsePage(noCert, WebediaMarket.Germany).films.head.ageRating shouldBe None
+    WebediaShowtimesPage.parsePage(noCert, WebediaMarket.Germany).films.head.ageRating shouldBe None
   }
 
   it should "flatten version buckets into local-time showtimes with format tokens" in {
