@@ -63,32 +63,40 @@ final class ModelInputGate(
     val written  = mutable.ArrayBuffer.empty[PendingListingStore.Pending]
     val released = mutable.ArrayBuffer.empty[ListingKey] ++= gone
     gone.foreach(pending.remove)
-    val taken = scraped.flatMap { case (venue, listings) => listings.filter { listing =>
-      val prior = engine.held(listing.key).orElse(standInFor(engine, venue, listing, billed))
-      if (prior.exists(ModelInputGate.billedAlike(_, listing))) { if (pending.remove(listing.key) != null) released += listing.key; true }
-      else {
-        val waits = readiness.awaiting(listing)
-        if (waits.isEmpty) { if (pending.remove(listing.key) != null) released += listing.key; true }
-        else {
-          val was  = Option(pending.get(listing.key))
-          val held = Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
-          pending.put(listing.key, held)
-          if (was.exists(w => ModelInputGate.billedAlike(w.newest, listing))) askLedTo(was.get, waits)
-          else {
-            readiness.ask(listing, waits)
-            logger.info(s"identity model: held ${ModelInputGate.described(listing.key)} on ${waits.size} question(s) of its own " +
-              s"(${waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}); the model ${if (prior.isDefined) "keeps the version it holds" else "holds no version of it"}")
-          }
-          if (!was.exists(w => w.ready == held.ready)) written += PendingListingStore.Pending(listing.key, held.ready, held.since)
-          false
-        }
-      }
-    } }
+    val taken = scraped.flatMap { case (venue, listings) => listings.filter(takenIn(engine, venue, _, billed, now, written, released)) }
     val promoted = promote(billed)
     released ++= promoted.map(_.key)
     persist(written.toSeq, released.toSeq)
     report()
     (taken, promoted)
+  }
+
+  /** Is `listing`, scraped at `venue`, taken into the model now: billed as the model holds it (or the version it holds
+   *  under another key, [[standInFor]]), or none of its own questions open -- its hold, if any, `released`? Else it is
+   *  held ([[hold]]). */
+  private def takenIn(engine: IncrementalResolver, venue: String, listing: Listing, billed: ListingKey => Boolean, now: Long,
+                      written: mutable.ArrayBuffer[PendingListingStore.Pending], released: mutable.ArrayBuffer[ListingKey]): Boolean = {
+    val prior = engine.held(listing.key).orElse(standInFor(engine, venue, listing, billed))
+    val waits = if (prior.exists(ModelInputGate.billedAlike(_, listing))) Set.empty[Question] else readiness.awaiting(listing)
+    if (waits.isEmpty) { if (pending.remove(listing.key) != null) released += listing.key; true }
+    else { hold(venue, listing, prior, waits, now, written); false }
+  }
+
+  /** `listing` held on `waits`, the model reading `prior` (or the version it was held over before) meanwhile: its
+   *  questions asked -- only those its answers led to, when held so already -- and its row `written` when what the model
+   *  reads moved. */
+  private def hold(venue: String, listing: Listing, prior: Option[Listing], waits: Set[Question], now: Long,
+                   written: mutable.ArrayBuffer[PendingListingStore.Pending]): Unit = {
+    val was  = Option(pending.get(listing.key))
+    val held = Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
+    pending.put(listing.key, held)
+    if (was.exists(w => ModelInputGate.billedAlike(w.newest, listing))) askLedTo(was.get, waits)
+    else {
+      readiness.ask(listing, waits)
+      logger.info(s"identity model: held ${ModelInputGate.described(listing.key)} on ${waits.size} question(s) of its own " +
+        s"(${waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}); the model ${if (prior.isDefined) "keeps the version it holds" else "holds no version of it"}")
+    }
+    if (!was.exists(w => w.ready == held.ready)) written += PendingListingStore.Pending(listing.key, held.ready, held.since)
   }
 
   /** The billed listings `present` as the gate lets the model take them up: each the store holds pending is read afresh --
@@ -107,31 +115,39 @@ final class ModelInputGate(
         val billed   = present.iterator.map(_.key).toSet
         val released = mutable.ArrayBuffer.empty[ListingKey] ++= rows.iterator.map(_.key).filterNot(billed)
         val bootPromoted = mutable.ArrayBuffer.empty[Double]
-        val resumed = present.flatMap { listing => byKey.get(listing.key) match {
-          case None => Some(listing)
-          case Some(row) =>
-            val overdue = clock.millis() - row.since >= maxHold.toMillis
-            val waits   = if (overdue) Set.empty[Question] else readiness.awaiting(listing)
-            val held    = (clock.millis() - row.since).max(0L) / 1000.0
-            if (overdue) metrics.bounded(Seq(held))
-            if (waits.isEmpty) { released += listing.key; if (!overdue) bootPromoted += held; Some(listing) }
-            else {
-              pending.put(listing.key, Held(listing.venue, listing, row.ready, waits, row.since))
-              readiness.ask(listing, waits)
-              row.ready
-            }
-        } }
+        val resumed = present.flatMap(listing => byKey.get(listing.key).fold(Option(listing))(resumedOf(listing, _, released, bootPromoted)))
         persist(Nil, released.toSeq)
         if (bootPromoted.nonEmpty) metrics.promoted(bootPromoted.toSeq, atBoot = true)
-        logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released" +
-          pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${ModelInputGate.described(h.newest.key)} " +
-            s"held ${(clock.millis() - h.since) / 60000} min on ${h.waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}" +
-            (if (h.ready.isEmpty) " (no version taken in)" else "")).mkString)
+        logResumed(released.size)
         resumed
       }
     report()
     taken
   }
+
+  /** `listing`, held pending in `row` when the worker stopped, as the take-up reads it: taken in when ready or held past
+   *  the bound (its row `released`, how long it waited counted), else held again with its questions asked, the model
+   *  reading its last ready version. */
+  private def resumedOf(listing: Listing, row: PendingListingStore.Pending, released: mutable.ArrayBuffer[ListingKey],
+                        bootPromoted: mutable.ArrayBuffer[Double]): Option[Listing] = {
+    val overdue = clock.millis() - row.since >= maxHold.toMillis
+    val waits   = if (overdue) Set.empty[Question] else readiness.awaiting(listing)
+    val held    = (clock.millis() - row.since).max(0L) / 1000.0
+    if (overdue) metrics.bounded(Seq(held))
+    if (waits.isEmpty) { released += listing.key; if (!overdue) bootPromoted += held; Some(listing) }
+    else {
+      pending.put(listing.key, Held(listing.venue, listing, row.ready, waits, row.since))
+      readiness.ask(listing, waits)
+      row.ready
+    }
+  }
+
+  /** The take-up's line: the listings held again on their questions, the oldest twenty named, and how many released. */
+  private def logResumed(released: Int): Unit =
+    logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, $released released" +
+      pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${ModelInputGate.described(h.newest.key)} " +
+        s"held ${(clock.millis() - h.since) / 60000} min on ${h.waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}" +
+        (if (h.ready.isEmpty) " (no version taken in)" else "")).mkString)
 
   /** The version the model holds of `listing` under ANOTHER key at its venue -- the same clean title, a key the scrape no
    *  longer bills: the venue re-keyed it (a page the scrape dropped turned its Native key Published, DE Mal seh'n Kino's "IF
