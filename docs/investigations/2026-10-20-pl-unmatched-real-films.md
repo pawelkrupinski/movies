@@ -158,7 +158,7 @@ Not counted above:
   why most colon strands match without a rule of their own. In Poland, Akademia Kina Polskiego matches 9/10, DKF
   10/11, Dzień Kina Polskiego 11/11 and Kino Seniora 6/6.
 - **Named strand rules.**
-  - `ExtraTitleRules` (`common/src/main/scala/services/titlerules/ExtraTitleRules.scala`) has `prog(...)` and
+  - `ExtraTitleRules` (`common/src/main/scala/services/titles/rules/ExtraTitleRules.scala`) has `prog(...)` and
     `searchStrip(...)` rules. Both are `GlobalStructural`, so they strip the search query and leave the display row
     and merge key alone. Examples: `xtra-pp-kino-na-obcasach`, `xtra-pp-klub-filmowy` (`^Klub Filmowy [^:]+:`),
     `xtra-pp-kf-klub` (`^KF [^:]+:`), `xtra-pp-replika` (`^Replika (KFF|Młodzi i Film):`),

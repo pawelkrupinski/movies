@@ -59,7 +59,7 @@ common/                   # Shared domain used by both apps
 │   └── src/main/scala/
 │       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
 │       └── services/         # movies/ (cache/repository), events/, cinemas/, readmodel/,
-│                             #   titlerules/, freshness/, tasks/
+│                             #   titles/ (title text, rules/, billing/), freshness/, tasks/
 identity/                 # The identity resolver (listing → film), its own sbt module
 worker/                   # Scrape + enrich app (one pod per country)
 │   └── src/main/scala/services/

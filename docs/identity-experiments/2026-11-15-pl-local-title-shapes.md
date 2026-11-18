@@ -21,7 +21,7 @@
     "Muzeum Prado: kolekcja cudów", "Munch: Miłość, duchy i wampirzyce" and "Diuna: Część pierwsza" have no official
     source (Filmweb carries the Italian, the English and "Diuna"), so they stay off that list as venue renderings.
 - **Built:** nothing. Neither shape earns a rule. The instalment grammar
-  (`services.billing.NumberedTitles.SpelledInstalments`, "pierwsza" → 1) already reads the Polish part words.
+  (`services.titles.billing.NumberedTitles.SpelledInstalments`, "pierwsza" → 1) already reads the Polish part words.
 - **Next angle:** if a re-release bills "<film>: Część pierwsza" again at scale, the fold is a listing-side shape: the
   title before a part-ONE tail, kept only where the record's own alternative titles hold a "Part One" variant. Re-count
   first.

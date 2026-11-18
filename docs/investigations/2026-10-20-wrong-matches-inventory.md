@@ -98,7 +98,7 @@ tmdb:1778515.
 
 - Examples: uk ×349 and us ×366 «Festive Fun with Peppa Cinema Experience»; uk «Kids Club: Festive Fun with Peppa
   Cinema Experience»; uk «Festive Fun with Peppa Pig (U)» (BelowThreshold, weighed 1630432).
-- Code: `common/src/main/scala/services/titlerules/ExtraTitleRules.scala` (next to `xtra-pp-toddler-club`,
+- Code: `common/src/main/scala/services/titles/rules/ExtraTitleRules.scala` (next to `xtra-pp-toddler-club`,
   `xtra-exhibition-on-screen`, `search-plus-event-suffix`).
 - Fix: an extra title rule that drops a trailing "Cinema Experience" (and the "Kids Club:" lead) from the search form.
   Only the search form, not the displayed title. The existing "Peppa Meets the Baby Cinema Experience" record carries

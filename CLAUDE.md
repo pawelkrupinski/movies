@@ -347,8 +347,8 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
   (`--take-paths`) is answered by the earlier run (REUSED, no dispatch). Never `--fresh` for that.
 - **Batch pushes** (below): each push to main is a ~20-minute run on the same runners the measurements wait for.
 - **A title-rule change: `--footprint` first** (it takes a JVM slot itself: it compiles the head's title rules). When the
-  change touches only `title-rules.tsv`, `services/titlerules/` (not `TitleRulePlaceholders.scala`) or
-  `TitleNormalizer.scala`, it replays every title reading the base's stored resolve made under your rules, in ~1
+  change touches only `title-rules.tsv`, `services/titles/rules/` (not `TitleRulePlaceholders.scala`) or
+  `services/titles/TitleNormalizer.scala`, it replays every title reading the base's stored resolve made under your rules, in ~1
   minute and no dispatch: all alike is `measure: footprint` LANDABLE, no take can move (a rule refactor, a merge of
   rows that fold alike). Rely on it while iterating; for a whole-corpus verdict use the full measure (no
   `--footprint`) -- optional before landing (2026-10-26), main's convergence runs it after. Anything else -- a matcher, scoring or BillingParse change, no stored trace, a reading that reads

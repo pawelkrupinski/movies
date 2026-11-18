@@ -308,7 +308,7 @@ another they cut at the first marker of any of them; one alternation's leftmost 
 Landed at first: only those two (`xtra-dkf-suffix` from the pipe/underscore, dash and full-stop DKF tails; `xtra-meeting-tail`
 from `xtra-przed-filmem-suffix` and `xtra-dot-spotkanie-suffix`). The other 23 change behaviour on stacked titles only
 (none in the corpus, the recordings or the specs) and wait for the user's call: each group's rows are in the table above, and `TitleRuleTableDiff` re-runs the check
-(`scripts/sbt-warm "common/Test/runMain services.titlerules.TitleRuleTableDiff --extra=<spec titles> <before> <after>"`).
+(`scripts/sbt-warm "common/Test/runMain services.titles.rules.TitleRuleTableDiff --extra=<spec titles> <before> <after>"`).
 
 ## Same pattern in two tiers
 
