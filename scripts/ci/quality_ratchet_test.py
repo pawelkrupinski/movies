@@ -239,6 +239,21 @@ class QualityRatchetTest(unittest.TestCase):
         head = self.commit({COMPLEXITY: grown}, "a hairy method\n\nComplexity: the parser's one state machine")
         self.assert_passes(grown, rng=f"{self.base}..{head}")
 
+    def test_a_trailer_outside_the_final_block_is_refused_saying_where_it_is(self):
+        grown = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
+        head = self.commit({COMPLEXITY: grown}, "a hairy method\n\nComplexity: the parser's one state machine\n\n"
+                                                "Co-Authored-By: A <a@b.c>")
+        self.assert_fails(grown, "THE COMPLEXITY BASELINE GREW",
+                          f"{head[:9]}: found `Complexity: the parser's one state machine` on line 3, but it is not in"
+                          " the final trailer block (it must sit with Co-Authored-By, no blank line between); git does"
+                          " not read it as a trailer", rng=f"{self.base}..{head}")
+
+    def test_a_trailer_beside_co_authored_by_passes(self):
+        grown = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
+        head = self.commit({COMPLEXITY: grown}, "a hairy method\n\nComplexity: the parser's one state machine\n"
+                                                "Co-Authored-By: A <a@b.c>")
+        self.assert_passes(grown, rng=f"{self.base}..{head}")
+
     def test_another_ratchets_trailer_does_not_count(self):
         grown = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
         head = self.commit({COMPLEXITY: grown}, "a hairy method\n\nCoupling: not this one")

@@ -11,6 +11,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -353,6 +354,14 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({"scripts/ci/identity-drift-check.sh": "x\n"}, "one helper\n\nDrift-Harness-Refactor: no behaviour moves")
         self.assertEqual(0, self.guards(f"{head}^..{head}"))
 
+    def test_a_misplaced_harness_refactor_trailer_is_refused_saying_where_it_is(self):
+        head = self.commit({"scripts/ci/identity-drift-check.sh": "y\n"},
+                           "one helper\n\nDrift-Harness-Refactor: no behaviour moves\n\nCo-Authored-By: A <a@b.c>")
+        rc, err = self.run_rules("driftguards", f"{head}^..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("found `Drift-Harness-Refactor: no behaviour moves` on line 3, but it is not in the final trailer"
+                      " block", err)
+
     def test_the_flip_predicate_is_harness_and_a_later_commits_test_does_not_count(self):
         flips = "identity/src/main/scala/services/identity/TakeFlips.scala"
         first = self.commit({flips: "f\n"}, "Flips: a re-scrape is no input change")
@@ -531,6 +540,7 @@ class RatchetTest(unittest.TestCase):
         for old, new, case, edit, shape in self.RETYPE_MUTATIONS:
             self.assertIn(old, source, f"the mutation for {case} no longer applies: update RETYPE_MUTATIONS")
             mutant = os.path.join(self.dir.name, "commit_rules_mutant.py")
+            shutil.copy(os.path.join(HERE, "trailers.py"), self.dir.name)  # the module it imports, beside it
             with open(mutant, "w") as f:
                 f.write(source.replace(old, new, 1))
             if shape == "using":

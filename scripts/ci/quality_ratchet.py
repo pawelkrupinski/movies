@@ -32,6 +32,9 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+import trailers  # noqa: E402
+
 Rows = Dict[Tuple[str, str], int]
 
 
@@ -233,6 +236,8 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
                   " commit changing it:")
             for g in grown:
                 print(f"  - {g}")
+            for note in trailers.misplaced_notes(rng, ratchet.trailer, ratchet.baseline):
+                print(f"  {note}")
     down = falls(ratchet, current, baseline)
     if down:
         print(f"{ratchet.name} fell ({len(down)} rows below {ratchet.baseline}, not yet recorded: scripts/quality-report"

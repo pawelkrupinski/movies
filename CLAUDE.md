@@ -51,7 +51,9 @@ Identity takes' `verdict complete`: a run whose takes rows did not all decide, a
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
 carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way). Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
-`PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push. The gates judge only what a commit's code changed; a recording's own data
+`PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push.
+**Every trailer** (`Fixes-Red:`, `Coupling:`, `Complexity:`, `Length:`, `Pure-Move:`, ...) **counts only in the message's final block, beside `Co-Authored-By:` with no blank line between**; anywhere else git ignores it (pre-push's `scripts/ci/trailers.py lint` warns).
+The gates judge only what a commit's code changed; a recording's own data
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`). The nightly
 recording's capture (Record scrape fixtures) and its hermetic replay (Verify scrape recording) do not gate either;
 `agentctl ci-why` lists their reds as information (`docs/design/convergence-fixture-fill.md`, "Capture, then verify").

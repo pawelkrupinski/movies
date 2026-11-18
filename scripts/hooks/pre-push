@@ -188,6 +188,9 @@
 # agentctl's red bookkeeping have. 38 of main's 204 Fixes-Red commits from 2026-10-20 to 11-02 had theirs there: Main
 # #2164's and #2547's fixes landed unlinked, the reds stayed open and fixers were sent at them again. Bypass:
 # PREPUSH_SKIP=trailers.
+# A MISPLACED TRAILER WARNS (never refuses): any known key (scripts/ci/trailers.py KNOWN_KEYS -- Coupling, Complexity,
+# Duplication, Length, Pure-Move, Fixes-Red, Identity-Design, Drift-Harness-Refactor) on a line git reads no trailer
+# from is named with its commit and line number, before a ratchet refuses the push as if no trailer was given.
 #
 # THE KNOWN-RED BASELINE: with $PREPUSH_BASELINE_DIR set (agentctl sets it), a check that fails is held against the push
 # only when it fails in a way plain main does not. `<dir>/<base commit sha>` is the hook's own output of the same checks
@@ -1190,6 +1193,11 @@ fi
 # The red gate's state, one word a workflow (`<i>:<conclusion>:<run>`, `<i>:unread`, `<i>:none`): a key of THE REUSE below.
 gate_state="not-main"
 if [ "$to_main" = 1 ]; then
+    trailer_lint="$(dirname "${BASH_SOURCE[0]}")/../ci/trailers.py"
+    if [ -f "$trailer_lint" ] && command -v python3 > /dev/null; then
+        lint_ranges=(); for r in "${ranges[@]}"; do lint_ranges+=(--range "$r"); done
+        python3 "$trailer_lint" lint "${lint_ranges[@]}" || true
+    fi
     if skipped trailers; then warn "trailers SKIPPED (PREPUSH_SKIP)"
     else check_stranded_trailers "${ranges[@]}" || exit 1
     fi

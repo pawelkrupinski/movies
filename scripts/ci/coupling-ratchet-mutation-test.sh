@@ -102,6 +102,7 @@ mutants=(
 )
 
 mkdir -p "$work/mutants"
+cp "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/"  # the module the tool imports, beside each mutant
 i=0
 for m in "${mutants[@]}"; do
   i=$((i + 1))

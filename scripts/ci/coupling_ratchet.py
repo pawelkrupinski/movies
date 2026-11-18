@@ -57,6 +57,9 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Set, Tuple
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+import trailers  # noqa: E402
+
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
 EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
@@ -498,6 +501,12 @@ def file_at(rev: str, path: str) -> str:
     return shown.stdout if shown.returncode == 0 else ""
 
 
+def print_misplaced(rng: str, path: Optional[str] = None) -> None:
+    """Why a refusal for want of a `Coupling:` trailer saw none: each such line of `rng` git reads as prose."""
+    for note in trailers.misplaced_notes(rng, "Coupling", path):
+        print(f"  {note}")
+
+
 def justified(rng: str, path: str = BASELINE_PATH) -> bool:
     """Whether a commit of `rng` changing `path` carries a non-empty `Coupling:` trailer."""
     log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x20)", rng, "--", path)
@@ -583,12 +592,14 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                   " trailer admits a new one -- cut it, or exempt it with its why in " + EXEMPTIONS_PATH + ":")
             for g in frozen:
                 print(f"  - {g}")
+            print_misplaced(rng)
         grown = growth(before, baseline)
         if grown and not justified(rng):
             failed = True
             print(f"THE COUPLING BASELINE GREW in {rng} with no `Coupling: <why>` trailer on the commit changing it:")
             for g in grown:
                 print(f"  - {g}")
+            print_misplaced(rng, BASELINE_PATH)
         if os.path.exists(layers_path):
             with open(layers_path) as f:
                 loosened = loosening(parse_layers(file_at(base, LAYERS_PATH)), parse_layers(f.read()))
@@ -598,6 +609,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                       " changing it:")
                 for item in loosened:
                     print(f"  - {item}")
+                print_misplaced(rng, LAYERS_PATH)
     if os.path.exists(exemptions_path):
         with open(exemptions_path) as f:
             oversized = oversized_contracts(parse_exemptions(f.read()))
@@ -617,6 +629,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                       " commit changing it:")
                 for item in loose:
                     print(f"  - {item}")
+                print_misplaced(rng, EXEMPTIONS_PATH)
     down = falls(current, baseline)
     if down:
         print(f"coupling fell ({len(down)} rows below the baseline, not yet recorded: scripts/coupling-report --update"

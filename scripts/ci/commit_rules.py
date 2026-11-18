@@ -64,11 +64,15 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from typing import Callable
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+import trailers  # noqa: E402
 
 REGISTRY = ".github/allow-lists.txt"
 DRIFT_LISTS = ("test/resources/fixtures/identity-flips-allow.tsv", "test/resources/fixtures/identity-drift-allow.tsv")
@@ -161,6 +165,10 @@ class Commit:
 
     def has(self, key: str) -> bool:
         return bool(self.trailers.get(key.lower()))
+
+    def misplaced(self, key: str) -> str:
+        """Why the commit has no `key` trailer although it wrote one: each such line git reads as prose, or ""."""
+        return "".join(f"\n  {trailers.explain(m)}" for m in trailers.misplaced(self.message, (key,)))
 
     def claims_fix(self) -> bool:
         """`Fixes-Red:` as a claim: a `Red-Unrelated:` commit names the red only to land on it under the owner's call
@@ -386,7 +394,7 @@ def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
     return [f"fixes a red by changing identity RULE code: {' '.join(rules)}{named}\n"
             "  Red fixers do not add resolver rules (the owner, 2026-10-29): fix the incremental state that diverges (a lag, a\n"
             "  budget, the queue's order, a cache, a restart key). A rule change is identity design, measured on the full corpus\n"
-            "  in every country: it lands outside red fixing, or with 'Identity-Design: <doc>' naming the design doc that measured it."]
+            "  in every country: it lands outside red fixing, or with 'Identity-Design: <doc>' naming the design doc that measured it." + c.misplaced("Identity-Design")]
 
 
 def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
@@ -396,7 +404,7 @@ def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
     return [f"changes the drift harness ({' '.join(harness)}) without its self-test.\n"
             "  A harness change carries a capture-replay case proving the replay behaves as the worker does: extend\n"
             "  IdentityDriftSpec, CorrectionFlipReplaySpec, TakeFlipsSpec or identity-drift-check-test.sh in the same commit.\n"
-            "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'."]
+            "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'." + c.misplaced("Drift-Harness-Refactor")]
 
 
 # A declared type in a Scala line: `name: Type` (generics, dots, `&`/`|` unions included), as a parameter or a member.

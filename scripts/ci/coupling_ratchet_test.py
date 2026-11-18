@@ -337,6 +337,14 @@ class CouplingRatchetTest(RatchetHarness):
         head = self.commit({BASELINE: grown}, "use the worker from common")
         self.assert_fails(grown, "THE COUPLING BASELINE GREW", "module-edge common->worker added", rng=f"{self.base}..{head}")
 
+    def test_a_coupling_line_outside_the_final_block_is_refused_saying_where_it_is(self):
+        grown = rows("ce\tmodels\t14", drop=("ce\tmodels",))
+        head = self.commit({BASELINE: grown}, "models reads the clock\n\nCoupling: the clock is the one seam\n\n"
+                                              "Co-Authored-By: A <a@b.c>")
+        self.assert_fails(grown, "THE COUPLING BASELINE GREW",
+                          f"{head[:9]}: found `Coupling: the clock is the one seam` on line 3, but it is not in the final"
+                          " trailer block", rng=f"{self.base}..{head}")
+
     def test_a_grown_baseline_with_a_trailer_passes(self):
         grown = rows("ce\tmodels\t14", drop=("ce\tmodels",))
         head = self.commit({BASELINE: grown}, "models reads the clock\n\nCoupling: the clock is the one seam models needs")

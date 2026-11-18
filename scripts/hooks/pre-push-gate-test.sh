@@ -80,6 +80,12 @@ scratch_git "$grepo" reset -q --hard "$fixing"
 stranded_ru="$(commit_paths "an unrelated tools change" "Red-Unrelated: 38520439037" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
 check "a stranded Red-Unrelated: is refused as well" "1" "$(all_green push "$fixing..$stranded_ru")"
 scratch_git "$grepo" reset -q --hard "$fixing"
+# A MISPLACED TRAILER WARNS: a Coupling: line above a blank line is prose to git -- the push lands, the line named.
+misplaced="$(commit_paths "a tools split" "Coupling: split of X" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
+check "a misplaced Coupling: line only warns: the push lands" "0" "$(all_green push "$fixing..$misplaced")"
+check "...naming the commit and the line" "1" \
+  "$(grep -c "trailers: ${misplaced:0:9}: found \`Coupling: split of X\` on line 3, but it is not in the final trailer block" "$gate/err")"
+scratch_git "$grepo" reset -q --hard "$fixing"
 trailed="$(commit_paths "a tools fix" $'Fixes-Red: 38520439037\nCo-Authored-By: A <a@b.c>' -- scripts/z.sh)"
 check "a Fixes-Red: in the closing trailer block lands" "0" "$(all_green push "$fixing..$trailed")"
 prose="$(commit_paths "a note on the gate" "It explains the Fixes-Red: trailer in prose, mid-line." -- scripts/z.sh)"
