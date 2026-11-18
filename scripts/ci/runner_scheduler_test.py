@@ -1143,6 +1143,53 @@ class WarmCheckTest(unittest.TestCase):
                          "a reader budget running low still slows the loop")
 
 
+WARM_LIGHT = rs.Config(warm_light_runners=1)
+
+
+class WarmLightRunnerTest(unittest.TestCase):
+    """THE WARM LIGHT RUNNER (the owner, 2026-11-18, "10"): precommit-check's plan job, on the light lane and pinned to
+    nothing, queued p50 38 s (p90 664 s) over 2026-11-17..18 and every check after it waited for it. ci-runner's journal,
+    2026-11-18: at 04:08:31 a timings report took a fresh light runner (slot 11) and nothing else was kept; precommit-check
+    run 44235249775's plan job queued after it, and only the 04:09:00 tick started slots 12-13, running it at 04:09:07.
+    One light runner is now kept registered and idle beyond the queued light jobs: the plan job takes it at once."""
+
+    def at(self, ours, light_queued, check_queued=0, cfg=WARM_LIGHT):
+        r = rs.Readings(117, 104, {"measure": 95}, 0, CORES, (), 300,
+                        on_cpusets(0, 0, CHECK_CPUS_A2, MEASURE_CPUS_A2), {"measure": 96})
+        return rs.decide(cfg, IDLE, queued(check=check_queued, light=light_queued), ours, NOW, r)
+
+    def test_040831_before_only_the_queued_light_job_got_a_runner(self):
+        d = self.at([], 1, cfg=CFG)
+        self.assertEqual(d.starts, ((11, "light"),))
+
+    def test_040831_now_a_second_light_runner_waits_registered_for_the_next(self):
+        d = self.at([], 1)
+        self.assertEqual((d.starts, d.warm), (((11, "light"), (12, "light")), (12,)))
+
+    def test_one_kept_however_long_it_idles(self):
+        timings = rs.Instance(11, "light", True, NOW, NOW - 30)
+        warm = inst(12, "light", idle_for=CFG.idle_stop_seconds * 10)
+        d = self.at([timings, warm], 0)
+        self.assertEqual((d.starts, d.stops), ((), ()))
+
+    def test_040900_the_plan_job_takes_the_warm_runner_and_one_more_is_kept(self):
+        # the plan job and a second light job queued: the waiting warm runner covers one, a start the other, and one
+        # more is registered for the next
+        timings = rs.Instance(11, "light", True, NOW, NOW - 30)
+        warm = inst(12, "light", idle_for=60)
+        d = self.at([timings, warm], 2, check_queued=1)
+        self.assertEqual([s for s, c in d.starts if c == "light"], [13])
+        self.assertEqual(d.warm, (), "no slot left past the queued jobs: the next one comes when a slot frees")
+
+    def test_a_second_idle_light_runner_still_goes(self):
+        warm, extra = inst(11, "light", idle_for=CFG.idle_stop_seconds), inst(12, "light", idle_for=CFG.idle_stop_seconds)
+        self.assertEqual(self.at([warm, extra], 0).stops, (12,))
+
+    def test_the_warm_runner_is_admitted_as_a_light_job_is(self):
+        full = rs.Readings(117, 104, {}, 31, CORES, (), 300, {}, {})
+        self.assertEqual(rs.decide(WARM_LIGHT, IDLE, queued(), [], NOW, full).starts, ())
+
+
 class StarvedTest(unittest.TestCase):
     """A class whose oldest queued job has waited past `starve_report_seconds` while nothing of it starts is said, with
     the limit that holds it -- Scala Steward #145 (2026-11-08) sat queued for an hour on movies-measure while every tick

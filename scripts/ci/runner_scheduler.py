@@ -121,6 +121,9 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     `max_slots`, admitted at their own size whatever the heavy queue or bitcashier's saturation. Charged a
     measurement's 11 GiB and 4 cores and ranked last, identity run 42370669779's 10-second timings job waited 26 min
     (12:32-12:58Z) behind 20 queued measurements.
+  * THE WARM LIGHT RUNNER (the owner, 2026-11-18, "10"): warm_light_runners light runners (ci-runner: 1) are kept
+    registered and idle past the queued light jobs, so a landing check's plan job -- light, pinned to nothing, and
+    every check job after it waiting for it -- is taken the moment it queues, not a tick and a registration later.
   * MAIN NEVER RUNS HERE (the owner, 2026-11-06, the same day's "main's convergence takes ci-runner's free slots"
     reversed: "run main branch convergence and Main workflow always on gh, measurements always on ci"). Main's jobs ask
     for GitHub's hosted runners alone, so nothing here serves them and nothing is published for them.
@@ -260,6 +263,10 @@ class Config:
     # check runner with nothing of its run queued or to come goes after this long idle (not idle_stop_seconds)
     warm_max_checks: int = 1
     warm_grace_seconds: int = 60
+    # THE WARM LIGHT RUNNER (the owner, 2026-11-18, "10"): this many light runners kept registered and idle, so a
+    # precommit-check plan job (light, no pin) never waits for a tick and a registration; within light_slots. None by
+    # default, so a decision here names only the jobs it was given; ci-runner's schedulerConfig sets 1 (bitcashier infra)
+    warm_light_runners: int = 0
     state_dir: str = "/run/movies-runner"
     unit: str = "movies-runner"
     token_helper: str = ""
@@ -516,7 +523,11 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
                    if q.lane in LANDING_MEASURE_LANES]
     stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and waiting_for]
     wanted = queue + list(anticipated)
-    return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, wanted) == 0
+    # THE WARM LIGHT RUNNER: the lowest-slot idle light runners, up to warm_light_runners, are never idle too long
+    warm_light = [i.slot for i in sorted(idle, key=lambda i: i.slot) if i.cls == "light" and i.slot not in stops]
+    warm_light = warm_light[:cfg.warm_light_runners]
+    return stops + [i.slot for i in idle if i.slot not in stops and i.slot not in warm_light
+                    and queued_for(i, demand, wanted) == 0
                     and now - i.idle_since >= (cfg.warm_grace_seconds if i.cls == "check" and i.pin
                                                else cfg.idle_stop_seconds)]
 
@@ -743,7 +754,19 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         else:
             admit("measure", heavy_slots, (EXPLORE_LANE,), keep_measurements=keep)
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
-    admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
+    light_slots = [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used]
+    admit("light", light_slots)
+    # THE WARM LIGHT RUNNER (the owner, 2026-11-18, "10": precommit-check's plan job queued p50 38-68 s, p90 664-837 s
+    # over 2026-11-11..18, and every check job after it waits for it): warm_light_runners light runners kept idle
+    # past the queued light jobs, so the next one -- a landing check's plan above all, which asks for no pin -- is taken
+    # the moment it queues. Admitted as a light job is (1 GiB, 1 core, its own slots).
+    spare = sum(1 for i in alive if i.cls == "light" and not i.busy) + sum(1 for _, c in starts if c == "light") \
+        - demand.get("light", 0)
+    while spare < cfg.warm_light_runners and room_for("light", light_slots):
+        slot = light_slots.pop(0)
+        take(slot, "light", "light")
+        warm.append(slot)
+        spare += 1
     room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
     return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits, tuple(borrowed),
                     tuple(sorted(labels.items())), tuple(sorted(pins.items())), tuple(warm))
