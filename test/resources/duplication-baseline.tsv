@@ -1,0 +1,17 @@
+# THE DUPLICATION BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
+# Every clone group in the production sources (*/src/main of a deployed module; PMD CPD, 100 tokens or more), frozen:
+#   limit   copies 0: a file set without a row holds no clone
+#   copies  <path>|<path>..., the files a clone group spans (sorted), and the copies of every group spanning exactly
+#           them: a new group adds a row or raises one, a group gaining a copy too; an edit moving a clone's lines
+#           leaves its row
+# A row may only fall (--update records it, no trailer); a row added or raised lands only in a commit carrying
+# `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
+limit	copies	0
+copies	common/src/main/scala/services/UptimeMonitor.scala	2
+copies	common/src/main/scala/services/tasks/InMemoryTaskQueue.scala|common/src/main/scala/services/tasks/MongoTaskQueue.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala|scrapers/src/main/scala/services/cinemas/pl/DcfClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoAgrafkaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoParadoxClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoRomaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoZaRogiemCafeClient.scala	2
+copies	web/src/main/scala/controllers/UserStateController.scala	2
+copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala	2

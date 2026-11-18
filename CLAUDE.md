@@ -253,7 +253,8 @@ dependency (a trait at the seam, the class moved to the package that owns it); w
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala
 change): every method's cognitive complexity (Sonar's) ≤ 15, cyclomatic ≤ 10, inner defs ≤ 2
 (`test/resources/complexity-baseline.tsv`, trailer `Complexity: <why>`); method ≤ 50 lines, file ≤ 800
-(`length-baseline.tsv`, `Length: <why>`). Each baseline freezes what is over a limit today; a new method or file over
+(`length-baseline.tsv`, `Length: <why>`); no new clone group of 100+ tokens (PMD CPD) and no group gaining a copy
+(`duplication-baseline.tsv`, `Duplication: <why>`). Each baseline freezes what is over a limit today; a new method or file over
 one, or a frozen row rising, fails until split or recorded (`scripts/quality-report --update`, committed with the
 trailer); a fall needs none.
 

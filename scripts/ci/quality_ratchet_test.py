@@ -19,6 +19,7 @@ SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.environ.get("QUALITY_RATCHET_UNDER_TEST") or os.path.join(HERE, "quality_ratchet.py")
 COMPLEXITY = "test/resources/complexity-baseline.tsv"
 LENGTH = "test/resources/length-baseline.tsv"
+DUPLICATION = "test/resources/duplication-baseline.tsv"
 
 ROWS = """# a comment
 limit\tcognitive\t15
@@ -31,6 +32,8 @@ limit\tmethod-lines\t50
 limit\tfile-lines\t800
 method-lines\ta/src/main/scala/A.scala:A.f\t70
 file-lines\ta/src/main/scala/A.scala\t900
+limit\tcopies\t0
+copies\ta/src/main/scala/A.scala|a/src/main/scala/B.scala\t2
 """
 
 
@@ -45,7 +48,7 @@ class QualityRatchetTest(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.repo = os.path.join(self.dir.name, "repo")
         self.scratch("scratch_repo", "-q")
-        self.base = self.commit({COMPLEXITY: ROWS, LENGTH: ROWS}, "base")
+        self.base = self.commit({COMPLEXITY: ROWS, LENGTH: ROWS, DUPLICATION: ROWS}, "base")
 
     def tearDown(self):
         self.dir.cleanup()
@@ -95,6 +98,7 @@ class QualityRatchetTest(unittest.TestCase):
         out = self.assert_passes(ROWS)
         self.assertIn("complexity: within", out)
         self.assertIn("length: within", out)
+        self.assertIn("duplication: within", out)
 
     def test_a_new_method_over_a_limit_fails(self):
         self.assert_fails(rows("cognitive\ta/src/main/scala/C.scala:C.h\t16"),
@@ -147,6 +151,28 @@ class QualityRatchetTest(unittest.TestCase):
                           "file-lines a/src/main/scala/A.scala: 901, past its baseline 900")
         out = self.assert_passes(rows("file-lines\ta/src/main/scala/A.scala\t850", drop=("file-lines\ta/",)))
         self.assertIn("file-lines a/src/main/scala/A.scala 900 -> 850", out)
+
+    def test_a_new_clone_group_fails(self):
+        self.assert_fails(rows("copies\ta/src/main/scala/C.scala|a/src/main/scala/D.scala\t2"), "DUPLICATION GREW",
+                          "copies a/src/main/scala/C.scala|a/src/main/scala/D.scala: 2, past the limit 0 (no baseline row)")
+
+    def test_a_clone_group_gaining_a_copy_fails(self):
+        self.assert_fails(rows("copies\ta/src/main/scala/A.scala|a/src/main/scala/B.scala\t3", drop=("copies\ta/",)),
+                          "copies a/src/main/scala/A.scala|a/src/main/scala/B.scala: 3, past its baseline 2")
+        # a copy in a third file: another file set, a new row
+        self.assert_fails(rows("copies\ta/src/main/scala/A.scala|a/src/main/scala/B.scala|a/src/main/scala/C.scala\t3",
+                               drop=("copies\ta/",)), "a/src/main/scala/C.scala: 3, past the limit 0")
+
+    def test_an_extracted_clone_is_a_fall(self):
+        out = self.assert_passes(rows(drop=("copies\ta/",)))
+        self.assertIn("copies a/src/main/scala/A.scala|a/src/main/scala/B.scala 2 -> within the limit", out)
+
+    def test_a_grown_duplication_baseline_needs_its_trailer(self):
+        grown = rows("copies\ta/src/main/scala/C.scala|a/src/main/scala/D.scala\t2")
+        head = self.commit({DUPLICATION: grown}, "a copy\n\nLength: not this ratchet's")
+        self.assert_fails(grown, "THE DUPLICATION BASELINE GREW", rng=f"{self.base}..{head}")
+        head = self.commit({DUPLICATION: grown + "\n"}, "a copy\n\nDuplication: two clients of one vendor's markup")
+        self.assert_passes(grown, rng=f"{self.base}..{head}")
 
     def test_one_ratchet_can_be_checked_alone(self):
         rc, out = self.run_tool("check", rows("file-lines\ta/src/main/scala/C.scala\t801"), "--ratchet", "complexity")

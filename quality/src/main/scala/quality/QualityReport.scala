@@ -17,11 +17,13 @@ import scala.jdk.CollectionConverters.*
  *   inner-defs  the defs nested in a method, past its limit
  *   method-lines a method's length in lines, past its limit
  *   file-lines  a source's length in lines (key: its path), past its limit
+ *   copies      the copies of the clone groups spanning exactly the files `<path>|<path>...` (Clones: PMD CPD, 100
+ *               tokens or more), limit 0 -- every clone group is a row
  *
  *   quality.QualityReport --root <repository> --rows <out> [--files <out>] [--report <markdown out>]
  *
  * `--files` writes one line a source -- `path<TAB>lines<TAB>cognitive` (its methods' sum) -- for scripts/hotspots;
- * `--report` the counts over each limit and the worst methods.
+ * `--report` the counts over each limit, the worst methods, the longest sources and every clone group.
  */
 object QualityReport {
 
@@ -46,11 +48,17 @@ object QualityReport {
       "quality.QualityReport --root <repository> --rows <out> [--files <out>] [--report <markdown out>]")
     val started = System.nanoTime
     val sources = productionSources(Paths.get(options("--root")))
-    val measured = measure(sources)
-    write(options("--rows"), rows(sources, measured))
+    // CPD is one thread and the measure's longest part: it runs beside the (parallel) parse
+    val cpd = Executors.newSingleThreadExecutor()
+    val (measured, groups) =
+      try {
+        val clones = cpd.submit(() => Clones.of(sources.map(s => s.path -> s.text)))
+        (measure(sources), clones.get)
+      } finally cpd.shutdown()
+    write(options("--rows"), rows(sources, measured) ++ cloneRows(groups))
     options.get("--files").foreach(write(_, fileLines(sources, measured)))
-    options.get("--report").foreach(write(_, report(sources, measured)))
-    println(s"quality: ${sources.size} sources, ${measured.values.map(_.size).sum} methods, " +
+    options.get("--report").foreach(write(_, report(sources, measured) ++ cloneReport(groups)))
+    println(s"quality: ${sources.size} sources, ${measured.values.map(_.size).sum} methods, ${groups.size} clone groups, " +
       s"${(System.nanoTime - started) / 1000000} ms")
   }
 
@@ -99,6 +107,16 @@ object QualityReport {
       MethodLimits.flatMap { case (kind, limit) => past(kind, limit, all.map(m => m.key -> valueOf(kind, m.method))) } ++
       FileLimits.flatMap { case (kind, limit) => past(kind, limit, sources.map(s => s.path -> lineCount(s))) }
   }
+
+  /** The clone rows: the limit (none allowed without a row), and one row a file set. */
+  def cloneRows(groups: Seq[Clones.Group]): Seq[String] =
+    "limit\tcopies\t0" +: Clones.rows(groups).map { case (files, copies) => s"copies\t$files\t$copies" }
+
+  /** Every clone group, largest first. */
+  def cloneReport(groups: Seq[Clones.Group]): Seq[String] =
+    Seq("", "## Duplication", "", s"${groups.size} clone groups of ${Clones.MinimumTokens} tokens or more (PMD CPD).", "",
+      "| tokens | lines | copies |", "|---|---|---|") ++
+      groups.map(g => s"| ${g.tokens} | ${g.lines} | ${g.copies.map(c => s"`${c.path}:${c.startLine}-${c.endLine}`").mkString(" ")} |")
 
   private def past(kind: String, limit: Int, values: Seq[(String, Int)]): Seq[String] =
     values.filter(_._2 > limit).sortBy(_._1).map { case (key, v) => s"$kind\t$key\t$v" }
