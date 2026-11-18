@@ -222,16 +222,17 @@ object SlotsRepository {
       case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(ShowtimesDigest.slotShowtimeCount(_) == 0) =>
         source.displayName
     }.toSet
-    (b.keySet ++ a.keySet).iterator.flatMap { k =>
-      (b.get(k), a.get(k)) match {
-        case (x, Some(y)) if x.contains(y) && gaining(k) => Some(k -> Some(y))
-        case (Some(x), Some(y)) if x eq y => None   // the same slot object: unchanged, nothing compared
-        case (x, y) if x == y => None
-        case (_, Some(y))     => Some(k -> Some(y))
-        case (_, None)        => Some(k -> None)
-      }
-    }.toMap
+    (b.keySet ++ a.keySet).iterator.flatMap(k => slotOp(b.get(k), a.get(k), gaining(k)).map(k -> _)).toMap
   }
+
+  /** One slot's write — `Some(Some(slot))` to upsert, `Some(None)` to delete — or None when it is unchanged. */
+  private def slotOp(before: Option[SourceData], after: Option[SourceData], gaining: Boolean): Option[Option[SourceData]] =
+    (before, after) match {
+      case (x, Some(y)) if x.contains(y) && gaining => Some(Some(y))
+      case (Some(x), Some(y)) if x eq y => None   // the same slot object: unchanged, nothing compared
+      case (x, y) if x == y => None
+      case (_, y)           => Some(y)
+    }
 }
 
 /** Storage DTO for one cinema slot's metadata — the macro codec target for the
@@ -414,20 +415,22 @@ class MongoSlotsRepository(
       if (slots.isEmpty) WriteOutcome.Written
       else write("upsertSlots", s"SlotsRepository.upsertSlots($filmId, ${slots.size} slots)") {
         val admitted = slots.filter { case (slotKey, _) => roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) }
-        val held     = storedSlots(c, filmId, admitted.keySet)
-        // A failed read says no row is redundant, so every one writes — as `upsertSlot` writes an unreadable row.
-        def redundant(slotKey: String, slot: SourceData): Boolean = held match {
-          case tools.ReadOutcome.Answered(rows) => rows.get(slotKey).contains(slot)
-          case _                                => false
-        }
         val now      = clock.instant()
-        val replaces = admitted.toSeq.collect { case (slotKey, slot) if !redundant(slotKey, slot) =>
+        val replaces = changedOf(admitted, storedSlots(c, filmId, admitted.keySet)).map { case (slotKey, slot) =>
           val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
           ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
         }
         if (replaces.nonEmpty) Await.result(c.bulkWrite(replaces, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)
         WriteOutcome.Written
       }
+    }
+
+  /** The `slots` not already held exactly as `held` stores them. A failed read says no row is redundant, so every
+   *  one writes — as `upsertSlot` writes an unreadable row. */
+  private def changedOf(slots: Map[String, SourceData], held: tools.ReadOutcome[Map[String, SourceData]]): Seq[(String, SourceData)] =
+    held match {
+      case tools.ReadOutcome.Answered(rows) => slots.toSeq.filterNot { case (slotKey, slot) => rows.get(slotKey).contains(slot) }
+      case _                                => slots.toSeq
     }
 
   /** The stored slots among `slotKeys` of one film, by slot key. */

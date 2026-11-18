@@ -112,21 +112,23 @@ object ListingKey {
     def compare(a: ListingKey, b: ListingKey): Int = {
       val byVenue = a.venue.compareTo(b.venue)
       if (byVenue != 0) byVenue
-      else a match {
-        case Native(_, pa, ra) => b match {
-          case Native(_, pb, rb) => val byPage = pa.compareTo(pb); if (byPage != 0) byPage else ra.compareTo(rb)
-          case _: Published      => -1
-        }
-        case Published(_, ra, ya, da) => b match {
-          case _: Native => 1
-          case Published(_, rb, yb, db) =>
-            val byRaw = ra.compareTo(rb)
-            if (byRaw != 0) byRaw
-            else {
-              val byYear = years(ya, yb)
-              if (byYear != 0) byYear else directors(da, db)
-            }
-        }
+      else (a, b) match {
+        case (x: Native, y: Native)       => natives(x, y)
+        case (x: Published, y: Published) => publisheds(x, y)
+        case (_: Native, _)               => -1
+        case _                            => 1
+      }
+    }
+    private def natives(a: Native, b: Native): Int = {
+      val byPage = a.nativeId.compareTo(b.nativeId)
+      if (byPage != 0) byPage else a.rawTitle.compareTo(b.rawTitle)
+    }
+    private def publisheds(a: Published, b: Published): Int = {
+      val byRaw = a.rawTitle.compareTo(b.rawTitle)
+      if (byRaw != 0) byRaw
+      else {
+        val byYear = years(a.year, b.year)
+        if (byYear != 0) byYear else directors(a.directors, b.directors)
       }
     }
     // As the years' text compares: none first; two of as many digits as their numbers do.

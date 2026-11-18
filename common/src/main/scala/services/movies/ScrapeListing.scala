@@ -38,40 +38,42 @@ object ScrapeListing {
     // memoises the cleaning (`TitleNormalizer.listingTitle`).
     def cleanAndFormat(cm: CinemaMovie): (String, List[String]) = cleanTitle(cinema, cm.movie.title, normalizer)
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
-    // Badge each screening with its film's format tokens (unless the client already
-    // set one), BEFORE the same-title fold below unions them — then put EVERY token
-    // through `ScreeningTokens`, the one gate a source's own words pass to become a
-    // badge: it maps each spelling onto the shared vocabulary and drops what is not
-    // a screening attribute at all.
-    // …and give the listing the facts its title bills ([[withTitleFacts]]), before the fold below tells rows apart by them.
-    val formatted: Seq[CinemaMovie] = movies.map { cm =>
-      val tokens = cleanAndFormat(cm)._2
-      withTitleFacts(cm.copy(showtimes = cm.showtimes.map { st =>
-        st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
-      }), normalizer.titleFacts(cinema, billedTitle(cm)))
-    }
-    // A single cinema can report one film as several rows — one per screening page,
-    // or under two spellings that share the slot but differ by year or by a canonical
-    // unification the cleaned title keeps apart. They all land on the SAME cinema
-    // slot, `CinemaShowing(cinema, sanitize(title))` with no year. Recording them one
-    // by one let the LAST win and dropped every other screening, and which row won
-    // depended on the scraper's emit order. Fold each
-    // cinema's same-slot rows into one at exactly the slot-key granularity: union
-    // every screening's showtimes, deduped by physical identity, and keep a
-    // deterministic representative for the scalar film fields.
-    //
-    // …but only rows of ONE film. Arc Cinema Blackpool lists "Belle (2013)" and "Belle
-    // (2021)" side by side, Marion Theatre Ocala "Planet of the Apes" (Schaffner, no year)
-    // beside "Planet of the Apes (2001)" (Burton): each pair cleans to one title, and unioned
-    // into one slot one film was served the other's showtimes. `filmsOf` keeps them apart.
-    val deduped: Seq[CinemaMovie] =
-      // …nor rows of two pages the venue's reads say are two films (`pageApart`: `VenueSlots.filmPages`).
-      formatted.groupBy(cm => (normalizer.sanitize(cleaned(cm)), pageApart(cm))).toSeq
-        .sortBy { case ((k, page), _) => (k, page.getOrElse("")) }
-        .flatMap { case (_, group) => filmsOf(group, normalizer) }
-        .map(folded)
-    Prepared(deduped, cleaned)
+    val formatted = movies.map(cm => badged(cinema, cm, cleanAndFormat(cm)._2, normalizer, screeningTokens))
+    Prepared(foldedPerSlot(formatted, cleaned, normalizer, pageApart), cleaned)
   }
+
+  /** `cm` with each screening badged with its film's format `tokens` (unless the client already set one), BEFORE the
+   *  same-title fold unions them — then EVERY token put through `ScreeningTokens`, the one gate a source's own words
+   *  pass to become a badge: it maps each spelling onto the shared vocabulary and drops what is not a screening
+   *  attribute at all.
+   *  …and given the facts its title bills ([[withTitleFacts]]), before the fold tells rows apart by them. */
+  private def badged(cinema: Cinema, cm: CinemaMovie, tokens: List[String], normalizer: TitleNormalizer,
+                     screeningTokens: ScreeningTokens): CinemaMovie =
+    withTitleFacts(cm.copy(showtimes = cm.showtimes.map { st =>
+      st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
+    }), normalizer.titleFacts(cinema, billedTitle(cm)))
+
+  /** A single cinema can report one film as several rows — one per screening page,
+   *  or under two spellings that share the slot but differ by year or by a canonical
+   *  unification the cleaned title keeps apart. They all land on the SAME cinema
+   *  slot, `CinemaShowing(cinema, sanitize(title))` with no year. Recording them one
+   *  by one let the LAST win and dropped every other screening, and which row won
+   *  depended on the scraper's emit order. Fold each
+   *  cinema's same-slot rows into one at exactly the slot-key granularity: union
+   *  every screening's showtimes, deduped by physical identity, and keep a
+   *  deterministic representative for the scalar film fields.
+   *
+   *  …but only rows of ONE film. Arc Cinema Blackpool lists "Belle (2013)" and "Belle
+   *  (2021)" side by side, Marion Theatre Ocala "Planet of the Apes" (Schaffner, no year)
+   *  beside "Planet of the Apes (2001)" (Burton): each pair cleans to one title, and unioned
+   *  into one slot one film was served the other's showtimes. `filmsOf` keeps them apart.
+   *  …nor rows of two pages the venue's reads say are two films (`pageApart`: `VenueSlots.filmPages`). */
+  private def foldedPerSlot(formatted: Seq[CinemaMovie], cleaned: CinemaMovie => String, normalizer: TitleNormalizer,
+                            pageApart: CinemaMovie => Option[String])(using LatestTitleYear): Seq[CinemaMovie] =
+    formatted.groupBy(cm => (normalizer.sanitize(cleaned(cm)), pageApart(cm))).toSeq
+      .sortBy { case ((k, page), _) => (k, page.getOrElse("")) }
+      .flatMap { case (_, group) => filmsOf(group, normalizer) }
+      .map(folded)
 
   /** The title as the venue billed it, facts and all: a client that cleans its titles itself (`cinemaClean`) has
    *  peeled them off `title` already, and keeps the billing in `rawTitle`. */

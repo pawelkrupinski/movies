@@ -172,70 +172,91 @@ private[movies] final class BackwardCompatibleSourceDataCodec(
   // only when it is a string, a number only when it is an int32, a list from an array or from
   // one comma-joined string, null and absent alike empty, every other field skipped.
   override def decode(r: BsonReader, c: DecoderContext): SourceData = {
+    import BackwardCompatibleSourceDataCodec.{LegacyFieldReads, SourceDataFields}
+    val fields = new SourceDataFields
+    val in     = LegacyFieldReads(r, c, showtimeCodec, titleSearchCodec)
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      SourceDataFields.Readers.get(r.readName()) match {
+        case Some(read) => read(in, fields)
+        case None       => r.skipValue()
+      }
+    }
+    r.readEndDocument()
+    fields.result
+  }
+}
+
+private object BackwardCompatibleSourceDataCodec {
+  /** One legacy `SourceData` document's reader, with the rules [[BackwardCompatibleSourceDataCodec]] reads every field
+   *  by: a text field only when it is a string, a number only when it is an int32, a list from an array or from one
+   *  comma-joined string, null and absent alike empty. */
+  final case class LegacyFieldReads(r: BsonReader, c: DecoderContext,
+                                            showtimeCodec: Codec[Showtime], titleSearchCodec: Codec[TitleSearch]) {
     def str(): Option[String] = if (r.getCurrentBsonType == BsonType.STRING) Some(r.readString()) else { r.skipValue(); None }
     def int(): Option[Int]    = if (r.getCurrentBsonType == BsonType.INT32) Some(r.readInt32()) else { r.skipValue(); None }
     def strings(): Seq[String] = r.getCurrentBsonType match {
       case BsonType.STRING =>
         val joined = r.readString()
         if (joined.isEmpty) Seq.empty else joined.split(",").map(_.trim).filter(_.nonEmpty).toSeq
-      case BsonType.ARRAY =>
-        r.readStartArray()
-        val out = Seq.newBuilder[String]
-        while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += r.readString()
-        r.readEndArray()
-        out.result()
-      case _ => r.skipValue(); Seq.empty
+      case BsonType.ARRAY  => elements(r.readString())
+      case _               => r.skipValue(); Seq.empty
     }
     def documents[A](codec: Codec[A]): Seq[A] = r.getCurrentBsonType match {
-      case BsonType.ARRAY =>
-        r.readStartArray()
-        val out = Seq.newBuilder[A]
-        while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += codec.decode(r, c)
-        r.readEndArray()
-        out.result()
-      case _ => r.skipValue(); Seq.empty
+      case BsonType.ARRAY => elements(codec.decode(r, c))
+      case _              => r.skipValue(); Seq.empty
     }
+    private def elements[A](one: => A): Seq[A] = {
+      r.readStartArray()
+      val out = Seq.newBuilder[A]
+      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += one
+      r.readEndArray()
+      out.result()
+    }
+  }
+
+  /** The fields of one `SourceData` as [[BackwardCompatibleSourceDataCodec]] reads them, each empty until read. */
+  final class SourceDataFields {
     var title, rawTitle, originalTitle, englishTitle, synopsis, posterUrl, filmUrl, trailerUrl, language, ageRating =
       Option.empty[String]
     var runtimeMinutes, releaseYear = Option.empty[Int]
     var cast, director, countries, genres = Seq.empty[String]
     var showtimes     = Seq.empty[Showtime]
     var titleSearches = Seq.empty[TitleSearch]
-    r.readStartDocument()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-      r.readName() match {
-        case "title"          => title = str()
-        case "rawTitle"       => rawTitle = str()
-        case "originalTitle"  => originalTitle = str()
-        case "englishTitle"   => englishTitle = str()
-        case "synopsis"       => synopsis = str()
-        case "cast"           => cast = strings()
-        case "director"       => director = strings()
-        case "runtimeMinutes" => runtimeMinutes = int()
-        case "releaseYear"    => releaseYear = int()
-        case "countries"      => countries = strings()
-        case "genres"         => genres = strings()
-        case "posterUrl"      => posterUrl = str()
-        case "filmUrl"        => filmUrl = str()
-        case "trailerUrl"     => trailerUrl = str()
-        // Absent on every row written before the stamp existed — `None` reads as pl-PL (the
-        // historical hardcoded enrichment language), which is what those rows actually hold.
-        case "language"       => language = str()
-        case "showtimes"      => showtimes = documents(showtimeCodec)
-        // Absent on every row written before the certificate field existed → None.
-        case "ageRating"      => ageRating = str()
-        // Absent on every slot written before the field existed → no search evidence.
-        case "titleSearches"  => titleSearches = documents(titleSearchCodec)
-        case _                => r.skipValue()
-      }
-    }
-    r.readEndDocument()
-    SourceData(
+
+    def result: SourceData = SourceData(
       title = title, rawTitle = rawTitle, originalTitle = originalTitle, englishTitle = englishTitle,
       synopsis = synopsis, cast = cast, director = director, runtimeMinutes = runtimeMinutes,
       releaseYear = releaseYear, countries = countries, genres = genres, posterUrl = posterUrl,
       filmUrl = filmUrl, trailerUrl = trailerUrl, language = language, showtimes = showtimes,
       ageRating = ageRating, titleSearches = titleSearches)
+  }
+
+  object SourceDataFields {
+    /** Each stored field's reader; a field not named here is skipped. */
+    val Readers: Map[String, (LegacyFieldReads, SourceDataFields) => Unit] = Map(
+      "title"          -> ((in, f) => f.title = in.str()),
+      "rawTitle"       -> ((in, f) => f.rawTitle = in.str()),
+      "originalTitle"  -> ((in, f) => f.originalTitle = in.str()),
+      "englishTitle"   -> ((in, f) => f.englishTitle = in.str()),
+      "synopsis"       -> ((in, f) => f.synopsis = in.str()),
+      "cast"           -> ((in, f) => f.cast = in.strings()),
+      "director"       -> ((in, f) => f.director = in.strings()),
+      "runtimeMinutes" -> ((in, f) => f.runtimeMinutes = in.int()),
+      "releaseYear"    -> ((in, f) => f.releaseYear = in.int()),
+      "countries"      -> ((in, f) => f.countries = in.strings()),
+      "genres"         -> ((in, f) => f.genres = in.strings()),
+      "posterUrl"      -> ((in, f) => f.posterUrl = in.str()),
+      "filmUrl"        -> ((in, f) => f.filmUrl = in.str()),
+      "trailerUrl"     -> ((in, f) => f.trailerUrl = in.str()),
+      // Absent on every row written before the stamp existed — `None` reads as pl-PL (the
+      // historical hardcoded enrichment language), which is what those rows actually hold.
+      "language"       -> ((in, f) => f.language = in.str()),
+      "showtimes"      -> ((in, f) => f.showtimes = in.documents(in.showtimeCodec)),
+      // Absent on every row written before the certificate field existed → None.
+      "ageRating"      -> ((in, f) => f.ageRating = in.str()),
+      // Absent on every slot written before the field existed → no search evidence.
+      "titleSearches"  -> ((in, f) => f.titleSearches = in.documents(in.titleSearchCodec)))
   }
 }
 
@@ -341,33 +362,44 @@ private[movies] object StreamingScreeningsCodec extends Codec[StoredScreeningsDt
     w.writeEndDocument()
   }
   override def decode(r: BsonReader, c: DecoderContext): StoredScreeningsDto = {
-    var id, filmId, slotKey: String = null
-    var updatedAt: Instant          = null
-    var listingKey                  = Option.empty[String]
-    var urlPrefix: String           = null
-    val read                        = Vector.newBuilder[Showtime]
-    var sawShowtimes                = false
+    val row = new ScreeningsRowFields
     r.readStartDocument()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-      r.readName() match {
-        case "_id"        => id = r.readString()
-        case "filmId"     => filmId = r.readString()
-        case "slotKey"    => slotKey = r.readString()
-        case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
-        case "listingKey" => listingKey = BsonReads.optionalString(r)
-        case ShowtimeCodec.RowPrefixField => urlPrefix = BsonReads.optionalString(r).orNull
-        case "showtimes"  =>
-          sawShowtimes = true
-          r.readStartArray()
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += ShowtimeCodec.read(r, c, urlPrefix)
-          r.readEndArray()
-        case _            => r.skipValue()
-      }
-    }
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) row.read(r.readName(), r, c)
     r.readEndDocument()
-    if (id == null || filmId == null || slotKey == null || updatedAt == null || !sawShowtimes)
-      throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredScreeningsDto ${Option(id).getOrElse("?")}: a required field is missing")
-    StoredScreeningsDto(id, filmId, slotKey, ShowtimeCodec.completed(read.result(), urlPrefix), updatedAt, listingKey)
+    row.result
+  }
+
+  /** A `screenings` row's fields as [[StreamingScreeningsCodec]] reads them; `result` fails on a missing required one. */
+  private final class ScreeningsRowFields {
+    private var id, filmId, slotKey: String = null
+    private var updatedAt: Instant          = null
+    private var listingKey                  = Option.empty[String]
+    private var urlPrefix: String           = null
+    private val showtimes                   = Vector.newBuilder[Showtime]
+    private var sawShowtimes                = false
+
+    def read(name: String, r: BsonReader, c: DecoderContext): Unit = name match {
+      case "_id"        => id = r.readString()
+      case "filmId"     => filmId = r.readString()
+      case "slotKey"    => slotKey = r.readString()
+      case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
+      case "listingKey" => listingKey = BsonReads.optionalString(r)
+      case ShowtimeCodec.RowPrefixField => urlPrefix = BsonReads.optionalString(r).orNull
+      case "showtimes"  => readShowtimes(r, c)
+      case _            => r.skipValue()
+    }
+
+    private def readShowtimes(r: BsonReader, c: DecoderContext): Unit = {
+      sawShowtimes = true
+      r.readStartArray()
+      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) showtimes += ShowtimeCodec.read(r, c, urlPrefix)
+      r.readEndArray()
+    }
+
+    def result: StoredScreeningsDto = {
+      BsonReads.require(Seq(id, filmId, slotKey, updatedAt).forall(_ != null) && sawShowtimes, "StoredScreeningsDto", id)
+      StoredScreeningsDto(id, filmId, slotKey, ShowtimeCodec.completed(showtimes.result(), urlPrefix), updatedAt, listingKey)
+    }
   }
 }
 
@@ -380,31 +412,46 @@ private[movies] final class StreamingSlotCodec(macroCodec: Codec[StoredSlotDto],
   override def getEncoderClass: Class[StoredSlotDto] = classOf[StoredSlotDto]
   override def encode(w: BsonWriter, v: StoredSlotDto, c: EncoderContext): Unit = macroCodec.encode(w, v, c)
   override def decode(r: BsonReader, c: DecoderContext): StoredSlotDto = {
-    var id, filmId, slotKey: String = null
-    var slot: SourceData            = null
-    var updatedAt: Instant          = null
-    var listingKey                  = Option.empty[String]
+    val row = new StreamingSlotCodec.SlotRowFields(sourceData)
     r.readStartDocument()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-      r.readName() match {
-        case "_id"        => id = r.readString()
-        case "filmId"     => filmId = r.readString()
-        case "slotKey"    => slotKey = r.readString()
-        case "slot"       => slot = sourceData.decode(r, c)
-        case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
-        case "listingKey" => listingKey = BsonReads.optionalString(r)
-        case _            => r.skipValue()
-      }
-    }
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) row.read(r.readName(), r, c)
     r.readEndDocument()
-    if (id == null || filmId == null || slotKey == null || slot == null || updatedAt == null)
-      throw new org.bson.codecs.configuration.CodecConfigurationException(s"StoredSlotDto ${Option(id).getOrElse("?")}: a required field is missing")
-    StoredSlotDto(id, filmId, slotKey, slot, updatedAt, listingKey)
+    row.result
+  }
+}
+
+private[movies] object StreamingSlotCodec {
+  /** A `movie_slots` row's fields as [[StreamingSlotCodec]] reads them; `result` fails on a missing required one. */
+  final class SlotRowFields(sourceData: Codec[SourceData]) {
+    private var id, filmId, slotKey: String = null
+    private var slot: SourceData            = null
+    private var updatedAt: Instant          = null
+    private var listingKey                  = Option.empty[String]
+
+    def read(name: String, r: BsonReader, c: DecoderContext): Unit = name match {
+      case "_id"        => id = r.readString()
+      case "filmId"     => filmId = r.readString()
+      case "slotKey"    => slotKey = r.readString()
+      case "slot"       => slot = sourceData.decode(r, c)
+      case "updatedAt"  => updatedAt = Instant.ofEpochMilli(r.readDateTime())
+      case "listingKey" => listingKey = BsonReads.optionalString(r)
+      case _            => r.skipValue()
+    }
+
+    def result: StoredSlotDto = {
+      BsonReads.require(Seq(id, filmId, slotKey, slot, updatedAt).forall(_ != null), "StoredSlotDto", id)
+      StoredSlotDto(id, filmId, slotKey, slot, updatedAt, listingKey)
+    }
   }
 }
 
 /** The BSON reads the hand-written decoders share. Stateless. */
 private[services] object BsonReads {
+  /** Fail the decode of the `what` row `id` unless `present`: a required field is missing. */
+  def require(present: Boolean, what: String, id: String): Unit =
+    if (!present)
+      throw new org.bson.codecs.configuration.CodecConfigurationException(s"$what ${Option(id).getOrElse("?")}: a required field is missing")
+
   def optionalString(r: BsonReader): Option[String] =
     if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readString())
 

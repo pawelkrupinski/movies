@@ -47,16 +47,9 @@ final case class MovieRecordPatch(
 ) {
   /** No effective change — caller can skip the write entirely. */
   def isEmpty: Boolean =
-    imdbId == FieldUpdate.NoChange && imdbRating == FieldUpdate.NoChange &&
-    metascore == FieldUpdate.NoChange && filmwebUrl == FieldUpdate.NoChange &&
-    filmwebRating == FieldUpdate.NoChange && rottenTomatoes == FieldUpdate.NoChange &&
-    tmdbId == FieldUpdate.NoChange && tmdbBasis == FieldUpdate.NoChange && tmdbProvisional == FieldUpdate.NoChange &&
-    wikidataId == FieldUpdate.NoChange &&
-    metacriticUrl == FieldUpdate.NoChange &&
-    rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
-    tmdbAttempt == FieldUpdate.NoChange &&
-    retainedSynopses == FieldUpdate.NoChange &&
-    data.isEmpty
+    Seq[FieldUpdate[?]](imdbId, imdbRating, metascore, filmwebUrl, filmwebRating, rottenTomatoes, tmdbId, tmdbBasis,
+        tmdbProvisional, wikidataId, metacriticUrl, rottenTomatoesUrl, searchTitle, tmdbAttempt, retainedSynopses)
+      .forall(_ == FieldUpdate.NoChange) && data.isEmpty
 
   /** Apply the patch to `current`, returning a new `MovieRecord` with the
    *  changed fields overwritten and everything else preserved. Used by

@@ -165,12 +165,8 @@ object MovieRecordMerge {
     // values, and the source of the cache-only digest fields below, which are not
     // independently mergeable.
     val ranked = slots.sortBy(slot => (-populatedFields(slot), contentOrder(slot)))
-    def text(pick: SourceData => Option[String]): Option[String] =
-      ranked.iterator.flatMap(s => pick(s).filter(_.nonEmpty)).nextOption()
-    def number(pick: SourceData => Option[Int]): Option[Int] =
-      ranked.iterator.flatMap(pick).nextOption()
-    def list(pick: SourceData => Seq[String]): Seq[String] =
-      ranked.iterator.map(pick).find(_.nonEmpty).getOrElse(Seq.empty)
+    val first  = FirstPublished(ranked)
+    import first.{list, number, text}
     SourceData(
       title           = text(_.title),
       rawTitle        = text(_.rawTitle),
@@ -204,6 +200,16 @@ object MovieRecordMerge {
       titleSearches   = slots.flatMap(_.titleSearches).groupBy(_.titleKey).values
                           .map(_.minBy(t => (t.rank.getOrElse(Int.MaxValue), t.rivals))).toSeq.sortBy(_.titleKey)
     )
+  }
+
+  /** A field's value from the first of the `ranked` slots that published one. */
+  private final case class FirstPublished(ranked: Seq[SourceData]) {
+    def text(pick: SourceData => Option[String]): Option[String] =
+      ranked.iterator.flatMap(s => pick(s).filter(_.nonEmpty)).nextOption()
+    def number(pick: SourceData => Option[Int]): Option[Int] =
+      ranked.iterator.flatMap(pick).nextOption()
+    def list(pick: SourceData => Seq[String]): Seq[String] =
+      ranked.iterator.map(pick).find(_.nonEmpty).getOrElse(Seq.empty)
   }
 
   // The order a disagreement is settled in — more populated fields first (the slot

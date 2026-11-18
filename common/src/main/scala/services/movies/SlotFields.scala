@@ -60,16 +60,27 @@ object SlotFields {
   private def plain(url: String): Boolean = {
     val start = if (url.startsWith("https://")) 8 else if (url.startsWith("http://")) 7 else -1
     start > 0 && {
-      var i = start
-      while (i < url.length && { val c = url.charAt(i); (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || (c >= 'A' && c <= 'Z') }) i += 1
-      val hostEnd = i
-      hostEnd > start && url.charAt(start) != '-' && url.charAt(start) != '.' &&
-        (hostEnd == url.length || { val c = url.charAt(hostEnd); c == '/' || c == '?' || c == '#' }) && {
-          while (i < url.length && { val c = url.charAt(i); c > ' ' && c < 0x7f && c != '"' && c != '<' && c != '>' && !Unescaped.contains(c) }) i += 1
-          i == url.length
-        }
+      val hostEnd = scan(url, start, hostChar)
+      hostEnd > start && url.charAt(start) != '-' && url.charAt(start) != '.' && hostEnds(url, hostEnd) &&
+        scan(url, hostEnd, pathChar) == url.length
     }
   }
+
+  /** The index of the first character from `from` on that is not `allowed`, or the end. */
+  private def scan(url: String, from: Int, allowed: Char => Boolean): Int = {
+    var i = from
+    while (i < url.length && allowed(url.charAt(i))) i += 1
+    i
+  }
+
+  private def hostChar(c: Char): Boolean =
+    (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || (c >= 'A' && c <= 'Z')
+
+  private def hostEnds(url: String, at: Int): Boolean =
+    at == url.length || { val c = url.charAt(at); c == '/' || c == '?' || c == '#' }
+
+  private def pathChar(c: Char): Boolean =
+    c > ' ' && c < 0x7f && c != '"' && c != '<' && c != '>' && !Unescaped.contains(c)
 
   private def repaired(raw: String, base: Option[String]): Option[String] = {
     val trimmed = raw.trim

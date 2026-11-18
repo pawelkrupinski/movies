@@ -352,21 +352,28 @@ final class MovieChangeStream(
         case None                                                    => Reason.NotShowtimes
         case Some(at) if at.sizeIs > MovieChangeStream.MaxVenuesApplied => Reason.TooManyVenues
         case Some(_) if holds.exists(_.isFailing(filmId))            => Reason.Failing
-        case Some(at) =>
-          val mark = fence.mark(filmId)
-          read(filmId, at) match {
-            case None        => Reason.VenueReadFailed
-            case Some(slots) =>
-              val declined = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
-                .collect { case VenueVerdict.Declined(why) => why }
-              declined.foreach(changeStreamMetrics.recordVenueDecline)
-              if (declined.isEmpty) Reason.Applied else Reason.Declined
-          }
+        case Some(at)                                                => deliverVenues(filmId, at, read)
       }
     }
     val applied = reason == Reason.Applied
     changeStreamMetrics.recordApply(if (applied) ChangeStreamMetrics.Apply.Venues else ChangeStreamMetrics.Apply.Film, reason)
     applied
+  }
+
+  /** Read the film's slots at `at` under a fence mark and dispatch them to the listeners: why it did not apply, or
+   *  `Applied`. */
+  private def deliverVenues(filmId: String, at: Set[models.Cinema],
+                            read: (String, Set[models.Cinema]) => Option[VenueSlots]): String = {
+    import ChangeStreamMetrics.Apply.Reason
+    val mark = fence.mark(filmId)
+    read(filmId, at) match {
+      case None        => Reason.VenueReadFailed
+      case Some(slots) =>
+        val declined = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
+          .collect { case VenueVerdict.Declined(why) => why }
+        declined.foreach(changeStreamMetrics.recordVenueDecline)
+        if (declined.isEmpty) Reason.Applied else Reason.Declined
+    }
   }
 
   /** Apply a film's change from its venues alone when every listener can, else re-read it whole. */

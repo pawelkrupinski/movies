@@ -125,9 +125,15 @@ object SamePerson {
    *  Every tolerance needs length to earn it — a prefix 5+, a one-letter miss 4+,
    *  two edits 7+. */
   private def sameToken(a: String, b: String): Boolean =
-    a == b ||
-      (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
-      (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
-      (a.length >= 4 && b.length >= 4 && EditDistance.within(a, b, 1)) ||
-      (a.length >= 7 && b.length >= 7 && EditDistance.within(a, b, 2))
+    a == b || abbreviates(a, b) || abbreviates(b, a) || closelySpelled(a, b)
+
+  /** `short` an initial, or a prefix of 5+ letters, of `long`. */
+  private def abbreviates(short: String, long: String): Boolean =
+    (short.length == 1 || short.length >= 5) && long.startsWith(short)
+
+  /** One letter apart when both are 4+ long, two when both are 7+. */
+  private def closelySpelled(a: String, b: String): Boolean = {
+    val shorter = math.min(a.length, b.length)
+    (shorter >= 4 && EditDistance.within(a, b, 1)) || (shorter >= 7 && EditDistance.within(a, b, 2))
+  }
 }
