@@ -489,13 +489,7 @@ final class IdentityProjection(
     // was and counted it as drift — "(key)", nothing of it named — where a scoped one left it (prod PL, 2026-10-27).
     val (changed, unmoved) = phases("compare")(drafted.filter(moved)
       .pipe(films => detailed.complete(films, id => before.get(id).map(_.record))).partition(moved))
-    if (unmoved.nonEmpty) {
-      // a lean slot no build from its rows gives: what the venue slot memo held for it, and what it missed
-      val leanOf = drafted.iterator.map(f => f.id -> f.record).toMap
-      logger.warn(s"identity projection: ${unmoved.size} film(s) drafted from venue slots a build from their rows does not give, " +
-        s"left as stored: ${unmoved.sortBy(_.id.value).take(IdentityProjection.FilmsNamed).map(f =>
-          s"${f.id} (${IdentityProjection.rebuilt(leanOf(f.id), f.record)})").mkString(", ")}")
-    }
+    if (unmoved.nonEmpty) warnUnbuilt(unmoved, drafted)
     // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
     val patchable: ProjectedFilm => Option[MovieRecord] =
@@ -503,29 +497,46 @@ final class IdentityProjection(
     val (unwritten, parked) = phases("writes")(writes(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
       patchable))
     val declined  = unwritten.size
-    // A film now identified otherwise — by TMDB, or, one TMDB has no record of, by the fallback source's IMDb id — once
-    // its TMDB answer is whole: announced while its details were still to come (TMDB failing), its IMDb-id recovery
-    // searched without the film's original title or director and was never asked again once they arrived.
-    changed.filter(f => !IdentityProjection.awaitsDetails(f.record) && before.get(f.id).forall(s =>
-      IdentityProjection.awaitsDetails(s.record) || s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
-      Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
-    }
+    announceIdentified(changed, before)
     val seconds = started.seconds
     metrics.projected(films, listings, plan.regroupings, seconds)
     lastUnwritten = unwritten
     lastParked    = parked
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
       changed = changed, backlog = agreementBacklog())
-    tools.LogFields.info(logger.underlyingLogger, f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
-        s"declined $declined; ${plan.regroupings}" +
-        f" in $seconds%.1fs (${phases.render})",
-      Seq("listings" -> listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> declined,
-        "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
-        // which films, a handful: what a retire or decline burst is drilled into by
-        "retired_films" -> Option.when(plan.retired.nonEmpty)(plan.retired.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" ")),
-        "declined_films" -> Option.when(unwritten.nonEmpty)(unwritten.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" "))))
+    logWritten(tick, plan, films, seconds, phases, patch, unwritten)
     tick
   }
+
+  /** Films drafted from venue slots a build from their rows does not give, left as stored: logged with what the venue
+   *  slot memo held for each (its lean slot) and what it missed. */
+  private def warnUnbuilt(unmoved: Seq[ProjectedFilm], drafted: Seq[ProjectedFilm]): Unit = {
+    val leanOf = drafted.iterator.map(f => f.id -> f.record).toMap
+    logger.warn(s"identity projection: ${unmoved.size} film(s) drafted from venue slots a build from their rows does not give, " +
+      s"left as stored: ${unmoved.sortBy(_.id.value).take(IdentityProjection.FilmsNamed).map(f =>
+        s"${f.id} (${IdentityProjection.rebuilt(leanOf(f.id), f.record)})").mkString(", ")}")
+  }
+
+  /** A film now identified otherwise — by TMDB, or, one TMDB has no record of, by the fallback source's IMDb id — once
+   *  its TMDB answer is whole, announced: announced while its details were still to come (TMDB failing), its IMDb-id
+   *  recovery searched without the film's original title or director and was never asked again once they arrived. */
+  private def announceIdentified(changed: Seq[ProjectedFilm], before: Map[FilmId, StoredMovieRecord]): Unit =
+    changed.filter(f => !IdentityProjection.awaitsDetails(f.record) && before.get(f.id).forall(s =>
+      IdentityProjection.awaitsDetails(s.record) || s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
+      Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
+    }
+
+  /** The written projection's log line, with its fields: which films, a handful, what a retire or decline burst is
+   *  drilled into by. */
+  private def logWritten(tick: ProjectionTick, plan: ProjectionPlan, films: Int, seconds: Double, phases: ProjectionPhases,
+                         patch: Boolean, unwritten: Set[FilmId]): Unit =
+    tools.LogFields.info(logger.underlyingLogger, f"identity projection: ${tick.listings} listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
+        s"declined ${tick.declined}; ${plan.regroupings}" +
+        f" in $seconds%.1fs (${phases.render})",
+      Seq("listings" -> tick.listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> tick.declined,
+        "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
+        "retired_films" -> Option.when(plan.retired.nonEmpty)(plan.retired.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" ")),
+        "declined_films" -> Option.when(unwritten.nonEmpty)(unwritten.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" "))))
 
 }
 

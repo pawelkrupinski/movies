@@ -317,19 +317,7 @@ final class IdentityModelService(
     val seenKeys = seen.iterator.map(_.key).toSet
     val back     = seenKeys.filter(departed.containsKey)
     back.foreach(departed.remove)
-    // a listing held as kept that its venue's page no longer names left before: it keeps the departure it has
-    val leftAll  = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
-      .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
-    // a departed listing its own venue bills again under another key (a lent page and year, another case) is back, not
-    // departed: one that leaves as its twin arrives is never written, one already stored is deleted -- that one alone, so
-    // the delete never reaches the archive's expired row of an earlier departure under a key leaving now
-    val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[models.ListingKey]
-                   else ListingRetention.returnedUnderAnotherKey((departed.values.asScala ++ leftAll.values).map(_.listing).toSeq, seen)
-                     .iterator.map(_.key).toSet
-    val left     = leftAll -- twins
-    val stored   = twins.filter(departed.containsKey)
-    stored.foreach(departed.remove)
-    if (stored.nonEmpty) deleteTwins(stored, atBoot = false)
+    val left     = departing(engine, seen, seenKeys, leaving, now)
     left.foreach { case (k, d) => departed.put(k, d) }
     val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now, retentionWindow) => k }.toSeq
     aged.foreach(departed.remove)
@@ -338,16 +326,44 @@ final class IdentityModelService(
       if (back.nonEmpty || aged.nonEmpty) persist(retainedStore.update(Nil, back ++ aged))
       (seen, going.toSeq)
     } else {
-      val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)).toSeq ++ seen
-      val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => models.ListingKey.serialised(d.listing.key)),
-        present, now, normalizer, formsOf, retentionWindow)
-      val keptKeys = kept.iterator.map(_.key).toSet
-      val newly    = kept.filterNot(l => retained.contains(l.key))
-      val dropped  = (going ++ retained.asScala).filterNot(k => keptKeys(k) || seenKeys(k)).toSeq
-      retained.clear(); keptKeys.foreach(retained.add)
+      val (newly, dropped) = rekept(engine, seen, seenKeys, going, now)
       if (back.nonEmpty || left.nonEmpty || aged.nonEmpty) persist(retainedStore.update(left.values.toSeq, back ++ aged))
       (seen ++ newly, dropped)
     }
+  }
+
+  /** The billed listings of `leaving` that depart now, each with its facts as last held and `now`. A listing held as kept
+   *  that its venue's page no longer names left before: it keeps the departure it has. A departed listing its own venue
+   *  bills again under another key (a lent page and year, another case) is back, not departed: one that leaves as its
+   *  twin arrives is never written, one already stored is deleted -- that one alone, so the delete never reaches the
+   *  archive's expired row of an earlier departure under a key leaving now. */
+  private def departing(engine: IncrementalResolver, seen: Seq[Listing], seenKeys: Set[models.ListingKey],
+                        leaving: Iterable[models.ListingKey], now: Long): Map[models.ListingKey, ListingRetention.Departed] = {
+    val leftAll  = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
+      .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
+    val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[models.ListingKey]
+                   else ListingRetention.returnedUnderAnotherKey((departed.values.asScala ++ leftAll.values).map(_.listing).toSeq, seen)
+                     .iterator.map(_.key).toSet
+    val left     = leftAll -- twins
+    val stored   = twins.filter(departed.containsKey)
+    stored.foreach(departed.remove)
+    if (stored.nonEmpty) deleteTwins(stored, atBoot = false)
+    left
+  }
+
+  /** The listings kept recomputed WHOLE from the departed and the billed ones ([[ListingRetention.retainedAt]]), held as
+   *  kept from now: those newly kept, and the keys the model lets go -- those `going` or kept before, kept no more and not
+   *  billed. */
+  private def rekept(engine: IncrementalResolver, seen: Seq[Listing], seenKeys: Set[models.ListingKey],
+                     going: Set[models.ListingKey], now: Long): (Seq[Listing], Seq[models.ListingKey]) = {
+    val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)).toSeq ++ seen
+    val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => models.ListingKey.serialised(d.listing.key)),
+      present, now, normalizer, formsOf, retentionWindow)
+    val keptKeys = kept.iterator.map(_.key).toSet
+    val newly    = kept.filterNot(l => retained.contains(l.key))
+    val dropped  = (going ++ retained.asScala).filterNot(k => keptKeys(k) || seenKeys(k)).toSeq
+    retained.clear(); keptKeys.foreach(retained.add)
+    (newly, dropped)
   }
 
   /** The kept set a take-up resumes, against `present` (the listings billed now): [[ListingRetention.retainedAt]] of the
@@ -360,23 +376,26 @@ final class IdentityModelService(
     if (present.isEmpty) Nil
     else scala.util.Try(retainedStore.read()).fold(
       failed => { logger.warn(s"identity model: the departed listings could not be read -- none resumed: $failed"); Nil },
-      read => {
-        val now     = clock.millis()
-        val stored  = read.getOrElse(heldBefore().map(ListingRetention.Departed(_, ListingRetention.Unknown)))
-        val dated   = stored.map(d => if (d.at == ListingRetention.Unknown) d.copy(at = now) else d)
-        val billed  = present.iterator.map(_.key).toSet
-        val (inputs, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now, retentionWindow))
-        val twins = ListingRetention.returnedUnderAnotherKey(inputs.map(_.listing), present).iterator.map(_.key).toSet
-        val live  = inputs.filterNot(d => twins(d.listing.key))
-        if (twins.nonEmpty) deleteTwins(twins, atBoot = true)
-        live.foreach(d => departed.put(d.listing.key, d))
-        if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size + twins.size != stored.size)
-          persist(retainedStore.replace(live))
-        val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf, retentionWindow)
-        kept.foreach(l => retained.add(l.key))
-        if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${retentionWindow.toDays} days")
-        kept
-      })
+      read => resumedFrom(read, present))
+  }
+
+  /** [[resumed]] of what the store `read` (none: never written). */
+  private def resumedFrom(read: Option[Seq[ListingRetention.Departed]], present: Seq[Listing]): Seq[Listing] = {
+    val now     = clock.millis()
+    val stored  = read.getOrElse(heldBefore().map(ListingRetention.Departed(_, ListingRetention.Unknown)))
+    val dated   = stored.map(d => if (d.at == ListingRetention.Unknown) d.copy(at = now) else d)
+    val billed  = present.iterator.map(_.key).toSet
+    val (inputs, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now, retentionWindow))
+    val twins = ListingRetention.returnedUnderAnotherKey(inputs.map(_.listing), present).iterator.map(_.key).toSet
+    val live  = inputs.filterNot(d => twins(d.listing.key))
+    if (twins.nonEmpty) deleteTwins(twins, atBoot = true)
+    live.foreach(d => departed.put(d.listing.key, d))
+    if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size + twins.size != stored.size)
+      persist(retainedStore.replace(live))
+    val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf, retentionWindow)
+    kept.foreach(l => retained.add(l.key))
+    if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${retentionWindow.toDays} days")
+    kept
   }
 
   /** `twins` (departed listings billed again under another key) deleted from the store, logged and counted: duplicates, so
