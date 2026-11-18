@@ -72,7 +72,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
       val taskType: TaskType                 = kind
       def handle(task: Task): HandlerOutcome = handler(task)
     })
-    new TaskWorker(queue, handlers, processingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
+    TaskWorkers(queue, handlers, processingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
       poolSize = settings.WorkerPoolSize(1), clock = clock, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking, stopwatch = tools.SpecStopwatch.Frozen).claimAndRun("w0") shouldBe TaskWorker.PollResult.Completed
   }
 
@@ -158,7 +158,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
   "Every task that sends requests" should "name a path of its own, never `other`" in {
     val silent = Set[TaskType](TaskType.SettleNow, TaskType.RenderShareCard, TaskType.PruneShareCards,
       TaskType.ReleaseShareCardHold, TaskType.RenderCityCard, TaskType.AuditReadModelContent, TaskType.AuditShareCards)
-    for (taskType <- TaskType.all.filterNot(silent)) withClue(taskType.name)(TaskWorker.httpPathOf(taskType) should not be HttpPath.Other)
-    TaskType.all.map(TaskWorker.httpPathOf).toSet.subsetOf(HttpPath.all.toSet) shouldBe true
+    for (taskType <- TaskType.all.filterNot(silent)) withClue(taskType.name)(TaskDispatch.httpPathOf(taskType) should not be HttpPath.Other)
+    TaskType.all.map(TaskDispatch.httpPathOf).toSet.subsetOf(HttpPath.all.toSet) shouldBe true
   }
 }

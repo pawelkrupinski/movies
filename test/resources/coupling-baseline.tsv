@@ -265,7 +265,6 @@ fanout	services.tasks.RatingEnqueuer	13
 fanout	services.tasks.RatingHandler	10
 fanout	services.tasks.RatingRunCensus	12
 fanout	services.tasks.RatingSchedule	10
-fanout	services.tasks.TaskWorker	15
 fanout	services.tasks.WorkerTaskMetrics	21
 fanout	services.titles.TitleNormalizer	11
 fanout	services.users.MongoUserStateRepository	14

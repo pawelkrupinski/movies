@@ -5,18 +5,15 @@ import services.tasktypes.TaskType
 import settings.WorkerPoolSize
 
 import tools.Stoppable
-import services.tasks.WorkerTaskMetrics.Outcome
-import tools.{ThreadPools, TickRecorder, ScheduledTick}
 import play.api.Logging
 
 import java.net.InetAddress
 import java.time.Instant
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /** Does the actual work for one task type. The first thing a handler should do
  *  is re-check freshness and return `Skipped` if the data is already current —
@@ -46,6 +43,9 @@ trait TaskHandler {
  * still claim atomically against Mongo and a spurious or missed ring is harmless
  * — at worst it costs one extra cheap claim, or defers pickup to the backstop.
  *
+ * The parts: [[TaskDispatch]] runs a claimed task through its handler and [[TaskSettlement]] settles what it
+ * answered; [[TaskLeaseReaper]] is the pool's shared timer thread. This class is the pool itself.
+ *
  * `idleBackstop` bounds how long a worker stays parked without a ring: a safety
  * net for a change-stream blip, a standalone (non-replica-set) Mongo that can't
  * stream, or a lease another machine returned to waiting that this node didn't
@@ -54,7 +54,7 @@ trait TaskHandler {
  * failing task retries at ~`retryBackoff` cadence rather than hot-spinning; that
  * pause deliberately ignores the doorbell. Each retry is also held back on the
  * per-task exponential backoff (`retryBackoffFor`), and after `maxAttempts` the
- * task is dropped for good (`exhaust`) — the pool never retries anything for ever.
+ * task is dropped for good ([[TaskSettlement]]) — the pool never retries anything for ever.
  *
  * `processingTimeout` is the lease length: any task left in `worked_on` longer
  * than this — a crashed worker, a handler that hung, a fetch stuck past its own
@@ -71,41 +71,31 @@ trait TaskHandler {
  */
 class TaskWorker(
   queue:             TaskConsumer,
-  handlers:          Seq[TaskHandler],
+  // Runs a claimed task through its type's handler and settles what it answered.
+  dispatch:          TaskDispatch,
+  // Returns expired leases to waiting, and rings the pool when a held task becomes claimable.
+  leases:            TaskLeaseReaper,
   processingTimeout: TaskWorker.ProcessingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
   retryBackoff:      TaskWorker.RetryBackoff = TaskWorker.RetryBackoff(2.seconds),
   idleBackstop:      TaskWorker.IdleBackstop = TaskWorker.IdleBackstop(30.seconds),
   poolSize:          WorkerPoolSize = WorkerPoolSize(TaskWorker.DefaultPoolSize),
-  reapInterval:      TaskWorker.ReapInterval = TaskWorker.ReapInterval(30.seconds),
-  maxAttempts:       TaskWorker.MaxAttempts = TaskWorker.MaxAttempts(TaskWorker.DefaultMaxAttempts),
-  // Invoked with the task the instant it completes successfully (Done/Skipped),
-  // never on a reschedule. The composition root wires this to publish a
-  // `TaskFinished` event so consumers (e.g. the chunk-scrape coordinator) can chain follow-up
-  // work; default no-op keeps the worker decoupled from the bus.
-  onCompleted:       Task => Unit   = _ => (),
-  // Metrics hook: notified on every claim and every handler outcome (with the
-  // handler's wall-clock). Default no-op keeps the worker decoupled from the
-  // metrics sink; the composition root wires WorkerTaskMetrics here.
+  // Metrics hook: notified on every claim (and, through the dispatch's settlement, every handler
+  // outcome). Default no-op keeps the worker decoupled from the metrics sink; the composition root
+  // wires WorkerTaskMetrics here.
   observer:          TaskObserver   = TaskObserver.NoOp,
   // How long `stop()` waits for in-flight handlers to return before handing their tasks back itself.
   stopGrace:         FiniteDuration = TaskWorker.StopGrace,
-  // What "now" is for claims and a released task's back-off — the wiring's clock. It has to
-  // ADVANCE: a clock that stands still (TestWiring's pinned one) parks every backed-off task
-  // forever, so a harness that starts the task worker must give the wiring a moving clock.
+  // What "now" is for claims — the wiring's clock. It has to ADVANCE: a clock that stands still
+  // (TestWiring's pinned one) parks every backed-off task forever, so a harness that starts the task
+  // worker must give the wiring a moving clock.
   clock:             java.time.Clock,
-  // Where each completed lease reap is reported (`ScheduledTickStale`).
-  ticks:             TickRecorder = TickRecorder.Unrecorded,
-  threadPools:       ThreadPools,
-  // The retry back-off's sleep, and the monotonic source the idle wait's deadline, a handler's duration and the stop's
+  // The retry back-off's sleep, and the monotonic source the idle wait's deadline and the stop's
   // join grace are read on: the root's `sleep` and `stopwatch`. The idle wait blocks on the doorbell's monitor in real
   // time, so a spec that leaves the worker idle passes a stopwatch that moves (a frozen one never reaches the deadline).
   sleep:             scala.concurrent.duration.FiniteDuration => Unit,
   stopwatch:         tools.Stopwatch
 ) extends Stoppable with Logging {
-  import HandlerOutcome._
   import TaskWorker._
-
-  private val byType: Map[TaskType, TaskHandler] = handlers.map(h => h.taskType -> h).toMap
 
   private val baseId: String = {
     val host = Try(InetAddress.getLocalHost.getHostName).getOrElse("unknown")
@@ -124,25 +114,14 @@ class TaskWorker(
   private val doorbell: TaskDoorbell           = new TaskDoorbell(stopwatch)
   // Handle to the queue's new-task push; closed on stop().
   private var watchHandle: Option[AutoCloseable] = None
-  // Reaping is global, so one shared thread does it for the whole pool — and it
-  // must keep ticking while every worker is busy, which a per-worker reap can't.
-  private val reaper: ScheduledExecutorService = threadPools.scheduler("task-reaper")
 
   def start(): Unit = {
     running.set(true)
     // Push: ring the doorbell whenever the queue gains a fresh task, so a parked
     // worker wakes and claims it immediately instead of waiting out the backstop —
     // or, for a task held by `notBefore`, the moment its hold ends.
-    watchHandle = queue.watchWaiting(ringWhenClaimable)
-    // Leases run `processingTimeout` (5min), so reaping every `reapInterval`
-    // (30s) is ample. A reap returns crashed/stuck (and other nodes') leases to
-    // waiting; ring so the freed work is picked up now, not at the next backstop.
-    ticks.started("task-lease-reaper", reapInterval.value, reapInterval.value)
-    reaper.scheduleWithFixedDelay(
-      () => ScheduledTick.recorded("task-lease-reaper", reapInterval.value, logger, ticks) {
-        if (queue.reapExpiredLeases(clock.instant()) > 0) doorbell.ring()
-      },
-      reapInterval.value.toMillis, reapInterval.value.toMillis, TimeUnit.MILLISECONDS)
+    watchHandle = queue.watchWaiting(heldUntil => leases.ringWhenClaimable(heldUntil, () => doorbell.ring()))
+    leases.start(() => doorbell.ring())
     (0 until poolSize.value).foreach { i =>
       val id = s"$baseId-$i"
       val t  = new Thread(() => runLoop(id), s"task-worker-$i")
@@ -150,20 +129,8 @@ class TaskWorker(
       t.start()
       workers += t
     }
-    logger.info(s"TaskWorker started (${poolSize.value} worker(s) $baseId-0..${poolSize.value - 1}, ${byType.size} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.value.toSeconds}s, reap ${reapInterval.value.toSeconds}s).")
+    logger.info(s"TaskWorker started (${poolSize.value} worker(s) $baseId-0..${poolSize.value - 1}, ${dispatch.handlerCount} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.value.toSeconds}s, reap ${leases.interval.value.toSeconds}s).")
   }
-
-  /** Ring for a new task when it can be claimed: now, or when its hold ends. A held task's insert finds
-   *  nothing to claim, and its hold ending writes nothing, so without a timed ring the pool — parked
-   *  again — sat out `idleBackstop` with the task claimable: a staggered ScrapeChunk fan-out read 0–28 s
-   *  of head-of-line age around the clock on worker-uk with three of four slots idle (2026-10-07).
-   *  The ring runs on the reaper's thread; it only bumps the doorbell. */
-  private def ringWhenClaimable(heldUntil: Option[Instant]): Unit =
-    untilClaimable(clock.instant(), heldUntil) match {
-      // A push racing `stop()` meets a shut scheduler: nothing is left to wake then.
-      case Some(wait) => Try(reaper.schedule((() => doorbell.ring()): Runnable, wait.toNanos, TimeUnit.NANOSECONDS)); ()
-      case None       => doorbell.ring()
-    }
 
   /** One worker slot: claim a task, run it to completion, claim the next.
    *
@@ -223,116 +190,15 @@ class TaskWorker(
         doorbell.ring()
         observer.onStarted(task)          // claimed and kicked off
         inFlight.put(workerId, task)
-        // `Try` lets an InterruptedException through (it is not NonFatal): the stop's interrupt reaching a handler
-        // lands here, and its task is handed back rather than left leased.
-        try runHandler(task, workerId)
-        catch { case e: InterruptedException => if (stopping) handBack(task, workerId, 0L) else throw e }
+        try dispatch.run(task, workerId, stopping)
         finally inFlight.remove(workerId, task)
     }
 
   /** The doorbell's ring count — for tests asserting the baton hand-off. */
   private[tasks] def doorbellGeneration: Long = doorbell.generation
 
-  private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
-    case None =>
-      // No handler wired (e.g. mid-deploy) — return it, held off for `NoHandlerBackoff`, so a node
-      // that has the handler can take it rather than tombstoning unfinished work. Never claimable at
-      // once: as the oldest waiting row it would be every claim's next, and starve the queue.
-      queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"),
-        notBefore = Some(clock.instant().plusMillis(NoHandlerBackoff.toMillis)), refundAttempt = true)
-      observer.onFinished(task, Outcome.NoHandler, 0L)
-      PollResult.Returned
-    case Some(h) =>
-      val handled = stopwatch.timed(Try(tools.HttpPath.within(TaskWorker.httpPathOf(task.taskType))(h.handle(task))))
-      val (outcome, millis) = (handled.value, handled.millis)
-      outcome match {
-        case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
-        case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)
-        // Stopping: whatever the handler made of the interrupt is the shutdown's, not the task's — handed back at
-        // once, its attempt given back, for the next pod to claim without waiting out a lease or a backoff.
-        case _ if stopping => handBack(task, workerId, millis)
-        case Success(Reschedule(err)) =>
-          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, err, millis)
-          else {
-            queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
-            observer.onFinished(task, Outcome.Rescheduled, millis)
-            PollResult.Returned
-          }
-        // No work was attempted, so no backoff is owed and no attempt is charged:
-        // hold the task until the precondition is due to clear (the handler knows
-        // when — e.g. the circuit's own half-open instant) and hand back the
-        // increment `claim` took. Falls back to the normal curve when the handler
-        // names no instant, so an unhinted defer still can't hot-loop — and never past MaxBackoff.
-        case Success(Deferred(err, notBefore)) =>
-          queue.release(task.id, workerId, err,
-            Some(notBefore.fold(backoffUntil(task.attempts))(capped)), refundAttempt = true)
-          observer.onFinished(task, Outcome.Deferred, millis)
-          PollResult.Returned
-        case Failure(exception) if TaskWorker.isDeterministic(exception) =>
-          logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed permanently on attempt ${task.attempts} — " +
-                      s"dropping it without retry, a retry would replay it: ${exception.getMessage}")
-          queue.complete(task.id, workerId)
-          observer.onFinished(task, Outcome.Permanent, millis)
-          PollResult.Completed
-        case Failure(exception) =>
-          logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
-          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, Some(tools.FailureText.of(exception)), millis)
-          else {
-            queue.release(task.id, workerId, Some(tools.FailureText.of(exception)), Some(backoffUntil(task.attempts)))
-            observer.onFinished(task, Outcome.Failed, millis)
-            PollResult.Returned
-          }
-      }
-  }
-
-  /** The terminal state of a task that never succeeded: past `maxAttempts` it is
-   *  DROPPED — removed from the queue without success — logged once with its last
-   *  error, and metered as `exhausted`. Before this a failing task rode the 30-minute
-   *  backoff for the life of the deployment. The queue keeps no tombstone (an active
-   *  dedup entry that never cleared would block the key for ever, turning a transient
-   *  outage into a permanent hole), so the reapers remain the retry-forever loop, at
-   *  their own cadence: one that still finds the work due re-enqueues it fresh. A
-   *  `Deferred` never reaches here — it refunds its attempt, so a circuit-open host
-   *  cannot exhaust a task it never let run. Not `completeWith`: the chain hook fires
-   *  on success only. */
-  private def exhaust(task: Task, workerId: String, error: Option[String], handleMillis: Long): PollResult = {
-    logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} exhausted ${task.attempts} attempts — dropping it (last error: ${error.getOrElse("none")}).")
-    queue.complete(task.id, workerId)
-    observer.onFinished(task, Outcome.Exhausted, handleMillis)
-    PollResult.Completed
-  }
-
-  /** Tombstone a finished task (Done/Skipped), fire the chain hook, and record
-   *  the outcome — shared by the two completing branches. */
-  private def completeWith(task: Task, workerId: String, outcome: String, handleMillis: Long): PollResult = {
-    queue.complete(task.id, workerId)
-    Try(onCompleted(task))   // a buggy chain hook must not fail the completed task
-    observer.onFinished(task, outcome, handleMillis)
-    PollResult.Completed
-  }
-
-  // When this attempt failed transiently, hold the task back from re-claim until
-  // its exponential backoff elapses (see `TaskWorker.retryBackoffFor`).
-  private def backoffUntil(attempts: Int): Instant =
-    clock.instant().plusMillis(retryBackoffFor(attempts).toMillis)
-
-  // A handler's own "not before" is a hint, not a lease on the queue: held to the backoff cap
-  // so a precondition that names a far-off instant (or a bug that does) cannot park its task
-  // past the point the pool would have retried a genuine failure.
-  private def capped(notBefore: Instant): Instant = {
-    val ceiling = clock.instant().plusMillis(MaxBackoff.toMillis)
-    if (notBefore.isAfter(ceiling)) ceiling else notBefore
-  }
-
-  /** A task its worker stopped holding: back to waiting, claimable at once, the attempt `claim` charged given back. */
-  private def handBack(task: Task, workerId: String, handleMillis: Long): PollResult = {
-    queue.release(task.id, workerId, Some("the worker stopped"), notBefore = None, refundAttempt = true)
-    observer.onFinished(task, Outcome.Deferred, handleMillis)
-    PollResult.Returned
-  }
-
   /** Stop claiming, interrupt every worker (a sleep, an in-flight fetch), wait up to [[stopGrace]] for their handlers to
-   *  return — each hands its task back ([[handBack]]) — then hand back any task still held: a dying pod leaves nothing
+   *  return — each hands its task back ([[TaskSettlement.handBack]]) — then hand back any task still held: a dying pod leaves nothing
    *  leased behind it. Before, its tasks sat worked-on until their lease ran out (5 min) or came back charged and backed
    *  off as failures (prod PL 2026-10-04: three tasks held by a pod gone since 22:08 until 22:13). The queue's ownership
    *  guard turns a late completion from a handler that outlived the grace into a no-op. */
@@ -340,7 +206,7 @@ class TaskWorker(
     stopping = true
     running.set(false)
     watchHandle.foreach(h => Try(h.close()))
-    reaper.shutdownNow()           // the reap, and every hold's pending ring with it
+    leases.stop()                  // the reap, and every hold's pending ring with it
     doorbell.ringAll()             // wake every parked worker so it sees running=false
     workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep or fetch
     val waited = stopwatch.start()
@@ -355,23 +221,6 @@ class TaskWorker(
 }
 
 object TaskWorker {
-
-  /** Who a task's outbound requests are asked for ([[tools.HttpPath]], the `path` label of `kinowo_worker_http_total`):
-   *  the scrapes the scraping pipeline's, the ratings and IMDb-id resolution the pipeline's enrichment, a venue page read
-   *  `venue_page` (also what a film row's `EnrichDetails` reads, through `VenuePageReader`), the agreement's questions
-   *  `agreement`. The rest send none of their own. */
-  def httpPathOf(taskType: TaskType): String = taskType match {
-    case TaskType.ScrapeCinema | TaskType.ScrapeChunk | TaskType.ScrapeChunkReduce => tools.HttpPath.Scrape
-    case TaskType.EnrichDetails | TaskType.ResolveImdbId | TaskType.ImdbRating | TaskType.FilmwebRating |
-        TaskType.RtRating | TaskType.McRating | TaskType.RefreshAllImdb | TaskType.RefreshAllFilmweb |
-        TaskType.RefreshAllMetacritic | TaskType.RefreshAllRt | TaskType.RefreshAllOmdb => tools.HttpPath.Enrich
-    case TaskType.ReadVenuePage => tools.HttpPath.VenuePage
-    case TaskType.RefreshSource => tools.HttpPath.Refresh
-    case TaskType.AskQuestion | TaskType.AgreementQuestion | TaskType.AgreementFind | TaskType.AgreementPoster | TaskType.AgreementCatalogue =>
-      tools.HttpPath.Agreement
-    case TaskType.SettleNow | TaskType.RenderShareCard | TaskType.PruneShareCards | TaskType.ReleaseShareCardHold |
-        TaskType.RenderCityCard | TaskType.AuditReadModelContent | TaskType.AuditShareCards => tools.HttpPath.Other
-  }
 
   /** How long a stopping worker waits for its in-flight handlers before handing their tasks back itself — well inside
    *  the pod's 30 s termination grace, which the rest of the shutdown shares. */
@@ -421,7 +270,7 @@ object TaskWorker {
    *  different shape. */
   val DefaultPoolSize: Int = 4
 
-  /** How many claims a task gets before the pool gives up on it (see `exhaust`). The
+  /** How many claims a task gets before the pool gives up on it (see `TaskSettlement.exhaust`). The
    *  backoff curve reaches its 30-minute cap at attempt 10, so 12 is ~2.3 hours of
    *  retrying — comfortably past the staging handlers' own give-up budgets (6), which
    *  therefore still conclude on their own terms, and long enough that an upstream
@@ -430,7 +279,7 @@ object TaskWorker {
 
   /** Exponential backoff a transiently-failing task is held back before re-claim:
    *  5s, 10s, 20s, 40s, … doubling per attempt, capped at 30 min — and cut off for
-   *  good at `maxAttempts` (see `exhaust`). Keyed on
+   *  good at `maxAttempts` (see `TaskSettlement.exhaust`). Keyed on
    *  `attempts` (incremented on each claim, so the first failure ⇒ attempts=1 ⇒
    *  5s). This is the per-task version of what the inline `scheduleTmdbRetry`
    *  used to do for TMDB — now applied to every task type, so a rate-limited

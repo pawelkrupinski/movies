@@ -27,7 +27,6 @@ method-lines	worker/src/main/scala/services/enrichment/ImdbIdResolver.scala:Imdb
 method-lines	worker/src/main/scala/services/identityadapters/IdentityProjection.scala:IdentityProjection.write	54
 method-lines	worker/src/main/scala/services/identityadapters/IdentityStagingPublisher.scala:IdentityStagingPublisher.publish	98
 method-lines	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	73
-method-lines	worker/src/main/scala/services/tasks/TaskWorker.scala:TaskWorker.runHandler	51
 method-lines	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	55
 method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59
 method-lines	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.renderBase	59

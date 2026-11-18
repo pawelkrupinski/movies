@@ -59,19 +59,18 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
-  lazy val taskWorker = managedResources.stopping(new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
-      ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers ++ agreementHandlers,
-    poolSize = workerPoolSize,
-    // The SAME composite credit-throttle signal the reapers read, so the pool
-    // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
+  lazy val taskWorker = {
     // Each completed task announces itself (TaskFinished): the chunked-scrape coordinator
     // enqueues a run's reduce off its last chunk, and a share-card render re-projects its film.
-    onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
-    // Report claims / outcomes / handler durations to the Prometheus metrics.
-    observer = taskMetrics
-  , clock = clock, ticks = ticks, threadPools = threadPools,
-    sleep = sleep, stopwatch = stopwatch))
+    // Claims / outcomes / handler durations are reported to the Prometheus metrics (`taskMetrics`).
+    val settlement = new services.tasks.TaskSettlement(taskQueue, taskMetrics,
+      onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)), clock = clock)
+    val handlers = Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
+      ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers ++ agreementHandlers
+    managedResources.stopping(new TaskWorker(taskQueue, new services.tasks.TaskDispatch(handlers, settlement, stopwatch),
+      new services.tasks.TaskLeaseReaper(taskQueue, clock = clock, ticks = ticks, threadPools = threadPools),
+      poolSize = workerPoolSize, observer = taskMetrics, clock = clock, sleep = sleep, stopwatch = stopwatch))
+  }
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

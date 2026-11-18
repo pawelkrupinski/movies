@@ -165,7 +165,6 @@ cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:JpegHe
 cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:VipsPosterShrinker.knownFormat	11
 cyclomatic	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	29
 cyclomatic	worker/src/main/scala/services/sharecards/ShareCardService.scala:ShareCardService.render	14
-cyclomatic	worker/src/main/scala/services/tasks/TaskWorker.scala:TaskWorker.runHandler	14
 cyclomatic	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	11
 cyclomatic	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	11
 cyclomatic	worker/src/main/scala/tools/JsonLineEncoder.scala:JsonLineEncoder.field	11
