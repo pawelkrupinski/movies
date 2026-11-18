@@ -32,16 +32,21 @@ object TitleContainment {
   /** `whole.startsWith(base, at)` — walked in place over the lists [[tokens]] makes (and indexed over an indexed one): the
    *  resolver asks [[isTokenRun]] of every title pair it compares, and `startsWith`/`endsWith` built iterators each time. */
   private def runsFrom(whole: Seq[String], at: Int, base: Seq[String]): Boolean = whole match {
-    case w: List[String] if base.isInstanceOf[List[?]] =>
-      var rest = w.drop(at); var want = base.asInstanceOf[List[String]]
-      while (want.nonEmpty && rest.nonEmpty && rest.head == want.head) { rest = rest.tail; want = want.tail }
-      want.isEmpty
-    case w: IndexedSeq[?] if base.isInstanceOf[IndexedSeq[?]] =>
-      val b = base.asInstanceOf[IndexedSeq[String]]
-      var i = 0
-      while (i < b.length && at + i < w.length && w(at + i) == b(i)) i += 1
-      i == b.length
-    case _ => whole.startsWith(base, at)
+    case w: List[String] if base.isInstanceOf[List[?]]        => listStartsWith(w.drop(at), base.asInstanceOf[List[String]])
+    case w: IndexedSeq[?] if base.isInstanceOf[IndexedSeq[?]] => indexedRunsFrom(w.asInstanceOf[IndexedSeq[String]], at, base.asInstanceOf[IndexedSeq[String]])
+    case _                                                    => whole.startsWith(base, at)
+  }
+
+  private def listStartsWith(whole: List[String], base: List[String]): Boolean = {
+    var rest = whole; var want = base
+    while (want.nonEmpty && rest.nonEmpty && rest.head == want.head) { rest = rest.tail; want = want.tail }
+    want.isEmpty
+  }
+
+  private def indexedRunsFrom(whole: IndexedSeq[String], at: Int, base: IndexedSeq[String]): Boolean = {
+    var i = 0
+    while (i < base.length && at + i < whole.length && whole(at + i) == base(i)) i += 1
+    i == base.length
   }
 
   /** `whole` is a decorated screening of the film titled `base` (`latestYear`: [[LatestTitleYear]]). */

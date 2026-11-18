@@ -215,49 +215,79 @@ object FormatTags {
   def peel(raw: String): Peeled = {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(
       BracketedOriginalVersion.replaceAllIn(OriginalVersionPreposition.replaceAllIn(raw, " "), "OV"), "($1D)")
-    var t    = GluedFormatDash.replaceAllIn(GluedFormatPipe.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " | "), " - ")
+    val peeling = new Peeling(GluedFormatDash.replaceAllIn(GluedFormatPipe.replaceAllIn(GluedFormatSlash.replaceAllIn(
+      GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " | "), " - "))
     var previous = ""
-    var certificate = Option.empty[String]
-    var runtime     = Option.empty[Int]
-    val dropped = scala.collection.mutable.Set.empty[String]
-    def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined
-    while (t != previous) {
-      previous = t
-      LeadingFormatTag.findFirstIn(t).foreach { tag =>
-        captureTagWords(tag, dropped)
-        t = t.substring(tag.length).trim
-      }
-      AsteriskNote.findFirstIn(t).foreach { note =>
-        captureTagWords(note, dropped)
-        t = AsteriskNote.replaceFirstIn(t, "").trim
-      }
-      BracketedRunningTime.findFirstMatchIn(t).foreach { m =>
-        runtime = runtime.orElse(minutesOf(m.group("mins")))
-        t = (t.substring(0, m.start) + t.substring(m.end)).trim
-      }
-      CertificateNote.findFirstMatchIn(t).foreach { m =>
-        certificate = certificate.orElse(CertificateValue.findFirstIn(m.group("note")).map(_.toUpperCase(Locale.ROOT)))
-        runtime = runtime.orElse(Option(m.group("mins")).flatMap(minutesOf))
-        t = withoutCertificate(t, m)
-      }
-      t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(t, ""), "").trim
+    while (peeling.title != previous) {
+      previous = peeling.title
+      peeling.pass()
+    }
+    val tokens = spelled.toLowerCase(Locale.ROOT)
+      .split("""[\s\[\]().,/|:_*-]+""")
+      .iterator
+      .filter(peeling.dropped.contains)
+      .flatMap(FormatToken.get)
+      .distinct
+      .toList
+    // A peel can leave a library-style filing at the end it bared — "Rocky Horror Picture Show, The (WA)" — which the
+    // tidy-up's fronting, run before the peel, saw with the mark still behind it.
+    Peeled(TitleText.frontArticle(peeling.title), tokens, peeling.certificate.filterNot(_ == BbfcCertificate.Pending), peeling.runtime)
+  }
+
+  /** A title being peeled ([[peel]]): what is left of it (`title`), the format words taken off it (`dropped`), and the
+   *  certificate and running time its notes gave. Each [[pass]] takes off what one round of the peel finds. */
+  private final class Peeling(var title: String) {
+    var certificate: Option[String] = Option.empty
+    var runtime: Option[Int]        = Option.empty
+    val dropped: scala.collection.mutable.Set[String] = scala.collection.mutable.Set.empty
+
+    def pass(): Unit = {
+      leadingTag()
+      asteriskNote()
+      runningTime()
+      certificateNote()
+      title = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(title, ""), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.
       // A tag that is the WHOLE title is the title — "[REC]", Balagueró's film, came out as no
       // title at all (US corpus 2026-10-01, served in Detroit and Omaha as an empty card).
-      FormatBracketTag.findFirstIn(t).filterNot(uaGuarded).filter(_.trim != t).foreach { tag =>
-        captureTagWords(tag, dropped)
-        t = FormatBracketTag.replaceFirstIn(t, "").trim
-      }
-      FormatParenTag.findFirstIn(t).filterNot(uaGuarded).filter(_.trim != t).foreach { tag =>
-        captureTagWords(tag, dropped)
-        t = FormatParenTag.replaceFirstIn(t, "").trim
-      }
+      bracketTag(FormatBracketTag)
+      bracketTag(FormatParenTag)
       // After the bracket peels, which can expose a format behind its preposition ("… in 2D (OV)" → "… in 2D").
-      t = FormatPreposition.replaceAllIn(t, " $1")
-      var toks = t.split(" ").filter(_.nonEmpty).toVector
+      title = FormatPreposition.replaceAllIn(title, " $1")
+      trailingTags()
+    }
+
+    private def leadingTag(): Unit = LeadingFormatTag.findFirstIn(title).foreach { tag =>
+      captureTagWords(tag, dropped)
+      title = title.substring(tag.length).trim
+    }
+
+    private def asteriskNote(): Unit = AsteriskNote.findFirstIn(title).foreach { note =>
+      captureTagWords(note, dropped)
+      title = AsteriskNote.replaceFirstIn(title, "").trim
+    }
+
+    private def runningTime(): Unit = BracketedRunningTime.findFirstMatchIn(title).foreach { m =>
+      runtime = runtime.orElse(minutesOf(m.group("mins")))
+      title = (title.substring(0, m.start) + title.substring(m.end)).trim
+    }
+
+    private def certificateNote(): Unit = CertificateNote.findFirstMatchIn(title).foreach { m =>
+      certificate = certificate.orElse(CertificateValue.findFirstIn(m.group("note")).map(_.toUpperCase(Locale.ROOT)))
+      runtime = runtime.orElse(Option(m.group("mins")).flatMap(minutesOf))
+      title = withoutCertificate(title, m)
+    }
+
+    private def bracketTag(tags: scala.util.matching.Regex): Unit =
+      tags.findFirstIn(title).filterNot(tag => UaGuardedTag.findFirstIn(tag).isDefined).filter(_.trim != title).foreach { tag =>
+        captureTagWords(tag, dropped)
+        title = tags.replaceFirstIn(title, "").trim
+      }
+
+    private def trailingTags(): Unit = {
+      var toks = title.split(" ").filter(_.nonEmpty).toVector
       while (toks.length > 1 && (isDroppableTag(toks.last) || isLanguageQualifier(toks)) && !uaGuardedTail(toks) && !endsAOneWordTitle(toks)) {
         captureTagWords(toks.last, dropped)
         toks = toks.dropRight(1)
@@ -265,18 +295,8 @@ object FormatTags {
       // Some portals glue the format tag to the title with a separator and a
       // space ("Straszny Film- 2D dubbing"): dropping the format words leaves a
       // dangling "Film-". Trim a trailing separator so the variants collapse.
-      t = toks.mkString(" ").replaceAll("""\s*[-–—|/:,]+\s*$""", "").trim
+      title = toks.mkString(" ").replaceAll("""\s*[-–—|/:,]+\s*$""", "").trim
     }
-    val tokens = spelled.toLowerCase(Locale.ROOT)
-      .split("""[\s\[\]().,/|:_*-]+""")
-      .iterator
-      .filter(dropped.contains)
-      .flatMap(FormatToken.get)
-      .distinct
-      .toList
-    // A peel can leave a library-style filing at the end it bared — "Rocky Horror Picture Show, The (WA)" — which the
-    // tidy-up's fronting, run before the peel, saw with the mark still behind it.
-    Peeled(TitleText.frontArticle(t), tokens, certificate.filterNot(_ == BbfcCertificate.Pending), runtime)
   }
 
   /** Record every [[FormatToken]]-bearing word in `chunk` (a single token or a

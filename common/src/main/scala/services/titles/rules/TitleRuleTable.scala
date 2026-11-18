@@ -42,36 +42,56 @@ object TitleRuleTable {
    *  example is refused — what a row does is shown by one, and the mutation spec reads it. */
   def parse(lines: Iterator[String]): Seq[Row] =
     lines.zipWithIndex.filter { case (line, _) => line.trim.nonEmpty && !line.startsWith("#") }.zipWithIndex.map {
-      case ((line, lineNo), position) =>
-        def fail(why: String) = throw new IllegalArgumentException(s"$Resource:${lineNo + 1}: $why: '$line'")
-        val cells = line.split("\t", -1).toSeq.padTo(11, "")
-        if (cells.size > 11) fail("more than 11 columns")
-        val Seq(id, kind, cinema, countries, flags, effect, season, pattern, replacement, note, examples) = cells: @unchecked
-        if (id.isEmpty || pattern.isEmpty) fail("no id or no pattern")
-        val flagSet = flags.split(',').map(_.trim).filter(_.nonEmpty).toSet
-        flagSet.diff(Set("all", "seed")).foreach(f => fail(s"unknown flag '$f'"))
-        if (!Effects(effect)) fail(s"unknown effect '$effect'")
-        if (season.nonEmpty && !Season.matches(season)) fail(s"season '$season' is not mmm or mmm-mmm")
-        val scope = kind match {
-          case "banner" | "query" => RuleScope.GlobalStructural
-          case "key" | "name"     => RuleScope.Canonical
-          case "venue"            => RuleScope.PerCinema
-          case other              => fail(s"unknown kind '$other'")
-        }
-        if ((kind == "venue") != cinema.nonEmpty) fail("a venue row names its cinema, and only a venue row does")
-        val countrySet = Option.when(countries.nonEmpty)(countries.split(',').toSet.map(code =>
-          Country.byCode(code.trim).getOrElse(fail(s"unknown country '$code'"))))
-        val rule = TitleRule(id, scope, Option.when(cinema.nonEmpty)(cinema), pattern, replacement, applyAll = flagSet("all"),
-          order = position, tag = Option.when(kind == "banner")("programmePrefix"), note = Option.when(note.nonEmpty)(note),
-          countries = countrySet, writesProperName = kind == "name")
-        if (examples.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
-        val pairs = scala.util.Try(Json.parse(examples).as[Seq[Seq[String]]]).getOrElse(fail("examples are not a JSON list of pairs")).map {
-          case Seq(title, query) => title -> query
-          case other             => fail(s"an example is a [billing, reading] pair, not $other")
-        }
-        if (pairs.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
-        Row(rule, effect, Option.when(season.nonEmpty)(season), flagSet("seed"), pairs)
+      case ((line, lineNo), position) => new TableLine(line, lineNo).row(position)
     }.toSeq
+
+  /** One line of the table (`lineNo` from 0) read as a [[Row]], each cell's check a step of its own, in the order a
+   *  malformed line is refused by. */
+  private final class TableLine(line: String, lineNo: Int) {
+    private def fail(why: String) = throw new IllegalArgumentException(s"$Resource:${lineNo + 1}: $why: '$line'")
+
+    def row(position: Int): Row = {
+      val cells = line.split("\t", -1).toSeq.padTo(11, "")
+      if (cells.size > 11) fail("more than 11 columns")
+      val Seq(id, kind, cinema, countries, flags, effect, season, pattern, replacement, note, examples) = cells: @unchecked
+      if (id.isEmpty || pattern.isEmpty) fail("no id or no pattern")
+      val flagSet = flagsOf(flags)
+      if (!Effects(effect)) fail(s"unknown effect '$effect'")
+      if (season.nonEmpty && !Season.matches(season)) fail(s"season '$season' is not mmm or mmm-mmm")
+      val scope = scopeOf(kind)
+      if ((kind == "venue") != cinema.nonEmpty) fail("a venue row names its cinema, and only a venue row does")
+      val rule = TitleRule(id, scope, Option.when(cinema.nonEmpty)(cinema), pattern, replacement, applyAll = flagSet("all"),
+        order = position, tag = Option.when(kind == "banner")("programmePrefix"), note = Option.when(note.nonEmpty)(note),
+        countries = countriesOf(countries), writesProperName = kind == "name")
+      Row(rule, effect, Option.when(season.nonEmpty)(season), flagSet("seed"), examplesOf(examples))
+    }
+
+    private def flagsOf(flags: String): Set[String] = {
+      val flagSet = flags.split(',').map(_.trim).filter(_.nonEmpty).toSet
+      flagSet.diff(Set("all", "seed")).foreach(f => fail(s"unknown flag '$f'"))
+      flagSet
+    }
+
+    private def scopeOf(kind: String): RuleScope = kind match {
+      case "banner" | "query" => RuleScope.GlobalStructural
+      case "key" | "name"     => RuleScope.Canonical
+      case "venue"            => RuleScope.PerCinema
+      case other              => fail(s"unknown kind '$other'")
+    }
+
+    private def countriesOf(countries: String): Option[Set[Country]] =
+      Option.when(countries.nonEmpty)(countries.split(',').toSet.map(code => Country.byCode(code.trim).getOrElse(fail(s"unknown country '$code'"))))
+
+    private def examplesOf(examples: String): Seq[(String, String)] = {
+      if (examples.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
+      val pairs = scala.util.Try(Json.parse(examples).as[Seq[Seq[String]]]).getOrElse(fail("examples are not a JSON list of pairs")).map {
+        case Seq(title, query) => title -> query
+        case other             => fail(s"an example is a [billing, reading] pair, not $other")
+      }
+      if (pairs.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
+      pairs
+    }
+  }
 
   lazy val rows: Seq[Row] = {
     val in = Option(getClass.getClassLoader.getResourceAsStream(Resource)).getOrElse(throw new IllegalStateException(s"no $Resource on the classpath"))

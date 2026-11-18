@@ -75,23 +75,35 @@ object BillingPieces {
 
   /** The [[Delimiter]]s that cut the billing itself: none inside a bracket or a quotation, nor a clock's colon ("19:45"). */
   private def cuts(raw: String): IndexedSeq[(Int, Int)] = {
-    val found = Delimiter.matcher(raw)
-    val out   = IndexedSeq.newBuilder[(Int, Int)]
-    var depth = 0; var quoted = false; var at = 0
+    val found   = Delimiter.matcher(raw)
+    val out     = IndexedSeq.newBuilder[(Int, Int)]
+    val nesting = new Nesting(raw)
     while (found.find()) {
-      while (at < found.start) {
-        raw(at) match {
-          case '(' | '[' => depth += 1
-          case ')' | ']' => depth = math.max(0, depth - 1)
-          case '"' | '„' | '“' | '”' => quoted = raw(at) match { case '„' => true; case '”' => false; case _ => !quoted }
-          case _ =>
-        }
-        at += 1
-      }
-      val clock = found.group().trim == ":" && found.start > 0 && raw(found.start - 1).isDigit && found.end < raw.length && raw(found.end).isDigit
-      if (depth == 0 && !quoted && !clock) out += ((found.start, found.end))
+      nesting.advanceTo(found.start)
+      if (nesting.outside && !clock(raw, found)) out += ((found.start, found.end))
     }
     out.result()
+  }
+
+  /** Is the delimiter `found` a clock's colon ("19:45"), a digit either side of it? */
+  private def clock(raw: String, found: java.util.regex.Matcher): Boolean =
+    found.group().trim == ":" && found.start > 0 && raw(found.start - 1).isDigit && found.end < raw.length && raw(found.end).isDigit
+
+  /** A walk along `raw` from its start: how deep in brackets it stands, and whether inside a quotation. */
+  private final class Nesting(raw: String) {
+    private var depth  = 0
+    private var quoted = false
+    private var at     = 0
+    /** Outside every bracket and quotation? */
+    def outside: Boolean = depth == 0 && !quoted
+    /** Walks on to `end`, reading each character passed. */
+    def advanceTo(end: Int): Unit = while (at < end) { pass(raw(at)); at += 1 }
+    private def pass(c: Char): Unit = c match {
+      case '(' | '[' => depth += 1
+      case ')' | ']' => depth = math.max(0, depth - 1)
+      case '"' | '„' | '“' | '”' => quoted = c match { case '„' => true; case '”' => false; case _ => !quoted }
+      case _ =>
+    }
   }
 
   /** Where the billing's WORK lies in it: the billing less a leading piece naming a strand, a programme or a club

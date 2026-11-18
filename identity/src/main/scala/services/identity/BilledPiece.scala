@@ -53,21 +53,44 @@ private[identity] object BilledPiece {
   def of(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film, tmdbId: Option[Int],
          measures: Map[String, Measure], corroborated: Double, recurs: String => Boolean,
          answered: CandidateQuery => Seq[Hit], keeps: Keeps = Keeps.All): Option[Piece] = {
-    def screened = corroborated >= IdentityResolver.PieceCorroboration
+    val read = new Reading(evidence, listings, country, film, tmdbId, measures, recurs, answered)
+    // a pantomime's OWN record ([[ListingShape.showsOwnRecord]]) is the show's, an event's: no film the venue screens
+    if (ListingShape.showsOwnRecord(evidence.rawTitle, film, read.venues)) Some(OwnRecord)
+    else if (read.stated) None
+    else if (corroborated >= IdentityResolver.PieceCorroboration || read.keepsWhatIsAround(keeps)) read.staged
+    else read.staged.orElse(read.besideTheFilm(keeps))
+  }
+
+  private val OwnRecord = Piece("the record is the staged show's own: a pantomime is an event, no film", staging = true)
+
+  /** One billing read against `film`, each question [[of]] asks of it a method: read only when asked, as [[of]]'s
+   *  branches ask them. */
+  private final class Reading(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film,
+                              tmdbId: Option[Int], measures: Map[String, Measure], recurs: String => Boolean,
+                              answered: CandidateQuery => Seq[Hit]) {
+    import services.titles.TitleContainment.tokens
+
+    private val listing = listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
+
     // a staged show ([[ListingShape.ShowWords]]) dates itself by its season, which its work's film of the next year stays a
     // year off: only its film's exact year is a fact of the film's (UK "CBeebies Panto 2026: Treasure Island", Hyde Park
     // Picture House publishing 2026, is not Ridley Scott's 2027 "Treasure Island")
-    def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(IdentityMeasures.Number(0)))
-    def show      = services.titles.TitleContainment.tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
-    def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
-    def stated    = agreed.nonEmpty ||
+    private def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(IdentityMeasures.Number(0)))
+    private def show      = tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
+    private def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
+
+    /** Does the listing state a fact of the film's own: a year, a director or an original title, a running time within
+     *  [[IdentityResolver.PieceRuntimeAgreement]] minutes, a feed's TMDB link? */
+    def stated: Boolean = agreed.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
       FeedLink.linked(listings).exists(link => tmdbId.contains(link._2))
+
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
     // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)
-    def current = film.year.fold(film.released.isEmpty)(year =>
+    private def current = film.year.fold(film.released.isEmpty)(year =>
       listings.flatMap(_.screenings.firstYear).minOption.exists(year >= _ - IdentityResolver.CurrentRelease))
+
     // a foreign film TMDB knows by no title in the venue's language — its local title is its original — billed first, or
     // under one of its titles after one other piece: what the venue bills beside it is its own translation, subtitle or
     // subject (DE "Ekmek parası - Geld für's Brot", "Épines du Sahel - Die Dornen der Sahelzone", "LÍDA BAAROVÁ – DOOMED
@@ -76,50 +99,61 @@ private[identity] object BilledPiece {
     // touring pantomime, is not the 1939 US film untranslated); nor does a title in the venue's own language, whichever
     // country TMDB files the film under (DE "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local
     // documentary, is not Toscano's 2015 portraits, a US record of that German original title)
-    def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
+    private def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
       !film.countries.exists(_.exists(filmCountry => country.exists(venue => IdentityMeasures.sharesLanguage(venue, filmCountry)))) &&
       !country.flatMap(IdentityMeasures.languageOf).exists(tools.TextLanguage.readsAs(film.title, _)) &&
-      (services.titles.TitleContainment.tokens(evidence.rawTitle).startsWith(services.titles.TitleContainment.tokens(film.title)) ||
-        ListingShape.titledAfterPiece(evidence.rawTitle, film))
-    import services.titles.TitleContainment.tokens
+      (tokens(evidence.rawTitle).startsWith(tokens(film.title)) || ListingShape.titledAfterPiece(evidence.rawTitle, film))
+
+    /** Does `keeps` read what is billed around the film as the venue's, whatever it says (unless it names a staging)? A
+     *  current release or a foreign film billed untranslated for [[Keeps.All]], a current release for
+     *  [[Keeps.FactsOrCurrent]]; a billing listing several works by name is a programme, whatever its first piece's film
+     *  (DE "Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads
+     *  it as one film's. */
+    def keepsWhatIsAround(keeps: Keeps): Boolean = keeps match {
+      case Keeps.All            => !BillingPieces.listsWorks(evidence.rawTitle) && (current || untranslated)
+      case Keeps.FactsOrCurrent => !BillingPieces.listsWorks(evidence.rawTitle) && current
+      case Keeps.Facts          => false
+    }
+
     // a word of every listing's venue's name or city (`places`), inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
-    def placed(word: String, places: models.Cinema => Seq[Seq[String]]) = word.length >= IdentityMeasures.StemLetters &&
+    private def placed(word: String, places: models.Cinema => Seq[Seq[String]]) = word.length >= IdentityMeasures.StemLetters &&
       listings.forall(listing => places(listing.cinema).flatten
         .exists(place => place.length >= IdentityMeasures.StemLetters && (word.startsWith(place) || place.startsWith(word))))
-    def venues(word: String) = placed(word, EvidenceNode.placesOf)
-    def venueNamed(word: String) = placed(word, cinema => Seq(tokens(cinema.displayName)))
-    val listing = listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
+    def venues(word: String): Boolean = placed(word, EvidenceNode.placesOf)
+    private def venueNamed(word: String) = placed(word, cinema => Seq(tokens(cinema.displayName)))
+
     // a piece naming a stage show — a theatre, a musical ([[ListingShape.StageWords]]), not the venue's own name — beside the
     // film: the billing is a staging of the work, however widely the film is screened or whichever town the piece names
     // (UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY", four venues billing the 1992 film plainly)
-    def staging(piece: Seq[String]) = piece.exists(word => ListingShape.StageWords(word) && !venues(word))
-    lazy val filmWords = film.titles.flatMap(tokens).toSet
-    lazy val staged = Option.when(staging(tokens(evidence.rawTitle).filterNot(filmWords)))(
+    private def staging(piece: Seq[String]) = piece.exists(word => ListingShape.StageWords(word) && !venues(word))
+    private lazy val filmWords = film.titles.flatMap(tokens).toSet
+
+    /** The piece beside the film naming a staging of its work, if one does. */
+    lazy val staged: Option[Piece] = Option.when(staging(tokens(evidence.rawTitle).filterNot(filmWords)))(
       ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece),
         bannerSlot = !tokens(evidence.rawTitle).exists(ListingShape.ShowWords))).flatten
       .map(Piece(_, staging = true))
-    // a pantomime's OWN record ([[ListingShape.showsOwnRecord]]) is the show's, an event's: no film the venue screens
-    if (ListingShape.showsOwnRecord(evidence.rawTitle, film, venues)) Some(Piece("the record is the staged show's own: a pantomime is an event, no film", staging = true))
-    else if (stated) None
-    // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
-    // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
-    else if (screened || (keeps == Keeps.All && !BillingPieces.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
-    else if (keeps == Keeps.FactsOrCurrent && !BillingPieces.listsWorks(evidence.rawTitle) && current) staged
-    else if (keeps != Keeps.All) staged.orElse(ListingShape.billedBeside(listing, Seq(film)).map(Piece(_, staging = false)))
-    else {
-      lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
-      lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)
-      // one word of consonants alone: a programme's initials ("Kopnięci w czasie|Fks", a seniors' film club)
-      def acronym(piece: Seq[String]) = piece.sizeIs == 1 && !piece.head.exists(c => "aeiouy".contains(c) || c.isDigit)
-      def dated(word: String) = word.length == 4 && word.forall(_.isDigit) && film.year.exists(_ < word.toInt)
-      // another title of the film itself: its search's first film, or one IMDb lists under it in some language (DE
-      // "Épines du Sahel - Die Dornen der Sahelzone", the German release title TMDB's record does not carry)
-      def titles(piece: Seq[String]) = evidence.published.shapes.exists(shape => tokens(shape) == piece &&
-        tmdbId.exists(id => answered(CandidateQuery.Title(shape)).headOption.exists(_.tmdbId == id) || answered(CandidateQuery.ImdbTitled(shape)).exists(_.tmdbId == id)))
-      staged.orElse(ListingShape.billedBeside(listing, Seq(film), piece =>
-        piece.exists(word => dated(word) || venueNamed(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
-        .map(Piece(_, staging = false)))
-    }
+
+    /** The piece billed beside the film ([[ListingShape.billedBeside]]); for [[Keeps.All]], none the venue's own
+     *  wording around a film ([[aroundAFilm]]). */
+    def besideTheFilm(keeps: Keeps): Option[Piece] =
+      ListingShape.billedBeside(listing, Seq(film), if (keeps == Keeps.All) aroundAFilm else _ => false).map(Piece(_, staging = false))
+
+    private lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
+    private lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)
+
+    /** Is `piece` the venue's wording around a film: an edition's date, its venue's name, a programme's initials, a tag
+     *  in capitals, a banner the corpus bills beside other titles, or another title of the film? */
+    private def aroundAFilm(piece: Seq[String]): Boolean =
+      piece.exists(word => dated(word) || venueNamed(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece)
+
+    // one word of consonants alone: a programme's initials ("Kopnięci w czasie|Fks", a seniors' film club)
+    private def acronym(piece: Seq[String]) = piece.sizeIs == 1 && !piece.head.exists(c => "aeiouy".contains(c) || c.isDigit)
+    private def dated(word: String) = word.length == 4 && word.forall(_.isDigit) && film.year.exists(_ < word.toInt)
+    // another title of the film itself: its search's first film, or one IMDb lists under it in some language (DE
+    // "Épines du Sahel - Die Dornen der Sahelzone", the German release title TMDB's record does not carry)
+    private def titles(piece: Seq[String]) = evidence.published.shapes.exists(shape => tokens(shape) == piece &&
+      tmdbId.exists(id => answered(CandidateQuery.Title(shape)).headOption.exists(_.tmdbId == id) || answered(CandidateQuery.ImdbTitled(shape)).exists(_.tmdbId == id)))
   }
 
   /** [[of]] for a film the FAMILIES found — the one they agree on ([[Keeps.Facts]]: the billing's stated facts against

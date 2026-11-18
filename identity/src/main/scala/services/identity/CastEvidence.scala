@@ -56,33 +56,55 @@ object VenueNames {
   private def joins(c: Char): Boolean = Character.isWhitespace(c) && c != '\n' && c != '\r' || c == '-' || c == '\'' || c == '’' || c == '.'
 
   /** Every pair of neighbouring words of each run of `text`, by hash — of capitalised words only when `capitalisedOnly`. */
-  private def collect(text: String, capitalisedOnly: Boolean, into: scala.collection.mutable.ArrayBuilder[Int]): Unit = {
-    var previous = 0          // the previous word's hash, while it stands beside the next in one run
-    var inRun    = false
-    var hyphened = false      // the run's last word ended at a hyphen: a name's lower-case part follows it ("Bong Joon-ho")
-    var i        = 0
-    val n        = text.length
-    while (i < n) {
-      val c = text.charAt(i)
-      if (Character.isLetterOrDigit(c)) {
-        var j = i
-        if (capitalisedOnly && !Character.isUpperCase(c) && !(inRun && hyphened)) {
-          // prose: skipped unread, and it ends the run
-          while (j < n && Character.isLetterOrDigit(text.charAt(j))) j += 1
-          inRun = false
-        } else {
-          // the folded word's hash, as its String's would be, built char by char: no word is copied
-          var h = 0
-          while (j < n && Character.isLetterOrDigit(text.charAt(j))) { h = 31 * h + fold(text.charAt(j)); j += 1 }
-          if (inRun) into += pairHash(previous, h)
-          previous = h; inRun = true
-        }
-        i = j
-      } else {
-        if (!joins(c)) inRun = false
-        hyphened = c == '-'
-        i += 1
+  private def collect(text: String, capitalisedOnly: Boolean, into: scala.collection.mutable.ArrayBuilder[Int]): Unit =
+    new Runs(capitalisedOnly, into).read(text)
+
+  /** The end of the word of letters and digits starting at `from` in `text`. */
+  private[identity] def wordEnd(text: String, from: Int): Int = {
+    var end = from
+    while (end < text.length && Character.isLetterOrDigit(text.charAt(end))) end += 1
+    end
+  }
+
+  /** The folded word `text(from until to)`'s hash, as its String's would be, built char by char: no word is copied. */
+  private[identity] def foldedHash(text: String, from: Int, to: Int): Int = {
+    var h = 0
+    var i = from
+    while (i < to) { h = 31 * h + fold(text.charAt(i)); i += 1 }
+    h
+  }
+
+  /** A walk along a text's runs of words ([[collect]]), the pairs of neighbouring words put `into` as it goes. */
+  private final class Runs(capitalisedOnly: Boolean, into: scala.collection.mutable.ArrayBuilder[Int]) {
+    private var previous = 0          // the previous word's hash, while it stands beside the next in one run
+    private var inRun    = false
+    private var hyphened = false      // the run's last word ended at a hyphen: a name's lower-case part follows it ("Bong Joon-ho")
+
+    def read(text: String): Unit = {
+      var i = 0
+      while (i < text.length) {
+        val c = text.charAt(i)
+        if (Character.isLetterOrDigit(c)) i = word(text, i)
+        else { between(c); i += 1 }
       }
+    }
+
+    /** Reads the word starting at `from`, returning its end. */
+    private def word(text: String, from: Int): Int = {
+      val end = wordEnd(text, from)
+      // prose: skipped unread, and it ends the run
+      if (capitalisedOnly && !Character.isUpperCase(text.charAt(from)) && !(inRun && hyphened)) inRun = false
+      else {
+        val h = foldedHash(text, from, end)
+        if (inRun) into += pairHash(previous, h)
+        previous = h; inRun = true
+      }
+      end
+    }
+
+    private def between(c: Char): Unit = {
+      if (!joins(c)) inRun = false
+      hyphened = c == '-'
     }
   }
 }
@@ -174,49 +196,66 @@ object ListedCast {
   /** The field `cast` lists, where it is evidence ([[ListedCast]]); none otherwise. Read char by char, as [[VenueNames]]
    *  is: a corpus reads one per listing. */
   def of(cast: Seq[String]): ListedCast = {
-    var found   = new Array[Int](16)
+    val field = new Field
+    val it = cast.iterator
+    while (it.hasNext && !field.oneWord) field.entries(it.next())
+    if (field.oneWord || field.names < Names) None else new ListedCast(SortedHashes.sortedDistinct(field.found, field.count))
+  }
+  private val EntryEnds = ",;/|()[]\r\n"
+
+  /** A walk along a cast field's texts: the unordered pairs of each entry's neighbouring words (`found`, `count` of them),
+   *  how many entries name two words or more (`names`), and whether one names a single word (`oneWord`, which ends it). */
+  private final class Field {
+    var found: Array[Int] = new Array[Int](16)
     var count   = 0
     var names   = 0
     var oneWord = false
-    val it = cast.iterator
-    while (it.hasNext && !oneWord) {
-      val text = it.next()
-      var words = 0; var previous = 0
+    private var words    = 0
+    private var previous = 0
+
+    /** Reads one text of the field, its end ending its last entry. */
+    def entries(text: String): Unit = {
+      words = 0; previous = 0
       var i = 0
       val n = text.length
       while (i <= n && !oneWord) {
         val c = if (i < n) text.charAt(i) else '\n'
-        if (Character.isLetterOrDigit(c)) {
-          var h = 0
-          while (i < n && Character.isLetterOrDigit(text.charAt(i))) { h = 31 * h + VenueNames.fold(text.charAt(i)); i += 1 }
-          if (words > 0) {
-            if (count == found.length) found = java.util.Arrays.copyOf(found, count * 2)
-            found(count) = pair(previous, h); count += 1
-          }
-          previous = h; words += 1
-        } else {
-          if (EntryEnds.indexOf(c) >= 0) {
-            if (words == 1) oneWord = true else if (words >= 2) names += 1
-            words = 0
-          }
+        if (Character.isLetterOrDigit(c)) i = word(text, i)
+        else {
+          if (EntryEnds.indexOf(c) >= 0) entryEnds()
           i += 1
         }
       }
     }
-    if (oneWord || names < Names) None else new ListedCast(SortedHashes.sortedDistinct(found, count))
+
+    private def word(text: String, from: Int): Int = {
+      val end = VenueNames.wordEnd(text, from)
+      val h   = VenueNames.foldedHash(text, from, end)
+      if (words > 0) add(pair(previous, h))
+      previous = h; words += 1
+      end
+    }
+
+    private def add(hash: Int): Unit = {
+      if (count == found.length) found = java.util.Arrays.copyOf(found, count * 2)
+      found(count) = hash; count += 1
+    }
+
+    private def entryEnds(): Unit = {
+      if (words == 1) oneWord = true else if (words >= 2) names += 1
+      words = 0
+    }
   }
-  private val EntryEnds = ",;/|()[]\r\n"
 
   /** The folded words of `name`, each as its hash. */
   private[identity] def wordsOf(name: String): Array[Int] = {
     val found = scala.collection.mutable.ArrayBuilder.make[Int]
     var i = 0
-    val n = name.length
-    while (i < n) {
+    while (i < name.length) {
       if (Character.isLetterOrDigit(name.charAt(i))) {
-        var h = 0
-        while (i < n && Character.isLetterOrDigit(name.charAt(i))) { h = 31 * h + VenueNames.fold(name.charAt(i)); i += 1 }
-        found += h
+        val end = VenueNames.wordEnd(name, i)
+        found += VenueNames.foldedHash(name, i, end)
+        i = end
       } else i += 1
     }
     found.result()

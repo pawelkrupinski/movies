@@ -9,11 +9,7 @@
 limit	cognitive	15
 limit	cyclomatic	10
 limit	inner-defs	2
-cognitive	common/src/main/scala/services/titles/rules/TitleRuleTable.scala:TitleRuleTable.parse	23
 cognitive	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	22
-cognitive	identity/src/main/scala/services/identity/BilledPiece.scala:BilledPiece.of	25
-cognitive	identity/src/main/scala/services/identity/CastEvidence.scala:ListedCast.of	40
-cognitive	identity/src/main/scala/services/identity/CastEvidence.scala:VenueNames.collect	27
 cognitive	identity/src/main/scala/services/identity/ConstraintEdges.scala:ConstraintEdges.of	24
 cognitive	identity/src/main/scala/services/identity/ConstraintSolver.scala:ConstraintSolver.solveAs	51
 cognitive	identity/src/main/scala/services/identity/FamilyScope.scala:FamilyScope.overrule	22
@@ -22,7 +18,6 @@ cognitive	identity/src/main/scala/services/identity/IdentityResolver.scala:Ident
 cognitive	identity/src/main/scala/services/identity/IdentityResolver.scala:IdentityResolver.familyAnatomy	25
 cognitive	identity/src/main/scala/services/identity/IncrementalResolver.scala:IncrementalResolver.update	22
 cognitive	identity/src/main/scala/services/identity/ListingIntake.scala:ListingIntake.decide	18
-cognitive	identity/src/main/scala/services/identity/ListingShape.scala:ListingShape.billedBeside	35
 cognitive	identity/src/main/scala/services/identity/ProseWords.scala:ProseWords.of	34
 cognitive	identity/src/main/scala/services/identity/ResolverDecisions.scala:ResolverDecisions.of	42
 cognitive	identity/src/main/scala/services/identity/ResolverDecisions.scala:ResolverDecisions.traceOf	30
@@ -45,15 +40,9 @@ cognitive	worker/src/main/scala/services/identityadapters/TmdbNormalizer.scala:T
 cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	18
 cognitive	worker/src/main/scala/services/identityadapters/VenuePageIndex.scala:VenuePageIndex.settle	16
 cognitive	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	16
-cyclomatic	common/src/main/scala/services/titles/TitleContainment.scala:TitleContainment.runsFrom	11
-cyclomatic	common/src/main/scala/services/titles/billing/BillingPieces.scala:BillingPieces.cuts	15
-cyclomatic	common/src/main/scala/services/titles/rules/TitleRuleTable.scala:TitleRuleTable.parse	19
 cyclomatic	identity/src/main/scala/services/identity/Acceptance.scala:Acceptance.andJoinsTwoWorks	12
 cyclomatic	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	29
 cyclomatic	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.soleResultWhy	13
-cyclomatic	identity/src/main/scala/services/identity/BilledPiece.scala:BilledPiece.of	35
-cyclomatic	identity/src/main/scala/services/identity/CastEvidence.scala:ListedCast.of	16
-cyclomatic	identity/src/main/scala/services/identity/CastEvidence.scala:VenueNames.collect	13
 cyclomatic	identity/src/main/scala/services/identity/ClusterVoting.scala:ClusterVoting.unanimous	11
 cyclomatic	identity/src/main/scala/services/identity/ConstraintEdges.scala:ConstraintEdges.of	23
 cyclomatic	identity/src/main/scala/services/identity/ConstraintSolver.scala:ConstraintSolver.solveAs	27
@@ -74,7 +63,6 @@ cyclomatic	identity/src/main/scala/services/identity/IdentityModel.scala:Listing
 cyclomatic	identity/src/main/scala/services/identity/IdentityModelStore.scala:MongoIdentityModelStore.read	13
 cyclomatic	identity/src/main/scala/services/identity/IdentityResolver.scala:IdentityResolver.familyAnatomy	11
 cyclomatic	identity/src/main/scala/services/identity/ListingIntake.scala:ListingIntake.decide	11
-cyclomatic	identity/src/main/scala/services/identity/ListingShape.scala:ListingShape.billedBeside	50
 cyclomatic	identity/src/main/scala/services/identity/ProseWords.scala:ProseWords.of	14
 cyclomatic	identity/src/main/scala/services/identity/Question.scala:Question.kind	17
 cyclomatic	identity/src/main/scala/services/identity/Question.scala:Question.parse	12
@@ -113,7 +101,6 @@ inner-defs	identity/src/main/scala/services/identity/Acceptance.scala:Acceptance
 inner-defs	identity/src/main/scala/services/identity/AcceptanceFactRules.scala:AcceptanceFactRules.directorsWorkWhy	3
 inner-defs	identity/src/main/scala/services/identity/AcceptanceFactRules.scala:AcceptanceFactRules.soleWorkWhy	3
 inner-defs	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	6
-inner-defs	identity/src/main/scala/services/identity/BilledPiece.scala:BilledPiece.of	14
 inner-defs	identity/src/main/scala/services/identity/ClusterVoting.scala:ClusterVoting.unanimous	5
 inner-defs	identity/src/main/scala/services/identity/ConstraintEdges.scala:ConstraintEdges.linkedApart	3
 inner-defs	identity/src/main/scala/services/identity/ConstraintSolver.scala:ConstraintSolver.solveAs	6
@@ -123,7 +110,6 @@ inner-defs	identity/src/main/scala/services/identity/FilmBson.scala:FilmBson.dec
 inner-defs	identity/src/main/scala/services/identity/FilmBson.scala:FilmBson.encode	3
 inner-defs	identity/src/main/scala/services/identity/IdentityResolver.scala:IdentityResolver.familyAnatomy	3
 inner-defs	identity/src/main/scala/services/identity/ListingIntake.scala:ListingIntake.decide	3
-inner-defs	identity/src/main/scala/services/identity/ListingShape.scala:ListingShape.billedBeside	9
 inner-defs	identity/src/main/scala/services/identity/PopulationMonotonicity.scala:PopulationMonotonicity.report	4
 inner-defs	identity/src/main/scala/services/identity/StageRelays.scala:StageRelays.abbreviates	3
 inner-defs	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	5
