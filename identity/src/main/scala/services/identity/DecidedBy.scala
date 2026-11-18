@@ -20,38 +20,38 @@ object DecidedBy {
   /** The acceptance rules of a stage relay ([[AcceptanceStageRules]]): a take by one is the relay stage's. */
   val RelayRules: Set[String] = Set("house-production", "season-record", "relay-record")
 
-  def stage(decision: ResolverDecision, key: ListingKey): String = decision.basis match {
-    case Basis.Pinned                                                                   => "pin"
-    case Basis.Agreed                                                                   => "agreement"
-    case Basis.Poster                                                                   => "poster"
-    case Basis.Broadcast                                                                => "broadcast"
-    case Basis.Filled                                                                   => "fill"
-    case Basis.Catalogue                                                                => "catalogue"
-    case Basis.Corrected | Basis.Withdrawn                                              => "correction"
-    case Basis.Event                                                                    => "event"
-    case Basis.OwnMatch | Basis.PooledMatch | Basis.NoCandidate | Basis.NoEvidence | Basis.Vetoed | Basis.BelowThreshold =>
-      if (accepted(decision, Some(key)).exists(RelayRules) || decision.trace.pooled.exists(RelayRules)) "relay"
-      else "model"
-  }
+  /** The stage of each basis the agreement stage (or a pin) decides; every other is the model's or its relay rules'. */
+  private val StageOf: Map[Basis, String] = Map(
+    Basis.Pinned -> "pin", Basis.Agreed -> "agreement", Basis.Poster -> "poster", Basis.Broadcast -> "broadcast",
+    Basis.Filled -> "fill", Basis.Catalogue -> "catalogue", Basis.Corrected -> "correction", Basis.Withdrawn -> "correction",
+    Basis.Event -> "event")
+
+  def stage(decision: ResolverDecision, key: ListingKey): String = StageOf.getOrElse(decision.basis,
+    if (accepted(decision, Some(key)).exists(RelayRules) || decision.trace.pooled.exists(RelayRules)) "relay" else "model")
+
+  /** The rule of each basis that names one alone. */
+  private val RuleOf: Map[Basis, String] = Map(
+    Basis.Pinned -> "pin", Basis.Poster -> "poster:vote", Basis.Broadcast -> "broadcast", Basis.Catalogue -> "catalogue",
+    Basis.Event -> "event")
+  /** The rule of each basis the stage that took it names in the trace, and what it reads when the stage names none. */
+  private val UnnamedOf: Map[Basis, String] = Map(
+    Basis.Filled -> "fill:unnamed", Basis.Corrected -> "correction:unnamed", Basis.Withdrawn -> "withdrawal:unnamed")
 
   /** The rule that decided `key`'s take under `decision`. */
-  def of(decision: ResolverDecision, key: ListingKey): String = {
+  def of(decision: ResolverDecision, key: ListingKey): String =
+    RuleOf.get(decision.basis)
+      .orElse(UnnamedOf.get(decision.basis).map(unnamed => decision.trace.stage.getOrElse(unnamed)))
+      .getOrElse(weighedRule(decision, key))
+
+  /** The rule of a take the model weighed, or the agreement's families agreed on. */
+  private def weighedRule(decision: ResolverDecision, key: ListingKey): String = {
     val trace = decision.trace
     decision.basis match {
-      case Basis.Pinned      => "pin"
       case Basis.OwnMatch    => accepted(decision, Some(key)).fold("accept:joined")("accept:" + _)
       case Basis.PooledMatch => "pooled:" + trace.pooled.getOrElse("unnamed")
       case Basis.Vetoed      => "veto:" + trace.vetoed.fold("denied")(v => DecisionTrace.id(v.reason))
-      case Basis.NoCandidate | Basis.NoEvidence | Basis.BelowThreshold =>
-        trace.nodes.get(key).flatMap(_.blocker).getOrElse("pooled:no-film")
       case Basis.Agreed      => "agreed:" + (if (decision.agreed.isEmpty) "families" else decision.agreed.keys.toSeq.sorted.mkString("+"))
-      case Basis.Poster      => "poster:vote"
-      case Basis.Broadcast   => "broadcast"
-      case Basis.Catalogue   => "catalogue"
-      case Basis.Event       => "event"
-      case Basis.Filled      => trace.stage.getOrElse("fill:unnamed")
-      case Basis.Corrected   => trace.stage.getOrElse("correction:unnamed")
-      case Basis.Withdrawn   => trace.stage.getOrElse("withdrawal:unnamed")
+      case _                 => trace.nodes.get(key).flatMap(_.blocker).getOrElse("pooled:no-film")
     }
   }
 

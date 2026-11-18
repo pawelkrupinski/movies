@@ -46,20 +46,25 @@ private[identity] object Corroboration {
    *  scored candidates, by name; empty when none does. */
   def facts(node: EvidenceNode, own: Scored, rivals: Seq[Scored], linked: EvidenceNode => Option[Int]): Seq[String] = {
     val (agree, _) = IdentityMeasures.ownAgreement(own.measures)
-    val original   = agree("originalTitle") && node.listings.exists(listing => listing.originalTitle.exists(original =>
-      IdentityMeasures.key(original) != IdentityMeasures.key(listing.title) && IdentityMeasures.key(original) != IdentityMeasures.key(listing.rawTitle)))
-    def inBand(scored: Scored) = IdentityMeasures.runtimeGap(scored.measures).exists(_ <= RuntimeBand)
-    val runtime    = inBand(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && fits(rival))
+    val original   = agree("originalTitle") && originalOfItsOwn(node)
+    val runtime    = inBand(own) && !namesakeWhere(own, rivals)(fits)
     val feedId     = linked(node).contains(own.candidate.tmdbId)
     val season     = own.seasonProduction || own.number("season.delta").contains(0.0)
-    def castNamed(scored: Scored) = scored.candidate.film.cast.exists(cast => node.listings.exists(listing =>
-      listing.listedCast.nonEmpty && cast.namedBy(listing.listedCast) >= CastEvidence.Names))
-    val cast       = castNamed(own) && node.castIsTheFilms &&
-      !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && castNamed(rival))
+    val cast       = castNamed(node, own) && node.castIsTheFilms && !namesakeWhere(own, rivals)(castNamed(node, _))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> feedId,
       "season" -> season, "cast" -> cast)
       .collect { case (name, true) => name }
   }
+  /** Does one of the node's listings publish an original title of its own, not its title restated? */
+  private def originalOfItsOwn(node: EvidenceNode): Boolean = node.listings.exists(listing => listing.originalTitle.exists(original =>
+    IdentityMeasures.key(original) != IdentityMeasures.key(listing.title) && IdentityMeasures.key(original) != IdentityMeasures.key(listing.rawTitle)))
+  private def inBand(scored: Scored): Boolean = IdentityMeasures.runtimeGap(scored.measures).exists(_ <= RuntimeBand)
+  /** Does the venue's own cast field name [[CastEvidence.Names]] of `scored`'s top-billed cast? */
+  private def castNamed(node: EvidenceNode, scored: Scored): Boolean = scored.candidate.film.cast.exists(cast => node.listings.exists(listing =>
+    listing.listedCast.nonEmpty && cast.namedBy(listing.listedCast) >= CastEvidence.Names))
+  /** Does `test` hold of a namesake of `own` the title names too? */
+  private def namesakeWhere(own: Scored, rivals: Seq[Scored])(test: Scored => Boolean): Boolean =
+    rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && test(rival))
 
   /** The must-links that vouch a node to a corroborated one: its title, clean or search title, catalogue id or a
    *  delimited segment of the other's title — never the original title alone, which a feed copies from the entry it
@@ -145,25 +150,37 @@ private[identity] object Corroboration {
   def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], linked: EvidenceNode => Option[Int],
               edges: Seq[ResolverEdge], support: Map[Int, Int]): Seq[(EvidenceNode, String)] = {
     val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node), linked))).toMap
-    def titles(node: EvidenceNode) = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
-    val ids    = cluster.map(_.id).toSet
-    val backing = support.getOrElse(film, 0)
-    def namesake(node: EvidenceNode): Option[String] =
-      val own    = scored(node).find(_.candidate.tmdbId == film)
-      lazy val taken  = own.fold(0)(naming)
-      lazy val pieces = own.fold(Set.empty[Seq[String]])(scored => IdentityMeasures.namingPieces(scored.listing, scored.candidate.film))
-      // the support lookup first: most rivals no node takes on its own facts, and naming them costs a title walk each
-      scored(node).find(rival => rival.candidate.tmdbId != film && {
-        val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
-        rivalBacking >= EvidencedNamesake && rivalBacking > backing
-      } && (naming(rival) > 0 && naming(rival) >= taken &&
-        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken, backing) ||
-        relayedBare(rival))).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
     // A title vouches only for a node no evidenced namesake shares it with: where the family takes another film its title
     // names as closely (or heads, [[headedBy]]) on more nodes' facts, under any spelling, the title is that film's at least
     // as much (DE "The Killer" ×5,
     // bare, joined to the two venues dating Woo's 2024 remake while seven bill his 1989 film). A catalogue id still does.
-    val disputed = cluster.filter(own(_).isEmpty).flatMap(node => namesake(node).map(node.id -> _)).toMap
+    val disputed = cluster.filter(own(_).isEmpty).flatMap(node => namesake(scored(node), film, support).map(node.id -> _)).toMap
+    val vouched  = vouchedNodes(cluster, own, disputed, edges)
+    cluster.filterNot(node => vouched(node.id)).flatMap(node => disputed.get(node.id).map(why =>
+      node -> s"uncorroborated namesake: no year, director, original title, discriminating runtime, feed id, season or cast of its own names tmdb $film, and $why"))
+  }
+
+  /** Why a node's take of `film` is disputed: an evidenced namesake the family takes on more nodes' own facts that its
+   *  title names as closely, heads, or relays bare. */
+  private def namesake(scored: Seq[Scored], film: Int, support: Map[Int, Int]): Option[String] = {
+    val backing = support.getOrElse(film, 0)
+    val own     = scored.find(_.candidate.tmdbId == film)
+    lazy val taken  = own.fold(0)(naming)
+    lazy val pieces = own.fold(Set.empty[Seq[String]])(scored => IdentityMeasures.namingPieces(scored.listing, scored.candidate.film))
+    // the support lookup first: most rivals no node takes on its own facts, and naming them costs a title walk each
+    scored.find(rival => rival.candidate.tmdbId != film && {
+      val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
+      rivalBacking >= EvidencedNamesake && rivalBacking > backing
+    } && (naming(rival) > 0 && naming(rival) >= taken &&
+      pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken, backing) ||
+      relayedBare(rival))).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
+  }
+
+  /** The nodes the film is vouched for: those corroborating it, those sharing a title with one undisputed, and those a
+   *  [[Vouching]] must-link reaches from them — through a disputed node only by a catalogue id. */
+  private def vouchedNodes(cluster: Seq[EvidenceNode], own: Map[EvidenceNode, Seq[String]], disputed: Map[String, String],
+                           edges: Seq[ResolverEdge]): scala.collection.Set[String] = {
+    val ids    = cluster.map(_.id).toSet
     val joined = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
       .flatMap(edge => Seq(edge.a -> (edge.b, edge.reason), edge.b -> (edge.a, edge.reason))).groupMap(_._1)(_._2)
     val vouched = scala.collection.mutable.Set.from(cluster.filter(own(_).nonEmpty).map(_.id))
@@ -175,7 +192,9 @@ private[identity] object Corroboration {
         case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }
-    cluster.filterNot(node => vouched(node.id)).flatMap(node => disputed.get(node.id).map(why =>
-      node -> s"uncorroborated namesake: no year, director, original title, discriminating runtime, feed id, season or cast of its own names tmdb $film, and $why"))
+    vouched
   }
+
+  private def titles(node: EvidenceNode): Set[String] =
+    node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
 }

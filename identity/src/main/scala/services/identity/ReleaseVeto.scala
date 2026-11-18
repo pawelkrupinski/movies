@@ -41,16 +41,18 @@ private[identity] object ReleaseVeto {
    *  and only a digital German release of the remake. */
   def ofCurrent(country: String, season: Option[Int], scored: Seq[Scored], namesake: Scored => Boolean, ownFacts: Boolean,
                 backed: Scored => Boolean): Map[Int, Denial] = season.fold(Map.empty[Int, Denial]) { season =>
-    def cinemaReleases(s: Scored) = s.candidate.film.releases.fold(Seq.empty[TmdbFilmRecord.Release])(TmdbFilmRecord.Release.all).filter(_.country == country)
-    def streamedOnly(s: Scored) = s.candidate.film.releases.isDefined && s.candidate.film.knownReleasedIn(country, dated = true) &&
-      cinemaReleases(s).isEmpty &&
-      s.candidate.film.year.exists(year => year < season - 1 && year >= season - StreamingEraYears)
-    if (!scored.exists(s => namesake(s) && streamedOnly(s))) Map.empty
-    else scored.find(s => namesake(s) && cinemaReleases(s).exists(r => r.year == season || r.year == season + 1)).fold(Map.empty[Int, Denial]) { shown =>
-      scored.iterator.filter(s => s.candidate.tmdbId != shown.candidate.tmdbId && namesake(s) && streamedOnly(s) && !(ownFacts && backed(s)))
+    if (!scored.exists(s => namesake(s) && streamedOnly(s, country, season))) Map.empty
+    else scored.find(s => namesake(s) && cinemaReleases(s, country).exists(r => r.year == season || r.year == season + 1)).fold(Map.empty[Int, Denial]) { shown =>
+      scored.iterator.filter(s => s.candidate.tmdbId != shown.candidate.tmdbId && namesake(s) && streamedOnly(s, country, season) && !(ownFacts && backed(s)))
         .map(s => s.candidate.tmdbId -> why(country, shown.candidate.tmdbId)).toMap
     }
   }
+  private def cinemaReleases(s: Scored, country: String): Seq[TmdbFilmRecord.Release] =
+    s.candidate.film.releases.fold(Seq.empty[TmdbFilmRecord.Release])(TmdbFilmRecord.Release.all).filter(_.country == country)
+  /** A recent film TMDB dates releases of in `country`, but no cinema release there: streamed only. */
+  private def streamedOnly(s: Scored, country: String, season: Int): Boolean =
+    s.candidate.film.releases.isDefined && s.candidate.film.knownReleasedIn(country, dated = true) && cinemaReleases(s, country).isEmpty &&
+      s.candidate.film.year.exists(year => year < season - 1 && year >= season - StreamingEraYears)
 
   /** How many seasons back a namesake [[ofCurrent]] vetoes may date from: TMDB records a recent film's releases by type
    *  in each country, a streaming service's among them, but an older film's sparsely — ES Serantes' "De repente" {Lewis

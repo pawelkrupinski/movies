@@ -156,29 +156,14 @@ object PopulationMonotonicity {
              stopwatch: tools.Stopwatch, count: Int = 4, steps: Int = 6, budgetSeconds: Double = 900, maxFamily: Int = 300,
              focus: ListingKey => Boolean = _ => true, threads: Int = 1): Report = {
     val started    = stopwatch.start()
-    def elapsed    = started.seconds
     val all        = listings.sorted.distinctBy(_.key)
     val subsets    = new Subsets(all, lookups, normalizer, inputs)
     val nodeOf     = subsets.generation.nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
     val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq.filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key)) }.sortBy(_._1)
     val (fits, large) = families.partition(_._2.sizeIs <= maxFamily)
-    // one family walked: its flips, if any, and how many of its listings' whole-family take differed from the corpus's
-    def walk(members: Seq[Listing]): (Option[FamilyFlips], Int) = {
-      var apart = 0
-      val keys  = members.map(_.key).toSet
-      def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
-        val r = subsets.resolve(keys, prefix)
-        val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
-        if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
-        taken
-      }
-      val seed  = MurmurHash3.stringHash(members.head.sortKey).toLong
-      val found = flips(members, resolve, seed, count, steps)
-      (Option.when(found.nonEmpty)(FamilyFlips(members.head.rawTitle, members.size, found,
-        keys.filter(key => nodeOf.get(key).exists(!_.evidence.measured.publishesAFact)))), apart)
-    }
     // a family is walked only when it starts inside the budget; none when it does not
-    def walkedInTime(members: Seq[Listing]): Option[(Option[FamilyFlips], Int)] = Option.when(elapsed < budgetSeconds)(walk(members))
+    def walkedInTime(members: Seq[Listing]): Option[(Option[FamilyFlips], Int)] =
+      Option.when(started.seconds < budgetSeconds)(new FamilyWalk(members, subsets, whole).walked(nodeOf, count, steps))
     val walks: Seq[Option[(Option[FamilyFlips], Int)]] =
       if (threads <= 1 || fits.sizeIs < 2) fits.map { case (_, members) => walkedInTime(members) }
       else {
@@ -193,7 +178,27 @@ object PopulationMonotonicity {
     val flipped   = walks.flatten.flatMap(_._1)
     val contested = whole.contested.toSeq.sortBy(_._1)(using ListingKey.ordering).map { case (key, backed) =>
       (key, whole.decisionOf.get(key).flatMap(takeOf), backed) }
-    Report(families.size, walked, large.size, fits.size - walked, elapsed, flipped, apart, contested)
+    Report(families.size, walked, large.size, fits.size - walked, started.seconds, flipped, apart, contested)
+  }
+
+  /** One family walked: its flips, if any, and how many of its listings' whole-family take differed from the corpus's. */
+  private final class FamilyWalk(members: Seq[Listing], subsets: Subsets, whole: Resolution) {
+    private var apart = 0
+    private val keys  = members.map(_.key).toSet
+
+    private def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
+      val r = subsets.resolve(keys, prefix)
+      val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
+      if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
+      taken
+    }
+
+    def walked(nodeOf: Map[ListingKey, EvidenceNode], count: Int, steps: Int): (Option[FamilyFlips], Int) = {
+      val seed  = MurmurHash3.stringHash(members.head.sortKey).toLong
+      val found = flips(members, resolve, seed, count, steps)
+      (Option.when(found.nonEmpty)(FamilyFlips(members.head.rawTitle, members.size, found,
+        keys.filter(key => nodeOf.get(key).exists(!_.evidence.measured.publishesAFact)))), apart)
+    }
   }
 
   /**
