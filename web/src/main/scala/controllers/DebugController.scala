@@ -99,9 +99,9 @@ class DebugController(cc: ControllerComponents,
    *  mirror look broken), plus how long ago that read was once it is old enough to
    *  matter, e.g. a snapshot restored after a restart. `None` in prod, where the
    *  pages read the source and there is no copy to be behind. */
-  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.MirrorFreshness.Age] = {
+  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.movies.MirrorFreshness.Age] = {
     val now = clock.instant()
-    services.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
+    services.movies.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
       val sinceRead = snapshot.takenAt.map(at => java.time.Duration.between(at, now).toMillis.millis)
       age.copy(snapshotAge = sinceRead.filter(_ >= DebugController.SnapshotAgeShownAfter))
     }
@@ -199,7 +199,7 @@ class DebugController(cc: ControllerComponents,
         case Some(dump) =>
           implicit val c: City = City.all.head   // only for the shared debug navbar's city link
           Ok(views.html.debugReadModel(dump, country, readModel.source, sameOrigin = readModels.countries.sizeIs > 1,
-            mirror = services.MirrorFreshness.describe(readModel.freshness.newestUpdate(), clock.instant())))
+            mirror = services.movies.MirrorFreshness.describe(readModel.freshness.newestUpdate(), clock.instant())))
         // Not a smaller listing: that reads as films missing from the read model.
         case None       => ServiceUnavailable(s"could not read the ${country.code} read model whole (${readModel.source})")
       }

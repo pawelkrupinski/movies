@@ -1,9 +1,9 @@
-package services
+package services.movies
 
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import play.api.Logging
-import services.movies.{MovieRepository, ScreeningsRepository}
+import services.MongoConnection
 
 import java.time.{Duration => JDuration, Instant}
 import scala.concurrent.Await

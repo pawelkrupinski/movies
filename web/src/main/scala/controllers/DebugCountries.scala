@@ -4,7 +4,7 @@ import java.util.Locale
 
 import models.Country
 import play.api.mvc.{Cookie, RequestHeader}
-import services.MirrorFreshness
+import services.movies.MirrorFreshness
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
 import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}

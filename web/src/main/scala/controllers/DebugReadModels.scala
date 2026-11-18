@@ -9,7 +9,7 @@ import java.util.Locale
 
 /** One country's read model as `/debug/readmodel` reads it, and where that is (shown on the page). */
 final case class DebugReadModel(reader: ReadModelReader, source: String,
-                                 freshness: services.MirrorFreshness = services.MirrorFreshness.notMirrored)
+                                 freshness: services.movies.MirrorFreshness = services.movies.MirrorFreshness.notMirrored)
 
 /**
  * Which read model `/debug/readmodel` lists, per request: `?country=xx` when there is one
@@ -32,7 +32,7 @@ object DebugReadModels {
    *  own read model is empty. Without it, only the serving country, from the serving database.
    *  `freshnessOf` says how far behind a mirror database is: the debug navbar's age badge. */
   def of(serving: Country, servingReader: ReadModelReader, mirror: Option[String => ReadModelReader],
-         freshnessOf: String => services.MirrorFreshness = _ => services.MirrorFreshness.notMirrored): DebugReadModels =
+         freshnessOf: String => services.movies.MirrorFreshness = _ => services.movies.MirrorFreshness.notMirrored): DebugReadModels =
     mirror match {
       case Some(open) =>
         new DebugReadModels((Country.switchable :+ serving).distinct.map { country =>

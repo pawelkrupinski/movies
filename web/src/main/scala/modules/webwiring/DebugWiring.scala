@@ -27,10 +27,10 @@ trait DebugWiring { self: Wiring =>
   private lazy val readingThroughMirror: Boolean = processConfiguration.mirrorMongoUri.isDefined
   // How far behind that copy is. A sync that stops serves a page which renders,
   // times itself `now`, and is silently hours old — so the pages say their own
-  // age (services.MirrorFreshness).
-  private def mirrorFreshnessOf(connection: MongoConnection): services.MirrorFreshness =
-    if (readingThroughMirror) new services.MongoMirrorFreshness(connection.database)
-    else services.MirrorFreshness.notMirrored
+  // age (services.movies.MirrorFreshness).
+  private def mirrorFreshnessOf(connection: MongoConnection): services.movies.MirrorFreshness =
+    if (readingThroughMirror) new services.movies.MongoMirrorFreshness(connection.database)
+    else services.movies.MirrorFreshness.notMirrored
   // Read-only view of the worker-written `enrichment_attempts` collection — the
   // last fetch per (source, film) behind the /debug row's expand section.
   lazy val enrichmentAttemptReader: services.attempts.EnrichmentAttemptReader =
@@ -68,7 +68,7 @@ trait DebugWiring { self: Wiring =>
   private lazy val debugSnapshotStore: SnapshotStore =
     if (environmentMode == Mode.Dev) new FileSnapshotStore(java.nio.file.Paths.get("target", "debug-snapshots"))
     else SnapshotStore.none
-  private def debugSnapshot[A](label: String, freshness: services.MirrorFreshness)(read: => A): RefreshingSnapshot[A] =
+  private def debugSnapshot[A](label: String, freshness: services.movies.MirrorFreshness)(read: => A): RefreshingSnapshot[A] =
     new RefreshingSnapshot(label, () => read, freshness, refreshAfter = scala.concurrent.duration.DurationInt(15).seconds, clock,
       debugSnapshotStore)(using debugSnapshotPool)
 
@@ -156,8 +156,8 @@ trait DebugWiring { self: Wiring =>
 
   lazy val debugReadModels: DebugReadModels = DebugReadModels.of(country, readModelRepository,
     debugMirrorClient.map(client => db => new MongoReadModelRepository(Some(client.getDatabase(db)), stopwatch = stopwatch)),
-    freshnessOf = db => debugMirrorClient.fold(services.MirrorFreshness.notMirrored)(client =>
-      new services.MongoMirrorFreshness(Some(client.getDatabase(db)))))
+    freshnessOf = db => debugMirrorClient.fold(services.movies.MirrorFreshness.notMirrored)(client =>
+      new services.movies.MongoMirrorFreshness(Some(client.getDatabase(db)))))
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => ServiceTags.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),

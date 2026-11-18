@@ -7,7 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.MongoMirrorFreshness
+import services.movies.MongoMirrorFreshness
 import tools.IsolatedMongoDatabase
 
 import java.util.Date
