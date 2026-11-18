@@ -17,7 +17,7 @@ A commit that changes what the worker serves over time (the gate, holds, settle,
 These are the files each term covers:
 
 - **Serving files** (`SERVING_FILES` in `scripts/ci/commit_rules.py`): `IdentityModelService`, `ModelInputGate`, `AgreementReadiness`,
-  `PendingListings`, `AgreementHandlers`, `QuestionMemory`, `QuestionPolicies`, `QuestionRenewals`,
+  `PendingListings`, `AgreementQuestions`, `AgreementAsker`, `InlineFamilyAsks`, `QuestionMemory`, `QuestionPolicies`, `QuestionRenewals`,
   `OutstandingQuestions`, `VenuePageWait`, `RetainedListings`, `ProjectionTriggers`, `ListingReadiness`, `PageWait`
   and `SettleReaper`.
 - **Gauge files**: `worker/src/main/scala/services/metrics/`, `infra/nix/files/monitoring/{rules,grafana}/` and

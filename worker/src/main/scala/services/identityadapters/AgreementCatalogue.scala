@@ -4,8 +4,6 @@ import services.identity.*
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.enrichment.{LetterboxdClient, WikidataClient}
-import services.tasks.Task
-import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 import java.time.Clock
 
@@ -88,38 +86,4 @@ final class WikidataCatalogueMapping(wikidata: WikidataClient, letterboxd: Lette
         }
       }
     }.toMap
-}
-
-/** Reads a venue film page's catalogue links through the fetch its client scrapes with — `readers`, one per
- *  declaration; a page gone for good (404/410) links none, any other failure throws. */
-final class CatalogueLinkReader(readers: Seq[(CatalogueLinkPages, HttpFetch)]) {
-  val pages: Seq[CatalogueLinkPages] = readers.map(_._1)
-  def links(page: String): Seq[CatalogueId] =
-    CatalogueLinks.pagesOf(page, pages).flatMap(declared => readers.find(_._1 == declared)).fold(Seq.empty[CatalogueId]) { case (declared, fetch) =>
-      try CatalogueLinks.of(HttpRead.page(fetch, declared.readAt(page)), declared.sources)
-      catch { case e: HttpStatusException if HttpStatusException.isDurable(e.code) => Nil }
-    }
-}
-
-object AgreementCatalogueQuestions {
-  private val Source = "source"
-  private val Ids    = "ids"
-  private val Page   = "page"
-  /** How many ids of one source one task maps: one SPARQL query ([[AgreementQuestions.enqueue]]). */
-  val Batch = 50
-
-  /** The questions an [[TaskType.AgreementCatalogue]] task asks. Old queued tasks only; remove after 2026-11-07. */
-  def of(task: Task): Seq[CatalogueQuestion] =
-    task.payload.get(Page).map(url => Seq(CatalogueQuestion.Page(url))).getOrElse(
-      (for { source <- task.payload.get(Source).toSeq; ids <- task.payload.get(Ids).toSeq; id <- ids.split(",").toSeq if id.nonEmpty }
-        yield CatalogueQuestion.Id(CatalogueId(source, id))))
-
-  /** Asks and files `questions` — those still wanted — mapping the ids in one batch and reading each page. */
-  def file(store: CatalogueAnswerStore, mapping: CatalogueMapping, pages: CatalogueLinkReader, questions: Seq[CatalogueQuestion]): Int = {
-    val open = questions.filter(store.wanted)
-    val ids  = open.collect { case CatalogueQuestion.Id(id) => id }
-    if (ids.nonEmpty) { val found = mapping.map(ids); ids.foreach(id => store.fileMapped(id, found.getOrElse(id, Nil))) }
-    open.collect { case CatalogueQuestion.Page(url) => url }.foreach(url => store.filePage(url, pages.links(url)))
-    open.size
-  }
 }
