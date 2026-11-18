@@ -132,7 +132,7 @@ object CaptureReplay {
   def all(): Seq[CaptureReplay] = {
     val configuration = settings.ProcessConfiguration.resolve()
     models.Country.all.map(UnmatchedClusters.fixturePath).filter(java.nio.file.Files.exists(_)).map(UnmatchedClusters.read).map { capture =>
-      val live = configuration.tmdbApiKey.map(key => new TmdbIdentityLookups(new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(key),
+      val live = configuration.tmdbApiKey.map(key => new TmdbIdentityLookups(new clients.HttpTmdbClient(new tools.RealHttpFetch(), apiKey = Some(key),
         // a real backoff on a 429 or a 5xx: asked AskConcurrency at a time, a retry at once would meet the same limit
         language = capture.country.language), new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil))
       new CaptureReplay(capture, live)

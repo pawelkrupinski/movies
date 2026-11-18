@@ -80,7 +80,7 @@ object UnmatchedClustersCapture {
     val harness = new settings.HarnessConfiguration(configuration.env)
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
-    val source   = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+    val source   = new TmdbIdentityLookups(new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps)
     val lookups  = new Memo(source)
     val whole     = IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned)
@@ -102,7 +102,7 @@ object UnmatchedClustersCapture {
     val store     = new FamilyAnswerStore(docs, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val families  = UnmatchedClusters.familiesOf(c.country)
     val sources   = LiveFamilySources.of(cache, c.country, families)
-    val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
+    val tmdb  = new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
     val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
     // a find answered once is that answer in every later round, as the file holds it: never asked anew and then failed
     val tmdbOf: String => Answer[Option[Int]] = imdb => Option(finds.get(imdb)).fold(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption

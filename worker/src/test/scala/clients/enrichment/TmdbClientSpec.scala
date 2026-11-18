@@ -1,6 +1,6 @@
 package clients.enrichment
 
-import clients.{TmdbClient, TmdbResponses}
+import clients.{HttpTmdbClient, TmdbClient, TmdbResponses}
 import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -75,7 +75,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // exact-title matches over year-distance.
 
   private def fakeClient(responses: Map[String, String]): TmdbClient =
-    new TmdbClient(http = tools.RoutingHttpFetch.getOnly(responses), apiKey = Some(settings.TmdbApiKey("fake")))
+    new HttpTmdbClient(http = tools.RoutingHttpFetch.getOnly(responses), apiKey = Some(settings.TmdbApiKey("fake")))
 
   "findByImdbId" should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
     val findBody =
@@ -201,7 +201,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val fake = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/42?language=en-GB")) english
         else throw new RuntimeException(s"expected an en-GB request, got: $url"))
-    val ukClient = new TmdbClient(http = fake, apiKey = Some(settings.TmdbApiKey("fake")),
+    val ukClient = new HttpTmdbClient(http = fake, apiKey = Some(settings.TmdbApiKey("fake")),
       language = java.util.Locale.forLanguageTag("en-GB"))
     val d = ukClient.fullDetails(42).get
     d.synopsis  shouldBe Some("Seduction and revenge among the French aristocracy.")
@@ -418,7 +418,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   "searchYearExactTop" should "refuse when the year-scoped search returns two real exact-title matches" in {
     val body  = FixtureFile.resource("fixtures/tmdb/search_lalka_2026.json")
     val fetch = stubFetch(body)
-    val hit   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026))
+    val hit   = new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026))
 
     withClue(s"fetched ${fetch.gets.lastOption.getOrElse("")}: ")(fetch.gets.lastOption.getOrElse("") should include ("/search/movie"))
     hit shouldBe None
@@ -435,7 +435,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         | "popularity":2.5181,"overview":"Nowa adaptacja powieści Bolesława Prusa o tym samym tytule."}
         |]}""".stripMargin
     val fetch = stubFetch(body)
-    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026)) shouldBe
+    new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026)) shouldBe
       Some(TmdbClient.SearchResult(1321666, "Lalka", Some("Lalka"), Some(2026), 2.5181,
         Some("Nowa adaptacja powieści Bolesława Prusa o tym samym tytule.")))
   }
@@ -449,7 +449,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val body  = FixtureFile.read(
       "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0")
     val fetch = stubFetch(body)
-    val ids   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398)
+    val ids   = new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398)
 
     withClue(s"fetched ${fetch.gets.lastOption.getOrElse("")}: ")(fetch.gets.lastOption.getOrElse("") should include ("/movie/365398/credits"))
     // The whole crew, not only the Director: a venue crediting the film's OTHER
@@ -462,7 +462,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // it has no such film, which is an empty crew rather than a failure.
   it should "read a 404 as no crew, not as a failure" in {
     val fetch = new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(404, "GET", url, None))
-    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398) shouldBe empty
+    new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398) shouldBe empty
   }
 
   /** Every TMDB film array reads its year one way. The `/find` and credits decoder took the year's

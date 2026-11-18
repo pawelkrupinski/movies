@@ -68,7 +68,7 @@ object IdentityResolveDump {
     val harness = new settings.HarnessConfiguration(configuration.env)
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
-    val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+    val lookups  = new Memo(new TmdbIdentityLookups(new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
     // as the worker projects them: each take a hand judgement calls wrong withdrawn from its own listing
@@ -162,7 +162,7 @@ object IdentityResolveDump {
     val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(Set("pl", "de", "es")(c.country.code))(VoterFamily.Filmweb)
     val sources  = LiveFamilySources.of(fetch, c.country, families)
-    val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
+    val tmdb  = new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
     // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
     val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val posters     = CachedPosters.of(harness, c.country)

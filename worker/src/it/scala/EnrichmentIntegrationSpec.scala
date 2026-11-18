@@ -1,6 +1,6 @@
 package integration
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -31,7 +31,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   override def withFixture(test: NoArgTest): org.scalatest.Outcome =
     if (tmdbApiKey.isEmpty) org.scalatest.Canceled("TMDB_API_KEY not set") else super.withFixture(test)
 
-  private lazy val tmdb = new TmdbClient(new RealHttpFetch, apiKey = tmdbApiKey)
+  private lazy val tmdb = new HttpTmdbClient(new RealHttpFetch, apiKey = tmdbApiKey)
   private lazy val imdb = new ImdbClient(new RealHttpFetch)
 
   // TMDB and IMDb both answer `None` when they throttle us, exactly as they do when a

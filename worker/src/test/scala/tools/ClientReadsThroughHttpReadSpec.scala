@@ -25,7 +25,7 @@ import scala.util.matching.Regex
 class ClientReadsThroughHttpReadSpec extends AnyFlatSpec with Matchers {
 
   private val Roots = SourceTrees("worker/src/main/scala/services/enrichment", "scrapers/src/main/scala/services/cinemas")
-  private val Files = Seq("worker/src/main/scala/clients/TmdbClient.scala")
+  private val Files = Seq("worker/src/main/scala/clients/HttpTmdbClient.scala")
 
   /** A call on a receiver named like a fetch (`http`, `httpFetch`, `bnFetch`, `detailFetch`…). */
   private val RawRead: Regex = """\b\w*(?:[Hh]ttp|[Ff]etch)\w*\s*\.\s*(?:get|getBytes|post|getAsync)\s*\(""".r

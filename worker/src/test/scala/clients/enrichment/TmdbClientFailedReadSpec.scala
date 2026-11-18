@@ -3,8 +3,7 @@ package clients.enrichment
 import clients.tools.FailingHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import clients.TmdbClient
-
+import clients.HttpTmdbClient
 /** A TMDB read that FAILED is not "TMDB has none". These five answered a blocked or broken
  *  request with an empty set: the director walk then found no film and concluded the row
  *  unresolvable, and Metacritic resolved with no director to tell same-titled films apart.
@@ -12,7 +11,7 @@ import clients.TmdbClient
 class TmdbClientFailedReadSpec extends AnyFlatSpec with Matchers {
 
   // 403: a real failure (a block), and not transient, so the client does not retry it.
-  private val client = new TmdbClient(new FailingHttpFetch(403), apiKey = Some(settings.TmdbApiKey("test-key")))
+  private val client = new HttpTmdbClient(new FailingHttpFetch(403), apiKey = Some(settings.TmdbApiKey("test-key")))
 
   "TmdbClient" should "throw, not answer empty, when the credits read fails" in {
     an[Exception] should be thrownBy client.crewIds(1)

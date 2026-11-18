@@ -2,7 +2,7 @@ package clients.tmdb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import clients.{TmdbClient, TmdbResponses}
+import clients.{HttpTmdbClient, TmdbResponses}
 import play.api.libs.json.{JsArray, Json}
 import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import tools.HttpFetch
@@ -39,7 +39,7 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
       .getOrElse(throw new java.io.FileNotFoundException(url))))
 
   private def client(fetch: HttpFetch, language: Locale) =
-    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), language = language)
+    new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), language = language)
 
   "the release-dates endpoint" should "yield the DEPLOYMENT country's certification from a real payload" in {
     val gb = recording(Map(((_: String).contains("/release_dates")) -> releaseDates))

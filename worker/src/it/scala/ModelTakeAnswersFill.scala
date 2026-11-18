@@ -144,7 +144,7 @@ object ModelTakeAnswersFill {
     println(s"[$code] families: ${asking.size} of ${clusters.size} model takes, $asked question(s) asked in $round round(s), ${open.size} still open")
 
     // the IMDb ids a family took, on TMDB — what the dataset maps a pick by
-    val tmdb = harness.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+    val tmdb = harness.identityLiveGaps.map(key => new clients.HttpTmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
       language = c.country.language))
     val findsFile = out.resolve(s"finds-$code.tsv")
     val finds = new java.util.concurrent.ConcurrentHashMap[String, String]()

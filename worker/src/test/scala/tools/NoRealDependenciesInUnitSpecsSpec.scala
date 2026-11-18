@@ -1,5 +1,6 @@
 package tools
 
+
 import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -64,7 +65,7 @@ class NoRealDependenciesInUnitSpecsSpec extends AnyFlatSpec with Matchers {
     processes.lines("import scala.sys.process.*") shouldBe Seq(1)
     processes.lines("Runtime.getRuntime.exec(cmd)") shouldBe Seq(1)
     processes.lines("ProcessHandle.current().pid()") shouldBe empty
-    network.lines("new TmdbClient(new RealHttpFetch, apiKey = None)") shouldBe Seq(1)
+    network.lines("new HttpTmdbClient(new RealHttpFetch, apiKey = None)") shouldBe Seq(1)
     network.lines("HttpClient.newHttpClient().send(request, handler)") shouldBe Seq(1)
     network.lines("URI.create(url).toURL.openConnection()") shouldBe Seq(1)
     network.lines("InetAddress.getByName(host)") shouldBe Seq(1)

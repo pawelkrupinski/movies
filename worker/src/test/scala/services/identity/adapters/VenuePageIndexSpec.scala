@@ -219,7 +219,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val world    = new World
     val enricher = new FakeDetailEnricher(KinoApollo, Group, Some(Full))
     val reads    = new ObservationReads
-    val lookups  = new TmdbIdentityLookups(new clients.TmdbClient(NoNetwork, apiKey = None),
+    val lookups  = new TmdbIdentityLookups(new clients.HttpTmdbClient(NoNetwork, apiKey = None),
       new services.enrichment.ImdbClient(NoNetwork), Seq(new VenuePageDetailEnricher(enricher, world.index, new LookupGaps, reads)), new LookupGaps)
     val listing  = Listing.of(KinoApollo, CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = Some(Page),
       synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Nil), titleNormalizer)

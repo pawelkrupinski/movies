@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import clients.tools.FixtureFile
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -52,7 +52,7 @@ class TmdbChangesSweepSpec extends AnyFlatSpec with Matchers {
     docs.put(TmdbKind.Person, Seq(director.toString -> new BsonDocument(), producer.toString -> new BsonDocument()))
     /** A worker's sweep over the store; a new one is a restart. */
     def sweep(): TmdbChangesSweep = new TmdbChangesSweep(store, docs, new NormalizingHttpFetch(tmdb, new TmdbNormalizer(store)),
-      new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))), "pl-PL", schedule, clock)
+      new HttpTmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))), "pl-PL", schedule, clock)
     var current: TmdbChangesSweep = sweep()
     def swept(day: String): Unit =
       docs.put(TmdbKind.Query, Seq(TmdbChangesSweep.SweptThrough -> new BsonDocument("day", BsonString(day))))

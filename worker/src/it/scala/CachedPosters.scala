@@ -1,7 +1,7 @@
 package integration
 
 import tools.TempDirectories
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import play.api.libs.json.{JsArray, Json}
 import services.identity.adapters.{HashedPoster, PosterAnswerStore, PosterHashing}
 import services.identity.agreement.AgreementStage.PosterQuestion
@@ -73,6 +73,6 @@ object CachedPosters {
    *  live, TMDB's lists with `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY`. */
   def of(harness: settings.HarnessConfiguration, country: models.Country, dir: Option[Path] = None): CachedPosters =
     new CachedPosters(dir.orElse(harness.identityPosterCache.map(_.value)).getOrElse(Path.of("target", "identity-posters")),
-      harness.identityLiveGaps.map(key => new TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+      harness.identityLiveGaps.map(key => new HttpTmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
         language = country.language)), country.language.getLanguage)
 }

@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import models.{KinoMuza, Kinoteka}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -49,7 +49,7 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
     val changed = mutable.Buffer.empty[String]
     store.onChanged(changed += _)
     val refresh = new TmdbFilmRefresh(new NormalizingHttpFetch(tmdb, new TmdbNormalizer(store)),
-      TmdbFilmRefresh.liveLookups(new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")))),
+      TmdbFilmRefresh.liveLookups(new HttpTmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")))),
       families = () => Option.when(modelUp)(TmdbFilmRefresh.Family.of(questions, Seq(oczy, zar, lalka, banner))),
       fold = services.titles.TitleNormalizer.forCountry(models.Country.Poland).sanitize)
     def filed(query: CandidateQuery): Boolean = store.get(TmdbKind.Query, Seq(TmdbStore.questionId("pl-PL", query))).nonEmpty

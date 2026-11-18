@@ -3,7 +3,7 @@ package scripts
 import services.movies.LatestTitleYear
 
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{CaffeineMovieCache, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
@@ -49,7 +49,7 @@ object FilmwebUrlAudit {
       sys.exit(1)
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
+    val tmdb    = new HttpTmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 

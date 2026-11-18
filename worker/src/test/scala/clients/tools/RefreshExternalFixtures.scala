@@ -50,7 +50,7 @@ final class RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026"
   override lazy val multikinoFetch: HttpFetch = httpFetch
   override lazy val biletynaFetch: HttpFetch  = httpFetch
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httpFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
+    new clients.HttpTmdbClient(httpFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   def run(): Unit = {
     bootCutover()

@@ -119,7 +119,7 @@ final class RecordAllDataToFixture(
   // 401s and no enrichment is captured. The recorded filename is still
   // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httpFetch, apiKey = processConfiguration.tmdbApiKey)
+    new clients.HttpTmdbClient(httpFetch, apiKey = processConfiguration.tmdbApiKey)
 
   def run(): Unit = {
     // 1. Production-shape pass: every cinema scrape lands in the identity intake, one

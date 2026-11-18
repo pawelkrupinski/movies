@@ -52,7 +52,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
                    ticks: TickRecorder = TickRecorder.Unrecorded,
                    executor: java.util.concurrent.ExecutorService = DaemonExecutors.directExecutor()) =
-    new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
+    new LookupFill(() => gaps(store), new clients.HttpTmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
       executor, sleeps += _, renewals,
       // a memory of its own unless the test shares one: nothing remembered, every gap due

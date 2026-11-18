@@ -83,10 +83,13 @@ object OlderRefs {
 
   /** A TMDB client over `fetch` that never sleeps: an older ref's client retries a failure itself and takes the pause
    *  between tries as `retrySleep` (gone 2026-10-24, the wire's `RetryingHttpFetch` retries since), passed a no-op here;
-   *  a newer one has no such parameter. Every other parameter at its default (a fresh `JsonBodies` where the ref has one). */
+   *  a newer one has no such parameter. Every other parameter at its default (a fresh `JsonBodies` where the ref has one).
+   *  The class built is `clients.HttpTmdbClient` where the ref has it (TmdbClient its port since 2026-11-18), else the
+   *  older ref's concrete `clients.TmdbClient`. */
   def tmdbClient(fetch: tools.HttpFetch, key: settings.TmdbApiKey, language: java.util.Locale): clients.TmdbClient = {
     val noSleep: Long => Unit = _ => ()
-    val constructor = classOf[clients.TmdbClient].getConstructors.maxBy(_.getParameterCount)
+    val implementation = scala.util.Try(Class.forName("clients.HttpTmdbClient")).getOrElse(classOf[clients.TmdbClient])
+    val constructor = implementation.getConstructors.maxBy(_.getParameterCount)
     val args = constructor.getParameterTypes.map {
       case t if t == classOf[tools.HttpFetch]        => fetch
       case t if t == classOf[Option[?]]              => Some(key)

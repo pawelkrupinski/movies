@@ -1,6 +1,6 @@
 package scripts
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import models.Country
 import org.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
@@ -234,7 +234,7 @@ object TmdbRecordBackfill {
       println("TMDB_API_KEY is not set — run under `secrets run movies TMDB_API_KEY --`."); sys.exit(1)
     }
     val store  = new TmdbStore(new MongoTmdbDocuments(database), clock)
-    val client = new TmdbClient(new NormalizingHttpFetch(new tools.RealHttpFetch(), new TmdbNormalizer(store)), apiKey = Some(apiKey),
+    val client = new HttpTmdbClient(new NormalizingHttpFetch(new tools.RealHttpFetch(), new TmdbNormalizer(store)), apiKey = Some(apiKey),
       language = country.language)
     val total  = selection.toRead.size
     val timer  = Stopwatch.start()

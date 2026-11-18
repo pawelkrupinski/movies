@@ -1,6 +1,6 @@
 package clients.enrichment
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import modules.wiring.HttpWiring
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,7 +35,7 @@ class TmdbClientWireSpec extends AnyFlatSpec with Matchers {
     val clock = new MutableClock(Instant.parse("2026-10-24T00:00:00Z"))
     val chain = HttpWiring.pacedWire(wire, new settings.ProcessConfiguration(tools.Env.of()), new InMemoryFleetHostPace,
       clock, ms => clock.advanceMillis(ms))
-    new TmdbClient(chain, apiKey = Some(settings.TmdbApiKey("test-key")))
+    new HttpTmdbClient(chain, apiKey = Some(settings.TmdbApiKey("test-key")))
   }
 
   "TmdbClient" should "have a transient TMDB 500 asked again by the chain, and succeed on the next try" in {

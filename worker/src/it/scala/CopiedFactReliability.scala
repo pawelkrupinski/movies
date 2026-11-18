@@ -71,7 +71,7 @@ object CopiedFactReliability {
                    storages: mutable.ListBuffer[ConvergenceStorage], judged: Seq[Judged]): Unit = {
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
-    val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+    val lookups  = new Memo(new TmdbIdentityLookups(new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
     val resolution = IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned)

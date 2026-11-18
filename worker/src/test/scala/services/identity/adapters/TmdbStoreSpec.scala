@@ -4,7 +4,7 @@ package adapters
 import tools.SpecPool
 import tools.SpecTimeouts
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import services.identity.adapters.TmdbIdentityReads.*
 import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -54,7 +54,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record" should "read back as the client's own parse of its two responses, popularity to its bucket" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
-    val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")))
+    val client   = new HttpTmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")))
     val parsed   = client.identityRecord(film)
     parsed shouldBe defined
     w.lookups.film(film) shouldBe Answer.Known(parsed.map(f => f.copy(popularity = f.popularity.map(p => PopularityBucket.rounded(p)))))
@@ -72,7 +72,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       val bodies   = new tools.JsonBodies
       val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true),
                                               if (shared) new TmdbNormalizer(w.store, bodies) else w.normalizer)
-      val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")),
+      val client   = new HttpTmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")),
                                     bodies = if (shared) bodies else new tools.JsonBodies)
       (client.identityRecord(film), w.lookups.film(film), w.docs.get(TmdbKind.Film, Seq(film.toString)))
     }
@@ -436,7 +436,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "the model's lookups" should "read a film's answer fields, of its partial responses only the IMDb id and the runtime" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
-    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
+    new HttpTmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
     val wholeFilmReads = new java.util.concurrent.atomic.AtomicInteger()
     val docs = readingThrough(w.docs)(kind => if (kind == TmdbKind.Film) { wholeFilmReads.incrementAndGet(); () })
     val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
@@ -453,7 +453,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film the prefetch holds" should "be one record object for the prefetch, the same record, and let go with it" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
-    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
+    new HttpTmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
     val lookups = w.lookups
     lookups.prefetch(Nil, Seq(film), Nil)
     val first = lookups.film(film).answered.flatten.get
@@ -495,7 +495,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(met).answered.flatten.map(_.year) shouldBe Some(Some(2026))
     w.lookups.releaseDay(met) shouldBe Answer.Unknown
     val fetch = new MetSamsonFetch
-    new TmdbClient(new NormalizingHttpFetch(fetch, w.normalizer), apiKey = Some(settings.TmdbApiKey("k")),
+    new HttpTmdbClient(new NormalizingHttpFetch(fetch, w.normalizer), apiKey = Some(settings.TmdbApiKey("k")),
       language = java.util.Locale.forLanguageTag(language)).readRecordAgain(met)
     fetch.asked should have size 1   // the localized record alone: no poster, no English partial
     w.lookups.releaseDay(met) shouldBe Answer.Known(Some(java.time.LocalDate.of(2026, 12, 5)))
@@ -525,7 +525,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed without its IMDb number" should "still answer with the number its responses name" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
-    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
+    new HttpTmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
     w.lookups.film(film).answered.flatten.map(_.imdbNumber) shouldBe Some(166924)
     val filed = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
     filed.getDocument("record").remove("imdbNumber")
@@ -718,7 +718,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     // TMDB knows the film only as "Compostelle".
     val w        = new World
     val fetch    = new NormalizingHttpFetch(new CaminoFetch, w.normalizer)
-    val live     = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
+    val live     = new TmdbIdentityLookups(new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
       new services.enrichment.ImdbClient(fetch), Nil)
     val query    = CandidateQuery.ImdbTitled("Camino dla opornych")
     val answered = live.candidates(query)
@@ -753,7 +753,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a fallback question" should "offer only the film IMDb lists under the title that TMDB has no record of, read back from the store as asked live" in {
     val w     = new World
     val fetch = new NormalizingHttpFetch(new SnowLeopardFetch, w.normalizer)
-    val live  = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
+    val live  = new TmdbIdentityLookups(new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
       new services.enrichment.ImdbClient(fetch), Nil)
     val query = CandidateQuery.ImdbTitled("Snow Leopard")
     val wang  = FallbackIds.ofImdbId("tt13920372").get
@@ -768,7 +768,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   it should "be unknown to the store until IMDb's record of the film is filed" in {
     val w     = new World
     val fetch = new NormalizingHttpFetch(new SnowLeopardFetch, w.normalizer)
-    new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
+    new TmdbIdentityLookups(new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
       new services.enrichment.ImdbClient(fetch), Nil).candidates(CandidateQuery.ImdbTitled("Snow Leopard"))
     w.lookups.film(FallbackIds.ofImdbId("tt13920372").get) shouldBe Answer.Unknown
   }
@@ -783,7 +783,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String =
         throw new HttpStatusException(404, "POST", url, None)
     }, w.normalizer)
-    val live  = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
+    val live  = new TmdbIdentityLookups(new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
       new services.enrichment.ImdbClient(fetch), Nil)
     val query = CandidateQuery.ImdbTitled("Snow Leopard")
     val wang  = FallbackIds.ofImdbId("tt13920372").get
@@ -806,7 +806,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     // as IMDb's answer without the miss counted: the store, which files nothing for a miss, said Unknown.
     var misses = 0L
     val fetch  = new AnyMethodByUrlHttpFetch(url => { misses += 1; throw new HttpStatusException(404, "GET", url, None) })
-    val live = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
+    val live = new TmdbIdentityLookups(new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k"))),
       new services.enrichment.ImdbClient(fetch), Nil, new CountedGaps(() => misses))
     live.candidates(CandidateQuery.ImdbTitled("B-Movie")) shouldBe Answer.Unknown
     live.candidates(CandidateQuery.Imdb("B-Movie")) shouldBe Answer.Unknown

@@ -1,6 +1,6 @@
 package clients.enrichment
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -79,7 +79,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
   "The enrichment pipeline" should
     "produce a usable record with IMDb rating from the GraphQL scrape (Mortal Kombat II)" in {
 
-    val tmdb = new TmdbClient(
+    val tmdb = new HttpTmdbClient(
       http = stubFetch(Map(
         "/search/movie" -> Mk2TmdbSearch,
         "/external_ids" -> Mk2TmdbExternalIds

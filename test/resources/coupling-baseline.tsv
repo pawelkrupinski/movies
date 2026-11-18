@@ -99,7 +99,7 @@ fanout	modules.webwiring.UsersWiring	54
 fanout	modules.wiring.ChunkScrapeWiring	42
 fanout	modules.wiring.CorpusWiring	63
 fanout	modules.wiring.DetailWiring	34
-fanout	modules.wiring.HttpWiring	50
+fanout	modules.wiring.HttpWiring	51
 fanout	modules.wiring.IdentityModelWiring	110
 fanout	modules.wiring.IdentityProjectionWiring	159
 fanout	modules.wiring.InvariantAuditWiring	35

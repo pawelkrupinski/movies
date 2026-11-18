@@ -72,7 +72,7 @@ object WhatIfAnswers {
     private val normalizer = new adapters.TmdbNormalizer(new TmdbStore(docs, clock), bodies,
       new adapters.KeptFailures(adapters.IdentityHistory.Discard, clock, "what-if"))
     private val counted   = new adapters.LiveAsks.Counted(new adapters.NormalizingHttpFetch(throttled, normalizer))
-    private val tmdb      = new clients.TmdbClient(counted, Some(tmdbKey), country.language, bodies)
+    private val tmdb      = new clients.HttpTmdbClient(counted, Some(tmdbKey), country.language, bodies)
     private val imdb      = new services.enrichment.ImdbClient(counted)
     val live: IdentityLookups = new adapters.TmdbIdentityLookups(tmdb, imdb, Nil)
     private val venueClock = new models.VenueClock(clock)

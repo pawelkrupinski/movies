@@ -39,7 +39,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
       copy
     }
   }
-  private val tmdb = new clients.TmdbClient(http = tools.RoutingHttpFetch.getOnly(Seq(1483477, 95269).map(id =>
+  private val tmdb = new clients.HttpTmdbClient(http = tools.RoutingHttpFetch.getOnly(Seq(1483477, 95269).map(id =>
     s"/movie/$id/images?include_image_language=pl,en,null" -> Files.readString(fixtures.resolve(s"images-$id.json"))).toMap),
     apiKey = Some(settings.TmdbApiKey("fake")), language = java.util.Locale.forLanguageTag("pl-PL"))
   private def hashing(download: PosterDownload = new Recorded()) =

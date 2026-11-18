@@ -7,7 +7,7 @@ import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -31,7 +31,7 @@ import scala.concurrent.duration._
  */
 class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
 
-  private val deadTmdb = new TmdbClient(http = RoutingHttpFetch.dead("unused"), apiKey = None)
+  private val deadTmdb = new HttpTmdbClient(http = RoutingHttpFetch.dead("unused"), apiKey = None)
 
   private def fixture(): (MovieService, ListBuffer[DomainEvent], InMemoryFreshnessStore, InMemoryTaskQueue) = {
     val bus  = new InProcessEventBus()

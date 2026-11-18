@@ -2,7 +2,7 @@ package services.enrichment
 
 import tools.SpecClock.given
 
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import clients.tools.{FailingHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
@@ -26,7 +26,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   private def http(pages: Map[String, String]) = new ScriptedByUrlHttpFetch(url => pages.getOrElse(url, UpstreamNotFound(url)))
 
-  private val tmdb = new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
+  private val tmdb = new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
 
   private def bogaci(rtUrl: Option[String] = None, rt: Option[Int] = None,
                      mcUrl: Option[String] = None, mc: Option[Int] = None) = {

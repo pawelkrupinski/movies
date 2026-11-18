@@ -24,7 +24,7 @@ final class DecorationCorpora(configuration: settings.ProcessConfiguration, stor
   val loaded: Seq[Loaded] = IdentityShadow.full(harness.identityFullCorpora.value, corpusDir, harness.fixtureRoot, harness.identityLiveGaps)
     .map { c =>
       val w = IdentityShadow.wiring(target, c, storages, harness.fixtureRoot, configuration.env)
-      val lookups = new IdentityShadow.Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
+      val lookups = new IdentityShadow.Memo(new TmdbIdentityLookups(new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
         language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
       Loaded(c, IdentityShadow.listingsOf(w, c.normalizer), lookups)
     }

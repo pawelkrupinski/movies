@@ -1,6 +1,6 @@
 package modules.wiring
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
 import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MongoUnrecoveredHosts, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust, UnrecoveredHosts}
@@ -124,7 +124,7 @@ trait HttpWiring { self: WorkerWiring =>
   /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `identityLookupFetch`,
    *  and the identity model's lookups over the same chain (normalized into the TMDB store), so the two ask the same requests. */
   def tmdbClientOver(http: HttpFetch): TmdbClient =
-    new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
+    new HttpTmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
   /** The TMDB bodies the identity store's normalizer and the clients over its fetch parse once between them. */
   lazy val tmdbJsonBodies: tools.JsonBodies = new tools.JsonBodies
   lazy val filmwebClient = new FilmwebClient(enrichmentFetch)

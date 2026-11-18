@@ -36,7 +36,7 @@ class TmdbNormalizerSpec extends AnyFlatSpec with Matchers with LoneElement {
     val bodies  = new tools.JsonBodies
     val fetch   = new ConstantHttpFetch("""{"id":7,"title":"Lalka","credits":{"crew":[],"cast":[]},"alternative_titles":{"titles":[]}}""")
     val store  = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.parse("2026-09-26T10:00:00Z"), java.time.ZoneOffset.UTC))
-    val client = new clients.TmdbClient(new NormalizingHttpFetch(fetch, new TmdbNormalizer(store, bodies)),
+    val client = new clients.HttpTmdbClient(new NormalizingHttpFetch(fetch, new TmdbNormalizer(store, bodies)),
       apiKey = Some(settings.TmdbApiKey("k")), bodies = bodies)
     client.details(7) shouldBe defined
     bodies.retained shouldBe false

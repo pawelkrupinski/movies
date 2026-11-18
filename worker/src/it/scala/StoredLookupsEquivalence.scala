@@ -47,7 +47,7 @@ object StoredLookupsEquivalence {
     val (queries, films) = asked
     val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val through = new NormalizingHttpFetch(new MissAsGap(fetch, misses, missed), new TmdbNormalizer(store))
-    val filling = new TmdbIdentityLookups(new clients.TmdbClient(through, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
+    val filling = new TmdbIdentityLookups(new clients.HttpTmdbClient(through, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
       language = language), new services.enrichment.ImdbClient(through), Nil)
     queries.keys.toSeq.sorted.foreach(filling.candidates)
     films.keys.toSeq.sorted.foreach(filling.film)

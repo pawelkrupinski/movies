@@ -87,7 +87,7 @@ object IdentityRuleAblation {
                      plan: Seq[Config], out: Path, storages: mutable.ListBuffer[ConvergenceStorage]): Unit = {
     val cc       = c.country.code
     val w        = wiring(target, c, storages, root, configuration.env)
-    val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+    val lookups  = new Memo(new TmdbIdentityLookups(new clients.HttpTmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
     val every    = (TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(c.country))

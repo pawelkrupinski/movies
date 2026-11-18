@@ -3,7 +3,7 @@ package services.tasks
 import services.tasktypes.TaskType
 
 import clients.tools.ConstantHttpFetch
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot
 import models.{KinoApollo, MovieRecord, Source, SourceData, Tmdb}
@@ -42,7 +42,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     val fetch: HttpFetch = new CountingHttpFetch(leaf, metrics.recorderFor("pl", WorkerHttpMetrics.Phase.Enrich))
     val tmdb: TmdbClient = tmdbOver(fetch)
     def tmdbOver(http: HttpFetch): TmdbClient =
-      new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("k")))
+      new HttpTmdbClient(http, apiKey = Some(settings.TmdbApiKey("k")))
 
     /** The paths the requests made so far were counted under. */
     def paths: Set[String] = metrics.snapshot().getDataPoints.toArray.toSeq.collect {

@@ -1,6 +1,6 @@
 package tools
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import models.{ArchivedScrape, Country}
 
 import java.time.{Clock, ZoneOffset}
@@ -44,7 +44,7 @@ object FetchReplayWiring {
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.
       override def tmdbClientOver(http: HttpFetch): TmdbClient =
-        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language,
+        new HttpTmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language,
           bodies = tmdbJsonBodies)
     }
   }

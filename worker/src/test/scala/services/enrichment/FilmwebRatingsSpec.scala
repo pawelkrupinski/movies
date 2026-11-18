@@ -3,7 +3,7 @@ package services.enrichment
 import tools.SpecClock.given
 
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
-import clients.TmdbClient
+import clients.HttpTmdbClient
 import models.{Filmweb, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
@@ -35,7 +35,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   /** TmdbClient with no API key — every method short-circuits to None / empty
    *  without making a network call. Used by tests whose path doesn't exercise
    *  URL discovery (i.e. row already has a filmwebUrl). */
-  private val disabledTmdb = new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
+  private val disabledTmdb = new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
 
   private def mkEnrichment(
     imdbId:        String,
@@ -231,7 +231,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     //   - Persist the URL + rating.
     val tmdbBody    = """{"id":693134,"title":"Dune: Part Two","release_date":"2024-02-27","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":693134,"crew":[{"job":"Director","name":"Denis Villeneuve"}]}"""
-    val tmdb = new TmdbClient(http = new ScriptedByUrlHttpFetch(url =>
+    val tmdb = new HttpTmdbClient(http = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/693134?")) tmdbBody
         else if (url.contains("/movie/693134/credits")) creditsBody
         else UpstreamNotFound(url)), apiKey = Some(settings.TmdbApiKey("stub")))
@@ -272,7 +272,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // → tightened lookup returns None → row stays URL-less.
     val tmdbBody    = """{"id":682507,"title":"Belle","release_date":"2021-07-16","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":682507,"crew":[{"job":"Director","name":"Mamoru Hosoda"}]}"""
-    val tmdb = new TmdbClient(http = new ScriptedByUrlHttpFetch(url =>
+    val tmdb = new HttpTmdbClient(http = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/682507?")) tmdbBody
         else if (url.contains("/movie/682507/credits")) creditsBody
         else UpstreamNotFound(url)), apiKey = Some(settings.TmdbApiKey("stub")))

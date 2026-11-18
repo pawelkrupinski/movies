@@ -1,7 +1,7 @@
 package tools
 
 import services.venuepages.EnrichDetailsHandler
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import models.{Cinema, City}
 import modules.wiring.WorkerWiring
 import services.{Drainable, MongoConnection}
@@ -129,7 +129,7 @@ trait TestWiring extends WorkerWiring {
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
   override def tmdbClientOver(http: tools.HttpFetch): TmdbClient =
-    new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-api-key")), bodies = tmdbJsonBodies)
+    new HttpTmdbClient(http, apiKey = Some(settings.TmdbApiKey("test-api-key")), bodies = tmdbJsonBodies)
 
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time

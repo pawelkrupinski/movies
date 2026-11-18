@@ -1,6 +1,6 @@
 package tools
 
-import clients.TmdbClient
+import clients.{HttpTmdbClient, TmdbClient}
 import models.{Cinema, CinemaMovie, Country}
 import modules.wiring.WorkerWiring
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
@@ -213,7 +213,7 @@ class ArchiveReplayWiring(
    *  of 892 films in 55 seconds, all three specs GREEN over a corpus with no metadata in
    *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
   override def tmdbClientOver(http: HttpFetch): TmdbClient =
-    new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
+    new HttpTmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
 
   override lazy val tmdbJsonBodies: JsonBodies = tmdbBodies
 
