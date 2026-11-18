@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import settings.WorkerPoolSize
 
 import tools.Stoppable

@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 

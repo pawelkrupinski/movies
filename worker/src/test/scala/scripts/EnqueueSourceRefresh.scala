@@ -2,7 +2,8 @@ package scripts
 
 import services.MongoConnection
 import services.tasks.RefreshableSources
-import services.tasks.{EnqueueResult, MongoTaskQueue, TaskType}
+import services.tasks.{EnqueueResult, MongoTaskQueue}
+import services.tasktypes.TaskType
 import tools.CommandLine
 
 /**

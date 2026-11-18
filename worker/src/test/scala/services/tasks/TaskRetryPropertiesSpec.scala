@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{MutableClock, RetryClassificationFailures}

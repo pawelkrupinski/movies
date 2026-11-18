@@ -6,7 +6,8 @@ import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
 import services.{MongoConnection, MongoRequirement, MongoTuning}
-import services.tasks.{ClaimedEnqueueReaper, Enqueued, TaskHandler, TaskType}
+import services.tasks.{ClaimedEnqueueReaper, Enqueued, TaskHandler}
+import services.tasktypes.TaskType
 
 import scala.concurrent.duration.*
 

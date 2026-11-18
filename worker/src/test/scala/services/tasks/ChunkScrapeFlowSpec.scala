@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import services.cinemas.common.{EmptyListing, ListingStructure}
 import models.{CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
 import services.events.TaskFinished

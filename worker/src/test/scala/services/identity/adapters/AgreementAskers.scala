@@ -3,7 +3,8 @@ package adapters
 
 import services.identity.agreement.VoterFamily
 import services.sharecards.{PosterDownload, VipsPosterShrinker}
-import services.tasks.{Task, TaskType}
+import services.tasks.Task
+import services.tasktypes.TaskType
 
 import java.time.Clock
 

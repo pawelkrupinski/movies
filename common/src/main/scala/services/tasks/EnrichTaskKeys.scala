@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 /**
  * Dedup keys + payload shapes for the operator-triggered enrichment tasks the
  * web `/tasks` and `/debug` pages enqueue and the worker handlers consume.

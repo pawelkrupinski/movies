@@ -1,7 +1,8 @@
 package tools
 
 import services.freshness.FreshnessStore
-import services.tasks.{DueWindow, EnqueueResult, ForwardingTaskQueue, TaskQueue, TaskType}
+import services.tasks.{DueWindow, EnqueueResult, ForwardingTaskQueue, TaskQueue}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap

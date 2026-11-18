@@ -9,7 +9,8 @@ import org.scalatest.matchers.should.Matchers
 import models.Country
 import services.MongoConnection
 import services.events.ImdbIdMissing
-import services.tasks.{ScrapeReaper, TaskType}
+import services.tasks.ScrapeReaper
+import services.tasktypes.TaskType
 import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
 import tools.{ExecutionBudget, HttpFetch, SharedExecutionBudget, TestWiring}
 

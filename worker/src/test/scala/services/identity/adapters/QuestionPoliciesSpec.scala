@@ -7,7 +7,7 @@ import services.identity.adapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.movies.ListingKey
-import services.tasks.TaskType
+import services.tasktypes.TaskType
 import tools.HttpPath
 
 import scala.concurrent.duration._

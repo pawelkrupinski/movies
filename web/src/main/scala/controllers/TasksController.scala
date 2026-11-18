@@ -2,7 +2,8 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskProducer, TaskQueueMonitor, TaskSummary, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskProducer, TaskQueueMonitor, TaskSummary}
+import services.tasktypes.TaskType
 
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a

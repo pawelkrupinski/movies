@@ -5,7 +5,8 @@ import play.api.Logging
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.tasks.HandlerOutcome.{Done, Skipped}
-import services.tasks.{Enqueued, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.{Enqueued, HandlerOutcome, Task, TaskHandler, TaskQueue}
+import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, RequestedHost, UnexpectedBodyException}
 
 import java.time.Clock

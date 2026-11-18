@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonInt32, BsonString}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging

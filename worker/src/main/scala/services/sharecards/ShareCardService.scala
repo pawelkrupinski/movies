@@ -3,7 +3,8 @@ package services.sharecards
 import models.{Country, ResolvedMovie}
 import play.api.Logging
 import services.readmodel.ShareCardLedger
-import services.tasks.{EnqueueResult, TaskProducer, TaskType}
+import services.tasks.{EnqueueResult, TaskProducer}
+import services.tasktypes.TaskType
 import tools.{Digest, OgCardRenderer}
 
 import java.time.{Clock, Instant}

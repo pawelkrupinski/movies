@@ -4,7 +4,8 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
 import services.readmodel.ReadModelProjectionMetrics
-import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
+import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 

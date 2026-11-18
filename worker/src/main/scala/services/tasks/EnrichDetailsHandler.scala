@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import services.events.EventBus
 import models.{Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}

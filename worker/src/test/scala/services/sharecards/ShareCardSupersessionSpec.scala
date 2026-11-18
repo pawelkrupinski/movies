@@ -4,7 +4,8 @@ import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.TaskFinished
-import services.tasks.{HandlerOutcome, TaskType}
+import services.tasks.HandlerOutcome
+import services.tasktypes.TaskType
 import ShareCardTestKit.*
 
 /**

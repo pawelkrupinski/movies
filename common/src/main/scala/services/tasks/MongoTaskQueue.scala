@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import com.mongodb.{MongoWriteException, WriteConcern}
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}

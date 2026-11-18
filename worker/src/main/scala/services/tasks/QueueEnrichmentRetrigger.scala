@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import models.{Country, MovieRecord}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}

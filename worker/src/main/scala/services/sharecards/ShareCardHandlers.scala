@@ -1,7 +1,8 @@
 package services.sharecards
 
 import services.events.{DomainEvent, TaskFinished}
-import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskType}
+import services.tasks.{HandlerOutcome, Task, TaskHandler}
+import services.tasktypes.TaskType
 
 /** `RenderShareCard`: draw the card its payload describes. A card whose every poster failed is
  *  retried (a cinema origin's outage passes), then given up — the web keeps the fallback. */

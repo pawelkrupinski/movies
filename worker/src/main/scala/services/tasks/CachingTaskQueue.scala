@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import com.github.benmanes.caffeine.cache.Cache
 
 import java.time.Instant

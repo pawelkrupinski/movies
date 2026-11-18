@@ -4,7 +4,8 @@ import models.ResolvedMovie
 import play.api.Logging
 import services.events.{DomainEvent, TaskFinished}
 import services.readmodel.ReadModelReader
-import services.tasks.{EnqueueResult, TaskProducer, TaskType}
+import services.tasks.{EnqueueResult, TaskProducer}
+import services.tasktypes.TaskType
 
 import java.time.{Clock, Instant}
 import scala.util.Try

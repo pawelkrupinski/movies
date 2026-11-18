@@ -2,7 +2,8 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.tasks.{QueueSnapshot, Task, TaskState, TaskType}
+import services.tasks.{QueueSnapshot, Task, TaskState}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 

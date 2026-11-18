@@ -4,7 +4,8 @@ package adapters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
-import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task, TaskType}
+import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task}
+import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, MutableClock}
 
 import java.time.Instant

@@ -4,7 +4,8 @@ import settings.ConfigRefreshInterval
 
 import modules.WorkerWiring
 import services.config.{EnvConfigService, MongoEnvOverrideStore, MongoEnvRegistryStore}
-import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, TaskHandler, TaskType}
+import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, TaskHandler}
+import services.tasktypes.TaskType
 
 import scala.concurrent.duration.DurationLong
 

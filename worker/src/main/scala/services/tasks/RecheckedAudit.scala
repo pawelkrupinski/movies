@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import settings.AuditSample
 
 import io.prometheus.metrics.core.metrics.Counter

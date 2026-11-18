@@ -10,7 +10,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.readmodel.MongoReadModelRepository
 import services.sharecards.{MongoFacebookRescrapeStore, RescrapeEntry, RescrapeKind, RescrapeTarget}
-import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue, TaskType}
+import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue}
+import services.tasktypes.TaskType
 import tools.QueryPlans
 
 import java.time.LocalDateTime

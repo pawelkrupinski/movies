@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import models.{Country, MovieRecord}
 import services.enrichment.TmdbLessRatingLinks
 import services.freshness.FreshnessKind

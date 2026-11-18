@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import play.api.Logging
 import services.events.{DomainEvent, TaskFinished}
 

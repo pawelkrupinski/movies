@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import clients.tools.ConstantHttpFetch
 import clients.TmdbClient
 import io.prometheus.metrics.model.registry.PrometheusRegistry

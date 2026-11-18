@@ -8,7 +8,8 @@ import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
 import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
-import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler, TaskType}
+import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
+import services.tasktypes.TaskType
 
 
 /** Rating refresh: the four `*Ratings` sources, the queue handlers that run

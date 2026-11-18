@@ -1,7 +1,8 @@
 package services.refresh
 
 import play.api.Logging
-import services.tasks.{BulkTaskResult, BulkTaskResultStore, HandlerOutcome, RefreshableSources, Task, TaskHandler, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, HandlerOutcome, RefreshableSources, Task, TaskHandler}
+import services.tasktypes.TaskType
 
 import java.time.Clock
 

@@ -7,7 +7,8 @@ import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, UnresolvedPolicy}
-import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType, TaskWorker}
+import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskWorker}
+import services.tasktypes.TaskType
 
 import scala.concurrent.duration._
 

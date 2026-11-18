@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import models.{Cinema, CinemaMovie, Multikino}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 import services.events.TaskFinished

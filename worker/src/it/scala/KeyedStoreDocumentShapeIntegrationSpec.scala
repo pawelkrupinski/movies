@@ -8,7 +8,8 @@ import org.scalatest.matchers.should.Matchers
 import services.attempts.{AttemptOutcome, EnrichmentAttempt, MongoEnrichmentAttemptStore}
 import services.closure.{LedgerEntry, LedgerKind, MongoClosureLedger}
 import services.enrichment.MongoOmdbAttemptStore
-import services.tasks.{BulkTaskResult, ChunkPageMemo, MongoBulkTaskResultStore, MongoChunkPageMemo, TaskType}
+import services.tasks.{BulkTaskResult, ChunkPageMemo, MongoBulkTaskResultStore, MongoChunkPageMemo}
+import services.tasktypes.TaskType
 import tools.Eventually.eventually
 import tools.SpecTimeouts
 

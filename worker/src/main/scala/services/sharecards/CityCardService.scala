@@ -3,7 +3,8 @@ package services.sharecards
 import models.{City, Country}
 import play.api.Logging
 import services.readmodel.ReadModelReader
-import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer, TaskType}
+import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer}
+import services.tasktypes.TaskType
 import tools.{CityCardRenderer, Digest, OgCardRenderer, PosterDecode}
 
 import java.nio.file.{Files, Path}

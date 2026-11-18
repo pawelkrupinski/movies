@@ -6,7 +6,8 @@ import models.{City, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.{InMemoryReadModelRepository, UnreadableReadModelRepository}
-import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task, TaskType}
+import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task}
+import services.tasktypes.TaskType
 import ShareCardTestKit.*
 import tools.{CityCardRenderer, MutableClock}
 

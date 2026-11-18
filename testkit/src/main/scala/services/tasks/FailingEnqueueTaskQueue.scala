@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import tools.contracts.FailsOnPurpose
 
 import java.time.Instant

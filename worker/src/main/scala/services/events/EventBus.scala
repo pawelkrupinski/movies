@@ -1,7 +1,7 @@
 package services.events
 
 import play.api.Logging
-import services.tasks.TaskType
+import services.tasktypes.TaskType
 
 import java.util.concurrent.CopyOnWriteArrayList
 import scala.util.control.NonFatal

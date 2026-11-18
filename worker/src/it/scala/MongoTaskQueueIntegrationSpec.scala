@@ -7,7 +7,8 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieCodecs
-import services.tasks.{EnqueueResult, MongoTaskQueue, TaskType}
+import services.tasks.{EnqueueResult, MongoTaskQueue}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 import scala.concurrent.Await

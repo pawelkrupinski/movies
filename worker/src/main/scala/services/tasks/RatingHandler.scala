@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import services.attempts.{AttemptOutcome, EnrichmentAttempt, EnrichmentAttemptStore}
 import services.cadence.RatingCadenceStore
 import services.freshness.{FreshnessKind, FreshnessStore}

@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Country, MovieRecord, Source, SourceData, Tmdb}

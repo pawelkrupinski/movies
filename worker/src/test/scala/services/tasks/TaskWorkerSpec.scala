@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.tasktypes.TaskType
+
 import tools.SpecTimeouts
 
 import org.scalatest.concurrent.Eventually

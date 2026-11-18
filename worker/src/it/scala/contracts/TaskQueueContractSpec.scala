@@ -5,7 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.movies.InMemoryMovieRepository
-import services.tasks.{EnqueueResult, InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, InMemoryTaskQueue, TaskQueue}
+import services.tasktypes.TaskType
 import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
 

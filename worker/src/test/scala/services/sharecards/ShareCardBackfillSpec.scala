@@ -3,7 +3,7 @@ package services.sharecards
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.TaskFinished
-import services.tasks.TaskType
+import services.tasktypes.TaskType
 import ShareCardTestKit.*
 
 class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {

@@ -4,7 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.WorkerTaskMetrics.CountryQueueSample
 import services.movies.ChangeStreamLiveness
-import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary, TaskType}
+import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 

@@ -1,6 +1,8 @@
 package services.metrics
 
-import services.tasks.{EnqueueResult, ForwardingTaskQueue, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, ForwardingTaskQueue, TaskQueue}
+
+import services.tasktypes.TaskType
 
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration

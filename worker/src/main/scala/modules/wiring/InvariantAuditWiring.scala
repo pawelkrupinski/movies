@@ -5,7 +5,8 @@ import settings.{ReadModelAuditSample, ShareCardAuditSample}
 import modules.WorkerWiring
 import services.readmodel.ReadModelContentAudit
 import services.sharecards.ShareCardAudit
-import services.tasks.{ClaimedEnqueueReaper, Enqueued, RecheckedAudit, RecheckedAuditHandler, TaskHandler, TaskType}
+import services.tasks.{ClaimedEnqueueReaper, Enqueued, RecheckedAudit, RecheckedAuditHandler, TaskHandler}
+import services.tasktypes.TaskType
 
 import scala.concurrent.duration.*
 

@@ -3,7 +3,8 @@ package services.sharecards
 import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.tasks.{HandlerOutcome, Task, TaskType}
+import services.tasks.{HandlerOutcome, Task}
+import services.tasktypes.TaskType
 import ShareCardTestKit.*
 
 import java.nio.file.Files

@@ -144,7 +144,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   "the archive replay queue" should "answer a repeat enqueue from production's dedup cache, not the store" in {
-    import services.tasks.{EnqueueResult, TaskType}
+    import services.tasks.EnqueueResult
+    import services.tasktypes.TaskType
     val reachedStore = new java.util.concurrent.atomic.AtomicInteger(0)
     val storage = new FetchOnlyStorage {
       override lazy val tasks = new services.tasks.InMemoryTaskQueue {
@@ -454,7 +455,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // frozen clock, for ever. The drain fails with it instead.
   "a harness queue drain" should "fail with what a claimant threw, not read as drained" in {
     val wiring = hermeticWiring(None, new MissingFixtures)
-    wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, "probe-throws", Map.empty, submittedAt = wiring.clock.instant())
+    wiring.taskQueue.enqueue(services.tasktypes.TaskType.EnrichDetails, "probe-throws", Map.empty, submittedAt = wiring.clock.instant())
     val thrown = the [Throwable] thrownBy wiring.drainQueue("probe")(_ => throw new StackOverflowError("handler blew its stack"))
     thrown.getMessage should include ("handler blew its stack")
   }
@@ -463,7 +464,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // round trips on every US projection, ~23 s each at under one core (run 37563035752).
   it should "work its tasks on the background budget's claimants side by side" in {
     val wiring  = hermeticWiring(None, new MissingFixtures)
-    (1 to 12).foreach(i => wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, s"probe-$i", Map.empty,
+    (1 to 12).foreach(i => wiring.taskQueue.enqueue(services.tasktypes.TaskType.EnrichDetails, s"probe-$i", Map.empty,
       submittedAt = wiring.clock.instant()))
     // Opens only once two handlers are in flight at once: one claimant at a time never opens it.
     val together = new java.util.concurrent.CountDownLatch(2)

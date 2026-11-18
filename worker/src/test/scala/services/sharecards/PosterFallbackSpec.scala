@@ -42,7 +42,7 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers with ScratchDirectori
     fixed.readModel.upsertMovie(film().copy(shareCard = Some(noPoster)))
     fixed.readModel.upsertScreening(screening(film()._id))
     val backfill = new ShareCardBackfill(fixed.service, fixed.readModel, fixed.queue, fixed.metrics, fixed.clock)
-    ShareCardBackfill.onTaskFinished(backfill)(services.events.TaskFinished(services.tasks.TaskType.PruneShareCards, "share-card-budget",
+    ShareCardBackfill.onTaskFinished(backfill)(services.events.TaskFinished(services.tasktypes.TaskType.PruneShareCards, "share-card-budget",
       Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)))
     val tasks = drain(fixed.queue)
     tasks should have size 1

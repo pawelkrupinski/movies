@@ -11,7 +11,8 @@ import services.events.{RecordingEventBus, VenueDetailRead}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.tasks.{DueWindow, EnrichDetailsHandler, EnrichDetailsTasks, Task, TaskType}
+import services.tasks.{DueWindow, EnrichDetailsHandler, EnrichDetailsTasks, Task}
+import services.tasktypes.TaskType
 import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 import tools.HttpStatusException
 

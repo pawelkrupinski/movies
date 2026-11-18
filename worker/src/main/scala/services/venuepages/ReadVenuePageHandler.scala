@@ -3,7 +3,8 @@ package services.venuepages
 import play.api.Logging
 import services.UptimeRecorder
 import services.cinemas.common.DetailEnricher
-import services.tasks.{EnqueueResult, EnrichDetailsTasks, HandlerOutcome, Task, TaskHandler, TaskProducer, TaskType}
+import services.tasks.{EnqueueResult, EnrichDetailsTasks, HandlerOutcome, Task, TaskHandler, TaskProducer}
+import services.tasktypes.TaskType
 
 /** Asking for a venue page to be read into venue_pages, keyed by the PAGE — for a listing no film row
  *  holds yet, which `EnrichDetails` (keyed by the film row) cannot reach. */

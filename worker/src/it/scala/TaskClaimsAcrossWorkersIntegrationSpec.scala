@@ -3,7 +3,8 @@ package integration
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.schedule.MongoScheduledRunStore
-import services.tasks.{MongoTaskQueue, TaskType}
+import services.tasks.MongoTaskQueue
+import services.tasktypes.TaskType
 import tools.ConcurrentInstances
 import tools.ConcurrentInstances.{race, rounds, successes}
 

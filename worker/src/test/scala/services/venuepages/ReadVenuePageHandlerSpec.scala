@@ -8,7 +8,8 @@ import services.cinemas.FakeDetailEnricher
 import services.cinemas.common.FilmDetail
 import services.events.{RecordingEventBus, VenueDetailRead}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.tasks.{EnrichDetailsTasks, HandlerOutcome, Task, TaskType}
+import services.tasks.{EnrichDetailsTasks, HandlerOutcome, Task}
+import services.tasktypes.TaskType
 
 import java.time.{Clock, Instant, ZoneOffset}
 

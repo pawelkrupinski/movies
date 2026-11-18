@@ -5,7 +5,8 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
-import services.tasks.{BulkTaskResult, BulkTaskResultStore, InMemoryBulkTaskResultStore, InMemoryTaskQueue, TaskState, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, InMemoryBulkTaskResultStore, InMemoryTaskQueue, TaskState}
+import services.tasktypes.TaskType
 
 import java.time.Instant
 import scala.concurrent.duration._
