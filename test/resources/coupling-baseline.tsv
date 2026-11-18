@@ -42,10 +42,7 @@ cycle-edge	modules.webwiring->modules	8
 cycle-edge	modules.wiring->modules	18
 cycle-edge	services.alerts->services.cinemas	2
 cycle-edge	services.alerts->services.scrapes	7
-cycle-edge	services.attempts->services.cadence	5
-cycle-edge	services.attempts->services.freshness	3
 cycle-edge	services.billing->services.movies	18
-cycle-edge	services.cadence->services.tasks	1
 cycle-edge	services.cinemas->services.enrichment	5
 cycle-edge	services.cinemas->services.identity	8
 cycle-edge	services.cinemas->services.movies	100
@@ -55,15 +52,12 @@ cycle-edge	services.enrichment->services.events	2
 cycle-edge	services.enrichment->services.identity	4
 cycle-edge	services.enrichment->services.movies	50
 cycle-edge	services.enrichment->services.resolution	26
-cycle-edge	services.enrichment->services.tasks	7
+cycle-edge	services.enrichment->services.tasks	6
 cycle-edge	services.events->services.tasks	2
-cycle-edge	services.freshness->services.tasks	1
 cycle-edge	services.identity->clients	13
 cycle-edge	services.identity->services.billing	39
-cycle-edge	services.identity->services.cadence	1
 cycle-edge	services.identity->services.cinemas	22
 cycle-edge	services.identity->services.enrichment	21
-cycle-edge	services.identity->services.freshness	3
 cycle-edge	services.identity->services.movies	309
 cycle-edge	services.identity->services.readmodel	1
 cycle-edge	services.identity->services.refresh	2
@@ -75,7 +69,6 @@ cycle-edge	services.identity->services.titlerules	2
 cycle-edge	services.identity->services.venuepages	9
 cycle-edge	services.metrics->services.alerts	3
 cycle-edge	services.metrics->services.cinemas	5
-cycle-edge	services.metrics->services.freshness	5
 cycle-edge	services.metrics->services.identity	19
 cycle-edge	services.metrics->services.movies	43
 cycle-edge	services.metrics->services.readmodel	9
@@ -88,7 +81,6 @@ cycle-edge	services.movies->clients	1
 cycle-edge	services.movies->services.billing	2
 cycle-edge	services.movies->services.enrichment	1
 cycle-edge	services.movies->services.events	3
-cycle-edge	services.movies->services.freshness	3
 cycle-edge	services.movies->services.identity	4
 cycle-edge	services.movies->services.metrics	1
 cycle-edge	services.movies->services.readmodel	6
@@ -103,17 +95,13 @@ cycle-edge	services.refresh->services.resolution	1
 cycle-edge	services.refresh->services.tasks	10
 cycle-edge	services.resolution->services.billing	1
 cycle-edge	services.resolution->services.movies	10
-cycle-edge	services.resolution->services.tasks	1
 cycle-edge	services.scrapes->services.movies	6
 cycle-edge	services.sharecards->services.events	6
 cycle-edge	services.sharecards->services.readmodel	17
 cycle-edge	services.sharecards->services.tasks	37
-cycle-edge	services.tasks->services.attempts	6
-cycle-edge	services.tasks->services.cadence	13
 cycle-edge	services.tasks->services.cinemas	32
 cycle-edge	services.tasks->services.enrichment	2
 cycle-edge	services.tasks->services.events	5
-cycle-edge	services.tasks->services.freshness	27
 cycle-edge	services.tasks->services.metrics	4
 cycle-edge	services.tasks->services.movies	36
 cycle-edge	services.tasks->services.scrapes	8
@@ -124,7 +112,6 @@ cycle-edge	services.users->services.movies	7
 cycle-edge	services.users->services.readmodel	1
 cycle-edge	services.venuepages->services.cinemas	17
 cycle-edge	services.venuepages->services.events	2
-cycle-edge	services.venuepages->services.freshness	6
 cycle-edge	services.venuepages->services.identity	2
 cycle-edge	services.venuepages->services.tasks	13
 ce	clients	4
@@ -139,7 +126,7 @@ ce	services.alerts	6
 ce	services.attempts	4
 ce	services.auth	5
 ce	services.billing	2
-ce	services.cadence	4
+ce	services.cadence	3
 ce	services.cinemas	9
 ce	services.closure	6
 ce	services.config	2
@@ -147,7 +134,7 @@ ce	services.enrichment	11
 ce	services.events	1
 ce	services.facebook	2
 ce	services.fallback	2
-ce	services.freshness	5
+ce	services.freshness	4
 ce	services.identity	22
 ce	services.keyed	3
 ce	services.lookups	1
@@ -155,7 +142,7 @@ ce	services.metrics	15
 ce	services.movies	17
 ce	services.readmodel	6
 ce	services.refresh	6
-ce	services.resolution	6
+ce	services.resolution	5
 ce	services.retention	1
 ce	services.review	8
 ce	services.schedule	1

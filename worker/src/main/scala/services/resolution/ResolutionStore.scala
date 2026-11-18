@@ -126,7 +126,7 @@ class MongoResolutionStore(
 
 
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(collectionName).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
+    db.map(_.getCollection(collectionName).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
 
   // Build the TTL index off-thread so construction never blocks worker boot on Mongo.
   coll.foreach { c =>

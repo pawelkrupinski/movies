@@ -80,7 +80,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
   // Relaxed `{w:1, j:false}` like freshness: cadence stats are a cache — a lost
   // write just means the film briefly reverts toward the base interval.
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(RatingCadenceReader.Collection).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
+    db.map(_.getCollection(RatingCadenceReader.Collection).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
 
   coll.foreach { c =>
     val thread = new Thread(() => hydrate(c), "rating-cadence-init")

@@ -31,9 +31,9 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   import MongoChunkScrapeStore._
 
   private val runs: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("scrape_runs").withWriteConcern(MongoTaskQueue.QueueWriteConcern))
+    db.map(_.getCollection("scrape_runs").withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
   private val chunks: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("scrape_chunks").withWriteConcern(MongoTaskQueue.QueueWriteConcern))
+    db.map(_.getCollection("scrape_chunks").withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
 
   runs.foreach { c =>
     val t = new Thread(() => createIndexes(c, chunks), "scrape-runs-init"); t.setDaemon(true); t.start()

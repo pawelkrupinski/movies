@@ -68,13 +68,13 @@ object KeyedBulkTaskResultStore {
 
 /**
  * Mongo-backed [[BulkTaskResultStore]], collection `bulk_task_results`, with the task queue's
- * relaxed `{w:1, j:false}` write concern ([[MongoTaskQueue.QueueWriteConcern]]). The worker writes
+ * relaxed `{w:1, j:false}` write concern ([[services.MongoWriteConcerns.Bookkeeping]]). The worker writes
  * here from [[BulkRefreshHandler]] when a corpus walk finishes; the web reads it for the `/tasks`
  * page. A tiny, bounded collection (≤ one row per bulk job type).
  */
 class MongoBulkTaskResultStore(db: Option[MongoDatabase]) extends KeyedBulkTaskResultStore(
   db.fold(KeyedDocStore.absent[BulkTaskResult])(d => new MongoKeyedDocStore(
-    d.getCollection(MongoBulkTaskResultStore.Collection).withWriteConcern(MongoTaskQueue.QueueWriteConcern), KeyedBulkTaskResultStore.Codec)))
+    d.getCollection(MongoBulkTaskResultStore.Collection).withWriteConcern(services.MongoWriteConcerns.Bookkeeping), KeyedBulkTaskResultStore.Codec)))
 
 object MongoBulkTaskResultStore {
   val Collection = "bulk_task_results"

@@ -44,7 +44,7 @@ import scala.util.Try
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
  *
- * Writes use a relaxed `{w:1, j:false}` write concern ([[MongoTaskQueue.QueueWriteConcern]]):
+ * Writes use a relaxed `{w:1, j:false}` write concern ([[services.MongoWriteConcerns.Bookkeeping]]):
  * the queue is ephemeral bookkeeping, not a system of record, so paying the
  * journal-fsync + majority wait on every claim/complete/release/reap/enqueue is
  * wasted cost — on the shared-cpu Mongo it was the dominant per-op latency (the
@@ -59,7 +59,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   import MongoTaskQueue.*
 
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(collectionName).withWriteConcern(QueueWriteConcern))
+    db.map(_.getCollection(collectionName).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
 
   /** The effective write concern of the `tasks` collection — for diagnostics/tests. */
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
@@ -401,11 +401,6 @@ object MongoTaskQueue {
         payload.keySet().asScala.iterator.map(k => k -> payload.getString(k).getValue).toMap
       }
       .getOrElse(Map.empty[String, String])
-
-  /** `{w:1, j:false}` — ack on primary apply, no journal-fsync/majority wait. The
-   *  queue is recoverable bookkeeping, so the durability trade buys back the
-   *  per-op cost that dominated the shared-cpu Mongo's load. See the class document. */
-  val QueueWriteConcern: WriteConcern = WriteConcern.W1.withJournal(false)
 
   /** How long a task of a type this build does not know waits before the lease reaper drops it as RETIRED. Such a
    *  row is, while a rollback lasts, a newer image's work this one must leave for it; no rollback runs a week (an
