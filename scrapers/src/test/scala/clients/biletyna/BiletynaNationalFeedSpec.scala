@@ -120,8 +120,9 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
     val http    = new RequestLogHttpFetch(new PatchedHttpFetch(replay)({
       case url if url.startsWith("https://biletyna.pl/ajax/events?ipp=") => release.await(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); replay.get(url)
     }))
-    val now  = new AtomicLong(0L)
-    val feed = new BiletynaNationalFeed(http, venues.map(_._2).toSet, (load: Runnable) => { Thread.ofVirtual().start(load); () },
+    val now   = new AtomicLong(0L)
+    val loads = new java.util.concurrent.ConcurrentLinkedQueue[Thread]()
+    val feed  = new BiletynaNationalFeed(http, venues.map(_._2).toSet, (load: Runnable) => { loads.add(Thread.ofVirtual().start(load)); () },
       ticker = () => now.get)
     val (cinema, page) = venues.head
     // read off the place page while the feed is held: a scrape waiting for the feed would have read it instead
@@ -132,7 +133,11 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
     // once read, the feed serves the venue, and was read only once
     awaitRead()
     http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 1
-    // and its TTL runs from when the read finished, so it is read again once that has passed
+    // and its TTL runs from when the read finished, so it is read again once that has passed. The cache sets that
+    // expiry in a callback that runs on the read's thread just AFTER the read reports done: advanced before it ran,
+    // the clock made the expiry TTL from the advanced time, no second read came, and the count stayed 1 (Main #2605).
+    // Every load thread has finished, callbacks included, before the clock moves.
+    loads.forEach(thread => thread.join(tools.SpecTimeouts.Io.toMillis))
     now.addAndGet((BiletynaNationalFeed.DefaultTtl + 1.second).toNanos)
     awaitRead()
     http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
