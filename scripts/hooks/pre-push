@@ -41,7 +41,8 @@
 #                 under it instead of natively, in the same run; `--changed <base> --floor "$(scripts/floor-bash)"`: a Mac's
 #                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
 #                 builds; none BLOCKS, PREPUSH_SKIP=floor skips it); and, Docker running, beside them on Linux
-#                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
+#                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it) -- unless the hook already runs on Linux
+#                 (ci-runner's landing checks: the native run is the Linux one)
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
@@ -1419,7 +1420,11 @@ check_scripttests() {
         scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 &
         floor_pid=$!
     fi
-    if ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
+    # ALREADY ON LINUX (ci-runner's landing checks, CI's ubuntu): the native run IS the Linux run, so the Docker copy of
+    # it repeated it for 120-150 CPU-s a job (2026-11-18) -- skipped, said
+    if [ "${PREPUSH_UNAME:-$(uname -s)}" = Linux ]; then
+        echo "on Linux: this run is Linux's (the Docker pass, run-script-tests --linux, would repeat it)"
+    elif ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
         scripts/run-script-tests --linux --changed "$base_sha" > "$tmp/scripttests-linux.log" 2>&1 &
         linux_pid=$!
     fi

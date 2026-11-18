@@ -642,6 +642,17 @@ check "THE HEAVY ROWS: the landing check's itrest job runs Main's itAll command,
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=)"
 check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1" \
   "$code $(grep -c 'no \$MONGODB_URI' "$testroot/area-out")"
+# THE LINUX PASS (run-script-tests --linux, in Docker) only off Linux: on Linux (ci-runner's landing checks) the native
+# run is the Linux run, and the Docker copy repeated it for 120-150 CPU-s a job (2026-11-18). A fake run-script-tests.
+printf '#!/usr/bin/env bash\n# --linux --floor)\n[ "$1" = --reads ] && exit 0\necho "run-script-tests $*" >> "$AREA_CALLS"; echo "1 passed"\n' > "$area/scripts/run-script-tests"
+chmod +x "$area/scripts/run-script-tests"; scratch_git "$area" add scripts/run-script-tests; scratch_git "$area" commit -qm "a fake run-script-tests"
+code="$(area_push scripts/ci/s.sh PREPUSH_SKIP="eslint lintspecs floor shellcheck sbt" PREPUSH_UNAME=Linux)"
+check "on Linux the script self-tests run natively, once: no Docker pass repeating them" "0 1 0 1" \
+  "$code $(calls 'run-script-tests --changed') $(calls 'run-script-tests --linux') $(grep -c "on Linux: this run is Linux's" "$testroot/area-out")"
+code="$(area_push scripts/ci/s.sh PREPUSH_SKIP="eslint lintspecs floor shellcheck sbt" PREPUSH_UNAME=Darwin)"
+check "...on a Mac the Docker pass runs beside them, as CI's Linux" "0 1 1" \
+  "$code $(calls 'run-script-tests --changed') $(calls 'run-script-tests --linux')"
+scratch_git "$area" rm -q scripts/run-script-tests scripts/ci/s.sh; scratch_git "$area" commit -qm "the fake run-script-tests, gone"
 code="$(area_push identity/src/main/scala/services/identity/S.scala PREPUSH_ELSEWHERE=identity)"
 check "THE SPLIT CHECK: PREPUSH_ELSEWHERE=identity leaves the identity set to the other job, said, and runs the rest" "0 0 1 1" \
   "$code $(calls identity/test) $(basic_ran) $(grep -c "left to the landing check's other job(s): identity" "$testroot/area-out")"
