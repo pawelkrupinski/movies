@@ -140,23 +140,29 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
       val venue = venueStated(listings).foldLeft(ProseWords.None) { case (words, (listing, page)) =>
         words ++ listing.words ++ page.fold(ProseWords.None)(_.words)
       }
-      def description(other: Int) = lookups.overview(other).answered.flatten.filter(_.nonEmpty)
-      def record(other: Int) = lookups.film(other).answered.flatten
-      Option.when(venue.nonEmpty)(()).flatMap(_ => description(film)).flatMap { own =>
+      Option.when(venue.nonEmpty)(()).flatMap(_ => descriptionIn(lookups, film)).flatMap { own =>
         // the cluster's candidates, else what its titles' searches answered: a search not answered yet (a gap the model's
         // resolve met) leaves the candidates unread, and a namesake its other searches found is a namesake still
         val namesakes = Some(candidatesOf(id, digest, listings)).filter(_.nonEmpty).getOrElse(titledFilms(listings, answeredOnly = true))
           .distinct.filter(_ != film)
-          .flatMap(other => description(other).map(other -> _))
-        val people = ProseWords.ofWords(lookups.cast(film).answered.flatten.getOrElse(Nil) ++ record(film).flatMap(_.directors).getOrElse(Nil))
+          .flatMap(other => descriptionIn(lookups, other).map(other -> _))
+        val people = ProseWords.ofWords(lookups.cast(film).answered.flatten.getOrElse(Nil) ++ recordIn(lookups, film).flatMap(_.directors).getOrElse(Nil))
         val titles = ProseWords.ofWords(listings.flatMap(listing => Seq(listing.rawTitle, listing.title, listing.cleanTitle)) ++
-          (film +: namesakes.map(_._1)).flatMap(record(_).toSeq.flatMap(_.titles)))
+          (film +: namesakes.map(_._1)).flatMap(recordIn(lookups, _).toSeq.flatMap(_.titles)))
         SynopsisEvidence.veto(venue, own, people, namesakes, titles).map { case (other, shared) =>
-          def titled(of: Int) = record(of).fold(s"tmdb $of")(_.titled)
+          def titled(of: Int) = recordIn(lookups, of).fold(s"tmdb $of")(_.titled)
           s"no agreement on ${titled(film)}: the venue's synopsis names $shared words of ${titled(other)}'s TMDB description and none of its own"
         }
       }
     }
+
+  /** TMDB's description of `film` as `lookups` read it, if known and not empty. */
+  private def descriptionIn(lookups: services.identity.IdentityLookups, film: Int): Option[ProseWords] =
+    lookups.overview(film).answered.flatten.filter(_.nonEmpty)
+
+  /** TMDB's record of `film` as `lookups` read it, if known. */
+  private def recordIn(lookups: services.identity.IdentityLookups, film: Int): Option[services.identity.IdentityMeasures.Film] =
+    lookups.film(film).answered.flatten
 
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
    *  needs is open, each noted to ask. */

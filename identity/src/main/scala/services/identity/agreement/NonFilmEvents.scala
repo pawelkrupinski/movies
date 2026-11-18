@@ -205,6 +205,14 @@ object NonFilmEvents {
     itsOwn.nonEmpty && named.nonEmpty && others.count(hit => titles(hit).exists(_.startsWith(named))) < 2
   }
 
+  /** The event a marker in `listing`'s title names — a mystery screening, or one of [[Markers]] (a franchise marathon
+   *  none of whose titles is a film's own, and none but "no screening" or a pass with a film attached). */
+  private def marked(listing: Listing, raw: String, title: String, titled: FilmTitled): Option[String] =
+    Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
+      .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
+      .filterNot(reason => reason == "franchise marathon" && titled(listing))
+      .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
+
   /** Why `listing` is an event no film database holds, or `None`. `titled`: whether the model's own searches found a
    *  film of its very title ([[FilmTitled]]). */
   def of(listing: Listing, titled: FilmTitled = NoneTitled): Option[String] =
@@ -213,10 +221,7 @@ object NonFilmEvents {
       val raw   = listing.rawTitle.trim
       val title = raw.toLowerCase(Locale.ROOT)
       if (ListingShape.relays(listing, title)) liveShow(listing, title)
-      else Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
-        .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
-        .filterNot(reason => reason == "franchise marathon" && titled(listing))
-        .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
+      else marked(listing, raw, title, titled)
         .orElse(eventBilled(raw).filter(NonMovieEventClassifier.isPerformance(_)).map(_ => "live event"))
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
         // (DE "Schöne Aussicht - Die Slam Poetry & Songwriting Show - …": no 2007 "Schöne Aussicht")

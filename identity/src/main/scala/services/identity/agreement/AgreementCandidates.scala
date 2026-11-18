@@ -89,16 +89,23 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       else {
         val shown: Seq[PosterHash] = venue.flatMap(_._2.answered.flatten)
         if (shown.isEmpty) Answer.Known(Nil)
-        else {
-          val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
-          def apart(film: Int) = looked.flatMap(_.film(film).answered.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
-          val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
-          val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), Nil, hashes, asked))
-          if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
-          else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.answered.getOrElse(Nil)) }.toMap))
-        }
+        else filmDistances(id, digest, listings, also, shown, asked, candidates, hashes)
       }
     }
+  }
+
+  /** The nearest each candidate of the cluster (and `also`) comes to each venue poster `shown` — a candidate numbering
+   *  another edition than a listing showing a poster left out; `Unknown`, each poster not hashed yet noted in `asked`,
+   *  while one is not. */
+  private def filmDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int], shown: Seq[PosterHash],
+                            asked: mutable.Set[Question], candidates: (String, Long, Seq[Listing]) => Seq[Int],
+                            hashes: PosterAnswers): Answer[Seq[Map[Int, Option[Int]]]] = {
+    val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
+    def apart(film: Int) = looked.flatMap(_.film(film).answered.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
+    val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
+    val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), Nil, hashes, asked))
+    if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
+    else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.answered.getOrElse(Nil)) }.toMap))
   }
 
   /** The TMDB films the listings' own evidence reaches, none denied and no fallback id — None while a search they ask

@@ -45,16 +45,18 @@ object Broadcast {
       undated: Int => Boolean = _ => false): Either[Seq[Int], Option[Taken]] =
     if (listings.exists(_.screenings.isUnknown)) Left(Nil)
     else billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
-      // the films databases' productions are read only for a record every listing's billing fits but by its banner
-      val credits = if (!records.exists { case (_, film) => billing.forall(_.fitsButTheHouse(film)) && !billing.forall(_.fits(film, Nil)) })
-        Answer.Known(Nil) else productions()
-      credits.failedAs(Nil) match {
+      credited(billing, records, productions).failedAs(Nil) match {
         case Answer.Unknown | Answer.Failed => Left(Nil) // failedAs leaves no Failed
         case Answer.Known(credited) =>
           val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct
           if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records, credited))
       }
     }
+
+  /** The films databases' productions, read only for a record every listing's `billing` fits but by its banner. */
+  private def credited(billing: Seq[Billing], records: Seq[(Int, Film)], productions: () => Answer[Seq[Film]]): Answer[Seq[Film]] =
+    if (!records.exists { case (_, film) => billing.forall(_.fitsButTheHouse(film)) && !billing.forall(_.fits(film, Nil)) })
+      Answer.Known(Nil) else productions()
 
   /** How long a relay's encores run after TMDB dates its broadcast. */
   val RelayRunDays = 365
@@ -88,20 +90,33 @@ object Broadcast {
       aired <- taken.released.filter(_.isBefore(run(first)))
       if listings.forall(listing => ListingShape.billsAHouse(listing) && StageRelays.billing(measured(listing), taken).isDefined &&
         !tiedToTaken(listing))
-      (_, newer) <- others.filter { case (_, film) =>
-                      IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
-                        film.released.exists(day => day.isAfter(aired) && !day.isBefore(run(first)) && !day.isAfter(last))
-                    }.sortBy { case (id, film) => (film.released.map(_.toEpochDay).getOrElse(0L), id) }.lastOption
+      newer <- newerOf(others, taken, aired, run(first), last)
     } yield s"it screens from $first, over a year after its record was broadcast ($aired), and ${newer.titled} was broadcast ${newer.released.get}"
   }
 
-  private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Option[Taken] = {
-    val fits    = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film, productions)) }.distinctBy(_._1)
-    // one broadcast its film database holds twice is one record, the one every listing of it takes: the cluster's listings
-    // may each reach one of them (UK Flicks' "Royal Opera House: Carmen", 1151422 and 1702759)
-    val fitting = fits.filterNot { case (id, film) => fits.exists { case (other, record) => other != id &&
+  /** The latest of `others` carrying `taken`'s very title, broadcast after it (`aired`) within the relay's run (`from`,
+   *  `to`). */
+  private def newerOf(others: Seq[(Int, Film)], taken: Film, aired: java.time.LocalDate, from: java.time.LocalDate,
+                      to: java.time.LocalDate): Option[Film] =
+    others.filter { case (_, film) =>
+      IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
+        film.released.exists(day => day.isAfter(aired) && !day.isBefore(from) && !day.isAfter(to))
+    }.sortBy { case (id, film) => (film.released.map(_.toEpochDay).getOrElse(0L), id) }.lastOption.map(_._2)
+
+  /** The `records` dated and fitting every listing's `billing` (with the `productions` credited), one broadcast its film
+   *  database holds twice counted once: the one every listing of it takes (UK Flicks' "Royal Opera House: Carmen",
+   *  1151422 and 1702759). */
+  private def fittingOf(billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Seq[(Int, Film)] = {
+    val fits = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film, productions)) }.distinctBy(_._1)
+    fits.filterNot { case (id, film) => fits.exists { case (other, record) => other != id &&
       StageRelays.sameBroadcast(film, record) && Ordering[(Int, Int, Int)].lt(StageRelays.broadcastRecordOrder(other, record),
         StageRelays.broadcastRecordOrder(id, film)) } }
+  }
+
+  private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Option[Taken] = {
+    // one broadcast its film database holds twice is one record, the one every listing of it takes: the cluster's listings
+    // may each reach one of them (UK Flicks' "Royal Opera House: Carmen", 1151422 and 1702759)
+    val fitting = fittingOf(billing, records, productions)
     val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }
     def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
     val chosen = onDay match {

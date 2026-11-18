@@ -287,21 +287,8 @@ object Agreement {
     named.map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       val taken = film.records.take(film.agreed.families.size)
-      // a feed catalogue's facts ruling the film out are its claim, one vote against it, not a veto (DE "To The Bone":
-      // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
-      val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
-      val stands = film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
-        !billsAnothersDirector(listings, film.records, verdicts) &&
-        !taken.exists(contradictedByTheListing(listings, _)) &&
-        listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
-          (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed)))
-      Option.when(stands) {
-        def titled(record: SourceRecord) = s"'${record.film.title}'${record.film.year.fold("")(y => s" ($y)")}"
-        taken.iterator.flatMap(record => runsShort(listings, record, thisYear).map { case (stated, runs) =>
-          s"no agreement on ${titled(record)}: the venue runs it ${stated}′, more than ${RuntimeShort}′ short of its ${runs}′" }).nextOption()
-          .orElse(listings.iterator.flatMap(listing => taken.iterator.flatMap(record => PosterEvidence.datingApart(listing, record.film).map(year =>
-            s"no agreement on ${titled(record)}: '${listing.rawTitle}' bills $year"))).nextOption())
-          .fold(Weighed(Some(film.agreed), None))(why => Weighed(None, Some(why)))
+      Option.when(stands(listings, film, taken, dissent, verdicts)) {
+        refusal(listings, taken, thisYear).fold(Weighed(Some(film.agreed), None))(why => Weighed(None, Some(why)))
       }
     }.getOrElse(Weighed(None, None))
   }
@@ -590,6 +577,44 @@ object Agreement {
     copy != billed && tools.EditDistance.within(copy, billed, 1) && SourceReliability.copiesOriginalTitle(listing)
   }
 
+  /** Does the best supported `film` stand as the families' agreement: its support past the quorum and every dissent —
+   *  the families taking others, its turned-down picks, a feed catalogue contradicting a record `taken` — and none of the
+   *  listings' own billing against it (another's own title or director, a contradiction, several pieces billed, a stage
+   *  work it is no screen adaptation of)? */
+  private def stands(listings: Seq[Listing], film: Supported, taken: Seq[SourceRecord], dissent: Int, verdicts: Seq[FamilyVerdict]): Boolean = {
+    // a feed catalogue's facts ruling the film out are its claim, one vote against it, not a veto (DE "To The Bone":
+    // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
+    val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
+    film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+      !billsAnothersDirector(listings, film.records, verdicts) &&
+      !taken.exists(contradictedByTheListing(listings, _)) &&
+      listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
+        (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed)))
+  }
+
+  /** Why an agreement that stands is refused after all: the venue running it far shorter than a record `taken` runs, or
+   *  a listing billing another year than it dates by. */
+  private def refusal(listings: Seq[Listing], taken: Seq[SourceRecord], thisYear: Option[Int]): Option[String] = {
+    def titled(record: SourceRecord) = s"'${record.film.title}'${record.film.year.fold("")(y => s" ($y)")}"
+    taken.iterator.flatMap(record => runsShort(listings, record, thisYear).map { case (stated, runs) =>
+      s"no agreement on ${titled(record)}: the venue runs it ${stated}′, more than ${RuntimeShort}′ short of its ${runs}′" }).nextOption()
+      .orElse(listings.iterator.flatMap(listing => taken.iterator.flatMap(record => PosterEvidence.datingApart(listing, record.film).map(year =>
+        s"no agreement on ${titled(record)}: '${listing.rawTitle}' bills $year"))).nextOption())
+  }
+
+  /** The words `listing`'s normalised title keeps ([[namesIt]]): its clean title's and original title's — less what its
+   *  search form drops after a "+" bolted on to the title's head. */
+  private def keptWords(listing: Listing): Set[String] = {
+    val original = listing.originalTitle.toSeq.flatMap(TitleContainment.tokens).toSet
+    val clean    = TitleContainment.tokens(listing.cleanTitle).toSet ++ original
+    // only a search form that drops what a "+" bolts on after the title's head: one dropping the head drops the film itself
+    // (DE '"JAGDSZENEN AUS NIEDERBAYERN" - HEIMATFILM IM WANDEL DER ZEIT', searched as its banner), and one dropping a
+    // second title keeps the film's other name out (DE "BARWY OCHRONNE / CAMOUFLAGE", searched as "BARWY OCHRONNE")
+    val head = listing.searchTitle.map(_.trim).filter(search => search.nonEmpty && listing.cleanTitle.startsWith(search) &&
+      listing.cleanTitle.drop(search.length).trim.startsWith("+"))
+    head.map(search => clean.intersect(TitleContainment.tokens(search).toSet ++ original)).getOrElse(clean)
+  }
+
   /** Does the listing's title name one of the films' titles — be it, or carry it whole (four letters at least)? */
   def namesIt(listing: Listing, films: Seq[IdentityMeasures.Film]): Boolean = {
     val own    = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
@@ -599,16 +624,7 @@ object Agreement {
     // the words the normalised title keeps: a film named only by what it drops is named by a decoration ("Lalka
     // PREMIERA", cleaned "Lalka", names no "Premiera") — nor by what its search form drops, an event bolted on after it
     // (UK "Le Moulin + Q&A", searched as "Le Moulin", names no "Q & A")
-    lazy val kept = {
-      val original = listing.originalTitle.toSeq.flatMap(TitleContainment.tokens).toSet
-      val clean    = TitleContainment.tokens(listing.cleanTitle).toSet ++ original
-      // only a search form that drops what a "+" bolts on after the title's head: one dropping the head drops the film itself
-      // (DE '"JAGDSZENEN AUS NIEDERBAYERN" - HEIMATFILM IM WANDEL DER ZEIT', searched as its banner), and one dropping a
-      // second title keeps the film's other name out (DE "BARWY OCHRONNE / CAMOUFLAGE", searched as "BARWY OCHRONNE")
-      val head = listing.searchTitle.map(_.trim).filter(search => search.nonEmpty && listing.cleanTitle.startsWith(search) &&
-        listing.cleanTitle.drop(search.length).trim.startsWith("+"))
-      head.map(search => clean.intersect(TitleContainment.tokens(search).toSet ++ original)).getOrElse(clean)
-    }
+    lazy val kept = keptWords(listing)
     titles.map(IdentityMeasures.key).exists(own) ||
       titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title)
         words.nonEmpty && raw.containsSlice(words) && (kept.isEmpty || words.exists(kept)) }) ||

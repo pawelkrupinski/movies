@@ -56,37 +56,44 @@ final class ClusterKeys(store: AgreementKeys) {
     }
     val gone    = mutable.ArrayBuffer.empty[(Long, Seq[ListingKey])]
     live.foreachEntry((key, decision) => if (!keys.containsKey(decision)) gone += key -> decision.members)
-    if (unkeyed.nonEmpty || gone.nonEmpty || stored.exists(_.keys.nonEmpty)) {
-      val storedFirsts = stored.fold[collection.Map[Long, String]](firsts)(held => held.keys.iterator.map(k => k.key -> k.first).toMap)
-      val counter      = nextKey
-      val firstOf  = unkeyed.map(decision => StoredFamily.idOf(decision.members))
-      val attached = mutable.LongMap.empty[Int]
-      stored.foreach { held =>
-        val byFirst = held.keys.iterator.map(k => k.first -> k.key).toMap
-        unkeyed.indices.foreach(i => byFirst.get(firstOf(i)).foreach(key => attached(key) = i))
-      }
-      val open     = unkeyed.indices.filterNot(attached.valuesIterator.toSet)
-      val assigned = StableNames.assign(gone, open.map(unkeyed(_).members), counter)
-      val keyOfIndex = Array.fill(unkeyed.size)(-1L)
-      attached.foreachEntry((key, i) => keyOfIndex(i) = key)
-      open.indices.foreach(j => keyOfIndex(open(j)) = assigned.names(j))
-      val retired = (gone.iterator.map(_._1) ++ stored.iterator.flatMap(_.keys.map(_.key))).toSet -- keyOfIndex
-      val moved   = unkeyed.indices.collect { case i if !storedFirsts.get(keyOfIndex(i)).contains(firstOf(i)) => StoredKey(keyOfIndex(i), firstOf(i)) }
-      // stored first: a write that fails leaves the keys as they were, and the next apply keys the same decisions again
-      if (retired.nonEmpty || moved.nonEmpty || assigned.nextFresh != counter) store.replace(retired, moved, assigned.nextFresh)
-      nextKey = assigned.nextFresh
-      stored.foreach { _ => firsts.clear(); firsts ++= storedFirsts }
-      firsts --= retired
-      moved.foreach(k => firsts(k.key) = k.first)
-      live --= retired
-      // a merge's younger half, named to the staging screen beside the cluster holding most of its listings
-      assigned.absorbed.foreach { case (from, j) => merged += keyOfIndex(open(j)).toString -> from.toString }
-      unkeyed.indices.foreach { i =>
-        live(keyOfIndex(i)) = unkeyed(i)
-        keys.put(unkeyed(i), keyOfIndex(i).toString)
-      }
+    if (unkeyed.nonEmpty || gone.nonEmpty || stored.exists(_.keys.nonEmpty)) rekeyed(unkeyed, gone, stored, keys, merged)
+  }
+  /** The decisions no key named (`unkeyed`) keyed: re-attached by first listing to a key `stored` holds (the first
+   *  apply's), else named by overlap with the clusters `gone` ([[StableNames.assign]]); the keys retired and moved stored
+   *  first, then held, and each merge's younger half told in `merged`. */
+  private def rekeyed(unkeyed: mutable.ArrayBuffer[ResolverDecision], gone: mutable.ArrayBuffer[(Long, Seq[ListingKey])],
+                      stored: Option[AgreementKeys.Held], keys: java.util.IdentityHashMap[ResolverDecision, String],
+                      merged: mutable.Buffer[(String, String)]): Unit = {
+    val storedFirsts = stored.fold[collection.Map[Long, String]](firsts)(held => held.keys.iterator.map(k => k.key -> k.first).toMap)
+    val counter      = nextKey
+    val firstOf  = unkeyed.map(decision => StoredFamily.idOf(decision.members))
+    val attached = mutable.LongMap.empty[Int]
+    stored.foreach { held =>
+      val byFirst = held.keys.iterator.map(k => k.first -> k.key).toMap
+      unkeyed.indices.foreach(i => byFirst.get(firstOf(i)).foreach(key => attached(key) = i))
+    }
+    val open     = unkeyed.indices.filterNot(attached.valuesIterator.toSet)
+    val assigned = StableNames.assign(gone, open.map(unkeyed(_).members), counter)
+    val keyOfIndex = Array.fill(unkeyed.size)(-1L)
+    attached.foreachEntry((key, i) => keyOfIndex(i) = key)
+    open.indices.foreach(j => keyOfIndex(open(j)) = assigned.names(j))
+    val retired = (gone.iterator.map(_._1) ++ stored.iterator.flatMap(_.keys.map(_.key))).toSet -- keyOfIndex
+    val moved   = unkeyed.indices.collect { case i if !storedFirsts.get(keyOfIndex(i)).contains(firstOf(i)) => StoredKey(keyOfIndex(i), firstOf(i)) }
+    // stored first: a write that fails leaves the keys as they were, and the next apply keys the same decisions again
+    if (retired.nonEmpty || moved.nonEmpty || assigned.nextFresh != counter) store.replace(retired, moved, assigned.nextFresh)
+    nextKey = assigned.nextFresh
+    stored.foreach { _ => firsts.clear(); firsts ++= storedFirsts }
+    firsts --= retired
+    moved.foreach(k => firsts(k.key) = k.first)
+    live --= retired
+    // a merge's younger half, named to the staging screen beside the cluster holding most of its listings
+    assigned.absorbed.foreach { case (from, j) => merged += keyOfIndex(open(j)).toString -> from.toString }
+    unkeyed.indices.foreach { i =>
+      live(keyOfIndex(i)) = unkeyed(i)
+      keys.put(unkeyed(i), keyOfIndex(i).toString)
     }
   }
+
 
   /** `keys`, the apply's (what [[assign]] filled, and what the apply took each keyed decision as), are the keys
    *  [[keyOf]] reads from now; the last apply's stay readable beside them. `keys` must not change after. */
