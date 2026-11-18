@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, WebediaMar
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, SecondFeedFacts, WixEventsClient}
 import services.cinemas.de.{ArsenalBerlinClient, GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
-import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, MitchellTheatresClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
 
 import java.time.Clock
@@ -185,7 +185,7 @@ class CinemaScraperCatalog(
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
   // keeps flicks.us as the fallback (below); one named in `UsIndependentVenues` gets
-  // its own site with no fallback (Flicks dropped it); every other venue is flicks.us
+  // its own site with no fallback (Flicks dropped it, or files another venue's feed under it); every other venue is flicks.us
   // primary as before, its slug from UsRoster.flicksSlugByCinema. Same client and
   // same residential egress as the UK for the Flicks leg — only the market
   // differs, which is what keeps the two markets' pace gates and 429 back-offs
@@ -230,7 +230,8 @@ class CinemaScraperCatalog(
       .orElse(UsChainVenues.landmark.get(name).map(webedia(GatsbyBoxOfficeClient.LandmarkBaseUrl, _, cinema)))
   }
 
-  /** The own-site primary for a US independent Flicks no longer lists, or `None`.
+  /** The own-site primary for a US independent Flicks no longer lists (or lists another
+   *  venue's programme for), or `None`.
    *  No Flicks fallback: see `UsIndependentVenues`. Its own site answers our
    *  datacenter egress directly (200 from the fleet, 2026-10-12), so plain `http`. */
   private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] = {
@@ -239,6 +240,8 @@ class CinemaScraperCatalog(
       new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = venueClock.today(zone))
     }.orElse(UsIndependentVenues.cinemaPlus.get(cinema.displayName).map { venue =>
       new CinemaPlusClient(http, venue.siteUrl, venue.venuePath, cinema, today = venueClock.today(zone))
+    }).orElse(UsIndependentVenues.mitchellTheatres.get(cinema.displayName).map { siteUrl =>
+      new MitchellTheatresClient(http, siteUrl, cinema, today = venueClock.today(zone))
     })
   }
 

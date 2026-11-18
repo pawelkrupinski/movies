@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src='https://www.google.com/recaptcha/api.js' async defer></script>
+<head><title>Southgate Cinema 6 - Liberal, Kansas</title> <!-- Meta Tags -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=5, maximum-scale=1">
+    <meta name="description" content="Mitchell Theatres Southgate Cinema 6, serving moviegoers in the Liberal, Kansas area since 2009.">
+    <meta name="theme-color" content="#03168F">
+    <meta name="geo.position" content="37.022298,-100.924405">
+    <meta name="robots" content="index, nofollow">
+    <meta property="og:title" content="Southgate Cinema 6 - Liberal, Kansas">
+    <meta property="og:type" content="page">
+    <meta property="og:image" content="img/icons/apple-icon-180x180.png">
+    <meta property="og:url" content="www.southgate6.com">
+    <meta property="og:description" content="Mitchell Theatres Southgate Cinema 6, serving moviegoers in the Liberal, Kansas area since 2009.">
+    <meta name="apple-mobile-web-app-title" content="SG6">
+    <meta name="application-name" content="SG6"> <!-- Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="img/icons/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/icons/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/icons/favicon-32x32.png">
+    <link rel="manifest" href="img/icons/manifest.json">
+    <meta name="msapplication-TileColor" content="#03168F">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#03168F"> <!-- Script Tags -->
+    <link media="all" rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/css/foundation.min.css">
+    <link href="https://cdn.jsdelivr.net/fontawesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link media="all" rel="stylesheet"
+          href="symlink-css.php?file=stylesheet-20261117.css">     <style> @media not all and (min-resolution: .001dpcm) {
+            @supports (-webkit-appearance:none) {
+                .not-in-safari {
+                    display: none !important;
+                }
+            }
+        } </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Pressed look on .buytickets buttons when tapped. iOS/app webviews skip :active without a
+        // touchstart listener, and the page may navigate before :active paints, so add a class too.
+        document.addEventListener('touchstart', function (e) {
+            var b = e.target.closest && e.target.closest('.buytickets');
+            if (b) b.classList.add('is-pressed');
+        }, {passive: true});
+        ['touchend', 'touchcancel'].forEach(function (t) {
+            document.addEventListener(t, function () {
+                setTimeout(function () {
+                    document.querySelectorAll('.buytickets.is-pressed').forEach(function (b) { b.classList.remove('is-pressed'); });
+                }, 150);
+            }, {passive: true});
+        });
+        // Coming back with the Back button can restore the page still "pressed".
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('.buytickets.is-pressed').forEach(function (b) { b.classList.remove('is-pressed'); });
+        });
+    </script>
+</head>
+<body class="sg6" data-fandango-id="aakky">
+<div class="wrapper">
+    <div class="off-canvas-wrap" data-offcanvas>
+        <div class="inner-wrap ">
+            <div class="show-for-small-only"><a class="left-off-canvas-toggle">
+                    <nav class="tab-bar"><span class="menubutt"><img class="lazyload" height="50" width="40" alt="Menu"
+                                                                     src="./img/poster.png"
+                                                                     data-src="symlink-png.php?file=menu.png"></span>
+                        <section class="middle tab-bar-section"><h2> Southgate Cinema 6 </h2></section>
+                    </nav>
+                </a>
+                <div class=mobilehead></div>
+                <aside class="left-off-canvas-menu">
+                    <ul class="off-canvas-list">	<li><a title="SG6 Home Page" href="index">Showing at SG6</a></li>	<li><a title="Coming Soon to SG6" href="comingsoon">Coming Soon</a></li>	<li><a title="Buy Tickets for SG6 Online" href="buytickets">Buy Tickets</a></li>	<li><a title="Sign up for the SG6 Newsletter" href="newsletter">Newsletter</a></li>	<li><a title="View Ticket Prices at SG6" href="ticketprices">Ticket Prices</a></li>	<li><a title="View Concession Prices at SG6" href="concession">Concession</a></li>	<li><a title="Information on Mitchell Theatres Gift Certificates" href="giftcertificates">Gift Certificates</a></li>    	<li><a title="Information on the SG6 Party Room" href="partyroom">Party Room</a></li>	<li><a title="Get information on Advertising On-Screen at SG6" href="advertise">Advertise</a></li>	<li><a title="Information on Applying for a job at SG6" href="apply">Apply for a Job</a></li>	<li><a title="About us at SG6" href="about">About Us</a></li>    <li><a title="Contact us at SG6" href="contact">Contact Us</a></li>	<li><a title="Get Tickets on Fandango!" target="_blank" href="https://www.fandango.com/redirect.aspx?searchby=theater&tid=aakky"  class="fandangoSideLink"><i class="fa fa-ticket" style="display: inline" aria-hidden="true"></i> Fandango</a></li>	<li class="show-for-small-only"><a title="Like us on Facebook" href="https://www.facebook.com/Southgate6" target="_blank">Facebook</a></li>	<li class="show-for-small-only"><a title="Other Locations" href="https://www.mitchelltheatres.com/">Other Locations</a></li>		</ul>
+                </aside>
+            </div>
+            <div class="row">
+                <div class="large-12 columns mitheader show-for-medium-up">
+                    <div id="mitlogo" class="data-tooltip aria-haspopup"><a href="https://www.mitchelltheatres.com"><img
+                                    style="width:250px; height:50px" class="lazyload" src="./img/poster.png"
+                                    data-src="symlink-png.php?file=mit-logo.png" alt="Mitchell Theatres LLC"
+                                    data-tooltip aria-haspopup="true" title="Click for Mitchell Theatre Locations"></a>
+                    </div>
+                    <div id="mitlogoDark" class="data-tooltip aria-haspopup"><a href="https://www.mitchelltheatres.com"><img
+                                    style="width:250px; height:50px" class="lazyload" src="./img/poster.png"
+                                    data-src="symlink-png.php?file=mit-logo-dark.png" alt="Mitchell Theatres LLC"
+                                    data-tooltip aria-haspopup="true" title="Click for Mitchell Theatre Locations"></a>
+                    </div>
+                    <div>
+                        <ul class='menu'>
+                            <li class="not-in-safari"><a href='#'>Locations</a>
+                                <ul>
+                                    <li class="state">Arizona</li>
+                                    <li><a href='http://www.oasiscinema9.com/'>Oasis 9 - Nogales, AZ</a></li>
+                                    <li class="state">Colorado</li>
+                                    <li><a href='http://www.skyline8.com/'>Skyline 8 - Dillon, CO</a></li>
+                                    <li class="state">Kansas</li>
+                                    <li><a href='http://www.central6ks.com/'>Central 6 - El Dorado, KS</a></li>
+                                    <li><a href='http://www.chisholmtrail8.com/'>Chisholm Trail 8 - Newton, KS</a></li>
+                                    <li><a href='http://www.cowley8.com/'>Cowley 8 - Winfield/Ark City, KS</a></li>
+                                    <li><a href='http://www.dorictheatre.com/'>Doric Theatre - Elkhart, KS</a></li>
+                                    <li><a href='http://www.sequoyah9.com/'>Sequoyah 9 - Garden City, KS</a></li>
+                                    <li><a href='http://www.southgate6.com/'>Southgate 6 - Liberal, KS</a></li>
+                                    <li class="state">New Mexico</li>
+                                    <li><a href='http://www.dreamcatcher10.com/'>Dreamcatcher 10 - Espanola, NM</a></li>
+                                    <li><a href='http://www.starlightcinema8.com/'>Starlight 8 - Los Lunas, NM</a></li>
+                                    <li><a href='http://www.storyteller7.com/'>Storyteller 7 - Taos, NM</a></li>
+                                    <li class="state">Oklahoma</li>
+                                    <li><a href='http://www.lakeside6.com/'>Lakeside 6 - Woodward, OK</a></li>
+                                    <li><a href='http://www.northridge8.com/'>Northridge 8 - Guymon, OK</a></li>
+                                    <li class="state">Texas</li>
+                                    <li><a href='http://www.themorleytheatre.com/'>Morley Theatre - Borger, TX</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                        </ul> </div>
+                </div>
+            </div>
+<div class="row">
+    <div class="theatreheader large-12 columns show-for-medium-up">
+        <div class=theatreheadertext>
+            <a href="index" data-tooltip aria-haspopup="true" title="Showtimes for Southgate Cinema 6"> Southgate Cinema 6 </a>
+        </div>
+    </div>
+</div>
+<div class="row ">
+    <div class="theatreinfo large-12 row ">
+        <div class="theatrephoto large-8 medium-7 small-12 columns"><img loading="lazy"
+                                                                         title="An image from Southgate Cinema 6"
+                                                                         alt="Image from Southgate Cinema 6"
+                                                                         src="img/slides/slide1.jpg?v=1?v=5"></div>
+        <div class="visible-for-medium-up theatreinformation "><p><b>Southgate Cinema 6</b><br> <a
+                        href="https://maps.apple.com/?q=37.022298,-100.924405"
+                        title="Click to view in iOS maps or Google Maps depending on your device" target="_blank"> <i
+                            class=".fi-marker"></i> 1104 S Kansas Ave <br> Liberal, KS 67901</a><br><br>  <br>  </p></div>
+    </div>
+</div>
+<div class="row ">
+    <div class="show-for-small-only large-12 row">
+        <div class="theatreinformation text-center"
+             style="background: #353535;border-bottom: 6px solid black;padding: .25rem 0 .3rem;"><a
+                    href="https://maps.apple.com/?q=37.022298,-100.924405"
+                    title="Click to view in iOS maps or Google Maps depending on your device"
+                    target="_blank"> 1104 S Kansas Ave <br> Liberal, KS 67901</a></div>
+    </div>
+</div> <!-- SIDEBAR -->
+<aside class="rightcolumn show-for-medium-up large-3 medium-3">
+    <ul> 	<li><a title="SG6 Home Page" href="index">Showing at SG6</a></li>	<li><a title="Coming Soon to SG6" href="comingsoon">Coming Soon</a></li>	<li><a title="Buy Tickets for SG6 Online" href="buytickets">Buy Tickets</a></li>	<li><a title="Sign up for the SG6 Newsletter" href="newsletter">Newsletter</a></li>	<li><a title="View Ticket Prices at SG6" href="ticketprices">Ticket Prices</a></li>	<li><a title="View Concession Prices at SG6" href="concession">Concession</a></li>	<li><a title="Information on Mitchell Theatres Gift Certificates" href="giftcertificates">Gift Certificates</a></li>    	<li><a title="Information on the SG6 Party Room" href="partyroom">Party Room</a></li>	<li><a title="Get information on Advertising On-Screen at SG6" href="advertise">Advertise</a></li>	<li><a title="Information on Applying for a job at SG6" href="apply">Apply for a Job</a></li>	<li><a title="About us at SG6" href="about">About Us</a></li>    <li><a title="Contact us at SG6" href="contact">Contact Us</a></li>	<li><a title="Get Tickets on Fandango!" target="_blank" href="https://www.fandango.com/redirect.aspx?searchby=theater&tid=aakky"  class="fandangoSideLink"><i class="fa fa-ticket" style="display: inline" aria-hidden="true"></i> Fandango</a></li>	<li class="show-for-small-only"><a title="Like us on Facebook" href="https://www.facebook.com/Southgate6" target="_blank">Facebook</a></li>	<li class="show-for-small-only"><a title="Other Locations" href="https://www.mitchelltheatres.com/">Other Locations</a></li>		 </ul>
+    <a href="index" title="Southgate Cinema 6">
+        <img loading="lazy" class=" sideBarLogo"
+             src="./img/sidebarlogo.png"
+             style="height:108px !important;width:125px"
+             alt="Southgate Cinema 6 mini-logo"> <img
+                class="darkmodeSideBarLogo" src="./img/footerlogo.png"
+                alt="Southgate Cinema 6 mini-logo"> </a><br></aside> <!-- Top of Content -->
+<div class="center">
+    <div class="row">
+        <div class="large-9 medium-9 columns">
+            <div class="contenttitle"><h3>Films Showing at SG6<span title="Click to view Printable Showtimes" class="print right"> <a target="_blank" href="print.html"  aria-label="Printable Showtimes"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" x="0" y="0" viewBox="-49 144 1537 506" enable-background="new -49 144.1 1537 505.9" xml:space="preserve" aria-label="View Printable Showtimes" ><title>Print Showtimes</title><path d="M463 308c0-6-5-10-11-10h-78l0 0 0 0V169c0-6-5-11-11-11H80c-6 0-11 5-11 11v129l0 0H-9h0c-6 0-10 5-11 10H-20v220c0 6 5 11 11 11l0 0h78v-91l0 0H99h245 30l0 0v91h78c6 0 11-5 11-11L463 308 463 308zM344 347H99v-148c0-6 5-11 11-11l0 0h223c6 0 11 5 11 11V347L344 347zM100 625c0 6 5 11 11 11h222c6 0 11-5 11-11V478H100V625z"/><text transform="matrix(1 0 0 1 571.5411 536.827)" font-size="434">Print</text></svg>&nbsp;</a></span></h3>
+                <p class="subhead"><input type="button" class="hideshow button expand tiny" name="btnmap" id="btnmap" value="View Today Only" /></p></div>
+            <hr>
+            <div class="row">
+                <div class="large-12 medium-12 columns">
+                    <div class="row">
+                        <div class="large-12 medium-12 columns">
+                            <div class=" panel announcement columns large-12"> <script>console.log("[ann:sg6] no entry");</script><div class="announcement"></div>
+ </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="content"><div class="showtimespage"><div data-title="The Hunger Games: Sunrise On The Reaping" class="veeziMovie GQ166006" data-opening="2026-11-20">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ166006">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/mj8kkt548r62c60nly44luccjhlc?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for The Hunger Games: Sunrise On The Reaping" title="Click to show movie info for The Hunger Games: Sunrise On The Reaping">
+                </a>
+                <div id="myModalGQ166006" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ166006" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ166006">The Hunger Games: Sunrise On The Reaping</h2>
+                    <strong>Genre: </strong>Science Fiction<br><br>
+                    <strong>MPAA Rating: </strong>PG-13 for strong violence, bloody images, disturbing material, some smoking and teen drinking.<br><br>
+                    <strong>Runtime: </strong>2h 39m<br><br>
+                    <strong>Plot Summary: </strong>&lt;div&gt;From acclaimed director Francis Lawrence, THE HUNGER GAMES: SUNRISE ON THE REAPING follows sixteen-year-old Haymitch Abernathy (Joseph Zada) from District 12, beginning on the morning of the reaping for the 50th Annual Hunger Games, also known as the Second Quarter Quell, the biggest Games yet with twice as many tributes.&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Set in the world of Panem 24 years before the events of The Hunger Games, the story follows Haymitch into the arena, where he forms an unlikely alliance with fellow tribute Maysilee Donner (Mckenna Grace) and joins a coalition determined to challenge the Capitol’s control under President Snow (Ralph Fiennes). As the competition unfolds, Haymitch risks everything to take down the Games from within the arena — setting in motion the rebellion that will change Panem forever&lt;/div&gt;<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=lYXtL5TreOE" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for The Hunger Games: Sunrise On The Reaping on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/lYXtL5TreOE" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">The Hunger Games: Sunrise On The Reaping &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: PG-13" alt="Rated PG-13" class="ratings" src="symlink-png.php?file=PG-13.png">
+                    2h 39m
+                </span>
+            </td>
+        </tr><tr><td class="moviesubtitle" colspan="2">
+                <span class="startingFri" data-date="2026-11-20">
+                    Starting Friday 11/20
+                </span>
+              </td></tr><tr class="st" data-date="2026-11-20">
+            <td class="dates"><i>Fri</i> <i>11/20</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 gener"><a data-filmEnd="9:39pm" href="https://tickets.southgate6.com/checkout/showing/4327560/">7:00pm</a></span><span class="showtime aud3 gener"><a data-filmEnd="12:24am" href="https://tickets.southgate6.com/checkout/showing/4327565/">9:45pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-21">
+            <td class="dates"><i>Sat</i> <i>11/21</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 matin"><a data-filmEnd="3:39pm" href="https://tickets.southgate6.com/checkout/showing/4327514/">1:00pm</a></span><span class="showtime aud3 matin"><a data-filmEnd="6:39pm" href="https://tickets.southgate6.com/checkout/showing/4327516/">4:00pm</a></span><span class="showtime aud2 gener"><a data-filmEnd="9:39pm" href="https://tickets.southgate6.com/checkout/showing/4327515/">7:00pm</a></span><span class="showtime aud3 gener"><a data-filmEnd="12:24am" href="https://tickets.southgate6.com/checkout/showing/4327517/">9:45pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-22">
+            <td class="dates"><i>Sun</i> <i>11/22</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 matin"><a data-filmEnd="3:39pm" href="https://tickets.southgate6.com/checkout/showing/4327545/">1:00pm</a></span><span class="showtime aud3 matin"><a data-filmEnd="6:39pm" href="https://tickets.southgate6.com/checkout/showing/4327550/">4:00pm</a></span><span class="showtime aud2 gener"><a data-filmEnd="9:39pm" href="https://tickets.southgate6.com/checkout/showing/4327555/">7:00pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-23">
+            <td class="dates"><i>Mon</i> <i>11/23</i></td>
+            <td class="times pastTimes"><span class="showtime aud3 gener"><a data-filmEnd="9:24pm" href="https://tickets.southgate6.com/checkout/showing/4327831/">6:45pm</a></span><span class="showtime aud2 gener"><a data-filmEnd="9:39pm" href="https://tickets.southgate6.com/checkout/showing/4327832/">7:00pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-24">
+            <td class="dates"><i>Tue</i> <i>11/24</i></td>
+            <td class="times pastTimes"><span class="showtime aud3 gener"><a data-filmEnd="9:24pm" href="https://tickets.southgate6.com/checkout/showing/4327575/">6:45pm</a></span><span class="showtime aud2 gener"><a data-filmEnd="9:39pm" href="https://tickets.southgate6.com/checkout/showing/4327570/">7:00pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="Ebenezer" class="veeziMovie GQ165594" data-opening="2026-11-13">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165594">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/4w7eh0u9xc5a73ifbpv3ivd1r125?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for Ebenezer" title="Click to show movie info for Ebenezer">
+                </a>
+                <div id="myModalGQ165594" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165594" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165594">Ebenezer</h2>
+                    <strong>Genre: </strong>Fantasy<br><br>
+                    <strong>MPAA Rating: </strong>PG-13 for frightening material.<br><br>
+                    <strong>Runtime: </strong>1h 55m<br><br>
+                    <strong>Plot Summary: </strong>An elderly miser embarks on a supernatural journey after visits from the ghost of his former business partner and the Spirits of Christmas Past, Present, and Yet to Come force him to confront his past and fight for a second chance at happiness.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=A7lyvgnDuDE" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for Ebenezer on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/A7lyvgnDuDE" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">Ebenezer &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: PG-13" alt="Rated PG-13" class="ratings" src="symlink-png.php?file=PG-13.png">
+                    1h 55m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud3 pastTime pastTime movieEnded gener"><a data-filmEnd="9:00pm" href="https://tickets.southgate6.com/checkout/showing/4327160/">7:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud3 gener"><a data-filmEnd="9:00pm" href="https://tickets.southgate6.com/checkout/showing/4327165/">7:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud3 gener"><a data-filmEnd="9:00pm" href="https://tickets.southgate6.com/checkout/showing/4327171/">7:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-20">
+            <td class="dates"><i>Fri</i> <i>11/20</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327562/">7:25pm</a></span><span class="showtime aud5 gener"><a data-filmEnd="12:20am" href="https://tickets.southgate6.com/checkout/showing/4327567/">10:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-21">
+            <td class="dates"><i>Sat</i> <i>11/21</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 matin"><a data-filmEnd="3:20pm" href="https://tickets.southgate6.com/checkout/showing/4327522/">1:25pm</a></span><span class="showtime aud5 matin"><a data-filmEnd="6:20pm" href="https://tickets.southgate6.com/checkout/showing/4327523/">4:25pm</a></span><span class="showtime aud5 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327524/">7:25pm</a></span><span class="showtime aud5 gener"><a data-filmEnd="12:20am" href="https://tickets.southgate6.com/checkout/showing/4327525/">10:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-22">
+            <td class="dates"><i>Sun</i> <i>11/22</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 matin"><a data-filmEnd="3:20pm" href="https://tickets.southgate6.com/checkout/showing/4327547/">1:25pm</a></span><span class="showtime aud5 matin"><a data-filmEnd="6:20pm" href="https://tickets.southgate6.com/checkout/showing/4327552/">4:25pm</a></span><span class="showtime aud5 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327557/">7:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-23">
+            <td class="dates"><i>Mon</i> <i>11/23</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327836/">7:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-24">
+            <td class="dates"><i>Tue</i> <i>11/24</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327572/">7:25pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="Ghost Soldier" class="veeziMovie GQ165593" data-opening="2026-11-11">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165593">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/svrs6ubq9iuwm85nfyxo8j4n8ahr?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for Ghost Soldier" title="Click to show movie info for Ghost Soldier">
+                </a>
+                <div id="myModalGQ165593" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165593" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165593">Ghost Soldier</h2>
+                    <strong>Genre: </strong>Action<br><br>
+                    <strong>MPAA Rating: </strong>PG-13 for strong violence, some bloody images, and language.<br><br>
+                    <strong>Runtime: </strong>1h 30m<br><br>
+                    <strong>Plot Summary: </strong>Henry “Fitz” Fitzgerald has spent years living quietly off the grid, hiding from a past few people know anything about. But when a powerful foreign corporation moves into his hometown to seize his neighbors’ land for a massive payday, Fitz is forced to reveal who he really is: a former Special Forces soldier and advanced weapons developer. Armed with experimental technology, lethal combat skills, and an unwavering code of justice, Fitz wages a one-man war against an enemy that never saw him coming.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=l0pTZqZWs-c" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for Ghost Soldier on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/l0pTZqZWs-c" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">Ghost Soldier &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: PG-13" alt="Rated PG-13" class="ratings" src="symlink-png.php?file=PG-13.png">
+                    1h 30m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 pastTime pastTime movieEnded gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327159/">7:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327167/">7:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud2 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327173/">7:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-20">
+            <td class="dates"><i>Fri</i> <i>11/20</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327563/">7:15pm</a></span><span class="showtime aud6 gener"><a data-filmEnd="11:45pm" href="https://tickets.southgate6.com/checkout/showing/4327569/">10:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-21">
+            <td class="dates"><i>Sat</i> <i>11/21</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 matin"><a data-filmEnd="2:45pm" href="https://tickets.southgate6.com/checkout/showing/4327541/">1:15pm</a></span><span class="showtime aud6 matin"><a data-filmEnd="5:45pm" href="https://tickets.southgate6.com/checkout/showing/4327542/">4:15pm</a></span><span class="showtime aud6 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327543/">7:15pm</a></span><span class="showtime aud6 gener"><a data-filmEnd="11:45pm" href="https://tickets.southgate6.com/checkout/showing/4327544/">10:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-22">
+            <td class="dates"><i>Sun</i> <i>11/22</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 matin"><a data-filmEnd="2:45pm" href="https://tickets.southgate6.com/checkout/showing/4327548/">1:15pm</a></span><span class="showtime aud6 matin"><a data-filmEnd="5:45pm" href="https://tickets.southgate6.com/checkout/showing/4327553/">4:15pm</a></span><span class="showtime aud6 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327558/">7:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-23">
+            <td class="dates"><i>Mon</i> <i>11/23</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327834/">7:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-24">
+            <td class="dates"><i>Tue</i> <i>11/24</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 gener"><a data-filmEnd="8:45pm" href="https://tickets.southgate6.com/checkout/showing/4327573/">7:15pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="Godzilla Minus Zero" class="veeziMovie GQ165589" data-opening="2026-11-06">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165589">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/b8p84diml3u717v70uc21l1m62hd?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for Godzilla Minus Zero" title="Click to show movie info for Godzilla Minus Zero">
+                </a>
+                <div id="myModalGQ165589" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165589" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165589">Godzilla Minus Zero</h2>
+                    <strong>Genre: </strong>Science Fiction<br><br>
+                    <strong>MPAA Rating: </strong>R for some violent content/bloody images.<br><br>
+                    <strong>Runtime: </strong>2h 15m<br><br>
+                    <strong>Plot Summary: </strong>War reduced Japan to zero, and Godzilla plunged it into minus. Two years have passed since then, and the country has faced agonizing struggles to achieve recovery and finally reclaim its daily life. Just as humanity managed to cling to a hard-won peace, a new threat strikes, crushing hope in an instant. There is no third time. Everything ends here.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=wDD2gTgxQJ8" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for Godzilla Minus Zero on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/wDD2gTgxQJ8" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">Godzilla Minus Zero &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: R" alt="Rated R" class="ratings" src="symlink-png.php?file=R.png">
+                    2h 15m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 pastTime pastTime movieEnded gener"><a data-filmEnd="9:15pm" href="https://tickets.southgate6.com/checkout/showing/4327163/">7:00pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 gener"><a data-filmEnd="9:15pm" href="https://tickets.southgate6.com/checkout/showing/4327164/">7:00pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud6 gener"><a data-filmEnd="9:15pm" href="https://tickets.southgate6.com/checkout/showing/4327170/">7:00pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-20">
+            <td class="dates"><i>Fri</i> <i>11/20</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327561/">7:05pm</a></span><span class="showtime aud4 gener"><a data-filmEnd="12:20am" href="https://tickets.southgate6.com/checkout/showing/4327566/">10:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-21">
+            <td class="dates"><i>Sat</i> <i>11/21</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 matin"><a data-filmEnd="3:15pm" href="https://tickets.southgate6.com/checkout/showing/4327518/">1:00pm</a></span><span class="showtime aud4 matin"><a data-filmEnd="6:15pm" href="https://tickets.southgate6.com/checkout/showing/4327519/">4:00pm</a></span><span class="showtime aud4 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327520/">7:05pm</a></span><span class="showtime aud4 gener"><a data-filmEnd="12:30am" href="https://tickets.southgate6.com/checkout/showing/4327521/">10:15pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-22">
+            <td class="dates"><i>Sun</i> <i>11/22</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 matin"><a data-filmEnd="3:20pm" href="https://tickets.southgate6.com/checkout/showing/4327546/">1:05pm</a></span><span class="showtime aud4 matin"><a data-filmEnd="6:20pm" href="https://tickets.southgate6.com/checkout/showing/4327551/">4:05pm</a></span><span class="showtime aud4 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327556/">7:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-23">
+            <td class="dates"><i>Mon</i> <i>11/23</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327833/">7:05pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-24">
+            <td class="dates"><i>Tue</i> <i>11/24</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 gener"><a data-filmEnd="9:20pm" href="https://tickets.southgate6.com/checkout/showing/4327571/">7:05pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="The Cat in the Hat" class="veeziMovie GQ165585" data-opening="2026-11-06">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165585">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/kxx61o87482ak44ttfkiw13kg5u5?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for The Cat in the Hat" title="Click to show movie info for The Cat in the Hat">
+                </a>
+                <div id="myModalGQ165585" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165585" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165585">The Cat in the Hat</h2>
+                    <strong>Genre: </strong>Animation<br><br>
+                    <strong>MPAA Rating: </strong>PG for action, some peril, mild language and rude humor.<br><br>
+                    <strong>Runtime: </strong>1h 48m<br><br>
+                    <strong>Plot Summary: </strong>Assigned his toughest mission yet, the Cat must cheer up siblings Gabby and Sebastian as they adjust to life in a new town. Known for pushing boundaries, this agent of chaos must prove himself or risk losing his magical hat forever.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=jz8pLlPhSeY" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for The Cat in the Hat on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/jz8pLlPhSeY" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">The Cat in the Hat &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: PG" alt="Rated PG" class="ratings" src="symlink-png.php?file=PG.png">
+                    1h 48m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 pastTime pastTime movieEnded gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327158/">7:20pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327168/">7:20pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327174/">7:20pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-20">
+            <td class="dates"><i>Fri</i> <i>11/20</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327564/">7:20pm</a></span><span class="showtime aud1 gener"><a data-filmEnd="11:58pm" href="https://tickets.southgate6.com/checkout/showing/4327568/">10:10pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-21">
+            <td class="dates"><i>Sat</i> <i>11/21</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 matin"><a data-filmEnd="3:08pm" href="https://tickets.southgate6.com/checkout/showing/4327510/">1:20pm</a></span><span class="showtime aud1 matin"><a data-filmEnd="6:08pm" href="https://tickets.southgate6.com/checkout/showing/4327511/">4:20pm</a></span><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327512/">7:20pm</a></span><span class="showtime aud1 gener"><a data-filmEnd="11:58pm" href="https://tickets.southgate6.com/checkout/showing/4327513/">10:10pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-22">
+            <td class="dates"><i>Sun</i> <i>11/22</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 matin"><a data-filmEnd="3:08pm" href="https://tickets.southgate6.com/checkout/showing/4327549/">1:20pm</a></span><span class="showtime aud1 matin"><a data-filmEnd="6:08pm" href="https://tickets.southgate6.com/checkout/showing/4327554/">4:20pm</a></span><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327559/">7:20pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-23">
+            <td class="dates"><i>Mon</i> <i>11/23</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327835/">7:20pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-24">
+            <td class="dates"><i>Tue</i> <i>11/24</i></td>
+            <td class="times pastTimes"><span class="showtime aud1 gener"><a data-filmEnd="9:08pm" href="https://tickets.southgate6.com/checkout/showing/4327574/">7:20pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="Clayface" class="veeziMovie GQ165590" data-opening="2026-10-19">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165590">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/gfgsrbanfpc27v0ssl19xnuf278s?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for Clayface" title="Click to show movie info for Clayface">
+                </a>
+                <div id="myModalGQ165590" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165590" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165590">Clayface</h2>
+                    <strong>Genre: </strong>Horror<br><br>
+                    <strong>MPAA Rating: </strong>R for strong bloody violence, gore, language, some nudity and brief drug use.<br><br>
+                    <strong>Runtime: </strong>1h 49m<br><br>
+                    <strong>Plot Summary: </strong>Matt Hagen’s meteoric rise from Gotham street kid to Hollywood leading man is tragically cut short when a local crime boss’s actions leave him horribly disfigured. Abandoned by his team and with nothing left, Matt seeks out a cutting edge treatment that miraculously returns him to his former self… but also unexpectedly affects his grip on reality, spiraling him down a destructive path of all-consuming revenge.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=KCR-rz0YfD4" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for Clayface on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/KCR-rz0YfD4" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">Clayface &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: R" alt="Rated R" class="ratings" src="symlink-png.php?file=R.png">
+                    1h 49m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 pastTime pastTime movieEnded gener"><a data-filmEnd="8:59pm" href="https://tickets.southgate6.com/checkout/showing/4327161/">7:10pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 gener"><a data-filmEnd="8:59pm" href="https://tickets.southgate6.com/checkout/showing/4327166/">7:10pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud4 gener"><a data-filmEnd="8:59pm" href="https://tickets.southgate6.com/checkout/showing/4327172/">7:10pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div data-title="Other Mommy" class="veeziMovie GQ165591" data-opening="2026-10-07">
+    <div class="row">
+        <div class="large-12 columns showtimestable">
+            <div class="large-3 medium-3 columns small-12 text-center posterdiv">
+                <a href="javascript:void(0)" data-reveal-id="myModalGQ165591">
+                    <img loading="lazy" src="https://indy-systems.imgix.net/ene0ei0m03jsyjbpd7ekp6c4e3qo?fit=crop&amp;fm=jpeg&amp;auto=format,compress&amp;w=400&amp;h=600" class="moviePoster" alt="Movie Poster for Other Mommy" title="Click to show movie info for Other Mommy">
+                </a>
+                <div id="myModalGQ165591" class="reveal-modal" data-reveal aria-labelledby="modalTitleGQ165591" aria-hidden="true" role="dialog">
+                    <h2 id="modalTitleGQ165591">Other Mommy</h2>
+                    <strong>Genre: </strong>Horror<br><br>
+                    <strong>MPAA Rating: </strong>R<br><br>
+                    <strong>Runtime: </strong>1h 33m<br><br>
+                    <strong>Plot Summary: </strong>Young Bela forms a relationship with a sinister entity in her home that looks uncannily like her own mother, drawing her into a terrifying and increasingly dark world.<br><br><strong>Trailer: </strong><a href="https://www.youtube.com/watch?v=bEpTgowZ1dI" target="_blank" title="Watch the Trailer for this film on YouTube">Watch the Trailer for Other Mommy on YouTube</a><div style="position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; margin-top: 20px;">
+                <iframe 
+                    loading="lazy"
+                    sandbox="allow-same-origin allow-scripts allow-popups"
+                    src="https://www.youtube.com/embed/bEpTgowZ1dI" 
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; filter: none;" 
+                    allowfullscreen>
+                </iframe>
+              </div>
+              <span class="showtime" style="display: block;text-align: center;margin: 0;width: 100%;">
+                  <a class="close-reveal-modal" style="display: block; position: relative; color: #fff; font-size: 1.25rem;padding: 1rem;margin: 0 -1.6rem 0 1.3rem;" aria-label="Close">Close</a>
+              </span><a class="close-reveal-modal" aria-label="Close">&#215;</a>
+    </div>
+</div>
+<div class="large-9 medium-9 columns">
+    <table class="showtimes">
+        <tr class="movieTitleRow">
+            <td colspan="2" class="movietitle  medium-text-left small-text-center">Other Mommy &nbsp;
+                <span style="white-space:nowrap;">
+                    <img loading="lazy" height="16" title="MPAA Rating: R" alt="Rated R" class="ratings" src="symlink-png.php?file=R.png">
+                    1h 33m
+                </span>
+            </td>
+        </tr><tr class="st" data-date="2026-11-17">
+            <td class="dates"><i>Tue</i> <i>11/17</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 pastTime pastTime movieEnded gener"><a data-filmEnd="8:58pm" href="https://tickets.southgate6.com/checkout/showing/4327162/">7:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-18">
+            <td class="dates"><i>Wed</i> <i>11/18</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 gener"><a data-filmEnd="8:58pm" href="https://tickets.southgate6.com/checkout/showing/4327169/">7:25pm</a></span></td>
+          </tr><tr class="st" data-date="2026-11-19">
+            <td class="dates"><i>Thu</i> <i>11/19</i></td>
+            <td class="times pastTimes"><span class="showtime aud5 gener"><a data-filmEnd="8:58pm" href="https://tickets.southgate6.com/checkout/showing/4327175/">7:25pm</a></span></td>
+          </tr> </table></div></div></div><br></div><div class="leavingFilms"></div><script>
+    // Get the user's timezone if possible, otherwise fall back to US Central
+    function getUserTimeZone() {
+        try {
+            if (
+                typeof Intl !== "undefined" &&
+                Intl.DateTimeFormat &&
+                typeof Intl.DateTimeFormat().resolvedOptions === "function"
+            ) {
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (tz) {
+                    return tz; // e.g. "America/New_York"
+                }
+            }
+        } catch (e) {
+            // If anything goes wrong, just fall through to the fallback
+        }
+
+        // Fallback: US Central Time
+        return "America/Chicago";
+    }
+
+    const USER_TIME_ZONE = getUserTimeZone();
+
+    // Log which timezone is being used
+    console.log("Using timezone:", USER_TIME_ZONE);
+
+    // In case we want to not run the sorting (Aud and Box Office)
+    function hasNoSortClass() {
+        return document.body.classList.contains('noSort');
+    }
+
+    function addSubtitle(filmID, actionText, date) {
+        // Check if the body has the class 'noSort'
+        if (hasNoSortClass()) {
+            return; // Do nothing
+        }
+
+        const movieTitleRow = document.querySelector(`.${filmID} tr.movieTitleRow`);
+        const parentDiv     = document.querySelector(`.${filmID}`);
+
+        if (movieTitleRow && parentDiv) {
+            const currentDate = new Date();
+            const targetDate  = new Date(date);
+            targetDate.setDate(targetDate.getDate() + 1); // keep your +1 day hack
+
+            const dayNames = [
+                'Sunday', 'Monday', 'Tuesday',
+                'Wednesday', 'Thursday', 'Friday', 'Saturday'
+            ];
+            const dayOfWeek     = dayNames[targetDate.getDay()];
+            const shortDayOfWeek = dayOfWeek.substring(0, 3);
+
+            const timeDiff = targetDate - currentDate;
+            const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+            const subtitleElement    = document.createElement('td');
+            subtitleElement.className = 'moviesubtitle';
+            subtitleElement.colSpan   = 2;
+
+            let displayText = '';
+            let subclass    = '';
+
+            const actionLower = actionText.toLowerCase();
+
+            // ⬇️ NEW LOGIC: for Leaving / Returning show day-of-week + MM/DD
+            if (actionLower === 'leaving' || actionLower === 'returning') {
+                const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const day   = String(targetDate.getDate()).padStart(2, '0');
+                const formattedDate = `${month}/${day}`;   // e.g. 12/12
+
+                displayText = `${actionText} ${dayOfWeek} ${formattedDate}`;
+                // e.g. "Leaving Friday 12/12"
+
+                // Keep your special Friday styling hook
+                if (dayOfWeek.toLowerCase() === 'friday') {
+                    subclass = 'showtimes pretext leavingFri';
+                }
+            } else {
+                const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const day   = String(targetDate.getDate()).padStart(2, '0');
+                const formattedDate = `${month}/${day}`;
+
+                if (daysDiff <= 6) {
+                    displayText = `${actionText} ${dayOfWeek} ${formattedDate}`;
+                } else {
+                    displayText = `${actionText} Next ${dayOfWeek} ${formattedDate}`;
+                }
+            }
+
+            if (actionLower === 'leaving' || actionLower === 'returning') {
+                // include any extra subclass (like leavingFri) if set
+                const spanClass = `${actionLower}${shortDayOfWeek} ${subclass}`.trim();
+                subtitleElement.innerHTML =
+                    `<span class="${spanClass}" data-date="${date}">${displayText}</span>`;
+                parentDiv.dataset[actionLower] = date;
+
+                const subtitleRow = document.createElement('tr');
+                subtitleRow.appendChild(subtitleElement);
+                movieTitleRow.insertAdjacentElement('afterend', subtitleRow);
+            } else if (actionLower === 'starting') {
+                // Remove any existing PHP-rendered starting subtitle for this film
+                parentDiv.querySelectorAll('td.moviesubtitle span[class*="starting"]').forEach(span => {
+                    const row = span.closest('tr');
+                    if (row) row.remove();
+                });
+                parentDiv.dataset.opening = date;
+                subtitleElement.innerHTML = `<span data-date="${date}">${displayText}</span>`;
+                const subtitleRow = document.createElement('tr');
+                subtitleRow.appendChild(subtitleElement);
+                movieTitleRow.insertAdjacentElement('afterend', subtitleRow);
+                subtitleElement
+                    .querySelector('span')
+                    .classList.add('pretext', `starting${shortDayOfWeek}`);
+            } else {
+                movieTitleRow.dataset.releaseDate = date;
+                subtitleElement.innerHTML = `<span>${displayText}</span>`;
+                const subtitleRow = document.createElement('tr');
+                subtitleRow.appendChild(subtitleElement);
+                movieTitleRow.insertAdjacentElement('afterend', subtitleRow);
+            }
+
+            // Keep your existing sort
+            sortFilmsByReleaseDate();
+        }
+    }
+
+    function sortFilmsByReleaseDate() {
+        // Check if the body has the class 'noSort'
+        if (!hasNoSortClass()) {
+            // Find all .veeziMovie elements
+            const veeziMovies = document.querySelectorAll('.veeziMovie');
+            const sortedVeeziMovies = Array.from(veeziMovies)
+                .filter((veeziMovie) => {
+                    // Exclude films that are 'returning' or 'leaving'
+                    return (
+                        !veeziMovie.classList.contains('returning') &&
+                        !veeziMovie.classList.contains('leaving')
+                    );
+                })
+                .sort((a, b) => {
+                    const dateA = new Date(a.dataset.opening);
+                    const dateB = new Date(b.dataset.opening);
+                    return dateB - dateA; // Reverse the order to show the newest date first
+                });
+
+            if (veeziMovies.length > 0) {
+                // Assuming all veeziMovie elements have the same parent
+                const parentElement = veeziMovies[0].parentNode;
+                // Add the 'sortedFilms' class to the parent element
+                parentElement.classList.add('sortedFilms');
+
+                // Clear the existing order and append sorted elements
+                parentElement.innerHTML = ''; // Clear the existing order
+
+                sortedVeeziMovies.forEach((veeziMovie) => {
+                    parentElement.appendChild(veeziMovie);
+                });
+            }
+        }
+    }
+
+
+    // Examples of calling this function
+    // addSubtitle('ST00000190', 'Leaving', '2023-09-07');
+    // addSubtitle('ST00000172', 'Returning', '2023-09-14');
+    // ...
+
+    function addGeneralSubtitle(filmID, subtitleText, endDate) {
+        // Check if the body has the class 'noSort'
+        if (hasNoSortClass()) {
+            console.log('We are NOT adding General Subtitles');
+            return; // Do nothing
+        }
+
+        const movieRows = document.querySelectorAll(`.${filmID} tr.st`);
+        const trElement = document.createElement('tr'); // Create a table row
+
+        if (movieRows.length > 0) {
+            const currentDate = new Date();
+            const targetEndDate = new Date(endDate);
+            targetEndDate.setDate(targetEndDate.getDate() + 1); // Add one day
+
+            const timeDiff = targetEndDate - currentDate;
+            const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+            if (daysDiff >= 0) {
+                const subtitleContainer = document.createElement('td');
+                subtitleContainer.className = `moviesubtitle`;
+                subtitleContainer.style.background = '#00652c';
+                subtitleContainer.style.color = '#fff';
+                subtitleContainer.colSpan = 2;
+                subtitleContainer.innerHTML = `<span>${subtitleText}</span>`;
+
+                trElement.appendChild(subtitleContainer); // Append the subtitle container to the table row
+            }
+        }
+
+        if (trElement.children.length > 0) {
+            const firstMovieRow = movieRows[0];
+            firstMovieRow.parentElement.insertBefore(trElement, firstMovieRow); // Insert before the first .st element
+        }
+    }
+
+    // Example usage (no changes needed in the function call):
+    // addGeneralSubtitle('ST00000190', 'Limited Showtimes', '2023-09-15');
+</script>
+
+
+<script>
+    function leavingFilms() {
+        // Check if the body has the class 'noSort'
+        if (hasNoSortClass()) {
+            console.log('We are NOT adding the Leaving Films div');
+            return; // Do nothing
+        }
+
+        // Select all showtimesContainer elements
+        const showtimesContainers = document.querySelectorAll('.sortedFilms');
+
+        showtimesContainers.forEach(showtimesContainer => {
+            const leavingFilmsDiv = document.createElement('div');
+            leavingFilmsDiv.className = 'leavingFilms';
+            showtimesContainer.appendChild(leavingFilmsDiv);
+        });
+
+        function moveLeavingFilmsToDiv(showtimesContainer) {
+            // Check if the body has the class 'noSort'
+            if (hasNoSortClass()) {
+                console.log('We are NOT moving leaving films to the Leaving Films div');
+                return; // Do nothing
+            }
+
+            // Get the Leaving Films div within the current showtimesContainer
+            const leavingFilmsDiv = showtimesContainer.querySelector('.leavingFilms');
+
+            if (leavingFilmsDiv) {
+                // Find all films with the data-leaving attribute within the current showtimesContainer
+                const leavingFilms = Array.from(showtimesContainer.querySelectorAll('[data-leaving]'));
+
+                // Create an object to group films by leaving date
+                const filmsByLeavingDate = {};
+
+                leavingFilms.forEach((film) => {
+                    const leavingDate = film.getAttribute('data-leaving');
+                    if (!filmsByLeavingDate[leavingDate]) {
+                        filmsByLeavingDate[leavingDate] = [];
+                    }
+                    filmsByLeavingDate[leavingDate].push(film);
+                });
+
+                // Sort the films by leaving date in ascending order (furthest date first)
+                const sortedLeavingDates = Object.keys(filmsByLeavingDate).sort((a, b) => {
+                    const dateA = new Date(a);
+                    const dateB = new Date(b);
+                    return dateA - dateB;
+                });
+
+                // Reverse the sorted array to have furthest date first
+                sortedLeavingDates.reverse();
+
+                // Append films to Leaving Films div in sorted order
+                sortedLeavingDates.forEach((leavingDate) => {
+                    const leavingDateDiv = document.createElement('div');
+                    leavingDateDiv.className = `leavingFilms-${leavingDate}`;
+                    leavingFilmsDiv.appendChild(leavingDateDiv);
+
+                    // Sort films within each leaving date div by release date (newest first)
+                    const filmsInLeavingDate = filmsByLeavingDate[leavingDate].sort((a, b) => {
+                        const openingDateA = new Date(a.getAttribute('data-opening'));
+                        const openingDateB = new Date(b.getAttribute('data-opening'));
+                        return openingDateB - openingDateA;
+                    });
+
+                    filmsInLeavingDate.forEach((film) => {
+                        leavingDateDiv.appendChild(film);
+                    });
+                });
+            }
+        }
+
+        // Call the moveLeavingFilmsToDiv function for each showtimesContainer
+        showtimesContainers.forEach(showtimesContainer => {
+            moveLeavingFilmsToDiv(showtimesContainer);
+        });
+    }
+
+    // Call the leavingFilms function when you want to add the div
+    document.addEventListener('DOMContentLoaded', function () {
+        // This code will run once the page is fully loaded
+        leavingFilms();
+    });
+</script>
+
+
+<!-- $4 Film -->
+<script>
+    // Don't run if noSort (box office and aud screens)
+    if (!document.body.classList.contains('noSort')) {
+        // Find all tables with class '.showtimes'
+        $('table.showtimes').each(function () {
+            // Check if this table has already been processed
+            if (!$(this).hasClass('processedTable')) {
+                // Find all elements with class '.showtime.4film' within this table
+                var $showtime4Film = $(this).find('.showtime.4film');
+
+                if ($showtime4Film.length > 0) {
+                    // Find the first 'tr' with class '.movieTitleRow' inside the table
+                    var $movieTitleRow = $(this).find('tr.movieTitleRow:first');
+
+                    // Add the class 'cheapTitle' to '.movietitle'
+                    $movieTitleRow.find('.movietitle').addClass('cheapTitle');
+
+                    // Add the new row as the first thing inside 'tr.movieTitleRow'
+                    $movieTitleRow.before(
+                        '<tr><td class="moviesubtitle cheapFilmRow" colspan="2" style="padding-left:.4rem;padding-right:.4rem;background: #006700;color: #fff;height: 2.2rem;">' +
+                        '<img loading="lazy" alt="$4 Film" src="symlink-png.php?file=4dollarFilm.png" height="20" width="70" style="margin-top: -3px;">' +
+                        '</td></tr>'
+                    );
+
+                    // Add a class to mark this table as processed
+                    $(this).addClass('processedTable');
+                }
+            }
+        });
+    }
+</script>
+
+<!-- 3D Retro Pricing -->
+<script>
+    // Don't run if noSort (box office and aud screens)
+    if (!document.body.classList.contains('noSort')) {
+        // Find all tables with class '.showtimes'
+        $('table.showtimes').each(function () {
+            // Check if this table has already been processed
+            if (!$(this).hasClass('processedTable3dret')) {
+                // Find all elements with class '.showtime.3dret' within this table
+                var $showtime3dRet = $(this).find('.showtime.3dret, .showtime.retro');
+
+                if ($showtime3dRet.length > 0) {
+                    // Find the first 'tr' with class '.movieTitleRow' inside the table
+                    var $movieTitleRow = $(this).find('tr.movieTitleRow:first');
+
+                    // Add the class 'cheapTitle' to '.movietitle'
+                    $movieTitleRow.find('.movietitle').addClass('cheapTitle');
+
+                    // Add the new row as the first thing inside 'tr.movieTitleRow'
+                    $movieTitleRow.before(
+                        '<tr><td class="moviesubtitle cheapFilmRow" colspan="2" style="font-family: Impact; font-size: 1.25rem;padding-left:.4rem;padding-right:.4rem;background:#006700;color:#fff;height:2.2rem;">' +
+                        'Retro 3D Pricing' +
+                        '</td></tr>'
+                    );
+
+                    // Add a class to mark this table as processed
+                    $(this).addClass('processedTable3dret');
+                }
+            }
+        });
+    }
+</script>
+
+<!-- Fathom Event -->
+<script>
+    // Don't run if noSort (box office and aud screens)
+    if (!document.body.classList.contains('noSort')) {
+        // Find all tables with class '.showtimes'
+        $('table.showtimes').each(function () {
+            // Check if this table has already been processed
+            if (!$(this).hasClass('processedTableFatho')) {
+                // Find all elements with class '.showtime.fatho' within this table
+                var $showtimeFatho = $(this).find('.showtime.fatho');
+
+                if ($showtimeFatho.length > 0) {
+                    // Find the first 'tr' with class '.movieTitleRow' inside the table
+                    var $movieTitleRow = $(this).find('tr.movieTitleRow:first');
+
+                    // Add the new cell after 'tr.movieTitleRow'
+                    $movieTitleRow.after(
+                        '<tr><td class="moviesubtitle" colspan="2" style="background: rgb(91, 0, 153); color: rgb(255, 255, 255);"><span>Fathom Event</span></td></tr>'
+                    );
+
+                    // Add a class to mark this table as processed
+                    $(this).addClass('processedTableFatho');
+                }
+            }
+        });
+    }
+</script>
+
+<script>// New standalone function for handling 'Returning' films
+    function addReturningSubtitle(filmID, actionText, date) {
+        // Check if the body has the class 'noSort'
+        if (hasNoSortClass()) {
+            console.log('We are NOT adding Returning to this page');
+            return; // Do nothing
+        }
+
+        const movieTitleRow = document.querySelector(`.${filmID} tr.movieTitleRow`);
+        const parentDiv = document.querySelector(`.${filmID}`);
+
+        if (movieTitleRow && parentDiv) {
+            const currentDate = new Date();
+            const targetDate = new Date(date);
+            targetDate.setDate(targetDate.getDate() + 1); // Add one day
+            const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][targetDate.getDay()];
+
+            const timeDiff = targetDate - currentDate;
+            const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+            const subtitleElement = document.createElement('td');
+            subtitleElement.className = `moviesubtitle`;
+            subtitleElement.colSpan = 2;
+
+            const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const day   = String(targetDate.getDate()).padStart(2, '0');
+            const formattedDate = `${month}/${day}`;
+
+            let displayText = '';
+            if (daysDiff <= 6) {
+                displayText = `${actionText} ${dayOfWeek} ${formattedDate}`;
+            } else {
+                displayText = `${actionText} Next ${dayOfWeek} ${formattedDate}`;
+            }
+
+            subtitleElement.innerHTML = `<span>${displayText}</span>`;
+            const subtitleRow = document.createElement('tr');
+            subtitleRow.appendChild(subtitleElement);
+            movieTitleRow.insertAdjacentElement('afterend', subtitleRow);
+
+            parentDiv.dataset[actionText.toLowerCase()] = date; // Store the date in the dataset
+        }
+    }
+
+    // Example usage of the function
+    // addReturningSubtitle('ST00000172', 'Returning', '2023-09-14');
+</script>
+<script>
+    function stripFormatTags(raw) {
+        if (!raw) return "";
+        return raw
+            .toString()
+            .replace(/\s*\(?\s*3D\s*\)?\s*/gi, " ")
+            .replace(/\s*[-–:]\s*3D\s*/gi, " ")
+            .replace(/\s*\(?\s*2D\s*\)?\s*/gi, " ")
+            .replace(/\s*[-–:]\s*2D\s*/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+    }
+
+    function hasTag(title, tag) {
+        const t = (title || "").toString();
+        const re = new RegExp(`(^|\\W)${tag}($|\\W)`, "i");
+        return re.test(t);
+    }
+
+    function group3DThen2DOrPlainWithin($container) {
+        const $movies = $container.find(".veeziMovie");
+        if (!$movies.length) return;
+
+        const map = new Map();
+
+        // Build map for THIS container only
+        $movies.each(function () {
+            const $m = $(this);
+            const title = $m.attr("data-title") || "";
+            const base = stripFormatTags(title);
+
+            if (!map.has(base)) map.set(base, { twoD: [], plain: [] });
+
+            const bucket = map.get(base);
+            if (hasTag(title, "2D")) bucket.twoD.push($m);
+            else if (!hasTag(title, "3D")) bucket.plain.push($m); // store non-3D mates
+        });
+
+        // For each 3D in THIS container, move it directly above its mate (2D preferred)
+        $movies.each(function () {
+            const $threeD = $(this);
+            const title = $threeD.attr("data-title") || "";
+
+            if (!hasTag(title, "3D")) return;
+            if ($threeD.closest(".leavingFilms").length) return;
+
+            const base = stripFormatTags(title);
+            const bucket = map.get(base);
+            if (!bucket) return;
+
+            const mateList = bucket.twoD.length ? bucket.twoD : bucket.plain;
+
+            // pick the first mate that is still in THIS container and not in leavingFilms
+            const $mate = mateList.find($m =>
+                $m.closest($container).length && !$m.closest(".leavingFilms").length
+            );
+
+            if ($mate && $mate.length) {
+                $threeD.insertAfter($mate); // regular/2D first, then 3D (within this section)
+            }
+        });
+    }
+
+    function group3DThen2DOrPlain() {
+        if (document.body.classList.contains("noSort")) return;
+
+        // Prefer sortedFilms if it exists
+        let $containers = $(".sortedFilms");
+
+        // Fallback: find the common parent that actually contains veeziMovie
+        if (!$containers.length) {
+            $containers = $(".veeziMovie").first().parent();
+        }
+
+        $containers.each(function () {
+            group3DThen2DOrPlainWithin($(this));
+        });
+    }
+
+    $(window).on("load", function () {
+        group3DThen2DOrPlain();
+    });
+</script>
+<script>
+    // addSubtitle('ST00000702', 'Leaving', '2025-05-15'); // Show Me Your Glory
+</script>
+<script>
+
+    // addSubtitle('GQ166006', 'Leaving', '2026-11-24'); // GQ166006
+    // addSubtitle('GQ166006', 'Starting', '2026-11-20'); // GQ166006
+    // $('.veeziMovie.GQ166006').remove(); // GQ166006
+    addSubtitle('GQ165590', 'Leaving', '2026-11-19'); // GQ165590
+    // addSubtitle('GQ165590', 'Starting', '2026-11-17'); // GQ165590
+    // $('.veeziMovie.GQ165590').remove(); // GQ165590
+    // addSubtitle('GQ165594', 'Leaving', '2026-11-24'); // GQ165594
+    // addSubtitle('GQ165594', 'Starting', '2026-11-17'); // GQ165594
+    // $('.veeziMovie.GQ165594').remove(); // GQ165594
+    // addSubtitle('GQ165593', 'Leaving', '2026-11-24'); // GQ165593
+    // addSubtitle('GQ165593', 'Starting', '2026-11-17'); // GQ165593
+    // $('.veeziMovie.GQ165593').remove(); // GQ165593
+    // addSubtitle('GQ165589', 'Leaving', '2026-11-24'); // GQ165589
+    // addSubtitle('GQ165589', 'Starting', '2026-11-17'); // GQ165589
+    // $('.veeziMovie.GQ165589').remove(); // GQ165589
+    addSubtitle('GQ165591', 'Leaving', '2026-11-19'); // GQ165591
+    // addSubtitle('GQ165591', 'Starting', '2026-11-17'); // GQ165591
+    // $('.veeziMovie.GQ165591').remove(); // GQ165591
+    // addSubtitle('GQ165585', 'Leaving', '2026-11-24'); // GQ165585
+    // addSubtitle('GQ165585', 'Starting', '2026-11-17'); // GQ165585
+    // $('.veeziMovie.GQ165585').remove(); // GQ165585
+
+    // $('.veeziMovie.ST00000512').find('.st').addClass('skipFandango');
+    // addGeneralSubtitle('ST00000982', 'En Español', '2029-12-31');
+</script>
+
+
+
+</div><div id="buyModal" class="reveal-modal" data-reveal aria-hidden="true" role="dialog"
+     style="max-width: 750px">
+
+    <h3>Buy Tickets</h3><br>
+    <p>Wait for showtimes to load, select your date and then select your showtimes!<br>
+        <a href="https://tickets.southgate6.com/?sg6" target="_blank">Open in a new window</a></p>
+    <div id="buyIframeHolder"></div>
+    <a class="close-reveal-modal" aria-label="Close">&#215;</a>
+</div>
+
+
+<!-- FOOTER INCLUDE STARTS -->  </div> </div> </div> <!-- center row--> </div> <!-- center area-->
+<footer class="row">
+    <div class="large-12 columns">
+        <div class="small-12  medium-4 large-3 columns bottomspace "><a href="index"><img class="footerlogo"
+                                                                                          src="./img/footerlogo.png"
+                                                                                          alt="Southgate Cinema 6 mini-logo"
+                                                                                          height="130" width="150"
+                                                                                          title="Southgate Cinema 6"></a>
+        </div>
+
+        <div class="small-12 medium-4 large-3 columns bottomspace"><b>Southgate Cinema 6</b><br>
+            <ahref
+            ="https://maps.apple.com/?q=37.022298,-100.924405"title="Click to view Southgate Cinema 6 in iOS maps or Google Maps depending
+            on your device"target="_blank"> <i class=".fi-marker"></i> 1104 S Kansas Ave <br> Liberal, KS 67901</a></div>
+
+
+        <div class="small-12 medium-4 large-3 columns" style="margin-bottom: 2rem;"><a href="privacy"
+                                                                                       title="Mitchell Theatres Privacy Policy">&#8226;Privacy
+                Policy</a><br> <a href="accessibility" title="Mitchell Theatres Accessibility">&#8226;Accessibility</a>
+        </div>
+
+        <div class="small-12 medium-4 large-3 columns facebook"
+             style="display:flex; margin-bottom: 3rem;font-size: 2.5rem;line-height: 0;">
+<!---->
+<!--            <a title="Download our app for iPhone" target="_blank" style="margin-right: 1.5rem; font-size: 40px;"-->
+<!--               href="https://itunes.apple.com/us/app/mitchell-theaters/id1028472478?mt=8">-->
+<!--                <i class="fa fa-apple " aria-hidden="true"></i>-->
+<!--            </a>-->
+<!---->
+<!--            <a title="Download our app for Android" target="_blank" style="margin-right:  1.5rem; font-size: 40px;"-->
+<!--               href="https://play.google.com/store/apps/details?id=com.retrieversoftware.mitchelltheaters">-->
+<!--                <i class="fa fa-android  " aria-hidden="true"></i>-->
+<!--            </a>-->
+
+            <a style="font-size: 40px; title=" Like Southgate Cinema 6 on Facebook!"
+            target="_blank"
+            href="https://www.facebook.com/Southgate6"><i class="fa fa-facebook-official" aria-hidden="true"></i></a>
+        </div>
+    </div>
+</footer> <a class="exit-off-canvas"></a>
+</div> <!-- inner-wrap-->
+</div> <!-- off-canvas-wrap-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/vendor/jquery.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.4.1/js/foundation.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/vendor/modernizr.js"></script>
+
+<script defer src="https://www.youtube.com/iframe_api"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/4.1.5/lazysizes.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            $(document).foundation();
+        })(jQuery);
+    });
+</script>
+
+<script defer
+        src="https://cdnjs.cloudflare.com/ajax/libs/foundation/5.5.3/js/foundation/foundation.offcanvas.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            $(document).ready(function () {
+                $('.buyModalLink').click(function () {
+                    if (!$('#buyIframe').length) {
+                        $('#buyIframeHolder').html('<iframe id="buyIframe" style="width:100%; border: 1px solid lightgray; height: auto; min-height: 700px; background: #fff" src="sg6"></iframe>');
+                    }
+                });
+            });
+
+        })(jQuery);
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        $('.showtimes').each(function () {
+            const $table = $(this);
+            const $rows = $table.find('tr.st');
+            const $closedTodayRows = $table.find('tr.st.closedToday');
+
+            if ($rows.length === $closedTodayRows.length) {
+                $table.closest('.row').parent().remove();
+            }
+        });
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+
+            $.fn.timeMachine = function () {
+                function a(a) {
+                    var b = new Date(a), c = "" + (b.getMonth() + 1), d = "" + b.getDate(), e = b.getFullYear();
+                    return c.length < 2 && (c = "0" + c), d.length < 2 && (d = "0" + d), [e, c, d].join("-")
+                }
+
+                var b = new Date, c = new Date(b.getFullYear(), b.getMonth(), b.getDate()), d = function (a) {
+                    return Date.parse(a)
+                }, e = d(a(c)), f = "data-date", g = $("[" + f + "]");
+                $.each(g, function (a, b) {
+                    var c = $(this).attr(f), g = d(c);
+                    g < e ? $(this).remove() : false;
+                    g == e ? $(this).addClass('today') : $(this).show();
+                })
+            }, $(document).ready(function () {
+                setInterval(function () {
+                    $.fn.timeMachine(), $(".showtimestable").parent().each(function () {
+                        $(this)[0 == $(this).find(".times").length ? $(this).parent().remove() : "show"]()
+                    })
+                }, 50)
+            });
+
+        })(jQuery);
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            if ($("#back-to-top").length) {
+                var scrollTrigger = 100, backToTop = function () {
+                    var a = $(window).scrollTop();
+                    a > scrollTrigger ? $("#back-to-top").addClass("show") : $("#back-to-top").removeClass("show")
+                };
+                backToTop(), $(window).on("scroll", function () {
+                    backToTop()
+                }), $("#back-to-top").on("click", function (a) {
+                    a.preventDefault(), $("html,body").animate({scrollTop: 0}, 700)
+                })
+            }
+        })(jQuery);
+    });
+
+    function checkPastTimes() {
+        var now = new Date();
+        $('tr.today td.pastTimes span.showtime').each(function () {
+            var $showTimeSpan = $(this);
+            var timeParts = $(this).text().split(':');
+            var showTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), timeParts[0] * 1 + 12, timeParts[1]);
+            var difference = now.getTime() - showTime.getTime();
+            $showTimeSpan.toggleClass('past-time', difference > 1800000);
+        });
+        window.setTimeout(checkPastTimes, 300000);
+    }
+
+    $(checkPastTimes);
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            window.setInterval(function () {
+                $('.showtimes').each(function () {
+                    $(this).find('.st:contains("No showtimes"):last').remove();
+                });
+                $(checkPastTimes);
+            }, 300);
+        })(jQuery)
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            window.setInterval(function () {
+                if ($('.today')[0]) {
+                    $(".hideshow").show();
+
+                } else {
+                    $(".hideshow").hide();
+                }
+                $('.showtimestable').each(function () {
+                    if (($(this).find(".st").length == "1") && ($(this).find(".notimes").length == "1")) {
+                        $(this).closest('.showtimestable').parent('div').remove();
+                    }
+                });
+                $('.showtimestable').each(function () {
+                    if (($(this).find(".st").length == "2") && ($(this).find(".notimes").length == "2")) {
+                        $(this).closest('.showtimestable').parent('div').remove();
+                    }
+                });
+                $('div').filter(function () {
+                    return $(this).children().length == 1 && $(this).children().is('br');
+                }).remove();
+                $('table.showtimes tr.st:last-of-type').each(function () {
+                    if ($(this).find('.times.notimes').length) {
+                        $(this).remove();
+                    }
+                });
+
+            }, 300);
+        })(jQuery);
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            $(document).ready(function (e) {
+                $('#btnmap').click(function (e) {
+                    $('#map_canvas').toggle('fast');
+                    if ($('#btnmap').val() == 'View All Showtimes') {
+                        $('.showtimespage').removeClass('todayOnly')
+                        $('#btnmap').val('View Today Only');
+                        $(".nottoday").removeClass("nottoday")
+                        $('.nextweek').css('display', "block")
+                        $(".view-more a").trigger('click');
+                    } else {
+                        $('#btnmap').val('View All Showtimes');
+                        $('.showtimespage').addClass('todayOnly')
+                        $(".showtimestable").parent().each(function () {
+                            $(this)[0 == $(this).find(".today").length ? $(this).parent().addClass("nottoday") : "show"]
+                        }), $(".st").each(function () {
+                            $(this).not(".st.today").addClass("nottoday")
+                            $('.nextweek').css("display", "none")
+                        })
+                    }
+                });
+            });
+        })(jQuery);
+    });
+</script>
+
+<script>
+    let players = {};
+
+    // Initialize YouTube IFrame API
+    function onYouTubeIframeAPIReady() {
+        $('iframe[src*="youtube.com/embed"]').each(function () {
+            const iframe = $(this);
+            const id = iframe.attr('id') || `youtube-player-${Math.random().toString(36).substr(2, 9)}`;
+            iframe.attr('id', id);
+
+            // Only initialize if not already initialized
+            if (!players[id]) {
+                players[id] = new YT.Player(id);
+            }
+        });
+    }
+
+    // Pause the YouTube video in the modal
+    function pauseYouTubeVideo($modal) {
+        const iframe = $modal.find('iframe[src*="youtube.com/embed"]');
+        if (iframe.length) {
+            const playerId = iframe.attr('id');
+            if (players[playerId] && typeof players[playerId].pauseVideo === 'function') {
+                players[playerId].pauseVideo();
+            } else {
+                console.warn(`YouTube Player with ID ${playerId} is not properly initialized.`);
+            }
+        }
+    }
+
+    // Handle Foundation close event for additional safety
+    $(document).on('closed.fndtn.reveal', '[data-reveal]', function () {
+        pauseYouTubeVideo($(this)); // Pause the video if the modal closes by any other means
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            $("div.newMovie .movieTitleRow ").before('<tr><td class="moviesubtitle" style="background: #820000; color: #fff;padding: .1rem .4rem;" colspan="2"><span><em>NEW RELEASE</em></span></td></tr>');
+            $('.moviesubtitle:empty').parent('tr').remove();
+        })(jQuery);
+    });</script>
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        (function ($) {
+            // Add CSS only once
+            if (!$('style#presale-overlay-style').length) {
+                $('<style id="presale-overlay-style">')
+                    .prop('type', 'text/css')
+                    .html(`
+
+.presale-overlay-anchor {
+display: flex;
+justify-content: center;
+align-items: center;
+flex-direction: column;
+}
+
+.presale-overlay-anchor::after {
+content: "PRE-SALE";
+padding: 0 15px;
+width: auto;
+border-radius: 1rem;
+display:  inline;
+color: darkred;
+text-align: center;
+line-height: 1rem;
+font-weight: bold;
+pointer-events: none;
+margin-top: 5px;
+text-wrap: nowrap;
+
+}
+
+@media only screen and (max-width: 40.01em) {
+.presale-overlay-anchor::after {
+margin: -3px 0  5px;
+}}
+
+
+@media (prefers-color-scheme: dark) {
+.presale-overlay-anchor::after {
+
+color: #fff;
+}}
+
+        `)
+                    .appendTo('head');
+            }
+
+            // Look for .moviesubtitle.nextWeek
+            $('.moviesubtitle.nextWeek').each(function () {
+                // Traverse up to .showtimestable, then down to .posterdiv
+                var posterDiv = $(this).closest('.showtimestable').find('.posterdiv');
+
+                if (posterDiv.length) {
+                    // Find the first anchor inside .posterdiv
+                    var firstAnchor = posterDiv.find('a').first();
+                    if (firstAnchor.length) {
+                        // Add a class to style the overlay using ::before
+                        firstAnchor.addClass('presale-overlay-anchor');
+                    }
+                }
+            });
+        })(jQuery);
+    });
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        $("table.showtimes").each(function () {
+            var rowCount = $(this).find('tr.st').length;
+
+            if (rowCount > 5) {
+                $(this).closest('.large-9.medium-9.columns table').wrap("<div class='showMore'></div>").append('<div class="view-more" style=""><a title="View More Showtimes" href="#">View More</a></div>');
+            }
+        });
+
+        $('.view-more').on('click', function () {
+            event.preventDefault();
+            $(this).closest('.showMore').removeClass('showMore');
+            $(this).remove();
+        });
+        (jQuery);
+    });</script>
+
+<script>
+    $(document).ready(function () {
+        // Select all .showtimestable elements
+        var $showtimesTables = $('.showtimestable');
+
+        // Loop through each .showtimestable element
+        $showtimesTables.each(function () {
+            // Check if it contains a child element with class .presale
+            if ($(this).find('.presale').length > 0) {
+                // Add the class presaleTable to the .showtimestable element
+                $(this).addClass('presaleTable');
+            }
+        });
+    });
+
+</script>
+
+<script>
+    // Function to generate a random number within a specified range
+    function getRandomNumber(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Function to apply a random background color and gradient
+    function applyRandomBackground() {
+        const colors = [
+            '#3a0741', '#49302f', '#3a1717', '#1f2244',
+            '#1e4249', '#213819', '#673e13'
+        ];
+
+        // Generate two unique random indices for gradient colors
+        let index1 = getRandomNumber(0, colors.length - 1);
+        let index2 = getRandomNumber(0, colors.length - 1);
+        while (index1 === index2) {  // Ensure index2 is different from index1
+            index2 = getRandomNumber(0, colors.length - 1);
+        }
+
+        // Generate a random degree for the gradient
+        const randomDegrees = getRandomNumber(0, 360);
+
+        // Construct the gradient and image background style
+        const backgroundImage = `url("https://www.mitchelltheatres.com/media/svg/masks.svg"), linear-gradient(${randomDegrees}deg, ${colors[index1]}, ${colors[index2]})`;
+
+        // Apply the background style to the body
+        document.body.style.backgroundImage = backgroundImage;
+
+        // Add the class 'randomBg' to the body
+        document.body.classList.add('randomBg');
+    }
+
+    // OFF 2026-11-17 (Frisby): the sites use the mitchelltheatres.com homepage background now (stylesheet-20261117.css body)
+    // if (window.innerWidth > 840) {
+    //     applyRandomBackground();
+    // }
+</script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        $(document).on('open.fndtn.reveal', '[data-reveal]', function () {
+            console.log('Modal opened'); // Debugging line
+            $('body, html').addClass('modal-open');
+        });
+
+        $(document).on('closed.fndtn.reveal', '[data-reveal]', function () {
+            console.log('Modal closed'); // Debugging line
+            $('body, html').removeClass('modal-open');
+        });
+        (jQuery);
+    });
+</script>
+
+<!--
+<script>
+    $(document).ready(function () {
+
+        // Skip Fandango redirect for locations that don't use it
+        const skipFandangoSites = [
+            'ls6', 'nc8', 'morley', 'oc9',          // OK, TX, AZ
+            'cc6', 'cw8', 'doric', 'sg6', 'sq9'     // Kansas (all except ct8 Chisholm Trail)
+        ];
+        if (skipFandangoSites.some(site => $('body').hasClass(site))) return;
+
+        // New function: check for duplicate times within each day (tr.st)
+        function checkForDuplicateTimes() {
+            $('tr.st').each(function () {
+                var times = [];
+                // Collect time texts from each anchor in the row
+                $(this).find('a').each(function () {
+                    var timeText = $(this).text().trim();
+                    times.push(timeText);
+                });
+                var timeCounts = {};
+                var hasDuplicate = false;
+                // Check for duplicate times
+                for (var i = 0; i < times.length; i++) {
+                    var t = times[i];
+                    if (timeCounts[t]) {
+                        hasDuplicate = true;
+                        break;
+                    }
+                    timeCounts[t] = 1;
+                }
+                // If duplicate found, add skipFandango class to the row
+                if (hasDuplicate) {
+                    $(this).addClass('skipFandango');
+                }
+            });
+        }
+
+        // Run duplicate check before updating any links
+        checkForDuplicateTimes();
+
+        // Extract the data-fandango-id from the body tag
+        const fandangoId = $('body').attr('data-fandango-id');
+
+        // Function to parse XML and create a map of movie IDs
+        function parseXML(xml) {
+            const movieIdMap = {};
+            $(xml).find('movie').each(function () {
+                const veeziId = $(this).find('veeziId').text().trim();
+                const fandangoId = $(this).find('fandangoId').text().trim();
+                movieIdMap[veeziId] = fandangoId;
+            });
+            return movieIdMap;
+        }
+
+        // Function to set fallback URLs based on date only
+        function setFallbackUrls() {
+            $('tr.st').each(function () {
+                if ($(this).hasClass('skipFandango')) {
+                    console.log('Skipping fallback for row with class:', $(this).attr('class'));
+                    return; // Do nothing if skipFandango is present
+                }
+
+                const dataDate = $(this).attr('data-date');
+                const formattedDate = dataDate.replace(/-/g, '-');
+                const fallbackUrl = `https://www.fandango.com/redirect.aspx?searchby=theater&tid=${fandangoId}&date=${formattedDate}`;
+
+                $(this).find('a').each(function () {
+                    const timeText = $(this).text().trim();
+                    const timeFormatted = formatTime(timeText);
+                    const fallbackUrlWithTime = `${fallbackUrl}+${timeFormatted}`;
+                    $(this).attr('href', fallbackUrlWithTime);
+                    $(this).attr('target', '_blank'); // Add target="_blank"
+                });
+            });
+        }
+
+        // Function to update links based on movieIdMap
+        function updateLinks(movieIdMap) {
+            $('div.veeziMovie').each(function () {
+                const classList = $(this).attr('class').split(/\s+/);
+                const veeziIdClass = classList.find(cls => cls.startsWith('ST0'));
+                const veeziId = veeziIdClass.replace('ST0', 'ST0'); // Redundant but safe
+
+                if (movieIdMap && movieIdMap.hasOwnProperty(veeziId)) {
+                    const movieId = movieIdMap[veeziId];
+
+                    $(this).find('tr.st').each(function () {
+                        if ($(this).hasClass('skipFandango')) {
+                            console.log('Skipping XML link update for:', $(this).attr('data-date'));
+                            return;
+                        }
+
+                        const dataDate = $(this).attr('data-date');
+                        const formattedDate = dataDate.replace(/-/g, '-');
+
+                        $(this).find('a').each(function () {
+                            const timeText = $(this).text().trim();
+                            const timeFormatted = formatTime(timeText);
+                            const newUrl = `https://www.fandango.com/redirect.aspx?mid=${movieId}&tid=${fandangoId}&date=${formattedDate}+${timeFormatted}`;
+                            $(this).attr('href', newUrl);
+                            $(this).attr('target', '_blank');
+                        });
+                    });
+                }
+            });
+        }
+
+        function formatTime(timeText) {
+            if (!timeText) return null;
+
+            // Strict match: "h:mmam" or "hh:mmpm"
+            const match = timeText.trim().match(/^(\d{1,2}):(\d{2})\s?(am|pm)$/i);
+            if (!match) {
+                return null; // ← graceful exit
+            }
+
+            let hours = parseInt(match[1], 10);
+            const minutes = match[2];
+            const modifier = match[3].toLowerCase();
+
+            if (modifier === 'pm' && hours !== 12) hours += 12;
+            if (modifier === 'am' && hours === 12) hours = 0;
+
+            return encodeURIComponent(
+                `${hours.toString().padStart(2, '0')}:${minutes}`
+            );
+        }
+
+        // First, set the fallback URLs
+        setFallbackUrls();
+
+        // Fetch and parse the XML content from the local PHP script
+        $.ajax({
+            url: 'symlink-fandango.php?file=fandangoMovieIds.xml',
+            dataType: 'xml',
+            success: function (data) {
+                console.log('XML file loaded successfully.');
+                const movieIdMap = parseXML(data);
+                updateLinks(movieIdMap);
+            },
+            error: function () {
+                console.error('Failed to load XML file.');
+                setFallbackUrls(); // Only run fallback if XML fails
+            }
+        });
+    });
+</script>
+-->
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        if (window.location.hash === "#showAllTiems") {
+            // Remove all divs with class "view-more"
+            $("div.view-more").remove();
+
+            // Remove the "showMore" class from any elements that have it
+            $("div.showMore").removeClass("showMore");
+        }
+    });
+    (jQuery);
+</script>
+
+<style>
+
+    .showMore {
+        height: 300px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .view-more {
+        background-image: linear-gradient(hsl(0deg 0% 14% / 0%), #EFEBF0 75%);
+        bottom: 6px;
+        height: 5rem;
+        left: 0;
+        margin: 0 0 0 -5px;
+        position: absolute;
+        width: 100%;
+    }
+
+    .view-more a {
+        float: right;
+        margin-right: 19px;
+        margin-top: 49px;
+    }
+
+    .view-more a:hover {
+        cusror: pointer;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .view-more {
+            background-image: linear-gradient(hsl(0deg 0% 14% / 0%), #2b2b2b 75%);
+        }
+    }
+
+    .todayOnly .showMore {
+        height: auto;
+    }
+
+    .todayOnly .view-more {
+        display: none;
+    }
+
+    @media print {
+
+        .mitheader, .theatreheader, .csInfoBanner, .theatreinfo, .rightcolumn, footer, #back-to-top, .menubutt, .mobilehead, .print.right, .posterdiv, .buyModalLink {
+            display: none;
+        }
+
+        .pagecontent {
+            font-size: 1rem;
+        }
+
+        .black-bar {
+            text-align: left;
+            font-weight: bold;
+            font-size: 1.25rem;
+            text-decoration: underline;
+        }
+
+        nav.tab-bar {
+            position: relative;
+        }
+
+        .movietitle {
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            background: #222;
+            color: #eee;
+            padding: 5px;
+        }
+
+        tr:nth-child(even) {
+            background: #CCC;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        .showtimestable table {
+            border: 0;
+            border-bottom: #000 3px solid;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .csposterdiv a:after, .theatreinformation a:after {
+            content: none !important;
+        }
+    }
+
+    .presaleTable .st.closedToday {
+        display: none !important;
+    }
+
+    /* (2026-11-17) no more overflow:hidden on html / body while a pop-up is open - it threw the page back to the top.
+       The open pop-up is fixed to the screen and scrolls inside itself (overscroll-behavior keeps the page still). */
+
+    /* an open pop-up sits on the SCREEN (fixed), full height, scrolling inside itself - not at the top of the page
+       (2026-11-17: it was top:0 of the page, so it jumped there) */
+    .reveal-modal.open {
+        position: fixed !important;
+        top: 0 !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        height: 100vh;
+        padding-bottom: 6rem;
+    }
+</style>
+</div>
+</body> </html>
+
+

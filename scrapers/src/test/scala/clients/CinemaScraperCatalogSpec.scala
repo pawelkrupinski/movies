@@ -11,7 +11,7 @@ import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper, SecondFeedFacts}
 import services.cinemas.pl._
-import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, MitchellTheatresClient, SquarespaceEventsClient, UsChainVenues}
 import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, QuadDerbyClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, HttpFetch}
@@ -571,6 +571,20 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     primary.sourceUrl shouldBe Some("https://barrycinemas.com/acme-theater-riverton")
     c.flicksFallbackSlugs.get(acme) shouldBe None
     c.all.find(_.cinema == UsRoster.byDisplayName("Gem Theatre Riverton")).value shouldBe a [FlicksClient]
+  }
+
+  // flicks.us's page for Southgate Cinema 6 (Liberal, KS) lists Sequoyah Cinema 9's (Garden City)
+  // sessions, every one booked on tickets.sequoyah9.com (DuplicateVenueListing, us, 2026-11-17).
+  // It is read off its own site, with no Flicks fallback to bring the copy back; Sequoyah, which
+  // Flicks lists right, stays on Flicks.
+  it should "scrape Southgate Cinema 6 Liberal off its own site, with no flicks.us fallback" in {
+    val c         = catalog()
+    val southgate = UsRoster.byDisplayName("Southgate Cinema 6 Liberal")
+    val primary   = c.all.find(_.cinema == southgate).value
+    primary shouldBe a [MitchellTheatresClient]
+    primary.sourceUrl shouldBe Some("https://www.southgate6.com/index")
+    c.flicksFallbackSlugs.get(southgate) shouldBe None
+    c.all.find(_.cinema == UsRoster.byDisplayName("Sequoyah Garden City 9")).value shouldBe a [FlicksClient]
   }
 
   // US chain venues are matched by DISPLAY NAME, which makes a typo silent: the

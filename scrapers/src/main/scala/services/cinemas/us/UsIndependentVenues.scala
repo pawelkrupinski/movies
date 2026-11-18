@@ -13,6 +13,9 @@ package services.cinemas.us
  * only 404 would corroborate the next false closure rather than prevent it — with none,
  * the sweep judges the venue on its own site alone, and over the longer uncorroborated
  * spell.
+ *
+ * Or because Flicks lists ANOTHER venue's programme under its name (CopiedFeedDetector's
+ * DuplicateVenueListing): a fallback reading that page would bring the copy straight back.
  */
 object UsIndependentVenues {
 
@@ -35,6 +38,14 @@ object UsIndependentVenues {
     "Acme Theatre Riverton" -> CinemaPlusVenue("https://barrycinemas.com", "/acme-theater-riverton"),
   )
 
+  /** A Mitchell Theatres house, by its own site's origin — see [[MitchellTheatresClient]].
+   *  Southgate Cinema 6's flicks.us page lists Sequoyah Cinema 9's sessions (Garden City,
+   *  booked on tickets.sequoyah9.com) since 2026-11-16; Sequoyah itself, and the circuit's
+   *  other houses, stay on Flicks, which lists them right. */
+  val mitchellTheatres: Map[String, String] = Map(
+    "Southgate Cinema 6 Liberal" -> "https://www.southgate6.com",
+  )
+
   /** Every display name served by an independent's own site — off the flicks.us sweep. */
-  val all: Set[String] = squarespace.keySet ++ cinemaPlus.keySet
+  val all: Set[String] = squarespace.keySet ++ cinemaPlus.keySet ++ mitchellTheatres.keySet
 }
