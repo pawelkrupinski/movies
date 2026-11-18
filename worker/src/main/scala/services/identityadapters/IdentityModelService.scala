@@ -323,14 +323,19 @@ final class IdentityModelService(
     aged.foreach(departed.remove)
     val going    = leaving.toSet
     if (departed.isEmpty && retained.isEmpty) {
-      if (back.nonEmpty || aged.nonEmpty) persist(retainedStore.update(Nil, back ++ aged))
+      persistDepartures(Map.empty, back, aged)
       (seen, going.toSeq)
     } else {
       val (newly, dropped) = rekept(engine, seen, seenKeys, going, now)
-      if (back.nonEmpty || left.nonEmpty || aged.nonEmpty) persist(retainedStore.update(left.values.toSeq, back ++ aged))
+      persistDepartures(left, back, aged)
       (seen ++ newly, dropped)
     }
   }
+
+  /** The departures written when any moved: those `left` now, those `back` and those `aged` past the window deleted. */
+  private def persistDepartures(left: Map[models.ListingKey, ListingRetention.Departed], back: Set[models.ListingKey],
+                                aged: Seq[models.ListingKey]): Unit =
+    if (back.nonEmpty || left.nonEmpty || aged.nonEmpty) persist(retainedStore.update(left.values.toSeq, back ++ aged))
 
   /** The billed listings of `leaving` that depart now, each with its facts as last held and `now`. A listing held as kept
    *  that its venue's page no longer names left before: it keeps the departure it has. A departed listing its own venue

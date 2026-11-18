@@ -104,6 +104,15 @@ private[identity] object YearRuntimeMeasures {
   private def runsPastTheRecord(l: Listing, f: Film, country: Option[String], title: Category, off: Int): Boolean =
     billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))
 
+  /** Two listings' stated runtimes apart ([[IdentityMeasures.listingListing]]) — absent when the one billing an event beside the film runs longer, past the band:
+   *  the event's minutes, no fact about the film ([[runtimeDelta]]). */
+  private[identity] def listingRuntimeDelta(a: Listing, b: Listing): Measure =
+    (a.statedRuntime, b.statedRuntime) match {
+      case (Some(x), Some(y)) if (x - y > Corroboration.RuntimeBand && runsAnEvent(a)) ||
+                                 (y - x > Corroboration.RuntimeBand && runsAnEvent(b)) => MissingListing
+      case (x, y)                                                                       => absDelta(x, y)
+    }
+
   /** The title relation a caller of [[runtimeDelta]] that read none passes: no relay of the record is then read (a value,
    *  not a by-name test: the measure runs for every listing against every candidate, and a thunk a call is its allocation). */
   private val Unrelated = Category("unrelated")
