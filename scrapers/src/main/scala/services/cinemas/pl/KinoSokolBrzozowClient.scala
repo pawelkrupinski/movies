@@ -3,11 +3,7 @@ package services.cinemas.pl
 import models._
 import services.titles.FormatTags
 import tools.HttpFetch
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
-
-import scala.jdk.CollectionConverters._
+import services.cinemas.common.ListingPageScraper
 
 /**
  * Kino Sokół (Brzozowski Dom Kultury, Brzozów). Its repertoire at
@@ -35,32 +31,13 @@ object KinoSokolBrzozowClient {
   val BaseUrl       = "http://bdk.brzozow.pl"
   val RepertoireUrl = s"$BaseUrl/kino/"
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val document = Jsoup.parse(html, BaseUrl)
-
-    val slots = document.select("div.wp_theatre_event").asScala.toSeq.flatMap(parseEvent)
-
-    SlotsToMovies.basic(slots, cinema)
-  }
-
-  private def parseEvent(ev: Element): Option[ScrapedSlot] =
-    for {
-      titleElement <- Option(ev.selectFirst(".wp_theatre_event_title a"))
-      title    = titleElement.text.trim if title.nonEmpty
-      dateText <- Option(ev.selectFirst(".wp_theatre_event_startdate")).map(_.text)
-      date     <- ScraperParse.parseDayMonthYear(dateText)
-      time     <- Option(ev.selectFirst(".wp_theatre_event_starttime")).flatMap(t => ScraperParse.parseHHmm(t.text))
-    } yield ScrapedSlot(
-      title      = title,
-      dateTime   = date.atTime(time),
-      bookingUrl = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl    = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
-      // The venue line is this cinema's LANGUAGE VERSION, per screening — the
-      // same film runs "2D dubbing pl" in the afternoon and "2D napisy pl" in the
-      // evening. Nothing else on the page says so: the title is identical for
-      // both, so the central `FormatTags` title strip cannot reach it and the two
-      // showings were indistinguishable on the badge.
-      format     = Option(ev.selectFirst(".wp_theatre_event_venue"))
-        .map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil)
-    )
+  // The venue line is this cinema's LANGUAGE VERSION, per screening — the
+  // same film runs "2D dubbing pl" in the afternoon and "2D napisy pl" in the
+  // evening. Nothing else on the page says so: the title is identical for
+  // both, so the central `FormatTags` title strip cannot reach it and the two
+  // showings were indistinguishable on the badge.
+  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
+    WpTheatreEvents.parse(html, BaseUrl, cinema) { (card, slot) =>
+      slot.copy(format = Option(card.selectFirst(".wp_theatre_event_venue")).map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil))
+    }
 }
