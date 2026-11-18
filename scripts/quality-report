@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# THE CODE-QUALITY REPORT (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, measured from
+# THE CODE-QUALITY REPORT (CLAUDE.md, "Code quality ratchets"): the production code's method complexity and length, measured from
 # its sources (`quality/runMain quality.QualityReport`, the `quality` module), through this checkout's kept sbt server
 # (scripts/sbt-warm).
 #
 #   scripts/quality-report             the markdown report (the counts over each limit, the worst methods) to stdout,
 #                                      then each ratchet's verdict against its baseline (scripts/ci/quality_ratchet.py)
 #   scripts/quality-report --update    the same, then the measured rows written to each baseline
-#                                      (test/resources/complexity-baseline.tsv): every fall recorded; a rise must be
-#                                      committed with its trailer (`Complexity: <why>`)
+#                                      (test/resources/{complexity,length}-baseline.tsv): every fall recorded; a rise
+#                                      must be committed with its trailer (`Complexity: <why>`, `Length: <why>`)
 #   scripts/quality-report --out DIR   keep rows.tsv, files.tsv and report.md in DIR (default: a temporary directory)
 #
 # The pre-push hook's `quality` step runs the same measure and ratchet over the pushed range.

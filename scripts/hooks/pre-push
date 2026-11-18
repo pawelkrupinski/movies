@@ -36,8 +36,9 @@
 #                 (quality_paths): `quality/runMain quality.QualityReport` measures every production method's
 #                 complexity from its source (scalameta; ~3 s warm) and scripts/ci/quality_ratchet.py holds it to
 #                 test/resources/complexity-baseline.tsv -- no new method past a limit (cognitive 15, cyclomatic 10,
-#                 inner defs 2), no frozen row rising -- and a baseline grows only in a commit carrying its trailer
-#                 (`Complexity: <why>`; scripts/quality-report --update writes them; falls need no trailer).
+#                 inner defs 2), no frozen row rising -- and its length to length-baseline.tsv (method 50 lines, file
+#                 800); a baseline grows only in a commit carrying its trailer (`Complexity: <why>`, `Length: <why>`;
+#                 scripts/quality-report --update writes them; falls need no trailer).
 #                 PREPUSH_SKIP=quality skips just it
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)

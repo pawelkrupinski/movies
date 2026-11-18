@@ -1,0 +1,60 @@
+# THE LENGTH BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
+# Every production method and source (*/src/main of a deployed module) past its length limit, frozen at its length:
+#   limit         method-lines / file-lines: a method or source without a row stays at or below it
+#   method-lines  <path>:<Owner.method>, the lines from its `def` to its body's end
+#   file-lines    <path>, the source's lines
+# A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
+# commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
+limit	method-lines	50
+limit	file-lines	800
+method-lines	common/src/main/scala/services/movies/CinemaSlotBuilder.scala:CinemaSlotBuilder.build	86
+method-lines	common/src/main/scala/services/movies/MovieCodecs.scala:BackwardCompatibleSourceDataCodec.decode	66
+method-lines	common/src/main/scala/services/movies/ScrapeListing.scala:ScrapeListing.prepare	53
+method-lines	common/src/main/scala/services/titles/FormatTags.scala:FormatTags.peel	66
+method-lines	http/src/main/scala/tools/FallbackHttpFetch.scala:FallbackHttpFetch.tryEach	94
+method-lines	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	59
+method-lines	identity/src/main/scala/services/identity/BilledPiece.scala:BilledPiece.of	71
+method-lines	identity/src/main/scala/services/identity/ConstraintSolver.scala:ConstraintSolver.solveAs	71
+method-lines	identity/src/main/scala/services/identity/IncrementalResolver.scala:IncrementalResolver.update	73
+method-lines	identity/src/main/scala/services/identity/ListingShape.scala:ListingShape.billedBeside	74
+method-lines	identity/src/main/scala/services/identity/ResolverDecisionBson.scala:ResolverDecisionBson.read	51
+method-lines	identity/src/main/scala/services/identity/ResolverDecisions.scala:ResolverDecisions.of	99
+method-lines	identity/src/main/scala/services/identity/TakeChangeLines.scala:TakeChangeLines.of	56
+method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.corrected	73
+method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	72
+method-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala:AgreementStage.resolved	67
+method-lines	scrapers/src/main/scala/services/cinemas/common/FlicksClient.scala:FlicksClient.parseDocument	53
+method-lines	scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.scala:SourceFallbackScraper.fetchWithSource	53
+method-lines	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	67
+method-lines	scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala:CinemaCityClient.parseDay	55
+method-lines	scrapers/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala:FilmwebShowtimesClient.fetch	52
+method-lines	scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala:HeliosClient.fetchRestData	74
+method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoBulgarskaClient.scala:KinoBulgarskaClient.parseHtml	52
+method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoGramClient.scala:KinoGramClient.fetch	55
+method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoMuzaClient.scala:KinoMuzaClient.parseHtml	68
+method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoZamekClient.scala:KinoZamekClient.parseEvent	52
+method-lines	scrapers/src/main/scala/services/cinemas/pl/MsiClient.scala:MsiClient.fetchUnfiltered	52
+method-lines	scrapers/src/main/scala/services/cinemas/pl/MsiScraper.scala:MsiScraper.parseMonthWithYear	61
+method-lines	scrapers/src/main/scala/services/cinemas/pl/MultikinoParser.scala:MultikinoParser.parseFilm	66
+method-lines	scrapers/src/main/scala/services/cinemas/pl/SystemBiletowyClient.scala:SystemBiletowyClient.parse	61
+method-lines	scrapers/src/main/scala/services/cinemas/pl/VisualTicketClient.scala:VisualTicketClient.parse	52
+method-lines	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.main	57
+method-lines	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	66
+method-lines	worker/src/main/scala/services/corpus/MovieService.scala:MovieService.buildResolvedRecord	53
+method-lines	worker/src/main/scala/services/enrichment/CacheRefresher.scala:CacheRefresher.refreshAllUrlThenScore	58
+method-lines	worker/src/main/scala/services/enrichment/ImdbIdResolver.scala:ImdbIdResolver.lookupId	68
+method-lines	worker/src/main/scala/services/identity/adapters/IdentityProjection.scala:IdentityProjection.write	54
+method-lines	worker/src/main/scala/services/identity/adapters/IdentityStagingPublisher.scala:IdentityStagingPublisher.publish	98
+method-lines	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	73
+method-lines	worker/src/main/scala/services/tasks/ChunkScrapePlanner.scala:ChunkScrapePlanner.plan	55
+method-lines	worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala:ScrapeCinemaHandler.handle	70
+method-lines	worker/src/main/scala/services/tasks/ScrapeReaper.scala:ScrapeReaper.tick	69
+method-lines	worker/src/main/scala/services/tasks/TaskWorker.scala:TaskWorker.runHandler	51
+method-lines	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	55
+method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59
+method-lines	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.renderBase	59
+file-lines	common/src/main/scala/models/Cinema.scala	1067
+file-lines	common/src/main/scala/services/movies/MongoMovieRepository.scala	816
+file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	836
+file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1351
+file-lines	worker/src/main/scala/services/readmodel/ReadModelSweeper.scala	838

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """quality_ratchet.py: a measured row past its baseline row fails, and so does a row-less key past its kind's limit (a
 NEW method over a limit) and a measure whose limit rose past the baseline's; a baseline grown in a range passes only
-when a commit changing it carries the ratchet's trailer (`Complexity: <why>`); falls pass and are said; `update` writes
+when a commit changing it carries the ratchet's trailer (`Complexity: <why>`, `Length: <why>`), each ratchet
+judged on its own rows, baseline and trailer; falls pass and are said; `update` writes
 the baseline. QUALITY_RATCHET_UNDER_TEST names another copy of the tool (quality-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.environ.get("QUALITY_RATCHET_UNDER_TEST") or os.path.join(HERE, "quality_ratchet.py")
 COMPLEXITY = "test/resources/complexity-baseline.tsv"
+LENGTH = "test/resources/length-baseline.tsv"
 
 ROWS = """# a comment
 limit\tcognitive\t15
@@ -25,6 +27,10 @@ limit\tinner-defs\t2
 cognitive\ta/src/main/scala/A.scala:A.f\t20
 cyclomatic\ta/src/main/scala/A.scala:A.f\t12
 inner-defs\ta/src/main/scala/B.scala:B.g\t4
+limit\tmethod-lines\t50
+limit\tfile-lines\t800
+method-lines\ta/src/main/scala/A.scala:A.f\t70
+file-lines\ta/src/main/scala/A.scala\t900
 """
 
 
@@ -39,7 +45,7 @@ class QualityRatchetTest(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.repo = os.path.join(self.dir.name, "repo")
         self.scratch("scratch_repo", "-q")
-        self.base = self.commit({COMPLEXITY: ROWS}, "base")
+        self.base = self.commit({COMPLEXITY: ROWS, LENGTH: ROWS}, "base")
 
     def tearDown(self):
         self.dir.cleanup()
@@ -86,7 +92,9 @@ class QualityRatchetTest(unittest.TestCase):
     # ── the measured rows against the baseline ──
 
     def test_the_baseline_itself_passes(self):
-        self.assertIn("complexity: within", self.assert_passes(ROWS))
+        out = self.assert_passes(ROWS)
+        self.assertIn("complexity: within", out)
+        self.assertIn("length: within", out)
 
     def test_a_new_method_over_a_limit_fails(self):
         self.assert_fails(rows("cognitive\ta/src/main/scala/C.scala:C.h\t16"),
@@ -126,6 +134,25 @@ class QualityRatchetTest(unittest.TestCase):
         self.assertIn("cognitive a/src/main/scala/A.scala:A.f 20 -> 18", out)
         self.assertIn("inner-defs a/src/main/scala/B.scala:B.g 4 -> within the limit", out)
 
+    def test_a_new_long_method_fails(self):
+        self.assert_fails(rows("method-lines\ta/src/main/scala/C.scala:C.h\t51"),
+                          "LENGTH GREW", "method-lines a/src/main/scala/C.scala:C.h: 51, past the limit 50 (no baseline row)")
+
+    def test_a_new_long_file_fails(self):
+        self.assert_fails(rows("file-lines\ta/src/main/scala/C.scala\t801"),
+                          "file-lines a/src/main/scala/C.scala: 801, past the limit 800 (no baseline row)")
+
+    def test_a_frozen_file_growing_fails_and_shrinking_passes(self):
+        self.assert_fails(rows("file-lines\ta/src/main/scala/A.scala\t901", drop=("file-lines\ta/",)),
+                          "file-lines a/src/main/scala/A.scala: 901, past its baseline 900")
+        out = self.assert_passes(rows("file-lines\ta/src/main/scala/A.scala\t850", drop=("file-lines\ta/",)))
+        self.assertIn("file-lines a/src/main/scala/A.scala 900 -> 850", out)
+
+    def test_one_ratchet_can_be_checked_alone(self):
+        rc, out = self.run_tool("check", rows("file-lines\ta/src/main/scala/C.scala\t801"), "--ratchet", "complexity")
+        self.assertEqual(0, rc, out)
+        self.assertNotIn("length", out)
+
     # ── the baseline's growth over a range ──
 
     def test_a_grown_baseline_without_a_trailer_fails(self):
@@ -159,6 +186,14 @@ class QualityRatchetTest(unittest.TestCase):
         grown = rows("limit\tcognitive\t25", drop=("limit\tcognitive",))
         head = self.commit({COMPLEXITY: grown}, "looser")
         self.assert_fails(grown, "limit cognitive raised 15 -> 25", rng=f"{self.base}..{head}")
+
+    def test_a_grown_length_baseline_needs_the_length_trailer_not_the_complexity_one(self):
+        grown = rows("file-lines\ta/src/main/scala/C.scala\t801")
+        head = self.commit({LENGTH: grown}, "a long file\n\nComplexity: not this ratchet's")
+        self.assert_fails(grown, "THE LENGTH BASELINE GREW", "file-lines a/src/main/scala/C.scala raised <=800 -> 801",
+                          rng=f"{self.base}..{head}")
+        head = self.commit({LENGTH: grown + "\n"}, "a long file\n\nLength: the generated roster's one table")
+        self.assert_passes(grown, rng=f"{self.base}..{head}")
 
     def test_a_shrunk_baseline_needs_no_trailer(self):
         shrunk = rows(drop=("inner-defs",))

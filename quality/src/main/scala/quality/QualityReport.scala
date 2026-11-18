@@ -15,6 +15,8 @@ import scala.jdk.CollectionConverters.*
  *   cognitive   a method's cognitive complexity, past its limit (MethodMeasures)
  *   cyclomatic  a method's cyclomatic complexity, past its limit
  *   inner-defs  the defs nested in a method, past its limit
+ *   method-lines a method's length in lines, past its limit
+ *   file-lines  a source's length in lines (key: its path), past its limit
  *
  *   quality.QualityReport --root <repository> --rows <out> [--files <out>] [--report <markdown out>]
  *
@@ -26,8 +28,11 @@ object QualityReport {
   /** The deployed modules: what ships (testkit, itkit, repochecks, e2e and this module are test or tool code). */
   val ProductionModules: Seq[String] = Seq("geodata", "base", "http", "common", "identity", "scrapers", "worker", "web")
 
-  /** Each measured kind's limit (CLAUDE.md, "Code quality ratchets"). */
-  val Limits: Seq[(String, Int)] = Seq("cognitive" -> 15, "cyclomatic" -> 10, "inner-defs" -> 2)
+  /** Each measured kind of a method, and its limit (CLAUDE.md, "Code quality ratchets"). */
+  val MethodLimits: Seq[(String, Int)] = Seq("cognitive" -> 15, "cyclomatic" -> 10, "inner-defs" -> 2, "method-lines" -> 50)
+
+  /** Each measured kind of a source, and its limit. */
+  val FileLimits: Seq[(String, Int)] = Seq("file-lines" -> 800)
 
   /** A production source: its path from the repository root, and its text. */
   final case class SourceFile(path: String, text: String)
@@ -42,9 +47,9 @@ object QualityReport {
     val started = System.nanoTime
     val sources = productionSources(Paths.get(options("--root")))
     val measured = measure(sources)
-    write(options("--rows"), rows(measured))
+    write(options("--rows"), rows(sources, measured))
     options.get("--files").foreach(write(_, fileLines(sources, measured)))
-    options.get("--report").foreach(write(_, report(measured)))
+    options.get("--report").foreach(write(_, report(sources, measured)))
     println(s"quality: ${sources.size} sources, ${measured.values.map(_.size).sum} methods, " +
       s"${(System.nanoTime - started) / 1000000} ms")
   }
@@ -84,31 +89,39 @@ object QualityReport {
     case "cognitive"  => m.cognitive
     case "cyclomatic" => m.cyclomatic
     case "inner-defs" => m.innerDefs
+    case "method-lines" => m.lines
   }
 
-  /** The limit rows, then every method past a limit, by kind and key. */
-  def rows(measured: Map[String, Seq[Measured]]): Seq[String] = {
+  /** The limit rows, then every method past a limit, then every source past one, by kind and key. */
+  def rows(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]]): Seq[String] = {
     val all = measured.values.flatten.toSeq
-    Limits.map { case (kind, limit) => s"limit\t$kind\t$limit" } ++
-      Limits.flatMap { case (kind, limit) =>
-        all.map(m => (m.key, valueOf(kind, m.method))).filter(_._2 > limit).sortBy(_._1).map { case (key, v) => s"$kind\t$key\t$v" }
-      }
+    (MethodLimits ++ FileLimits).map { case (kind, limit) => s"limit\t$kind\t$limit" } ++
+      MethodLimits.flatMap { case (kind, limit) => past(kind, limit, all.map(m => m.key -> valueOf(kind, m.method))) } ++
+      FileLimits.flatMap { case (kind, limit) => past(kind, limit, sources.map(s => s.path -> lineCount(s))) }
   }
+
+  private def past(kind: String, limit: Int, values: Seq[(String, Int)]): Seq[String] =
+    values.filter(_._2 > limit).sortBy(_._1).map { case (key, v) => s"$kind\t$key\t$v" }
+
+  private def lineCount(source: SourceFile): Int = source.text.linesIterator.size
 
   /** One line a source: `path<TAB>lines<TAB>cognitive`. */
   def fileLines(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]]): Seq[String] =
-    sources.map(s => s"${s.path}\t${s.text.linesIterator.size}\t${measured.getOrElse(s.path, Nil).map(_.method.cognitive).sum}")
+    sources.map(s => s"${s.path}\t${lineCount(s)}\t${measured.getOrElse(s.path, Nil).map(_.method.cognitive).sum}")
 
-  /** The counts over each limit, and the twenty worst methods by cognitive complexity. */
-  def report(measured: Map[String, Seq[Measured]]): Seq[String] = {
+  /** The counts over each limit, the twenty worst methods by cognitive complexity, and the ten longest sources. */
+  def report(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]]): Seq[String] = {
     val all = measured.values.flatten.toSeq
-    Seq("## Method complexity", "", s"${all.size} methods in ${measured.size} production sources.", "",
-      "| measure | limit | methods over it |", "|---|---|---|") ++
-      Limits.map { case (kind, limit) => s"| $kind | $limit | ${all.count(m => valueOf(kind, m.method) > limit)} |" } ++
+    Seq("## Method complexity and length", "", s"${all.size} methods in ${measured.size} production sources.", "",
+      "| measure | limit | over it |", "|---|---|---|") ++
+      MethodLimits.map { case (kind, limit) => s"| $kind | $limit | ${all.count(m => valueOf(kind, m.method) > limit)} methods |" } ++
+      FileLimits.map { case (kind, limit) => s"| $kind | $limit | ${sources.count(lineCount(_) > limit)} sources |" } ++
       Seq("", "| method | cognitive | cyclomatic | inner defs | lines |", "|---|---|---|---|---|") ++
       all.sortBy(m => (-m.method.cognitive, m.key)).take(20).map { m =>
         s"| `${m.key}` | ${m.method.cognitive} | ${m.method.cyclomatic} | ${m.method.innerDefs} | ${m.method.lines} |"
-      }
+      } ++
+      Seq("", "| source | lines |", "|---|---|") ++
+      sources.sortBy(s => (-lineCount(s), s.path)).take(10).map(s => s"| `${s.path}` | ${lineCount(s)} |")
   }
 
   private def write(path: String, lines: Seq[String]): Unit =

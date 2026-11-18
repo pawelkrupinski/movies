@@ -5,13 +5,14 @@
 # some row kinds to its own baseline, under its own trailer:
 #
 #   complexity   cognitive / cyclomatic / inner-defs of a method    test/resources/complexity-baseline.tsv   Complexity:
+#   length       method-lines of a method, file-lines of a source   test/resources/length-baseline.tsv       Length:
 #
 # A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments. The measure
 # writes a row for each key past its kind's limit. A key with a baseline row may not rise past it; a key without one
 # fails (a NEW method over a limit) -- unless it is a MOVE: a baseline row of the same name less its directories, gone
 # from the measure, at or above it (a source moved to another package re-keys its rows); the measure's limit may not rise past the baseline's. The baseline itself may grow
 # (a row added or raised, a limit raised) only in a commit changing it that carries the ratchet's trailer
-# (`Complexity: <why>`). A fall needs none: `update` writes the measured rows, every fall included.
+# (`Complexity: <why>`, `Length: <why>`). A fall needs none: `update` writes the measured rows, every fall included.
 #
 #   quality_ratchet.py check --current <rows> [--ratchet NAME ...] [--range A..B ...]
 #       violations: measured rows past a baseline (exit 1), and, for each range, a baseline grown between A and B with
@@ -51,6 +52,16 @@ RATCHETS: Dict[str, Ratchet] = {r.name: r for r in (
 # commit carrying `Complexity: <why>` (CLAUDE.md, "Code quality ratchets").""",
             "Split the method (extract the branches, name the inner defs as methods), or record it: scripts/quality-report"
             " --update, committed with a `Complexity: <why>` trailer."),
+    Ratchet("length", "test/resources/length-baseline.tsv", "Length", ("method-lines", "file-lines"),
+            """# THE LENGTH BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
+# Every production method and source (*/src/main of a deployed module) past its length limit, frozen at its length:
+#   limit         method-lines / file-lines: a method or source without a row stays at or below it
+#   method-lines  <path>:<Owner.method>, the lines from its `def` to its body's end
+#   file-lines    <path>, the source's lines
+# A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
+# commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").""",
+            "Split the method or the source (a class, an object, a file of its own), or record it: scripts/quality-report"
+            " --update, committed with a `Length: <why>` trailer."),
 )}
 
 
