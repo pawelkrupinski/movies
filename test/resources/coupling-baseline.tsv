@@ -21,9 +21,9 @@ module-edge	identity->base	25
 module-edge	identity->common	491
 module-edge	identity->http	6
 module-edge	scrapers->base	52
-module-edge	scrapers->common	1545
+module-edge	scrapers->common	1550
 module-edge	scrapers->geodata	3
-module-edge	scrapers->http	366
+module-edge	scrapers->http	370
 module-edge	scrapers->identity	8
 module-edge	web->base	31
 module-edge	web->common	562
@@ -180,7 +180,7 @@ fanout	modules.wiring.ResolutionWiring	50
 fanout	modules.wiring.ScrapeWiring	109
 fanout	modules.wiring.ShareCardWiring	82
 fanout	modules.wiring.TaskQueueWiring	48
-fanout	services.cinemas.CinemaScraperCatalog	45
+fanout	services.cinemas.CinemaScraperCatalog	43
 fanout	services.cinemas.pl.HeliosNuxt	58
 fanout	services.cinemas.pl.venues.KrakowVenues	33
 fanout	services.cinemas.pl.venues.PolishTowns	67

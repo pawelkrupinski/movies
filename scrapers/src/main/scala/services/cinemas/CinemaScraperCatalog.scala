@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, WebediaMar
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, SecondFeedFacts, WixEventsClient}
 import services.cinemas.de.{ArsenalBerlinClient, GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
-import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, MitchellTheatresClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
 
 import java.time.Clock
@@ -236,14 +236,9 @@ class CinemaScraperCatalog(
    *  datacenter egress directly (200 from the fleet, 2026-10-12), so plain `http`. */
   private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] = {
     val zone = VenueClock.zoneOf(cinema, TimeZones.UsEastern)
-    UsIndependentVenues.squarespace.get(cinema.displayName).map[CinemaScraper] { venue =>
-      new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = venueClock.today(zone))
-    }.orElse(UsIndependentVenues.cinemaPlus.get(cinema.displayName).map { venue =>
-      new CinemaPlusClient(http, venue.siteUrl, venue.venuePath, cinema, today = venueClock.today(zone))
-    }).orElse(UsIndependentVenues.mitchellTheatres.get(cinema.displayName).map { siteUrl =>
-      new MitchellTheatresClient(http, siteUrl, cinema, today = venueClock.today(zone))
-    })
+    UsIndependentVenues.scraperFor(http, cinema, zone, venueClock.today(zone))
   }
+
 
   private val usBaseByCity: Map[City, Seq[CinemaScraper]] =
     models.Country.UnitedStates.cities.map { city =>

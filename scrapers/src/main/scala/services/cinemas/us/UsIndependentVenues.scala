@@ -1,5 +1,11 @@
 package services.cinemas.us
 
+import models.Cinema
+import services.cinemas.common.CinemaScraper
+import tools.HttpFetch
+
+import java.time.{LocalDate, ZoneId}
+
 /**
  * The US independents whose OWN site is the scrape primary, keyed by the roster
  * display name (`Cinema.displayName`) — the same key `UsChainVenues` uses, for the
@@ -45,6 +51,16 @@ object UsIndependentVenues {
   val mitchellTheatres: Map[String, String] = Map(
     "Southgate Cinema 6 Liberal" -> "https://www.southgate6.com",
   )
+
+  /** The own-site scraper for `cinema`, when it is one of these — its zone and `today` the
+   *  catalogue's, so the venue's clock stays one place's answer. */
+  def scraperFor(http: HttpFetch, cinema: Cinema, zone: ZoneId, today: => LocalDate): Option[CinemaScraper] = {
+    val name = cinema.displayName
+    squarespace.get(name).map[CinemaScraper](venue =>
+      new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = today))
+      .orElse(cinemaPlus.get(name).map(venue => new CinemaPlusClient(http, venue.siteUrl, venue.venuePath, cinema, today = today)))
+      .orElse(mitchellTheatres.get(name).map(siteUrl => new MitchellTheatresClient(http, siteUrl, cinema, today = today)))
+  }
 
   /** Every display name served by an independent's own site — off the flicks.us sweep. */
   val all: Set[String] = squarespace.keySet ++ cinemaPlus.keySet ++ mitchellTheatres.keySet
