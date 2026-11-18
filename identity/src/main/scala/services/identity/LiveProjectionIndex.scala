@@ -201,23 +201,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
                          byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]], outside: mutable.HashSet[ListingKey]): Unit = {
     val live = venues.iterator.map(_._1).toSet
     venues.foreach { case (venue, listings) =>
-      if (!venueListings.get(venue).exists(_ eq listings)) {
-        val was = at(venue, byKeyAt)
-        val now = oneByKey(listings)
-        was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
-        now.keysIterator.foreach(k => if (!was.contains(k)) keys += k)   // new to its venue
-        // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
-        now.foreach { case (k, n) =>
-          listingAt(k).foreach { l =>
-            if ((l ne n) && l == n) {
-              if (Listing.movedOutsideEquality(l.listing, n.listing)) outside += k
-              rekey(l, n)
-            }
-          }
-        }
-        venueListings(venue) = listings
-        byKeyAt(venue) = now
-      }
+      if (!venueListings.get(venue).exists(_ eq listings)) readVenue(venue, listings, keys, byKeyAt, outside)
     }
     venueListings.keys.filterNot(live).toSeq.foreach { venue =>
       keys ++= at(venue, byKeyAt).keys
@@ -225,6 +209,26 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       byKeyAt.remove(venue)
     }
   }
+
+  /** [[readVenues]] of one venue whose listings are another object: the keys moved, gone or new to it added to `keys`. */
+  private def readVenue(venue: String, listings: Seq[ProjectedListing], keys: mutable.HashSet[ListingKey],
+                        byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]], outside: mutable.HashSet[ListingKey]): Unit = {
+    val was = at(venue, byKeyAt)
+    val now = oneByKey(listings)
+    was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
+    now.keysIterator.foreach(k => if (!was.contains(k)) keys += k)   // new to its venue
+    now.foreach { case (k, n) => listingAt(k).foreach(rereadUnmoved(k, _, n, outside)) }
+    venueListings(venue) = listings
+    byKeyAt(venue) = now
+  }
+
+  /** An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept — its
+   *  key added to `outside` when it moved where the model's equality does not look. */
+  private def rereadUnmoved(k: ListingKey, l: ProjectedListing, n: ProjectedListing, outside: mutable.HashSet[ListingKey]): Unit =
+    if ((l ne n) && l == n) {
+      if (Listing.movedOutsideEquality(l.listing, n.listing)) outside += k
+      rekey(l, n)
+    }
 
   /** Each of `keys` published as its venue and the model now hold it, or unpublished: the keys whose published listing
    *  moved, each moved between the slots it is at. */
@@ -236,25 +240,33 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       val was = listingAt(k)
       if (listing != was) {
         republished += k
-        for (old <- was; now <- listing) {
-          val before = LiveProjectionIndex.factsOf(old.listing)
-          if (before != LiveProjectionIndex.factsOf(now.listing) || old.listing.poster != now.listing.poster) former.put(k, before)
-        }
-        was.foreach { old =>
-          val at = StoredFilmSlots.slotOf(old.listing, normalizer)
-          slots.get(at).foreach { slot => slot.keys -= k; tidySlot(at) }
-        }
-        listing match {
-          case Some(l) =>
-            publish(l)
-            entries(k).heldAt = heldMark
-            val slot = slotAt(StoredFilmSlots.slotOf(l.listing, normalizer))
-            slot.keys += k
-          case None => unpublish(k)
-        }
+        for (old <- was; now <- listing) keepFormer(k, old, now)
+        was.foreach(unslot(k, _))
+        listing.fold(unpublish(k))(place(k, _))
       }
     }
     republished
+  }
+
+  /** The facts `k` was published with before, kept ([[formerly]]) when its venue re-published it with other facts or
+   *  another poster. */
+  private def keepFormer(k: ListingKey, old: ProjectedListing, now: ProjectedListing): Unit = {
+    val before = LiveProjectionIndex.factsOf(old.listing)
+    if (before != LiveProjectionIndex.factsOf(now.listing) || old.listing.poster != now.listing.poster) former.put(k, before)
+  }
+
+  /** `k` out of the slot its `old` listing was at. */
+  private def unslot(k: ListingKey, old: ProjectedListing): Unit = {
+    val at = StoredFilmSlots.slotOf(old.listing, normalizer)
+    slots.get(at).foreach { slot => slot.keys -= k; tidySlot(at) }
+  }
+
+  /** `l` published under `k`, held as of this update, at its slot. */
+  private def place(k: ListingKey, l: ProjectedListing): Unit = {
+    publish(l)
+    entries(k).heldAt = heldMark
+    val slot = slotAt(StoredFilmSlots.slotOf(l.listing, normalizer))
+    slot.keys += k
   }
 
   /** 2. Stored films: another object is another film unless its content is the same (the cache re-reads a film it
@@ -267,19 +279,24 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     val reslot  = mutable.HashSet.empty[ListingKey]      // whose previous film may have moved
     val now     = stored.iterator.map(r => r.id.value -> r).toMap
     storedById.foreach { case (id, was) =>
-      now.get(id) match {
-        case Some(is) if is eq was => ()
-        // The cache wraps the record it holds anew on every snapshot: the same record, the film held as it was.
-        case Some(is) if (is.record eq was.record) && sameFilm(is, was) => ()
-        case Some(is) if sameFilm(is, was) => storedById = storedById.updated(id, is)
-        case other =>
-          films += id
-          freed += ProjectionScope.plainKey(was.key(normalizer))
-          other.fold(unstore(id, reslot))(is => restore(is, reslot))
+      if (!restoredAsWas(id, was, now.get(id))) {
+        films += id
+        freed += ProjectionScope.plainKey(was.key(normalizer))
+        now.get(id).fold(unstore(id, reslot))(is => restore(is, reslot))
       }
     }
     now.foreach { case (id, is) => if (!storedById.contains(id)) restore(is, reslot) }
     (films, freed, reslot)
+  }
+
+  /** Is the film `id`, stored as `was`, still the same film as it `is` stored now — held as it is when another object of
+   *  it? */
+  private def restoredAsWas(id: String, was: StoredMovieRecord, is: Option[StoredMovieRecord]): Boolean = is match {
+    case Some(is) if is eq was => true
+    // The cache wraps the record it holds anew on every snapshot: the same record, the film held as it was.
+    case Some(is) if (is.record eq was.record) && sameFilm(is, was) => true
+    case Some(is) if sameFilm(is, was) => storedById = storedById.updated(id, is); true
+    case _ => false
   }
 
   /** 4. Clusters: of every decision that is another object, and of every listing whose publication moved. Returns the

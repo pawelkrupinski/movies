@@ -102,33 +102,33 @@ object ProjectionScope {
 
   /** `changes`, closed over everything a draft reads of another film's (see the class doc). */
   def close(now: ProjectionIndex, changes: Changes): ProjectionScope = {
-    val listings = scala.collection.mutable.HashSet.empty[ListingKey]
-    val films    = scala.collection.mutable.HashSet.empty[String]
-    val clusters = scala.collection.mutable.HashSet.empty[ClusterId]
-    val pendingListings = scala.collection.mutable.Stack.empty[ListingKey]
-    val pendingFilms    = scala.collection.mutable.Stack.empty[String]
-    val pendingClusters = scala.collection.mutable.Stack.empty[ClusterId]
-    def listing(k: ListingKey): Unit = if (listings.add(k)) pendingListings.push(k)
-    def film(id: String): Unit       = if (films.add(id)) pendingFilms.push(id)
-    def cluster(i: ClusterId): Unit  = if (clusters.add(i)) pendingClusters.push(i)
-    changes.listings.foreach(listing)
-    changes.films.foreach(film)
-    while (pendingListings.nonEmpty || pendingFilms.nonEmpty || pendingClusters.nonEmpty) {
-      while (pendingListings.nonEmpty) {
-        val k = pendingListings.pop()
-        now.previousOf.get(k).foreach(r => film(r.id))
-        now.clusterOf.get(k).foreach(cluster)
+    val listings = new Worklist[ListingKey]
+    val films    = new Worklist[String]
+    val clusters = new Worklist[ClusterId]
+    changes.listings.foreach(listings.add)
+    changes.films.foreach(films.add)
+    while (listings.pending || films.pending || clusters.pending) {
+      while (listings.pending) {
+        val k = listings.next()
+        now.previousOf.get(k).foreach(r => films.add(r.id))
+        now.clusterOf.get(k).foreach(clusters.add)
       }
-      while (pendingFilms.nonEmpty) {
-        val id = pendingFilms.pop()
-        now.listingsOf.getOrElse(id, Set.empty).foreach(listing)
-      }
+      while (films.pending) now.listingsOf.getOrElse(films.next(), Set.empty).foreach(listings.add)
       // A cluster is every listing of its TMDB film (the index joins them), so a film's TMDB id couples it to nothing
       // its listings do not already lead to.
-      while (pendingClusters.nonEmpty) now.clusters(pendingClusters.pop()).members.foreach(listing)
+      while (clusters.pending) now.clusters(clusters.next()).members.foreach(listings.add)
     }
     // Only stored films are films of the scope: a listing's previous film is always one.
-    ProjectionScope(whole = false, films.iterator.filter(now.storedById.contains).toSet, clusters.toSet, listings.toSet)
+    ProjectionScope(whole = false, films.seen.iterator.filter(now.storedById.contains).toSet, clusters.seen.toSet, listings.seen.toSet)
+  }
+
+  /** What [[close]] has reached of one kind, and what of it is still to follow, newest first. */
+  private final class Worklist[A] {
+    val seen: scala.collection.mutable.HashSet[A] = scala.collection.mutable.HashSet.empty[A]
+    private val stack = scala.collection.mutable.Stack.empty[A]
+    def add(a: A): Unit = if (seen.add(a)) stack.push(a)
+    def pending: Boolean = stack.nonEmpty
+    def next(): A = stack.pop()
   }
 
   /** `scope` closed again over the stored films outside it under a plain key one of its films is drafted under
