@@ -11,7 +11,6 @@ limit	cyclomatic	10
 limit	inner-defs	2
 cognitive	common/src/main/scala/services/MongoConnection.scala:MongoConnection.init	18
 cognitive	common/src/main/scala/services/MongoConnection.scala:MongoConnection.retryInBackground	21
-cognitive	common/src/main/scala/services/scrapes/StreamingArchivedFilmCodec.scala:StreamingArchivedFilmCodec.decode	17
 cognitive	common/src/main/scala/services/titles/rules/TitleRuleTable.scala:TitleRuleTable.parse	23
 cognitive	common/src/main/scala/tools/ConstructByType.scala:ConstructByType.construct	22
 cognitive	common/src/main/scala/tools/HtmlScripts.scala:HtmlScripts.all	20
@@ -62,15 +61,11 @@ cognitive	worker/src/main/scala/services/identityadapters/ModelInputGate.scala:M
 cognitive	worker/src/main/scala/services/identityadapters/TmdbNormalizer.scala:TmdbNormalizer.normalize	17
 cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	18
 cognitive	worker/src/main/scala/services/identityadapters/VenuePageIndex.scala:VenuePageIndex.settle	16
-cognitive	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanLean	32
-cognitive	worker/src/main/scala/services/sharecards/PosterPipeline.scala:JpegHeader.read	31
-cognitive	worker/src/main/scala/services/sharecards/ShareCardStore.scala:ShareCardStore.list	16
 cognitive	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	16
 cognitive	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	17
 cyclomatic	common/src/main/scala/models/SourceData.scala:SourceData.equals	22
 cyclomatic	common/src/main/scala/services/MongoConnection.scala:MongoConnection.init	11
 cyclomatic	common/src/main/scala/services/MongoConnection.scala:MongoConnection.retryInBackground	11
-cyclomatic	common/src/main/scala/services/scrapes/StreamingArchivedFilmCodec.scala:StreamingArchivedFilmCodec.decode	26
 cyclomatic	common/src/main/scala/services/titles/TitleContainment.scala:TitleContainment.runsFrom	11
 cyclomatic	common/src/main/scala/services/titles/billing/BillingPieces.scala:BillingPieces.cuts	15
 cyclomatic	common/src/main/scala/services/titles/rules/TitleRuleTable.scala:TitleRuleTable.parse	19
@@ -147,8 +142,6 @@ cyclomatic	scrapers/src/main/scala/services/cinemas/PolishScraperCatalog.scala:P
 cyclomatic	scrapers/src/main/scala/services/cinemas/UkScraperCatalog.scala:UkScraperCatalog.scraper	15
 cyclomatic	worker/src/main/scala/services/alerts/FallbackAlert.scala:FallbackAlert.messageFor	13
 cyclomatic	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	23
-cyclomatic	worker/src/main/scala/services/enrichment/FilmwebRatings.scala:FilmwebRatings.auditOneSync	12
-cyclomatic	worker/src/main/scala/services/enrichment/OMDbClient.scala:OMDbClient.record	11
 cyclomatic	worker/src/main/scala/services/identityadapters/AgreementHandlers.scala:AgreementAsker.ask#2	11
 cyclomatic	worker/src/main/scala/services/identityadapters/IdentityModelService.scala:IdentityModelService.retaining	20
 cyclomatic	worker/src/main/scala/services/identityadapters/IdentityProjection.scala:IdentityProjection.write	11
@@ -158,10 +151,6 @@ cyclomatic	worker/src/main/scala/services/identityadapters/ModelInputGate.scala:
 cyclomatic	worker/src/main/scala/services/identityadapters/SuspectTakeCount.scala:SuspectTakeCount.apply	11
 cyclomatic	worker/src/main/scala/services/identityadapters/TmdbNormalizer.scala:TmdbNormalizer.normalize	23
 cyclomatic	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	12
-cyclomatic	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanLean	14
-cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:JpegHeader.read	18
-cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:VipsPosterShrinker.knownFormat	11
-cyclomatic	worker/src/main/scala/services/sharecards/ShareCardService.scala:ShareCardService.render	14
 cyclomatic	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	11
 cyclomatic	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	11
 cyclomatic	worker/src/main/scala/tools/JsonLineEncoder.scala:JsonLineEncoder.field	11
@@ -187,7 +176,4 @@ inner-defs	identity/src/main/scala/services/identity/TitleShapeMeasures.scala:Ti
 inner-defs	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	5
 inner-defs	identity/src/main/scala/services/identity/agreement/AgreementTakes.scala:AgreementTakes.synopsisAgainst	3
 inner-defs	worker/src/main/scala/services/alerts/FallbackAlert.scala:FallbackAlert.messageFor	3
-inner-defs	worker/src/main/scala/services/enrichment/WikidataClient.scala:WikidataClient.statingItems	3
-inner-defs	worker/src/main/scala/services/scrapes/VenueClosure.scala:VenueClosure.sourceDropped	5
-inner-defs	worker/src/main/scala/services/sharecards/ShareCardService.scala:ShareCardService.render	4
 inner-defs	worker/src/main/scala/services/venuepages/VenuePageStore.scala:MongoVenuePageStore.detailOf	3

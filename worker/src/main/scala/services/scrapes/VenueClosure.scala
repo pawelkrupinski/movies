@@ -96,32 +96,39 @@ object VenueClosure {
   /** Whether `row`'s venue has been dropped by its sources, or why it does not yet show it. */
   def sourceDropped(row: ArchivedScrape, fallback: Option[FallbackState], hasFallback: Boolean, opening: Opening,
                     now: Instant): Either[String, SourceDrop] = {
-    def daysSince(instant: Instant): Long = JDuration.between(instant, now).toDays
-    def heldFor(instant: Instant, duration: FiniteDuration): Boolean = JDuration.between(instant, now).toMillis >= duration.toMillis
-    def fresh(instant: Instant): Boolean = !heldFor(instant, FreshWithin)
-    // A spell counts from when this season opened at the earliest: before it, a seasonal venue is dark anyway.
-    def thisSeason(since: Instant): Instant = opening.sinceThisSeason(since, now)
+    val spells = new Spells(opening, now)
     val needed = if (hasFallback) ConfirmAfter else ConfirmAfterUncorroborated
-    def held(what: String, since: Instant, lastSeen: Instant): Either[String, Unit] = for {
-      _ <- Either.cond(heldFor(thisSeason(since), ConfirmAfter), (), s"fallback $what ${daysSince(thisSeason(since))} days, needs ${ConfirmAfter.toDays}")
-      _ <- Either.cond(fresh(lastSeen), (), s"fallback last confirmed $what ${daysSince(lastSeen)} days ago")
-    } yield ()
-
     for {
       _         <- Either.cond(!opening.offSeasonAt(now), (), s"seasonal ($opening), out of season")
       barren    <- row.lastBarren.toRight("serving")
       goneSince <- GoneUpstream.goneSince(row, now).toRight(s"not gone upstream (${barren.outcome.label}: ${barren.error.getOrElse("no error")})")
-      _         <- Either.cond(heldFor(thisSeason(goneSince), needed), (), s"gone ${daysSince(thisSeason(goneSince))} days, needs ${needed.toDays}")
-      _         <- Either.cond(fresh(barren.at), (), s"primary last probed ${daysSince(barren.at)} days ago")
-      evidence  <-
-        if (!hasFallback) Right(FallbackEvidence.NoFallback)
-        else fallback.flatMap(state => state.droppedFallback.map(state.fallbackSource -> _)) match {
-          case Some((source, spell)) =>
-            held("gone", spell.since, spell.lastSeen).map(_ => FallbackEvidence.Dropped(source, spell.since, spell.lastSeen, spell.error))
-          case None =>
-            fallback.flatMap(_.emptyFallback).toRight("fallback has not answered empty or gone")
-              .flatMap(spell => held("empty", spell.since, spell.lastSeen).map(_ => FallbackEvidence.ListedEmpty(spell.since, spell.lastSeen)))
-        }
+      _         <- Either.cond(spells.heldFor(spells.thisSeason(goneSince), needed), (), s"gone ${spells.daysSince(spells.thisSeason(goneSince))} days, needs ${needed.toDays}")
+      _         <- Either.cond(spells.fresh(barren.at), (), s"primary last probed ${spells.daysSince(barren.at)} days ago")
+      evidence  <- if (hasFallback) fallbackEvidence(fallback, spells) else Right(FallbackEvidence.NoFallback)
     } yield SourceDrop(goneSince, barren.error.getOrElse(""), barren.at, row.contentAt, evidence)
+  }
+
+  /** What the venue's fallback says: its source dropped the venue, or answered empty, for long enough and lately. */
+  private def fallbackEvidence(fallback: Option[FallbackState], spells: Spells): Either[String, FallbackEvidence] =
+    fallback.flatMap(state => state.droppedFallback.map(state.fallbackSource -> _)) match {
+      case Some((source, spell)) =>
+        spells.held("gone", spell.since, spell.lastSeen).map(_ => FallbackEvidence.Dropped(source, spell.since, spell.lastSeen, spell.error))
+      case None =>
+        fallback.flatMap(_.emptyFallback).toRight("fallback has not answered empty or gone")
+          .flatMap(spell => spells.held("empty", spell.since, spell.lastSeen).map(_ => FallbackEvidence.ListedEmpty(spell.since, spell.lastSeen)))
+    }
+
+  /** How long a spell has lasted as of `now`. A spell counts from when this season opened at the earliest: before
+   *  it, a seasonal venue is dark anyway. */
+  private final class Spells(opening: Opening, now: Instant) {
+    def daysSince(instant: Instant): Long = JDuration.between(instant, now).toDays
+    def heldFor(instant: Instant, duration: FiniteDuration): Boolean = JDuration.between(instant, now).toMillis >= duration.toMillis
+    def fresh(instant: Instant): Boolean = !heldFor(instant, FreshWithin)
+    def thisSeason(since: Instant): Instant = opening.sinceThisSeason(since, now)
+    /** The fallback has said `what` since `since` for [[ConfirmAfter]] this season, and said it lately. */
+    def held(what: String, since: Instant, lastSeen: Instant): Either[String, Unit] = for {
+      _ <- Either.cond(heldFor(thisSeason(since), ConfirmAfter), (), s"fallback $what ${daysSince(thisSeason(since))} days, needs ${ConfirmAfter.toDays}")
+      _ <- Either.cond(fresh(lastSeen), (), s"fallback last confirmed $what ${daysSince(lastSeen)} days ago")
+    } yield ()
   }
 }

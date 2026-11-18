@@ -245,17 +245,20 @@ object WikidataClient {
   }
 
   /** The SPARQL result's rows as each value's items, one per item: the TMDB and IMDb ids an item states once each. */
-  private def statingItems(rows: Seq[JsObject]): Map[String, Seq[StatingItem]] = {
-    def field(row: JsObject, name: String) = (row \ name \ "value").asOpt[String]
-    def lastSegment(uri: String) = uri.substring(uri.lastIndexOf('/') + 1)
+  private def statingItems(rows: Seq[JsObject]): Map[String, Seq[StatingItem]] =
     rows.flatMap(row => for { value <- field(row, "value"); item <- field(row, "item") } yield
       (value, lastSegment(item), field(row, "property").fold("")(lastSegment), field(row, "tmdb"), field(row, "imdb")))
       .groupBy(_._1).view.mapValues(_.groupBy(_._2).toSeq.sortBy(_._1).map { case (item, stated) =>
-        def sole(values: Seq[String]) = Option(values.distinct).filter(_.sizeIs == 1).flatMap(_.headOption)
         StatingItem(item, stated.map(_._3).distinct.sorted.mkString("/"), sole(stated.flatMap(_._4)).flatMap(_.toIntOption),
           sole(stated.flatMap(_._5)).filter(_.startsWith("tt")))
       }).toMap
-  }
+
+  /** A SPARQL row's binding `name`. */
+  private def field(row: JsObject, name: String): Option[String] = (row \ name \ "value").asOpt[String]
+  /** An entity URI's last segment: its id. */
+  private def lastSegment(uri: String): String = uri.substring(uri.lastIndexOf('/') + 1)
+  /** The one value an item states, when it states exactly one. */
+  private def sole(values: Seq[String]): Option[String] = Option(values.distinct).filter(_.sizeIs == 1).flatMap(_.headOption)
   private val YearTolerance = 1
 
   /**

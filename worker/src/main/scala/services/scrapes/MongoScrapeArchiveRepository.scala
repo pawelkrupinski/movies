@@ -211,42 +211,58 @@ class MongoScrapeArchiveRepository(
     val lean = scanRows(keep, lean = true) { page =>
       val (digested, older) = page.partition(_.films.getOrElse(Nil).forall(_.showtimesDigest.isDefined))
       undigested ++= older.map(_._id)
-      val rows = digested.flatMap(dto => StoredScrapeDto.toDomain(dto).flatMap(row => row.lastSuccess.map(s =>
-        LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get }))))
-      val staged = rows.flatMap(row => row.films.iterator.zipWithIndex.collect {
-        case ((film, _), index) if stageTitles(film) => (row.cinema.displayName, index, film.movie.rawTitle.getOrElse(film.movie.title)) })
-      // a failed read of the days is no days: each relay's are UNKNOWN, which its next read asks again
-      val days = if (staged.isEmpty) Some(Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])])
-        else Try(screeningDays(staged)) match {
-          case Success(read) => Some(read)
-          case Failure(e) =>
-            logger.warn(s"ScrapeArchiveRepository.scanLean: the days of ${staged.size} stage relays could not be read — unknown " +
-              s"until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
-            daysUnread()
-            None
-        }
-      val wanted = staged.iterator.map { case (venue, index, _) => venue -> index }.toSet
-      // every other film's first day, the season it screens in ([[LeanListing.seasonOnly]]); a failed read leaves none
-      val firsts = if (rows.isEmpty) Map.empty[(String, Int), (Int, java.time.LocalDate)]
-        else Try(firstDays(rows.map(_.cinema.displayName))) match {
-          case Success(read) => read
-          case Failure(e) =>
-            logger.warn(s"ScrapeArchiveRepository.scanLean: the first days of ${rows.size} venues' films could not be read — " +
-              s"no season until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
-            Map.empty
-        }
-      consume(rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
-        val key = row.cinema.displayName -> index
-        // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
-        if (!wanted(key)) firsts.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.seasonOnly(dated._2))) -> digest
-        else days.fold(film.copy(showtimes = LeanListing.unread)) { read =>
-          read.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.days(dated._2)))
-        } -> digest
-      })))
+      consume(dated(leanRows(digested), stageTitles))
     }
     val whole = undigested.result()
     if (whole.isEmpty) lean else lean.andThen(scanVenues(c => whole(c.displayName))(page => consume(page.flatMap(LeanListing.of(_, keepsDays)))))
   }
+
+  /** The digested rows of a scanned page as lean listings: each film with its showtimes' digest. */
+  private def leanRows(digested: Seq[StoredScrapeDto]): Seq[LeanListing] =
+    digested.flatMap(dto => StoredScrapeDto.toDomain(dto).flatMap(row => row.lastSuccess.map(s =>
+      LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get }))))
+
+  /** `rows` with the days each film keeps: a stage work's ([[stageTitles]]) the days it screens on, every other
+   *  film's its first day — read of the very showtimes the digest was read with: a row re-scraped between the two
+   *  reads keeps none. */
+  private def dated(rows: Seq[LeanListing], stageTitles: LeanListing.ByTitle): Seq[LeanListing] = {
+    val staged = rows.flatMap(row => row.films.iterator.zipWithIndex.collect {
+      case ((film, _), index) if stageTitles(film) => (row.cinema.displayName, index, film.movie.rawTitle.getOrElse(film.movie.title)) })
+    val days   = stageDays(staged)
+    val wanted = staged.iterator.map { case (venue, index, _) => venue -> index }.toSet
+    val firsts = seasonFirstDays(rows)
+    rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
+      val key = row.cinema.displayName -> index
+      if (!wanted(key)) firsts.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.seasonOnly(dated._2))) -> digest
+      else days.fold(film.copy(showtimes = LeanListing.unread)) { read =>
+        read.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.days(dated._2)))
+      } -> digest
+    }))
+  }
+
+  /** The days of the `staged` stage relays; a failed read of them is no days: each relay's are UNKNOWN (None),
+   *  which its next read asks again. */
+  private def stageDays(staged: Seq[(String, Int, String)]): Option[Map[(String, Int), (Int, Seq[java.time.LocalDate])]] =
+    if (staged.isEmpty) Some(Map.empty)
+    else Try(screeningDays(staged)) match {
+      case Success(read) => Some(read)
+      case Failure(e) =>
+        logger.warn(s"ScrapeArchiveRepository.scanLean: the days of ${staged.size} stage relays could not be read — unknown " +
+          s"until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        daysUnread()
+        None
+    }
+
+  /** Every film's first day, the season it screens in ([[LeanListing.seasonOnly]]); a failed read leaves none. */
+  private def seasonFirstDays(rows: Seq[LeanListing]): Map[(String, Int), (Int, java.time.LocalDate)] =
+    if (rows.isEmpty) Map.empty
+    else Try(firstDays(rows.map(_.cinema.displayName))) match {
+      case Success(read) => read
+      case Failure(e) =>
+        logger.warn(s"ScrapeArchiveRepository.scanLean: the first days of ${rows.size} venues' films could not be read — " +
+          s"no season until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        Map.empty
+    }
 
   /** The days each of `films` — a venue, the film's place in its row and its raw title — screens on, with its showtimes'
    *  digest, by venue and place: the server reads them for those films alone (a US page of venues listing a Met relay

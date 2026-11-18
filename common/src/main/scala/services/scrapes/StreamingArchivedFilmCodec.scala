@@ -50,6 +50,64 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
   }
 
   override def decode(r: BsonReader, c: DecoderContext): ArchivedFilmDto = {
+    val read = new StreamingArchivedFilmCodec.Fields(withShowtimes)
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
+      val name = r.readName()
+      if (!readScalar(read, name, r)) readStructured(read, name, r, c)
+    }
+    r.readEndDocument()
+    read.result()
+  }
+
+  /** Read the optional scalar field `name` into `read`; false when `name` is not one. */
+  private def readScalar(read: StreamingArchivedFilmCodec.Fields, name: String, r: BsonReader): Boolean = {
+    name match {
+      case "posterUrl"       => read.posterUrl = BsonReads.optionalString(r)
+      case "filmUrl"         => read.filmUrl = BsonReads.optionalString(r)
+      case "synopsis"        => read.synopsis = BsonReads.optionalString(r)
+      case "trailerUrl"      => read.trailerUrl = BsonReads.optionalString(r)
+      case "ageRating"       => read.ageRating = BsonReads.optionalString(r)
+      case "synopsisExcerpt" => read.excerpt = BsonReads.optionalString(r)
+      case "showtimesDigest" => read.showtimesDigest = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readInt32())
+      case _                 => return false
+    }
+    true
+  }
+
+  /** Read every other field `name` into `read`, skipping one it does not know. */
+  private def readStructured(read: StreamingArchivedFilmCodec.Fields, name: String, r: BsonReader, c: DecoderContext): Unit = name match {
+    case "movie"       => read.movie = movies.decode(r, c)
+    case "cast"        => read.cast = BsonReads.strings(r)
+    case "director"    => read.director = BsonReads.strings(r)
+    case ShowtimeCodec.RowPrefixField => read.urlPrefix = BsonReads.optionalString(r).orNull
+    case "showtimes" if !withShowtimes => r.skipValue()
+    case "showtimes"   => read.showtimes = showtimes(r, c, read.urlPrefix)
+    case "externalIds" => read.externalIds = externalIds(r)
+    case _             => r.skipValue()
+  }
+
+  private def showtimes(r: BsonReader, c: DecoderContext, urlPrefix: String): Seq[models.Showtime] = {
+    val read = Vector.newBuilder[models.Showtime]
+    r.readStartArray()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += ShowtimeCodec.read(r, c, urlPrefix)
+    r.readEndArray()
+    read.result()
+  }
+
+  private def externalIds(r: BsonReader): Map[String, String] = {
+    val ids = Map.newBuilder[String, String]
+    r.readStartDocument()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) ids += r.readName() -> r.readString()
+    r.readEndDocument()
+    ids.result()
+  }
+}
+
+private[scrapes] object StreamingArchivedFilmCodec {
+
+  /** One film's fields as the stream reads them: `null` while a required one is unread. */
+  private[scrapes] final class Fields(withShowtimes: Boolean) {
     var movie: Movie                      = null
     var posterUrl, filmUrl, synopsis      = Option.empty[String]
     var trailerUrl, ageRating, excerpt    = Option.empty[String]
@@ -58,40 +116,13 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
     var urlPrefix: String                 = null
     var showtimes: Seq[models.Showtime]   = if (withShowtimes) null else Nil
     var showtimesDigest                   = Option.empty[Int]
-    r.readStartDocument()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-      r.readName() match {
-        case "movie"       => movie = movies.decode(r, c)
-        case "posterUrl"   => posterUrl = BsonReads.optionalString(r)
-        case "filmUrl"     => filmUrl = BsonReads.optionalString(r)
-        case "synopsis"    => synopsis = BsonReads.optionalString(r)
-        case "cast"        => cast = BsonReads.strings(r)
-        case "director"    => director = BsonReads.strings(r)
-        case ShowtimeCodec.RowPrefixField => urlPrefix = BsonReads.optionalString(r).orNull
-        case "showtimes" if !withShowtimes => r.skipValue()
-        case "showtimes"   =>
-          val read = Vector.newBuilder[models.Showtime]
-          r.readStartArray()
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) read += ShowtimeCodec.read(r, c, urlPrefix)
-          r.readEndArray()
-          showtimes = read.result()
-        case "externalIds" =>
-          val ids = Map.newBuilder[String, String]
-          r.readStartDocument()
-          while (r.readBsonType() != BsonType.END_OF_DOCUMENT) ids += r.readName() -> r.readString()
-          r.readEndDocument()
-          externalIds = ids.result()
-        case "trailerUrl"  => trailerUrl = BsonReads.optionalString(r)
-        case "ageRating"   => ageRating = BsonReads.optionalString(r)
-        case "synopsisExcerpt" => excerpt = BsonReads.optionalString(r)
-        case "showtimesDigest" => showtimesDigest = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readInt32())
-        case _             => r.skipValue()
-      }
+
+    /** The film read; THROWS when a required field is missing. */
+    def result(): ArchivedFilmDto = {
+      if (movie == null || cast == null || director == null || showtimes == null || externalIds == null)
+        throw new org.bson.codecs.configuration.CodecConfigurationException("ArchivedFilmDto: a required field is missing")
+      ArchivedFilmDto(movie, posterUrl, filmUrl, synopsis, cast, director,
+        ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating, excerpt, showtimesDigest)
     }
-    r.readEndDocument()
-    if (movie == null || cast == null || director == null || showtimes == null || externalIds == null)
-      throw new org.bson.codecs.configuration.CodecConfigurationException("ArchivedFilmDto: a required field is missing")
-    ArchivedFilmDto(movie, posterUrl, filmUrl, synopsis, cast, director,
-      ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating, excerpt, showtimesDigest)
   }
 }

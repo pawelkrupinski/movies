@@ -108,15 +108,17 @@ class ShareCardStore(val root: Path, val room: ShareCardRoom = ShareCardRoom.Unl
   def list(): Seq[StoredFile] =
     Seq(root -> Kind.Card, posters -> Kind.Poster, bases -> Kind.Base).flatMap { case (dir, kind) =>
       if (!Files.isDirectory(dir)) Nil
-      else Using.resource(Files.list(dir))(_.iterator.asScala.toList).flatMap { path =>
-        val name = path.getFileName.toString
-        Try {
-          if (!Files.isRegularFile(path)) None
-          else Some(StoredFile(path, name, if (kind == Kind.Card && isCityCard(name)) Kind.City else kind, temp = name.endsWith(TempSuffix),
-            bytes = Files.size(path), modified = Files.getLastModifiedTime(path).toInstant))
-        }.toOption.flatten
-      }
+      else Using.resource(Files.list(dir))(_.iterator.asScala.toList).flatMap(storedFile(_, kind))
     }
+
+  /** The file at `path`, listed in a directory of `kind`'s: None for anything not a regular file, or gone. */
+  private def storedFile(path: Path, kind: String): Option[StoredFile] = {
+    val name = path.getFileName.toString
+    Try {
+      Option.when(Files.isRegularFile(path))(StoredFile(path, name, if (kind == Kind.Card && isCityCard(name)) Kind.City else kind,
+        temp = name.endsWith(TempSuffix), bytes = Files.size(path), modified = Files.getLastModifiedTime(path).toInstant))
+    }.toOption.flatten
+  }
 
   /** The lock file a card write to `target` holds (see [[writeAtomically]]). */
   def lockFor(target: Path): Path = root.resolve(LockDir).resolve(s"${Math.floorMod(target.getFileName.toString.hashCode, LockStripes)}.lock")

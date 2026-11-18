@@ -59,35 +59,44 @@ object JpegHeader {
   /** The frame header of the JPEG at `file`, or None for anything that isn't a readable JPEG. */
   def read(file: Path): Option[JpegHeader] =
     Try(Using.resource(new java.io.DataInputStream(new java.io.BufferedInputStream(Files.newInputStream(file)))) { in =>
-      if (in.readUnsignedShort() != 0xffd8) None
-      else {
-        var found = Option.empty[JpegHeader]
-        var done  = false
-        while (!done) {
-          var marker = in.readUnsignedByte()
-          while (marker != 0xff) marker = in.readUnsignedByte()
-          var code = in.readUnsignedByte()
-          while (code == 0xff) code = in.readUnsignedByte()
-          if (code == 0xd9 || code == 0xda) done = true                     // EOI / SOS before any frame
-          else if (code >= 0xd0 && code <= 0xd7 || code == 0x01) ()         // standalone markers
-          else {
-            val length = in.readUnsignedShort()
-            val sof = code >= 0xc0 && code <= 0xcf && code != 0xc4 && code != 0xc8 && code != 0xcc
-            if (sof) {
-              in.readUnsignedByte()                                          // precision
-              val height = in.readUnsignedShort(); val width = in.readUnsignedShort()
-              val sampling = (1 to in.readUnsignedByte()).map { _ =>
-                in.readUnsignedByte(); val hv = in.readUnsignedByte(); in.readUnsignedByte()
-                ((hv >> 4) max 1, (hv & 0x0f) max 1)
-              }
-              found = Some(JpegHeader(progressive = code == 0xc2 || code == 0xc6 || code == 0xca || code == 0xce, width, height, sampling))
-              done = true
-            } else in.skipNBytes((length - 2).toLong)
-          }
-        }
-        found
-      }
+      if (in.readUnsignedShort() != 0xffd8) None else firstFrame(in)
     }).toOption.flatten
+
+  /** Walk the segments to the first frame header: None at the scan or the image's end before any. */
+  @scala.annotation.tailrec
+  private def firstFrame(in: java.io.DataInputStream): Option[JpegHeader] = {
+    val code = nextMarker(in)
+    if (code == 0xd9 || code == 0xda) None                                  // EOI / SOS before any frame
+    else if (code >= 0xd0 && code <= 0xd7 || code == 0x01) firstFrame(in)   // standalone markers
+    else {
+      val length = in.readUnsignedShort()
+      if (startsFrame(code)) Some(frame(in, code))
+      else { in.skipNBytes((length - 2).toLong); firstFrame(in) }
+    }
+  }
+
+  /** The next marker's code, past any fill bytes. */
+  private def nextMarker(in: java.io.DataInputStream): Int = {
+    var marker = in.readUnsignedByte()
+    while (marker != 0xff) marker = in.readUnsignedByte()
+    var code = in.readUnsignedByte()
+    while (code == 0xff) code = in.readUnsignedByte()
+    code
+  }
+
+  /** A start-of-frame marker (SOF0..SOF15, less DHT, JPG and DAC). */
+  private def startsFrame(code: Int): Boolean = code >= 0xc0 && code <= 0xcf && code != 0xc4 && code != 0xc8 && code != 0xcc
+
+  /** The frame header after a start-of-frame marker `code`. */
+  private def frame(in: java.io.DataInputStream, code: Int): JpegHeader = {
+    in.readUnsignedByte()                                                    // precision
+    val height = in.readUnsignedShort(); val width = in.readUnsignedShort()
+    val sampling = (1 to in.readUnsignedByte()).map { _ =>
+      in.readUnsignedByte(); val hv = in.readUnsignedByte(); in.readUnsignedByte()
+      ((hv >> 4) max 1, (hv & 0x0f) max 1)
+    }
+    JpegHeader(progressive = Set(0xc2, 0xc6, 0xca, 0xce)(code), width, height, sampling)
+  }
 }
 
 /** Why a poster could not be had — the bounded `reason` label on
@@ -332,6 +341,9 @@ class VipsPosterShrinker(
 }
 
 object VipsPosterShrinker {
+  /** The image formats vips reads, told by the ASCII their files start with at an offset: PNG, GIF, TIFF (either
+   *  byte order) and the ISO media formats (AVIF, HEIF). JPEG and WebP are told apart from these. */
+  private[sharecards] val Signatures: Seq[(Int, String)] = Seq(1 -> "PNG", 0 -> "GIF8", 0 -> "II*", 0 -> "MM\u0000*", 4 -> "ftyp")
   /** The `vips` binary in the first of `searchPath`'s directories that has one — the
    *  process's PATH, which its root resolved (`ProcessConfiguration.executableSearchPath`). */
   def locate(searchPath: settings.ExecutableSearchPath): Option[Binary] =
@@ -353,10 +365,14 @@ object VipsPosterShrinker {
   /** True when `file` starts like an image format vips reads. */
   private[sharecards] def knownFormat(file: Path): Boolean = Try {
     val head = Using.resource(Files.newInputStream(file))(_.readNBytes(12))
-    def at(offset: Int, ascii: String) = head.length >= offset + ascii.length && new String(head.slice(offset, offset + ascii.length), "ISO-8859-1") == ascii
-    (head.length >= 2 && (head(0) & 0xff) == 0xff && (head(1) & 0xff) == 0xd8) || at(1, "PNG") || at(0, "GIF8") ||
-      (at(0, "RIFF") && at(8, "WEBP")) || at(0, "II*") || at(0, "MM\u0000*") || at(4, "ftyp")
+    isJpeg(head) || (at(head, 0, "RIFF") && at(head, 8, "WEBP")) ||
+      VipsPosterShrinker.Signatures.exists { case (offset, ascii) => at(head, offset, ascii) }
   }.getOrElse(false)
+
+  private def isJpeg(head: Array[Byte]): Boolean = head.length >= 2 && (head(0) & 0xff) == 0xff && (head(1) & 0xff) == 0xd8
+
+  private def at(head: Array[Byte], offset: Int, ascii: String): Boolean =
+    head.length >= offset + ascii.length && new String(head.slice(offset, offset + ascii.length), "ISO-8859-1") == ascii
 }
 
 object PosterPipeline {

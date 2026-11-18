@@ -105,37 +105,45 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
   /** One OMDb answer: its record, `None` when OMDb says it has none, and a throw for
    *  anything else (see [[OMDbClient.answer]]). */
   private def record(url: String)(using ask: OmdbAsk): Option[JsObject] = {
-    // Still paused, or past the pause with another read already probing: fail fast, without a call.
-    val probe = pausedUntil.get.exists { until =>
-      if (clock.instant().isBefore(until) || !probing.compareAndSet(false, true))
-        throw new KeyRefusedException(s"OMDb refused its key ${refusals.get} times in a row (spent quota or bad key); " +
-          s"not asked again until $until${if (clock.instant().isBefore(until)) "" else " and a probe has answered"}")
-      true
-    }
+    val probe = probeOrRefuse()
     try {
-      budget.take(ask, clock.instant()) match {
-        case OmdbBudget.Granted => ()
-        case OmdbBudget.Spent(retryAt) =>
-          val wait = java.time.Duration.between(clock.instant(), retryAt).toMillis.max(0L).millis
-          throw new BudgetSpentException(ask, retryAt, wait)
-      }
+      takeBudget(ask)
       val read = HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
       // An answer — this probe's, or a read in flight since before the pause — means the key works.
       refusals.set(0)
       pausedUntil.set(None)
       read
     } catch {
-      case NonFatal(failure) if refusesKey(failure) =>
-        // OMDb says the day's quota is gone (its 401 or its "Request limit reached!" document): nobody in the fleet
-        // asks again until its day turns. A bad key ("Invalid API key!") is the pause's alone.
-        if (spentQuota(failure)) budget.markSpent(clock.instant())
-        if (refusals.incrementAndGet() >= RefusalsBeforePause) {
-          pausedUntil.set(Some(clock.instant().plusMillis(RefusalPause.toMillis)))
-          logger.warn(s"OMDb refused its key ${refusals.get} times in a row — not asking it for ${RefusalPause.toMinutes} min " +
-            s"(last: ${tools.RedactedUrl(Option(failure.getMessage).getOrElse(failure.toString)).linesIterator.nextOption().getOrElse("")})")
-        }
-        throw failure
+      case NonFatal(failure) if refusesKey(failure) => countRefusal(failure); throw failure
     } finally if (probe) probing.set(false)
+  }
+
+  /** Whether this read is the probe of a key past its pause. Still paused, or past the pause with another read
+   *  already probing: THROWS, failing fast without a call. */
+  private def probeOrRefuse(): Boolean = pausedUntil.get.exists { until =>
+    if (clock.instant().isBefore(until) || !probing.compareAndSet(false, true))
+      throw new KeyRefusedException(s"OMDb refused its key ${refusals.get} times in a row (spent quota or bad key); " +
+        s"not asked again until $until${if (clock.instant().isBefore(until)) "" else " and a probe has answered"}")
+    true
+  }
+
+  /** Take one call of `ask`'s share of the day's budget; THROWS when it is spent. */
+  private def takeBudget(ask: OmdbAsk): Unit = budget.take(ask, clock.instant()) match {
+    case OmdbBudget.Granted => ()
+    case OmdbBudget.Spent(retryAt) =>
+      val wait = java.time.Duration.between(clock.instant(), retryAt).toMillis.max(0L).millis
+      throw new BudgetSpentException(ask, retryAt, wait)
+  }
+
+  /** OMDb refused the key with `failure`. Its day's quota gone (its 401 or its "Request limit reached!" document):
+   *  nobody in the fleet asks again until its day turns. A bad key ("Invalid API key!") is the pause's alone. */
+  private def countRefusal(failure: Throwable): Unit = {
+    if (spentQuota(failure)) budget.markSpent(clock.instant())
+    if (refusals.incrementAndGet() >= RefusalsBeforePause) {
+      pausedUntil.set(Some(clock.instant().plusMillis(RefusalPause.toMillis)))
+      logger.warn(s"OMDb refused its key ${refusals.get} times in a row — not asking it for ${RefusalPause.toMinutes} min " +
+        s"(last: ${tools.RedactedUrl(Option(failure.getMessage).getOrElse(failure.toString)).linesIterator.nextOption().getOrElse("")})")
+    }
   }
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a

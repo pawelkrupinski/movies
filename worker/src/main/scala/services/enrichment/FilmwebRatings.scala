@@ -73,9 +73,14 @@ class FilmwebRatings(
     val key = cache.keyOf(title, year)
     cache.get(key) match {
       case None => FilmwebRatings.NoUrl
-      case Some(e) =>
-        val resolved = resolveUrl(key, e)
-        (e.filmwebUrl, resolved) match {
+      case Some(e) => audit(key, e)
+    }
+  }
+
+  /** [[auditOneSync]] of the row `e` under `key`: its url re-resolved, then kept (its content backfilled),
+   *  corrected, or dropped. */
+  private def audit(key: CacheKey, e: models.MovieRecord): FilmwebRatings.AuditOutcome =
+        (e.filmwebUrl, resolveUrl(key, e)) match {
           case (Some(before), Some(fw)) if fw.url == before =>
             // URL unchanged, but BACKFILL the full content slot (originalTitle /
             // director / year / genres / Polish synopsis) — rows enriched before
@@ -107,8 +112,6 @@ class FilmwebRatings(
           case (None, None) =>
             FilmwebRatings.NoUrl
         }
-    }
-  }
 
   // Look up Filmweb data for the row, write back any changes. Two paths:
   //   - Row already has filmwebUrl → cheap: rating-only refresh via the
