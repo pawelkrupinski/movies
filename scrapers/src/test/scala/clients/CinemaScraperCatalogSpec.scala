@@ -61,7 +61,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       CinemaEgress(direct, multikino = direct, biletyna = new FakeHttpFetch(biletyna), zyte = new FakeHttpFetch(zyte),
         flicks = flicks, vue = vue, odeon = odeon, odeonBearer = services.cinemas.uk.OdeonBearer.fixed(odeonToken)),
       venueClock = models.VenueClock.fixedOn(today),
-      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer, lastListing = _ => scala.util.Success(Nil)
+      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer, lastListing = _ => scala.util.Success(Nil), backgroundLoads = CinemaScraperCatalog.OnTheAskingThread
     )
 
   /** The slug of the page a cinema is listed on. */
@@ -1104,7 +1104,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val built = new CinemaScraperCatalog(
       CinemaEgress.direct(http).copy(flicks = egress), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
       chainDetailCache = (chain, h, ttl) => { caches(chain) = h; new CachingDetailFetch(h, ttl) }, titles = titleNormalizer,
-      lastListing = _ => scala.util.Success(Nil))
+      lastListing = _ => scala.util.Success(Nil), backgroundLoads = CinemaScraperCatalog.OnTheAskingThread)
     val ukVenues = built.all.collect { case f: FlicksClient if f.detailGroup == FlicksClient.detailGroupOf(FlicksMarket.UnitedKingdom) => f }
     ukVenues.size should be > 1
     caches.get("flicks") shouldBe Some(egress)
@@ -1142,7 +1142,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     new CinemaScraperCatalog(
       CinemaEgress.direct(http), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) }, titles = titleNormalizer,
-      lastListing = _ => scala.util.Success(Nil))
+      lastListing = _ => scala.util.Success(Nil), backgroundLoads = CinemaScraperCatalog.OnTheAskingThread)
 
     requested should not be empty
     val tooLong = requested.filter { case (_, ttl) => ttl >= window }
@@ -1157,7 +1157,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     new CinemaScraperCatalog(
       CinemaEgress.direct(http), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) }, titles = titleNormalizer,
-      lastListing = _ => scala.util.Success(Nil))
+      lastListing = _ => scala.util.Success(Nil), backgroundLoads = CinemaScraperCatalog.OnTheAskingThread)
 
     requested.size should be > 1
     withClue(s"chains built: ${requested.mkString(", ")} — ") {

@@ -21,7 +21,9 @@ final class PolishScraperCatalog(
   venueClock:       VenueClock,
   chainDetailCache: (String, HttpFetch, FiniteDuration) => HttpFetch,
   titles:           TitleNormalizer,
-  venues:           Seq[PolishVenue]
+  venues:           Seq[PolishVenue],
+  // Where a feed shared by many venues is read, off the scrape that asked (BiletynaNationalFeed).
+  backgroundLoads:  java.util.concurrent.Executor
 ) {
   private val http      = egress.direct
   private val mkFetch   = egress.multikino
@@ -60,7 +62,7 @@ final class PolishScraperCatalog(
   // One read of biletyna's national event feed serves every biletyna venue: ~7
   // proxied requests a pass instead of one (or more) per venue.
   private lazy val biletynaNationalFeed: BiletynaNationalFeed =
-    new BiletynaNationalFeed(bnFetch, venues.flatMap(biletynaPages).toSet)
+    new BiletynaNationalFeed(bnFetch, venues.flatMap(biletynaPages).toSet, backgroundLoads)
 
   private val kit = new PolishScraperKit(http, bnFetch, () => today, titles)
 

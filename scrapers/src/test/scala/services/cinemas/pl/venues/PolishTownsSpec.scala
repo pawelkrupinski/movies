@@ -48,7 +48,7 @@ class PolishTownsSpec extends AnyFlatSpec with Matchers {
       CinemaEgress(direct, multikino = direct, biletyna = biletyna, zyte = zyte, flicks = direct, vue = direct,
         odeon = direct, odeonBearer = services.cinemas.uk.OdeonBearer.fixed(None)),
       VenueClock.fixedOn(LocalDate.of(2026, 6, 6)), (_, h: HttpFetch, ttl) => new CachingDetailFetch(h, ttl),
-      titleNormalizer, OneTown.venues)
+      titleNormalizer, OneTown.venues, services.cinemas.CinemaScraperCatalog.OnTheAskingThread)
 
     catalog.scrapers.map(_.cinema) shouldBe Seq(KinoKameralne, KinoKryterium, KinoOstrovia)
     catalog.egressByHost.keySet shouldBe Set("biletyna.pl", "bilety.ck105.koszalin.pl")

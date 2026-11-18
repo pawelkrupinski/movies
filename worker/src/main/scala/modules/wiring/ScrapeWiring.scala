@@ -47,7 +47,9 @@ trait ScrapeWiring { self: WorkerWiring =>
       workerMetrics.ttlIndexMismatches, clock),
     titles = titleNormalizer,
     // a venue's last stored listing: the facts a failed second-feed read keeps lending (SecondFeedFacts), read only then
-    lastListing = cinema => scrapeArchive.read(cinema).map(_.fold(Seq.empty[models.CinemaMovie])(_.films)))
+    lastListing = cinema => scrapeArchive.read(cinema).map(_.fold(Seq.empty[models.CinemaMovie])(_.films)),
+    // a shared feed's read runs where a timed scrape does: off the asking scrape (virtual threads), inline in the harness
+    backgroundLoads = adaptiveTimeoutExecutor)
 
   /** THIS country's slice of the global catalog, every city included — what every
    *  consumer below walks. `cinemaScraperCatalog.all` spans every country; a wiring

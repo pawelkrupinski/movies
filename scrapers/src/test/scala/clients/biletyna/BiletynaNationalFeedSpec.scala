@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.{BiletynaClient, BiletynaNationalFeed, BiletynaPlacePage}
 import tools.HttpFetch
 
+import java.util.concurrent.{CountDownLatch, Executor, TimeUnit}
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 
@@ -25,8 +26,11 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
   private def slots(movies: Seq[CinemaMovie]) =
     movies.flatMap(m => m.showtimes.map(s => (m.movie.title, s.dateTime, s.bookingUrl))).toSet
 
+  // Loads on the asking thread, so a read is complete when `eventsAt` returns.
+  private val onTheCaller: Executor = (load: Runnable) => load.run()
+
   private def feedOver(http: HttpFetch, ticker: Ticker = Ticker.systemTicker()) =
-    new BiletynaNationalFeed(http, venues.map(_._2).toSet, ticker = ticker)
+    new BiletynaNationalFeed(http, venues.map(_._2).toSet, onTheCaller, ticker = ticker)
 
   "a venue read off the national feed" should "list exactly the screenings its own place page does" in {
     val http = new FakeHttpFetch("biletyna-national")
@@ -100,9 +104,37 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
 
   "a venue the feed files nothing under" should "be read off its own place page" in {
     val http = new RequestLogHttpFetch(new FakeHttpFetch("biletyna-national"))
-    val feed = new BiletynaNationalFeed(http, Set.empty)   // knows none of our halls
+    val feed = new BiletynaNationalFeed(http, Set.empty, onTheCaller)   // knows none of our halls
     val (cinema, page) = venues.head
     new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch() should not be empty
     http.gets should contain (page.url)
+  }
+
+  // The whole country is ~28 s and ~14 MB of feed (2026-11-18), the place page about one second. Read
+  // inside the scrape that first asked, it ran that venue past biletyna's 8 s adaptive budget: the
+  // scrape timed out, and with the feed failing every time the TTL ran out, so did that venue's every
+  // scrape -- MDK Opoczno and Wawerska Strefa Kultury paged "nothing is covering it" (2026-11-12, -14).
+  "a venue scraped while the feed is being read" should "be read off its own place page, not wait for the feed" in {
+    val replay  = new FakeHttpFetch("biletyna-national")
+    val release = new CountDownLatch(1)
+    val http    = new RequestLogHttpFetch(new PatchedHttpFetch(replay)({
+      case url if url.startsWith("https://biletyna.pl/ajax/events?ipp=") => release.await(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); replay.get(url)
+    }))
+    val now  = new AtomicLong(0L)
+    val feed = new BiletynaNationalFeed(http, venues.map(_._2).toSet, (load: Runnable) => { Thread.ofVirtual().start(load); () },
+      ticker = () => now.get)
+    val (cinema, page) = venues.head
+    // read off the place page while the feed is held: a scrape waiting for the feed would have read it instead
+    new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch() should not be empty
+    http.gets should contain (page.url)
+    release.countDown()
+    def awaitRead() = tools.Eventually.eventually(feed.eventsAt(page).map(_.size).getOrElse(0) should be > 0)
+    // once read, the feed serves the venue, and was read only once
+    awaitRead()
+    http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 1
+    // and its TTL runs from when the read finished, so it is read again once that has passed
+    now.addAndGet((BiletynaNationalFeed.DefaultTtl + 1.second).toNanos)
+    awaitRead()
+    http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
   }
 }

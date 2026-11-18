@@ -46,7 +46,11 @@ class CinemaScraperCatalog(
   titles: TitleNormalizer,
   // Each venue's listing as the scrape archive last stored it: what a venue whose second feed failed lends its bare rows
   // from ([[SecondFeedFacts]]). The worker reads its scrape archive; the diagnostic ctor keeps none.
-  lastListing: Cinema => scala.util.Try[Seq[CinemaMovie]]
+  lastListing: Cinema => scala.util.Try[Seq[CinemaMovie]],
+  // Where a feed many venues share is read (biletyna's national feed), so it runs off the scrape that
+  // asked and outside that scrape's time budget. The worker passes background threads; the diagnostic
+  // ctor and specs read it on the asking thread, as a deterministic replay needs.
+  backgroundLoads: java.util.concurrent.Executor
 ) {
 
   private val http        = egress.direct
@@ -58,11 +62,12 @@ class CinemaScraperCatalog(
   def this(http: HttpFetch, venueClock: VenueClock, clock: Clock,
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
-    this(CinemaEgress.diagnostic(http, clock, proxyShards), venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl), titles, _ => scala.util.Success(Nil))
+    this(CinemaEgress.diagnostic(http, clock, proxyShards), venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl), titles, _ => scala.util.Success(Nil),
+      CinemaScraperCatalog.OnTheAskingThread)
 
   /** Poland's hand-wired venues, from each town's venue registry. */
   val poland: PolishScraperCatalog =
-    new PolishScraperCatalog(egress, venueClock, chainDetailCache, titles, services.cinemas.pl.venues.PolishTowns.venues)
+    new PolishScraperCatalog(egress, venueClock, chainDetailCache, titles, services.cinemas.pl.venues.PolishTowns.venues, backgroundLoads)
 
   // ── United Kingdom (Flicks) ──────────────────────────────────────────────
   // Through `flicksFetch`, NOT `http`: Cloudflare 403s our Fly egress IP on
@@ -344,6 +349,8 @@ class CinemaScraperCatalog(
 }
 
 object CinemaScraperCatalog {
+  /** Runs a shared feed's read on the thread that asked: the diagnostic ctor's and the specs' replays. */
+  val OnTheAskingThread: java.util.concurrent.Executor = (load: Runnable) => load.run()
 
   /** [[file]]'s answer: every scraper under the page its cinema is on, and the ones
    *  whose cinema is on no page. */
