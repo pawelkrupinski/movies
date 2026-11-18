@@ -254,11 +254,8 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/common/DetailFetchOutcome.scala", "transientToNone",
       "case Failure(_)     => None") ->
       "its contract: a TRANSIENT failure is \"no detail this time\" and retried next tick; a durable one is rethrown above",
-    ("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseApiScreenings",
-      "Try(Json.parse(body).as[JsArray]).map { array =>") ->
-      "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
-    ("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseEventScreenings",
-      "Try(Json.parse(body).as[JsArray]).map { array =>") ->
+    ("scrapers/src/main/scala/services/cinemas/pl/HeliosRest.scala", "jsonEntries",
+      "Try(Json.parse(body).as[JsArray]).map(_.value.flatMap(entry).toMap).getOrElse(Map.empty)") ->
       "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "case e => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
@@ -279,10 +276,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala", "parseCinemaInfo",
       "Try(Json.parse(body)).toOption.flatMap { js =>") ->
       "only feeds resolveSourceUrl, the /uptime link; None keeps the /cinema/-<id> fallback link, and nothing is decided from it",
-    ("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala", "window",
-      "Try((Json.parse(body) \\ \"name\").asOpt[String]).toOption.flatten.map(id -> _)") ->
+    ("scrapers/src/main/scala/services/cinemas/pl/HeliosRest.scala", "parseScreenName",
+      "Try((Json.parse(body) \\ \"name\").asOpt[String]).toOption.flatten") ->
       "a screen's display name for room enrichment; an unparseable screen body loses the room name, not a screening",
-    ("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseApiMovieBody",
+    ("scrapers/src/main/scala/services/cinemas/pl/HeliosRest.scala", "parseApiMovieBody",
       "Try(Json.parse(body)).toOption.flatMap { js =>") ->
       "per-film REST metadata enriching films the NUXT listing already carries; a malformed body loses those fields, not the film",
     ("scrapers/src/main/scala/services/cinemas/uk/CineworldParser.scala", "parseMovieDetail",
