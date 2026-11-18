@@ -5,7 +5,7 @@ import services.tasktypes.TaskType
 import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonInt32, BsonString}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
-import services.keyed.{DocCodec, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, KeyedDocStore, MongoKeyedDocStore}
 
 import java.time.Instant
 import scala.util.Try

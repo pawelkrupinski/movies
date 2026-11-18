@@ -5,7 +5,7 @@ import org.mongodb.scala.bson.{BsonArray, BsonInt32}
 import org.mongodb.scala.model.{Filters, PushOptions, UpdateOptions, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-import services.keyed.MongoKeyedDocStore
+import tools.MongoKeyedDocStore
 import tools.ScanOutcome
 
 import scala.concurrent.Await

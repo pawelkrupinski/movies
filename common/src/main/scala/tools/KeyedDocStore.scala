@@ -1,11 +1,9 @@
-package services.keyed
+package tools
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, ReplaceOptions, Sorts}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-import services.retention.StampedRows
-import tools.ScanOutcome
 
 import java.time.Instant
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -62,11 +60,11 @@ trait KeyedDocStore[T] {
 }
 
 object KeyedDocStore {
-  private[keyed] def idOf(document: Document): Option[String] =
+  private[tools] def idOf(document: Document): Option[String] =
     document.get("_id").filter(_.isString).map(_.asString.getValue)
 
   /** `value` as stored under `key`: `_id` first, then the codec's fields. */
-  private[keyed] def stored[T](codec: DocCodec[T], key: String, value: T): Document =
+  private[tools] def stored[T](codec: DocCodec[T], key: String, value: T): Document =
     Document("_id" -> key) ++ codec.encode(value)
 
   /** Stores nothing and has nothing: the store where there is no database. */

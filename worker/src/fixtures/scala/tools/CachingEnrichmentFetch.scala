@@ -160,9 +160,9 @@ object CachingEnrichmentFetch {
 
   /** `METHOD <credential-masked url>`, plus a body fingerprint where the body is
    *  what distinguishes two calls — the one canonical request key, shared with the identity
-   *  model's lookup gaps (`services.lookups.LookupQuery`). */
+   *  model's lookup gaps (`tools.LookupQuery`). */
   def keyOf(method: String, url: String, body: Option[String] = None): String =
-    services.lookups.LookupQuery.of(method, url, body).key
+    tools.LookupQuery.of(method, url, body).key
 
   /** Reconstruct the exception a cached failure stands for. A status-bearing
    *  failure comes back as the same typed [[HttpStatusException]] with the same

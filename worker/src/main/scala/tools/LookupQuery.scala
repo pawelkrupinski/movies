@@ -1,6 +1,5 @@
-package services.lookups
+package tools
 
-import tools.RedactedUrl
 
 import java.net.URI
 import scala.util.Try

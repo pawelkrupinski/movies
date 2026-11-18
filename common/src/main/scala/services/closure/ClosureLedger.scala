@@ -2,7 +2,7 @@ package services.closure
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoDatabase, documentToUntypedDocument}
-import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
 import java.time.Instant
 

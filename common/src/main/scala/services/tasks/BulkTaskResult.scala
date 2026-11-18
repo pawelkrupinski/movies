@@ -72,4 +72,4 @@ trait BulkTaskResultStore {
 /** In-memory [[BulkTaskResultStore]] — one entry per taskType, last write wins. Used by tests and
  *  Mongo-less dev; the same store as Mongo's over an in-memory map. */
 class InMemoryBulkTaskResultStore
-  extends KeyedBulkTaskResultStore(new services.keyed.InMemoryKeyedDocStore(KeyedBulkTaskResultStore.Codec))
+  extends KeyedBulkTaskResultStore(new tools.InMemoryKeyedDocStore(KeyedBulkTaskResultStore.Codec))

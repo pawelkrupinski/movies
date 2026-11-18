@@ -5,7 +5,7 @@ import org.mongodb.scala.documentToUntypedDocument
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 import tools.IsolatedMongoDatabase
 import tools.ScanOutcome
 

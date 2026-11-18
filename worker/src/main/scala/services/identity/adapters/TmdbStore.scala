@@ -137,7 +137,7 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with Tmd
     }.toMap
 
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] =
-    services.retention.StampedRows.scanBefore(coll(kind), Filters.lt(TmdbStore.FetchedAt, cutoff), TmdbStore.FetchedAt)(
+    tools.StampedRows.scanBefore(coll(kind), Filters.lt(TmdbStore.FetchedAt, cutoff), TmdbStore.FetchedAt)(
       _.getString("_id").getValue)(TmdbStore.fetchedAt)
 
   def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = stamped.grouped(Batch).map { batch =>

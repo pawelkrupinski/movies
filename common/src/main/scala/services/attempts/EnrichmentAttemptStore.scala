@@ -3,7 +3,7 @@ package services.attempts
 import models.{AttemptOutcome, EnrichmentAttempt}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
-import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
 import scala.util.Try
 
@@ -24,7 +24,7 @@ trait EnrichmentAttemptStore {
   def record(key: String, attempt: EnrichmentAttempt): Unit
 
   /** Its rows by when each was last written, for the orphan sweep (`OrphanFilmStateSweep`). */
-  def retention: services.retention.StampedRows = services.retention.StampedRows.Unswept
+  def retention: tools.StampedRows = tools.StampedRows.Unswept
 
   def close(): Unit = ()
 }
@@ -44,7 +44,7 @@ class KeyedEnrichmentAttemptStore(rows: KeyedDocStore[EnrichmentAttempt])
   override def record(key: String, attempt: EnrichmentAttempt): Unit =
     rows.putDetached(key, attempt)(exception => logger.debug(s"Enrichment-attempt write failed for $key: ${exception.getMessage}"))
 
-  override def retention: services.retention.StampedRows = rows.retention
+  override def retention: tools.StampedRows = rows.retention
 
   /** A failed read THROWS: answered empty, the report said "never attempted" about a film whose
    *  log it simply could not read. */

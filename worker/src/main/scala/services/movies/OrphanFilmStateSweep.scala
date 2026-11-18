@@ -1,7 +1,7 @@
 package services.movies
 
 import play.api.Logging
-import services.retention.StampedRows
+import tools.StampedRows
 
 import java.time.Clock
 import scala.concurrent.duration._

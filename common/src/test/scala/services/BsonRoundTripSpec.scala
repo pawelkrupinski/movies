@@ -4,7 +4,7 @@ import org.bson.{BsonDateTime, BsonDocument, BsonInt64, BsonSerializationExcepti
 import org.scalatest.flatspec.AnyFlatSpec
 import tools.BsonRoundTrip
 import org.scalatest.matchers.should.Matchers
-import services.keyed.{DocCodec, InMemoryKeyedDocStore}
+import tools.{DocCodec, InMemoryKeyedDocStore}
 import org.mongodb.scala.bson.collection.immutable.Document
 
 import java.time.Instant

@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
-import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
 import java.time.Instant
 import scala.concurrent.duration._

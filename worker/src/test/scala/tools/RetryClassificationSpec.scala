@@ -5,7 +5,6 @@ import clients.tools.{ConstantHttpFetch, FailingHttpFetch, RequestLogHttpFetch}
 import com.mongodb.MongoWriteException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.MongoErrors
 import services.cinemas.common.DetailFetchOutcome
 import services.scrapes.GoneUpstream
 import services.tasks.TaskWorker

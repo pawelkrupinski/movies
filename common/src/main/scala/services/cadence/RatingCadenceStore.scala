@@ -46,7 +46,7 @@ trait RatingCadenceStore {
   }
 
   /** Its rows by when each was last written, for the orphan sweep (`OrphanFilmStateSweep`). */
-  def retention: services.retention.StampedRows = services.retention.StampedRows.Unswept
+  def retention: tools.StampedRows = tools.StampedRows.Unswept
 
   def close(): Unit = ()
 }
@@ -61,7 +61,7 @@ class InMemoryRatingCadenceStore extends RatingCadenceStore {
       .getOrElse(throw new IllegalStateException(s"rating cadence of $key does not read back as stored"))
     stats.put(stored._1, stored._2); ()
   }
-  override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(stats)(_.lastCheckedAt)
+  override def retention: tools.StampedRows = tools.StampedRows.inMap(stats)(_.lastCheckedAt)
 }
 
 /**
@@ -91,9 +91,9 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
 
   override def statsFor(key: String): Option[RatingChangeStats] = Option(mirror.get(key))
 
-  override def retention: services.retention.StampedRows = {
-    val held = services.retention.StampedRows.inMap(mirror)(_.lastCheckedAt)
-    coll.fold(held)(c => services.retention.StampedRows.mirrored(services.retention.StampedRows.inMongo(c, "lastCheckedAt"), held))
+  override def retention: tools.StampedRows = {
+    val held = tools.StampedRows.inMap(mirror)(_.lastCheckedAt)
+    coll.fold(held)(c => tools.StampedRows.mirrored(tools.StampedRows.inMongo(c, "lastCheckedAt"), held))
   }
 
   override protected def persist(key: String, s: RatingChangeStats): Unit = {

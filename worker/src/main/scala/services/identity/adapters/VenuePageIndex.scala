@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.lookups.LookupQuery
+import tools.LookupQuery
 import services.venuepages.{VenuePage, VenuePageKey, VenuePageStore}
 
 import java.util.concurrent.ConcurrentHashMap

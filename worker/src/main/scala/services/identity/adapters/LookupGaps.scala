@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.lookups.LookupQuery
+import tools.LookupQuery
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.control.NoStackTrace

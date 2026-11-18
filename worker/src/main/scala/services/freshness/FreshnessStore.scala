@@ -73,7 +73,7 @@ trait FreshnessStore {
   final def isReady(kind: FreshnessKind): Boolean = whenReady(kind).isCompleted
 
   /** Its rows by when each was last written, for the orphan sweep (`OrphanFilmStateSweep`). */
-  def retention: services.retention.StampedRows = services.retention.StampedRows.Unswept
+  def retention: tools.StampedRows = tools.StampedRows.Unswept
 
   def close(): Unit = ()
 }
@@ -88,7 +88,7 @@ class InMemoryFreshnessStore extends FreshnessStore {
     MongoFreshnessStore.stampOf(stored).foreach { case (k, stamp) => stamps.put(k, stamp) }
   }
   override def invalidate(key: String): Unit = { stamps.remove(key); () }
-  override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(stamps)(identity)
+  override def retention: tools.StampedRows = tools.StampedRows.inMap(stamps)(identity)
 }
 
 /**
@@ -149,9 +149,9 @@ class MongoFreshnessStore(
 
   override def lastFetchedAt(key: String): Option[Instant] = Option(mirror.get(key))
 
-  override def retention: services.retention.StampedRows = {
-    val held = services.retention.StampedRows.inMap(mirror)(identity)
-    coll.fold(held)(c => services.retention.StampedRows.mirrored(services.retention.StampedRows.inMongo(c, "lastFetchedAt"), held))
+  override def retention: tools.StampedRows = {
+    val held = tools.StampedRows.inMap(mirror)(identity)
+    coll.fold(held)(c => tools.StampedRows.mirrored(tools.StampedRows.inMongo(c, "lastFetchedAt"), held))
   }
 
   override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = {

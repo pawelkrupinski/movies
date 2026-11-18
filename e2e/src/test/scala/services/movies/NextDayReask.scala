@@ -102,7 +102,7 @@ object NextDayReask {
       def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = { store.markFresh(key, kind, at); asks.put(key, java.lang.Long.valueOf(sequence.incrementAndGet())); () }
       def invalidate(key: String): Unit = store.invalidate(key)
       override def whenReady(kind: FreshnessKind): Future[Unit] = store.whenReady(kind)
-      override def retention: services.retention.StampedRows = store.retention
+      override def retention: tools.StampedRows = store.retention
       override def close(): Unit = store.close()
     }
 
