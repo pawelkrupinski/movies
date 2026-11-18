@@ -28,8 +28,6 @@ layer	5	diagnostics	command-line programs run beside the app (FilmwebDiff, Roste
 rank	0	clients	the external services' clients: they know a film, no service
 rank	0	services	the Mongo plumbing every store stands on: connections, write concerns, uptime
 rank	0	services.config	the admin overrides of the environment
-rank	0	services.lookups	a lookup: one external read, its key and its outcome
-rank	0	services.retention	stamped rows, kept while their stamp is young
 rank	0	services.tasktypes	the task types, by name: the queue's vocabulary
 rank	0	services.titles	the title text: normalising, reading and classifying a listing's title
 rank	1	services.cadence	when a rating is due again, and its report
@@ -37,7 +35,6 @@ rank	1	services.events	the in-process event bus and its events
 rank	1	services.facebook	the Graph API reads of the film pages Facebook fetched
 rank	1	services.fallback	the Filmweb fallback's venues
 rank	1	services.freshness	when each record was last fetched
-rank	1	services.keyed	the keyed document store
 rank	1	services.movies	the corpus: film rows, screenings, slots, their stores and caches
 rank	1	services.schedule	the scheduled runs' claims
 rank	2	services.attempts	the enrichment attempts' records and report

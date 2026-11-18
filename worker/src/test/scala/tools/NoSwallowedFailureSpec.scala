@@ -453,7 +453,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   private val ClientRoots: Seq[String] = Seq(
     "scrapers/src/main/scala/services/cinemas/", "worker/src/main/scala/services/enrichment/",
     "worker/src/main/scala/clients/HttpTmdbClient.scala", "common/src/main/scala/tools/",
-    "common/src/main/scala/services/enrichment/scraping/", "scrapers/src/main/scala/tools/")
+    "scrapers/src/main/scala/tools/")
   private def isClient(file: String): Boolean = ClientRoots.exists(file.startsWith)
 
   // An HTTP read (a receiver named like a fetch: `http`, `httpFetch`, `bnFetch`…), TmdbClient's
