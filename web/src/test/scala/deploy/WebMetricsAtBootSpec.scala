@@ -105,7 +105,7 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The order guard. Specs share the forked test JVM and run in parallel (web's `Test / parallelExecution`), and
-   *  `services.MongoWriteErrors` is the PROCESS's sink: a test wiring that bound it counted every other spec's Mongo
+   *  `tools.MongoWriteErrors` is the PROCESS's sink: a test wiring that bound it counted every other spec's Mongo
    *  store into its own registry -- `MongoUserStateRepositoryOutcomesSpec`'s store over a closed client seeded
    *  `kinowo_web_mongo_write_errors{database="closed"}` here when the two ran side by side
    *  (`web/testOnly services.users.* deploy.*`), failing the catalogue and NotSeededAtBoot cases. Only the production
@@ -115,7 +115,7 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
     wiring.boot()
     try {
       wiring.metricsAtBoot(routes)
-      services.MongoWriteErrors.opened("another_spec") // what a connection another spec opens does, alongside this one
+      tools.MongoWriteErrors.opened("another_spec") // what a connection another spec opens does, alongside this one
       val mongoSeries = wiring.webJvmMetrics.registry.scrape().asScala.toSeq
         .map(s => s.getMetadata.getPrometheusName.stripSuffix("_total") -> s.getDataPoints.size)
         .filter(_._1.startsWith("kinowo_web_mongo_")).toMap

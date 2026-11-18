@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.Cinema
+import models.{ArchivedScrape, BarrenAttempt, Cinema, ScrapeOutcome}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

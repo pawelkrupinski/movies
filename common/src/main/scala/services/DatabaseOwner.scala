@@ -1,5 +1,6 @@
 package services
 
+import tools.MongoErrors
 import models.Country
 import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document

@@ -214,7 +214,7 @@ final class MongoStagingDocuments(collection: MongoCollection[Document]) extends
     }.toMap
 
   /** The TTL index that deletes a resolved cluster at its `expireAt`: made by the first write, so only a writer makes it. */
-  private lazy val expiring: Unit = services.MongoTtlIndex.ensure(collection, ExpireAt, 0, "IdentityStaging")
+  private lazy val expiring: Unit = tools.MongoTtlIndex.ensure(collection, ExpireAt, 0, "IdentityStaging")
 
   def put(docs: Seq[StagingDoc]): Unit =
     docs.grouped(Batch).foreach { batch =>

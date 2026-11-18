@@ -2,7 +2,8 @@
 @import services.titles.TitleNormalizer
 @import java.time.format.DateTimeFormatter
 @import java.time.{Instant, ZoneOffset}
-@import services.attempts.{AttemptOutcome, SourceAttemptStatus}
+@import models.AttemptOutcome
+@import controllers.SourceAttemptStatus
 @(title: String, year: Option[Int], e: MovieRecord, normalizer: services.titles.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear, now: Instant)
 @import services.movies.CinemaSlotReadings.*
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}

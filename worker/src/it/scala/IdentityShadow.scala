@@ -1,11 +1,10 @@
 package integration
 
-import models.Country
+import models.{ArchivedScrape, Country}
 import services.identity._
 import services.identity.adapters.TmdbIdentityLookups
 import services.movies.ListingKey
 import services.titles.TitleNormalizer
-import services.scrapes.ArchivedScrape
 import tools._
 
 import java.nio.file.{Files, Path}

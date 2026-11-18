@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Cinema, CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
+import models.{BarrenAttempt, Cinema, CinemaMovie, ContentStamp, KinoMuza, Movie, Multikino, ScrapeAttempt, ScrapeOutcome, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -1,7 +1,7 @@
 package services.tasks
 
 import java.time.Instant
-import services.cadence.DueBoundary
+import tools.DueBoundary
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -28,7 +28,7 @@ import scala.concurrent.duration.FiniteDuration
  * period instead of bursting at the boundary. The scrape schedule spaces the phases
  * by each cinema's measured cost instead ([[CostSpacedPhaseOffset]]), and since those
  * phases move as costs are re-measured it counts a refresh toward its NEAREST
- * boundary — see [[services.cadence.DueBoundary]] for both countings.
+ * boundary — see [[tools.DueBoundary]] for both countings.
  *
  * The period is resolved PER KEY via `periodFor`, so a schedule can adapt to a
  * key's own history (the rating reaper feeds the per-film adaptive interval from

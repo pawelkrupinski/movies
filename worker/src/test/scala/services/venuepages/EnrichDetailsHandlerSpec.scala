@@ -5,13 +5,13 @@ import services.tasktypes.TaskType
 
 import tools.SpecClock.given
 
-import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
+import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, EnrichmentUptimeService, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.cinemas.FakeDetailEnricher
 import services.events.RecordingEventBus
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.{EnrichmentUptimeService, UptimeMonitor}
+import services.UptimeMonitor
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import tools.HttpStatusException

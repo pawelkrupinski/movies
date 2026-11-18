@@ -43,7 +43,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
     val metrics = new services.movies.RecordingListingIntakeMetrics
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, new InMemoryScrapeGuardLedger,
       titleNormalizer, 3, DepthGuardTime.clock, metrics)
-    archive.record(services.scrapes.ScrapeAttempt(Multikino, None, DepthGuardTime.Now, listingComplete = true, films(10), error = None))
+    archive.record(models.ScrapeAttempt(Multikino, None, DepthGuardTime.Now, listingComplete = true, films(10), error = None))
     intake.recordCinemaScrape(Multikino, films(1), listingIsComplete = true, sourceKey = None, viaFallback = false)
     intake.listingOf(Multikino).size shouldBe 10
     // Counted as the landing counted it, so a guard stuck rejecting stays alertable on the new path.

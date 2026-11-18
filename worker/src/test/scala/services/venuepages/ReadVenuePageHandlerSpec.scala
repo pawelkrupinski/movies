@@ -1,9 +1,9 @@
 package services.venuepages
 
-import models.KinoApollo
+import models.{EnrichmentUptimeService, KinoApollo}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.{EnrichmentUptimeService, UptimeMonitor}
+import services.UptimeMonitor
 import services.cinemas.FakeDetailEnricher
 import services.cinemas.common.FilmDetail
 import services.events.{RecordingEventBus, VenueDetailRead}

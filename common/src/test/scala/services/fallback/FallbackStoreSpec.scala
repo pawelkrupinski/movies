@@ -75,7 +75,7 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   private def roundTrip(s: FallbackState): Option[FallbackState] = {
-    val set = services.MongoUpdates.setEach(MongoFallbackStore.toDocument(s))
+    val set = tools.MongoUpdates.setEach(MongoFallbackStore.toDocument(s))
       .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
       .getDocument("$set")
     MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema))

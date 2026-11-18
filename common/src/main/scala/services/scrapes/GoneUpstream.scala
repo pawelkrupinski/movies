@@ -1,5 +1,6 @@
 package services.scrapes
 
+import models.{ArchivedScrape, BarrenAttempt, ScrapeOutcome}
 import tools.HttpStatusException
 
 import java.time.{Duration => JDuration, Instant}

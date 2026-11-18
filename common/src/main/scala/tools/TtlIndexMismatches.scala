@@ -1,4 +1,4 @@
-package services
+package tools
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
@@ -20,11 +20,11 @@ final class TtlIndexMismatches {
 
   /** ONLY THE RECONCILER MAY CREATE A MISMATCH. Package-private so no other caller can
    *  invent one — a gauge anybody can raise is a gauge nobody trusts. */
-  private[services] def record(namespace: String): Unit = { namespaces.add(namespace); () }
+  private[tools] def record(namespace: String): Unit = { namespaces.add(namespace); () }
 
   /** Clearing is idempotent and cannot manufacture a problem — at worst it silences one
    *  until the next construction re-reads the index and records it again. */
-  private[services] def resolved(namespace: String): Unit = { namespaces.remove(namespace); () }
+  private[tools] def resolved(namespace: String): Unit = { namespaces.remove(namespace); () }
 
   /** How many TTL indexes are known to be wrong right now. Zero is healthy. */
   def count: Int = namespaces.size

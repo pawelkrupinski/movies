@@ -109,7 +109,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_decode_failures",
     // The read model's change streams per collection: live now, and reopens of an ended one.
     "kinowo_web_readmodel_stream_live",
-    // The web's failed Mongo writes and refused grants (services.MongoWriteErrors), read by mongodb-app.rules.
+    // The web's failed Mongo writes and refused grants (tools.MongoWriteErrors), read by mongodb-app.rules.
     "kinowo_web_mongo_write_errors_total",
     "kinowo_web_mongo_unauthorized_total",
     "kinowo_web_readmodel_stream_reopens_total",

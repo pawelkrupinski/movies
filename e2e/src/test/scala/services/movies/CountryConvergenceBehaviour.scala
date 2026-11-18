@@ -7,14 +7,14 @@ import tools.SpecClock.given
 import tools.SpecTimeouts
 
 import controllers.MovieControllerService
-import models.{Cinema, CinemaMovie, City, Country, MovieRecord}
+import models.{Cinema, CinemaMovie, City, Country, MovieRecord, ScrapeAttempt}
 import org.mongodb.scala.MongoClient
 import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.TakeJudgements
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import tools.{Alongside, ArchiveReplayWiring, ConvergenceDiagnostics, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance,
   CountryScrapeCorpus, IdentityLookupSweep, ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FilmCoverageDiff,
   FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline, ProdFilm, ProdFilms, RunFilm, SameThreadExecutionBudget, ServedCorpusInvariants,
@@ -129,7 +129,7 @@ abstract class CountryConvergenceBehaviour(
   /** Which corpus this leg replays against its last green one's, read BESIDE the boot: the diff
    *  parses the green leg's whole corpus, ~7 s of the US recording's critical path before its first
    *  scrape (run 37111868620), for a verdict nothing reads until the boot is done or a claim fails. */
-  private def readCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit =
+  private def readCorpusProvenance(rows: Seq[models.ArchivedScrape]): Unit =
     corpusProvenance = Some(Alongside.start(s"corpus-provenance-$corpusKey")(CorpusProvenance.of(corpusKey, rows, harness)))
 
   /** Reported ONCE, by whichever of the shared boot and the order-independence replays gets there first. */
@@ -776,7 +776,7 @@ abstract class CountryConvergenceBehaviour(
       captured
     }
 
-  private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] =
+  private lazy val realScrapeRows: Seq[models.ArchivedScrape] =
     if (CorpusFixture.exists(corpusKey)) {
       // The checked-in corpus. Preferred over the live read whenever it exists: it
       // needs no tunnel, costs milliseconds, and — unlike prod — does not move
@@ -795,7 +795,7 @@ abstract class CountryConvergenceBehaviour(
    *  Self-healing rather than a chore: a country with no fixture yet, or one whose
    *  fixture was deliberately deleted to refresh it, pays the tunnel once and
    *  leaves the file behind. */
-  private def fetchAndCaptureCorpus: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
+  private def fetchAndCaptureCorpus: Seq[models.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
     val known = CountryScrapeCorpus.cinemasOf(country).toSet
     val rows  = step("fetchCorpusFromArchive")(
       source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))

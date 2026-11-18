@@ -5,7 +5,8 @@ import org.mongodb.scala.{MongoDatabase, ObservableFuture, documentToUntypedDocu
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.attempts.{AttemptOutcome, EnrichmentAttempt, MongoEnrichmentAttemptStore}
+import services.attempts.MongoEnrichmentAttemptStore
+import models.{AttemptOutcome, EnrichmentAttempt}
 import services.closure.{LedgerEntry, LedgerKind, MongoClosureLedger}
 import services.enrichment.MongoOmdbAttemptStore
 import services.tasks.{BulkTaskResult, ChunkPageMemo, MongoBulkTaskResultStore, MongoChunkPageMemo}

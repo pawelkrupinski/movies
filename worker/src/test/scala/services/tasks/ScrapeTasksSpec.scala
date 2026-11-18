@@ -2,14 +2,14 @@ package services.tasks
 
 import services.tasktypes.TaskType
 
-import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
+import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, ScrapeAttempt, Showtime}
 import services.cinemas.StubCinemaScraper
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
-import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
@@ -406,7 +406,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val period    = 15.minutes
     val due        = new DueWindow(period)
     val key        = ScrapeCinemaHandler.dedupKey(Multikino)
-    val phase      = services.cadence.DueBoundary.hashedPhaseMillis(key, period.toMillis)
+    val phase      = tools.DueBoundary.hashedPhaseMillis(key, period.toMillis)
     val w          = 100L
     val stampedAt  = Instant.ofEpochMilli(phase + w * period.toMillis + period.toMillis - 60000) // 1 min before boundary
     val now        = Instant.ofEpochMilli(phase + (w + 1) * period.toMillis + 60000)             // 1 min after  boundary

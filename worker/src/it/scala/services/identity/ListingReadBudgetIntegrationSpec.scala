@@ -1,10 +1,10 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Movie, ScrapeAttempt, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, ListingIntakeMetrics, SingleCountryNormalizer}
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.MongoScrapeArchiveRepository
 import tools.QueryPlans
 import tools.costs.PerformanceBudgets
 

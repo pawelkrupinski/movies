@@ -1,10 +1,10 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
+import models.{Cinema, CinemaMovie, KinoMuza, Movie, Multikino, ScrapeOutcome, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.StubCinemaScraper
-import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeOutcome}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.LocalDateTime
 

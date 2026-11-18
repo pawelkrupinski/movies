@@ -136,7 +136,7 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
     val (primary, second) = feeds("Cinema Borken")
     val read = new SecondFeedFacts(primary, second, lastListing).fetch()
     // stored as the scrape runner stores every listing it read (CinemaScrapeRunner's archive)
-    archive.record(services.scrapes.ScrapeAttempt(primary.cinema, None, java.time.Instant.parse("2026-11-05T08:00:00Z"), listingComplete = true, read))
+    archive.record(models.ScrapeAttempt(primary.cinema, None, java.time.Instant.parse("2026-11-05T08:00:00Z"), listingComplete = true, read))
     row(read, "Bad Apples FK").movie.releaseYear shouldBe Some(2026)
 
     // killed; a new worker's first scrape of the venue, its kinoheld read failing

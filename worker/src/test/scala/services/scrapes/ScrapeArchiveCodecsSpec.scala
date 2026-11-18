@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.Showtime
+import models.{BarrenAttempt, ScrapeOutcome, Showtime, SuccessfulScrape}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}

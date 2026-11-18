@@ -147,7 +147,7 @@ class DebugController(cc: ControllerComponents,
           // full-collection reads — this runs per row-expand. Issued CONCURRENTLY:
           // the reads are independent, and against a remote Mongo the round-trip
           // is the whole cost (see `buildFrom`).
-          scala.util.Try(services.attempts.FilmAttemptReport.buildFrom(
+          scala.util.Try(controllers.FilmAttemptReport.buildFrom(
             row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)) match {
             case scala.util.Success(statuses) =>
               Ok(views.html.debugDetails(row.title, row.year, row.record,

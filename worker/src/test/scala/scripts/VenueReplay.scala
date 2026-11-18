@@ -1,11 +1,10 @@
 package scripts
 
-import models.{Cinema, CinemaMovie, Country, SourceData, VenueClock}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Country, SourceData, VenueClock}
 import services.cinemas.CinemaScraperCatalog
 import services.cinemas.common.{CinemaScraper, DetailEnricher}
 import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, StringPool}
 import services.titles.TitleNormalizer
-import services.scrapes.ArchivedScrape
 import tools.{CinemaSlotInvariants, CorpusFixture, FallbackHttpFetch, HttpFetch, RecordedCorpus, SearchQueryMarkers}
 
 import java.nio.charset.StandardCharsets.UTF_8

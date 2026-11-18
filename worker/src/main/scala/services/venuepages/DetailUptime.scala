@@ -1,6 +1,7 @@
 package services.venuepages
 
-import services.{EnrichmentUptimeService, UptimeRecorder}
+import services.UptimeRecorder
+import models.EnrichmentUptimeService
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 
 /** A venue page read, on /uptime: a read page is a success, a failed or gone one a failure — under the

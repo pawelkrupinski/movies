@@ -1,9 +1,9 @@
 package services
 
+import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException, MongoTtlIndex, TtlIndexMismatches}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Updates}
 import play.api.Logging
-import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

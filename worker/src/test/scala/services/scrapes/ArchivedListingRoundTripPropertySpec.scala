@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Movie, Showtime}
+import models.{Movie, ScrapeOutcome, Showtime}
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.scalacheck.Gen

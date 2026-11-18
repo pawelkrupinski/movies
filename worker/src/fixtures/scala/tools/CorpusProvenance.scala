@@ -1,6 +1,6 @@
 package tools
 
-import services.scrapes.ArchivedScrape
+import models.ArchivedScrape
 
 import java.nio.file.{Files, Path}
 

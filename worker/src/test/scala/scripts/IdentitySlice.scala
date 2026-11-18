@@ -230,7 +230,7 @@ object IdentitySlice {
       "never asked them; recapture (it now keeps them) or slice at the capture's code to tell"
   }
 
-  def listingsOf(recording: Recording, rows: Seq[services.scrapes.ArchivedScrape]): Seq[Listing] = {
+  def listingsOf(recording: Recording, rows: Seq[RecordedCorpus.Archived.Row]): Seq[Listing] = {
     val venues = tools.CountryScrapeCorpus.cinemasOf(recording.country).toSet
     // as prod's model reads them (lean), as identity-measure replays the recording
     OlderRefs.modelCorpus(rows.filter(r => venues(r.cinema)).map(r => r.cinema -> r.films).filter(_._2.nonEmpty), TitleNormalizer.forCountry(recording.country))
@@ -319,10 +319,10 @@ object IdentitySlice {
    *  a change to how a scrape becomes a listing (the title rules, the normaliser) is a change the slice must show. */
   final case class Slice(country: Country, recording: String, recordedAt: Instant, selector: String, seeds: Set[ListingKey],
                          core: Seq[Listing], context: Seq[Listing], http: Map[SliceHttp.Request, SliceHttp.Outcome], extractedAt: Seq[String],
-                         rows: Seq[services.scrapes.ArchivedScrape], filed: tools.FiledAnswers)
+                         rows: Seq[RecordedCorpus.Archived.Row], filed: tools.FiledAnswers)
 
   /** The recording's `rows`, each venue's films cut to those billing one of `keys`. */
-  def rowsOf(rows: Seq[services.scrapes.ArchivedScrape], keys: Set[ListingKey], normalizer: TitleNormalizer): Seq[services.scrapes.ArchivedScrape] =
+  def rowsOf(rows: Seq[RecordedCorpus.Archived.Row], keys: Set[ListingKey], normalizer: TitleNormalizer): Seq[RecordedCorpus.Archived.Row] =
     rows.flatMap { row =>
       val kept = row.films.filter(film => keys(Listing.of(row.cinema, film, normalizer).key))
       Option.when(kept.nonEmpty)(row.copy(lastSuccess = row.lastSuccess.map(_.copy(films = kept)), lastBarren = None))

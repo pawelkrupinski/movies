@@ -1,5 +1,6 @@
 package services.cadence
 
+import models.{RatingChange, RatingChangeStats}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, Sorts}
@@ -80,7 +81,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
   // Relaxed `{w:1, j:false}` like freshness: cadence stats are a cache — a lost
   // write just means the film briefly reverts toward the base interval.
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(RatingCadenceReader.Collection).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection(RatingCadenceReader.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   coll.foreach { c =>
     val thread = new Thread(() => hydrate(c), "rating-cadence-init")
@@ -103,7 +104,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
       Try {
         c.updateOne(
           Filters.eq("_id", key),
-          services.MongoUpdates.setEach(MongoRatingCadenceStore.encodeRecord(s)),
+          tools.MongoUpdates.setEach(MongoRatingCadenceStore.encodeRecord(s)),
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),

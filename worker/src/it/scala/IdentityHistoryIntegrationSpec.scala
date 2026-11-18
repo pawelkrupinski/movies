@@ -30,7 +30,7 @@ class IdentityHistoryIntegrationSpec extends AnyFlatSpec with Matchers with tool
 
   "the Mongo history" should "read back what it kept, as the in-memory one reads it" in {
     IsolatedMongoDatabase.withDatabase(mongoTarget, "identity-history") { db =>
-      val mongo  = new MongoIdentityHistory(db, new services.TtlIndexMismatches)
+      val mongo  = new MongoIdentityHistory(db, new tools.TtlIndexMismatches)
       val memory = new InMemoryIdentityHistory
       Seq(mongo, memory).foreach(_.append(entries))
       mongo.of("answer:tmdb_queries", Seq("q")) shouldBe memory.of("answer:tmdb_queries", Seq("q"))
@@ -44,7 +44,7 @@ class IdentityHistoryIntegrationSpec extends AnyFlatSpec with Matchers with tool
 
   it should "expire its entries a month after they were written" in {
     IsolatedMongoDatabase.withDatabase(mongoTarget, "identity-history-ttl") { db =>
-      new MongoIdentityHistory(db, new services.TtlIndexMismatches).append(entries.take(1))
+      new MongoIdentityHistory(db, new tools.TtlIndexMismatches).append(entries.take(1))
       val indexes = Await.result(db.getCollection(MongoIdentityHistory.Collection).listIndexes().toFuture(), SpecTimeouts.Io)
       val ttl     = indexes.find(_.get("expireAfterSeconds").isDefined).get
       ttl.get("key").get.asDocument.keySet.asScala shouldBe Set("at")

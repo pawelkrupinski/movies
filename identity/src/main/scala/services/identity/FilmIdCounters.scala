@@ -116,9 +116,9 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
 
   // Built by the first INSERT, never by a read, so a dry run against production writes nothing.
   private lazy val counterIndex: Unit =
-    services.MongoIndex.ensure(database, MongoFilmIdCounterStore.Collection, Indexes.ascending("counter"),
+    tools.MongoIndex.ensure(database, MongoFilmIdCounterStore.Collection, Indexes.ascending("counter"),
       IndexOptions().unique(true), "identity_film_ids") match {
-      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
         throw new IllegalStateException(s"identity_film_ids has no unique counter index: $reason")
       case _ => ()
     }

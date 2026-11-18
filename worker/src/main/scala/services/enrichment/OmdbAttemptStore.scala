@@ -84,7 +84,7 @@ class InMemoryOmdbAttemptStore extends KeyedOmdbAttemptStore(new InMemoryKeyedDo
  */
 class MongoOmdbAttemptStore(db: Option[MongoDatabase]) extends KeyedOmdbAttemptStore(
   db.fold(KeyedDocStore.absent[OmdbAttempt])(d => new MongoKeyedDocStore(
-    d.getCollection(MongoOmdbAttemptStore.Collection).withWriteConcern(services.MongoWriteConcerns.Bookkeeping),
+    d.getCollection(MongoOmdbAttemptStore.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping),
     KeyedOmdbAttemptStore.Codec, expireAfter = Some(90.days))))
 
 object MongoOmdbAttemptStore {

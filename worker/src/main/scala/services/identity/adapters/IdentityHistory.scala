@@ -94,13 +94,13 @@ final class InMemoryIdentityHistory extends IdentityHistory with IdentityHistory
 
 /** `identity_history`: one document per entry, expired [[IdentityHistory.Kept]] after it was written (a TTL index on
  *  `at`), read by kind and id, or by kind and time. */
-final class MongoIdentityHistory(db: MongoDatabase, ttlMismatches: services.TtlIndexMismatches)
+final class MongoIdentityHistory(db: MongoDatabase, ttlMismatches: tools.TtlIndexMismatches)
     extends IdentityHistory with IdentityHistoryReader with Logging {
   import MongoIdentityHistory._
   private lazy val coll: MongoCollection[Document] = db.getCollection[Document](Collection)
   /** The collection with its indexes made: the writer's, once — a reader (a tool over the local mirror) makes none. */
   private lazy val indexed: MongoCollection[Document] = {
-    services.MongoTtlIndex.reconcile(coll, "at", IdentityHistory.Kept.toSeconds, "MongoIdentityHistory", ttlMismatches)
+    tools.MongoTtlIndex.reconcile(coll, "at", IdentityHistory.Kept.toSeconds, "MongoIdentityHistory", ttlMismatches)
     Seq(Indexes.ascending("kind", "id", "at"), Indexes.ascending("kind", "at")).foreach { index =>
       scala.util.Try(Await.result(coll.createIndex(index).toFuture(), Timeout))
         .failed.foreach(e => logger.warn(s"identity_history: index ${index.toBsonDocument} not made: $e"))

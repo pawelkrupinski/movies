@@ -1,12 +1,11 @@
 package integration
 
-import models.Country
+import models.{ArchivedScrape, Country}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ParallelReplays
 import services.titles.TitleNormalizer
-import services.scrapes.ArchivedScrape
 import tools._
 
 import java.nio.file.Files

@@ -1,8 +1,7 @@
 package tools
 
 import clients.TmdbClient
-import models.Country
-import services.scrapes.ArchivedScrape
+import models.{ArchivedScrape, Country}
 
 import java.time.{Clock, ZoneOffset}
 

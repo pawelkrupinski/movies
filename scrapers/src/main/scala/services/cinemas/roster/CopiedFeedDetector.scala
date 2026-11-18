@@ -2,9 +2,9 @@ package services.cinemas.roster
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaMovie, Country}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Country}
 import play.api.Logging
-import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository}
+import services.scrapes.ScrapeArchiveRepository
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3

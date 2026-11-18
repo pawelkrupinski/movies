@@ -1,7 +1,8 @@
 package tools
 
 import services.identity.IdentityListingIntake
-import services.scrapes.{ArchivedScrape, MongoScrapeArchiveRepository}
+import services.scrapes.MongoScrapeArchiveRepository
+import models.ArchivedScrape
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}

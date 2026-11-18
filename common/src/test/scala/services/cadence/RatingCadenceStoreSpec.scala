@@ -1,5 +1,6 @@
 package services.cadence
 
+import models.RatingChange
 import org.mongodb.scala.Document
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec

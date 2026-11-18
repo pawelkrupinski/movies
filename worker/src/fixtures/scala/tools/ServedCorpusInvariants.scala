@@ -2,10 +2,9 @@ package tools
 
 import services.movies.LatestTitleYear
 
-import models.{Cinema, CinemaMovie, Country, CinemaShowing, CityScreening, ResolvedMovie, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, CinemaShowing, CityScreening, Country, ResolvedMovie, Showtime}
 import services.movies.{ScrapeListing, StoredMovieRecord}
 import services.titles.TitleNormalizer
-import services.scrapes.ArchivedScrape
 
 import java.time.LocalDateTime
 

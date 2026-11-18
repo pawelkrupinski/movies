@@ -1,10 +1,10 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, LeanListing, Movie, Multikino, ScrapeAttempt, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, SingleCountryNormalizer}
-import services.scrapes.{ArchivedScrape, ForwardingScrapeArchive, InMemoryScrapeArchiveRepository, LeanListing, ScrapeAttempt}
+import services.scrapes.{ForwardingScrapeArchive, InMemoryScrapeArchiveRepository}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
@@ -184,7 +184,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     // no showtime of a film billing no stage work: its first day as the season alone (`LeanListing.seasonOnly`)
     taken.flatMap(_._2).map(f => Listing.of(f.cinema, f, normalizer).screenings) shouldBe
       taken.flatMap(_._2).map(_ => ScreeningDays.ofSeason(clock.instant().atZone(java.time.ZoneOffset.UTC).toLocalDate))
-    taken.flatMap(_._2).flatMap(_.showtimes).filterNot(_.dateTime.toLocalDate == services.scrapes.LeanListing.SeasonOnlyDay).map(_.bookingUrl) shouldBe
+    taken.flatMap(_._2).flatMap(_.showtimes).filterNot(_.dateTime.toLocalDate == models.LeanListing.SeasonOnlyDay).map(_.bookingUrl) shouldBe
       Seq.fill(taken.flatMap(_._2).size)(None)
     taken.map { case (c, fs) => c -> fs.map(_.movie.title) } shouldBe w.intake.listings(live).map { case (c, fs) => c -> fs.map(_.movie.title) }
     def wholeRead[A](body: => A): (A, Int) = {

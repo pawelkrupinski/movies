@@ -1,8 +1,8 @@
 package services.identity
 
-import models.Cinema
+import models.{ArchivedScrape, BarrenAttempt, Cinema, ContentStamp, SuccessfulScrape}
 import org.scalatest.Assertions.fail
-import services.scrapes.{ArchivedScrape, BarrenAttempt, ContentStamp, ScrapeArchiveRepository, SuccessfulScrape}
+import services.scrapes.ScrapeArchiveRepository
 
 /** A read-only archive that serves `rows` in pages of `pageSize` and refuses to hand over the whole
  *  archive at once — the shape a reader that must stream (the shadow's and the cutover's listing

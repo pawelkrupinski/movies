@@ -42,11 +42,11 @@ import scala.util.Try
  * `active` flag rather than a `state ∈ {waiting,worked_on}` predicate. `complete`
  * deletes the document, so a finished key has no row in the index and re-enqueuing
  * it is allowed; concurrent inserts race on the index and the loser's duplicate-key
- * error is caught as `Duplicate` (see [[services.MongoErrors]]).
+ * error is caught as `Duplicate` (see [[tools.MongoErrors]]).
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
  *
- * Writes use a relaxed `{w:1, j:false}` write concern ([[services.MongoWriteConcerns.Bookkeeping]]):
+ * Writes use a relaxed `{w:1, j:false}` write concern ([[tools.MongoWriteConcerns.Bookkeeping]]):
  * the queue is ephemeral bookkeeping, not a system of record, so paying the
  * journal-fsync + majority wait on every claim/complete/release/reap/enqueue is
  * wasted cost — on the shared-cpu Mongo it was the dominant per-op latency (the
@@ -61,7 +61,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   import MongoTaskQueue.*
 
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(collectionName).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection(collectionName).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   /** The effective write concern of the `tasks` collection — for diagnostics/tests. */
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
@@ -73,7 +73,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   }
 
   private def createIndexes(database: MongoDatabase, c: MongoCollection[Document]): Unit = Try {
-    services.MongoIndex.ensure(database, collectionName, Indexes.ascending("dedupKey"),
+    tools.MongoIndex.ensure(database, collectionName, Indexes.ascending("dedupKey"),
       new JIndexOptions().unique(true).partialFilterExpression(Filters.eq("active", true)), "Task queue")
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("submittedAt"))).toFuture(), 10.seconds)
     Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("leaseExpiresAt"))).toFuture(), 10.seconds)
@@ -94,14 +94,14 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead).toSeq.map { case (field, value) =>
           Updates.setOnInsert(field, value) })*)
       Try {
-        val res = services.MongoWriteErrors.counted(c)(Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds))
+        val res = tools.MongoWriteErrors.counted(c)(Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds))
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
       }.recover {
         // Losing the race on the unique index IS the dedup working: another writer
         // got the same key in first. Anything else is Mongo failing to answer, and
         // must say so — reported as `Duplicate` it read as "already queued" and the
         // task was silently lost.
-        case exception: MongoWriteException if services.MongoErrors.isDuplicateKey(exception) => EnqueueResult.Duplicate
+        case exception: MongoWriteException if tools.MongoErrors.isDuplicateKey(exception) => EnqueueResult.Duplicate
         case exception =>
           logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${exception.getMessage}")
           EnqueueResult.Failed(exception.getMessage)
@@ -321,7 +321,7 @@ private[tasks] final class MongoTaskRows(c: MongoCollection[Document]) extends T
 
   def claimOldest(matching: TaskRowMatch, change: TaskRowChange): Option[Task] = {
     val opts = FindOneAndUpdateOptions().sort(Indexes.ascending("submittedAt")).returnDocument(ReturnDocument.AFTER)
-    services.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(filter(matching), update(change), opts).headOption(), 10.seconds))
+    tools.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(filter(matching), update(change), opts).headOption(), 10.seconds))
       .flatMap(d => TaskType.byName(d.getString("taskType")).map(toTask(d, _)))
   }
 

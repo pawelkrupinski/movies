@@ -31,9 +31,9 @@ class FileSnapshotStoreSpec extends AnyFlatSpec with Matchers with tools.Scratch
 
   "stored cadence records" should "round-trip" in {
     val s       = store()
-    val records = Seq("imdb:7" -> services.cadence.RatingChangeStats(3, 10, 1, at.minusSeconds(86400), at))
+    val records = Seq("imdb:7" -> models.RatingChangeStats(3, 10, 1, at.minusSeconds(86400), at))
     s.save("/debug/cadence pl", DebugSnapshot(records, None, Some(at)))
-    s.load[Seq[(String, services.cadence.RatingChangeStats)]]("/debug/cadence pl").map(_.value) shouldBe Some(records)
+    s.load[Seq[(String, models.RatingChangeStats)]]("/debug/cadence pl").map(_.value) shouldBe Some(records)
   }
 
   "a missing or unreadable file" should "read as nothing stored" in {

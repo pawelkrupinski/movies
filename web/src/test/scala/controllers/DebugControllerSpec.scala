@@ -64,10 +64,10 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
   // Two sources of the same film (tmdbId 1 = "Belle"): MC backed off to the 4-day
   // cap (stable, backoff level 6) with a recorded change; IMDb fresh at the 2h base.
   private val cadenceStats = Seq(
-    "mc|tmdb:1"   -> services.cadence.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
-                       lastChange = Some(services.cadence.RatingChange(cadenceNow, "80", "85")),
+    "mc|tmdb:1"   -> models.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
+                       lastChange = Some(models.RatingChange(cadenceNow, "80", "85")),
                        backoffLevel = 6),
-    "imdb|tmdb:1" -> services.cadence.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
+    "imdb|tmdb:1" -> models.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
   )
   private val cadenceReader: services.cadence.RatingCadenceReader = new services.cadence.RatingCadenceReader {
     override def all() = cadenceStats
@@ -143,10 +143,10 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     val resolved = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1),
       data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))))
     val attempts = new services.attempts.InMemoryEnrichmentAttemptStore
-    attempts.record("imdb|tmdb:1", services.attempts.EnrichmentAttempt(
-      cadenceNow, 120, services.attempts.AttemptOutcome.Changed("8.3")))
-    attempts.record("rt|tmdb:1", services.attempts.EnrichmentAttempt(
-      cadenceNow, 30, services.attempts.AttemptOutcome.Failed("IOException: connect timed out")))
+    attempts.record("imdb|tmdb:1", models.EnrichmentAttempt(
+      cadenceNow, 120, models.AttemptOutcome.Changed("8.3")))
+    attempts.record("rt|tmdb:1", models.EnrichmentAttempt(
+      cadenceNow, 30, models.AttemptOutcome.Failed("IOException: connect timed out")))
 
     val (controller, _) = TestDebugController.build(resolved, Mode.Dev,
       ratingCadenceReader = cadenceReader, attemptReader = attempts)

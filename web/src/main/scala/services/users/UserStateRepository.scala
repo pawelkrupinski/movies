@@ -119,7 +119,7 @@ class MongoUserStateRepository(
     val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState](UserStateRepository.Collection)
     // The web's only write path: seeded here, at boot, or a country nobody has signed in to publishes no write-error
     // series at all, which AppMetricAbsent reads as the counter unwired.
-    services.MongoWriteErrors.seed(c)
+    tools.MongoWriteErrors.seed(c)
     uniqueUserIdIndexOrReport(db)
     c
   }
@@ -147,10 +147,10 @@ class MongoUserStateRepository(
   // `indexHealth`, whose gauge `UserStateUniqueIndexMissing` (web-errors.rules)
   // alerts on.
   private def uniqueUserIdIndexOrReport(db: MongoDatabase): Unit = {
-    val outcome = services.MongoIndex.ensure(db, UserStateRepository.Collection,
+    val outcome = tools.MongoIndex.ensure(db, UserStateRepository.Collection,
       org.mongodb.scala.model.Indexes.ascending("userId"), new org.mongodb.scala.model.IndexOptions().unique(true), "userStates")
     outcome match {
-      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
         logger.error(s"userStates has NO unique userId index ($reason). Writes keyed on userId may pick either of two rows.")
       case _ => ()
     }
@@ -183,7 +183,7 @@ class MongoUserStateRepository(
       case Some(c) =>
         val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
         def attempt(): UserState =
-          services.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds))
+          tools.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds))
         val written = Try(attempt() -> Outcome.Ok).recover {
           // Two first-ever writes for one user both upserting: the unique `userId`
           // index turns the loser's insert away. The row exists now, so the retry
@@ -198,7 +198,7 @@ class MongoUserStateRepository(
 
   def delete(userId: String): Unit = coll.foreach { c =>
     Try {
-      services.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
+      tools.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
       ()
     }.recover {
       case exception => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")

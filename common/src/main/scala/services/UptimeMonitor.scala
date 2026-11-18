@@ -1,5 +1,6 @@
 package services
 
+import tools.{MongoTtlIndex, TtlIndexMismatches}
 import com.mongodb.client.model.UpdateOptions
 import java.util.concurrent.TimeUnit
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}

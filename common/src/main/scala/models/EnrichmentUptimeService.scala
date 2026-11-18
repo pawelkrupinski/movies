@@ -1,4 +1,4 @@
-package services
+package models
 
 /** Per-cinema detail-enrichment health is recorded under a synthetic
  *  "<cinema displayName>|enrichment" uptime service, distinct from the scrape service

@@ -109,7 +109,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val raw = database.getCollection("users")
     val second = org.mongodb.scala.Document("id" -> u.id, "provider" -> "facebook", "providerSub" -> "fb-race")
     val refused = scala.util.Try(Await.result(raw.insertOne(second).toFuture(), SpecTimeouts.Io))
-    withClue("a second document under one id: ")(refused.failed.toOption.exists { case e: com.mongodb.MongoWriteException => services.MongoErrors.isDuplicateKey(e); case _ => false } shouldBe true)
+    withClue("a second document under one id: ")(refused.failed.toOption.exists { case e: com.mongodb.MongoWriteException => tools.MongoErrors.isDuplicateKey(e); case _ => false } shouldBe true)
     Await.result(raw.countDocuments(Filters.eq("id", u.id)).toFuture(), SpecTimeouts.Io) shouldBe 1L
   }
 

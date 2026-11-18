@@ -1,5 +1,6 @@
 package services
 
+import tools.{MongoErrors, MongoWriteErrors}
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import org.bson.{BsonDocument, BsonValue}

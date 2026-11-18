@@ -31,9 +31,9 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   import MongoChunkScrapeStore._
 
   private val runs: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("scrape_runs").withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection("scrape_runs").withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
   private val chunks: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("scrape_chunks").withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection("scrape_chunks").withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   runs.foreach { c =>
     val t = new Thread(() => createIndexes(c, chunks), "scrape-runs-init"); t.setDaemon(true); t.start()
@@ -56,7 +56,7 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
       // 1) Try to claim by inserting the per-cinema doc. Winning the unique-_id
       //    race = no active run existed.
       val inserted = Try { Await.result(c.insertOne(doc).toFuture(), 10.seconds); true }.recover {
-        case e: MongoWriteException if services.MongoErrors.isDuplicateKey(e) => false
+        case e: MongoWriteException if tools.MongoErrors.isDuplicateKey(e) => false
         case e => logger.warn(s"startRun insert for $cinema failed: ${e.getMessage}"); false
       }.getOrElse(false)
       if (inserted) Some(runId)
@@ -88,12 +88,12 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   // into a duplicate key — that attempt's slice stands.
   def storeChunk(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Unit = chunks.foreach { c =>
     val id = chunkId(cinema, runId, key)
-    val update = Updates.combine(Updates.setOnInsert("_id", id), services.MongoUpdates.setEach(chunkDoc(cinema, runId, key, chunk, now)))
+    val update = Updates.combine(Updates.setOnInsert("_id", id), tools.MongoUpdates.setEach(chunkDoc(cinema, runId, key, chunk, now)))
     try {
       val _ = Await.result(c.updateOne(Filters.and(Filters.eq("_id", id), Filters.not(Filters.gt("attempt", chunk.attempt))), update,
         new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
     } catch {
-      case e: MongoWriteException if services.MongoErrors.isDuplicateKey(e) =>
+      case e: MongoWriteException if tools.MongoErrors.isDuplicateKey(e) =>
         logger.info(s"storeChunk($cinema/$runId/$key) attempt ${chunk.attempt} kept out: a later attempt stored it")
     }
   }

@@ -1,4 +1,4 @@
-package services.attempts
+package models
 
 import java.time.Instant
 

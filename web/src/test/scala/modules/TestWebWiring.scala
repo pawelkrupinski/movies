@@ -28,7 +28,7 @@ class TestWebWiring(
   val mongoAddress: MongoAddress = MongoAddress.Disabled
   // The process's Mongo write-error sink stays unbound: this JVM runs other specs alongside, and their stores must not
   // count into this wiring's registry (WebMetricsAtBootSpec, "a test wiring").
-  protected def adoptMongoWriteErrors(series: services.MongoWriteErrors.Series): Unit = ()
+  protected def adoptMongoWriteErrors(series: tools.MongoWriteErrors.Series): Unit = ()
   // The /debug read-mirror is the one Mongo the wiring still opens from an env knob
   // (MONGODB_MOVIES_MIRROR_URI, a dev-only convenience), so it stays shut here too — the
   // /debug stacks would otherwise dial it with every OTHER country in tow.

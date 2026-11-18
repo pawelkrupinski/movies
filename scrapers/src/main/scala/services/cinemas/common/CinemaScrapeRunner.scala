@@ -1,9 +1,9 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.{Cinema, CinemaMovie, ScrapeAttempt}
 import play.api.Logging
 import services.movies.ScrapeSink
-import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.ScrapeArchiveRepository
 
 import java.time.Clock
 

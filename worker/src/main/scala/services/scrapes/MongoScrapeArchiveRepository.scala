@@ -1,10 +1,10 @@
 package services.scrapes
 
+import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, SuccessfulScrape}
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.UpdateOptions
 import org.bson.{BsonDocument, BsonDocumentWriter, BsonString}
 import org.bson.codecs.EncoderContext
-import models.{Cinema, CinemaMovie}
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging

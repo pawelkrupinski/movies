@@ -3,7 +3,8 @@ package services.metrics
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.TtlIndexMismatches
+import tools.TtlIndexMismatches
+import tools.TtlIndexMismatchesWrites.*
 
 /**
  * A TTL index whose expiry disagrees with the code was invisible for the whole life
@@ -45,12 +46,12 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "count an index the reconciler could not bring into line" in {
     val mismatches = new TtlIndexMismatches
-    mismatches.record(sentinel)
+    mismatches.recordForSpec(sentinel)
     PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
   }
 
   it should "count only the mismatches its own process recorded" in {
-    new TtlIndexMismatches().record(sentinel)
+    new TtlIndexMismatches().recordForSpec(sentinel)
     PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
@@ -62,18 +63,18 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
    *  the metric that exists to prevent false negatives. */
   it should "not let one database's entry clear another's for the same collection name" in {
     val mismatches = new TtlIndexMismatches
-    mismatches.record("kinowo_pl.uptimeBuckets")
-    mismatches.record("kinowo_de.uptimeBuckets")
+    mismatches.recordForSpec("kinowo_pl.uptimeBuckets")
+    mismatches.recordForSpec("kinowo_de.uptimeBuckets")
     PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
-    mismatches.resolved("kinowo_de.uptimeBuckets")
+    mismatches.resolvedForSpec("kinowo_de.uptimeBuckets")
     withClue("Germany's healthy index cleared Poland's broken one: ")(
       PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
   }
 
   it should "fall back to zero once that index is reconciled, so the alert clears itself" in {
     val mismatches = new TtlIndexMismatches
-    mismatches.record(sentinel)
-    mismatches.resolved(sentinel)
+    mismatches.recordForSpec(sentinel)
+    mismatches.resolvedForSpec(sentinel)
     PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 

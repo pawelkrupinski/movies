@@ -4,11 +4,10 @@ import services.tasktypes.TaskType
 
 import settings.{ScrapeBootRamp, ScrapeChunkSpread, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
 
-import tools.Stoppable
+import tools.{ScheduledTick, Stoppable, TickRecorder, TickRun}
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{ScheduledTick, TickRecorder, TickRun}
 import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
@@ -178,7 +177,7 @@ class ScrapeReaper(
   // its mean of 30.2 needs, with the pool half idle: ~210 chunked venues finished an hour
   // against the 297 a 14h sweep of 4,161 needs, so the sweep took ~16h. Each pass fell ~2h
   // further behind the boundaries, and once a venue's scrape landed more than half a period
-  // late, nearest-boundary counting ([[services.cadence.DueBoundary.NearestBoundary]]) took it
+  // late, nearest-boundary counting ([[tools.DueBoundary.NearestBoundary]]) took it
   // for an EARLY scrape for the next boundary, so the venue skipped a whole period. Every ~3
   // days that turned a whole cohort of chunked venues un-due at once: their chunks drained,
   // the freed room let the backlog of cheap unchunked venues through 40 a tick (~600 in

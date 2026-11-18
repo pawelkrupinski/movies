@@ -2,7 +2,6 @@ package tools
 
 import scala.annotation.nowarn
 import models.Country
-import services.scrapes.ArchivedScrape
 
 import java.nio.file.Path
 
@@ -15,9 +14,14 @@ import java.nio.file.Path
  */
 object RecordedCorpus {
 
+  /** An archived scrape, in either package a ref keeps it: `models` since 2026-11-18, `services.scrapes` before (this file
+   *  is compiled into old refs by scripts/identity-slice; services.identity.OlderRefs). */
+  @nowarn("msg=unused import")
+  object Archived { import models.*, services.scrapes.*; type Row = ArchivedScrape }
+
   /** One country's recording, opened: its archived scrapes, the replay fetch, its gap leaf and the gaps it named. */
   @nowarn("msg=unused import")
-  final class Opened(val country: Country, val rows: Seq[ArchivedScrape], val fetch: HttpFetch, val leaf: GapLeaf, val missing: MissingFixtures) {
+  final class Opened(val country: Country, val rows: Seq[Archived.Row], val fetch: HttpFetch, val leaf: GapLeaf, val missing: MissingFixtures) {
     // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
     import services.identity.*, services.identity.adapters.*
 

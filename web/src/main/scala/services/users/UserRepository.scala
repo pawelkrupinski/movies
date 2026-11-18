@@ -71,9 +71,9 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
     // which `findById` answers either and `delete` (the data-deletion path) leaves the other.
     // `MongoIndex` converts the earlier plain index in place. Loud, not fatal: an index not
     // in place (duplicate rows already there) is an ERROR, but the store keeps serving.
-    services.MongoIndex.ensure(db, "users", org.mongodb.scala.model.Indexes.ascending("id"),
+    tools.MongoIndex.ensure(db, "users", org.mongodb.scala.model.Indexes.ascending("id"),
       new org.mongodb.scala.model.IndexOptions().unique(true), "users") match {
-      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
         logger.error(s"users has NO unique id index ($reason). A sign-in race can write a second row for one account.")
       case _ => ()
     }

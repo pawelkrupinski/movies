@@ -1,5 +1,6 @@
 package services
 
+import tools.MongoWriteErrors
 import settings.MongoAddress
 import com.mongodb.{ConnectionString, MongoCompressor}
 import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}

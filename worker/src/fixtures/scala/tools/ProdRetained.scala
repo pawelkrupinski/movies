@@ -29,7 +29,7 @@ object ProdRetained {
   def read(database: org.mongodb.scala.MongoDatabase, now: Long): Seq[Listing] =
     // read only: the clock dates no write
     new MongoRetainedListingStore(database, java.time.Clock.fixed(java.time.Instant.ofEpochMilli(now), java.time.ZoneOffset.UTC)).read().map(_.map(_.listing)).getOrElse {
-      val history = new services.identity.adapters.MongoIdentityHistory(database, new services.TtlIndexMismatches)
+      val history = new services.identity.adapters.MongoIdentityHistory(database, new tools.TtlIndexMismatches)
       RetainedListingStore.fromHistory(history.since(Seq(services.identity.adapters.HistoryEntry.Listing),
         now - services.identity.adapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))
     }

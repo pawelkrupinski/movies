@@ -284,7 +284,7 @@ class MongoReadModelRepository(
   /** Await one write, and THROW when it failed — see [[ReadModelWriter]]. Only the shutdown
    *  race (the client closed under an in-flight write) is swallowed: nothing will read the memo. */
   private def write(coll: MongoCollection[?], op: String, id: String)(body: => scala.concurrent.Future[?]): Unit =
-    try { services.MongoWriteErrors.counted(coll)(Await.result(body, 10.seconds)); () }
+    try { tools.MongoWriteErrors.counted(coll)(Await.result(body, 10.seconds)); () }
     catch {
       case NonFatal(exception) if RepositoryWrite.isClientClosed(exception) => ()
       case NonFatal(exception) =>

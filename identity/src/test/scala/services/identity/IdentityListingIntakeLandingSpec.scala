@@ -2,11 +2,11 @@ package services.identity
 
 import tools.SpecTimeouts
 
-import models.{Cinema, CinemaMovie, Helios, Movie, Multikino, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Helios, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, SingleCountryNormalizer}
-import services.scrapes.{ArchivedScrape, InMemoryScrapeArchiveRepository}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import java.util.concurrent.{CyclicBarrier, Executors, TimeUnit}
@@ -79,7 +79,7 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
     }
     // The old path's archive holds the shrunken scrape the depth guard held back from the accepted listing.
     val archive  = new InMemoryScrapeArchiveRepository
-    archive.record(services.scrapes.ScrapeAttempt(Multikino, None, clock.instant(), listingComplete = true, shrunk))
+    archive.record(models.ScrapeAttempt(Multikino, None, clock.instant(), listingComplete = true, shrunk))
     val target   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ListingIntakeMetrics.noop)
     land(target, Multikino, full)

@@ -1,5 +1,6 @@
 package services.attempts
 
+import models.{AttemptOutcome, EnrichmentAttempt}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
 import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}

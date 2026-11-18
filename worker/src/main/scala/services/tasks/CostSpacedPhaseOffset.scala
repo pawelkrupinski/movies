@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.cadence.DueBoundary
+import tools.DueBoundary
 
 import java.util.concurrent.atomic.AtomicReference
 
@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * This holds the current plan; [[ScrapePhasePlanner]] rebuilds it from the persisted
  * costs. A moved phase is safe only because the scrape [[DueWindow]] counts each
- * scrape toward its NEAREST boundary ([[services.cadence.DueBoundary.NearestBoundary]]).
+ * scrape toward its NEAREST boundary ([[tools.DueBoundary.NearestBoundary]]).
  * Until the first plan lands, and for any key it doesn't know, the hashed phase
  * stands in — so this needs nothing to construct, and the wiring can hand it to the
  * eagerly-built scrape `DueWindow`.

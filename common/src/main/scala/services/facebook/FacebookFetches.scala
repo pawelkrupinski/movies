@@ -4,7 +4,7 @@ import com.mongodb.client.model.{BulkWriteOptions, UpdateOneModel, UpdateOptions
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Projections, Updates}
-import services.{MongoTtlIndex, TtlIndexMismatches}
+import tools.{MongoTtlIndex, TtlIndexMismatches}
 
 import java.time.Instant
 import java.util.Date

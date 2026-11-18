@@ -62,7 +62,7 @@ class OutcomesCannotBeDroppedSpec extends AnyFlatSpec with Matchers {
   it should "leave every other unused value alone" in {
     silenced("unused value of type Long") shouldBe true
     silenced("unused value of type scala.util.Try[Unit]") shouldBe true
-    silenced("unused value of type services.MongoIndex.Outcome") shouldBe true
+    silenced("unused value of type tools.MongoIndex.Outcome") shouldBe true
     // A name that merely contains a guarded one is not it.
     silenced("unused value of type services.WriteOutcomeOfScanOutcomes") shouldBe true
   }

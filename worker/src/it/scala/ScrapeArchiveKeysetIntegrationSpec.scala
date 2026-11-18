@@ -2,11 +2,11 @@ package integration
 
 import tools.SpecTimeouts
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Movie, ScrapeAttempt, Showtime}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.MongoScrapeArchiveRepository
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await

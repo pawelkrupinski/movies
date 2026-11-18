@@ -1,10 +1,10 @@
 package scripts
 
-import models.{Cinema, Country}
+import models.{Cinema, Country, ScrapeAttempt}
 import services.identity.IdentityListingIntake
 import services.movies.InMemoryScrapeGuardLedger
 import services.titles.TitleNormalizer
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.MongoScrapeArchiveRepository
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}
 

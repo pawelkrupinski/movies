@@ -1,10 +1,10 @@
 package services
 
+import tools.{KeysetScan, MongoIndex}
 import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
-import tools.KeysetScan
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await

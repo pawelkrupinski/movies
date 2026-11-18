@@ -56,12 +56,12 @@ private[movies] object MovieIndexes extends Logging {
     ensureIndex(db, "updatedAt", new IndexOptions().background(true))
   }
 
-  /** A single-field index on `field`, through [[services.MongoIndex]] — which converts
+  /** A single-field index on `field`, through [[tools.MongoIndex]] — which converts
    *  an earlier plain index to unique in place and never drops one. A failure is logged
    *  there, never fatal: the film store works without the index — a unique one merely
    *  stops refusing duplicates, a plain one merely stops serving its range read. */
   private def ensureIndex(db: MongoDatabase, field: String, options: IndexOptions): Unit = {
-    services.MongoIndex.ensure(db, MovieRepository.Collection, Indexes.ascending(field), options, "movies")
+    tools.MongoIndex.ensure(db, MovieRepository.Collection, Indexes.ascending(field), options, "movies")
     ()
   }
 }

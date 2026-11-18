@@ -8,7 +8,7 @@
 #     authorized on <db>". UK, DE, US and ES each started that way (docs/adding-a-country.md, scripts/mongo-grants).
 #
 # THE COUNTERS: `kinowo_{worker,web}_mongo_write_errors_total{database,collection,kind}` and
-# `kinowo_{worker,web}_mongo_unauthorized_total{database}`, written by services.MongoWriteErrors from the shared
+# `kinowo_{worker,web}_mongo_unauthorized_total{database}`, written by tools.MongoWriteErrors from the shared
 # write paths (keyed stores, guarded writes, the task queue, the read model, the agreement verdicts, user states) and
 # the connection's probe. A collection is seeded at 0 for every kind on its first write and a database's refusals
 # when a connection opens it, so `increase()` sees the first failure. The corpus writes (movies, movie_slots,

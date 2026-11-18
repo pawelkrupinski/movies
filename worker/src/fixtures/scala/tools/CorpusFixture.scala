@@ -1,9 +1,9 @@
 package tools
 
-import models.{Movie, Showtime}
+import models.{ArchivedScrape, Movie, ScrapeAttempt, Showtime}
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import play.api.libs.json._
-import services.scrapes.{ArchivedFilmDto, ArchivedScrape, BarrenAttemptDto, ScrapeArchiveRepository, ScrapeAttempt, StoredScrapeDto}
+import services.scrapes.{ArchivedFilmDto, BarrenAttemptDto, ScrapeArchiveRepository, StoredScrapeDto}
 
 import java.io.{BufferedInputStream, ByteArrayOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path, Paths}

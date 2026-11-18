@@ -7,9 +7,8 @@ import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt64, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
-import services.MongoErrors
+import tools.{LogThrottle, MongoErrors, ThreadPools}
 import services.facebook.{AppUsage, FacebookFetches, FacebookSlots, FacebookUsageBrake, MongoFacebookSlots}
-import tools.{ThreadPools, LogThrottle}
 
 import java.time.{Clock, Instant}
 import java.util.Date
@@ -114,7 +113,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
         Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
         .fold(e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}"),
               // The range-first order it replaced, kept by nothing: dropped only once the claim order is there.
-              _ => services.MongoIndex.dropSuperseded(collection, SupersededClaimIndex, "facebook_rescrapes"))
+              _ => tools.MongoIndex.dropSuperseded(collection, SupersededClaimIndex, "facebook_rescrapes"))
     }, "facebook-rescrapes-init")
     thread.setDaemon(true)
     thread.start()

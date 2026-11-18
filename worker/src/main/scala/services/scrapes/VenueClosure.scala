@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.Opening
+import models.{ArchivedScrape, Opening}
 import services.fallback.FallbackState
 
 import java.time.{Duration => JDuration, Instant}

@@ -29,7 +29,7 @@ class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers wit
 
   // The `id` index used to be built inside a bare `Try`: a failure left no trace at all.
   it should "log, not swallow, a failed build of its `id` index" in {
-    val logged = tools.LogCapture.thisThread("services.MongoIndex") {
+    val logged = tools.LogCapture.thisThread("tools.MongoIndex") {
       new MongoUserRepository(Some(db)).enabled shouldBe true
     }
     logged.map(_.getFormattedMessage).filter(_.contains("unreachable.users")) should not be empty

@@ -1,5 +1,6 @@
-package services
+package tools
 
+import tools.MongoIndex
 import com.mongodb.{MongoCommandException, ServerAddress}
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec

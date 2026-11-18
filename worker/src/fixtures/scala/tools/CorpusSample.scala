@@ -3,7 +3,7 @@ package tools
 import services.movies.LatestTitleYear
 
 import services.titles.TitleNormalizer
-import services.scrapes.ArchivedScrape
+import models.ArchivedScrape
 
 import scala.util.Random
 

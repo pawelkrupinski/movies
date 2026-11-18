@@ -2,7 +2,8 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.attempts.{AttemptOutcome, EnrichmentAttempt, InMemoryEnrichmentAttemptStore}
+import services.attempts.InMemoryEnrichmentAttemptStore
+import models.{AttemptOutcome, EnrichmentAttempt}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 
 import java.time.{Clock, Instant, ZoneOffset}

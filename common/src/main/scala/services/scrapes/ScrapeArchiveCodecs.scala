@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
+import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, Movie, ScrapeOutcome, Showtime, SuccessfulScrape}
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY

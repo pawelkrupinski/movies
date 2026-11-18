@@ -1,4 +1,4 @@
-package services
+package tools
 
 import com.mongodb.MongoCommandException
 import org.bson.conversions.Bson
@@ -60,7 +60,7 @@ object MongoIndex extends Logging {
   private val Raced                      = Set(125 /* CommandFailed */, 72 /* InvalidOptions */)
   private val Gone                       = Set(26 /* NamespaceNotFound */, 27 /* IndexNotFound */)
   private val ConversionAttempts         = 5
-  private[services] val RaceBackoffMillis = 200L
+  private[tools] val RaceBackoffMillis = 200L
   private val Timeout                    = 30.seconds
 
   /** Ensure `collection` in `database` carries an index on `keys` with `options`.
@@ -130,7 +130,7 @@ object MongoIndex extends Logging {
    *  `prepareUnique` between this one's two steps. Both are retried after a growing `pause` (in
    *  millis) — back to back, all the attempts landed while the other pod was still mid-conversion;
    *  one the other pod already won (`alreadyWon`) is a success. */
-  private[services] def retryRaced(attempts: Int, pause: Long => Unit)(convert: () => Unit, alreadyWon: () => Boolean): Try[Unit] = {
+  private[tools] def retryRaced(attempts: Int, pause: Long => Unit)(convert: () => Unit, alreadyWon: () => Boolean): Try[Unit] = {
     @scala.annotation.tailrec
     def attempt(number: Int): Try[Unit] =
       Try(convert()) match {
@@ -147,7 +147,7 @@ object MongoIndex extends Logging {
    *  `prepareUnique` alone would start refusing writes that a plain index accepts, which is a
    *  decision for whoever dedupes the rows. A rollback that fails leaves the index doing exactly
    *  that, so it is named in the `reason` the ERROR line and the outcome carry, never dropped. */
-  private[services] def afterRollback(reason: String, rollback: () => Unit): String =
+  private[tools] def afterRollback(reason: String, rollback: () => Unit): String =
     Try(rollback()) match {
       case Success(_)         => reason
       case Failure(exception) =>

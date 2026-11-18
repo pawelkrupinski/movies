@@ -1,9 +1,8 @@
 package tools
 
-import models._
+import models.{ArchivedScrape, SuccessfulScrape, _}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{ArchivedScrape, SuccessfulScrape}
 
 import java.nio.file.Files
 import java.time.{Instant, LocalDateTime}

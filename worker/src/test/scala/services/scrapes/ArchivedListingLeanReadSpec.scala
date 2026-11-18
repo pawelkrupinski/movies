@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Cinema, CinemaMovie, Helios, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, Movie, Showtime, SuccessfulScrape}
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.{BsonBinaryReader, BsonDocument, BsonDocumentReader, BsonDocumentWriter, RawBsonDocument}
 import org.scalatest.flatspec.AnyFlatSpec

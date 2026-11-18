@@ -130,7 +130,7 @@ object WorkerMain extends Logging {
         // The process-wide bundle outlives every country's wiring; its own stop() shuts its sampler.
         tools.ThreadPools.Unmanaged))
       // Every country's stores report their failed writes and refused grants here: one client, one count.
-      services.MongoWriteErrors.bind(metrics.mongoWriteErrors)
+      tools.MongoWriteErrors.bind(metrics.mongoWriteErrors)
       // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
       // memory cgroup with every country's renders.
       val gate = boot.step("poster shrink gate")(services.sharecards.VipsPosterShrinker.newGate())

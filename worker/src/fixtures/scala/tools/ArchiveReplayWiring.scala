@@ -294,7 +294,7 @@ class ArchiveReplayWiring(
       .toMap
 
   private lazy val countryCinemas: Set[Cinema] = CountryScrapeCorpus.cinemasOf(country).toSet
-  private def countryRows: Seq[services.scrapes.ArchivedScrape] = archive.findAll().filter(row => countryCinemas.contains(row.cinema))
+  private def countryRows: Seq[models.ArchivedScrape] = archive.findAll().filter(row => countryCinemas.contains(row.cinema))
 
   /** The recording's capture of the listings prod's model kept for their facts alone ([[ProdRetained]]): none unless
    *  the replay names its recording's. Overridden where a recording is replayed (the convergence rows, the takes

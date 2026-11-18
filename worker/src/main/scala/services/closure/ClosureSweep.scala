@@ -1,10 +1,10 @@
 package services.closure
 
-import models.Cinema
+import models.{ArchivedScrape, Cinema}
 import play.api.Logging
 import services.fallback.FallbackStore
 import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal, Verdict}
-import services.scrapes.{ArchivedScrape, GoneUpstream, ScrapeArchiveReader, VenueClosure}
+import services.scrapes.{GoneUpstream, ScrapeArchiveReader, VenueClosure}
 
 import java.time.{Clock, Instant, LocalDate, ZoneOffset}
 import scala.util.control.NonFatal

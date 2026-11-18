@@ -36,7 +36,7 @@ final class DebugStack(
   // their data straight from the source and so have no copy that could be stale.
   val mirrorFreshness:        MirrorFreshness = MirrorFreshness.notMirrored,
   corpusListing:              Option[() => DebugSnapshot[CorpusListing]] = None,
-  ratingCadenceSnapshot:      Option[() => DebugSnapshot[Seq[(String, services.cadence.RatingChangeStats)]]] = None,
+  ratingCadenceSnapshot:      Option[() => DebugSnapshot[Seq[(String, models.RatingChangeStats)]]] = None,
 )(using services.movies.LatestTitleYear) {
   /** The `movies` corpus without showtimes — the `/debug` table, and the titles
    *  `/debug/cadence` names its films by. */
@@ -44,7 +44,7 @@ final class DebugStack(
     corpusListing.getOrElse(DebugSnapshot.readNow(mirrorFreshness)(CorpusListing.read(movieRepository)))
 
   /** Every `rating_cadence` record — `/debug/cadence`. */
-  val ratingCadence: () => DebugSnapshot[Seq[(String, services.cadence.RatingChangeStats)]] =
+  val ratingCadence: () => DebugSnapshot[Seq[(String, models.RatingChangeStats)]] =
     ratingCadenceSnapshot.getOrElse(DebugSnapshot.readNow(mirrorFreshness)(ratingCadenceReader.all()))
 }
 

@@ -4737,7 +4737,7 @@
     {
       "id": 9036,
       "title": "Mongo writes that threw, per collection and kind — worker and web",
-      "description": "`kinowo_{worker,web}_mongo_write_errors_total{database,collection,kind}` per bar (services.MongoWriteErrors): `serialization` the driver could not encode the document (the NUL in an agreement receipt's field name, 260904c36), `rejected` the server refused it (a validator, a write concern; never an expected duplicate key), `failed` the write command failed. Zero is the healthy reading; `MongoWriteErrors` (mongodb-app.rules) fires on 10 minutes of any. The corpus writes (movies, movie_slots, screenings) are counted by `kinowo_worker_repository_write_failed_total` instead.",
+      "description": "`kinowo_{worker,web}_mongo_write_errors_total{database,collection,kind}` per bar (tools.MongoWriteErrors): `serialization` the driver could not encode the document (the NUL in an agreement receipt's field name, 260904c36), `rejected` the server refused it (a validator, a write concern; never an expected duplicate key), `failed` the write command failed. Zero is the healthy reading; `MongoWriteErrors` (mongodb-app.rules) fires on 10 minutes of any. The corpus writes (movies, movie_slots, screenings) are counted by `kinowo_worker_repository_write_failed_total` instead.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

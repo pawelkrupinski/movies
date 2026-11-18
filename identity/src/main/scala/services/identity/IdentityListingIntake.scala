@@ -1,9 +1,9 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, VenueClock}
+import models.{Cinema, CinemaMovie, LeanListing, ScrapeAttempt, VenueClock}
 import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
 import services.titles.TitleNormalizer
-import services.scrapes.{LeanListing, ScrapeArchiveReader, ScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
 
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
@@ -52,7 +52,7 @@ final class IdentityListingIntake(
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live, lean = false)
 
   /** [[listings]] without their showtimes — a stage relay's days and every other film's season kept
-   *  ([[services.scrapes.LeanListing.leanFilm]]): what the identity model takes up. Left on the server, the showtimes
+   *  ([[models.LeanListing.leanFilm]]): what the identity model takes up. Left on the server, the showtimes
    *  were ~11 CPU-s of a US boot's take-up decoding them (`ShowtimeCodec.read`, JFR). */
   def identities(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
     // The boot's take-up reads, row for row, what the projection's first read would read whole: until the projection
@@ -217,7 +217,7 @@ object IdentityListingIntake {
           // No stamps is a read that failed or an empty archive: either way read it whole, which answers both.
           if (stamps.isEmpty) (Map.empty[String, Entry], current)
           else {
-            val present = stamps.collect { case (name, services.scrapes.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
+            val present = stamps.collect { case (name, models.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
             val keep = entries.filter { case (name, entry) =>
               present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name) && !unread(entry)
             }
@@ -284,7 +284,7 @@ object IdentityListingIntake {
   }
 
   /** The model's object for `listing` when it holds one the same, else `listing` — but never over the days this read
-   *  gave a stage relay ([[services.scrapes.LeanListing.leanFilm]]): they are outside a listing's equality, and the
+   *  gave a stage relay ([[models.LeanListing.leanFilm]]): they are outside a listing's equality, and the
    *  model's may be older, or unknown where this read knows them. (Another film's lean read gives no days at all.) */
   private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
     modelled.get(listing.key).filter(publishesAsRead(_, listing)).getOrElse(listing)

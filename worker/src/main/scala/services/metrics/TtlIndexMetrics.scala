@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.TtlIndexMismatches
+import tools.TtlIndexMismatches
 
 /**
  * `kinowo_worker_ttl_index_mismatches` — TTL indexes whose expiry does not match

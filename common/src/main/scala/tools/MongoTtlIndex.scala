@@ -1,4 +1,4 @@
-package services
+package tools
 
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}

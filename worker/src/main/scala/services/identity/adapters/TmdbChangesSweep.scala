@@ -5,8 +5,7 @@ import clients.TmdbClient
 import services.identity.adapters.TmdbIdentityReads.*
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
 import play.api.Logging
-import services.cadence.DueBoundary
-import tools.{ForwardingHttpFetch, HttpFetch}
+import tools.{DueBoundary, ForwardingHttpFetch, HttpFetch}
 
 import java.time.{Clock, LocalDate, ZoneOffset}
 import scala.concurrent.duration._

@@ -1,4 +1,4 @@
-package services
+package tools
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry

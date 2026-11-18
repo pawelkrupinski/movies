@@ -1,7 +1,6 @@
 package controllers
 
-import models.Cinema
-import services.EnrichmentUptimeService
+import models.{Cinema, EnrichmentUptimeService}
 
 /** Which section of the /uptime page each monitored service lands in — the triage
  *  verdicts (failing, gone upstream, no screenings, thin) and the healthy homes

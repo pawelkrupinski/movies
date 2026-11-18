@@ -3,11 +3,11 @@ package services.cinemas.roster
 import tools.SpecTimeouts
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaMovie, Country, KinoMikro, MikroBronowice, Movie, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Country, KinoMikro, MikroBronowice, Movie, ScrapeAttempt, Showtime, SuccessfulScrape}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.PrometheusExposition
-import services.scrapes.{ArchivedScrape, InMemoryScrapeArchiveRepository, ScrapeAttempt, SuccessfulScrape}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Instant, LocalDateTime}
 

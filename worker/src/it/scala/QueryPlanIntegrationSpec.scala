@@ -1,6 +1,6 @@
 package services
 
-import tools.SpecTimeouts
+import tools.{QueryPlans, SpecTimeouts, TtlIndexMismatches}
 
 import models.{CinemaShowing, KinoMuranow, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
@@ -12,7 +12,6 @@ import services.readmodel.MongoReadModelRepository
 import services.sharecards.{MongoFacebookRescrapeStore, RescrapeEntry, RescrapeKind, RescrapeTarget}
 import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue}
 import services.tasktypes.TaskType
-import tools.QueryPlans
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
@@ -125,7 +124,8 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the scrape archive" should "record, read and scan venues by id, and carry no index nothing reads" in {
     import models.{Cinema, CinemaMovie, Movie}
-    import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+    import services.scrapes.MongoScrapeArchiveRepository
+    import models.ScrapeAttempt
     assertIndexed(plansOf("archive") { db =>
       val repository = new MongoScrapeArchiveRepository(Some(db))
       val at = Far
@@ -203,7 +203,8 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   }
 
   "the stores keyed by id alone" should "read, write and sweep by id" in {
-    import services.attempts.{AttemptOutcome, EnrichmentAttempt, MongoEnrichmentAttemptStore}
+    import services.attempts.MongoEnrichmentAttemptStore
+    import models.{AttemptOutcome, EnrichmentAttempt}
     import services.cadence.{MongoRatingCadenceReader, MongoRatingCadenceStore}
     import services.freshness.{FreshnessKind, MongoFreshnessStore}
     import services.identity.MongoVenueSlotFingerprints

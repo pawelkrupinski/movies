@@ -1,5 +1,6 @@
 package tools
 
+import tools.JsonScalars
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json

@@ -1,10 +1,12 @@
-package services.attempts
+package controllers
 
+import models.{AttemptOutcome, EnrichmentAttempt, RatingChangeStats}
+import services.attempts.EnrichmentAttemptReader
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cadence.{RatingCadenceReader, RatingChangeStats}
+import services.cadence.RatingCadenceReader
 import services.freshness.FreshnessKind
 
 import java.time.Instant

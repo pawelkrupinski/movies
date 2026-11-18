@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.cadence.DueBoundary
+import tools.DueBoundary
 
 import scala.concurrent.duration._
 

@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Cinema, SeasonWindow}
+import models.{ArchivedScrape, BarrenAttempt, Cinema, ScrapeOutcome, SeasonWindow, SuccessfulScrape}
 import models.Opening.{Seasonal, YearRound}
 import org.scalatest.{EitherValues, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec

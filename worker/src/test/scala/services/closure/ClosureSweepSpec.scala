@@ -1,7 +1,7 @@
 package services.closure
 
+import models.{ArchivedScrape, Cinema, GermanRoster, ScrapeAttempt, UsRoster}
 import clients.tools.ScriptedByUrlHttpFetch
-import models.{Cinema, GermanRoster, UsRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.fallback.{FallbackState, InMemoryFallbackStore}

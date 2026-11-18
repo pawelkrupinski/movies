@@ -1,7 +1,7 @@
 package services.alerts
 
-import models.Cinema
-import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, ScrapeArchiveRepository, ScrapeOutcome}
+import models.{BarrenAttempt, Cinema, ScrapeOutcome}
+import services.scrapes.{ForwardingScrapeArchive, GoneUpstream, ScrapeArchiveRepository}
 
 /**
  * The scrape archive, plus one page when a venue with no fallback has answered

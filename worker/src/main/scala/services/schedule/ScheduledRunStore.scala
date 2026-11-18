@@ -7,7 +7,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDateTime, BsonString}
 import org.mongodb.scala.model.Indexes
 import play.api.Logging
-import services.MongoErrors
+import tools.MongoErrors
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
@@ -47,7 +47,7 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
  * `claim` is an `insertOne` keyed by the occurrence id: the first machine's
  * insert wins; a second machine inserting the same `_id` gets a duplicate-key
  * (11000) error, caught and returned as `false` — the same dup-key-insert idiom
- * as `MongoTaskQueue` (see [[services.MongoErrors]]).
+ * as `MongoTaskQueue` (see [[tools.MongoErrors]]).
  *
  * `claimedAt` is the wiring's clock's instant. A TTL index on it (`expireAfter` 48h) lets Mongo delete stale
  * occurrence documents, so the collection doesn't grow without bound (a document per

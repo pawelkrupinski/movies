@@ -33,7 +33,7 @@ object MirrorWorld {
     val rows  = tools.ProdListings.read(db, tools.CountryScrapeCorpus.cinemasOf(country).toSet)
     val pages = Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
       .batchSize(tools.MongoReplies.Default).toFuture(), tools.SpecTimeouts.Run)
-    of(new MongoIdentityHistory(db, new services.TtlIndexMismatches), ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer),
+    of(new MongoIdentityHistory(db, new tools.TtlIndexMismatches), ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer),
       pages, new MongoTmdbDocuments(db), at)
   }
 }

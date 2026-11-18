@@ -1,4 +1,4 @@
-package services
+package tools
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson

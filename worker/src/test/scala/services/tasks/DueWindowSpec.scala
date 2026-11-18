@@ -3,7 +3,7 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.cadence.DueBoundary
+import tools.DueBoundary
 
 import java.time.Instant
 import scala.concurrent.duration._

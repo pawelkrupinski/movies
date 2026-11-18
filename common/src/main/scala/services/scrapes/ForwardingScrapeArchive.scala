@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.{Cinema, CinemaMovie}
+import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, ScrapeAttempt, SuccessfulScrape}
 
 /** A scrape archive that files every attempt in `underlying` and answers every read from it — the
  *  base of the archives that WATCH the scrapes going by (the identity model's feed, the gone-venue

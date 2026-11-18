@@ -16,8 +16,7 @@ import services.metrics.*
 
 import services.alerts.TelegramNotificationMetrics
 
-import tools.CacheOccupancy
-import tools.ThreadPools
+import tools.{CacheOccupancy, ThreadPools}
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
@@ -52,8 +51,8 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   JvmProcessMetrics.register(registry)
 
   // Failed Mongo writes and refused grants, process-level like the one client they go through
-  // (services.MongoWriteErrors); WorkerMain binds it as the process's sink.
-  val mongoWriteErrors: services.MongoWriteErrors.Series = services.MongoWriteErrors.Series.worker(registry)
+  // (tools.MongoWriteErrors); WorkerMain binds it as the process's sink.
+  val mongoWriteErrors: tools.MongoWriteErrors.Series = tools.MongoWriteErrors.Series.worker(registry)
 
   // Native-memory + vitals sampler — one JVM, so a single process-level sampler.
   val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry, threadPools = threadPools)
@@ -68,7 +67,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // TTL indexes the reconciler could not bring into line — also process-level, and
   // also a count rather than a labelled series, for the reason its own doc gives.
   // The one mismatch set every country's reconcilers record into, which the gauge reads.
-  val ttlIndexMismatches: services.TtlIndexMismatches = new services.TtlIndexMismatches
+  val ttlIndexMismatches: tools.TtlIndexMismatches = new tools.TtlIndexMismatches
   TtlIndexMetrics.register(registry, ttlIndexMismatches)
 
   // In-process cache occupancy (`kinowo_worker_cache_*`), one labelled family for

@@ -1,10 +1,10 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime, SuccessfulScrape}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, SingleCountryNormalizer}
-import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository, SuccessfulScrape}
+import services.scrapes.ScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 

@@ -2,7 +2,7 @@ package services.identity
 
 import models.CinemaMovie
 
-/** The films a lean archive read keeps the screening DAYS of (`services.scrapes.LeanListing`): those billing a stage
+/** The films a lean archive read keeps the screening DAYS of (`models.LeanListing`): those billing a stage
  *  work — a relay's days place it in its season and on its broadcast day ([[Listing.broadcastSeason]],
  *  `agreement.Broadcast`). */
 object LeanStageWorks {

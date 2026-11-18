@@ -497,7 +497,7 @@ groups:
       # `Unauthorized` asserts from clients probing what they may do: mongosh's startup
       # `getParameter`/`aggregate` on admin (170 of 266 in a 20-minute sample), the exporter's
       # shard-identity `find` on admin.system.version (40), and the application's TTL `collMod`
-      # (55, now gone -- see services.MongoTtlIndex). None of that is a fault, and a rule that
+      # (55, now gone -- see tools.MongoTtlIndex). None of that is a fault, and a rule that
       # cannot tell it from a sick server is a rule that gets ignored.
       #
       # DO NOT EXPECT THE LOG TO ADD UP TO THE COUNTER. That same window counted 1,642 user asserts

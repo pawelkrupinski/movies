@@ -1,12 +1,12 @@
 package services.tasks
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}
+import models.{ArchivedScrape, Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, ContentStamp, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.StubCinemaScraper
 import services.cinemas.common.CinemaScraper
-import services.scrapes.{ArchivedScrape, ContentStamp, ScrapeArchiveRepository}
+import services.scrapes.ScrapeArchiveRepository
 
 import java.time.{Clock, Instant, ZoneOffset}
 
@@ -36,8 +36,8 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   private class StubArchive(var stamps: Map[String, ContentStamp]) extends ScrapeArchiveRepository {
     var reads = 0
     def enabled: Boolean = true
-    protected def storeSuccess(c: Cinema, city: Option[String], s: services.scrapes.SuccessfulScrape): Unit = ()
-    protected def storeBarren(c: Cinema, city: Option[String], a: services.scrapes.BarrenAttempt): Unit     = ()
+    protected def storeSuccess(c: Cinema, city: Option[String], s: models.SuccessfulScrape): Unit = ()
+    protected def storeBarren(c: Cinema, city: Option[String], a: models.BarrenAttempt): Unit     = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
     def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.complete
     def contentStamps(): Map[String, ContentStamp] = { reads += 1; stamps }
@@ -260,8 +260,8 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     valueOf(stale) shouldBe 1.0                                      // the 40-day-quiet venue
 
     // The quiet venue lists films again, and the never-produced one produces its first.
-    filing.record(services.scrapes.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq(film)))
-    filing.record(services.scrapes.ScrapeAttempt(never, Cinema.cityOf(never), now, listingComplete = true, films = Seq(film)))
+    filing.record(models.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq(film)))
+    filing.record(models.ScrapeAttempt(never, Cinema.cityOf(never), now, listingComplete = true, films = Seq(film)))
     clock.advance(java.time.Duration.ofHours(2))
     c.sample()
 
@@ -279,10 +279,10 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     val filing = c.watching(new services.scrapes.InMemoryScrapeArchiveRepository)
     c.sample()
     valueOf(stale) shouldBe 1.0
-    filing.record(services.scrapes.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq.empty,
+    filing.record(models.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq.empty,
       noScheduleListed = true))
     // An empty attempt older than the venue's newest content changes nothing.
-    filing.record(services.scrapes.ScrapeAttempt(producing, Cinema.cityOf(producing), now.minusSeconds(7200), listingComplete = true,
+    filing.record(models.ScrapeAttempt(producing, Cinema.cityOf(producing), now.minusSeconds(7200), listingComplete = true,
       films = Seq.empty, noScheduleListed = true))
     c.sample()
     valueOf(stale) shouldBe 0.0                                      // closed for the season, on its own word

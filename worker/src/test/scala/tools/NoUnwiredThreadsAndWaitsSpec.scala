@@ -68,7 +68,7 @@ class NoUnwiredThreadsAndWaitsSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/tools/PacedHttpFetch.scala", Rule.ThreadSleep)                         -> SleepSeamDefault,
     ("http/src/main/scala/tools/RetryWithBackoff.scala", Rule.ThreadSleep)                         -> SleepSeamDefault,
     ("worker/src/main/scala/tools/ThrottledHttpFetch.scala", Rule.ThreadSleep)                     -> SleepSeamDefault,
-    ("common/src/main/scala/services/MongoIndex.scala", Rule.ThreadSleep)                          ->
+    ("common/src/main/scala/tools/MongoIndex.scala", Rule.ThreadSleep)                          ->
       ("an index conversion's retry back-off, reached from every repository's index setup with no wiring between; " +
         "the retry itself takes its sleep (`retryRaced`), which its spec drives")
   )

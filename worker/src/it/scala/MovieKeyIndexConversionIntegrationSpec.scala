@@ -1,6 +1,6 @@
 package services.movies
 
-import tools.SpecTimeouts
+import tools.{ConcurrentInstances, LogCapture, SpecTimeouts}
 
 import ch.qos.logback.classic.Level
 import org.mongodb.scala.bson.collection.immutable.{Document => ImmutableDocument}
@@ -9,7 +9,6 @@ import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObser
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.{ConcurrentInstances, LogCapture}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -42,7 +41,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
 
   /** Boot the repository on `instance`, polling `listIndexes` from a second thread the whole
    *  time, and return every snapshot in which `key_1` was missing plus the log lines about THIS
-   *  database's indexes. The capture hears `services.MongoIndex` from every suite running beside
+   *  database's indexes. The capture hears `tools.MongoIndex` from every suite running beside
    *  this one (an itAll run: another suite's "index on kinowo_it_wiring_de.uptimeServiceTags …
    *  could not be created" failed the no-warning case), and every line it logs names its
    *  namespace. `alongside` runs inside the capture, for a spec to log as such a suite would. */
@@ -55,7 +54,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
       if (!names.contains("key_1")) gaps.add(names.mkString(","))
     }, "key-index-poller")
     poller.start()
-    val events = try LogCapture.capture("services.MongoIndex", Some(Level.INFO)) {
+    val events = try LogCapture.capture("tools.MongoIndex", Some(Level.INFO)) {
       alongside()
       val repository = new MongoMovieRepository(Some(instance.database), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       try repository.enabled shouldBe true finally repository.close()
@@ -110,7 +109,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
 
       // A parallel suite's index warning, logged while this boot is being captured.
       val (gaps, events) = boot(pod, observer.database, alongside = () =>
-        org.slf4j.LoggerFactory.getLogger("services.MongoIndex")
+        org.slf4j.LoggerFactory.getLogger("tools.MongoIndex")
           .warn("uptimeServiceTags: index on kinowo_it_elsewhere.uptimeServiceTags {\"service\": 1} could not be created: state should be: open"))
 
       flag(keyIndex(observer.database), "unique") shouldBe true

@@ -1,6 +1,9 @@
-package services.attempts
+package controllers
 
-import services.cadence.{RatingCadence, RatingCadenceReader, RatingChangeStats}
+import models.{EnrichmentAttempt, RatingChangeStats}
+import services.attempts.{EnrichmentAttemptReader, RatingKeys}
+
+import services.cadence.{RatingCadence, RatingCadenceReader}
 import services.freshness.FreshnessKind
 
 import java.time.Instant

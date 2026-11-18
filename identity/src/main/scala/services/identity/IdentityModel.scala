@@ -236,10 +236,10 @@ final class ScreeningDays private (private val epochDays: Array[Int], private va
 
 object ScreeningDays {
   val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
-  /** The day standing for "not read" where days travel as showtimes (`services.scrapes.LeanListing.unread`). */
-  val UnreadDay: java.time.LocalDate = services.scrapes.LeanListing.UnreadDay
-  /** The day marking, where days travel as showtimes, the other day as the season's alone (`services.scrapes.LeanListing.seasonOnly`). */
-  val SeasonOnlyDay: java.time.LocalDate = services.scrapes.LeanListing.SeasonOnlyDay
+  /** The day standing for "not read" where days travel as showtimes (`models.LeanListing.unread`). */
+  val UnreadDay: java.time.LocalDate = models.LeanListing.UnreadDay
+  /** The day marking, where days travel as showtimes, the other day as the season's alone (`models.LeanListing.seasonOnly`). */
+  val SeasonOnlyDay: java.time.LocalDate = models.LeanListing.SeasonOnlyDay
   /** Days that could not be read. */
   val Unknown: ScreeningDays = new ScreeningDays(Array(UnreadDay.toEpochDay.toInt))
   /** The month a performing season opens in. */
@@ -291,7 +291,7 @@ object Listing {
    *  names and words its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
    *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
    *  where both sides know them: a lean read leaves out the days of a film billing no stage work
-   *  (`services.scrapes.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
+   *  (`models.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
    *  read as moved, every venue read again looked re-published, on every tick. */
   def movedOutsideEquality(was: Listing, now: Listing): Boolean =
     was.poster != now.poster || was.names != now.names || was.words != now.words ||

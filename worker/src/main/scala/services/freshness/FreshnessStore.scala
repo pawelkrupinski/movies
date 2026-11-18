@@ -117,7 +117,7 @@ class MongoFreshnessStore(
   // (a lost write just means a redundant re-fetch later), so the journal/majority
   // wait per stamp is wasted cost on the shared-cpu Mongo. Reuse the queue's concern.
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("freshness").withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection("freshness").withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   // Signals that the scrape stamps are in the mirror. The ScrapeReaper awaits this
   // before its first tick, so a cinema is never read as stale merely because the
@@ -164,7 +164,7 @@ class MongoFreshnessStore(
       Try {
         c.updateOne(
           Filters.eq("_id", key),
-          services.MongoUpdates.setEach(MongoFreshnessStore.encode(kind, at)),
+          tools.MongoUpdates.setEach(MongoFreshnessStore.encode(kind, at)),
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),

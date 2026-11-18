@@ -2,10 +2,9 @@ package tools
 
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
+import models.{ArchivedScrape, Cinema, CinemaMovie, Movie, Showtime, SuccessfulScrape}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{ArchivedScrape, SuccessfulScrape}
 
 import java.time.{Instant, LocalDateTime}
 import scala.util.Random

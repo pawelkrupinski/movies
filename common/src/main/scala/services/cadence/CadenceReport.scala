@@ -1,5 +1,7 @@
 package services.cadence
 
+import models.{RatingChange, RatingChangeStats}
+import tools.DueBoundary
 import java.util.Locale
 
 import java.time.Instant

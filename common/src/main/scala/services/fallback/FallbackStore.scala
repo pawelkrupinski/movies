@@ -97,7 +97,7 @@ class MongoFallbackStore(
     coll.foreach { c =>
       Try {
         Await.result(
-          c.updateOne(Filters.eq("_id", state.cinema), services.MongoUpdates.setEach(toDocument(state)), new UpdateOptions().upsert(true)).toFuture(),
+          c.updateOne(Filters.eq("_id", state.cinema), tools.MongoUpdates.setEach(toDocument(state)), new UpdateOptions().upsert(true)).toFuture(),
           10.seconds
         )
       }.recover { case exception => logger.debug(s"Filmweb-fallback write failed for ${state.cinema}: ${exception.getMessage}") }

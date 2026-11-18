@@ -1,5 +1,6 @@
 package services
 
+import tools.{MongoTtlIndex, TtlIndexMismatches}
 import models.Multikino
 import org.mongodb.scala.{Document, MongoClient}
 import org.scalatest.BeforeAndAfterAll

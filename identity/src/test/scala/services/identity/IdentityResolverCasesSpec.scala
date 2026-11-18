@@ -1591,7 +1591,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     def read(title: String, lean: Boolean) = {
       val whole = models.CinemaMovie(models.Movie(title), KinoMuza, None, None, None, Nil, Nil,
         Seq(models.Showtime(java.time.LocalDateTime.of(2026, 10, 22, 20, 0), None), models.Showtime(java.time.LocalDateTime.of(2026, 10, 24, 18, 0), None)))
-      Listing.of(KinoMuza, if (lean) services.scrapes.LeanListing.leanFilm(whole, LeanStageWorks.billsStageWork) else whole, normalizer)
+      Listing.of(KinoMuza, if (lean) models.LeanListing.leanFilm(whole, LeanStageWorks.billsStageWork) else whole, normalizer)
     }
     val merrier = F(80616, "The More the Merrier", 1943, "George Stevens", 104, 10)
     val carol   = F(17979, "A Christmas Carol", 2009, "Robert Zemeckis", 96, 30)

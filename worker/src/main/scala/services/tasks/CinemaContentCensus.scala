@@ -5,9 +5,9 @@ import tools.ThreadPools
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.Country
+import models.{BarrenAttempt, ContentStamp, Country, SuccessfulScrape}
 import services.cinemas.common.CinemaScraper
-import services.scrapes.{BarrenAttempt, ContentStamp, ForwardingScrapeArchive, ScrapeArchiveReader, ScrapeArchiveRepository, SuccessfulScrape}
+import services.scrapes.{ForwardingScrapeArchive, ScrapeArchiveReader, ScrapeArchiveRepository}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._

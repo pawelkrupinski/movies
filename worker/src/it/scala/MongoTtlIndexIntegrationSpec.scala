@@ -1,6 +1,6 @@
 package integration
 
-import tools.SpecTimeouts
+import tools.{MongoTtlIndex, SpecTimeouts, TtlIndexMismatches}
 
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import com.mongodb.connection.{ClusterId, ConnectionDescription, ServerId}
@@ -14,14 +14,14 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.{MongoTtlIndex, TtlIndexMismatches, UptimeMonitor}
+import services.UptimeMonitor
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._
 
 /**
- * Live test of `services.MongoTtlIndex` against a real mongod, because the whole
+ * Live test of `tools.MongoTtlIndex` against a real mongod, because the whole
  * point of it is WHICH COMMANDS IT SENDS — and the driver only names those against
  * a server.
  *

@@ -1,9 +1,8 @@
 package tools
 
-import models.{CinemaMovie, Country}
+import models.{ArchivedScrape, CinemaMovie, Country}
 import services.movies.LatestTitleYear
 import services.titles.{SequelMarker, TitleContainment, TitleNormalizer}
-import services.scrapes.ArchivedScrape
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}

@@ -1,8 +1,7 @@
 package tools
 
-import models.Country
+import models.{ArchivedScrape, Country}
 import services.lookups.LookupQuery
-import services.scrapes.ArchivedScrape
 
 import scala.collection.mutable
 

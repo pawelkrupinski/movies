@@ -2,7 +2,8 @@ package services.tasks
 
 import services.tasktypes.TaskType
 
-import services.attempts.{AttemptOutcome, EnrichmentAttempt, EnrichmentAttemptStore}
+import services.attempts.EnrichmentAttemptStore
+import models.{AttemptOutcome, EnrichmentAttempt}
 import services.cadence.RatingCadenceStore
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey

@@ -1,7 +1,7 @@
 package services.cinemas.roster
 
-import models.Cinema
-import services.scrapes.{ForwardingScrapeArchive, ScrapeArchiveRepository, SuccessfulScrape}
+import models.{Cinema, SuccessfulScrape}
+import services.scrapes.{ForwardingScrapeArchive, ScrapeArchiveRepository}
 
 /** The scrape archive, every venue's archived listing also handed to [[CopiedFeedDetector]] as it
  *  lands: the one path every scrape takes, whether or not its country writes `movies`. */

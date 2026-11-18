@@ -6,7 +6,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.attempts.{AttemptOutcome, InMemoryEnrichmentAttemptStore}
+import services.attempts.InMemoryEnrichmentAttemptStore
+import models.AttemptOutcome
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.CacheKey
 
@@ -87,7 +88,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   // actually work". Until it was recorded, a fetch that ERRORED and a fetch that
   // ran fine but reported no change were indistinguishable — both arrived here as
   // `None`, both stamped freshness, both fed the cadence a no-change (backing the
-  // source off toward the 4-day cap). See services.attempts.AttemptOutcome.
+  // source off toward the 4-day cap). See models.AttemptOutcome.
   it should "record a changed attempt under the task's dedup key" in {
     val attempts = new InMemoryEnrichmentAttemptStore
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore, dueWindow,
@@ -135,7 +136,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     // refreshing it. Both now share DueWindow, so a due task is always acted on.
     val period = 4.hours.toMillis
     val dedup  = "imdb|dune|2024"
-    val phase  = services.cadence.DueBoundary.hashedPhaseMillis(dedup, period)
+    val phase  = tools.DueBoundary.hashedPhaseMillis(dedup, period)
     val w      = 100L
     val stampedAt = Instant.ofEpochMilli(phase + w * period + period - 60000)       // 1 min before the boundary (window w)
     val now       = Instant.ofEpochMilli(phase + (w + 1) * period + 60000)          // 1 min after  the boundary (window w+1)

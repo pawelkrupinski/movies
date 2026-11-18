@@ -1,9 +1,8 @@
 package services.cinemas.common
 
-import models.CinemaMovie
+import models.{CinemaMovie, SeparateRuns}
 import services.UptimeRecorder
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
-import services.scrapes.SeparateRuns
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._

@@ -121,12 +121,12 @@ class MongoResolutionStore(
   // another's addresses a row that isn't there.
   override val normalizer: services.titles.TitleNormalizer,
   // Where a TTL index this store could not bring into line is recorded.
-  ttlMismatches: services.TtlIndexMismatches
+  ttlMismatches: tools.TtlIndexMismatches
 ) extends ResolutionStore with Logging {
 
 
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(collectionName).withWriteConcern(services.MongoWriteConcerns.Bookkeeping))
+    db.map(_.getCollection(collectionName).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   // Build the TTL index off-thread so construction never blocks worker boot on Mongo.
   coll.foreach { c =>
@@ -190,9 +190,9 @@ class MongoResolutionStore(
   }
 
   /** Bring the TTL index on `at` in line with `Ttl`, creating it when absent.
-   *  [[services.MongoTtlIndex.reconcile]] reads the existing expiry back first —
+   *  [[tools.MongoTtlIndex.reconcile]] reads the existing expiry back first —
    *  the same call `UptimeMonitor.ensureIndexes` makes, and its comment explains
    *  why the `collMod` this used to fire unconditionally never worked. */
   private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
-    services.MongoTtlIndex.reconcile(c, "at", ResolutionStore.Ttl.toSeconds, "ResolutionStore", ttlMismatches)
+    tools.MongoTtlIndex.reconcile(c, "at", ResolutionStore.Ttl.toSeconds, "ResolutionStore", ttlMismatches)
 }

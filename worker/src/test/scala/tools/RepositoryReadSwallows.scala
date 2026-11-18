@@ -15,7 +15,7 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/MongoCachingDetailFetch.scala", "cached",
       "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", java.util.Date.from(clock.instant())))).headOption(), 10.seconds))") ->
       "a CACHE read: a miss refetches from the source, the safe direction, and costs one fetch",
-    ("common/src/main/scala/services/MongoIndex.scala", "uniqueNow",
+    ("common/src/main/scala/tools/MongoIndex.scala", "uniqueNow",
       "Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout)).toOption.exists(_.exists { spec =>") ->
       "asked only after a conversion attempt failed, as 'did a sibling pod convert it meanwhile?': false retries the conversion, which is idempotent",
     ("common/src/main/scala/services/ServiceTags.scala", "load",

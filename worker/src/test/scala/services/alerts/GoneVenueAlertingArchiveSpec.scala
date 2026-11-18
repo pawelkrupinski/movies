@@ -1,9 +1,9 @@
 package services.alerts
 
-import models.{Cinema, KinoMuza, Multikino, UkRoster}
+import models.{Cinema, KinoMuza, Multikino, ScrapeAttempt, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.Instant
 import scala.collection.mutable.ListBuffer

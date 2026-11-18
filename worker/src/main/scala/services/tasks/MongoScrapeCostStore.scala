@@ -21,7 +21,7 @@ import scala.util.Try
  */
 final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with Logging {
   private val coll: MongoCollection[Document] =
-    db.getCollection[Document](MongoScrapeCostStore.Collection).withWriteConcern(services.MongoWriteConcerns.Bookkeeping)
+    db.getCollection[Document](MongoScrapeCostStore.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping)
 
   def record(dedupKey: String, cost: ScrapeCost): Unit =
     Try(Await.result(coll.updateOne(Filters.eq("_id", dedupKey),

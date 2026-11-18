@@ -4,14 +4,14 @@ import tools.SpecTimeouts
 
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import com.mongodb.event.{CommandListener, CommandStartedEvent, CommandSucceededEvent}
-import models.{Cinema, CinemaMovie, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Movie, ScrapeAttempt, Showtime}
 import org.bson.BsonBinaryWriter
 import org.bson.codecs.{BsonDocumentCodec, EncoderContext}
 import org.bson.io.BasicOutputBuffer
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.MongoScrapeArchiveRepository
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.Await

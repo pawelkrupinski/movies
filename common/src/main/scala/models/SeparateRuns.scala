@@ -1,4 +1,4 @@
-package services.scrapes
+package models
 
 import java.time.{Duration, Instant}
 

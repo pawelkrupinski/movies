@@ -1,5 +1,6 @@
-package services
+package tools
 
+import tools.MongoWriteErrors
 import com.mongodb.{MongoCommandException, MongoWriteException, ServerAddress, WriteError}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.bson.{BsonDocument, BsonInt32, BsonSerializationException, BsonString}
