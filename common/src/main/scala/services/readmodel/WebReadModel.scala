@@ -422,37 +422,43 @@ class WebReadModel(
       if (!_hydrated) coldReload() else TickRun.Completed
     } else
       reader.streamCheckpoint() match {
-        // No checkpoint is not "watch from now": the cursor opens asynchronously, once Mongo answers
-        // again — after this reopen, after the catch-up read a later tick makes — and a write landing
-        // between that read and the cursor reached neither (CI 2026-10-13). Nor is it a reopen
-        // attempt: it cost a `hello`, not a reload, so it leaves the backoff alone and the next
-        // tick takes one — the streams are back the tick after Mongo is.
-        case tools.ReadOutcome.Failed(cause) =>
-          checkpointFailureLog.admit().foreach { held =>
-            logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; " +
-              s"retrying every tick${if (held > 0) s" ($held more failed since the last line)" else ""}.")
-          }
-          if (!_hydrated) { coldReload(); () }
-          TickRun.Incomplete
-        case outcome =>
-          checkpointFailureLog = freshCheckpointFailureLog()
-          reopenAttempts += 1
-          ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
-          logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
-            s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
-          val checkpoint = outcome.answered
-          val run        = reloaded()
-          // Caught up only by a whole read AND a replay from before it; short of either, the next tick
-          // that finds the streams live reads again (`catchUpOwed`).
-          catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
-          if (!movieWatch.exists(_.live))
-            movieWatch = reopened(movieWatch, MongoReadModelRepository.MoviesCollection)(
-              reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint))
-          if (!screeningWatch.exists(_.live))
-            screeningWatch = reopened(screeningWatch, MongoReadModelRepository.ScreeningsCollection)(
-              reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint))
-          run
+        case tools.ReadOutcome.Failed(cause) => checkpointUnavailable(cause)
+        case outcome                         => reopenFrom(outcome.answered)
       }
+
+  /** No checkpoint is not "watch from now": the cursor opens asynchronously, once Mongo answers
+   *  again — after this reopen, after the catch-up read a later tick makes — and a write landing
+   *  between that read and the cursor reached neither (CI 2026-10-13). Nor is it a reopen
+   *  attempt: it cost a `hello`, not a reload, so it leaves the backoff alone and the next
+   *  tick takes one — the streams are back the tick after Mongo is. */
+  private def checkpointUnavailable(cause: tools.ReadFailure): TickRun = {
+    checkpointFailureLog.admit().foreach { held =>
+      logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; " +
+        s"retrying every tick${if (held > 0) s" ($held more failed since the last line)" else ""}.")
+    }
+    if (!_hydrated) { coldReload(); () }
+    TickRun.Incomplete
+  }
+
+  /** Read the corpus whole and reopen each dead stream from `checkpoint`, one attempt further along the backoff. */
+  private def reopenFrom(checkpoint: Option[StreamCheckpoint]): TickRun = {
+    checkpointFailureLog = freshCheckpointFailureLog()
+    reopenAttempts += 1
+    ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
+    logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
+      s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
+    val run = reloaded()
+    // Caught up only by a whole read AND a replay from before it; short of either, the next tick
+    // that finds the streams live reads again (`catchUpOwed`).
+    catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
+    if (!movieWatch.exists(_.live))
+      movieWatch = reopened(movieWatch, MongoReadModelRepository.MoviesCollection)(
+        reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint))
+    if (!screeningWatch.exists(_.live))
+      screeningWatch = reopened(screeningWatch, MongoReadModelRepository.ScreeningsCollection)(
+        reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint))
+    run
+  }
 
   /** A dead `watch` on `collection` closed and opened again, counted as a reopen. */
   private def reopened(watch: Option[StreamSubscription], collection: String)(open: => Option[StreamSubscription]): Option[StreamSubscription] = {

@@ -33,35 +33,45 @@ private[readmodel] object StreamingCityScreeningCodec extends Codec[CityScreenin
     w.writeEndDocument()
   }
   override def decode(r: BsonReader, c: DecoderContext): CityScreening = {
-    var id, filmId, city, cinema = ""
-    var filmUrl     = Option.empty[String]
-    var shows       = Seq.empty[Showtime]
-    var listingKeys = Seq.empty[String]
-    var urlPrefix: String = null
-    // A stored null reads as the macro reads it: `None` for the optional, null for anything else.
-    def nullable[A](read: => A): A = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); null.asInstanceOf[A] } else read
-    def array[A](element: => A): Seq[A] = {
-      val out = Vector.newBuilder[A]
-      r.readStartArray()
-      while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += element
-      r.readEndArray()
-      out.result()
-    }
+    val row = new CityScreeningFields(r, c)
     r.readStartDocument()
-    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
-      r.readName() match {
-        case "_id"         => id = nullable(r.readString())
-        case "filmId"      => filmId = nullable(r.readString())
-        case "city"        => city = nullable(r.readString())
-        case "cinema"      => cinema = nullable(r.readString())
-        case "filmUrl"     => filmUrl = Option(nullable(r.readString()))
-        case "showtimes"   => shows = nullable(array(ShowtimeCodec.read(r, c, urlPrefix)))
-        case ShowtimeCodec.RowPrefixField => urlPrefix = nullable(r.readString())
-        case "listingKeys" => listingKeys = nullable(array(r.readString()))
-        case _             => r.skipValue()
-      }
-    }
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) row.read(r.readName())
     r.readEndDocument()
+    row.result
+  }
+}
+
+/** One `screenings` row's fields as [[StreamingCityScreeningCodec]] reads them off `r`. */
+private final class CityScreeningFields(r: BsonReader, c: DecoderContext) {
+  private var id, filmId, city, cinema = ""
+  private var filmUrl     = Option.empty[String]
+  private var shows       = Seq.empty[Showtime]
+  private var listingKeys = Seq.empty[String]
+  private var urlPrefix: String = null
+
+  def read(name: String): Unit = name match {
+    case "_id"         => id = nullable(r.readString())
+    case "filmId"      => filmId = nullable(r.readString())
+    case "city"        => city = nullable(r.readString())
+    case "cinema"      => cinema = nullable(r.readString())
+    case "filmUrl"     => filmUrl = Option(nullable(r.readString()))
+    case "showtimes"   => shows = nullable(array(ShowtimeCodec.read(r, c, urlPrefix)))
+    case ShowtimeCodec.RowPrefixField => urlPrefix = nullable(r.readString())
+    case "listingKeys" => listingKeys = nullable(array(r.readString()))
+    case _             => r.skipValue()
+  }
+
+  def result: CityScreening =
     CityScreening(id, filmId, city, cinema, filmUrl, if (shows == null) null else ShowtimeCodec.completed(shows, urlPrefix), listingKeys)
+
+  // A stored null reads as the macro reads it: `None` for the optional, null for anything else.
+  private def nullable[A](read: => A): A = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); null.asInstanceOf[A] } else read
+
+  private def array[A](element: => A): Seq[A] = {
+    val out = Vector.newBuilder[A]
+    r.readStartArray()
+    while (r.readBsonType() != BsonType.END_OF_DOCUMENT) out += element
+    r.readEndArray()
+    out.result()
   }
 }

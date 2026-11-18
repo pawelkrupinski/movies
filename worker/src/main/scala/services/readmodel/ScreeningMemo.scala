@@ -94,16 +94,20 @@ private[readmodel] final class ScreeningMemo {
         val rows = byId.map { case (id, written) => local(card, id) -> written }
         wholeKeys += wholeCount(rows)
         byCard.update(card, rows)
-      case Some(before) =>
-        val now     = byId.iterator.map { case (id, written) => lookupKey(card, id) -> (id, written) }.toMap
-        val gone    = before.keysIterator.filterNot(now.contains).toSeq
-        val changed = now.iterator.collect { case (key, (id, written)) if !before.get(key).contains(written) => local(card, id) -> written }.toSeq
-        if (gone.nonEmpty || changed.nonEmpty) {
-          val rows = before -- gone ++ changed
-          wholeKeys += wholeCount(rows) - wholeCount(before)
-          byCard.update(card, rows)
-        }
+      case Some(before) => replaceChanged(card, before, byId)
     }
+
+  /** The card's rows `before` moved to `byId` where a row came, went or changed — and left as they are otherwise. */
+  private def replaceChanged(card: String, before: Map[String, WrittenScreening], byId: Map[String, WrittenScreening]): Unit = {
+    val now     = byId.iterator.map { case (id, written) => lookupKey(card, id) -> (id, written) }.toMap
+    val gone    = before.keysIterator.filterNot(now.contains).toSeq
+    val changed = now.iterator.collect { case (key, (id, written)) if !before.get(key).contains(written) => local(card, id) -> written }.toSeq
+    if (gone.nonEmpty || changed.nonEmpty) {
+      val rows = before -- gone ++ changed
+      wholeKeys += wholeCount(rows) - wholeCount(before)
+      byCard.update(card, rows)
+    }
+  }
 
   def forgetCard(card: String): Unit = byCard.remove(card).foreach(rows => wholeKeys -= wholeCount(rows))
 

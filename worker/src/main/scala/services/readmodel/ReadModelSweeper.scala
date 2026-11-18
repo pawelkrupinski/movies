@@ -366,35 +366,35 @@ class ReadModelSweeper(
     val liveness = movieRepository.changeStreamLiveness
     if (liveness.isWatching(ChangeStreamLiveness.Movies)) {
       val readFrom = liveness.now()
-      val floor    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
-      // Whether every event the cursors delivered before this read had been applied when it began.
-      // Until then a row inside the overlap may be one a LIVE cursor delivered and whose apply is
-      // still queued: projecting it is harmless, but it is no write the cursor missed.
-      val backlogApplied = liveness.appliedThrough(liveness.lastTicket)
-      var caughtUp = 0
-      var failed   = false
-      val past     = scala.collection.mutable.Set.empty[String]
-      def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
-        if (row.record.readyToProject)
-          continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
-            if (counted(projection.projectRow(row, ProjectTrigger.CatchUp))) caughtUp += 1
-          }.getOrElse { failed = true }
-      // Every row stamped past the floor: what the cursor has not been seen to deliver.
-      val complete = movieRepository.foreachRecordUpdatedSince(floor) { row => past += row.id.value; catchUp(row)(_ => true) }
-        // …and the overlap under it: a write stamped under the floor may have committed after the
-        // last catch-up's scan (see `MovieRepository.CatchUpOverlap`). A row there that the stream
-        // or the last catch-up already projected writes nothing again; only one whose projection
-        // was stale — the write that landed behind the scan — counts as caught up, and only while
-        // no delivered event still waits for its apply (see `backlogApplied`).
+      val pass = new CatchUpPass(kind, liveness.catchUpFloor(ChangeStreamLiveness.Movies), liveness.appliedThrough(liveness.lastTicket))
+      if (pass.run().isComplete && !pass.failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
+      metrics.recordCatchUp(pass.caughtUp)
+      if (pass.caughtUp > 0)
+        logger.warn(s"read-model $kind sweep: re-projected ${pass.caughtUp} row(s) written since the movies change stream last " +
+          s"delivered (${pass.floor}) — the cursor is open but not delivering them.")
+    }
+  }
+
+  /** One [[catchUpUndelivered]]'s reads past `floor`. `backlogApplied`: every event the cursors delivered before it
+   *  had been applied when it began — else an overlap row may be a LIVE cursor's, its apply still queued, no miss. */
+  private final class CatchUpPass(kind: String, val floor: java.time.Instant, backlogApplied: Boolean) {
+    var (caughtUp, failed) = (0, false)
+    private val past = scala.collection.mutable.Set.empty[String]
+
+    /** Every row stamped past the floor: what the cursor has not been seen to deliver. …and the overlap under it: a
+     *  write stamped under the floor may have committed after the last catch-up's scan (`MovieRepository.CatchUpOverlap`).
+     *  A row there the stream or the last catch-up already projected writes nothing again; only one whose projection was
+     *  stale counts as caught up, and only while no delivered event still waits for its apply (`backlogApplied`). */
+    def run(): tools.ScanOutcome =
+      movieRepository.foreachRecordUpdatedSince(floor) { row => past += row.id.value; catchUp(row)(_ => true) }
         .andThen(movieRepository.foreachRecordUpdatedSince(floor.minus(MovieRepository.CatchUpOverlap)) { row =>
           if (!past(row.id.value)) catchUp(row)(written => written > 0 && backlogApplied)
         })
-      if (complete.isComplete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
-      metrics.recordCatchUp(caughtUp)
-      if (caughtUp > 0)
-        logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +
-          s"delivered ($floor) — the cursor is open but not delivering them.")
-    }
+
+    private def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
+      if (row.record.readyToProject)
+        continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
+          if (counted(projection.projectRow(row, ProjectTrigger.CatchUp))) caughtUp += 1 }.getOrElse { failed = true }
   }
 
   /** Which of the rows a prune sweep healed, or its content check rewrote, were MISSES — the rest

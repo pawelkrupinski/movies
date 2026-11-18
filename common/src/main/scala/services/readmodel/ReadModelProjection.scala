@@ -331,44 +331,47 @@ object ReadModelProjection {
       .groupBy { case (_, slot) => titleKeyOf(slot, normalizer).getOrElse(anchorKey) }
       .view.mapValues(_.map(_._1).toSet).toSeq
       .sortBy(_._1)
-    // The film id for one display-title variant. The variant that carries the row's own
-    // title keeps the plain film id — so the card an unsplit film already has is unchanged
-    // the moment a second variant (a banner-prefixed listing) joins — and every other
-    // variant is the film id plus its sanitized variant title. `~` is not a character
-    // `sanitize` emits, nor one any read-model id composition uses (`|` joins city and
-    // cinema onto a screening id).
-    def cardId(title: String): String = {
-      val variant = normalizer.sanitize(title)
-      if (variant == anchorKey) filmId(stored) else s"${filmId(stored)}~$variant"
-    }
-    // Two groups can SHOW the same title, and so name the same card: the display drops a trailing
-    // year equal to the row's before it is keyed, so "Killer, The (1989)" (key killerthe) shows as
-    // "Killer, The" (key thekiller), the card "The Killer" names. They are one card: their slots
-    // merge into it, whatever order the groups come in. Two variants under one id made the
-    // projector write the card twice per pass, the second diffing against screenings the first
-    // had just replaced (Verify scrape recording run 3189: Germany's churn-free tick rewrote 26
-    // screenings of one film every tick, "key not found" on each).
     val shown = groups.map { case (key, sources) =>
       val scoped = stored.record.scopedToSources(sources)
       val title  = scoped.displayTitle(stored.title, normalizer)
-      key -> Variant(sources, scoped, title, cardId(title))
+      key -> Variant(sources, scoped, title, cardId(stored, anchorKey, title, normalizer))
     }
-    val cards = shown.map(_._2.filmId).distinct
-    val split =
-      if (cards.sizeIs <= 1) Nil
-      else cards.map { id =>
-        shown.collect { case (_, variant) if variant.filmId == id => variant } match {
-          case Seq(one) => one
-          case several  =>
-            val sources = several.map(_.sources).reduce(_ ++ _)
-            val scoped  = stored.record.scopedToSources(sources)
-            Variant(sources, scoped, scoped.displayTitle(stored.title, normalizer), id)
-        }
-      }
+    val split = splitCards(stored, shown.map(_._2), normalizer)
     val cardByGroup =
       if (split.isEmpty) groups.map(_._1 -> filmId(stored)).toMap
       else shown.map { case (key, variant) => key -> variant.filmId }.toMap
     new Partition(stored, normalizer, split, anchorKey, cardByGroup)
+  }
+
+  /** The film id for one display-title variant. The variant that carries the row's own
+   *  title keeps the plain film id — so the card an unsplit film already has is unchanged
+   *  the moment a second variant (a banner-prefixed listing) joins — and every other
+   *  variant is the film id plus its sanitized variant title. `~` is not a character
+   *  `sanitize` emits, nor one any read-model id composition uses (`|` joins city and
+   *  cinema onto a screening id). */
+  private def cardId(stored: StoredMovieRecord, anchorKey: String, title: String, normalizer: TitleNormalizer): String = {
+    val variant = normalizer.sanitize(title)
+    if (variant == anchorKey) filmId(stored) else s"${filmId(stored)}~$variant"
+  }
+
+  /** The row's cards when it shows two or more, else Nil. Two groups can SHOW the same title, and so name the same
+   *  card: the display drops a trailing year equal to the row's before it is keyed, so "Killer, The (1989)" (key
+   *  killerthe) shows as "Killer, The" (key thekiller), the card "The Killer" names. They are one card: their slots
+   *  merge into it, whatever order the groups come in. Two variants under one id made the projector write the card
+   *  twice per pass, the second diffing against screenings the first had just replaced (Verify scrape recording run
+   *  3189: Germany's churn-free tick rewrote 26 screenings of one film every tick, "key not found" on each). */
+  private def splitCards(stored: StoredMovieRecord, shown: Seq[Variant], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Variant] = {
+    val cards = shown.map(_.filmId).distinct
+    if (cards.sizeIs <= 1) Nil
+    else cards.map { id =>
+      shown.filter(_.filmId == id) match {
+        case Seq(one) => one
+        case several  =>
+          val sources = several.map(_.sources).reduce(_ ++ _)
+          val scoped  = stored.record.scopedToSources(sources)
+          Variant(sources, scoped, scoped.displayTitle(stored.title, normalizer), id)
+      }
+    }
   }
 
   /** The group key of a row's cinema slots that report no title of their own: the row's own title, sanitized. */
