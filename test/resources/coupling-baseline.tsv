@@ -43,8 +43,8 @@ module-edge	web->geodata	1
 module-edge	web->http	19
 module-edge	web->identity	46
 module-edge	worker->base	81
-module-edge	worker->common	1639
-module-edge	worker->http	195
+module-edge	worker->common	1678
+module-edge	worker->http	198
 module-edge	worker->identity	447
 module-edge	worker->scrapers	151
 ce	clients	3
@@ -228,7 +228,7 @@ fanout	services.identityadapters.VenueDetails	10
 fanout	services.identityadapters.VenuePageWait	10
 fanout	services.identityadapters.WikiFamily	12
 fanout	services.metrics.RetiredVenueCensus	10
-fanout	services.movies.CaffeineMovieCache	45
+fanout	services.movies.CaffeineMovieCache	38
 fanout	services.movies.CinemaSlotBuilder	14
 fanout	services.movies.CinemaSlotReadings	13
 fanout	services.movies.CorpusHydrate	22
@@ -247,6 +247,7 @@ fanout	services.movies.MovieChangeStream	28
 fanout	services.movies.MovieCodecs	17
 fanout	services.movies.MovieRepository	16
 fanout	services.movies.MovieSideStitch	17
+fanout	services.movies.ResidentCorpus	13
 fanout	services.movies.ScrapeListing	15
 fanout	services.movies.ScreeningsSplit	12
 fanout	services.movies.SideCollectionWatch	11

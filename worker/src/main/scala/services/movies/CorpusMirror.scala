@@ -153,6 +153,10 @@ final class CorpusMirror(
 }
 
 object CorpusMirror {
+  /** The mirror of a lone cache — specs, tools, and any cache built without its root's: no boot-hydrate retry, the
+   *  compiled-in cadence, ticks unrecorded, unmanaged threads, `sleep` between boot-hydrate attempts. */
+  def standalone(sleep: FiniteDuration => Unit): CorpusMirror = new CorpusMirror(threadPools = ThreadPools.Unmanaged, sleep = sleep)
+
   /** How often a cache with no completed corpus read reads again — tight, because the state it
    *  recovers from is a cache missing every quiescent row, not drift. */
   val ColdRetryInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.FiniteDuration(30, TimeUnit.SECONDS)

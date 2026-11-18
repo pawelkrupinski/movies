@@ -3,9 +3,7 @@ package services.movies
 import services.titles.TitleNormalizer
 
 
-import java.util.Locale
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{MovieRecord, Source, SourceData, ShowtimesDigest}
 import play.api.Logging
 import tools.Stoppable
@@ -16,18 +14,18 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Caffeine-backed `MovieCache` with write-through to `MovieRepository`.
  *
- * One cache, `positive`: every stored film, never expiring in-process (films
+ * One resident corpus ([[ResidentCorpus]]): every stored film, never expiring in-process (films
  * change slowly; restarts re-warm via `rehydrate`).
  *
  * Pure reads (`get`, `snapshot`, `entries`) have no side
  * effects — callers that want to *trigger* a lookup on miss go through
  * `MovieService` (which owns the worker pool + dedup).
  *
- * What this class OWNS is the resident corpus and the way into it: the Caffeine
- * map and its [[CorpusIndex]], the write funnels (`put`'s tmdbId / imdbId identity
- * gate, `putIfPresent`), the per-title locks and the cache-or-store reads.
- * Hydration and the change-stream mirror are its [[CorpusMirror]]'s, which
- * reaches the corpus only through those funnels.
+ * What this class OWNS is the way into the resident corpus: the write funnels (`put`'s
+ * key gate, `putIfPresent`, the identity projection's writes), the per-title locks and the
+ * cache-or-store reads. The Caffeine map, its [[CorpusIndex]] and the store / evict funnels
+ * are its [[ResidentCorpus]]'s; hydration and the change-stream mirror are its
+ * [[CorpusMirror]]'s, which reaches the corpus only through those funnels.
  */
 class CaffeineMovieCache(
   repository: MovieRepository,
@@ -54,67 +52,21 @@ class CaffeineMovieCache(
   // How the cache is kept in step with its store — the boot hydrate, the rehydrates and the
   // change-stream mirror ([[CorpusMirror]]). The worker's root builds it with its retry budget,
   // cadence, metrics and boot readers; specs and a lone cache take the defaults.
-  mirror: CorpusMirror = new CorpusMirror(threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
+  mirror: CorpusMirror = CorpusMirror.standalone(tools.Sleep.Blocking)
 ) extends MovieCache with Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
-  // `recordStats` so the resident corpus can report its hit ratio — a read served
-  // here is a Mongo read not made. Unbounded, so its eviction count stays 0 by
-  // construction rather than by luck.
-  private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().recordStats().build()
-  // How a row is shaped to be held resident: its slots stripped and pooled (see [[ResidentRecords]]).
-  // Above the boot hydrate below, which shapes every row it reads.
-  private val residentShape = new ResidentRecords(() => repository.hasScreenings, stringPool)
+  // The resident corpus — the Caffeine map, its index and the funnels that are the only ways into it ([[ResidentCorpus]]).
+  private val resident = new ResidentCorpus(repository, normalizer, clock, stringPool)
+  import resident.{announce, changed, evict, store, touch}
+  private val corpusIndex   = resident.index
+  private val residentShape = resident.shape
 
   // Writes deferred this process's lifetime because the store could not say whether a document
   // holds their key. Read by the specs: a non-zero value means scrapes are landing against an
   // unreadable corpus, which is the state that used to silently prune boards.
   private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
-
-  /** The film id behind each resident key, and back ([[CorpusIndex]]): what every write asks
-   *  before it lands and every change-stream apply asks to find a film's key, without a store
-   *  round-trip.
-   *
-   *  It shadows `positive`, so it is only as correct as the funnels below: EVERY write
-   *  to `positive` goes through `store` / `evict` / the `computeResident` compute, and
-   *  nothing else may call `positive.put` or `positive.invalidate` directly. The same
-   *  funnels `announce` each change to the resident listeners (`onResident`); a rollback
-   *  that puts a row back by hand announces it itself. The cache
-   *  is unbounded, so there is no eviction path to miss. */
-  private[movies] val corpusIndex: CorpusIndex =
-    new CorpusIndex
-
-  /** Write a row and keep the index with it. The ONLY way into `positive`. */
-  private def store(key: CacheKey, record: MovieRecord, id: FilmId): Unit = {
-    positive.put(key, record)
-    corpusIndex.put(key, id)
-    announce(key)
-  }
-
-  private val residentListeners = new java.util.concurrent.CopyOnWriteArrayList[(CacheKey, Option[StoredMovieRecord]) => Unit]()
-
-  def onResident(listener: (CacheKey, Option[StoredMovieRecord]) => Unit): Unit = {
-    residentListeners.add(listener)
-    positive.asMap().keySet().forEach(key => announce(key, java.util.List.of(listener)))
-  }
-
-  /** Tell the resident listeners what `key` holds now. Read under the key's own lock, so two writes to one key cannot
-   *  reach a listener in the opposite order; `positive` itself is left as it is. Every change to `positive` calls it
-   *  once the change is made — `store` and `evict`, and the writes that cannot go through them. */
-  private def announce(key: CacheKey, to: java.util.List[(CacheKey, Option[StoredMovieRecord]) => Unit] = residentListeners): Unit =
-    if (!to.isEmpty) { positive.asMap().compute(key, (_, held) => {
-      val film = Option(held).map(storedAt(key, _))
-      // A listener that throws must not fail the write it is told of: the row is already held.
-      to.forEach(listener => try listener(key, film) catch {
-        case scala.util.control.NonFatal(e) => logger.warn(s"MovieCache: a resident listener failed on '${key.cleanTitle}': ${e.getMessage}")
-      })
-      held
-    }); () }
-
-  /** The film `key` holds as `record`, under its indexed id. */
-  private def storedAt(key: CacheKey, record: MovieRecord): StoredMovieRecord =
-    StoredMovieRecord(key.cleanTitle, key.year, record, corpusIndex.idOf(key).getOrElse(FilmId.legacy(key)), Some(StoredMovieRecord.keyFor(key)))
 
   /** The permanent id behind `key`: the one the index holds, else the stored row's, else
    *  a fresh one for a row this cache is about to create. Ids are never re-derived from
@@ -129,12 +81,6 @@ class CaffeineMovieCache(
       case tools.ReadOutcome.Failed(_) => None
     })
 
-  /** The id of a RESIDENT row. Every write into `positive` goes through `store`, which
-   *  indexes the id, so a resident row without one is a broken funnel — say so, rather
-   *  than mint an id for a row that has a document. */
-  private def residentIdOf(key: CacheKey): FilmId =
-    corpusIndex.idOf(key).getOrElse(throw new IllegalStateException(s"resident row '${key.cleanTitle}' (${key.year.getOrElse("—")}) has no film id"))
-
   private def deferUnreadableWrite(key: CacheKey): WriteOutcome = {
     logger.warn(s"Deferring write of '${key.cleanTitle}' (${key.year.getOrElse("—")}): the store could not say " +
       "whether a document already holds the key, and writing would risk a second one.")
@@ -148,26 +94,10 @@ class CaffeineMovieCache(
    *  it exactly as a whole-film apply does. */
   private[services] def indexSnapshot: Map[CacheKey, FilmId] = corpusIndex.snapshot
 
-  /** Drop a row and keep the index with it. The ONLY way out of `positive`. */
-  private def evict(key: CacheKey): Unit = {
-    positive.invalidate(key)
-    corpusIndex.remove(key)
-    announce(key)
-  }
+  def onResident(listener: (CacheKey, Option[StoredMovieRecord]) => Unit): Unit = resident.onResident(listener)
 
-  /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
-   *  the hydrated corpus, not a working set — so it reports entries and no maximum:
-   *  a maximum of zero would render as "full" on a ratio panel. What it is worth
-   *  watching for is the SHAPE, a count that tracks the corpus rather than climbing
-   *  past it. */
-  def occupancy: tools.CacheOccupancy =
-    tools.CacheOccupancy.of(positive, weighted = false)
-
-  // Read from the injected clock, like every other stamp this cache takes — strictly monotonic, so a
-  // put in the same instant as the last one still moves it.
-  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](clock.instant())
-  def lastModified: java.time.Instant = _lastModified.get()
-  private def touch(): Unit = { _lastModified.updateAndGet(tools.MonotonicStamp.after(_, clock)); () }
+  def occupancy: tools.CacheOccupancy = resident.occupancy
+  def lastModified: java.time.Instant = resident.lastModified
 
   // Per-normalised-title locks for `recordCinemaScrape`. Two cinemas
   // first-scraping the same brand-new film concurrently used to each see an
@@ -186,25 +116,7 @@ class CaffeineMovieCache(
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A =
     lockFor(cleanTitle).synchronized(body)
 
-  // Above the mirror below, which tells these listeners of another writer's changes.
-  private val changeListeners = new java.util.concurrent.CopyOnWriteArrayList[FilmId => Unit]()
-  def onChanged(listener: FilmId => Unit): Unit = { changeListeners.add(listener); () }
-  private def changed(id: FilmId): Unit = changeListeners.forEach(_(id))
-
-  /** The resident corpus as the [[CorpusMirror]] reaches it — through the funnels above. */
-  private object resident extends MirroredCorpus {
-    def repository: MovieRepository = CaffeineMovieCache.this.repository
-    def normalizer: TitleNormalizer = CaffeineMovieCache.this.normalizer
-    def shape: ResidentRecords = residentShape
-    def index: CorpusIndex = corpusIndex
-    def held(key: CacheKey): Option[MovieRecord] = get(key)
-    def heldKeys: Seq[CacheKey] = { import scala.jdk.CollectionConverters._; positive.asMap().keySet().asScala.toSeq }
-    def heldCount: Long = positive.estimatedSize()
-    def store(key: CacheKey, record: MovieRecord, id: FilmId): Unit = CaffeineMovieCache.this.store(key, record, id)
-    def evict(key: CacheKey): Unit = CaffeineMovieCache.this.evict(key)
-    def touch(): Unit = CaffeineMovieCache.this.touch()
-    def changed(id: FilmId): Unit = CaffeineMovieCache.this.changed(id)
-  }
+  def onChanged(listener: FilmId => Unit): Unit = resident.onChanged(listener)
 
   // Hydrate from Mongo on construction, here — after the funnels and the index it fills, before
   // the HTTP request that could read the cache (see `CorpusMirror.Attached.bootHydrate`).
@@ -226,8 +138,7 @@ class CaffeineMovieCache(
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(title, year, normalizer)
 
-  private[services] def get(key: CacheKey): Option[MovieRecord] =
-    Option(positive.getIfPresent(key))
+  private[services] def get(key: CacheKey): Option[MovieRecord] = resident.held(key)
 
   /** Persist a row at `key`, under the film id the key already has (the index's, else the stored
    *  document's, else a fresh one). Deferred when the store cannot say whether a document holds
@@ -251,7 +162,7 @@ class CaffeineMovieCache(
     case None => repository.writeFence.writing(id) {
       val clean  = ResidentRecords.withoutZeroRatings(e)
       val cached = residentShape.of(clean)
-      val prior  = Option(positive.getIfPresent(key))
+      val prior  = resident.held(key)
       store(key, cached, id)
       // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
       // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
@@ -268,8 +179,8 @@ class CaffeineMovieCache(
         // concurrent writer or an eviction may have replaced it since. A failure itself is
         // logged and counted by the repository.
         prior match {
-          case Some(previous) => restore(key, cached, previous, id)
-          case None           => if (positive.asMap().remove(key, cached)) corpusIndex.remove(key)
+          case Some(previous) => resident.restore(key, cached, previous, id)
+          case None           => resident.unstore(key, cached)
         }
         announce(key)
       }
@@ -303,7 +214,7 @@ class CaffeineMovieCache(
     val patched = repository.hasScreenings && repository.hasSlots && before.tmdbId == after.tmdbId && withTitleLock(key.cleanTitle) {
       corpusIndex.idOf(key).contains(id) && repository.writeFence.writing(id) {
         // Resident as the projection read it: what the store holds, so the patch from it is the whole change.
-        (positive.getIfPresent(key) eq before) && {
+        resident.held(key).exists(_ eq before) && {
           val clean = ResidentRecords.withoutZeroRatings(after)
           // Diffed only `only` when given: the sources that may differ, every other the same slot on both sides.
           repository.updateIfPresent(id, key, only.fold(before)(LeanRecords.only(before, _)), only.fold(clean)(LeanRecords.only(clean, _))) &&
@@ -421,7 +332,7 @@ class CaffeineMovieCache(
       }
       updated.fold(false) { updated =>
         val prior = before.get()
-        (updated eq prior) || persist(residentIdOf(key), prior, updated, work.get())
+        (updated eq prior) || persist(resident.residentIdOf(key), prior, updated, work.get())
       }
     } }
 
@@ -470,15 +381,8 @@ class CaffeineMovieCache(
 
   /** Caffeine's `computeIfPresent` on `key`: the value `f` produced, or `None` — metered —
    *  when the key had left the cache by the time it computed. */
-  private def computeResident(key: CacheKey)(f: MovieRecord => MovieRecord): Option[MovieRecord] = {
-    // Whether `f` handed back another row than the one held: a write that changes nothing is not announced, since the
-    // landing hands every listing's unchanged row back, once per venue of a film shown at thousands.
-    var moved = false
-    val computed = Option(positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = { val next = f(current); moved = next ne current; next }
-    }))
-    if (moved) announce(key)
-    computed.orElse {
+  private def computeResident(key: CacheKey)(f: MovieRecord => MovieRecord): Option[MovieRecord] =
+    resident.compute(key)(f).orElse {
       // The Caffeine-level race the since-deleted `ScrapeLanding`'s comment on `landed` named: a
       // concurrent `rekey` of some OTHER title invalidated this key between the
       // read and this compute. Recorded here, not at each caller, because this is
@@ -487,7 +391,6 @@ class CaffeineMovieCache(
       listingIntakeMetrics.recordWriteSkipped(ListingIntakeMetrics.SkipReason.CacheMissRace)
       None
     }
-  }
 
   /** The repository half of [[putIfPresent]] / [[putSlotsIfPresent]]: write the `before` →
    *  `after` diff and announce the film changed, or on failure put the resident `prior` back in
@@ -515,19 +418,14 @@ class CaffeineMovieCache(
       // reported as success, the failure healed in memory and never in Mongo. `replace`
       // only if it is still ours — under the title lock nothing else wrote this key,
       // but an eviction may have.
-      if (restore(key, updated, prior, id)) announce(key)
+      if (resident.restore(key, updated, prior, id)) announce(key)
     }
     touch()
     if (wrote) changed(id)
     wrote
   }
 
-  /** Put `previous` back at `key` in place of `written`, if `written` is still what is held there
-   *  (a concurrent writer or an eviction may have replaced it since): whether it did. */
-  private def restore(key: CacheKey, written: MovieRecord, previous: MovieRecord, id: FilmId): Boolean =
-    positive.asMap().replace(key, written, previous) && { corpusIndex.put(key, id); true }
-
-  /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear
+  /** Drop a row from the resident corpus + Mongo — used by the TMDB stage to clear
    *  a stale row before re-keying it under a corrected (title, year). */
   private[services] def invalidate(key: CacheKey): Unit = {
     val id = corpusIndex.idOf(key)
@@ -536,20 +434,10 @@ class CaffeineMovieCache(
     touch()
   }
 
-  def snapshot(): Seq[StoredMovieRecord] = {
-    import scala.jdk.CollectionConverters._
-    positive.asMap().asScala.iterator
-      .map { case (k, e) => storedAt(k, e) }
-      .toSeq
-      .sortBy(_.title.toLowerCase(Locale.ROOT))
-  }
+  def snapshot(): Seq[StoredMovieRecord] = resident.snapshot()
 
-  /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. Copy so a
-   *  concurrent `put` mid-iteration doesn't surprise the caller. */
-  private[services] def entries: Seq[(CacheKey, MovieRecord)] = {
-    import scala.jdk.CollectionConverters._
-    positive.asMap().asScala.toSeq
-  }
+  /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. */
+  private[services] def entries: Seq[(CacheKey, MovieRecord)] = resident.entries
 
   /** Put every stored row and evict the keys gone from the store; how many rows it put (see
    *  [[CorpusMirror]]). An incomplete read changes nothing. */
