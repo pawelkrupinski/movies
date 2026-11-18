@@ -308,7 +308,7 @@ class MongoScreeningsRepository(
    *  `StackOverflowError` on a driver I/O thread once the collection grew (Sentry KINOWO-19).
    *  An INCOMPLETE scan (a page still failing after retries) THROWS: it answered an empty map,
    *  which reads as "no film has a screening" — the corpus-wide version of the empty answer
-   *  `MovieRepository.scanStitched` refuses page by page. */
+   *  `StitchedCorpusScan.scanStitched` refuses page by page. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
     KeysetScan.collect[StoredScreeningsDto, StoredScreeningsDto](
       label          = "ScreeningsRepository keyset batch",

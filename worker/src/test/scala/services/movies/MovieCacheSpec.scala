@@ -157,7 +157,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "not evict a film an INCOMPLETE corpus read left out" in {
     // A page of the corpus scan whose read failed is skipped, not handed on stripped
-    // (`MongoMovieRepository.scanStitched`), so an incomplete read is short by whole films.
+    // (`StitchedCorpusScan.scanStitched`), so an incomplete read is short by whole films.
     // Missing is not deleted: evicting them would drop live films from the cache.
     final class HidingRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
       var hiding = false

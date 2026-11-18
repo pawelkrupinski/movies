@@ -1800,7 +1800,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // That single cursor recursed the async Mongo driver's read-completion chain
   // (`AsyncSupplier.finish` → `AsyncCompletionHandler` → `SingleResultCallback`) into a
   // StackOverflowError once the collection grew (Sentry KINOWO-19) — and because
-  // `MovieRepository.scanStitched` calls `screenings.findAll()` FIRST, that crash killed
+  // `StitchedCorpusScan.scanStitched` calls `screenings.findAll()` FIRST, that crash killed
   // the worker's cold-cache rehydrate (findAll reported empty, the pages served no films).
   // The StackOverflow only reproduces against the real driver under a large buffered read,
   // so this guards the fix MECHANISM: with batchSize 2 forcing several page boundaries,

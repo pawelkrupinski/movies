@@ -1180,6 +1180,7 @@ services.identity.ListingRetention	services.identity.ScreeningDays
 services.identity.ListingRetention	services.identity.TitleRelation
 services.identity.ListingRetention	services.identity.VenueNames
 services.identity.ListingRetention	services.titles.TitleNormalizer
+services.identity.ListingShape	services.identity.BilledBeside
 services.identity.ListingShape	services.identity.DetailFacts
 services.identity.ListingShape	services.identity.Evidence
 services.identity.ListingShape	services.identity.FactRelations
@@ -1197,7 +1198,6 @@ services.identity.ListingShape	services.titles.TitleWords
 services.identity.ListingShape	services.titles.billing.BillingParse
 services.identity.ListingShape	services.titles.billing.BillingPieces
 services.identity.ListingShape	services.titles.billing.Credits
-services.identity.ListingShape	services.titles.billing.DecorationWords
 services.identity.LiveCorpus	models.ListingKey
 services.identity.LiveCorpus	services.identity.Answer
 services.identity.LiveCorpus	services.identity.AnswersChanged
@@ -2769,7 +2769,6 @@ services.movies.MixedFilmDetector	services.titles.YearWindow
 services.movies.MixedFilmDetector	tools.LatinScript
 services.movies.MongoMovieRepository	models.Cinema
 services.movies.MongoMovieRepository	models.MovieRecord
-services.movies.MongoMovieRepository	models.Showtime
 services.movies.MongoMovieRepository	models.Source
 services.movies.MongoMovieRepository	models.SourceData
 services.movies.MongoMovieRepository	models.TmdbAttempt
@@ -2802,10 +2801,10 @@ services.movies.MongoMovieRepository	services.movies.ScreeningsMetrics
 services.movies.MongoMovieRepository	services.movies.ScreeningsRepository
 services.movies.MongoMovieRepository	services.movies.ScreeningsSplit
 services.movies.MongoMovieRepository	services.movies.ScreeningsWrites
-services.movies.MongoMovieRepository	services.movies.ShowtimePool
 services.movies.MongoMovieRepository	services.movies.SideCollectionChangeMetrics
 services.movies.MongoMovieRepository	services.movies.SlotKeyedRows
 services.movies.MongoMovieRepository	services.movies.SlotsRepository
+services.movies.MongoMovieRepository	services.movies.StitchedCorpusScan
 services.movies.MongoMovieRepository	services.movies.StoredMovieDto
 services.movies.MongoMovieRepository	services.movies.StoredMovieRecord
 services.movies.MongoMovieRepository	services.movies.StrandedSideRows
@@ -3023,6 +3022,17 @@ services.movies.SlotKeyed	tools.MongoReplies
 services.movies.SlotKeyed	tools.ReadFailure
 services.movies.SlotKeyed	tools.ReadOutcome
 services.movies.SlotKeyed	tools.ScanOutcome
+services.movies.StitchedCorpusScan	models.Showtime
+services.movies.StitchedCorpusScan	models.SourceData
+services.movies.StitchedCorpusScan	services.movies.LatestTitleYear
+services.movies.StitchedCorpusScan	services.movies.MovieSideStitch
+services.movies.StitchedCorpusScan	services.movies.MoviesKeysetPages
+services.movies.StitchedCorpusScan	services.movies.ShowtimePool
+services.movies.StitchedCorpusScan	services.movies.StoredMovieDto
+services.movies.StitchedCorpusScan	services.movies.StoredMovieRecord
+services.movies.StitchedCorpusScan	services.titles.TitleNormalizer
+services.movies.StitchedCorpusScan	tools.ScanOutcome
+services.movies.StitchedCorpusScan	tools.Stopwatch
 services.movies.UnscreenedCleanup	models.Cinema
 services.movies.UnscreenedCleanup	models.MovieRecord
 services.movies.UnscreenedCleanup	models.Showtime

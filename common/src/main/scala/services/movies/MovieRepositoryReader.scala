@@ -124,7 +124,7 @@ trait MovieRepositoryReader {
    *  immutable `_id` index).
    *
    *  Only the `movies` pages are bounded. Under the split, the bulk of what used to be a
-   *  `movies` row now lives in the side collections, and `scanStitched` loads BOTH whole
+   *  `movies` row now lives in the side collections, and `StitchedCorpusScan.scanStitched` loads BOTH whole
    *  (`screenings` + `movie_slots`) before it starts paging — measured on prod PL
    *  2026-07-27, `movies` fell to 0.4 MB while the two side collections hold 7.5 MB each.
    *  So this bounds the cursor, not the scan's peak heap; the earlier "never holds the

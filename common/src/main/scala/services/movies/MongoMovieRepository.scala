@@ -4,7 +4,7 @@ import services.titles.TitleNormalizer
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.UpdateOptions
-import models.{MovieRecord, Showtime, SourceData}
+import models.{MovieRecord, SourceData}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.model.{Aggregates, Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
@@ -134,6 +134,8 @@ class MongoMovieRepository(
   // How every corpus scan pages the `movies` collection by `_id`.
   private val pages = new MoviesKeysetPages(findAllBatchSize, foreachRecordBatchAttempts, foreachRecordBatchBackoff, decodeFailures)
   // How a whole record is written over `movies` and its side collections.
+  // How every corpus scan reads `movies` a page at a time and stitches each page whole.
+  private val scan = new StitchedCorpusScan(pages, stitch, normalizer, stopwatch, logger)
   private val upserts = new WholeRecordUpsert(screenings, slots, slotsForStorage, stamps, writeMetrics, logger)
 
   /** The film's slots at `cinemas`, read from those venues alone — see [[MovieSideStitch.readVenues]]. */
@@ -164,7 +166,7 @@ class MongoMovieRepository(
   def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
   /** Boot-time + periodic full reload of every persisted row. Pages the cursor by
-   *  `_id` (keyset, via [[scanByKeyset]]) and collects the batches, rather than pulling
+   *  `_id` (keyset, via [[StitchedCorpusScan.scanByKeyset]]) and collects the batches, rather than pulling
    *  the whole corpus through ONE unbounded `find().toFuture()`.
    *
    *  Why paged, not one cursor: a single unbounded find over the whole (~13 MB,
@@ -179,7 +181,7 @@ class MongoMovieRepository(
    *  is still the full corpus on the heap (findAll's contract), just read in
    *  `findAllBatchSize`-row bites.
    *
-   *  `scanByKeyset` sorts each page by the unique, immutable `_id` index, so — exactly
+   *  `StitchedCorpusScan.scanByKeyset` sorts each page by the unique, immutable `_id` index, so — exactly
    *  as the old single sorted cursor did — the scan returns each document once (no
    *  duplicate at a page boundary, no skipped row) even under concurrent writes.
    *
@@ -194,104 +196,15 @@ class MongoMovieRepository(
   override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = coll match {
     case Some(_) =>
       val buf = Vector.newBuilder[StoredMovieRecord]
-      scanStitched(batch => buf ++= batch).collected(buf.result())
+      scan.scanStitched(coll, batch => buf ++= batch).collected(buf.result())
     case None => tools.ReadOutcome.Answered(Seq.empty)
   }
 
   /** The stitched scan's own pages, as each is read — see the trait. */
   override def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = coll match {
-    case Some(_) => scanStitched(onPage)
+    case Some(_) => scan.scanStitched(coll, onPage)
     case None    => onPage(Seq.empty); tools.ScanOutcome.complete
   }
-
-  /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
-   *  `screenings` — shared by [[findAll]] and [[foreachRecord]] so the two can never
-   *  disagree on a film's showtimes (the divergence that dropped 129 films: a reader
-   *  that forgot to stitch made the reconcile prune live `web_screenings`). Reads each
-   *  page's side rows, then hands the page, stitched, to `onBatch`.
-   *
-   *  Projection-safety: a page whose side read FAILED is never handed on — its rows,
-   *  stitched from the empty answer, would read as films with no cinemas or no showtimes,
-   *  and a projecting caller writes exactly that. The page is skipped and the scan reports
-   *  "incomplete", exactly like a failed movies batch, so a pruning caller skips
-   *  its destructive step too.
-   *
-   *  Side rows are fetched PER PAGE, for exactly the films that page holds, rather than preloaded
-   *  whole. Both are one indexed `filmId $in [...]` query. `foreachRecord` promises its callers it
-   *  never holds more than a page, and that stopped being true when the bulk of a row moved into the
-   *  side collections: this preloaded both entire collections first (7.5 MB each on prod PL, more on
-   *  UK) and held them for the whole scan, on a worker with a 320 MB heap and an OOM history. Now the
-   *  peak is one page's films, whatever the corpus grows to. Completeness still gates the whole scan,
-   *  not the page: a caller that PRUNES on a row's absence must not act on a partial view, so one
-   *  failed side read fails the scan exactly as a failed `movies` batch does. */
-  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true,
-                           filter: Bson = Filters.empty()): tools.ScanOutcome = {
-    var sideReadsComplete = true
-    val timing = new ScanTiming
-    var films  = 0
-    // One pool for the scan: equal instants, rooms and formats across its pages are one object ([[ShowtimePool]]).
-    val shared = new ShowtimePool
-    val moviesComplete = scanByKeyset(filter) { batch =>
-      val ids = batch.map(_._id).toSet
-      val (pageScr, pageSlots) = readPageSides(ids, withShowtimes, timing)
-      // A page whose side read failed is NOT handed on, stitched from the empty answer: its
-      // films would arrive with no cinemas or no showtimes, and "incomplete" only stops a
-      // prune — `ReadModelSweeper.reconcile` and the sweep's catch-up PROJECT every row they
-      // are given, so each film on the page lost every served showtime (the per-row
-      // `MovieSideStitch.decode` declines for the same reason). The page is skipped and the scan
-      // reported incomplete; the rows it could stitch are still delivered.
-      (pageScr, pageSlots) match {
-        case (Some(showtimes), Some(slotRows)) =>
-          films += batch.size
-          onBatch(timing.stitching(batch.map(dto => stitch.row(StoredMovieDto.toDomain(dto, normalizer),
-            showtimes.getOrElse(dto._id, Map.empty).map { case (slot, read) => slot -> shared.showtimes(read) },
-            slotRows.getOrElse(dto._id, Map.empty)))))
-        case _ =>
-          sideReadsComplete = false
-          logger.warn(s"MovieRepository.scanStitched: a side-collection read failed for a page of " +
-            s"${ids.size} film(s) (screenings ok=${pageScr.isDefined}, slots ok=${pageSlots.isDefined}) — skipping the page and treating the " +
-            "scan as incomplete, so no caller acts on films whose cinemas or showtimes it could not see.")
-      }
-    }
-    timing.report(films, wholeCorpus = filter.toBsonDocument.isEmpty)
-    moviesComplete.andThen(tools.ScanOutcome.of(sideReadsComplete, "a side-collection read failed for a page of films"))
-  }
-
-  /** One page's side rows — its showtimes (empty when `withShowtimes` is off) and its slots — each
-   *  None when its read failed. `withShowtimes = false` skips the showtimes read entirely rather
-   *  than discarding its result: the caller has said it never looks at a showtime, and this is the
-   *  expensive half. The two reads are independent (each is `filmId $in` the page's ids), so they
-   *  run at once: in sequence they were most of a US boot's 16–21 s cache hydrate, one round-trip
-   *  after the other for every page. */
-  private def readPageSides(ids: Set[String], withShowtimes: Boolean, timing: ScanTiming)
-      : (Option[Map[String, Map[String, Seq[Showtime]]]], Option[Map[String, Map[String, SourceData]]]) = {
-    val slotsRead = scala.concurrent.Future(scala.concurrent.blocking(timing.slotReads(stitch.slotRowsOf(ids))))(using scala.concurrent.ExecutionContext.global)
-    val pageScr   = if (!withShowtimes) Some(Map.empty[String, Map[String, Seq[Showtime]]]) else timing.screeningReads(stitch.screeningRowsOf(ids))
-    (pageScr, Await.result(slotsRead, Duration.Inf))
-  }
-
-  /** Where a scan's time goes, logged once per scan (the boot hydrate, the rare backstop): the
-   *  restart's critical path runs through here, and a guess at its bottleneck already shipped once
-   *  without moving it. */
-  private final class ScanTiming {
-    private val wall   = stopwatch.start()
-    val slotReads      = stopwatch.total()
-    val screeningReads = stopwatch.total()
-    val stitching      = stopwatch.total()
-
-    /** A whole-corpus scan (the hydrate, the backstop rehydrate) at info; a catch-up's
-     *  updated-since slice, which runs on every read-model sweep, only at debug. */
-    def report(films: Int, wholeCorpus: Boolean): Unit = {
-      val line = s"MovieRepository.scanStitched: $films film(s) in ${wall.millis}ms — slot reads " +
-        s"${slotReads.elapsed.toMillis}ms, screening reads ${screeningReads.elapsed.toMillis}ms (alongside), " +
-        s"stitch ${stitching.elapsed.toMillis}ms over ${stitching.count} page(s)."
-      if (wholeCorpus) logger.info(line) else logger.debug(line)
-    }
-  }
-
-  /** The `movies` documents matching `filter`, keyset-paged by `_id` ([[MoviesKeysetPages]]). */
-  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome =
-    pages.documents(coll, filter)(onBatch)
 
   /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
    *  fetches one row's per-source breakdown when its table row is expanded.
@@ -367,9 +280,9 @@ class MongoMovieRepository(
   }
 
   /** Stream every persisted record through `f`, one keyset page at a time (via
-   *  [[scanByKeyset]]), so the caller (the read-model reconcile) never holds more than
+   *  [[StitchedCorpusScan.scanByKeyset]]), so the caller (the read-model reconcile) never holds more than
    *  one batch — `findAllBatchSize` rows — of `movies` at once. The side collections
-   *  `scanStitched` preloads are NOT bounded that way; see the trait doc. See
+   *  `StitchedCorpusScan.scanStitched` preloads are NOT bounded that way; see the trait doc. See
    *  [[MoviesKeysetPages]] for the exactly-once + bounded guarantees and the per-batch retry
    *  (the 2026-06-29 served-films flap, where a batch blew its 60s budget under worker
    *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
@@ -377,28 +290,28 @@ class MongoMovieRepository(
    *  (`ReadModelSweeper.reconcile`) doesn't treat the rows-so-far as the full corpus
    *  and delete the live rows it never reached.
    *
-   *  Stitches split-read showtimes back in via the SAME [[scanStitched]] path as
+   *  Stitches split-read showtimes back in via the SAME [[StitchedCorpusScan.scanStitched]] path as
    *  [[findAll]] — its callers need them: `ReadModelSweeper.reconcile` PROJECTS
    *  screenings (un-stitched empty showtimes would make it prune every film's
    *  `web_screenings`), and `WorkerShowtimesMetrics` counts them. Prune-safety +
-   *  bounded-heap guarantees live in `scanStitched`. */
+   *  bounded-heap guarantees live in `StitchedCorpusScan.scanStitched`. */
   override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scanStitched(_.foreach(f))
+    scan.scanStitched(coll, _.foreach(f))
 
   /** Count-only scan: pages the movies cursor WITHOUT the `screenings` load [[foreachRecord]]
    *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
    *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
   override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scanByKeyset(Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
+    scan.scanByKeyset(coll, Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
   override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scanStitched(_.foreach(f), withShowtimes = false)
+    scan.scanStitched(coll, _.foreach(f), withShowtimes = false)
 
   /** The `updatedAt` range read, through the same stitched scan as [[foreachRecord]] — the
    *  catch-up re-projects what it reads, so a row from here must be as whole as one the
    *  change stream would have delivered. */
   override def foreachRecordUpdatedSince(since: Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scanStitched(_.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
+    scan.scanStitched(coll, _.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
 
   /** Remove the film `id` with its side-collection rows. */
   def delete(id: FilmId): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>

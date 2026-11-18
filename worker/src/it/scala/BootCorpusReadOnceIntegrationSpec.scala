@@ -54,7 +54,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     }
     override def commandSucceeded(event: CommandSucceededEvent): Unit = Option(collectionOf.remove(event.getRequestId)).foreach { collection =>
       // A stitched scan reads a page's `movie_slots` on a thread of its own while it reads the page's `screenings` (see
-      // `MongoMovieRepository.scanStitched`): a page's slots come in last here, as they can on a busy machine — where a
+      // `StitchedCorpusScan.scanStitched`): a page's slots come in last here, as they can on a busy machine — where a
       // boot judged done by its screenings alone was measured before its last slots page was counted (3400 of 3600).
       if (collection == "movie_slots") Thread.sleep(SlotsLag)
       val cursor = event.getResponse.getDocument("cursor", new BsonDocument())
