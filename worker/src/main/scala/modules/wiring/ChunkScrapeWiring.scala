@@ -3,7 +3,7 @@ package modules.wiring
 import settings.ScrapeChunkSpread
 
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
-import services.tasks.{ChunkRun, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
+import services.tasks.{ChunkFanOut, ChunkRun, EmptyChunkPlan, FailedChunkPlan, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
 
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
@@ -35,11 +35,12 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // all ~200 (a full-horizon UK Flicks venue) claimable at once — otherwise the burst
   // pins the pool under strict oldest-first claim and starves the evenly-enqueued rating
   // refreshes behind it. Sized in ScrapeCadence; the planner clamps it under the run
-  // stale timeout. See ChunkScrapePlanner.chunkSpread.
+  // stale timeout. See ChunkFanOut.chunkSpread.
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
-  lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore, clock = clock,
-    runStarted = chunkScrapeReaper.armDeadline, pageKnownGone = ChunkScrapePlanner.knownGoneIn(scrapeArchive, clock))
+  lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore,
+    new ChunkFanOut(taskQueue, ChunkScrapePlanner.DefaultRunTimeout, scrapeChunkSpread, scrapeCostStore),
+    new EmptyChunkPlan(publishScrape, scrapeFreshnessPolicy), new FailedChunkPlan(publishScrape, scrapeFreshnessPolicy, venuePageHistory), clock = clock,
+    runStarted = chunkScrapeReaper.armDeadline)
   lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
     pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)

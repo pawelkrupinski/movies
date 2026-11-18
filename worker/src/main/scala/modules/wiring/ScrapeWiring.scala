@@ -12,7 +12,7 @@ import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.schedule.AlwaysClaimScheduledRunStore
-import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick}
+import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick, VenuePageHistory, PlainCinemaScrape}
 import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
@@ -375,18 +375,18 @@ trait ScrapeWiring { self: WorkerWiring =>
   // else the configured prior. Read by the reaper's admission and the phase plan alike.
   lazy val scrapeCostEstimates = new ScrapeCostEstimates(scrapeTasksPerVenue)
   lazy val scrapePhasePlanner = managedResources.stopping(new ScrapePhasePlanner(
-    cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
+    cinemaScrapers.map(s => ScrapeFreshnessPolicy.scrapeKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
     scrapeCostEstimates, ticks, threadPools = threadPools))
 
+  /** What the scrape archive says about each venue's page — the same archive the runner writes: it is what
+   *  says whether a venue is merely failing or has 404'd for over a day. */
+  lazy val venuePageHistory: VenuePageHistory = new VenuePageHistory(scrapeArchive, clock)
+  /** The venues due a scrape: what the reaper enqueues from and the handler re-checks a task by. */
+  lazy val dueScrapes: DueScrapes = new DueScrapes(cinemaScrapers, freshnessStore, scrapeDueWindow, chunkRunInFlight)
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
-    cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore, scrapeDueWindow,
-    chunkPlanner = Some(chunkScrapePlanner), scrapeFreshness = Some(scrapeFreshnessPolicy),
-    // The same archive the runner writes: it is what says whether a venue is
-    // merely failing or has 404'd for over a day.
-    scrapeArchive = scrapeArchive,
-    costs = scrapeCostStore,
-    clock = clock)
+    cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap, dueScrapes,
+    new PlainCinemaScrape(cinemaScrapeRunner, scrapeFreshnessPolicy, venuePageHistory, scrapeCostStore, clock),
+    Some(chunkScrapePlanner), venuePageHistory, scrapeFreshnessPolicy, clock)
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
@@ -419,7 +419,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val scrapeReaper = {
     val scheduler = threadPools.scheduler("scrape-reaper")
     val interval  = scrapeReaperInterval
-    val due       = new DueScrapes(cinemaScrapers, freshnessStore, scrapeDueWindow, chunkRunInFlight)
+    val due       = dueScrapes
     val tick      = new ScrapeTick(due, scrapeAdmission, new ScrapeEnqueuer(taskQueue, scrapeAdmission, clock), interval.value,
       scrapeEnqueueSpreadSlices, ticks, scheduler)
     managedResources.stopping(new ScrapeReaper(due, tick, interval, initialDelay = initialScrapeDelay,

@@ -92,9 +92,9 @@ class CinemaScrapeCensus(
   // The freshness keys this country's roster is stamped under, resolved once —
   // the roster is fixed at wiring time, so re-deriving it every tick would be
   // pure waste.
-  private val scrapeKeys: Seq[String] = scrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema))
+  private val scrapeKeys: Seq[String] = scrapers.map(s => ScrapeFreshnessPolicy.scrapeKey(s.cinema))
   private val chunkedKeys: Set[String] =
-    scrapers.map(_.cinema).filter(chunked).map(ScrapeCinemaHandler.dedupKey).toSet
+    scrapers.map(_.cinema).filter(chunked).map(ScrapeFreshnessPolicy.scrapeKey).toSet
 
   // Materialize both series at 0 so this country exists on the panel from boot
   // rather than appearing at the first tick — no Grafana gap.

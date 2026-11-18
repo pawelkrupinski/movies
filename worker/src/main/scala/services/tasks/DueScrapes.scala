@@ -31,6 +31,9 @@ final class DueScrapes(
   /** Completes once the scrape freshness stamps are loaded: before then every venue reads as never scraped. */
   def whenReady: Future[Unit] = freshness.whenReady(FreshnessKind.CinemaScrape)
 
+  /** Whether the venue keyed `key` is due at `now`: what the `ScrapeCinema` handler re-checks a task by. */
+  def isDue(key: String, now: Instant): Boolean = dueWindow.isDue(key, freshness.lastFetchedAt(key), now)
+
   /** Every venue due at `now` and not mid-scrape, as (dedup key, display name), oldest-fetched first.
    *
    *  `scrapers` is a fixed city→catalogue order, so serving it in that order would re-enqueue the front
@@ -42,8 +45,8 @@ final class DueScrapes(
     // Which venues are mid-scrape, read once for the tick rather than once per due venue.
     val running = inFlight.snapshot()
     scrapers.iterator
-      .map(s => (ScrapeCinemaHandler.dedupKey(s.cinema), s.cinema.displayName))
-      .filter { case (key, _) => dueWindow.isDue(key, freshness.lastFetchedAt(key), now) }
+      .map(s => (ScrapeFreshnessPolicy.scrapeKey(s.cinema), s.cinema.displayName))
+      .filter { case (key, _) => isDue(key, now) }
       .filterNot { case (_, cinemaName) => running(cinemaName) }
       .toVector
       // Oldest-fetched first; never-fetched (None) sorts ahead of any timestamp.

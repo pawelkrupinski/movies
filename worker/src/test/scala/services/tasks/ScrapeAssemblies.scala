@@ -1,8 +1,9 @@
 package services.tasks
 
 import settings.{ScrapeBootRamp, ScrapeChunkSpread, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScrapeRunner, CinemaScraper}
 import services.freshness.{Freshness, FreshnessStore}
+import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
 import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
 import tools.TickRecorder
 
@@ -48,4 +49,47 @@ object ScrapeReapers {
     }
     new ScrapeReaper(due, tick, interval, initialDelay, readyTimeout, runStore, clock, scheduler, ticks)
   }
+}
+
+/** A [[ScrapeCinemaHandler]] assembled from its parts as the worker's wiring assembles it: what the specs
+ *  handle `ScrapeCinema` tasks with. Without `scrapeFreshness`, a policy of its own over `freshness`. */
+object ScrapeCinemaHandlers {
+
+  def apply(
+    scrapersByKey: Map[String, CinemaScraper],
+    runner:        CinemaScrapeRunner,
+    freshness:     FreshnessStore,
+    dueWindow:     DueWindow = new DueWindow(Freshness.DefaultScrapeTtl),
+    clock:         Clock,
+    chunkPlanner:  Option[ChunkScrapePlanner] = None,
+    scrapeFreshness: Option[ScrapeFreshnessPolicy] = None,
+    scrapeArchive: ScrapeArchiveReader = ScrapeArchiveRepository.empty,
+    costs:         ScrapeCostStore = ScrapeCostStore.Discarding
+  ): ScrapeCinemaHandler = {
+    val outcome = scrapeFreshness.getOrElse(new ScrapeFreshnessPolicy(freshness, clock = clock))
+    val pages   = new VenuePageHistory(scrapeArchive, clock)
+    new ScrapeCinemaHandler(scrapersByKey, new DueScrapes(scrapersByKey.values.toSeq, freshness, dueWindow),
+      new PlainCinemaScrape(runner, outcome, pages, costs, clock), chunkPlanner, pages, outcome, clock)
+  }
+}
+
+/** A [[ChunkScrapePlanner]] assembled from its parts as the worker's wiring assembles it. */
+object ChunkScrapePlanners {
+
+  def apply(
+    chunkScrapers:   Map[String, ChunkedCinemaScraper],
+    store:           ChunkScrapeStore,
+    queue:           TaskProducer,
+    publishScrape:   CinemaScraper => Unit,
+    scrapeFreshness: ScrapeFreshnessPolicy,
+    staleAfter:      ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
+    clock:           Clock,
+    chunkSpread:     ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
+    costs:           ScrapeCostStore = ScrapeCostStore.Discarding,
+    runStarted:      ChunkRun => Unit = _ => (),
+    scrapeArchive:   ScrapeArchiveReader = ScrapeArchiveRepository.empty
+  ): ChunkScrapePlanner =
+    new ChunkScrapePlanner(chunkScrapers, store, new ChunkFanOut(queue, staleAfter.value, chunkSpread, costs),
+      new EmptyChunkPlan(publishScrape, scrapeFreshness),
+      new FailedChunkPlan(publishScrape, scrapeFreshness, new VenuePageHistory(scrapeArchive, clock)), staleAfter, clock, runStarted)
 }

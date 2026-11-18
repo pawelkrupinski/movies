@@ -54,7 +54,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     private val publish: CinemaScraper => Unit = s => { published += s.fetch(); () }
     private val policy  = new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = rig.clock)
     private val map     = Map(cinema -> scraper)
-    val planner = new ChunkScrapePlanner(map, rig.store, rig.queue, publish, policy, timeout, rig.clock, runStarted = armedBy.armDeadline)
+    val planner = ChunkScrapePlanners(map, rig.store, rig.queue, publish, policy, timeout, rig.clock, runStarted = armedBy.armDeadline)
     private val chunkH  = new ScrapeChunkHandler(map, rig.store, rig.clock)
     private val reduceH = new ScrapeChunkReduceHandler(map, rig.store, publish, policy, rig.clock)
 

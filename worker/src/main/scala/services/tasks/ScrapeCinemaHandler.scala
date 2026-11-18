@@ -3,13 +3,10 @@ package services.tasks
 import services.tasktypes.TaskType
 
 import play.api.Logging
-import services.freshness.{Freshness, FreshnessStore}
 import models.Cinema
-import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
-import services.scrapes.{GoneUpstream, ScrapeArchiveReader, ScrapeArchiveRepository}
+import services.cinemas.common.CinemaScraper
 
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import java.time.Clock
 
 /**
  * Handles a `ScrapeCinema` task: scrape one cinema, unless it is no longer due
@@ -18,7 +15,7 @@ import scala.concurrent.duration._
  * only a duplicate/stale task whose cinema was already scraped this window — never
  * a still-due one (per the queue's "the consumer decides redundancy" contract).
  *
- * The scrape itself runs through `CinemaScrapeRunner`, which also enqueues any
+ * The scrape itself is [[PlainCinemaScrape]]'s, run through `CinemaScrapeRunner`, which also enqueues any
  * deferred per-film detail tasks — so detail enrichment happens the same way
  * regardless of whether scraping is queue-driven or the legacy loop.
  *
@@ -31,119 +28,50 @@ import scala.concurrent.duration._
  */
 class ScrapeCinemaHandler(
   scrapersByKey: Map[String, CinemaScraper],
-  runner:        CinemaScrapeRunner,
-  freshness:     FreshnessStore,
-  dueWindow:     DueWindow = new DueWindow(Freshness.DefaultScrapeTtl),
-  clock:         Clock,
-  chunkPlanner:  Option[ChunkScrapePlanner] = None,
-  // Production passes the SHARED policy, so a venue's failure streak is counted once
-  // however it happens to be scraped. None → a private one over this handler's own
-  // store/clock, which is the same rule, just not shared with the chunked path.
-  scrapeFreshness: Option[ScrapeFreshnessPolicy] = None,
-  // Read to tell a venue that is BROKEN from one that is GONE — a page 404ing for
-  // over a day. Defaults to the no-op archive, under which nothing is ever gone
-  // and this handler behaves exactly as it did before.
-  scrapeArchive: ScrapeArchiveReader = ScrapeArchiveRepository.empty,
-  // Where a plain scrape records its cost (one task) for the cost-spaced schedule;
-  // a chunked venue's is recorded by the planner, which knows its fan-out.
-  costs:         ScrapeCostStore = ScrapeCostStore.Discarding
+  // Re-checks the SAME due schedule the reaper enqueued by.
+  due:           DueScrapes,
+  plain:         PlainCinemaScrape,
+  chunkPlanner:  Option[ChunkScrapePlanner],
+  // Says whether a venue's page is GONE (404ing for over a day) rather than broken.
+  pages:         VenuePageHistory,
+  // The SHARED policy, so a venue's failure streak is counted once however it happens to be scraped.
+  outcome:       ScrapeFreshnessPolicy,
+  clock:         Clock
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
-
-  private val outcome = scrapeFreshness.getOrElse(new ScrapeFreshnessPolicy(freshness, clock = clock))
 
   override val taskType: TaskType = TaskType.ScrapeCinema
 
   override def handle(task: Task): HandlerOutcome = {
     val key = task.dedupKey
-    if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) return Skipped
+    if (!due.isDue(key, clock.instant())) return Skipped
 
     val cinemaName = task.payload.getOrElse(CinemaKey, "")
-    val chunked = chunkPlanner.flatMap(planner => planner.scraper(cinemaName).map(planner -> _))
-    chunked.map(_._2).orElse(scrapersByKey.get(cinemaName)) match {
+    val chunked    = chunkPlanner.filter(_.scraper(cinemaName).isDefined)
+    chunkPlanner.flatMap(_.scraper(cinemaName)).orElse(scrapersByKey.get(cinemaName)) match {
       case None =>
         // Cinema no longer in the catalogue (deploy changed it) — drop the task.
         logger.warn(s"No scraper for task $key; dropping.")
-        Done
-      case Some(scraper) =>
-        val cinema = scraper.cinema
-        // A venue whose page has 404'd for over a day — the page its scraper reads NOW, not one it
-        // was read from before a re-sourcing — is re-probed once a day, not
-        // once a window: nothing about the roster can bring it back (both
-        // aggregators keep dead venues in the sitemaps we harvest from), so every
-        // attempt in between is a request that cannot succeed. Stamped as it skips
-        // — an unstamped cinema is what makes the reaper re-enqueue it every tick
-        // and jump the queue ahead of healthy ones. Checked before the chunked branch:
-        // every Filmstarts venue is chunked, and planning first kept 28 gone German
-        // pages probed ~7 times a day (2026-10).
-        val now = clock.instant()
-        if (scrapeArchive.find(cinema).exists(row => GoneUpstream.skipScrape(row, scraper.sourceKey, now))) {
-          logger.info(s"Skipping ${cinema.displayName}: its page has been 404ing for over " +
-            s"${GoneUpstream.MinimumAge.toHours}h; next probe in ${GoneUpstream.RecheckInterval.toHours}h.")
-          outcome.skipped(key)
-          return Done
-        }
-        chunked match {
-          case Some((planner, _)) =>
-            // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is
-            // already active). Freshness is marked by whichever step TERMINATES the
-            // scrape — the reduce on success, the planner itself on an empty or failed
-            // plan — not here. The run doc is the per-cinema mutex, so a duplicate
-            // ScrapeCinema while a run is in flight just no-ops. A plan records a failed
-            // fetch itself; what still escapes (a store write that failed) leaves the venue
-            // due for the next tick, so the queue never reschedules. A shutdown's interrupt
-            // is no fault: kept set for the task loop to stop on.
-            try { val _ = planner.plan(cinemaName) }
-            catch {
-              case _: InterruptedException =>
-                Thread.currentThread().interrupt()
-                logger.info(s"chunked plan for $cinemaName interrupted — the worker is stopping")
-              case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e)
-            }
-            return Done
-          case None =>
-        }
-        val t0     = tools.Stopwatch.start()
-        try {
-          val listed  = runner.run(scraper)
-          val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, listed, clock)
-          outcome.succeeded(key, Some(horizon))
-          costs.record(key, ScrapeCost(1))
-          Done
-        } catch {
-          case e: Exception =>
-            val elapsed = t0.millis
-            if (ScrapeErrors.isTransientHttpError(e) || readWithin(cinema, BrokenFor, now))
-              logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")
-            else
-              logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
-            // Left stale → the reaper re-enqueues on its next tick, until the retry
-            // budget is spent and the policy parks it on the normal window instead.
-            outcome.failed(key, Some(e))
-            Done
-        }
+      // A gone venue is stamped as it skips — an unstamped cinema is what makes the reaper
+      // re-enqueue it every tick and jump the queue ahead of healthy ones. Checked before the
+      // chunked branch: every Filmstarts venue is chunked, and planning first kept 28 gone
+      // German pages probed ~7 times a day (2026-10).
+      case Some(scraper) if pages.skipsScrape(scraper) => outcome.skipped(key)
+      // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is already active).
+      // Freshness is marked by whichever step TERMINATES the scrape — the reduce on success, the
+      // planner itself on an empty or failed plan — not here. The run doc is the per-cinema
+      // mutex, so a duplicate ScrapeCinema while a run is in flight just no-ops.
+      case Some(_) if chunked.isDefined => chunked.foreach(_.planLogged(cinemaName))
+      case Some(scraper) => plain.run(key, scraper)
     }
+    Done
   }
-
-  /** Did the venue's scraper read it successfully within `window` before `now`? */
-  private def readWithin(cinema: Cinema, window: FiniteDuration, now: Instant): Boolean =
-    scrapeArchive.find(cinema).flatMap(_.lastSuccess).exists(_.at.isAfter(now.minusMillis(window.toMillis)))
 }
 
 object ScrapeCinemaHandler {
-  /** How long a venue's scraper must have failed to read it before a non-transient failure is an ERROR
-   *  (a Sentry issue). Phoenix Leicester, 2026-10-12: three "the Savoy template changed" failures in three
-   *  minutes filed one, and the next scrape was fine and stayed fine. Read within the day, it is a WARN;
-   *  broken past it, or never read at all, it files an ERROR with its stack. */
-  val BrokenFor: FiniteDuration = 24.hours
-
   /** Payload field carrying the cinema's display name (the scraper-map key). */
   val CinemaKey = "cinema"
-
-  /** The dedup + freshness key for a cinema's scrape task. The same string keys
-   *  the queue (so duplicate scrape tasks collapse) and the freshness store. */
-  def dedupKey(cinema: Cinema): String = s"scrape|${cinema.displayName}"
 
   /** The scraper-map key the handler looks a task up by. */
   def scraperKey(cinema: Cinema): String = cinema.displayName

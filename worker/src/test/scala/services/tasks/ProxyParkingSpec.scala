@@ -51,7 +51,7 @@ class ProxyParkingSpec extends AnyFlatSpec with Matchers {
     private val runner = new CinemaScrapeRunner(new services.identity.IdentityListingIntake(
       new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository, new services.movies.InMemoryScrapeGuardLedger,
       titleNormalizer, 3, clock, services.movies.ListingIntakeMetrics.noop), clock)
-    val handler   = new ScrapeCinemaHandler(
+    val handler   = ScrapeCinemaHandlers(
       scrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> (s: CinemaScraper)).toMap,
       runner, fresh, new DueWindow(60.minutes), clock, scrapeFreshness = Some(policy))
 
@@ -63,7 +63,7 @@ class ProxyParkingSpec extends AnyFlatSpec with Matchers {
       while (next.isDefined) {
         handler.handle(next.get)
         queue.complete(next.get.id, "w")
-        ran += scrapers.find(s => ScrapeCinemaHandler.dedupKey(s.cinema) == next.get.dedupKey).get.cinema
+        ran += scrapers.find(s => ScrapeFreshnessPolicy.scrapeKey(s.cinema) == next.get.dedupKey).get.cinema
         next = queue.claim("w", 1.minute, clock.instant())
       }
       ran.result()
@@ -97,7 +97,7 @@ class ProxyParkingSpec extends AnyFlatSpec with Matchers {
     val rig   = new Rig(clock, proxied = Seq(Multikino), own = Nil)
     rig.probe.up.set(true)
     val failing = new ScrapeFreshnessPolicy(rig.fresh, clock = clock, proxyParking = Some(rig.parking))
-    val key     = ScrapeCinemaHandler.dedupKey(Multikino)
+    val key     = ScrapeFreshnessPolicy.scrapeKey(Multikino)
     (1 to 3).foreach(_ => failing.failed(key, Some(scala.util.Try(proxyDown()).failed.get)))
 
     failing.parkedByCause shouldBe Map(ProxyParking.Cause.ResidentialProxyDown -> 0, ProxyParking.Cause.OwnFailures -> 1)

@@ -28,7 +28,7 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
 
   private val now = Instant.parse("2026-07-28T20:00:00Z")
 
-  private def keyOf(cinema: Cinema) = ScrapeCinemaHandler.dedupKey(cinema)
+  private def keyOf(cinema: Cinema) = ScrapeFreshnessPolicy.scrapeKey(cinema)
 
   private val fresh  = CinemaCityKinepolis
   private val stale  = CinemaCityWroclavia

@@ -85,6 +85,15 @@ trait ChunkScrapeStore {
   /** Finish the run: drop its chunk slices and clear the active marker. A no-op
    *  unless `runId` is still the cinema's active run. */
   def completeRun(cinema: String, runId: String): Unit
+
+  /** Mark run `runId` as planned from an INCOMPLETE walk: a day the plan could not probe may hold films no
+   *  chunk will read, so the run must not reduce as the whole listing. A run whose marker never landed
+   *  would, so it is completed (abandoned) instead and the failure raised: the venue stays due and the
+   *  next scrape plans afresh. */
+  final def markPlanIncomplete(cinema: String, runId: String, now: Instant): Unit =
+    try storeChunk(cinema, runId, ChunkScrapeKeys.PlanIncomplete,
+      StoredChunk(services.cinemas.common.CinemaMovieJson.encode(Nil), complete = false), now)
+    catch { case e: Exception => completeRun(cinema, runId); throw e }
 }
 
 /**

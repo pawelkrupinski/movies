@@ -41,3 +41,8 @@ member	models.Movie	scrape	scrapers	a film's own fields within it
 member	models.Showtime	scrape	scrapers	one screening of it
 member	tools.HttpFetch	scrape	scrapers	the fetch a scraper is handed
 member	tools.HttpRead	scrape	scrapers	one read over it
+contract	services.*Handler	task-handler	tasks	a task handler's side of the task contract (TaskWorker dispatches a claimed Task to the TaskHandler for its TaskType and reads back a HandlerOutcome): the four types every handler is written against are one dependency, not four, as the scrape contract's are for a scraper
+member	services.tasks.TaskHandler	task-handler	tasks	the contract's entry point: what a handler is
+member	services.tasks.Task	task-handler	tasks	the claimed task a handler is handed
+member	services.tasks.HandlerOutcome	task-handler	tasks	what a handler answers
+member	services.tasktypes.TaskType	task-handler	tasks	the type a handler is registered for

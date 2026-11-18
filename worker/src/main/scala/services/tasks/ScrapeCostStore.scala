@@ -17,6 +17,9 @@ trait ScrapeCostStore {
    *  Bookkeeping: a failed write is logged and dropped, never raised into a scrape. */
   def record(dedupKey: String, cost: ScrapeCost): Unit
 
+  /** Append the cost of one scrape of `cinema`: `tasks` tasks, under its scrape dedup key. */
+  final def recordScrape(cinema: models.Cinema, tasks: Int): Unit = record(ScrapeFreshnessPolicy.scrapeKey(cinema), ScrapeCost(tasks))
+
   /** Every recorded key's recent costs, oldest first. THROWS when unreadable — an
    *  unreadable store is not an empty one, and the caller keeps its last plan. */
   def recent(): Map[String, Seq[ScrapeCost]]

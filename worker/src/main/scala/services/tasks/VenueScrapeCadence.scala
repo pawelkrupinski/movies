@@ -76,7 +76,7 @@ object VenueScrapeCadence {
  * (which builds the `DueWindow` this feeds) and [[ScrapeFreshnessPolicy]]
  * (which records it after every successful scrape) — the same "one shared
  * instance" `DueWindow` itself requires of the reaper/handler pair, extended to
- * this third party. `key` is the scrape dedup key ([[ScrapeCinemaHandler.dedupKey]]),
+ * this third party. `key` is the scrape dedup key ([[ScrapeFreshnessPolicy.scrapeKey]]),
  * so it lines up with what `DueWindow.isDue` is already called with.
  */
 class VenueCadenceStore(countryDefault: ScrapeFreshness) {

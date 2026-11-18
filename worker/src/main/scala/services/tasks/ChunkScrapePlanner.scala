@@ -1,12 +1,7 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import settings.ScrapeChunkSpread
-
 import play.api.Logging
-import services.scrapes.GoneUpstream
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, EmptyListing, ListingReads, ListingStructure, PreScrapedCinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ListingReads}
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -15,56 +10,44 @@ import scala.concurrent.duration._
  * The PLAN ("split") step of a chunked scrape, called from `ScrapeCinemaHandler`
  * for a chunked cinema: enumerate the chunk keys (a nav/index fetch), start a
  * run (the per-cinema mutex in [[ChunkScrapeStore]]), and enqueue one
- * `ScrapeChunk` task per key.
+ * `ScrapeChunk` task per key. A day the plan's walk could not probe may hold films
+ * no chunk will read: such a run is marked ([[ChunkScrapeStore.markPlanIncomplete]]).
  *
  * Failure handling matches a normal scrape: a nav-fetch throw — or a genuinely
- * empty repertoire — is published immediately as the scrape's outcome through
- * `publishScrape` (uptime red/white + Filmweb fallback for eligible venues),
- * rather than starting an empty run. If a run is already active for the cinema,
- * planning is a no-op (one run at a time) — duplicate `ScrapeCinema` tasks are
- * harmless.
- *
- * Both of those early exits bypass the terminal reduce, so they must record the
- * outcome against the cinema's due schedule THEMSELVES via
- * [[ScrapeFreshnessPolicy]] — an empty plan is a successful scrape of an empty
- * repertoire and stamps freshness like any other. Omitting that was the German
- * outage: a venue advertising zero showtime days never got stamped, so it read as
- * never-fetched, sorted to the front of every [[ScrapeReaper]] tick, and ~40 of
- * them ate the entire per-tick budget for days while ~1000 working cinemas were
- * never enqueued at all.
+ * empty repertoire — is published immediately as the scrape's outcome
+ * ([[EmptyChunkPlan]], [[FailedChunkPlan]]) rather than starting an empty run. If a run is already
+ * active for the cinema, planning is a no-op (one run at a time) — duplicate
+ * `ScrapeCinema` tasks are harmless. The fan-out itself is [[ChunkFanOut]]'s.
  */
 class ChunkScrapePlanner(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
-  queue:         TaskProducer,
-  publishScrape: CinemaScraper => Unit,
-  // Records the terminal outcome of a plan that never reaches the reduce (empty or
-  // failed), so such a cinema still advances its due schedule.
-  scrapeFreshness: ScrapeFreshnessPolicy,
+  fanOut:        ChunkFanOut,
+  // A plan that never reaches the reduce (empty or failed) publishes and records its
+  // outcome itself, so such a cinema still advances its due schedule.
+  emptyPlan:     EmptyChunkPlan,
+  failedPlan:    FailedChunkPlan,
   staleAfter:    ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   clock:         Clock,
-  // Stagger this run's `ScrapeChunk` fan-out evenly across this window (chunk k of
-  // n becomes claimable at `+ chunkSpread·k/n`) instead of making all n claimable
-  // at once — so a big full-horizon venue can't monopolise the pool and starve the
-  // evenly-enqueued ratings (see [[services.tasks.ScrapeCadence.ChunkEnqueueSpread]]).
-  // Clamped to a third of `staleAfter` so every chunk still becomes eligible AND
-  // drains before the run is abandoned to a partial reduce. Default `Zero` disables
-  // the spread, leaving the flow tests that drive `plan()` + `drain(now)` directly
-  // (and the deterministic fixture harness) unaffected.
-  chunkSpread:   ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
-  // Where each planned run's fan-out is recorded, so the scrape schedule can space
-  // venues by what they cost ([[CostSpacedPhaseOffset]]).
-  costs:         ScrapeCostStore = ScrapeCostStore.Discarding,
   // Told of each run this planner starts, so its abandonment deadline is armed then
   // ([[ChunkScrapeReaper.armDeadline]]) rather than found by polling every run.
-  runStarted:    ChunkRun => Unit = _ => (),
-  // Whether the venue's page has ALREADY stood gone for [[GoneUpstream.MinimumAge]] before this plan
-  // (`knownGoneIn`): its daily quarantine probe finding it gone again is no news, so says so at INFO.
-  pageKnownGone: models.Cinema => Boolean = _ => false
+  runStarted:    ChunkRun => Unit = _ => ()
 ) extends Logging {
 
   /** The chunked scraper for `cinema`, when it is scraped in chunks. */
-  def scraper(cinema: String): Option[ChunkedCinemaScraper] = chunkScrapers.get(cinema)
+  def scraper(cinema: String): Option[CinemaScraper] = chunkScrapers.get(cinema)
+
+  /** [[plan]], for the `ScrapeCinema` handler: a plan records a failed fetch itself; what still escapes (a
+   *  store write that failed) is logged and leaves the venue due for the next tick, so the queue never
+   *  reschedules. A shutdown's interrupt is no fault: kept set for the task loop to stop on. */
+  def planLogged(cinema: String): Unit =
+    try { val _ = plan(cinema) }
+    catch {
+      case _: InterruptedException =>
+        Thread.currentThread().interrupt()
+        logger.info(s"chunked plan for $cinema interrupted — the worker is stopping")
+      case e: Exception => logger.error(s"chunked plan for $cinema threw", e)
+    }
 
   /** Returns the number of `ScrapeChunk` tasks enqueued (0 when a run was already
    *  active, or when the plan was published directly as empty/failed). */
@@ -81,94 +64,24 @@ class ChunkScrapePlanner(
 
       val (plan, planReads) =
         try ListingReads.during(scraper.planSchedule())
-        catch { case e: Exception => publishFailure(scraper, e); return 0 }
+        catch { case e: Exception => failedPlan.publish(scraper, e); return 0 }
       val keys = plan.keys
 
-      if (keys.isEmpty) { publishEmpty(scraper, plan.emptyListing, planReads.complete); return 0 }
+      if (keys.isEmpty) { emptyPlan.publish(scraper, plan, planReads.complete); return 0 }
 
       val now = clock.instant()
       store.startRun(cinema, keys, now, staleAfter.value) match {
         case None => 0 // a run is already active for this cinema
         case Some(runId) =>
-          // A day the plan's walk could not probe may hold films no chunk will read.
-          // A run whose marker never landed would reduce as the whole listing, so it is
-          // abandoned instead: the venue stays due and the next scrape plans afresh.
-          if (!planReads.complete)
-            try store.storeChunk(cinema, runId, ChunkScrapeKeys.PlanIncomplete, StoredChunk(CinemaMovieJson.encode(Nil), complete = false), now)
-            catch { case e: Exception => store.completeRun(cinema, runId); throw e }
-          // Stagger the fan-out's eligibility evenly across the (clamped) spread
-          // window so this venue's chunks don't all become claimable at once and
-          // monopolise the pool — see `chunkSpread`. `Zero` window → no offset.
-          val windowMillis = math.min(chunkSpread.value.toMillis, staleAfter.value.toMillis / 3)
-          val total        = keys.size
-          val n = keys.zipWithIndex.count { case (k, index) =>
-            val notBefore =
-              if (windowMillis > 0 && total > 1) Some(now.plusMillis(windowMillis * index / total))
-              else None
-            queue.enqueue(TaskType.ScrapeChunk,
-              ChunkScrapeKeys.chunkDedup(cinema, runId, k),
-              ChunkScrapeKeys.chunkPayload(cinema, runId, k),
-              // Submitted as of when it becomes claimable, not the planning instant: the
-              // queue claims oldest `submittedAt` first, so a shared stamp let an older
-              // run's stragglers — ripening for the whole spread — keep beating a newer
-              // run's chunks claimable for minutes (head-of-line age pinned just under
-              // the spread in every country, 2026-09-21..28).
-              submittedAt = notBefore.getOrElse(now), notBefore = notBefore) == EnqueueResult.Added
-          }
-          logger.info(s"$cinema chunked scrape run $runId: enqueued $n/${keys.size} chunk task(s)" +
-            (if (windowMillis > 0 && total > 1) s", spread over ${windowMillis / 1000}s" else ""))
-          // The planner task + one per chunk + the reduce.
-          costs.record(ScrapeCinemaHandler.dedupKey(scraper.cinema), ScrapeCost(total + 2))
+          if (!planReads.complete) store.markPlanIncomplete(cinema, runId, now)
+          val n = fanOut.enqueue(scraper, cinema, runId, keys, now)
           runStarted(ChunkRun(cinema, runId, keys, now))
           n
       }
   }
-
-  /** A venue that advertised no days in the horizon: a clean parse of an empty
-   *  repertoire, so it counts as a SUCCESSFUL scrape and advances the due schedule.
-   *  (Uptime still records it white — empty is visible, just not overdue.) Whether the
-   *  page SAID it has nothing on travels with it to the archive (`emptyListing`). */
-  private def publishEmpty(scraper: ChunkedCinemaScraper, emptyListing: EmptyListing, complete: Boolean): Unit = {
-    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, ListingStructure.wholeWhen(complete), emptyListing))
-    catch { case _: Exception => () }
-    // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
-    // with SOME showtimes about to run dry, not one advertising nothing at all.
-    // A seasonally-closed venue (a drive-in shut all winter, a site between
-    // programmes) can sit here for weeks; the MinInterval floor would hammer its
-    // site every 30 minutes for as long as that lasts, for no benefit — the country
-    // default already re-checks it often enough to notice when it reopens.
-    scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
-  }
-
-  private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
-    // A seasonal venue whose page is gone OFF its season is the season, not a fault: Filmstarts
-    // takes open-air pages down for the winter (all 28 German 404s in 2026-10 were seasonal),
-    // and the closure sweep leaves such a venue alone until its season opens. And a page the
-    // quarantine already holds gone (GoneUpstream) is its daily re-probe answering as expected:
-    // 50 Filmstarts and 16 SensaCine pages warned once a probe for weeks (2026-10-29..11-12).
-    // Read off the text the archive records the failure as: a message may be null, that text never is.
-    val said = tools.FailureText.of(e)
-    val gone = GoneUpstream.saysPageIsGone(said)
-    if (gone && scraper.cinema.opening.offSeasonAt(clock.instant()))
-      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its page gone off-season: $said")
-    else if (gone && pageKnownGone(scraper.cinema))
-      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its quarantined page still gone: $said")
-    else logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: $said")
-    // The recording wrapper re-raises the failure — unless the venue's fallback
-    // served it instead, which is the scrape succeeding, as on the plain path. Kept
-    // due, it would be re-run on the next ticks and re-walk the fallback each time.
-    val fallbackServed = scala.util.Try(publishScrape(PreScrapedCinemaScraper.of(scraper, () => throw e))).isSuccess
-    val key            = ScrapeCinemaHandler.dedupKey(scraper.cinema)
-    if (fallbackServed) scrapeFreshness.succeeded(key) else scrapeFreshness.failed(key, Some(e))
-  }
 }
 
 object ChunkScrapePlanner {
-
-  /** [[ChunkScrapePlanner.pageKnownGone]] read from the scrape archive: the venue's barren marker
-   *  has said gone for at least [[GoneUpstream.MinimumAge]] ([[GoneUpstream.isGone]]). */
-  def knownGoneIn(archive: services.scrapes.ScrapeArchiveReader, clock: Clock): models.Cinema => Boolean =
-    cinema => archive.find(cinema).exists(GoneUpstream.isGone(_, clock.instant()))
 
   /** How long a chunked run may go without finishing before it is abandoned and re-planned. */
   final case class RunTimeout(value: FiniteDuration) extends AnyVal

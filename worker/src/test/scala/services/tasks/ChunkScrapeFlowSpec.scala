@@ -66,7 +66,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.published should have size 1
     val byTitle = h.published.head.map(m => m.movie.title -> m.showtimes.size).toMap
     byTitle shouldBe Map("Dune" -> 2, "Wicked" -> 1) // Dune merged across both days
-    h.freshness.isFresh(ScrapeCinemaHandler.dedupKey(cinema), FreshnessKind.CinemaScrape, now) shouldBe true
+    h.freshness.isFresh(ScrapeFreshnessPolicy.scrapeKey(cinema), FreshnessKind.CinemaScrape, now) shouldBe true
     h.store.activeRun(cinemaName) shouldBe None // run cleaned up
   }
 
@@ -111,7 +111,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.drain()
 
     h.published should have size 1
-    h.venueCadence.periodFor(ScrapeCinemaHandler.dedupKey(cinema)) shouldBe 2.hours
+    h.venueCadence.periodFor(ScrapeFreshnessPolicy.scrapeKey(cinema)) shouldBe 2.hours
   }
 
   it should "NOT reduce until every expected chunk has landed" in {
@@ -308,7 +308,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // An empty repertoire is a SUCCESSFUL scrape and must advance the due schedule.
   it should "mark a chunked cinema fresh when its plan is legitimately empty, so it waits its normal window" in {
     val h   = new Harness(new FakeChunkedScraper(Map.empty))
-    val key = ScrapeCinemaHandler.dedupKey(cinema)
+    val key = ScrapeFreshnessPolicy.scrapeKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
     h.published should have size 1     // still published (and recorded white on /uptime)
@@ -333,7 +333,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // is the UK half of the same outage: ~40 venues 404ing on every tick forever.
   it should "retry a failed plan at tick cadence for the budget, then park it on the normal window" in {
     val h   = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), planThrows = true))
-    val key = ScrapeCinemaHandler.dedupKey(cinema)
+    val key = ScrapeFreshnessPolicy.scrapeKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
     h.freshness.lastFetchedAt(key) shouldBe None   // still due next tick — maybe transient
@@ -348,7 +348,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // re-walked the fallback's whole horizon.
   it should "mark a chunked cinema fresh when its fallback served the plan that failed" in {
     val h   = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25))), planThrows = true), fallbackServes = true)
-    val key = ScrapeCinemaHandler.dedupKey(cinema)
+    val key = ScrapeFreshnessPolicy.scrapeKey(cinema)
 
     h.planner.plan(cinemaName) shouldBe 0
     h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
@@ -376,7 +376,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val store   = new InMemoryChunkScrapeStore
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val map     = Map(cinemaName -> (new FakeChunkedScraper(slices): ChunkedCinemaScraper))
-    val planner = new ChunkScrapePlanner(map, store, queue, _ => (),
+    val planner = ChunkScrapePlanners(map, store, queue, _ => (),
       new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(6.minutes))
 
@@ -396,12 +396,12 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val costs   = new InMemoryScrapeCostStore
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val scraper = new FakeChunkedScraper(slices)
-    val planner = new ChunkScrapePlanner(Map(cinemaName -> (scraper: ChunkedCinemaScraper)), new InMemoryChunkScrapeStore, queue, _ => (),
+    val planner = ChunkScrapePlanners(Map(cinemaName -> (scraper: ChunkedCinemaScraper)), new InMemoryChunkScrapeStore, queue, _ => (),
       new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
       Clock.fixed(now, ZoneOffset.UTC), costs = costs)
 
     planner.plan(cinemaName) shouldBe 6
-    costs.recent() shouldBe Map(ScrapeCinemaHandler.dedupKey(scraper.cinema) -> Seq(ScrapeCost(8)))
+    costs.recent() shouldBe Map(ScrapeFreshnessPolicy.scrapeKey(scraper.cinema) -> Seq(ScrapeCost(8)))
   }
 
   // The queue claims the eligible task with the oldest `submittedAt`. When every chunk of
@@ -417,7 +417,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val older   = new FakeChunkedScraper(slices(10))
     val newer   = new FakeChunkedScraper(slices(20), cinema = KinoApollo)
     def planAt(at: Instant, scraper: FakeChunkedScraper) =
-      new ChunkScrapePlanner(Map(scraper.cinema.displayName -> (scraper: ChunkedCinemaScraper)), store, queue, _ => (),
+      ChunkScrapePlanners(Map(scraper.cinema.displayName -> (scraper: ChunkedCinemaScraper)), store, queue, _ => (),
         new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
         Clock.fixed(at, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(5.minutes)).plan(scraper.cinema.displayName)
 
@@ -449,7 +449,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // -- the venue only stayed due by accident (worker-uk's Westway Cinema Frome, 2026-11-12..17, Sentry KINOWO-34).
   it should "publish and record a plan failure whose exception carries no message" in {
     val h   = new Harness(new FakeChunkedScraper(Map.empty, planThrows = true, planFailure = () => new java.io.IOException()))
-    val key = ScrapeCinemaHandler.dedupKey(cinema)
+    val key = ScrapeFreshnessPolicy.scrapeKey(cinema)
     h.planner.plan(cinemaName) shouldBe 0
     h.published should have size 1
     h.freshness.lastFetchedAt(key) shouldBe None   // failed, so due again next tick

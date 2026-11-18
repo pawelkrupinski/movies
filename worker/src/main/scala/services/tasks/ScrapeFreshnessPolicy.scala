@@ -80,6 +80,10 @@ class ScrapeFreshnessPolicy(
     for (store <- venueCadence; horizon <- remainingHorizon) store.record(key, horizon)
   }
 
+  /** `cinema`'s scrape listed `listed`: [[succeeded]], with the showtime runway that listing leaves. */
+  def scraped(key: String, cinema: models.Cinema, listed: Seq[models.CinemaMovie]): Unit =
+    succeeded(key, Some(VenueScrapeCadence.remainingHorizonOf(cinema, listed, clock)))
+
   /** The scrape was deliberately SKIPPED rather than run — the venue's page is
    *  gone (see [[services.scrapes.GoneUpstream]]). Stamps exactly like a success,
    *  because the scheduling consequence is identical: this cinema is not due again
@@ -133,4 +137,10 @@ class ScrapeFreshnessPolicy(
     }
     Map(ProxyParking.Cause.ResidentialProxyDown -> proxyParking.fold(0)(_.size), ProxyParking.Cause.OwnFailures -> own)
   }
+}
+
+object ScrapeFreshnessPolicy {
+  /** The key of a cinema's scrape: the dedup key of its `ScrapeCinema` task (so duplicate scrape tasks
+   *  collapse) and the key this policy stamps its freshness under. */
+  def scrapeKey(cinema: models.Cinema): String = s"scrape|${cinema.displayName}"
 }
