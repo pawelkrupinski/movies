@@ -3234,11 +3234,10 @@ services.readmodel.ReadModelSweeper	services.readmodel.RowDrift
 services.readmodel.ReadModelSweeper	services.readmodel.ScreeningRef
 services.readmodel.ReadModelSweeper	services.readmodel.SweepBaseline
 services.readmodel.ReadModelSweeper	services.readmodel.SweepTally
+services.readmodel.ReadModelSweeper	services.readmodel.SweepVerdict
 services.readmodel.ReadModelSweeper	settings.ReadModelPruneBootDelay
 services.readmodel.ReadModelSweeper	settings.ReadModelPruneInterval
-services.readmodel.ReadModelSweeper	tools.AbsentReason
 services.readmodel.ReadModelSweeper	tools.AnyThrowable
-services.readmodel.ReadModelSweeper	tools.ReadFailure
 services.readmodel.ReadModelSweeper	tools.ReadOutcome
 services.readmodel.ReadModelSweeper	tools.ScanOutcome
 services.readmodel.ReadModelSweeper	tools.ScheduledTick

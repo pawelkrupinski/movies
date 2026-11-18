@@ -310,7 +310,7 @@ class ReadModelProjector(
   def refreshShareCard(filmId: String): Unit = lock.synchronized {
     val row = shareCardGate.heldRow(filmId).getOrElse(filmId.takeWhile(_ != '~'))
     // A card held for its share card and published by the render landing is in flight like a
-    // stream event: a sweep between the two found it absent (see [[ReadModelSweeper]]'s `verdictOnSweep`).
+    // stream event: a sweep between the two found it absent (see [[SweepVerdict]]).
     sweep.noteApplied(row)
     movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
   }

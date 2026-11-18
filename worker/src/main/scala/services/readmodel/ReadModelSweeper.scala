@@ -16,7 +16,7 @@ import scala.util.Try
  *  - THE PRUNE SWEEP (`pruneOrphans`, scheduled): an id-only scan that removes cards and venue rows
  *    no live row projects to, heals a ready row missing a card or a venue, rewrites one rolling
  *    content slice of the corpus, catches up the rows a silent change stream failed to deliver,
- *    and judges which of its heals and rewrites were real misses (`verdictOnSweep`).
+ *    and judges which of its heals and rewrites were real misses ([[SweepVerdict]]).
  *  - THE FULL RECONCILE (`reconcile`, never scheduled): re-project every row and prune — the
  *    one-shot seed/backfill primitive.
  *  - THE DERIVATION PASS ([[ReadModelDerivationPass]], paced): the whole-corpus re-projection a
@@ -37,7 +37,7 @@ class ReadModelSweeper(
   pruneInterval:   ReadModelPruneInterval  = ReadModelSweeper.DefaultPruneInterval,
   pruneBootDelay:  ReadModelPruneBootDelay = ReadModelSweeper.DefaultPruneBootDelay,
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
-  // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnSweep`).
+  // lock — what tells a heal the stream would have made anyway from a real miss (see [[SweepVerdict]]).
   // The root passes the wait on its own `sleep`; the default serves the specs that build a sweeper bare.
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_, tools.Sleep.Blocking),
   // The derivation pass the first complete sweep arms, and `schedule` paces; `None` owes no pass.
@@ -51,6 +51,8 @@ class ReadModelSweeper(
   private val reader          = projection.reader
   private val metrics         = projection.metrics
   private val clock           = projection.clock
+  // What the stream did while a prune sweep held the lock, and so which of its heals and rewrites were misses.
+  private val verdict         = new SweepVerdict(projection, () => awaitStreamApplied(movieRepository.changeStreamLiveness), logger)
 
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
   // drops must clear within a tick). The expensive full re-projection is no longer
@@ -65,21 +67,6 @@ class ReadModelSweeper(
   // slice 0 again after every deploy, and on a day of hourly deploys the rest of the corpus
   // was never reached. Counting on from the clock keeps the next process on the next slice.
   private var sweepCount    = clock.instant().getEpochSecond / PruneSeconds
-  // The rows the change stream applied or deleted since the running prune sweep started, `None`
-  // outside one: what tells a heal the stream would have made anyway from a miss (`verdictOnSweep`).
-  private var appliedSinceSweep: Option[scala.collection.mutable.Set[String]] = None
-  // The rows the running sweep's content check rewrote, held for the same verdict as its heals:
-  // only a row the stream does not then apply itself drifted (`verdictOnSweep`).
-  private val sweepDrift = scala.collection.mutable.Buffer.empty[RowDrift]
-
-  /** Caller holds the projection lock. The change stream applied (or deleted) `rowId`: a heal or a
-   *  rewrite of it by the running sweep was in flight, not missed (`verdictOnSweep`). */
-  private[readmodel] def noteApplied(rowId: String): Unit = appliedSinceSweep.foreach(_ += rowId)
-
-  /** Caller holds the projection lock. The content check rewrote a row that disagreed with its
-   *  source: a drift candidate for the sweep's verdict. */
-  private[readmodel] def noteDrift(row: RowDrift): Unit = sweepDrift += row
-
   /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices,
    *  each completed tick reported to `ticks` (`ScheduledTickStale`). The worker's root calls it once
    *  the projector's stream watch is up. */
@@ -289,7 +276,7 @@ class ReadModelSweeper(
    *  Most of what it finds is no miss at all: a removal the stream still holds (the DE/UK/US debounce
    *  keeps a film's re-read up to two minutes) or has queued behind this sweep's lock. Deleting those
    *  is harmless, but only the ones the stream does not then apply are missed removals — the
-   *  sweep's verdict ([[reportUnlisted]]) tells them apart once the lock is let go. */
+   *  sweep's verdict ([[SweepVerdict.reportUnlisted]]) tells them apart once the lock is let go. */
   private def pruneUnlistedVenues(kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
     val unlisted = tally.unlisted
     val cap      = ReadModelSweeper.unlistedPruneCap(baseline.screeningRefs.fold(0)(_.size))
@@ -301,22 +288,6 @@ class ReadModelSweeper(
     } else {
       unlisted.foreach(pruneScreening(_, kind, tally))
       tally.prunedUnlisted ++= unlisted
-    }
-  }
-
-  /** The unlisted venue rows a sweep pruned that the change stream did NOT apply itself once the
-   *  sweep let go — `applied`, the rows it did — metered and named as missed removals. The rest it
-   *  had in flight: a removal the debounce still held, or one queued behind the sweep's lock. */
-  private def reportUnlisted(kind: String, pruned: Seq[ScreeningRef], applied: String => Boolean): Unit = {
-    val (inFlight, missed) = pruned.partition(ref => applied(ref.filmId.takeWhile(_ != '~')))
-    if (inFlight.nonEmpty)
-      logger.info(s"read-model $kind sweep: pruned ${inFlight.size} venue row(s) whose film no longer lists the venue " +
-        s"and whose removal the change stream had in flight and then applied itself — not misses: " +
-        s"${ReadModelSweeper.idsForLog(inFlight.map(_._id))}.")
-    if (missed.nonEmpty) {
-      metrics.recordUnlistedVenues(missed.size, withheld = false)
-      logger.warn(s"read-model $kind sweep: pruned ${missed.size} venue row(s) whose film no longer lists the venue — " +
-        s"a removal the change stream did not apply: ${ReadModelSweeper.idsForLog(missed.map(_._id))}.")
     }
   }
 
@@ -394,52 +365,6 @@ class ReadModelSweeper(
           if (counted(projection.projectRow(row, ProjectTrigger.CatchUp))) caughtUp += 1 }.getOrElse { failed = true }
   }
 
-  /** Which of the rows a prune sweep healed, or its content check rewrote, were MISSES — the rest
-   *  the change stream had in flight.
-   *
-   *  The sweep holds the projection lock from its first read of the read model to its last
-   *  write, and every stream apply waits for that lock. So a scrape landing a new venue or a new
-   *  row seconds before the sweep, or during it, leaves exactly the id the sweep finds absent in
-   *  an event queued behind it: the heal writes it, and the stream would have written it a moment
-   *  later. Counted, those paged `ReadModelHealsRecurring` for a stream that was fine — every
-   *  sweep heal from 2026-09-24 21:08Z to 09-25 02:37Z (US and UK) came with a scrape finishing
-   *  within five seconds of the sweep starting, and with no retirement, failed re-read or restart
-   *  behind it. So the verdict waits, outside the lock, for the stream to apply what it had in
-   *  flight: a healed row the stream then applies was not missed; one it leaves alone was. Only
-   *  misses are metered and named in the WARN line.
-   *
-   *  The content check's rewrites race the stream the same way, and more often: the stream holds
-   *  a film's re-read for up to `Debounce.Worker.cap`, so a showtime change landing in the two
-   *  minutes before the check reaches its row is projected by the check first. Every such row
-   *  counted as drift — petsematary|1989 at Regal Kendall Village Miami on 2026-10-07, its source
-   *  slot written 38 s before the check rewrote it, the stream applying it once the sweep let go.
-   *
-   *  And so do its prunes of unlisted venues: 294 of the 321 rows pruned 2026-11-15..18 came within
-   *  five minutes of their venue's refresh, all in the three debounced countries, each WARNed as "a
-   *  removal the change stream did not apply" for a stream about to apply it. */
-  private def verdictOnSweep(healed: Seq[String], rewritten: Seq[RowDrift], prunedUnlisted: Seq[ScreeningRef]): Unit = {
-    if (healed.nonEmpty || rewritten.nonEmpty || prunedUnlisted.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
-    val applied = projection.exclusively { val rows = appliedSinceSweep.fold(Set.empty[String])(_.toSet); appliedSinceSweep = None; rows }
-    val (raced, drifted) = rewritten.partition(row => applied(row.rowId))
-    if (raced.nonEmpty)
-      logger.info(s"read-model content check: rewrote ${raced.size} row(s) the change stream had in flight and then " +
-        s"applied itself — not drift: ${ReadModelSweeper.idsForLog(raced.map(_.rowId))}.")
-    drifted.foreach { row =>
-      row.causes.foreach { case (cause, documents) => metrics.recordDrift(cause, documents) }
-      logger.warn(s"read-model content check: row ${row.rowId} had drifted from its source — ${row.detail}.")
-    }
-    reportUnlisted(ReconcileKind.Prune, prunedUnlisted, applied)
-    val (inFlight, missed) = healed.partition(applied)
-    if (inFlight.nonEmpty)
-      logger.info(s"read-model prune sweep: wrote ${inFlight.size} row(s) the change stream had in flight and then " +
-        s"applied itself — not heals: ${ReadModelSweeper.idsForLog(inFlight)}.")
-    if (missed.nonEmpty) {
-      metrics.recordHeal(HealTrigger.Sweep, missed.size)
-      logger.warn(s"read-model prune sweep: projected ${missed.size} ready row(s) missing a card or a venue " +
-        s"before the prune: ${ReadModelSweeper.idsForLog(missed)}.")
-    }
-  }
-
   /** Full re-projection + prune. NOT scheduled — the resume-token change stream made the
    *  periodic reproject redundant. Kept as an explicit one-shot seed/backfill primitive:
    *  fixture/e2e read-model seeding calls it to project a settled corpus synchronously
@@ -453,7 +378,7 @@ class ReadModelSweeper(
    *  once Mongo recovers. */
   def reconcile(): Boolean = {
     val (_, complete, prunedUnlisted) = sweep(reproject = true)
-    reportUnlisted("reproject", prunedUnlisted, applied = _ => false)
+    verdict.reportUnlisted("reproject", prunedUnlisted, applied = _ => false)
     complete
   }
 
@@ -461,13 +386,13 @@ class ReadModelSweeper(
    *  for the rows a silent change stream failed to deliver (see `sweep`). [[TickRun.Incomplete]] when the sweep's
    *  scan, a projection or the prune failed (logged by the sweep): the prune it skipped is not a completed run. */
   def pruneOrphans(): TickRun = {
-    projection.exclusively { appliedSinceSweep = Some(scala.collection.mutable.Set.empty); sweepDrift.clear() }
+    projection.exclusively(verdict.begin())
     val (healed, complete, rewritten, prunedUnlisted) =
       tools.AnyThrowable.rethrownAfter {
         val (healed, complete, prunedUnlisted) = sweep(reproject = false)
-        projection.exclusively((healed, complete, sweepDrift.toSeq, prunedUnlisted))
-      }(_ => projection.exclusively { appliedSinceSweep = None })
-    verdictOnSweep(healed, rewritten, prunedUnlisted)
+        projection.exclusively((healed, complete, verdict.rewritten, prunedUnlisted))
+      }(_ => projection.exclusively(verdict.abandon()))
+    verdict.verdictOnSweep(healed, rewritten, prunedUnlisted)
     TickRun.completedWhen(complete)
   }
 
@@ -483,8 +408,8 @@ class ReadModelSweeper(
       val projected = continuing(s"read-model $what: a row in content slice $slice failed to project") {
         read(id) match {
           case tools.ReadOutcome.Answered(row)      => written += project(row)
-          case tools.ReadOutcome.Absent(_) => ()
-          case tools.ReadOutcome.Failed(_) => complete = false
+          case _: tools.ReadOutcome.Absent     => ()
+          case _: tools.ReadOutcome.Failed     => complete = false
         }
       }
       if (projected.isEmpty) complete = false
@@ -582,11 +507,8 @@ class ReadModelSweeper(
     }
   }
 
-  // Hear of every change the projector applies, from now on (see `noteApplied`, `noteDrift`).
-  projection.exclusively(projection.reportTo(new ReadModelSweeper.Listener {
-    def noteApplied(rowId: String): Unit = ReadModelSweeper.this.noteApplied(rowId)
-    def noteDrift(row: RowDrift): Unit   = ReadModelSweeper.this.noteDrift(row)
-  }))
+  // Hear of every change the projector applies, from now on (the verdict's `noteApplied`, `noteDrift`).
+  projection.exclusively(projection.reportTo(verdict))
 }
 
 object ReadModelSweeper {

@@ -43,8 +43,8 @@ module-edge	web->geodata	1
 module-edge	web->http	19
 module-edge	web->identity	46
 module-edge	worker->base	81
-module-edge	worker->common	1680
-module-edge	worker->http	198
+module-edge	worker->common	1681
+module-edge	worker->http	196
 module-edge	worker->identity	454
 module-edge	worker->scrapers	151
 ce	clients	3
@@ -264,7 +264,7 @@ fanout	services.readmodel.ReadModelProjection	22
 fanout	services.readmodel.ReadModelProjector	39
 fanout	services.readmodel.ReadModelReader	10
 fanout	services.readmodel.ReadModelStreams	15
-fanout	services.readmodel.ReadModelSweeper	32
+fanout	services.readmodel.ReadModelSweeper	31
 fanout	services.readmodel.WebReadModel	16
 fanout	services.review.LabelsExport	10
 fanout	services.review.ListingExplain	10
