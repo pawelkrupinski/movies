@@ -21,7 +21,7 @@ class DebugReadModelSpec extends AnyFlatSpec with Matchers {
   private val records = Seq(("Belle", Some(2021), record("Belle")), ("Incepcja", Some(2010), record("Incepcja")))
 
   private def controller(readModels: DebugReadModels, mode: Mode = Mode.Dev) =
-    TestDebugController.build(Seq.empty, mode, readModels = Some(readModels))._1
+    TestDebugController.readModelPages(Seq.empty, mode, readModels = Some(readModels))
 
   private def single(reader: ReadModelReader) = DebugReadModels.of(Country.default, reader, mirror = None)
 
@@ -78,6 +78,7 @@ class DebugReadModelSpec extends AnyFlatSpec with Matchers {
         countries      = Seq("Japonia"),
         genres         = Seq("Animacja"),
         posterUrl      = Some("https://img.example/belle.jpg"),
+        trailerUrl     = Some("https://www.youtube.com/watch?v=abcdef12345"),
         filmUrl        = Some("https://cinema-city.pl/belle"),
         showtimes      = Seq(Showtime(LocalDateTime.parse("2026-06-28T18:30"),
           bookingUrl = Some("https://book.example/cc"), room = Some("Sala 4"), format = List("2D", "NAP")))),
@@ -92,7 +93,8 @@ class DebugReadModelSpec extends AnyFlatSpec with Matchers {
     html should include("""class="num cinemas """)
     html should include(""">2</td>""")
     Seq("Ryu to Sobakasu no Hime", "124", "Japonia", "Mamoru Hosoda", "Kaho Nakamura", "Animacja",
-      "A shy teenager becomes a virtual-world pop star.", "https://img.example/belle.jpg").foreach(html should include(_))
+      "A shy teenager becomes a virtual-world pop star.", "https://img.example/belle.jpg",
+      "youtube.com/embed/abcdef12345").foreach(html should include(_))
     html should include("""<b>2</b> screenings""")
     html should not include ("https://book.example/cc")
 

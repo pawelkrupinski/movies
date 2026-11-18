@@ -9,7 +9,20 @@ import java.util.Locale
 
 /** One country's read model as `/debug/readmodel` reads it, and where that is (shown on the page). */
 final case class DebugReadModel(reader: ReadModelReader, source: String,
-                                 freshness: services.movies.MirrorFreshness = services.movies.MirrorFreshness.notMirrored)
+                                 freshness: services.movies.MirrorFreshness = services.movies.MirrorFreshness.notMirrored) {
+  /** The whole read model, or `None` when it could not be read whole ([[ReadModelDump.read]]). */
+  def dump(): Option[ReadModelDump] = ReadModelDump.read(reader)
+
+  /** How far behind its mirror this read model is at `now`: the debug navbar's age badge. */
+  def mirrorAge(now: java.time.Instant): Option[services.movies.MirrorFreshness.Age] =
+    services.movies.MirrorFreshness.describe(freshness.newestUpdate(), now)
+
+  /** Every screening document of film `id`, or `None` when they could not be read. */
+  def screeningsOf(id: String): Option[Seq[CityScreening]] = reader.findCard(id) match {
+    case tools.ReadOutcome.Answered(card) => Some(card.screenings)
+    case _                                 => None
+  }
+}
 
 /**
  * Which read model `/debug/readmodel` lists, per request: `?country=xx` when there is one

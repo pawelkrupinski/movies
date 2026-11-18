@@ -218,7 +218,7 @@
     if (slot && !slot.dataset.loaded) {
       slot.dataset.loaded = '1';
       slot.textContent = 'loading screenings…';
-      fetch('@routes.DebugController.debugReadModelScreenings("")' + encodeURIComponent(slot.dataset.filmId) + '&country=@current.code')
+      fetch('@routes.DebugReadModelController.debugReadModelScreenings("")' + encodeURIComponent(slot.dataset.filmId) + '&country=@current.code')
         .then(r => r.ok ? r.text() : r.text().then(t => { throw new Error(t || r.status); }))
         .then(html => { slot.innerHTML = html; })
         .catch(e => { slot.textContent = 'could not load screenings: ' + e.message; delete slot.dataset.loaded; });

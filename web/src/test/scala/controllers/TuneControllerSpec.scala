@@ -1,7 +1,5 @@
 package controllers
 
-import tools.SpecClock.given
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.Mode
@@ -15,10 +13,10 @@ import play.api.test.Helpers._
  * page renders without any cache contents; the controller below is wired with
  * an empty repository on purpose to prove that.
  */
-class DebugControllerTuneSpec extends AnyFlatSpec with Matchers {
+class TuneControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(mode: Mode): DebugController =
-    TestDebugController.build(Seq.empty, mode)._1
+  private def buildController(mode: Mode): TuneController =
+    TestDebugController.tunePages(mode)
 
   "GET /debug/tune" should "render the tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)

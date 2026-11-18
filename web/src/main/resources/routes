@@ -66,10 +66,10 @@ GET     /debug/details              controllers.DebugController.debugDetails(id:
 # Dev-only: the read model (`web_movies` + per-film `web_screenings` counts) of ?country=,
 # from the local mirror when MONGODB_MOVIES_MIRROR_URI is set — not the source
 # `movies` corpus /debug shows. 404 in prod like the rest of /debug.
-GET     /debug/readmodel            controllers.DebugController.debugReadModel()
+GET     /debug/readmodel            controllers.DebugReadModelController.debugReadModel()
 # Dev-only: one read-model film's screening docs, fetched lazily when a
 # /debug/readmodel row is expanded. 404 in prod like the rest of /debug.
-GET     /debug/readmodel/screenings controllers.DebugController.debugReadModelScreenings(id: String)
+GET     /debug/readmodel/screenings controllers.DebugReadModelController.debugReadModelScreenings(id: String)
 # Dev-only: per-(rating source, film) adaptive refresh cadence — films grouped by
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.
@@ -88,17 +88,17 @@ GET     /debug/stream               controllers.DebugStreamController.stream()
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
 # without redeploying; never exposed in prod.
-GET     /:city/debug/tune           controllers.DebugController.tune(city: String)
+GET     /:city/debug/tune           controllers.TuneController.tune(city: String)
 # Sibling tuning page for the film-detail view, linked by a sub-nav inside the
 # /:city/debug/tune* pages. Same live-CSS-variable approach as
 # /:city/debug/tune; dev-only, so it gets no redirect from its pre-rename
 # `/debug/tune/film` address — nothing outside a dev box ever linked it.
-GET     /:city/debug/tune/movie     controllers.DebugController.tuneFilm(city: String)
+GET     /:city/debug/tune/movie     controllers.TuneController.tuneFilm(city: String)
 # Drop the in-memory positive cache and reload it from Mongo. Not gated by
 # devOnly — usable on a deployed instance to reconcile after out-of-band
 # Mongo edits.
 + nocsrf
-POST    /:city/debug/rehydrate      controllers.DebugController.rehydrate(city: String)
+POST    /:city/debug/rehydrate      controllers.RehydrateController.rehydrate(city: String)
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed

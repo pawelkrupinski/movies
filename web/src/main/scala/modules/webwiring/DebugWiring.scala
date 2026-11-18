@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, SnapshotStore}
+import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
 import play.api.Mode
 import services.{MongoConnection, ServiceTags}
 import services.movies.MongoMovieRepository
@@ -158,9 +158,12 @@ trait DebugWiring { self: Wiring =>
     freshnessOf = db => debugMirrorClient.fold(services.movies.MirrorFreshness.notMirrored)(client =>
       new services.movies.MongoMirrorFreshness(Some(client.getDatabase(db)))))
 
-  lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
-    cinemaSourceUrls = () => ServiceTags.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    servingCountry = country, readModels = debugReadModels, clock = clock) }
+  lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, environmentMode,
+    cinemaSourceUrls = () => ServiceTags.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()), clock = clock) }
+  lazy val debugReadModelController = new DebugReadModelController(controllerComponents, environmentMode, debugReadModels, clock)
+  lazy val tuneController = new TuneController(controllerComponents, environmentMode, cityRequests)
+  // The one /debug endpoint that runs in prod: admin-gated, it reloads the read-model caches.
+  lazy val rehydrateController = new RehydrateController(controllerComponents, cityRequests, webReadModel, adminAction)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

@@ -10,7 +10,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.http.HeaderNames.{LOCATION, SET_COOKIE}
 import play.api.http.Status.SEE_OTHER
-import play.api.i18n.Messages
 import play.api.libs.streams.Accumulator
 import play.api.mvc._
 import play.api.routing.Router
@@ -141,9 +140,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private val routes: router.Routes = {
     val cc          = Helpers.stubControllerComponents()
     val adminAction = TestAdminAction(users)
-    given Messages  = testsupport.TestMessages.deployment
-    val debug       = new DebugController(cc, null, null, adminAction, Mode.Prod, servingCountry = models.Country.Poland,
-      readModels = null, clock = _root_.tools.SpecClock.Pinned)
+    val cityRoutes  = new CityRequests(cc.messagesApi, models.Country.Poland, null, null, now = () => java.time.Instant.EPOCH,
+      build = settings.CommitSha("unknown"))
+    val rehydrate   = new RehydrateController(cc, cityRoutes, null, adminAction)
     val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
     val auth        = new AuthController(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val sso         = new SsoController(cc, users, codes, models.Country.Poland)
@@ -155,7 +154,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
     // By type, so reordering the routes file leaves this alone; every controller not listed is null.
-    _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, debug, sso, auth, userState, uptime, tasks,
+    _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, rehydrate, sso, auth, userState, uptime, tasks,
       facebook, envConfig, review)
   }
 

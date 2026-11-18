@@ -31,7 +31,7 @@ class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   )
 
   private val readModelHtml: String = {
-    val ctrl = TestDebugController.build(records, Mode.Dev)._1
+    val ctrl = TestDebugController.readModelPages(records, Mode.Dev)
     contentAsString(ctrl.debugReadModel().apply(FakeRequest(GET, "/debug/readmodel")))
   }
 
