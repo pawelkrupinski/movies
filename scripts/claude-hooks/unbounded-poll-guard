@@ -11,7 +11,8 @@ itself with `&`, DENIES (exit 2, the reason and a one-command fix on stderr) any
   - a `for ((;;))` loop that sleeps;
   - `tail -f` / `-F` / `--follow` without `--pid`.
 Bounded, and so allowed: a `for i in $(seq 1 N)` / `{1..N}` / list count; a loop reading a deadline or a counter
-(`$SECONDS`, `date +%s`, a variable named *deadline*, `-lt`/`-le`/`-gt`/`-ge`, `(( i < N ))`); a `timeout N` (N > 0)
+(`$SECONDS`, `date +%s`, a variable named *deadline*, or `-lt`/`-le`/`-gt`/`-ge` / `(( i < N ))` on a variable the
+loop counts up with `$((...))`, `++`, `+=` or `let`); a `timeout N` (N > 0)
 wrapper around the shell or script that runs the loop, or around `tail -f`; scripts/wait-for, scripts/ci-wait and
 agentctl's waits, which are commands with their own bound, not loops. A loop that never sleeps (`while read`, an
 argument parser) is no poll. It reads, beside the command itself: `bash -c` / `sh -c` / `zsh -c` scripts, a heredoc
@@ -137,10 +138,12 @@ def sleeps(words, where):
 def has_bound(words):
     if any("SECONDS" in w or "deadline" in w.lower() or "+%s" in w for w in words):
         return True
-    if any(w in NUMERIC_TESTS for w in words):
-        return True
+    # a counter: a numeric comparison AND something counting up (`$((n+1))`, `n++`, `n+=1`, `let`); a comparison
+    # alone may read a count that never comes (`until [ $(grep -c x f) -ge 3 ]`)
     joined = " ".join(words)
-    return bool(re.search(r"\( \(.*[<>]", joined))
+    compares = any(w in NUMERIC_TESTS for w in words) or re.search(r"\( \(.*[<>]", joined)
+    counts = re.search(r"\$ \( \(|\+\+|\+=|(^| )(let|expr) ", joined)
+    return bool(compares and counts)
 
 
 def fix_for(condition, region, keyword):

@@ -59,6 +59,8 @@ printf '\033[36m▸\033[0m denied\n'
 check "a while true poll" 2 "$(verdict 'while true; do curl -s localhost:9000/health && break; sleep 2; done')"
 check "a loop backgrounded with & from the foreground" 2 "$(verdict '(until grep -q x f; do sleep 5; done; echo y) & echo started' foreground)"
 check "nohup ... & of an unbounded bash -c" 2 "$(verdict "nohup bash -c 'while :; do date; sleep 60; done' > /dev/null 2>&1 &" foreground)"
+check "a comparison with nothing counting (a count that may never come)" 2 \
+  "$(verdict 'until [ $(~/bin/agentctl inbox | grep -c landed) -ge 3 ]; do sleep 60; done')"
 check "for ((;;)) with a sleep" 2 "$(verdict 'for ((;;)); do date; sleep 5; done')"
 check "tail -f" 2 "$(verdict 'tail -f /x/log | grep --line-buffered ERROR')"
 check "tail -F -n 0" 2 "$(verdict 'tail -n 0 -F /x/log')"
