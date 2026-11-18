@@ -12,6 +12,10 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "pure_move_check.py")
+SCRATCH_GIT = os.path.join(HERE, "scratch-git.sh")
+# the tool reads its repository with every GIT_* variable dropped: under the pre-push hook a GIT_DIR would point it at
+# the shared repository, not the scratch one
+CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
 sys.path.insert(0, HERE)
 import pure_move_check  # noqa: E402
 
@@ -51,15 +55,19 @@ common/src/main/scala/tools/Other.scala
 
 
 class Repo:
+    """A throwaway repository, made and committed to through scripts/scratch-git.sh, never a raw git (which under the
+    pre-push hook inherits its GIT_DIR and writes into the repository every worktree shares)."""
+
     def __init__(self, root: str):
         self.root = root
-        self.git("init", "-q", "-b", "main")
-        self.git("config", "user.email", "t@example.com")
-        self.git("config", "user.name", "t")
-        self.git("config", "commit.gpgsign", "false")
+        self.scratch("scratch_repo", "-q")
+
+    def scratch(self, helper: str, *args: str) -> str:
+        return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", SCRATCH_GIT, helper, self.root, *args],
+                              check=True, capture_output=True, text=True).stdout
 
     def git(self, *args: str) -> str:
-        return subprocess.run(["git", *args], cwd=self.root, check=True, capture_output=True, text=True).stdout
+        return self.scratch("scratch_git", *args)
 
     def write(self, path: str, text: str):
         full = os.path.join(self.root, path)
@@ -81,7 +89,7 @@ class Repo:
         return self.git("rev-parse", "HEAD").strip()
 
     def check(self, rng: str) -> tuple[int, str]:
-        done = subprocess.run([sys.executable, "-I", TOOL, rng], cwd=self.root, capture_output=True, text=True)
+        done = subprocess.run([sys.executable, "-I", TOOL, rng], cwd=self.root, capture_output=True, text=True, env=CLEAN_ENV)
         return done.returncode, done.stdout + done.stderr
 
 
