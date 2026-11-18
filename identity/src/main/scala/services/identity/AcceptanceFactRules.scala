@@ -51,16 +51,16 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  Encore" is not its 2018 staging). */
   private[identity] def soleWorkWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
-    def isWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
-    def sharesItsWork(scored: Scored) = IdentityMeasures.billsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
-    def billsWork(scored: Scored) = scored.category("title").contains("fragment") && sharesItsWork(scored)
     for {
-      work <- one(eligible.filter(scored => scored.rank.contains(1) && (isWork(scored) || billsWork(scored)) && !contradicted(scored)),
+      work <- one(eligible.filter(scored => scored.rank.contains(1) && (titledItsWork(scored) || billsItsWork(scored)) && !contradicted(scored)),
                 "no first hit is the title's work", "two first hits are the title's work", firstHit(ranked))
-      _    <- noneOf(eligible.find(other => (other ne work) && (other.titleNamesIt || (!isWork(work) && sharesItsWork(other)))),
+      _    <- noneOf(eligible.find(other => (other ne work) && (other.titleNamesIt || (!titledItsWork(work) && sharesItsWork(other)))),
                 "the title names another film", work)
     } yield atOwn(work)
   }
+  private def titledItsWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
+  private def sharesItsWork(scored: Scored) = IdentityMeasures.billsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
+  private def billsItsWork(scored: Scored) = scored.category("title").contains("fragment") && sharesItsWork(scored)
 
   /** Does the listing bill a NAME alone ([[services.titles.billing.Credits.billsOnlyAName]]) that the record's longer title merely
    *  leads, with no fact the venue states agreeing — its year, its running time, its director, an original title naming
@@ -100,22 +100,22 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  candidates fitting alike (a director's sequels of one work) are no answer. A one-word work
    *  also needs the published year, a word being many films' title. */
   private[identity] def directorsWorkWhy(ranked: Seq[Scored]): Verdict = {
-    def bareWork(scored: Scored) =
-      (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
-        .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
     // Both titles bill the work under a banner ("Royal Shakespeare Company: Macbeth", "RSC Live: Macbeth") and the
     // running times agree: a staging the credited director made, not one of the word's many films — when it is the
     // only record billing that work, whatever its running time: two seasons of one staging (Oliver Mears's Tosca,
     // 2025/26 and 2026/27, the later with no credits or running time yet) are the season's to tell apart, not this rule's
     // — counting every record billing it that credits no OTHER director: a season's record often credits nobody yet.
-    def bills(scored: Scored) = StageRelays.billings(scored.listing, scored.candidate.film).nonEmpty
-    lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
-    def billedWork(scored: Scored) = scored.ownCredit && bills(scored) && billedAlike == 1 &&
+    lazy val billedAlike = eligibleOf(ranked).count(scored => billsAStaging(scored) && !scored.category("director").contains("different"))
+    def billedWork(scored: Scored) = scored.ownCredit && billsAStaging(scored) && billedAlike == 1 &&
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime)
     val found = eligibleOf(ranked).filter(scored => scored.ownCredit &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored))
     one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(atOwn)
   }
+  private def bareWork(scored: Scored) =
+    (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
+      .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
+  private def billsAStaging(scored: Scored) = StageRelays.billings(scored.listing, scored.candidate.film).nonEmpty
 
   /** The one eligible candidate the listing's title — or the original title its venue publishes — names EXACTLY that
    *  credits the director the listing credits, when no published year or runtime contradicts it: a title and its director

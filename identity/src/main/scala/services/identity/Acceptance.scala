@@ -337,22 +337,25 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  ("Willy Wonka and the Chocolate Factory") is its candidate's whole title; a one-word piece ("The Boy and the Heron"
    *  beside a film titled "The Boy") is too short to name a work of its own. */
   private[identity] def andJoinsTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
-    def unjoined(text: String) = pieceKey(text).filterNot(_ == "and")
-    def nearly(title: Seq[String], piece: Seq[String]) =
-      title == piece || (title.sizeIs == piece.size && piece.sizeIs >= 4 && title.zip(piece).count((a, b) => a != b) == 1)
-    def joined(title: String) = AndBreak.split(title).toSeq match {
-      case Seq(first, second) if Seq(first, second).forall(piece => pieceKey(piece).sizeIs >= 2 && MultiFilmBill.namesAWork(piece)) =>
-        val whole = unjoined(title)
-        !ranked.exists(_.candidate.film.titles.exists(unjoined(_) == whole)) && {
-          val named = Seq(first, second).map(piece => ranked.filter(_.candidate.film.titles.exists(t => nearly(pieceKey(t), pieceKey(piece)))).map(_.candidate.tmdbId).toSet)
-          named.forall(_.nonEmpty) && (named.head intersect named.last).isEmpty
-        }
-      case _ => false
-    }
     // read for every rule's every ranking: a title with no "and" is split for nothing
-    def read(title: String) = AndBreak.findFirstIn(title).isDefined && joined(title)
+    def read(title: String) = AndBreak.findFirstIn(title).isDefined && joinsTwoWorks(title, ranked)
     read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
   }
+  /** Does `title`'s "and" join two pieces naming a work each, no record titled the whole, each named by records the
+   *  other is not? */
+  private def joinsTwoWorks(title: String, ranked: Seq[Scored]): Boolean = AndBreak.split(title).toSeq match {
+    case Seq(first, second) if Seq(first, second).forall(piece => pieceKey(piece).sizeIs >= 2 && MultiFilmBill.namesAWork(piece)) =>
+      val whole = unjoinedKey(title)
+      !ranked.exists(_.candidate.film.titles.exists(unjoinedKey(_) == whole)) && {
+        val named = Seq(first, second).map(piece => ranked.filter(_.candidate.film.titles.exists(t => nearlyKey(pieceKey(t), pieceKey(piece)))).map(_.candidate.tmdbId).toSet)
+        named.forall(_.nonEmpty) && (named.head intersect named.last).isEmpty
+      }
+    case _ => false
+  }
+  private def unjoinedKey(text: String): Seq[String] = pieceKey(text).filterNot(_ == "and")
+  /** The same words, or as many, four at least, all but one alike. */
+  private def nearlyKey(title: Seq[String], piece: Seq[String]): Boolean =
+    title == piece || (title.sizeIs == piece.size && piece.sizeIs >= 4 && title.zip(piece).count((a, b) => a != b) == 1)
   private val AndBreak = """(?i)\s+and\s+""".r
 
   /** The one film a marathon billing one title names ([[MultiFilmBill.billedOne]]): the one eligible candidate titled
