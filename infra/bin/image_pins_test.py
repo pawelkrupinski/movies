@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-reads: Dockerfile
 """Offline tests for infra/bin/image_pins.py: which tag each policy takes, the file rewrites, the registry protocol
 (anonymous bearer token, Link pagination, the digest of a HEAD) against a fake registry on a local port, a whole check
 over a temporary tree, and that every real pin still has the shape the weekly run reads -- so a pin reshaped by hand

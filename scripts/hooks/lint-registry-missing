@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
 # The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`,
 # one a line; nothing when every one has its row. Run from the root of the checkout it judges. A repo-reading spec is
-# a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper (ScalaSourceScan, ModuleSources,
-# SourceTrees, RepoRoot, WorkflowText): the hook's sbt check selects lint specs from the registry alone, so one without a row never
-# runs before a push. The one reading of it: lint-registry-test.sh's check and pre-push's sbt check (Tool self-tests
-# #158 and #166: two new deploy specs landed rowless, seen only on main). Both lists are sorted in C order, and comm
-# compares in C order too: under the laptop's en_NZ.UTF-8 it missed a row in place (2026-11-09).
+# a tools/ No*/*Lint* spec, any deploy/ spec, one using a source-scan helper (ScalaSourceScan, ModuleSources,
+# SourceTrees, RepoRoot, WorkflowText), or -- THE READER LINT, scripts/ci/lint_registry_reads.py --missing (the owner,
+# 2026-11-18) -- one reading a checked-in or generated artefact: a literal naming a repo path or a root file, a classpath
+# resource it opens, any resource opener or RepoFile call. The hook's sbt check selects specs from the registry alone,
+# so one without a row never runs before a push (Tool self-tests #158 and #166: two deploy specs landed rowless; Main
+# #2601: AotClassListSpec, reading the AOT class list, ran on main only). The one reading of it: lint-registry-test.sh's
+# check and pre-push's sbt check. Both lists are sorted in C order, and comm compares in C order too: under the laptop's
+# en_NZ.UTF-8 it missed a row in place (2026-11-09).
 set -euo pipefail
 registry=scripts/hooks/lint-registry.tsv
 [ -f "$registry" ] || exit 0
 rows() { grep -v '^#' "$registry" | grep -v '^$' | cut -f1 || true; }
 candidates() {
-    local tree f rel
-    for tree in ./*/src/test/scala; do
-        [ -d "$tree" ] || continue
-        find "$tree" -name '*Spec.scala' -type f | sed 's|^\./||' | while IFS= read -r f; do
-            rel="${f#*/src/test/scala/}"
-            case "$rel" in tools/No*|tools/*Lint*|deploy/*) ;; *)
-                grep -qE '\b(ScalaSourceScan|ModuleSources|SourceTrees|RepoRoot|WorkflowText)\b' "$f" || continue ;;
-            esac
-            printf '%s:%s\n' "${f%%/*}" "$(printf '%s' "${rel%.scala}" | tr / .)"
-        done
-    done
+    local tree trees=()
+    for tree in ./*/src/test/scala; do [ -d "$tree" ] && trees+=("${tree#./}"); done
+    [ "${#trees[@]}" -gt 0 ] || return 0
+    # by name, then by the helpers they use (one grep over every tree: a grep a file cost ~4 s over 1400 specs)
+    { find "${trees[@]}" -name '*Spec.scala' -type f | grep -E '/src/test/scala/(tools/No|tools/.*Lint|deploy/)' || true
+      grep -rlE --include='*Spec.scala' '\b(ScalaSourceScan|ModuleSources|SourceTrees|RepoRoot|WorkflowText)\b' "${trees[@]}" || true
+    } | sed -E 's|^([^/]+)/src/test/scala/(.*)\.scala$|\1:\2|; s|/|.|g'
+    # the artefact readers (their rowless ones: the rest are rows already, which comm drops either way)
+    if [ -f scripts/ci/lint_registry_reads.py ]; then python3 scripts/ci/lint_registry_reads.py --missing; fi
 }
 LC_ALL=C comm -23 <(candidates | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u)

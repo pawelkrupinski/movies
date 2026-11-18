@@ -5,14 +5,19 @@
 #   @repo    a path the repo-reading lint specs read (read_by_lint_specs in the hook: scripts, workflows, skills, the
 #            docs, the build, the test trees, the fixtures)
 #   @gitops  as @repo, but only with the GitOps manifests in place (PREPUSH_GITOPS=1: infra/bin/fetch-gitops fetched them)
-#   <glob>   a pushed path matching this bash pattern (`*.scala`: the spec scans Scala sources, main ones included)
-#   -        never in the plan; <why> says why (it boots a server, ...)
+#   <glob>   a pushed path matching this bash pattern (`*.scala`: the spec scans Scala sources, main ones included);
+#            a FILE a row names (no pattern character) also runs the sbt check itself, alone (the hook's plan: a
+#            Dockerfile-only push ran none); a pattern selects its spec only when the check runs anyway
+#   -        never in the plan; <why> says why (it boots a server, another check runs it, ...)
 # A spec is selected by this table, not by its name (review 2026-11-06, D3: LoadIndependentTestsSpec and
 # InMemoryStoresRoundTripSpec matched no name pattern and turned Main red 7 times). scripts/hooks/lint-registry-test.sh
-# fails when a repo-reading spec -- a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper
-# (ScalaSourceScan, ModuleSources, SourceTrees, RepoRoot, WorkflowText) -- has no row here, or a row names no spec. A new lint spec:
-# add its row, and a glob for every path outside @repo that it reads (scripts/ci/lint_registry_reads.py finds them
-# from its string literals; the test fails on a miss). scripts/land-precheck runs the same selection before a change is queued.
+# fails when a repo-reading spec -- a tools/ No*/*Lint* spec, any deploy/ spec, one using a source-scan helper
+# (ScalaSourceScan, ModuleSources, SourceTrees, RepoRoot, WorkflowText), or ANY SPEC READING A CHECKED-IN OR GENERATED
+# ARTEFACT (a literal naming a repo path or a root file, a classpath resource it opens, any resource opener or RepoFile
+# call: the reader lint, scripts/ci/lint_registry_reads.py --missing; --suggest prints the row it wants) -- has no row
+# here, or a row names no spec. A new spec reading one: add its row, with a glob for every path outside @repo that it
+# reads (lint_registry_reads.py derives them from its literals, `--reads <spec>` shows them; the test fails on a miss) and,
+# for what no literal names (a resource through a constant), by hand. scripts/land-precheck runs the same selection.
 common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
 common:models.UkPagesSpec	@repo data/uk/* geodata/src/main/resources/generated/uk-*
 common:services.PersistedCodecsLintSpec	@repo *.scala
@@ -50,7 +55,7 @@ repochecks:deploy.BotPullRequestBranchSpec	@repo
 repochecks:deploy.CacheSavePolicySpec	@repo
 repochecks:deploy.ChangeStreamSilenceAlertSpec	@gitops infra/nix/files/monitoring/rules/*
 repochecks:deploy.CiDispatchOrderSpec	@repo
-repochecks:deploy.CiImageMirrorSpec	@repo
+repochecks:deploy.CiImageMirrorSpec	@repo Dockerfile
 repochecks:deploy.CiRowScopeSpec	@repo
 repochecks:deploy.CiRowTimeoutSpec	@repo
 repochecks:deploy.CiRunnerBudgetSpec	@repo
@@ -67,8 +72,8 @@ repochecks:deploy.ConvergenceReuseSpec	@repo
 repochecks:deploy.ConvergenceRunnerMemorySpec	@repo
 repochecks:deploy.CoursierLauncherSpec	@repo
 repochecks:deploy.DebugMirrorListSpec	@repo
-repochecks:deploy.DeployImageReuseSpec	@repo
-repochecks:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/*
+repochecks:deploy.DeployImageReuseSpec	@repo Dockerfile
+repochecks:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/* .jvmopts
 repochecks:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala android/app/src/main/* data/uk/* geodata/src/main/resources/generated/* ios/Kinowo/*
 repochecks:deploy.E2eShardCoverageSpec	@repo *.scala
 repochecks:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a file lint
@@ -100,9 +105,9 @@ repochecks:deploy.IdentityModelConvergenceWiringSpec	@repo
 repochecks:deploy.IdentityRefitWorkflowSpec	@repo
 repochecks:deploy.IdentitySliceOldRefGateSpec	@repo
 repochecks:deploy.IdentityTakesWiringSpec	@repo
-repochecks:deploy.ImagePathGateSpec	@repo infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala test/resources/*	each image's inputs, derived from the build, against main.yml's publish filters
+repochecks:deploy.ImagePathGateSpec	@repo infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
 repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	@repo ios/Kinowo/*
-repochecks:deploy.JdkVersionParitySpec	@repo
+repochecks:deploy.JdkVersionParitySpec	@repo Dockerfile
 repochecks:deploy.JunitReportNoCheckRunSpec	@repo
 repochecks:deploy.K8sDeployKubeconfigAccessSpec	@repo infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
 repochecks:deploy.K8sTierPathGatingSpec	@gitops
@@ -117,7 +122,7 @@ repochecks:deploy.NoSettingFallbackSpec	@repo infra/bin/*
 repochecks:deploy.NoSilencedGhCurlSpec	*
 repochecks:deploy.NoTestRerunSpec	@repo android/*.gradle.kts android/app/build.gradle.kts ios/Kinowo.xcodeproj/* page-tests-playwright/*
 repochecks:deploy.NodeCpuBudgetSpec	@gitops
-repochecks:deploy.NodeMemoryBudgetSpec	@gitops infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix
+repochecks:deploy.NodeMemoryBudgetSpec	@gitops infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix Dockerfile
 repochecks:deploy.OneSbtPathSpec	@repo
 repochecks:deploy.OrderCompareWiringSpec	@repo
 repochecks:deploy.OrderIndependenceSeedSpec	@repo
@@ -143,7 +148,7 @@ repochecks:deploy.SbtTargetCacheJarsSpec	@repo
 repochecks:deploy.ScheduledRunReportSpec	@repo
 repochecks:deploy.SelfHostedRunnersSpec	@repo
 repochecks:deploy.SetupSbtRunnerPinSpec	@repo
-repochecks:deploy.SharedFileLayoutSpec	@repo docs/* test/resources/fixtures/*
+repochecks:deploy.SharedFileLayoutSpec	@repo docs/* test/resources/fixtures/* .gitattributes
 repochecks:deploy.SharedJdkSetupSpec	@repo
 repochecks:deploy.SharedMachineStateLintSpec	@repo *.scala infra/version-dashboard/test/* ios/Tests/*
 repochecks:deploy.SharedSbtBuildSetupSpec	@repo *.scala
@@ -155,7 +160,7 @@ worker:deploy.UnitTestSplitSpec	@repo *.scala
 repochecks:deploy.UpstreamRunSpec	@repo
 repochecks:deploy.VerifyRecordingRunNameSpec	@repo
 repochecks:deploy.WebRolloutAvailabilitySpec	@gitops
-repochecks:deploy.WorkerDurableDiagnosticsConfigSpec	@repo
+repochecks:deploy.WorkerDurableDiagnosticsConfigSpec	@repo Dockerfile
 worker:deploy.WorkerMetricsAtBootSpec	@repo infra/test/app-metrics-catalogue/*
 worker:deploy.WorkerRolloutStaggerSpec	@gitops
 worker:deploy.WorkerScrapeCadenceConfigSpec	@gitops infra/nix/files/monitoring/grafana/dashboards/*
@@ -208,3 +213,90 @@ worker:tools.RenderSafetyLintSpec	@repo *.scala web/src/main/twirl/*
 worker:tools.ScalaSourceScanSpec	@repo *.scala
 worker:tools.ScraperTypeTestLintSpec	@repo *.scala
 worker:tools.SourceTokenTablesSpec	@repo *.scala
+# THE ARTEFACT READERS (the owner, 2026-11-18): every spec that reads a checked-in or generated artefact -- a repo path, a
+# root file, a classpath resource -- has its row, so a change to that artefact selects it before landing (Main #2547/#2550,
+# #2601). scripts/ci/lint_registry_reads.py --missing names a reader with no row; --suggest prints the row it would want.
+common:models.CountrySpec	data/germany/retired.json
+common:services.MongoConnectionSpec	scripts/local-mirror/mirror-targets.js
+common:services.titlerules.ProdTitlesNormalizationSpec	common/src/test/resources/fixtures/prod-movies/titles.txt
+common:services.titlerules.TitleRulesGoldenSpec	common/src/test/resources/fixtures/prod-movies/titles.txt test/resources/fixtures/billing-parse/golden.jsonl test/resources/fixtures/title-rules/golden.jsonl
+common:tools.OutcomesCannotBeDroppedSpec	build.sbt
+e2e:services.movies.FilmScheduleEndToEndSpec	-	a basic line (local-tests.txt) runs it in every sbt check
+http:tools.TlsTrustSpec	http/src/test/resources/certs/cyber-folks-dv-tls-g3-r31-ca.pem
+identity:services.identity.BillingParseEquivalenceSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.CertificatesSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IdentityResolverCasesSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IdentityResolverPropertiesSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IncrementalResolverSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IncrementalResolverStoreSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IncrementalWholeDivergenceSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.SourceDigestSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.VenueSlotVersionSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.agreement.IncrementalWholeEquivalenceSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+scrapers:clients.CinemaScraperCatalogSpec	data/germany/feed-mirrors.json data/germany/retired.json
+scrapers:clients.bilety24.Bilety24EventPageCreditsSpec	test/resources/fixtures/08-06-2026/kinoteatrrialto.bilety24.pl/wydarzenie/.55846d8a
+scrapers:clients.bilety24.Bilety24OrganizerClientSpec	scrapers/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html
+scrapers:clients.flicks.FlicksClientSpec	test/resources/fixtures/flicks/jericho-drive-in-programme-closed-for-season.html test/resources/fixtures/flicks/odeon-cinema-norwich-programme.html test/resources/fixtures/flicks/woolton-picture-house-programme-empty.html test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28.html test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/odeon-cinema-norwich/2026-07-11.html test/resources/fixtures/flicks/www.flicks.us/cinema/sessions/lakewood-ranch-cinemas-6/2026-10-12.html
+scrapers:clients.helios.HeliosNuxtOriginalTitleSpec	test/resources/fixtures/08-06-2026/helios.pl/poznan/kino-helios/repertuar
+scrapers:clients.kino_muza.KinoMuzaClientSpec	test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko
+scrapers:clients.kinoprogramm.KinoprogrammClientSpec	test/resources/fixtures/kinoprogramm/film_page_andre_rieu_christmas_2026.html
+scrapers:clients.kinoteka.KinotekaClientSpec	test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki
+scrapers:clients.muranow.MuranowClientSpec	test/resources/fixtures/kino-muranow/kinomuranow.pl/film/100-rocznica-urodzin-tadeusza-konwickiego-przechodzien-jak-daleko-stad-jak-blisko.html test/resources/fixtures/kino-muranow/kinomuranow.pl/film/andre-rieu-pada-snieg.html
+scrapers:clients.nowe_horyzonty.NoweHoryzontyClientSpec	test/resources/fixtures/nowe-horyzonty/www.kinonh.pl/op.s.b03a4a51
+scrapers:clients.odeon.OdeonClientSpec	test/resources/fixtures/odeon/vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/*
+scrapers:clients.rialto.RialtoGenreSpec	test/resources/fixtures/rialto-genre-unknown/romeo-i-julia.html test/resources/fixtures/rialto/www.kinorialto.poznan.pl/wydarzenie
+scrapers:clients.savoy.SavoyClientSpec	test/resources/fixtures/savoy-captures/phoenixcinema-whatson-2026-10-13.html
+scrapers:clients.showcase.EverymanCatalogueTitleSpec	test/resources/fixtures/everyman/catalogue-unclosed-anniversary-paren.json
+scrapers:clients.showcase.GatsbyBoxOfficeClientSpec	test/resources/fixtures/everyman/film-details.json test/resources/fixtures/showcase/www.showcasecinemas.co.uk/*
+scrapers:clients.ticketsolve.TicketsolveClientSpec	test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml
+scrapers:clients.ujazdowski.UjazdowskiClientSpec	test/resources/fixtures/ujazdowski/u-jazdowski.pl/kino/repertuar/erupcja
+scrapers:clients.vue.VueCinemasPlatformClientSpec	test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json
+scrapers:clients.webedia.WebediaShowtimesClientSpec	test/resources/fixtures/webedia-de/theater-A0263-venue-page.html test/resources/fixtures/webedia-de/www.filmstarts.de/_/showtimes/theater-A0263/d-2026-07-11/p-1.json
+scrapers:clients.webedia.WebediaSpainShowtimesClientSpec	test/resources/fixtures/webedia-es/theater-E0291-venue-page.html test/resources/fixtures/webedia-es/theater-E0986-venue-page.html test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0291/d-2026-09-02/p-1.json test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1.json
+scrapers:services.cinemas.MsiScraperProductionFixtureSpec	test/resources/fixtures/msi-production/bilety.zamek.szczecin.pl/MSI/mvc/pl.8781cb26
+scrapers:services.cinemas.OdeonVenueMapSpec	docs/venue-maps/ODEON-VENUE-MAP.tsv
+scrapers:services.cinemas.common.FlicksFilmPageSlimSpec	test/resources/fixtures/flicks/www.flicks.us/movie/a-night-at-the-opera.html
+scrapers:services.cinemas.common.FlicksPageParserVersionSpec	test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/*
+scrapers:services.cinemas.common.ScraperParseSpec	test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki
+scrapers:services.cinemas.pl.McswElektrowniaTitleSpec	test/resources/fixtures/mcsw-elektrownia/day_page_genre_tail_glued_by_dash.html
+scrapers:services.cinemas.roster.CinemaRosterAuditSpec	data/pl/venues.json scrapers/src/test/resources/roster/bilety24-retired-organiser-slugs.txt
+web:controllers.ApiRatingPendingSpec	android/app/src/test/resources/fixtures/repertoire_pending.json ios/Tests/KinowoCoreTests/Fixtures/api_repertoire_pending.json
+web:controllers.ApiRepertoireUsWireSpec	android/app/src/test/resources/fixtures/repertoire_us.json ios/Tests/KinowoCoreTests/Fixtures/api_repertoire_us.json
+web:controllers.BrowseFilterParamsSpec	web/src/main/resources/routes
+web:controllers.CityTrailingSlashRedirectSpec	web/src/main/resources/routes
+web:controllers.LegalControllerSpec	web/src/main/resources/routes
+web:controllers.RenamedFilmPathRedirectSpec	web/src/main/resources/routes
+web:controllers.ReviewControllerSpec	test/resources/fixtures/* web/src/main/resources/routes
+web:controllers.ShareCardOgImageSpec	web/src/main/resources/routes
+web:controllers.WellKnownControllerSpec	web/src/main/resources/wellknown/apple-app-site-association
+web:modules.CountryIsolationMatrixSpec	web/src/main/resources/messages*
+web:modules.HttpMetricsFilterSpec	infra/nix/modules/roles/synthetic-probes.nix
+web:modules.InstalledBuildContractSpec	web/src/main/resources/wellknown/apple-app-site-association web/src/test/resources/installed-build/cities-7fdc618ca.tsv
+web:modules.RouteProtectionMatrixSpec	web/src/main/resources/routes
+web:services.review.ReviewDigestSpec	test/resources/fixtures/identity-judgements.tsv
+web:tools.CatalogSeedSpec	android/app/src/main/assets/catalog-seed.json ios/Kinowo/catalog-seed.json build.sbt
+web:tools.ShareCardTextSpec	web/src/main/resources/messages*
+worker:clients.enrichment.FilmwebClientSpec	test/resources/fixtures/filmweb/homepage-head.html
+worker:clients.enrichment.TmdbClientSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0
+worker:diagnostics.FilmwebDiffArgumentsSpec	.github/workflows/filmweb-diff.yml
+worker:diagnostics.RosterAuditArgumentsSpec	.github/workflows/roster-audit.yml scripts/ci/roster-audit.sh
+worker:modules.RemovalAuditLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
+worker:modules.WorkerFileLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
+worker:scripts.EnqueueSourceRefreshSpec	scripts/source-refresh
+worker:scripts.IdentityCaptureSpec	common/src/main/resources/title-rules.tsv common/src/main/scala/services/titlerules/ExtraTitleRules.scala identity/src/main/resources/identity-weights.json identity/src/main/scala/services/identity/IdentityResolver.scala identity/src/main/scala/services/identity/agreement/AgreementStage.scala web/src/main/scala/controllers/MovieController.scala worker/src/it/scala/IdentityShadow.scala
+worker:scripts.IdentityDecorationScoreFitSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
+worker:scripts.IdentityDriftSpec	test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa/* test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc/* test/resources/fixtures/drift-slices/de/werkstattkino-camouflage-07fb3fab/* test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f/* test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734/* test/resources/fixtures/identity-flip-backlog.tsv test/resources/fixtures/identity-flips-allow.tsv test/resources/fixtures/identity-slices/uk-queen-s-film-theatre-belfast-rose-2023--4f64ad1a/*
+worker:scripts.IdentitySliceEmitCaseSpec	test/resources/fixtures/identity-unmatched/* test/resources/fixtures/identity-unmatched/uk.json.gz
+worker:scripts.IdentityUnifiedFitSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
+worker:scripts.RatingGateArtefactSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
+worker:scripts.VenueReplaySpec	test/resources/fixtures/kinoheld/* test/resources/fixtures/teatr-ziemi-rybnickiej/* test/resources/fixtures/venue-replay/*
+worker:services.closure.ClosureSweepSpec	worker/src/test/resources/fixtures/venue-websites/acme_screening_room_open_with_programme.html
+worker:services.enrichment.scraping.JsonLdScanSpec	test/resources/fixtures/*
+worker:services.identity.SiblingReachedRunnerUpSpec	test/resources/fixtures/drift-slices/de/cineplex-neustadt-es-37a64e0d/*
+worker:services.identity.TitleDecorationsLearnerSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
+worker:services.identity.WhatIfAnswersSpec	test/resources/fixtures/tmdb/search_lalka_2026.json
+worker:services.identity.adapters.IdentityHistoryCompositionSpec	worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala worker/src/main/scala/modules/wiring/IdentityModelWiring.scala
+worker:services.identity.adapters.TmdbIdentityLookupsSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92 test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json test/resources/fixtures/tmdb/find_tt0080491.json test/resources/fixtures/tmdb/find_tt29703523.json
+worker:services.scrapes.OwnSiteEvidenceSpec	worker/src/main/resources/venue-websites.json
+worker:services.tasks.ScrapeCadenceSustainabilitySpec	@gitops
+worker:tools.AotClassListSpec	worker/src/main/resources/aot-classes.txt scrapers/src/main/scala/services/cinemas/*	the list (ClassArchiveTraining.ClassListResource) must name every class the scrapers module ships under services.cinemas: a scraper change, which can add a class (a new source, an anonymous or inner class), selects it (Main #2601)

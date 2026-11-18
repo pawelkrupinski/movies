@@ -137,7 +137,13 @@ came up, a bound ran out) leaves the change to the landing check. Run it yoursel
 reads (`*` always, `@repo` the repo-reading paths, `@gitops` with the manifests fetched, a pattern such as `*.scala`
 for a source scan, `-` never), not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
 matched no name pattern and turned Main red 7 times. A new repo-reading spec needs its row:
-`scripts/hooks/lint-registry-test.sh` fails without it.
+`scripts/hooks/lint-registry-test.sh` fails without it. So does EVERY SPEC READING A CHECKED-IN OR GENERATED ARTEFACT
+(the owner, 2026-11-18, after Main #2547/#2550 and #2601 passed every local check): a literal naming a repo path or a root
+file (`"Dockerfile"`), a classpath resource it opens (`getResourceAsStream("/routes")`), or any resource opener or
+`RepoFile` call -- `scripts/ci/lint_registry_reads.py --missing` names such a spec without a row, `--suggest` prints
+the row it wants, `--reads <spec>` what it reads. A file a row names runs the `sbt` check by itself (a
+Dockerfile-only or AOT-list-only push ran none; a pattern selects its spec only when the check runs anyway), and a scraper change selects `AotClassListSpec` (a new class there,
+a new source or an anonymous one, must be in the worker's AOT list): a missing entry fails locally in seconds.
 
 ## Stage 2b: the `waiting` branch, while main is red
 

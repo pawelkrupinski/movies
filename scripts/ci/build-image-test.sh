@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # build-image.sh against a stub `docker` whose builds succeed, or fail through the mirror, on cue.
 # Run: bash scripts/ci/build-image-test.sh
+# script-test-reads: Dockerfile
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"

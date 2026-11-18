@@ -10,8 +10,10 @@
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
-#                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change or any
-#                 script or workflow under scripts/, .github/ or infra/ -- plus, on any change under scripts/,
+#                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change, any
+#                 script or workflow under scripts/, .github/ or infra/, or any file a lint-registry row says its spec
+#                 reads (the Dockerfile, the AOT class list, host-memory.json, a fixture: THE ARTEFACT READERS, every
+#                 spec reading a checked-in or generated artefact, held to its row by lint_registry_reads.py) -- plus, on any change under scripts/,
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
 #                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
 #                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
@@ -393,6 +395,8 @@ plan() {
     # #259-263, landed without it).
     script_test_reads="$("$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --reads 2>/dev/null)"
     tools=" $(tool_files | tr '\n' ' ') "
+    local registry_files
+    registry_files="$(registry_files)"
     local all_paths=""
     while IFS= read -r path; do
         all_paths+="$path"$'\n'
@@ -426,6 +430,10 @@ plan() {
         # What the repo-reading lint specs `--lint-plan` adds read: scripts, workflows, tests, fixtures, skills, the docs and
         # the build -- each turned Main red from a push this check never selected (2026-10-13..15).
         read_by_lint_specs "$path" && sbt=1
+        # An artefact a registered spec reads (a file a lint-registry row names: the Dockerfile, the AOT class list,
+        # host-memory.json, a fixture): its row selects the spec, so the sbt check that runs it must run (Main
+        # #2547/#2550, #2601: a Dockerfile or an AOT-list change selected no sbt check at all).
+        if [ $sbt = 0 ] && [ -n "$registry_files" ] && printf '%s\n' "$registry_files" | grep -qxF -- "$path"; then sbt=1; fi
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
@@ -699,6 +707,14 @@ unit_plan() {
 LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
 # The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
 standing_lints() { [ -f "$LintRegistry" ] && awk -F'\t' '!/^#/ && $2 == "*" { print $1 }' "$LintRegistry"; return 0; }
+# The FILES the registry's rows name (a word with no pattern character: the Dockerfile, the AOT class list,
+# host-memory.json, one fixture), each once: an artefact a spec reads, whose change alone runs the sbt check that runs
+# it (plan). A pattern (`docs/*`, `test/resources/fixtures/*`) still selects its spec, but only when the check runs
+# anyway: a directory-wide read is a scan's coverage, and docs or a fixture tree alone run no sbt check.
+registry_files() {
+    [ -f "$LintRegistry" ] || return 0
+    awk -F'\t' '!/^#/ && NF >= 2 { n = split($2, word, " "); for (i = 1; i <= n; i++) if (word[i] !~ /[*?[]|^-$|^@/ && !(word[i] in seen)) { seen[word[i]] = 1; print word[i] } }' "$LintRegistry"
+}
 # Whether one of the paths on stdin is one the repo-reading lint specs read.
 reads_repo() {
     local path found=1
@@ -1551,11 +1567,17 @@ check_sbt() {
         return 1
     fi
     # ...AND ITS ROW SELECTS IT FOR EVERY PATH IT READS (Tool self-tests #194: a row missed two test/resources files its
-    # spec reads, seen on main only). A push of a spec, or of the registry, runs the reads check (~15 s) here too.
-    local misses line
+    # spec reads, seen on main only). A push of the registry or its readers runs the reads check over every row (~8 s);
+    # a push of specs alone, over theirs (a second).
+    local misses line only=()
     if printf '%s\n' "$changed" | grep -qE '(/src/test/scala/.*Spec\.scala|^scripts/hooks/lint-registry\.tsv)$' \
         && [ -f scripts/ci/lint_registry_reads.py ]; then
-        misses="$(python3 scripts/ci/lint_registry_reads.py)" || return 1
+        if ! printf '%s\n' "$changed" | grep -qE '^scripts/(hooks/lint-registry\.tsv|hooks/pre-push|ci/lint_registry_reads\.py)$'; then
+            only=(--only)
+            while IFS= read -r line; do only+=("$line"); done < <(printf '%s\n' "$changed" \
+                | sed -nE 's|^([^/]+)/src/test/scala/(.*Spec)\.scala$|\1:\2|p' | tr / .)
+        fi
+        misses="$(python3 scripts/ci/lint_registry_reads.py ${only[@]+"${only[@]}"})" || return 1
         if [ -n "$misses" ]; then
             while IFS=$'\t' read -r spec line; do
                 warn "$spec reads $line, which its lint-registry row does not select: add the path's glob to its row"
@@ -1582,8 +1604,11 @@ check_sbt() {
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
-    for module in common scrapers repochecks worker web; do
-        tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
+    # a module none of whose rows the push selects runs none: a bare `testOnly` would run its every test
+    local module_lints
+    for module in http common scrapers repochecks worker web; do
+        module_lints="$(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')"
+        [ -z "$module_lints" ] || tests+=("$module/Test/testOnly $module_lints")
     done
     # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints; --fast-only:
     # the `fast` set instead

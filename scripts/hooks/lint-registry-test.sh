@@ -52,4 +52,51 @@ check "no spec reads a path its row would not select (add the path's glob to the
   "$(python3 scripts/ci/lint_registry_reads.py | tr '\t\n' ': ' | sed 's/ $//')"
 check "a push of tools/devpanel/scripts/devpanel.py selects DevServerHeapCanarySpec" "yes" \
   "$(has "$(lints tools/devpanel/scripts/devpanel.py)" repochecks:deploy.DevServerHeapCanarySpec)"
+
+printf '\033[36m▸\033[0m what a spec reads is derived, and a reader without a row fails (THE READER LINT)\n'
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+reads_of() { python3 scripts/ci/lint_registry_reads.py --reads "$1" | cut -f3 | tr '\n' ' '; }
+check "a root file a spec names is a read (JdkVersionParitySpec's RepoFile.read(\"Dockerfile\"))" "yes" \
+  "$(has "$(reads_of repochecks:deploy.JdkVersionParitySpec)" Dockerfile)"
+check "a classpath resource a spec opens is a read, found under its module's resources (\"/routes\")" "yes" \
+  "$(has "$(reads_of web:controllers.BrowseFilterParamsSpec)" web/src/main/resources/routes)"
+grep -v -E '^(worker:tools\.AotClassListSpec|web:controllers\.BrowseFilterParamsSpec)	' "$registry" > "$scratch/registry.tsv"
+rowless="$(python3 scripts/ci/lint_registry_reads.py --registry "$scratch/registry.tsv" --missing | tr '\n' ' ')"
+check "a spec opening a resource by a name no literal gives, rowless, is named (AotClassListSpec)" "yes" \
+  "$(has "$rowless" worker:tools.AotClassListSpec)"
+check "...and one opening a resource by literal (BrowseFilterParamsSpec)" "yes" "$(has "$rowless" web:controllers.BrowseFilterParamsSpec)"
+
+# THE REDS THE SELECTION MISSED (the owner, 2026-11-18): each red commit's paths, replayed through the hook's selection,
+# select the spec that went red -- and the sbt check that runs it.
+printf '\033[36m▸\033[0m the reds the selection missed now select their spec\n'
+plan_of() { printf '%s\n' "$@" | scripts/hooks/pre-push --plan | tr '\n' ' '; }
+gitops_lints() { printf '%s\n' "$@" | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' '; }
+# Main #2564: movies-gitops 5ec2eee (Flux's notification-controller) pushed NodeMemoryBudgetSpec over its reserve. A
+# gitops push runs scripts/gitops-specs (its pre-push); here, the budget's own inputs select it too.
+check "#2564: a gitops push runs NodeMemoryBudgetSpec (scripts/gitops-specs --plan)" "yes" \
+  "$(has "$(scripts/gitops-specs --plan | tr '\n' ' ')" deploy.NodeMemoryBudgetSpec)"
+check "#2564: host-memory.json and k3s-server.nix run the sbt check, and select NodeMemoryBudgetSpec" "yes yes yes" \
+  "$(has "$(plan_of infra/nix/files/host-memory.json)" sbt) $(has "$(plan_of infra/nix/modules/roles/k3s-server.nix)" sbt) $(has "$(gitops_lints infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix)" repochecks:deploy.NodeMemoryBudgetSpec)"
+# Main #2547/#2550: the weekly bump (251bbc29a) moved the Temurin digest; the image's JAVA_VERSION check failed. A pin's
+# restate (infra/bin/image_pins.py) writes the Dockerfile alone: it runs the sbt check, the JDK and image specs, and the
+# script tests reading the Dockerfile.
+red2="$(plan_of Dockerfile)"
+check "#2547/#2550: a Dockerfile-only change runs the sbt check and the script tests" "yes yes" "$(has "$red2" sbt) $(has "$red2" scripttests)"
+out="$(lints Dockerfile)"
+check "...selecting JdkVersionParitySpec and the image specs" "yes yes yes" \
+  "$(has "$out" repochecks:deploy.JdkVersionParitySpec) $(has "$out" repochecks:deploy.CiImageMirrorSpec) $(has "$out" repochecks:deploy.ImagePathGateSpec)"
+out="$(lints .github/actions/setup-buildx/action.yml Dockerfile infra/flake.lock infra/nix/modules/roles/mongodb.nix scripts/ci/start-mongo-replset.sh scripts/convergence-local.sh scripts/run-script-tests)"
+check "...and the bump's own paths (251bbc29a) select JdkVersionParitySpec" "yes" "$(has "$out" repochecks:deploy.JdkVersionParitySpec)"
+# Main #2601: 2721992e8 added MitchellTheatresClient, whose `collect { case ... }` compiles to an anonymous class the AOT
+# list lacked. A scraper change (a new source, or a new anonymous or inner class in a changed one) selects the list's spec.
+out="$(lints scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala scrapers/src/main/scala/services/cinemas/us/MitchellTheatresClient.scala \
+  scrapers/src/main/scala/services/cinemas/us/UsIndependentVenues.scala scrapers/src/test/scala/clients/CinemaScraperCatalogSpec.scala \
+  scrapers/src/test/scala/clients/mitchelltheatres/MitchellTheatresClientSpec.scala scrapers/src/test/scala/clients/tools/WriteMitchellTheatres.scala \
+  test/resources/fixtures/mitchelltheatres/www.southgate6.com/index worker/src/main/resources/aot-classes.txt)"
+check "#2601: 2721992e8's paths select AotClassListSpec" "yes" "$(has "$out" worker:tools.AotClassListSpec)"
+check "...as does a new scraper source alone, and the list alone" "yes yes" \
+  "$(has "$(lints scrapers/src/main/scala/services/cinemas/de/NewKinoClient.scala)" worker:tools.AotClassListSpec) $(has "$(lints worker/src/main/resources/aot-classes.txt)" worker:tools.AotClassListSpec)"
+check "...but a worker-only change does not (the spec checks the scrapers' classes)" "no" \
+  "$(has "$(lints worker/src/main/scala/services/A.scala)" worker:tools.AotClassListSpec)"
 spec_summary

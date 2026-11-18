@@ -14,7 +14,8 @@ check "production JS runs ESLint and the sbt check (no page area: the page tests
 check "a page spec's JS runs ESLint and the sbt check" "eslint sbt" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
-check "a roster source runs the generated-artefact drift check, and the roster generators' self-tests" "drift scripttests" "$(plan data/pl/venues.json)"
+# ...and the sbt check: CinemaRosterAuditSpec reads data/pl/venues.json (its lint-registry row names the file)
+check "a roster source runs the generated-artefact drift check, the roster generators' self-tests, and its reader spec" "drift scripttests sbt" "$(plan data/pl/venues.json)"
 check "a model file runs the drift check AND the sbt lints" "drift sbt" "$(plan common/src/main/scala/models/Cinema.scala)"
 check "a generated geodata table runs the drift check AND the sbt lints" "drift sbt" "$(plan geodata/src/main/scala/models/VenueTowns.scala)"
 check "...and so does a generated table resource" "drift sbt" "$(plan geodata/src/main/resources/generated/venue-towns.tsv)"
