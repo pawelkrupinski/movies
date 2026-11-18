@@ -88,57 +88,59 @@ class FilmwebShowtimesClient(
       .map(info => canonicalSourceUrl(info.name, info.city, cinemaId))
 
   def fetch(): Seq[CinemaMovie] = {
-    // The whole programme in one page. A page that fails, doesn't parse or hangs
-    // past `pageTimeout` (absent from the map) fails the scrape: a Filmweb that is
-    // down must not read as a quiet venue.
-    val url = seancesUrl(cinemaId)
-    val seances: Seq[RawSeance] =
-      ParallelDetailFetch("filmweb-seances", Seq(url), pageTimeout, maxConcurrent = 1) { url =>
-        Try(HttpRead.page(http, url)).map(parseSeances)
-      }.getOrElse(url, Failure(new TimeoutException(s"Filmweb seances took longer than $pageTimeout"))).get
-
-    if (seances.isEmpty) return Seq.empty
-
-    // One /title/{id}/info per unique film, in parallel.
-    val filmIds = seances.map(_.filmId).distinct
-    val infoReads = ListingPages.readEnrichment("filmweb-title-info", filmIds, id => titleInfoUrl(id), timeout = 1.minute) { url =>
-      parseFilmInfo(HttpRead.page(http, url))
-    }
-    // A film whose info failed is still listed under its seance's own title; only one with no
-    // such title is dropped, and only its page leaves the listing incomplete.
-    val titled = seances.filter(_.fallbackTitle.nonEmpty).map(_.filmId).toSet
-    ListingPages.reportFailed(infoReads.filterNot(read => titled(read._1)).map(_._2))
-    val infos = infoReads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
-
-    SlotsToMovies.foldBlocks(seances, _.filmId, _.showtimes, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, group, showtimes) =>
-      val info = infos.get(filmId).flatten
-      val title = info.flatMap(_.title).map(_.trim).filter(_.nonEmpty)
-        .orElse(group.flatMap(_.fallbackTitle).headOption)
-      title match {
-        case None => None
-        case Some(t) =>
-          Some(CinemaMovie(
-            movie       = Movie(
-              title         = t,
-              releaseYear   = info.flatMap(_.year),
-              // Filmweb's `originalTitle` is the international/source title, a
-              // strong TMDB-resolution hint for non-Polish films. Carry it only
-              // when it actually differs from the displayed title — for Polish
-              // films Filmweb echoes the Polish title there, which is redundant.
-              originalTitle = info.flatMap(_.originalTitle).filter(_ != t)
-            ),
-            cinema      = cinema,
-            posterUrl   = info.flatMap(_.posterUrl),
-            filmUrl     = Some(filmPageUrl(filmId)),
-            synopsis    = None,
-            cast        = Seq.empty,
-            director    = Seq.empty,
-            showtimes   = showtimes,
-            externalIds = Map("filmweb" -> filmId.toString)
-          ))
+    val seances = readSeances()
+    if (seances.isEmpty) Seq.empty
+    else {
+      val infos = readInfos(seances)
+      SlotsToMovies.foldBlocks(seances, _.filmId, _.showtimes, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, group, showtimes) =>
+        movieOf(filmId, infos.get(filmId).flatten, group, showtimes)
       }
     }
   }
+
+  // The whole programme in one page. A page that fails, doesn't parse or hangs
+  // past `pageTimeout` (absent from the map) fails the scrape: a Filmweb that is
+  // down must not read as a quiet venue.
+  private def readSeances(): Seq[RawSeance] = {
+    val url = seancesUrl(cinemaId)
+    ParallelDetailFetch("filmweb-seances", Seq(url), pageTimeout, maxConcurrent = 1) { url =>
+      Try(HttpRead.page(http, url)).map(parseSeances)
+    }.getOrElse(url, Failure(new TimeoutException(s"Filmweb seances took longer than $pageTimeout"))).get
+  }
+
+  // One /title/{id}/info per unique film, in parallel. A film whose info failed is still listed
+  // under its seance's own title; only one with no such title is dropped, and only its page leaves
+  // the listing incomplete.
+  private def readInfos(seances: Seq[RawSeance]): Map[Long, Option[FilmInfo]] = {
+    val infoReads = ListingPages.readEnrichment("filmweb-title-info", seances.map(_.filmId).distinct, id => titleInfoUrl(id),
+      timeout = 1.minute) { url => parseFilmInfo(HttpRead.page(http, url)) }
+    val titled = seances.filter(_.fallbackTitle.nonEmpty).map(_.filmId).toSet
+    ListingPages.reportFailed(infoReads.filterNot(read => titled(read._1)).map(_._2))
+    infoReads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
+  }
+
+  private def movieOf(filmId: Long, info: Option[FilmInfo], group: Seq[RawSeance], showtimes: Seq[Showtime]): Option[CinemaMovie] =
+    info.flatMap(_.title).map(_.trim).filter(_.nonEmpty).orElse(group.flatMap(_.fallbackTitle).headOption).map { t =>
+      CinemaMovie(
+        movie       = Movie(
+          title         = t,
+          releaseYear   = info.flatMap(_.year),
+          // Filmweb's `originalTitle` is the international/source title, a
+          // strong TMDB-resolution hint for non-Polish films. Carry it only
+          // when it actually differs from the displayed title — for Polish
+          // films Filmweb echoes the Polish title there, which is redundant.
+          originalTitle = info.flatMap(_.originalTitle).filter(_ != t)
+        ),
+        cinema      = cinema,
+        posterUrl   = info.flatMap(_.posterUrl),
+        filmUrl     = Some(filmPageUrl(filmId)),
+        synopsis    = None,
+        cast        = Seq.empty,
+        director    = Seq.empty,
+        showtimes   = showtimes,
+        externalIds = Map("filmweb" -> filmId.toString)
+      )
+    }
 
   /** Parse one seances response: each element's `date` and every one of its
    *  `hours` tokens form a screening `LocalDateTime`; an element missing either

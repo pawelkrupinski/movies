@@ -132,13 +132,27 @@ class MsiClient(
       .getOrElse(cleanTitle)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    // Walk forward a month at a time instead of fetching a fixed two. MSI venues
-    // usually publish only 1–2 months ahead, but nothing in the portal promises
-    // that, and a hard two-month window silently hides every screening past it —
-    // the exact horizon cap `ScrapeHorizon` exists to forbid ("we want ALL future
-    // screenings"). The typical venue still costs three or four requests rather
-    // than twenty-four. See [[ScrapeHorizon.liveMonths]] for the stop rule, and
-    // why a month that FAILS to fetch counts as blank.
+    val (found, namesLabelsFeed) = monthSlots()
+    // Only a portal with screenings is asked for their labels, so a dormant venue
+    // still costs just its month walk.
+    val labels =
+      if (found.isEmpty) EventLabels.Empty
+      else if (!namesLabelsFeed && otherVenueLocations.isEmpty) EventLabels.Empty // a skin with no feed to ask
+      else readLabels()
+    val ownSlots = found.filterNot(slot => slot.eventId.exists(id => labels.locations.getOrElse(id, Nil).exists(otherVenueLocations)))
+    MsiScraper.toMovies(ownSlots.filterNot(slot => isStagedSlot(slot, labels.kinds)), cinema)
+  }
+
+  /** Every month's slots, and whether a month page names the labels feed.
+   *
+   *  Walk forward a month at a time instead of fetching a fixed two. MSI venues
+   *  usually publish only 1–2 months ahead, but nothing in the portal promises
+   *  that, and a hard two-month window silently hides every screening past it —
+   *  the exact horizon cap `ScrapeHorizon` exists to forbid ("we want ALL future
+   *  screenings"). The typical venue still costs three or four requests rather
+   *  than twenty-four. See [[ScrapeHorizon.liveMonths]] for the stop rule, and
+   *  why a month that FAILS to fetch counts as blank. */
+  private def monthSlots(): (Seq[MsiScraper.RawSlot], Boolean) = {
     val attempts = Seq.newBuilder[Try[String]]
     val slots    = Seq.newBuilder[MsiScraper.RawSlot]
     var namesLabelsFeed = false
@@ -160,29 +174,23 @@ class MsiClient(
     // indistinguishable from a genuinely film-dormant venue). Same guard as
     // KinoAwangarda2Client / KinoPatriaClient.
     ListingPages.requireAnyReached(attempts.result())
-
-    val found  = slots.result()
-    // Only a portal with screenings is asked for their labels, so a dormant venue
-    // still costs just its month walk.
-    val labels: EventLabels =
-      if (found.isEmpty) EventLabels.Empty
-      else if (!namesLabelsFeed && otherVenueLocations.isEmpty) EventLabels.Empty // a skin with no feed to ask
-      else HttpRead.jsonObject(http, eventLabelsUrl(baseUrl, mvcPath))(feed => ReadOutcome.Answered(parseEventLabels(feed))) match {
-        case ReadOutcome.Answered(byEvent) => byEvent
-        case unread if otherVenueLocations.nonEmpty =>
-          throw new IllegalStateException(
-            s"${cinema.displayName}: no event labels, so the shared portal cannot be split from ${otherVenueLocations.mkString(", ")}: ${unread.explain}")
-        // Unread labels leave every screening's kind unknown, and an unknown kind
-        // is kept — what the scrape did before it read labels — since dropping a
-        // film costs more than listing a play. Logged, so a portal that stops
-        // serving the feed is seen rather than silently unfiltered.
-        case unread =>
-          logger.info(s"${cinema.displayName}: no event labels, so only titles filter its stage events: ${unread.explain}")
-          EventLabels.Empty
-      }
-    val ownSlots = found.filterNot(slot => slot.eventId.exists(id => labels.locations.getOrElse(id, Nil).exists(otherVenueLocations)))
-    MsiScraper.toMovies(ownSlots.filterNot(slot => isStagedSlot(slot, labels.kinds)), cinema)
+    (slots.result(), namesLabelsFeed)
   }
+
+  private def readLabels(): EventLabels =
+    HttpRead.jsonObject(http, eventLabelsUrl(baseUrl, mvcPath))(feed => ReadOutcome.Answered(parseEventLabels(feed))) match {
+      case ReadOutcome.Answered(byEvent) => byEvent
+      case unread if otherVenueLocations.nonEmpty =>
+        throw new IllegalStateException(
+          s"${cinema.displayName}: no event labels, so the shared portal cannot be split from ${otherVenueLocations.mkString(", ")}: ${unread.explain}")
+      // Unread labels leave every screening's kind unknown, and an unknown kind
+      // is kept — what the scrape did before it read labels — since dropping a
+      // film costs more than listing a play. Logged, so a portal that stops
+      // serving the feed is seen rather than silently unfiltered.
+      case unread =>
+        logger.info(s"${cinema.displayName}: no event labels, so only titles filter its stage events: ${unread.explain}")
+        EventLabels.Empty
+    }
 }
 
 object MsiClient {

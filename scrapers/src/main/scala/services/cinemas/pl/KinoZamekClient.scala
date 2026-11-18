@@ -161,29 +161,7 @@ object KinoZamekClient {
     val dated     = eventDates(document)
     val pageTitle = Option(document.selectFirst("h1")).map(_.text.trim).filter(_.nonEmpty)
 
-    // Scope to the article body: the site's nav renders inside <p> too, and its
-    // menu text would otherwise be picked up as a film heading.
-    val paragraphs = Option(document.selectFirst("div.content")).getOrElse(document)
-      .select("p").asScala.toSeq
-      .map(element => Paragraph(collapse(element.text), isHeading(element)))
-      .filter(_.text.nonEmpty)
-
-    // Pair each screening line with the nearest bold heading above it.
-    var heading = Option.empty[String]
-    val screenings = paragraphs.zipWithIndex.flatMap { case (paragraph, index) =>
-      ScreeningLine.findFirstMatchIn(paragraph.text) match {
-        case Some(matched) =>
-          for {
-            month <- ScraperParse.polishMonth(matched.group(2))
-            time  <- ScraperParse.clockAt(matched, 3)
-            date  <- resolveDate(matched.group(1).toInt, month, dated, today)
-            if !date.isBefore(today)
-          } yield Screening(date, time, heading, directorAfter(paragraphs, index))
-        case None =>
-          if (paragraph.isHeading) heading = Some(paragraph.text)
-          None
-      }
-    }
+    val screenings = screeningsOf(paragraphsOf(document), dated, today)
 
     // A cycle page introduces each of its films with its OWN heading; a
     // single-film page has at most one heading and it is the programme strand,
@@ -206,6 +184,33 @@ object KinoZamekClient {
           showtimes = showtimes
         ))
       case _ => None
+    }
+  }
+
+  // Scope to the article body: the site's nav renders inside <p> too, and its
+  // menu text would otherwise be picked up as a film heading.
+  private def paragraphsOf(document: Document): Seq[Paragraph] =
+    Option(document.selectFirst("div.content")).getOrElse(document)
+      .select("p").asScala.toSeq
+      .map(element => Paragraph(collapse(element.text), isHeading(element)))
+      .filter(_.text.nonEmpty)
+
+  // Pair each screening line with the nearest bold heading above it.
+  private def screeningsOf(paragraphs: Seq[Paragraph], dated: Seq[LocalDate], today: LocalDate): Seq[Screening] = {
+    var heading = Option.empty[String]
+    paragraphs.zipWithIndex.flatMap { case (paragraph, index) =>
+      ScreeningLine.findFirstMatchIn(paragraph.text) match {
+        case Some(matched) =>
+          for {
+            month <- ScraperParse.polishMonth(matched.group(2))
+            time  <- ScraperParse.clockAt(matched, 3)
+            date  <- resolveDate(matched.group(1).toInt, month, dated, today)
+            if !date.isBefore(today)
+          } yield Screening(date, time, heading, directorAfter(paragraphs, index))
+        case None =>
+          if (paragraph.isHeading) heading = Some(paragraph.text)
+          None
+      }
     }
   }
 

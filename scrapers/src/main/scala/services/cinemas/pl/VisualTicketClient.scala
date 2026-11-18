@@ -6,6 +6,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -72,27 +73,7 @@ object VisualTicketClient {
     //   data-location-id       — venue id within the institution
     //   h3.event-title > span  — raw event title
     //   a.btn-buy              — per-screening ticket booking link
-    val slots = doc.select("div.event-item").asScala.toSeq.flatMap { item =>
-      val loc = Try(item.attr("data-location-id").toInt).getOrElse(-1)
-      if (locationId != AnyLocation && loc != locationId) None
-      else {
-        val category = Option(item.selectFirst("div.event-group-label"))
-          .map(_.text.trim.toLowerCase(Locale.ROOT))
-          .getOrElse("")
-        if (!category.contains("film")) None
-        else for {
-          rawDate  <- Option(item.attr("data-date")).filter(_.nonEmpty)
-          rawTime  <- Option(item.attr("data-time")).filter(_.nonEmpty)
-          date     <- Try(LocalDate.parse(rawDate)).toOption
-          time     <- ScraperParse.parseHHmm(rawTime)
-          h3       <- Option(item.selectFirst("h3.event-title"))
-          span     <- Option(h3.selectFirst("span[aria-hidden=true]"))
-          rawTitle  = SeansFimowyRe.replaceFirstIn(span.text.trim, "").trim
-          if rawTitle.nonEmpty
-          bookingUrl = Option(item.selectFirst("a.btn-buy")).map(_.attr("abs:href")).filter(_.nonEmpty)
-        } yield (rawTitle, LocalDateTime.of(date, time), bookingUrl)
-      }
-    }
+    val slots = doc.select("div.event-item").asScala.toSeq.filter(isFilmAt(_, locationId)).flatMap(slotOf)
 
     SlotsToMovies.fold(
       slots,
@@ -112,4 +93,23 @@ object VisualTicketClient {
       )
     }
   }
+
+  private def isFilmAt(item: Element, locationId: Int): Boolean = {
+    val loc = Try(item.attr("data-location-id").toInt).getOrElse(-1)
+    (locationId == AnyLocation || loc == locationId) &&
+      Option(item.selectFirst("div.event-group-label")).map(_.text.trim.toLowerCase(Locale.ROOT)).getOrElse("").contains("film")
+  }
+
+  private def slotOf(item: Element): Option[(String, LocalDateTime, Option[String])] =
+    for {
+      rawDate  <- Option(item.attr("data-date")).filter(_.nonEmpty)
+      rawTime  <- Option(item.attr("data-time")).filter(_.nonEmpty)
+      date     <- Try(LocalDate.parse(rawDate)).toOption
+      time     <- ScraperParse.parseHHmm(rawTime)
+      h3       <- Option(item.selectFirst("h3.event-title"))
+      span     <- Option(h3.selectFirst("span[aria-hidden=true]"))
+      rawTitle  = SeansFimowyRe.replaceFirstIn(span.text.trim, "").trim
+      if rawTitle.nonEmpty
+      bookingUrl = Option(item.selectFirst("a.btn-buy")).map(_.attr("abs:href")).filter(_.nonEmpty)
+    } yield (rawTitle, LocalDateTime.of(date, time), bookingUrl)
 }

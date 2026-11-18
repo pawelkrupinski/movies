@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalTime, Period}
+import java.time.{LocalDate, Period}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -84,41 +84,21 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   def parseTrailer(html: String): Option[String] =
     TrailerIframePat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
+  private type FilmFacts = (String, Option[String], Option[String], Seq[String], Seq[String], Option[Int], Option[Int])
+
   private def parseHtml(html: String): Seq[CinemaMovie] = {
-    val document            = Jsoup.parse(html)
-    val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Seq[String], Seq[String], Option[Int], Option[Int])]()
+    val filmByUrl      = collection.mutable.Map[String, FilmFacts]()
     val showtimesByUrl = collection.mutable.Map[String, collection.mutable.ListBuffer[Showtime]]()
 
-    document.select("article").asScala.foreach { article =>
-      val dateOpt = Option(article.selectFirst("h3")).flatMap(h3 => parsePolishDate(h3.text()))
-
-      article.select("section.clearfix").asScala.foreach { section =>
-        for (link <- Option(section.selectFirst("h4 a[href]")); date <- dateOpt) {
-          val filmUrl = link.attr("href")
-          val title   = normalizeTitle(link.text())
-
-          val timeOpt = Option(section.selectFirst(".start-info.clock")).flatMap { clockElement =>
-            ScraperParse.parseHHmm(clockElement.text().replaceAll("\\s+", "")).map(date.atTime)
-          }
-
-          val room = Option(section.selectFirst(".show-type-badge a"))
-            .map(_.text().trim)
-            .filter(_.nonEmpty)
-
-          if (!filmByUrl.contains(filmUrl)) {
-            val posterUrl = Option(section.selectFirst("img[src]")).map { img =>
-              img.attr("src").replaceAll("-\\d+x\\d+(\\.jpg)", "$1")
-            }
-            val synopsis                             = Option(section.selectFirst("p:not(.movie-meta)")).map(_.text()).filter(_.nonEmpty)
-            val (director, countries, year, runtime) = extractMeta(section)
-            filmByUrl(filmUrl) = (title, posterUrl, synopsis, director, countries, year, runtime)
-          }
-
-          timeOpt.foreach { dateTime =>
-            showtimesByUrl.getOrElseUpdate(filmUrl, collection.mutable.ListBuffer()) += Showtime(dateTime, None, room)
-          }
-        }
-      }
+    for {
+      article <- Jsoup.parse(html).select("article").asScala
+      date    <- Option(article.selectFirst("h3")).flatMap(h3 => parsePolishDate(h3.text())).toSeq
+      section <- article.select("section.clearfix").asScala
+      link    <- Option(section.selectFirst("h4 a[href]"))
+    } {
+      val filmUrl = link.attr("href")
+      if (!filmByUrl.contains(filmUrl)) filmByUrl(filmUrl) = filmFacts(section, normalizeTitle(link.text()))
+      showtimeOf(section, date).foreach(showtimesByUrl.getOrElseUpdate(filmUrl, collection.mutable.ListBuffer()) += _)
     }
 
     filmByUrl.toSeq.flatMap { case (filmUrl, (title, posterUrl, synopsis, director, countries, year, runtime)) =>
@@ -135,6 +115,22 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
         )
       }
     }
+  }
+
+  private def filmFacts(section: Element, title: String): FilmFacts = {
+    val posterUrl = Option(section.selectFirst("img[src]")).map { img =>
+      img.attr("src").replaceAll("-\\d+x\\d+(\\.jpg)", "$1")
+    }
+    val synopsis                             = Option(section.selectFirst("p:not(.movie-meta)")).map(_.text()).filter(_.nonEmpty)
+    val (director, countries, year, runtime) = extractMeta(section)
+    (title, posterUrl, synopsis, director, countries, year, runtime)
+  }
+
+  private def showtimeOf(section: Element, date: LocalDate): Option[Showtime] = {
+    val room = Option(section.selectFirst(".show-type-badge a")).map(_.text().trim).filter(_.nonEmpty)
+    Option(section.selectFirst(".start-info.clock"))
+      .flatMap(clock => ScraperParse.parseHHmm(clock.text().replaceAll("\\s+", "")))
+      .map(time => Showtime(date.atTime(time), None, room))
   }
 }
 

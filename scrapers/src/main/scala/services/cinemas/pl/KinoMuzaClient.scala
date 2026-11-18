@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.Document
+import org.jsoup.nodes.{Document, Element}
 import models.*
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -123,72 +123,69 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
   private def cleanTitle(raw: String): String =
     titles.cinemaClean("kino-muza", raw)
 
-  private def parseHtml(html: String): Seq[CinemaMovie] = {
-    val document      = Jsoup.parse(html)
-    val previews = document.select("#movies .preview").asScala
+  private def parseHtml(html: String): Seq[CinemaMovie] =
+    Jsoup.parse(html).select("#movies .preview").asScala.flatMap(movieOf).toSeq.filter(_.showtimes.nonEmpty)
 
-    previews.flatMap { preview =>
-      val rawTitle = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
-      val title    = rawTitle.map(cleanTitle).filter(_.nonEmpty)
-      val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
-      val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")
-      val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
-      // Info block is <br>-separated: "reż. <names>", then the country/-ies,
-      // then year and runtime (also picked up by the regexes from the flat text).
-      // Either credit line can be missing — a short or kids' morning carries
-      // just "75’", a TV special "USA<br>63’" — so each is recognised by its
-      // shape, never by position.
-      val infoLines = infoHtml.split("(?i)<br\\s*/?>").toSeq
-                              .map(line => Jsoup.parse(line).text().trim)
-                              .filter(_.nonEmpty)
-      val (directorLines, otherLines) = infoLines.partition(_.matches("(?i)^reż\\..*"))
-      val director  = directorLines.headOption
-        .map(_.replaceFirst("(?i)^reż\\.\\s*", "").trim)
-        .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      // The first other line is the country list unless it instead carries a
-      // year/runtime token (some entries omit the country line entirely).
-      // Split on "," for co-productions ("Polska, Niemcy" → two entries).
-      val countries = otherLines.headOption
-        .filterNot(_.matches(".*\\b(?:19|20)\\d{2}\\b.*"))
-        .filterNot(_.matches(".*\\d+\\s*[\\u2019'].*"))
-        .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      val runtimeMinutes = RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption)
-      val releaseYear    = YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
-
-      title.map { title =>
-        val showtimes = preview.select(".table-row").asScala.flatMap { row =>
-          val dateOpt = Option(row.selectFirst(".day")).flatMap(element => parseDate(element.text()))
-          val items   = row.select(".ticket-list-item").asScala
-
-          dateOpt.toSeq.flatMap { date =>
-            items.flatMap { item =>
-              val timeText   = Option(item.selectFirst(".ticket-hour")).map(_.text().trim)
-              val bookingUrl = Option(item.selectFirst("a.ticket-buy")).map(_.attr("href"))
-              val room       = Option(item.selectFirst("span.text-gold"))
-                                 .map(_.parent().text().trim)
-                                 .filter(_.nonEmpty)
-              timeText.flatMap(ScraperParse.parseHHmm).map(time => Showtime(date.atTime(time), bookingUrl, room))
-            }
-          }
-        }.toSeq.distinctBy(_.dateTime)
-
-        CinemaMovie(
-          movie     = Movie(title, runtimeMinutes, releaseYear, countries = countries, rawTitle = rawTitle),
-          cinema    = KinoMuza,
-          // The listing page only carries a landscape-cropped thumbnail; the
-          // higher-fidelity portrait poster lives on each film's detail page
-          // and is pulled by the deferred `fetchFilmDetail`. Leaving the
-          // listing's posterUrl as None means the merge in
-          // `MovieCache.recordCinemaScrape` can't clobber the detail-page
-          // portrait on subsequent ticks.
-          posterUrl = None,
-          filmUrl   = filmUrl,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = director,
-          showtimes = showtimes.sortBy(_.dateTime)
-        )
-      }
-    }.toSeq.filter(_.showtimes.nonEmpty)
+  private def movieOf(preview: Element): Option[CinemaMovie] = {
+    val rawTitle = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
+    rawTitle.map(cleanTitle).filter(_.nonEmpty).map { title =>
+      val info = Option(preview.selectFirst(".f1-bold p"))
+      val (director, countries) = credits(info.map(_.html()).getOrElse(""))
+      val infoText = info.map(_.text()).getOrElse("")
+      CinemaMovie(
+        movie     = Movie(title,
+          RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption),
+          YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption,
+          countries = countries, rawTitle = rawTitle),
+        cinema    = KinoMuza,
+        // The listing page only carries a landscape-cropped thumbnail; the
+        // higher-fidelity portrait poster lives on each film's detail page
+        // and is pulled by the deferred `fetchFilmDetail`. Leaving the
+        // listing's posterUrl as None means the merge in
+        // `MovieCache.recordCinemaScrape` can't clobber the detail-page
+        // portrait on subsequent ticks.
+        posterUrl = None,
+        filmUrl   = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href")),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = director,
+        showtimes = showtimesOf(preview).sortBy(_.dateTime)
+      )
+    }
   }
+
+  // Info block is <br>-separated: "reż. <names>", then the country/-ies,
+  // then year and runtime (also picked up by the regexes from the flat text).
+  // Either credit line can be missing — a short or kids' morning carries
+  // just "75’", a TV special "USA<br>63’" — so each is recognised by its
+  // shape, never by position. Directors, then countries.
+  private def credits(infoHtml: String): (Seq[String], Seq[String]) = {
+    val infoLines = infoHtml.split("(?i)<br\\s*/?>").toSeq
+                            .map(line => Jsoup.parse(line).text().trim)
+                            .filter(_.nonEmpty)
+    val (directorLines, otherLines) = infoLines.partition(_.matches("(?i)^reż\\..*"))
+    val director  = directorLines.headOption
+      .map(_.replaceFirst("(?i)^reż\\.\\s*", "").trim)
+      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    // The first other line is the country list unless it instead carries a
+    // year/runtime token (some entries omit the country line entirely).
+    // Split on "," for co-productions ("Polska, Niemcy" → two entries).
+    val countries = otherLines.headOption
+      .filterNot(_.matches(".*\\b(?:19|20)\\d{2}\\b.*"))
+      .filterNot(_.matches(".*\\d+\\s*[\\u2019'].*"))
+      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    (director, countries)
+  }
+
+  private def showtimesOf(preview: Element): Seq[Showtime] =
+    preview.select(".table-row").asScala.flatMap { row =>
+      Option(row.selectFirst(".day")).flatMap(element => parseDate(element.text())).toSeq.flatMap { date =>
+        row.select(".ticket-list-item").asScala.flatMap { item =>
+          val bookingUrl = Option(item.selectFirst("a.ticket-buy")).map(_.attr("href"))
+          val room       = Option(item.selectFirst("span.text-gold")).map(_.parent().text().trim).filter(_.nonEmpty)
+          Option(item.selectFirst(".ticket-hour")).map(_.text().trim)
+            .flatMap(ScraperParse.parseHHmm).map(time => Showtime(date.atTime(time), bookingUrl, room))
+        }
+      }
+    }.toSeq.distinctBy(_.dateTime)
 }

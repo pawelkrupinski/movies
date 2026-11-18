@@ -280,64 +280,63 @@ private[cinemas] object MsiScraper {
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val document = Jsoup.parse(html, baseUrl)
-    val metaByName0 = metaByName(html, baseUrl)
+    val meta     = metaByName(html, baseUrl)
+    Skins.iterator.map(parseBlocks(document, _, yearMonth, meta, cleanTitle)).find(_.nonEmpty).getOrElse(Seq.empty)
+  }
 
-    /** One pass over a skin's film blocks: for each block, read its raw title and
-     *  desktop showtime anchors, clean the title, and emit a `RawSlot` per anchor.
-     *  The two skins differ only in these three selectors + how the title is read,
-     *  so they share everything below. */
-    def parseBlocks(blockSelector: String, rawTitleOf: org.jsoup.nodes.Element => String,
-                    showtimeAnchorSelector: String): Seq[RawSlot] =
-      document.select(blockSelector).asScala.toSeq.flatMap { movieDiv =>
-        val rawTitle        = rawTitleOf(movieDiv)
-        val (title, format) = cleanTitle(rawTitle)
-        val meta            = metaByName0.getOrElse(rawTitle, FilmMeta())
-        if (title.isEmpty) Seq.empty
-        else movieDiv.select(showtimeAnchorSelector).asScala.toSeq.flatMap { a =>
-          val href    = a.attr("abs:href")
-          val booking = if (href.nonEmpty) Some(href) else None
-          parseEventTime(a.text.trim, yearMonth).map { dt =>
-            RawSlot(title, rawTitle, dt, booking, format, meta,
-              EventIdPat.findFirstMatchIn(href).map(_.group(1).toLong))
-          }
-        }
-      }
+  /** How one MSI skin lays out its film blocks: the block, the raw title in it, its desktop showtime anchors. The
+   *  skins differ only in these, so they share everything else ([[parseBlocks]]). */
+  private final case class Skin(blockSelector: String, rawTitleOf: org.jsoup.nodes.Element => String, showtimeAnchorSelector: String)
 
+  /** The skins, tried in order: the first that yields a slot is the page's. */
+  private val Skins: Seq[Skin] = Seq(
     // Standard MSI skin: one `div.movies-movie__single` per film variant; the raw
     // title is the `title` attr of `.movies-movie__single__title`; showtimes are in
     // the desktop-only `div.movies-movie__single__options.d-none` list (the mobile
     // duplicate lacks the extra `d-none` class, so each event is counted once).
-    val standard = parseBlocks(
+    Skin(
       "div.movies-movie__single",
       m => Option(m.selectFirst(".movies-movie__single__title")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
-      "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]"
-    )
-    lazy val listGroup =
-      // Alternate "list-group" skin (e.g. Max Kino Świebodzin at
-      // repertuar.maxkino.eu): each film is a `div.list-group-item.event-background`,
-      // rendered twice — `visible-md visible-lg` (desktop) + `visible-xs visible-sm`
-      // (mobile). We read only the desktop copy so each event is counted once. The
-      // clean raw title lives in the poster anchor's `title` attr (the `.event-title`
-      // text is polluted with a `Premiera!` badge span); showtimes are the
-      // `a.badge-purple` anchors in `ul.repo-event-dates`, same `DD mmm HH:MM` text.
-      parseBlocks(
-        "div.list-group-item.event-background.visible-md",
-        m => Option(m.selectFirst("a[title]")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
-        "ul.repo-event-dates a.badge-purple[href]"
-      )
-    if (standard.nonEmpty) standard
-    else if (listGroup.nonEmpty) listGroup
-    else
-      // Third "media object" skin (Kino Wolność Szczecinek, bilety.sapik.pl):
-      // each film is a `div.media` inside `div.panel-default.eventlist`; the
-      // title is the `div.media-heading h4` text; showtimes are `a.btn-badge`
-      // anchors under `ul.list-unstyled`.
-      parseBlocks(
-        "div.panel-default.eventlist div.media",
-        m => Option(m.selectFirst(".media-heading h4")).map(_.text.trim).filter(_.nonEmpty).getOrElse(""),
-        "ul.list-unstyled a.btn-badge[href]"
-      )
-  }
+      "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]"),
+    // Alternate "list-group" skin (e.g. Max Kino Świebodzin at
+    // repertuar.maxkino.eu): each film is a `div.list-group-item.event-background`,
+    // rendered twice — `visible-md visible-lg` (desktop) + `visible-xs visible-sm`
+    // (mobile). We read only the desktop copy so each event is counted once. The
+    // clean raw title lives in the poster anchor's `title` attr (the `.event-title`
+    // text is polluted with a `Premiera!` badge span); showtimes are the
+    // `a.badge-purple` anchors in `ul.repo-event-dates`, same `DD mmm HH:MM` text.
+    Skin(
+      "div.list-group-item.event-background.visible-md",
+      m => Option(m.selectFirst("a[title]")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
+      "ul.repo-event-dates a.badge-purple[href]"),
+    // Third "media object" skin (Kino Wolność Szczecinek, bilety.sapik.pl):
+    // each film is a `div.media` inside `div.panel-default.eventlist`; the
+    // title is the `div.media-heading h4` text; showtimes are `a.btn-badge`
+    // anchors under `ul.list-unstyled`.
+    Skin(
+      "div.panel-default.eventlist div.media",
+      m => Option(m.selectFirst(".media-heading h4")).map(_.text.trim).filter(_.nonEmpty).getOrElse(""),
+      "ul.list-unstyled a.btn-badge[href]")
+  )
+
+  /** One pass over a skin's film blocks: for each block, read its raw title and
+   *  desktop showtime anchors, clean the title, and emit a `RawSlot` per anchor. */
+  private def parseBlocks(document: org.jsoup.nodes.Document, skin: Skin, yearMonth: YearMonth,
+                          metaByName: Map[String, FilmMeta], cleanTitle: String => (String, List[String])): Seq[RawSlot] =
+    document.select(skin.blockSelector).asScala.toSeq.flatMap { movieDiv =>
+      val rawTitle        = skin.rawTitleOf(movieDiv)
+      val (title, format) = cleanTitle(rawTitle)
+      val meta            = metaByName.getOrElse(rawTitle, FilmMeta())
+      if (title.isEmpty) Seq.empty
+      else movieDiv.select(skin.showtimeAnchorSelector).asScala.toSeq.flatMap { a =>
+        val href    = a.attr("abs:href")
+        val booking = if (href.nonEmpty) Some(href) else None
+        parseEventTime(a.text.trim, yearMonth).map { dt =>
+          RawSlot(title, rawTitle, dt, booking, format, meta,
+            EventIdPat.findFirstMatchIn(href).map(_.group(1).toLong))
+        }
+      }
+    }
 
   private def parseEventTime(text: String, ym: YearMonth): Option[LocalDateTime] =
     EventTimePat.findFirstMatchIn(text).flatMap { m =>

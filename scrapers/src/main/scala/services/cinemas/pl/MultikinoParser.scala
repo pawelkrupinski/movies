@@ -36,62 +36,21 @@ object MultikinoParser {
     titles.cinemaClean("multikino", filmTitle)
 
   private def parseFilm(film: JsValue, cinema: Cinema, titles: TitleNormalizer): CinemaMovie = {
-    val rawFilmTitle = (film \ "filmTitle").as[String]
-    // Casing is applied centrally at the scrape choke point
-    // (`TitleNormalizer.recase`), not here — the Multikino API ships ALL-CAPS.
-    val title        = cleanTitle(rawFilmTitle, titles)
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
                         .flatMap(g => (g \ "sessions").as[JsArray].value)
     CinemaMovie(
-      movie       = Movie(
-        title          = title,
-        rawTitle       = Some(rawFilmTitle),
-        runtimeMinutes = (film \ "runningTime").asOpt[Int],
-        // `releaseDate` from Multikino's API is the Polish theatrical (re-)
-        // release date, not the film's production year — e.g. "Zawieście
-        // czerwone latarnie" (Raise the Red Lantern, 1991) comes back with
-        // releaseDate=2026-06-18. Using that for `releaseYear` poisons TMDB
-        // resolution: year-scoped search excludes the actual film, and the
-        // year-less fallback picks whatever now shares the Polish title
-        // (often a famous English-language film with the same translation).
-        // We have no production-year field in this API, so leave it None
-        // and let TMDB rank by title alone.
-        releaseYear    = None,
-        // English/international release title — non-empty on ~5% of films
-        // (Cirque du Soleil, opera/concert documents, English-language imports
-        // distributed under a Polish title). Empty on Polish releases and
-        // most blockbusters where the Polish title IS the only known
-        // identifier. Useful as a TMDB-search fallback for niche titles.
-        originalTitle  = (film \ "originalTitle").asOpt[String].filter(_.nonEmpty),
-        // Multikino's `genres` field is schema-present but empty across the
-        // current Poznań catalog (`"genres": []`). Extract anyway so a future
-        // upstream backfill flows through automatically — the merge layer
-        // demotes Multikino under TMDB/Filmweb so an empty list here is
-        // harmless when richer sources have data.
-        genres         = (film \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-                           .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
-                           .filter(_.nonEmpty)
-      ),
+      movie       = movieOf(film, titles),
       cinema      = cinema,
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),
       filmUrl     = absoluteUrl((film \ "filmUrl").asOpt[String]),
       synopsis    = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-      cast        = (film \ "cast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director    = (film \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast        = names(film, "cast"),
+      director    = names(film, "director"),
       showtimes   = sessions.flatMap(parseSession).toSeq,
       externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap,
-      // Multikino's API exposes `trailers: [<url>]` on films that have one
-      // (alongside `hasTrailer` which sometimes stays true even after the
-      // array empties out — only the array entries are usable). Take the
-      // first entry; only commit when it parses as a YouTube URL we can
-      // embed.
-      trailerUrl  = (film \ "trailers").asOpt[JsArray]
-                      .flatMap(_.value.headOption).flatMap(_.asOpt[String])
-                      .filter(_.nonEmpty)
-                      .flatMap(u => TrailerEmbed.youTubeId(u)
-                        .map(id => s"https://www.youtube.com/watch?v=$id")),
+      trailerUrl  = trailerOf(film),
       // Same Vue-platform `certificate = {name, description, src}` shape the UK
       // reads (see VueCinemasPlatformParser) — `name` is the Polish rating label
       // ("15+", "18+"). `normalizeDroppingNoRestriction` drops the "TBC"
@@ -101,6 +60,56 @@ object MultikinoParser {
       ageRating   = AgeRating.normalizeDroppingNoRestriction((film \ "certificate" \ "name").asOpt[String])
     )
   }
+
+  private def movieOf(film: JsValue, titles: TitleNormalizer): Movie = {
+    val rawFilmTitle = (film \ "filmTitle").as[String]
+    // Casing is applied centrally at the scrape choke point
+    // (`TitleNormalizer.recase`), not here — the Multikino API ships ALL-CAPS.
+    val title        = cleanTitle(rawFilmTitle, titles)
+    Movie(
+      title          = title,
+      rawTitle       = Some(rawFilmTitle),
+      runtimeMinutes = (film \ "runningTime").asOpt[Int],
+      // `releaseDate` from Multikino's API is the Polish theatrical (re-)
+      // release date, not the film's production year — e.g. "Zawieście
+      // czerwone latarnie" (Raise the Red Lantern, 1991) comes back with
+      // releaseDate=2026-06-18. Using that for `releaseYear` poisons TMDB
+      // resolution: year-scoped search excludes the actual film, and the
+      // year-less fallback picks whatever now shares the Polish title
+      // (often a famous English-language film with the same translation).
+      // We have no production-year field in this API, so leave it None
+      // and let TMDB rank by title alone.
+      releaseYear    = None,
+      // English/international release title — non-empty on ~5% of films
+      // (Cirque du Soleil, opera/concert documents, English-language imports
+      // distributed under a Polish title). Empty on Polish releases and
+      // most blockbusters where the Polish title IS the only known
+      // identifier. Useful as a TMDB-search fallback for niche titles.
+      originalTitle  = (film \ "originalTitle").asOpt[String].filter(_.nonEmpty),
+      // Multikino's `genres` field is schema-present but empty across the
+      // current Poznań catalog (`"genres": []`). Extract anyway so a future
+      // upstream backfill flows through automatically — the merge layer
+      // demotes Multikino under TMDB/Filmweb so an empty list here is
+      // harmless when richer sources have data.
+      genres         = (film \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+                         .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
+                         .filter(_.nonEmpty)
+    )
+  }
+
+  private def names(film: JsValue, field: String): Seq[String] =
+    (film \ field).asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+
+  // Multikino's API exposes `trailers: [<url>]` on films that have one
+  // (alongside `hasTrailer` which sometimes stays true even after the
+  // array empties out — only the array entries are usable). Take the
+  // first entry; only commit when it parses as a YouTube URL we can
+  // embed.
+  private def trailerOf(film: JsValue): Option[String] =
+    (film \ "trailers").asOpt[JsArray]
+      .flatMap(_.value.headOption).flatMap(_.asOpt[String])
+      .filter(_.nonEmpty)
+      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id"))
 
   private def parseSession(session: JsValue): Option[Showtime] =
     (session \ "startTime").asOpt[String].map { startTime =>
