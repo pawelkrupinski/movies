@@ -8,4 +8,3 @@
 # `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	copies	0
 copies	web/src/main/scala/controllers/UserStateController.scala	2
-copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala	2

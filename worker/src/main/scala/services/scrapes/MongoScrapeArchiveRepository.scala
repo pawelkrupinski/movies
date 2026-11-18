@@ -262,19 +262,12 @@ class MongoScrapeArchiveRepository(
           |    "t": {"$ifNull": ["$$f.movie.rawTitle", "$$f.movie.title"]}, "g": "$$f.showtimesDigest", "d": "$$f.showtimes.dateTime"}}}}},
           |  "cond": {"$in": ["$$this.t", []]}}}}}""".stripMargin)
       pick.getDocument("$project").getDocument("f").getDocument("$filter").getDocument("cond").getArray("$in").set(1, titles)
-      val matched = new BsonDocument("$match", new BsonDocument("_id", new BsonDocument("$in",
-        new BsonArray(films.map(_._1).distinct.map(v => BsonString(v): org.bson.BsonValue).asJava))))
-      val docs = Await.result(c.withDocumentClass[BsonDocument]().aggregate[BsonDocument](Seq(matched, pick))
-        .batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-      docs.iterator.flatMap { d =>
-          val venue = d.getString("_id").getValue
-          d.getArray("f").getValues.asScala.iterator.map(_.asDocument).collect {
-            case f if wanted(venue -> f.getInt32("i").getValue) && f.isInt32("g") =>
-              val days = Option(f.get("d")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala).filter(_.isDateTime)
-                .map(at => Instant.ofEpochMilli(at.asDateTime.getValue).atZone(java.time.ZoneOffset.UTC).toLocalDate)
-              (venue, f.getInt32("i").getValue) -> (f.getInt32("g").getValue, days)
-          }
-        }.toMap
+      projectedFilms(c, films.map(_._1), pick) {
+        case (venue, f) if wanted(venue -> f.getInt32("i").getValue) && f.isInt32("g") =>
+          val days = Option(f.get("d")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala).filter(_.isDateTime)
+            .map(at => utcDay(at.asDateTime.getValue))
+          (f.getInt32("g").getValue, days)
+      }
     }
 
   /** The first day each film of `venues` screens on, with its showtimes' digest, by venue and place in its row — the
@@ -282,24 +275,34 @@ class MongoScrapeArchiveRepository(
    *  screening on no day has none. A failed read THROWS. */
   protected def firstDays(venues: Seq[String]): Map[(String, Int), (Int, java.time.LocalDate)] =
     coll.fold(Map.empty[(String, Int), (Int, java.time.LocalDate)]) { c =>
-      import org.bson.BsonArray
       val pick = BsonDocument.parse(
         """{"$project": {"f": {"$map": {"input": {"$range": [0, {"$size": {"$ifNull": ["$films", []]}}]}, "as": "i",
           |  "in": {"$let": {"vars": {"f": {"$arrayElemAt": ["$films", "$$i"]}}, "in": {"i": "$$i",
           |    "g": "$$f.showtimesDigest", "m": {"$min": "$$f.showtimes.dateTime"}}}}}}}}""".stripMargin)
-      val matched = new BsonDocument("$match", new BsonDocument("_id", new BsonDocument("$in",
-        new BsonArray(venues.distinct.map(v => BsonString(v): org.bson.BsonValue).asJava))))
-      val docs = Await.result(c.withDocumentClass[BsonDocument]().aggregate[BsonDocument](Seq(matched, pick))
-        .batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-      docs.iterator.flatMap { d =>
-        val venue = d.getString("_id").getValue
-        d.getArray("f").getValues.asScala.iterator.map(_.asDocument).collect {
-          case f if f.isInt32("g") && f.isDateTime("m") =>
-            (venue, f.getInt32("i").getValue) -> (f.getInt32("g").getValue,
-              Instant.ofEpochMilli(f.getDateTime("m").getValue).atZone(java.time.ZoneOffset.UTC).toLocalDate)
-        }
-      }.toMap
+      projectedFilms(c, venues, pick) {
+        case (_, f) if f.isInt32("g") && f.isDateTime("m") => (f.getInt32("g").getValue, utcDay(f.getDateTime("m").getValue))
+      }
     }
+
+  /** `pick` (a `$project` of each row's films into `f`, each with its place `i`) run over the rows of `venues`, and
+   *  every projected film `read` takes, by venue and place. A failed read THROWS. */
+  private def projectedFilms[V](c: MongoCollection[StoredScrapeDto], venues: Seq[String], pick: BsonDocument)(
+      read: PartialFunction[(String, BsonDocument), V]): Map[(String, Int), V] = {
+    import org.bson.BsonArray
+    val matched = new BsonDocument("$match", new BsonDocument("_id", new BsonDocument("$in",
+      new BsonArray(venues.distinct.map(v => BsonString(v): org.bson.BsonValue).asJava))))
+    val docs = Await.result(c.withDocumentClass[BsonDocument]().aggregate[BsonDocument](Seq(matched, pick))
+      .batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+    docs.iterator.flatMap { d =>
+      val venue = d.getString("_id").getValue
+      d.getArray("f").getValues.asScala.iterator.map(_.asDocument).flatMap { f =>
+        read.lift(venue -> f).map((venue, f.getInt32("i").getValue) -> _)
+      }
+    }.toMap
+  }
+
+  private def utcDay(epochMillis: Long): java.time.LocalDate =
+    Instant.ofEpochMilli(epochMillis).atZone(java.time.ZoneOffset.UTC).toLocalDate
 
   /** The stored rows of the venues `keep` admits, a page at a time; `lean`: without their films' showtimes. */
   private def scanRows(keep: Cinema => Boolean, lean: Boolean)(consume: Seq[StoredScrapeDto] => Unit): tools.ScanOutcome =
