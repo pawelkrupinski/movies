@@ -43,7 +43,7 @@ module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	46
 module-edge	worker->base	81
-module-edge	worker->common	1637
+module-edge	worker->common	1638
 module-edge	worker->http	190
 module-edge	worker->identity	447
 module-edge	worker->scrapers	151
@@ -239,7 +239,7 @@ fanout	services.movies.InMemoryScreeningsRepository	12
 fanout	services.movies.InMemorySlotsRepository	10
 fanout	services.movies.KeyAddressedMovieWrites	11
 fanout	services.movies.MixedFilmDetector	10
-fanout	services.movies.MongoMovieRepository	57
+fanout	services.movies.MongoMovieRepository	56
 fanout	services.movies.MongoScreeningsRepository	26
 fanout	services.movies.MongoSlotsRepository	24
 fanout	services.movies.MovieCache	12
@@ -258,7 +258,7 @@ fanout	services.readmodel.ReadModelContentAudit	14
 fanout	services.readmodel.ReadModelProjection	22
 fanout	services.readmodel.ReadModelProjector	46
 fanout	services.readmodel.ReadModelReader	10
-fanout	services.readmodel.ReadModelSweeper	36
+fanout	services.readmodel.ReadModelSweeper	32
 fanout	services.readmodel.WebReadModel	29
 fanout	services.review.LabelsExport	10
 fanout	services.review.ListingExplain	10
