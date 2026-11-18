@@ -26,7 +26,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     names should not be empty
     names.filterNot(n => globs.exists(matches(_, n))) shouldBe empty
     // an expanded matrix name is one too
-    Seq("check (identity 1/2)", "heavy rows (itrest itidentity)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+    Seq("check (identity 1/2)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
   }
 
   "the landing check" should "run identity and the old refs in jobs of their own, each with a cap of its own" in {
@@ -51,7 +51,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   "the landing check" should "leave the page tests and e2e (rest) to Main, after landing" in {
     jobs.keySet should not contain "check-page"
     jobs("plan") should not include "outputs.page"
-    jobs("plan") should include("grep -xE 'itrest|itidentity|e2ecorpus'")
+    jobs("check") should include("grep -qxE 'itrest|itidentity'")
     RepoFile.read("scripts/ci/precommit-share.sh") should not include "|page|"
     RepoFile.read("scripts/hooks/local-tests.txt").linesIterator.filter(_.startsWith("page ")).toSeq shouldBe empty
     val hook = RepoFile.read("scripts/hooks/pre-push")
@@ -67,7 +67,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** A job sets up sbt, Node and the tools only when the hook would run a check of its share there (the hook's own
    *  selection, PREPUSH_LIST=1: precommit-share.sh); its hook step always runs, so a selection the cheap step missed
-   *  fails there rather than going unchecked. The jobs the plan does not name (old refs, heavy rows) are skipped. */
+   *  fails there rather than going unchecked. The jobs the plan does not name (old refs, identity) are skipped. */
   "every check job" should "set up only for a share with checks, its hook step never skipped" in {
     Seq("check", "check-identity", "check-oldrefs").foreach { job =>
       RepoFile.step(jobs(job), "The pre-push hook's checks of the change") should not include "if:"
@@ -93,24 +93,25 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
-   *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them -- in ONE
-   *  job since 2026-11-17 (two, `itrest` alone, cost a second slot and setup for ~4 min: one after another they are ~8 min
-   *  with one compile, under an identity shard's ~11). */
-  "the landing check" should "run every heavy row the change can move, in one job" in {
-    val heavy = jobs("heavy")
-    jobs("plan") should include("scripts/ci/precommit-share.sh checks plan")
-    RepoFile.read("scripts/ci/precommit-share.sh") should include("""plan) vars+=("PREPUSH_HEAVY_ROWS=1")""")
-    heavy should include("ROWS: ${{ needs.plan.outputs.heavy }}")
-    heavy should not include ("matrix")
-    jobs("plan") should not include ("heavy-groups")
-    heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$ROWS\"")
-    heavy should include("scripts/ci/start-mongo-replset.sh")
-    heavy should include("runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && fromJSON(needs.plan.outputs.check-runner) || 'ubuntu-22.04' }}")
+   *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them -- in the
+   *  rest's job since 2026-11-18. A job of their own was created only after the plan and then waited for a slot (one
+   *  run's `heavy rows` queued 10:09-10:45Z, p50 ~11 min over 2026-11-17); behind the rest's sbt check they also share
+   *  its compile. Their MongoDB is named to them alone: the basic set's e2e specs run with none, as Main's do. */
+  "the landing check" should "run every heavy row the change can move in the rest's job, with no slot of its own" in {
+    jobs.keySet should not contain "heavy"
+    jobs("plan") should not include "heavy="
+    val rest = jobs("check")
+    RepoFile.read("scripts/ci/precommit-share.sh") should include("""vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ELSEWHERE=$elsewhere")""")
+    rest should include("scripts/ci/start-mongo-replset.sh")
+    rest should include("|| 'ubuntu-22.04' }}")
+    rest should include("PREPUSH_HEAVY_MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true")
+    rest.linesIterator.map(_.trim).filter(_.startsWith("MONGODB_URI:")).toSeq shouldBe empty
+    RepoFile.read("scripts/hooks/pre-push") should include("""local uri="${PREPUSH_HEAVY_MONGODB_URI:-${MONGODB_URI:-}}"""")
   }
 
   "the heavy rows" should "run Main's own commands" in {
     val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should include("check_itrest() { heavy_row itrest itAll IT_ROW=rest; }")
+    hook should include("    heavy_row itrest itAll IT_ROW=rest\n}")
     hook should include("check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }")
     hook should include("check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }")
     val ci = RepoFile.read(".github/workflows/ci.yml")

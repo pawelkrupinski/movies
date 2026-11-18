@@ -5,8 +5,9 @@
 #   precommit-share.sh env <share>     the job's hook environment, KEY=VALUE lines for $GITHUB_ENV
 #   precommit-share.sh checks <share>  the checks the hook runs for <share>, space-separated (none: an empty line)
 #
-# <share>: `rest` (every selected check but the other shares'), `identity`, `oldrefs`, `heavy` (the heavy rows
-# named by $ROWS), or `plan` (every check, the heavy rows among them: the plan job's). The mode is the branch's:
+# <share>: `rest` (every selected check but the other shares', Main's heavy rows among them: no job of their own,
+# which waited up to 17 min for a slot of its own, 2026-11-18), `identity`, `oldrefs`, or `plan` (every check of the
+# jobs after it: the plan job's). The mode is the branch's:
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
 # fully checked on that older main, rebased onto one that moved with no file overlap; its range is `<that sha>..HEAD`,
@@ -22,11 +23,11 @@
 # hook step still runs, so a check this missed fails there for want of sbt rather than going unchecked.
 set -euo pipefail
 
-usage() { echo "usage: $0 env|checks rest|identity|oldrefs|heavy|plan" >&2; exit 2; }
+usage() { echo "usage: $0 env|checks rest|identity|oldrefs|plan" >&2; exit 2; }
 [ $# -eq 2 ] || usage
 what=$1 share=$2
 case "$what" in env|checks) ;; *) usage ;; esac
-case "$share" in rest|identity|oldrefs|heavy|plan) ;; *) usage ;; esac
+case "$share" in rest|identity|oldrefs|plan) ;; *) usage ;; esac
 
 ref="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
 # a gate-red fix's check is check/red-<the rest>: the prefix names the runner lane (precommit-check.yml), not the mode
@@ -47,9 +48,8 @@ vars=("PREPUSH_MODE=$area_mode" "PREPUSH_RANGE=$range")
 case "$share" in
     rest)
         elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"
-        vars+=("PREPUSH_ELSEWHERE=$elsewhere") ;;
-    heavy) vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ONLY=${ROWS:?heavy: ROWS names the rows}") ;;
-    plan) vars+=("PREPUSH_HEAVY_ROWS=1") ;;
+        vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ELSEWHERE=$elsewhere") ;;
+    plan) ;;
     *) vars+=("PREPUSH_ONLY=$share") ;;
 esac
 

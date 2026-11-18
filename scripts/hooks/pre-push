@@ -53,8 +53,8 @@
 #                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
 #                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
 #   `itrest` `itidentity` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
-#                 `heavy` job, one row a job): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
-#                 against the job's throwaway MongoDB, $MONGODB_URI) and, with the identity row, `e2e (corpus)`
+#                 `check (rest)` job, after its sbt check): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
+#                 against the job's throwaway MongoDB, $PREPUSH_HEAVY_MONGODB_URI: theirs alone) and, with the identity row, `e2e (corpus)`
 #                 (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
 #                 code reds in the five days to 2026-10-30 were in rows nothing ran before main (ci-failures-2026-10-30
 #                 §2.1). Never on the laptop: off CI the variable is unset and none is selected. `e2e (rest)` is no longer
@@ -1846,20 +1846,35 @@ check_flipbacklog() {
     python3 scripts/ci/population_walk_diff.py judge-walk "$tmp/flipbacklog.walk"
 }
 
-# THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB.
+# THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB. They ride the
+# landing check's rest job (2026-11-18: a job of their own waited up to 17 min for a slot), so the MongoDB is named to
+# them alone, $PREPUSH_HEAVY_MONGODB_URI / _DB: the rest's other checks (the basic e2e specs among them) run as Main's
+# unit rows do, with none ($MONGODB_URI is still read, for a caller from before).
 heavy_row() { # <check> <sbt command> [env...]
     local check=$1 cmd=$2; shift 2
+    local uri="${PREPUSH_HEAVY_MONGODB_URI:-${MONGODB_URI:-}}" db="${PREPUSH_HEAVY_MONGODB_DB:-${MONGODB_DB:-}}"
     need_jvm "$check" || return 1
-    [ -n "${MONGODB_URI:-}" ] || [ "${check#e2e}" != "$check" ] \
-        || { warn "$check: no \$MONGODB_URI -- the integration specs need a MongoDB replica set (scripts/ci/start-mongo-replset.sh)"; return 1; }
-    # the e2e rows run as Main's do, with no MongoDB named (the heavy job names one for the integration rows)
-    local without=()
-    case "$check" in e2e*) without=(-u MONGODB_URI -u MONGODB_DB) ;; esac
-    env ${without[@]+"${without[@]}"} "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
+    [ -n "$uri" ] || [ "${check#e2e}" != "$check" ] \
+        || { warn "$check: no \$PREPUSH_HEAVY_MONGODB_URI -- the integration specs need a MongoDB replica set (scripts/ci/start-mongo-replset.sh)"; return 1; }
+    # the e2e rows run as Main's do, with no MongoDB named; the integration rows against the job's
+    local mongo=()
+    case "$check" in
+        e2e*) mongo=(-u MONGODB_URI -u MONGODB_DB) ;;
+        *) mongo=(MONGODB_URI="$uri"); [ -z "$db" ] || mongo+=(MONGODB_DB="$db") ;;
+    esac
+    env "${mongo[@]}" "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|Failed tests:|TEST FAILED' "$tmp/$check.log" | head -80 >&2; warn "full log: $tmp/$check.log"; return 1; }
     grep -E 'Tests: succeeded|All tests passed|Passed: Total' "$tmp/$check.log" | tail -3 || true
 }
-check_itrest() { heavy_row itrest itAll IT_ROW=rest; }
+# the rest row's deploy specs read the GitOps manifests: fetched here when nothing put them in place (the sbt check's
+# lint plan fetches them only for a change reading them)
+check_itrest() {
+    if [ ! -d infra/kubernetes ] && [ -x infra/bin/fetch-gitops ]; then
+        KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1 \
+            || { tail -8 "$tmp/fetch-gitops.log" >&2; warn "itrest: infra/bin/fetch-gitops could not fetch the GitOps manifests the deploy specs read"; return 1; }
+    fi
+    heavy_row itrest itAll IT_ROW=rest
+}
 check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
 check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
 

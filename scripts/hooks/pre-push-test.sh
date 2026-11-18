@@ -516,7 +516,7 @@ printf 'population-walk-diff [%s]\n' "$(ls "$1")" >> "$AREA_CALLS"
 echo "population walk: 1 slice(s) judged against the base: nothing new"
 STUB
 chmod +x "$area/scripts/ci/population-walk-diff"
-printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
+printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; printf " {MONGODB_URI=%%s}" "${MONGODB_URI:-}" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$areabin/java"
 chmod +x "$area/scripts/sbt-warm" "$areabin/sbt" "$areabin/java"
 scratch_git "$area" add -A; scratch_git "$area" commit -qm base
@@ -641,7 +641,18 @@ check "THE HEAVY ROWS: the landing check's itrest job runs Main's itAll command,
   "$code $(calls '\[-batch\] \[itAll\]') $(basic_ran)"
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=)"
 check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1" \
-  "$code $(grep -c 'no \$MONGODB_URI' "$testroot/area-out")"
+  "$code $(grep -c 'no \$PREPUSH_HEAVY_MONGODB_URI' "$testroot/area-out")"
+# the heavy rows ride the rest's job (2026-11-18): its MongoDB is named to them alone, never to the basic set's e2e specs
+code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_HEAVY_MONGODB_URI=mongodb://heavy)"
+check "...beside the sbt check, the heavy rows alone get the job's MongoDB" "0 1 1 0" \
+  "$code $(basic_ran) $(calls '\[itAll\] {MONGODB_URI=mongodb://heavy}') $(grep -E '(\[|; )Test/compile(\]|;)' "$AREA_CALLS" | grep -c 'mongodb://heavy')"
+mkdir -p "$area/infra/bin"
+printf '#!/usr/bin/env bash\necho fetch-gitops >> "$AREA_CALLS"; mkdir -p "$KINOWO_GITOPS_DEST"\n' > "$area/infra/bin/fetch-gitops"
+chmod +x "$area/infra/bin/fetch-gitops"; scratch_git "$area" add infra/bin/fetch-gitops; scratch_git "$area" commit -qm "a fake fetch-gitops"
+code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest PREPUSH_HEAVY_MONGODB_URI=mongodb://heavy)"
+check "...and itrest fetches the GitOps manifests its deploy specs read when none are in place" "0 1 1" \
+  "$code $(calls '^fetch-gitops$') $(calls '\[itAll\]')"
+rm -rf "$area/infra/kubernetes"; scratch_git "$area" rm -q infra/bin/fetch-gitops; scratch_git "$area" commit -qm "the fake fetch-gitops, gone"
 # THE LINUX PASS (run-script-tests --linux, in Docker) only off Linux: on Linux (ci-runner's landing checks) the native
 # run is the Linux run, and the Docker copy repeated it for 120-150 CPU-s a job (2026-11-18). A fake run-script-tests.
 printf '#!/usr/bin/env bash\n# --linux --floor)\n[ "$1" = --reads ] && exit 0\necho "run-script-tests $*" >> "$AREA_CALLS"; echo "1 passed"\n' > "$area/scripts/run-script-tests"

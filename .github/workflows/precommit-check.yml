@@ -42,12 +42,12 @@ env:
     # at the checked commit -- so a job outside it (a report, a publish) never holds a landing batch: batch #20 waited 27+
     # min past its last check job behind a queued `timings / report` (2026-11-07). Any job that fails still fails the
     # check. Every job of this workflow is a check and must be named (LandingCheckSplitSpec).
-    VERDICT_JOBS: plan, check (*), heavy rows (*)
+    VERDICT_JOBS: plan, check (*)
 
 jobs:
-    # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1, with
-    # PREPUSH_HEAVY_ROWS=1), for the jobs that run only when it names their share: the old refs, Main's heavy rows
-    # (`itrest`, `itidentity`, `e2ecorpus`), and identity's two shards. NOT HERE (the owner, 2026-11-17, "B1"): the page
+    # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1), for
+    # the jobs that run only when it names their share: the old refs and identity's two shards (Main's heavy rows ride the
+    # rest's job since 2026-11-18). NOT HERE (the owner, 2026-11-17, "B1"): the page
     # area and `e2e (rest)`, which run after landing on Main's own rows (a week: 0 failures in 14 page and 95 e2e checks,
     # 317 and 303 runner-minutes). A job the plan does not name is
     # skipped, never created: under load a created job waits for a slot even to do nothing. The rest starts beside it.
@@ -60,7 +60,6 @@ jobs:
             # the labels every job after the plan asks for (a JSON array): the check lane -- a gate-red fix's
             # (check/red-<id>) the one served first -- and this run's pin (OLDEST FIRST)
             check-runner: ${{ steps.plan.outputs.check-runner }}
-            heavy: ${{ steps.plan.outputs.heavy }}
             oldrefs: ${{ steps.plan.outputs.oldrefs }}
             identity: ${{ steps.plan.outputs.identity }}
         steps:
@@ -85,12 +84,9 @@ jobs:
                   echo "check-runner=[\"$lane\",\"movies-run-$GITHUB_RUN_ID\"]" >> "$GITHUB_OUTPUT"
                   checks=" $(scripts/ci/precommit-share.sh checks plan) "
                   echo "the change's checks:${checks% }"
-                  rows="$(tr ' ' '\n' <<< "$checks" | grep -xE 'itrest|itidentity|e2ecorpus' | tr '\n' ' ' | sed 's/ *$//' || true)"
-                  echo "heavy=$rows" >> "$GITHUB_OUTPUT"
                   for share in oldrefs identity; do
                       case "$checks" in *" $share "*) echo "$share=true" ;; *) echo "$share=false" ;; esac >> "$GITHUB_OUTPUT"
                   done
-                  echo "heavy rows: ${rows:-none}"
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:
@@ -102,12 +98,15 @@ jobs:
     # between jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
     # 4025 (a 124-path batch) spent 7 min on scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80
     # minutes with oldrefs, ios and identitydrift still to go. `check (rest)` runs every selected check but the old refs
-    # and identity; `check (identity k/2)` half of identity's specs each; `check (oldrefs)` the old refs beside them.
+    # and identity -- Main's heavy rows among them since 2026-11-18 (their own job, created after the plan, waited up to
+    # 17 min for a slot: one run's `heavy rows` queued 10:09-10:45Z) -- ; `check (identity k/2)` half of identity's specs
+    # each; `check (oldrefs)` the old refs beside them.
     # (`check (page)`, the page area alone after all of them, is gone: the page tests run on Main since 2026-11-17.)
     check:
         name: check (rest)
-        # the plan's lane and pin (check-runner), worked out here: this job starts beside the plan, not after it
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && fromJSON(format('["{0}","movies-run-{1}"]', startsWith(github.ref, 'refs/heads/check/red-') && 'movies-check-red-fix' || 'movies-check', github.run_id)) || 'ubuntu-26.04' }}
+        # the plan's lane and pin (check-runner), worked out here: this job starts beside the plan, not after it; on
+        # GitHub's runners 22.04, where the heavy rows' pinned mongod runs (MongoServerVersionParitySpec)
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && fromJSON(format('["{0}","movies-run-{1}"]', startsWith(github.ref, 'refs/heads/check/red-') && 'movies-check-red-fix' || 'movies-check', github.run_id)) || 'ubuntu-22.04' }}
         # the hook gets 80 minutes and the job 90, room for the failure steps after it
         timeout-minutes: 90
         steps:
@@ -136,6 +135,15 @@ jobs:
                   checks="$(scripts/ci/precommit-share.sh checks "$SHARE")"
                   echo "this job's checks: ${checks:-none}"
                   echo "checks=$checks" >> "$GITHUB_OUTPUT"
+                  # the integration rows run against a throwaway MongoDB, started now in the background
+                  if tr ' ' '\n' <<< "$checks" | grep -qxE 'itrest|itidentity'; then echo "mongo=true"; else echo "mongo=false"; fi >> "$GITHUB_OUTPUT"
+            - name: Start MongoDB (single-node replica set, for change streams), for the heavy rows
+              if: steps.share.outputs.mongo == 'true'
+              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
             # sbt, the JDK and main's landing-check build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
               if: steps.share.outputs.checks != ''
@@ -156,6 +164,9 @@ jobs:
               uses: ./.github/actions/hook-tools
               with:
                   checks: ${{ steps.share.outputs.checks }}
+            - name: Wait for MongoDB, started in the background above
+              if: steps.share.outputs.mongo == 'true'
+              run: scripts/ci/in-background.sh wait mongo-start 240
             # THE SCRIPT SELF-TESTS BESIDE THE REST (scripts/ci/hook-beside.sh): `scripttests` (143-186 s) and then `sbt`
             # (96-385 s) ran one after the other in 5 of 5 sampled runs (2026-11-18), sharing nothing; the hook runs twice
             # at once, scripttests alone beside every other check of the share ($CHECKS), and the job needs both.
@@ -165,6 +176,9 @@ jobs:
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: rest
                   CHECKS: ${{ steps.share.outputs.checks }}
+                  # the heavy rows' MongoDB, theirs alone (the hook's heavy_row): the basic e2e specs run with none, as Main's
+                  PREPUSH_HEAVY_MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  PREPUSH_HEAVY_MONGODB_DB: kinowo
               run: |
                   mkdir -p "$TMPDIR"
                   # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
@@ -451,88 +465,6 @@ jobs:
                   name: precommit-check-logs-oldrefs
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
-            - uses: ./.github/actions/job-telemetry
-              if: ${{ !cancelled() }}
-              with:
-                  phase: finish
-                  token: ${{ github.token }}
-                  job-status: ${{ job.status }}
-
-    # MAIN'S HEAVY ROWS the change can move, in ONE job, one after another (itrest 264 s, itidentity 74: run
-    # 41373956176; ~8 min with one compile, under an identity shard's ~11). Two jobs (`itrest` alone) until 2026-11-17 cost
-    # a second slot and setup on ci-runner's ~4 check slots for ~4 min (LandingCheckSplitSpec). `e2e (rest)` runs on
-    # Main only since 2026-11-17 (the owner's "B1").
-    # `e2ecorpus` runs here only while `basic` does not already run its spec (the hook's corpus_in_basic): it does, in the
-    # rest's sbt check, so the row is not selected (it ran FilmScheduleEndToEnd a second time, 160 s: run 41627361428).
-    heavy:
-        name: heavy rows (${{ needs.plan.outputs.heavy }})
-        needs: [ plan ]
-        if: ${{ needs.plan.outputs.heavy != '' }}
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && fromJSON(needs.plan.outputs.check-runner) || 'ubuntu-22.04' }}
-        timeout-minutes: 90
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
-                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
-                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
-                  fetch-depth: 0
-                  filter: blob:none
-            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
-            - uses: ./.github/actions/job-telemetry
-              with:
-                  phase: start
-                  token: ${{ github.token }}
-            - name: Fetch main, the base the change sits on
-              run: git fetch --quiet --filter=blob:none origin main
-            - name: Start MongoDB (single-node replica set, for change streams)
-              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
-              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
-              env:
-                  MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            - uses: ./.github/actions/setup-sbt-build
-              with:
-                  target-cache-restore-only: 'true'
-                  target-cache-key: sbt-target-precheck-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
-                  target-cache-restore-keys: |
-                      sbt-target-precheck-${{ runner.os }}-
-                      sbt-target-it-${{ runner.os }}-
-                      sbt-target-unit-worker-${{ runner.os }}-
-                      sbt-target-${{ runner.os }}-
-            - name: Check out the gitops manifests (movies-gitops main, anonymously)
-              if: ${{ contains(needs.plan.outputs.heavy, 'itrest') }}
-              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
-            - name: Wait for MongoDB, started in the background above
-              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
-              run: scripts/ci/in-background.sh wait mongo-start 240
-            - name: The change's heavy rows
-              env:
-                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-                  TMPDIR: ${{ runner.temp }}/hook
-                  ROWS: ${{ needs.plan.outputs.heavy }}
-                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
-                  MONGODB_DB: kinowo
-              run: |
-                  mkdir -p "$TMPDIR"
-                  rc=0
-                  PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY="$ROWS" timeout --kill-after=60 80m \
-                      scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
-                  [ "$rc" != 124 ] || echo "::error::the heavy rows ($ROWS) ran past 80 minutes and were stopped"
-                  exit "$rc"
-            - name: The failed row's lines
-              if: failure()
-              env:
-                  HOOK_TMP: ${{ runner.temp }}/hook
-              run: |
-                  find "$HOOK_TMP" -name '*.log' -print0 | while IFS= read -r -d '' log; do
-                      echo "::group::$log"
-                      grep -E -B2 -A8 '\*\*\* FAILED|\[error\]|::error::|^ *Error:|Error: |[0-9]+ failed' "$log" | head -120 || true
-                      echo "-- its last 60 lines:"
-                      tail -60 "$log"
-                      echo "::endgroup::"
-                  done
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:

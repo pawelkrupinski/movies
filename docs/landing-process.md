@@ -306,9 +306,11 @@ so `check (identity k/2)` runs; the rest is the verify round's). Disjoint module
 
 **The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
 jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
-`check (oldrefs)`, and the `heavy rows` job running each of Main's heavy rows the change can move
-(`PREPUSH_HEAVY_ROWS=1`): `itrest` / `itidentity` (`IT_ROW=<row> sbt itAll` against a throwaway MongoDB) and `e2ecorpus` (`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not
-selected). `check (page)` and the `e2e` row (`sbt e2eRest`) are gone since 2026-11-17: Main runs them after landing.
+and `check (oldrefs)`. `check (rest)` runs the script self-tests beside its other checks (`scripts/ci/hook-beside.sh`:
+the hook twice at once, since 2026-11-18) and, after its sbt check, each of Main's heavy rows the change can move
+(`PREPUSH_HEAVY_ROWS=1`; their own job until 2026-11-18, which waited up to 17 min for a slot): `itrest` / `itidentity`
+(`IT_ROW=<row> sbt itAll` against a throwaway MongoDB named to them alone, `PREPUSH_HEAVY_MONGODB_URI`) and `e2ecorpus`
+(`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not selected). `check (page)` and the `e2e` row (`sbt e2eRest`) are gone since 2026-11-17: Main runs them after landing.
 Before 2026-10-30 Main was the first place those rows ran, and 8 of
 its 14 code reds in five days were there. The laptop's own push never selects them.
 

@@ -21,17 +21,17 @@ change() { # <path>: a branch off main touching <path>
     g checkout -q -B "c$RANDOM" refs/remotes/origin/main
     mkdir -p "$repo/$(dirname "$1")"; echo "x $RANDOM" >> "$repo/$1"; g add -A; g commit -qm "touches $1"
 }
-share() { (cd "$repo" && GITHUB_REF_NAME="${REF:-check/x}" env -u PREPUSH_ONLY -u PREPUSH_ELSEWHERE ROWS="${ROWS:-}" \
+share() { (cd "$repo" && GITHUB_REF_NAME="${REF:-check/x}" env -u PREPUSH_ONLY -u PREPUSH_ELSEWHERE -u PREPUSH_HEAVY_ROWS \
     bash scripts/ci/precommit-share.sh "$@" 2>/dev/null); }
 
 change identity/src/main/scala/services/identity/Resolver.scala
-check "an identity change: the rest's share leaves identity to its own jobs" "driftguards sbt" "$(share checks rest)"
+check "an identity change: the rest's share leaves identity to its own jobs, the heavy rows its own" "driftguards sbt itrest itidentity" \
+    "$(share checks rest)"
 check "...the identity share is identity" "identity" "$(share checks identity)"
 check "...no old-ref share" "" "$(share checks oldrefs)"
-check "...the plan names every check, the heavy rows among them" "driftguards sbt identity itrest itidentity" \
-    "$(share checks plan)"
-check "...the heavy job runs the rows it is given" "itrest itidentity" "$(ROWS='itrest itidentity' share checks heavy)"
-check "...the rest's environment" "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_ELSEWHERE=oldrefs identity" \
+check "...the plan names the checks of the jobs after it" "driftguards sbt identity" "$(share checks plan)"
+check "...the rest's environment: the heavy rows its own, in no job of their own waiting for a slot (2026-11-18)" \
+    "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=oldrefs identity" \
     "$(share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...an identity shard's" "PREPUSH_ONLY=identity" "$(share env identity | tail -1)"
 check "a batch's fast check: everything is the rest's, its fast set" "sbt|" "$(REF=check/fast-ab12 share checks rest)|$(REF=check/fast-ab12 share checks identity)"
@@ -43,7 +43,7 @@ change worker/src/test/resources/fixture.json
 check "a change's combined-tree verification: the rest's, the sbt check (its unit tests) for a resource alone" "sbt|" \
     "$(REF="check/verify-$full-x" share checks rest)|$(REF="check/verify-$full-x" share checks identity)"
 check "...over what landed since its full check and the change, together" \
-    "PREPUSH_MODE=--verify-only PREPUSH_RANGE=$full..HEAD PREPUSH_ELSEWHERE=oldrefs" \
+    "PREPUSH_MODE=--verify-only PREPUSH_RANGE=$full..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=oldrefs" \
     "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...a branch naming no commit fails" "1" \
     "$( (cd "$repo" && GITHUB_REF_NAME="check/verify-$(printf '0%.0s' $(seq 40))-x" bash scripts/ci/precommit-share.sh env rest > /dev/null 2>&1); echo $?)"
@@ -66,13 +66,13 @@ check "...no old-ref share" "" "$(REF="$va" share checks oldrefs)"
 check "...a gate-red fix's too" "identity" "$(REF="check/red-verifyareas-$full-x" share checks identity)"
 g update-ref refs/remotes/origin/main "$full"
 change web/src/main/twirl/views/x.scala.html
-check "a page change: no share of its own -- the page tests run on Main, after landing (the owner, 2026-11-17)" "sbt|" \
+check "a page change: no share of its own -- the page tests run on Main, after landing (the owner, 2026-11-17)" "sbt itrest|" \
     "$(share checks rest)|$(share checks identity)"
 check "...and the page share is gone" "2" "$( (cd "$repo" && bash scripts/ci/precommit-share.sh checks page > /dev/null 2>&1); echo $?)"
 change docs/notes.md
 check "a docs change: no identity, old-ref or heavy share" "||" \
-    "$(share checks identity)|$(share checks oldrefs)|$(share checks plan | tr ' ' '\n' | grep -xE 'itrest|itidentity|e2ecorpus' || true)"
+    "$(share checks identity)|$(share checks oldrefs)|$(share checks rest | tr ' ' '\n' | grep -xE 'itrest|itidentity|e2ecorpus' || true)"
 check "a share it does not know is refused" "2" "$(share checks everything > /dev/null; (cd "$repo" && bash scripts/ci/precommit-share.sh checks everything > /dev/null 2>&1); echo $?)"
-check "the heavy share without its rows fails" "1" "$( (cd "$repo" && GITHUB_REF_NAME=check/x bash scripts/ci/precommit-share.sh env heavy > /dev/null 2>&1); echo $?)"
+check "the heavy share is gone: the rest runs the heavy rows" "2" "$( (cd "$repo" && GITHUB_REF_NAME=check/x bash scripts/ci/precommit-share.sh env heavy > /dev/null 2>&1); echo $?)"
 
 spec_summary
