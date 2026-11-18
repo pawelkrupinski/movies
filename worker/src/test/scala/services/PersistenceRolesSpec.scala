@@ -43,14 +43,14 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
   "the task queue's users" should "take the role they play — producer, consumer or monitor — never TaskQueue" in {
     Seq(
       classOf[services.tasks.TaskWorker], classOf[services.tasks.WorkerHeartbeat],
-      classOf[services.tasks.DetailReaper], classOf[services.tasks.EnrichmentReaper], classOf[services.tasks.RatingEnqueuer],
+      classOf[services.venuepages.DetailReaper], classOf[services.tasks.EnrichmentReaper], classOf[services.tasks.RatingEnqueuer],
       classOf[services.tasks.RecheckedAudit], classOf[services.tasks.ScrapeReaper], classOf[services.tasks.QueueEnrichmentRetrigger],
       classOf[services.tasks.ChunkScrapePlanner], classOf[services.tasks.ChunkScrapeReaper], classOf[services.tasks.ChunkScrapeCoordinator],
       classOf[services.sharecards.ShareCardService], classOf[services.sharecards.CityCardService],
       classOf[services.sharecards.ShareCardBackfill], classOf[services.identity.adapters.VenuePageWait]
     ).flatMap(writerTypedIn(_, classOf[TaskQueue])) ++
       writerTypedIn(module("services.venuepages.ReadVenuePageTasks"), classOf[TaskQueue], "enqueue") ++
-      writerTypedIn(module("services.tasks.EnrichDetailsTasks"), classOf[TaskQueue], "enqueueIfDueAs") shouldBe empty
+      writerTypedIn(module("services.venuepages.EnrichDetailsTasks"), classOf[TaskQueue], "enqueueIfDueAs") shouldBe empty
   }
 
   "the guard" should "see a writer-typed parameter, so the checks above are not vacuous" in {

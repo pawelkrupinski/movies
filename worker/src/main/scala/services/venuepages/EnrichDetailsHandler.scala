@@ -1,5 +1,6 @@
-package services.tasks
+package services.venuepages
 
+import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer}
 import services.tasktypes.TaskType
 
 import services.events.EventBus
@@ -9,7 +10,6 @@ import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
 import services.UptimeRecorder
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
-import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey}
 
 import java.time.{Clock, Instant}
 

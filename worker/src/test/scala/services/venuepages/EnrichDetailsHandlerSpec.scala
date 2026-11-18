@@ -1,5 +1,6 @@
-package services.tasks
+package services.venuepages
 
+import services.tasks.{DueWindow, EnqueueResult, HandlerOutcome, InMemoryTaskQueue, Task}
 import services.tasktypes.TaskType
 
 import tools.SpecClock.given
@@ -19,7 +20,6 @@ import java.time.{Instant, LocalDateTime}
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 

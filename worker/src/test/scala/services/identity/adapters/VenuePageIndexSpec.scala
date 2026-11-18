@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.venuepages.{EnrichDetailsHandler, EnrichDetailsTasks}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,7 +12,7 @@ import services.events.{RecordingEventBus, VenueDetailRead}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.tasks.{DueWindow, EnrichDetailsHandler, EnrichDetailsTasks, Task}
+import services.tasks.{DueWindow, Task}
 import services.tasktypes.TaskType
 import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 import tools.HttpStatusException

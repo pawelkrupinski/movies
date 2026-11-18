@@ -45,7 +45,7 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
   private val Allowlist: Map[String, String] = Map(
     "worker/src/main/scala/clients/TmdbClient.scala: TmdbClient.language"                          -> Tests,
     "worker/src/main/scala/services/enrichment/ImdbRatings.scala: ImdbRatings.enrichmentLanguage"   -> Tests,
-    "worker/src/main/scala/services/tasks/EnrichDetailsHandler.scala: EnrichDetailsHandler.screeningTokens" -> Tests,
+    "worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala: EnrichDetailsHandler.screeningTokens" -> Tests,
     "worker/src/main/scala/services/tasks/QueueEnrichmentRetrigger.scala: QueueEnrichmentRetrigger.country" -> Tests,
     "worker/src/main/scala/services/tasks/RatingEnqueuer.scala: RatingEnqueuer.country"             -> Tests,
     "worker/src/main/scala/modules/wiring/WorkerWiring.scala: WorkerWiring.country" ->

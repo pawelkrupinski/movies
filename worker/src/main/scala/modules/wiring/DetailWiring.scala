@@ -1,9 +1,9 @@
 package modules.wiring
 
+import services.venuepages.{DetailReaper, EnrichDetailsHandler}
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.cinemas.common.DetailEnricher
-import services.tasks.{DetailReaper, EnrichDetailsHandler}
 
 
 /** Deferred per-film detail: the cinemas that scrape BARE and fill their detail
@@ -57,5 +57,5 @@ trait DetailWiring { self: WorkerWiring =>
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
     runStore = scheduledRunStore, clock = clock, ticks = ticks,
     // The model reads every listing's page.
-    pages = services.tasks.DetailPages.PerPage, threadPools = threadPools))
+    pages = services.venuepages.DetailPages.PerPage, threadPools = threadPools))
 }

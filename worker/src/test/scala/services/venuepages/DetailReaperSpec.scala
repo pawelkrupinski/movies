@@ -1,5 +1,6 @@
-package services.tasks
+package services.venuepages
 
+import services.tasks.{DueWindow, Enqueued, FailingEnqueueTaskQueue, HandlerOutcome, InMemoryTaskQueue, TaskState}
 import models.{CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import models.Cinema
@@ -29,7 +30,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  future ended-film gate would then read every fixture here as. Far enough out to
    *  also sit ahead of the synthetic `t0` the phase-spread tests tick from. */
   private def screeningSoon = LocalDateTime.now(specClock).plusMonths(6)
-
 
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */

@@ -3,7 +3,6 @@ package services.venuepages
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 import services.events.VenueDetailRead
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.tasks.EnrichDetailsTasks
 
 import java.time.Clock
 

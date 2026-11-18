@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.venuepages.EnrichDetailsTasks
 import models.{CinemaMovie, KinoApollo, Movie}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -8,7 +9,7 @@ import services.cinemas.FakeDetailEnricher
 import services.cinemas.common.FilmDetail
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.tasks.{EnrichDetailsTasks, InMemoryTaskQueue}
+import services.tasks.InMemoryTaskQueue
 import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 
 import java.time.Instant

@@ -6,7 +6,6 @@ import tools.SpecClock.given
 
 import tools.SpecTimeouts
 
-
 import controllers.MovieControllerService
 import models.{Cinema, CinemaMovie, City, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
@@ -1893,8 +1892,8 @@ abstract class CountryConvergenceBehaviour(
             enricherOf.getOrElse(venue, Nil).foreach { e =>
               def stamp(key: String) = w.freshnessStore.lastFetchedAt(key).fold("none")(_.toString)
               println(s"[${country.code}] day-one await: $question — stored ${w.venuePageStore.get(services.venuepages.VenuePageKey(e.detailGroup, page)).isDefined}" +
-                s", indexed ${w.venuePageIndex.answer(e, page).isDefined}, asked ${stamp(services.tasks.EnrichDetailsTasks.pageDedupKey(e.detailGroup, page))}" +
-                s", attempted ${stamp(services.tasks.EnrichDetailsTasks.pageAttempted(e.detailGroup, page))}, held by a row ${heldRefs(page)}, now ${clock.instant()}")
+                s", indexed ${w.venuePageIndex.answer(e, page).isDefined}, asked ${stamp(services.venuepages.EnrichDetailsTasks.pageDedupKey(e.detailGroup, page))}" +
+                s", attempted ${stamp(services.venuepages.EnrichDetailsTasks.pageAttempted(e.detailGroup, page))}, held by a row ${heldRefs(page)}, now ${clock.instant()}")
             }
           case question => println(s"[${country.code}] day-one await: $question")
         }

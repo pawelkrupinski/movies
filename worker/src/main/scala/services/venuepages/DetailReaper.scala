@@ -1,5 +1,6 @@
-package services.tasks
+package services.venuepages
 
+import services.tasks.{DueWindow, Enqueued, TaskProducer}
 import services.movies.LatestTitleYear
 
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
@@ -111,7 +112,7 @@ class DetailReaper(
    *  current window's occurrence claim — otherwise another machine is handling
    *  this window, so skip. Returns what the tick's enqueues came to (none when
    *  the claim was lost). Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Enqueued = {
+  private[venuepages] def tickIfClaimed(): Enqueued = {
     // Hold ALL ticks until the detail freshness stamps have hydrated from Mongo.
     // They load in the rest phase (after the scrape stamps), so a tick against the
     // not-yet-hydrated mirror reads every detail as never-fresh and re-enqueues the

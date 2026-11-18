@@ -1,5 +1,6 @@
 package tools
 
+import services.venuepages.EnrichDetailsHandler
 import clients.TmdbClient
 import models.{Cinema, City}
 import modules.wiring.WorkerWiring
@@ -7,7 +8,7 @@ import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, UnresolvedPolicy}
-import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskWorker}
+import services.tasks.{ChunkScrapeStore, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskWorker}
 import services.tasktypes.TaskType
 
 import scala.concurrent.duration._

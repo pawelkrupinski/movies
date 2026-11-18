@@ -215,7 +215,7 @@ trait DetailEnricher {
    *
    *  Measured against the live UK corpus 2026-07-29: 1,599 records x 185 enricher
    *  instances cost 54.6ms a pass recomputing, versus 3.6ms hoisting it — 15x. That
-   *  loop runs every 60s in [[services.tasks.DetailReaper]] and was 7.93cc of the UK
+   *  loop runs every 60s in [[services.venuepages.DetailReaper]] and was 7.93cc of the UK
    *  worker's 12.46cc, 64% of its CPU, to produce 0.3 EnrichDetails/min. */
   final def nativeDetailRefIn(cinemaData: Map[Cinema, SourceData]): Option[String] =
     cinemaData.get(cinema).flatMap(DetailEnricher.nativeRefOf)
