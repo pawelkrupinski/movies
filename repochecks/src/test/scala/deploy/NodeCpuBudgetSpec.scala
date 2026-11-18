@@ -56,34 +56,26 @@ class NodeCpuBudgetSpec extends AnyFlatSpec with Matchers {
   /** `k3s-worker-1`'s `allocatable.cpu`, in millicores. */
   private val NodeAllocatableMillis = 8000
 
-  /** Left for everything on the node that is NOT a kinowo pod: kube-system's
-   *  coredns / metrics-server / local-path-provisioner, and the kubelet's own
-   *  slack. Measured at ~10m in practice (most of kube-system runs on the
-   *  control-plane node), so this is deliberately an order of magnitude more
-   *  than observed — the point is a floor under the arithmetic, not a tight fit. */
-  private val SystemReserveMillis = 250
+  // WHAT IS LEFT FOR SYSTEM PODS IS COUNTED, NOT CHOSEN. This used to subtract a constant 250m
+  // "measured at ~10m in practice"; the system pods -- Flux's five controllers, coredns,
+  // kube-state-metrics, headlamp, reloader -- actually REQUEST 595m, and the scheduler admits on
+  // requests. The ledger now sums every pod on the node from the one list [[NodePods]] keeps for
+  // the memory ledger too (2026-11-18), so the two cannot drift apart.
 
-  private val Tiers     = Seq("worker", "web")
-  private val Countries = Seq("pl", "de", "uk", "us", "es")
+  private val Tiers     = NodePods.Tiers
+  private val Countries = NodePods.Countries
 
   /** The `requests.cpu` of one tier+country overlay, in millicores.
    *
-   *  Reads the FIRST `cpu:` under `requests:`, which is the shape every overlay
-   *  has. Deliberately NOT tolerant of a missing value: a country that inherits
+   *  Deliberately NOT tolerant of a missing value: a country that inherits
    *  the base's request silently would be invisible to the sum below, which is
    *  the one thing this spec must never be. */
-  private def requestedMillis(tier: String, cc: String): Int =
-    requestedMillisAt(s"infra/kubernetes/$tier/overlays/$cc/patch.yaml")
-
-  private def requestedMillisAt(path: String): Int = {
-    val cpu = ManifestRequests.declared(path, "cpu")
+  private def requestedMillis(tier: String, cc: String): Int = {
+    val path = NodePods.overlay(tier, cc)
+    val cpu  = NodePods.declared(path, "cpu")
     withClue(s"$path declares no cpu request under `requests:`: ")(cpu should not be empty)
-    parseMillis(cpu.get)
+    NodePods.Cpu.parse(cpu.get)
   }
-
-  /** Kubernetes CPU quantities: `"500m"` is millicores, a bare `"1"` is cores. */
-  private def parseMillis(raw: String): Int =
-    if (raw.endsWith("m")) raw.dropRight(1).toInt else (raw.toDouble * 1000).toInt
 
   private lazy val requests: Seq[((String, String), Int)] =
     for (tier <- Tiers; cc <- Countries) yield (tier, cc) -> requestedMillis(tier, cc)
@@ -97,21 +89,14 @@ class NodeCpuBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   "the node's CPU request budget" should "leave room for the extra pod a rolling update surges" in {
-    val others  = ManifestRequests.OtherWorkloads.map(requestedMillisAt).sum
-    val total   = requests.map(_._2).sum + others
-    val surge   = requests.filter(_._1._1 == "web").map(_._2).max   // maxSurge: 1 on the web tier
-    val ceiling = NodeAllocatableMillis - SystemReserveMillis
-
+    val budget = NodePods.budget(NodePods.Cpu, NodeAllocatableMillis)
     withClue(
-      s"kinowo + other workloads (${others}m) request ${total}m + a ${surge}m surge pod = ${total + surge}m against a ${ceiling}m " +
-      s"ceiling (${NodeAllocatableMillis}m allocatable - ${SystemReserveMillis}m for system pods). " +
-      "Over it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
-      "Either right-size the requests against measured peaks or add a node: ") {
-      (total + surge) should be <= ceiling
+      budget.explain + ". Under the floor, a web rollout hangs Pending forever with maxUnavailable: 0 rather than " +
+      "failing. Either right-size the requests against measured peaks or add a node: ") {
+      budget.margin should be >= budget.floor
     }
-
-    info(f"requests ${total}m + surge ${surge}m = ${total + surge}m of ${ceiling}m " +
-         f"(${100.0 * (total + surge) / ceiling}%.1f%%, ${ceiling - total - surge}m spare)")
+    info(f"requests ${budget.total}m + surge ${budget.surge}m = ${budget.total + budget.surge}m of ${NodeAllocatableMillis}m " +
+         f"(${100.0 * (budget.total + budget.surge) / NodeAllocatableMillis}%.1f%%, ${budget.margin}m margin, floor ${budget.floor}m)")
   }
 
   it should "not have drifted back to a uniform round number per tier" in {

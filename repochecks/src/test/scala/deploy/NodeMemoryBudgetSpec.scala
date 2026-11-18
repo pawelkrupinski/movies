@@ -69,36 +69,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   /** `allocatable.memory` as the kubelet computes it: capacity less its reserves. */
   private lazy val NodeAllocatableMib = NodeCapacityMib - KubeletReserveMib
 
-  /** The k3s packaged add-ons, by the name `services.k3s.disable` takes, and what each one ENABLED
-   *  schedules -- requests read from the manifests k3s writes to /var/lib/rancher/k3s/server/manifests
-   *  (v1.35.8+k3s1, checked against `kubectl describe node k3s-worker-1` on 2026-11-18). Every name
-   *  k3s can deploy is a row, so turning one back on (`k3s-server.nix`'s `disable` list) counts its
-   *  pods here instead of nowhere. `None` is an add-on whose pods' requests nobody has read yet: on,
-   *  it fails the ledger until someone does. The pods carry no node affinity and the control plane
-   *  is tainted, so they land on k3s-worker-1 -- coredns does today.
-   *
-   *  UNTIL 2026-11-18 THIS LIST DID NOT EXIST. A hand-set 576Mi reserve covered the manifests named
-   *  below, never coredns's 70Mi, so the ledger said 128Mi of margin over web-us's surge while the
-   *  node had 58. */
-  private val K3sAddOnRequestsMib: Map[String, Option[Int]] = Map(
-    "coredns"        -> Some(70),   // coredns.yaml: requests memory 70Mi (limit 170Mi)
-    "local-storage"  -> Some(0),    // local-path-provisioner: no requests at all
-    "runtimes"       -> Some(0),    // RuntimeClass objects only, no pod
-    "metrics-server" -> Some(70),   // metrics-server.yaml: requests memory 70Mi
-    "traefik"        -> None,       // a HelmChart (traefik + a svclb DaemonSet); read it before enabling
-    "servicelb"      -> None,       // one svclb DaemonSet pod per LoadBalancer Service
-  )
-
-  /** The add-ons k3s-server.nix turns off. */
-  private lazy val K3sDisabled: Set[String] = {
-    val nix = RepoFile.read("infra/nix/modules/roles/k3s-server.nix")
-    val list = """(?m)^\s*disable\s*=\s*\[([^\]]*)\]""".r.findFirstMatchIn(nix).map(_.group(1))
-    withClue("infra/nix/modules/roles/k3s-server.nix sets no `disable = [ ... ];` for services.k3s: ")(list should not be empty)
-    """"([^"]+)"""".r.findAllMatchIn(list.get).map(_.group(1)).toSet
-  }
-
-  private val Tiers     = Seq("worker", "web")
-  private val Countries = Seq("pl", "de", "uk", "us", "es")
+  private val Tiers     = NodePods.Tiers
+  private val Countries = NodePods.Countries
 
   /** The `requests.memory` of one tier+country overlay, in mebibytes.
    *
@@ -106,10 +78,10 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  spec is not: a country silently inheriting the base's request would be
    *  invisible to the sum below, which is the one thing this must never be. */
   private def requestedMib(tier: String, cc: String): Int =
-    requestedMibAt(s"infra/kubernetes/$tier/overlays/$cc/patch.yaml")
+    requestedMibAt(NodePods.overlay(tier, cc))
 
   private def requestedMibAt(path: String): Int = {
-    val memory = ManifestRequests.declared(path, "memory")
+    val memory = NodePods.declared(path, "memory")
     withClue(s"$path declares no memory request under `requests:`: ")(memory should not be empty)
     parseMib(memory.get)
   }
@@ -117,11 +89,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   /** Kubernetes memory quantities, as the overlays actually spell them: `1Gi`,
    *  `1536Mi`. Binary suffixes only — a decimal `1G` would be a different number
    *  and is not a spelling this repo uses, so reject it rather than round it. */
-  private def parseMib(raw: String): Int = raw match {
-    case s"${n}Gi" => n.toInt * 1024
-    case s"${n}Mi" => n.toInt
-    case other     => fail(s"unrecognised memory quantity `$other` — expected a Gi or Mi suffix")
-  }
+  private def parseMib(raw: String): Int = NodePods.Memory.parse(raw)
 
   private lazy val requests: Seq[((String, String), Int)] =
     for (tier <- Tiers; cc <- Countries) yield (tier, cc) -> requestedMib(tier, cc)
@@ -133,25 +101,15 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   "the node's memory request budget" should "leave room for the extra pod a rolling update surges" in {
-    val others  = ManifestRequests.OtherWorkloads.map(requestedMibAt).sum
-    val system  = systemPods.map(_._2).sum
-    val total   = requests.map(_._2).sum + others + system
-    val surge   = requests.filter(_._1._1 == "web").map(_._2).max   // maxSurge: 1 on the web tier
-    val margin  = NodeAllocatableMib - total - surge
-    val floor   = SurgeMarginFloorMib
-
+    val budget = NodePods.budget(NodePods.Memory, NodeAllocatableMib)
     withClue(
-      s"kinowo ${requests.map(_._2).sum}Mi + other workloads ${others}Mi + system pods ${system}Mi " +
-      s"(${systemPods.map { case (n, m) => s"$n ${m}Mi" }.mkString(", ")}) = ${total}Mi, + a ${surge}Mi surge pod = " +
-      s"${total + surge}Mi of ${NodeAllocatableMib}Mi allocatable (${NodeCapacityMib}Mi capacity - ${KubeletReserveMib}Mi " +
-      s"kubelet reserves): ${margin}Mi margin, under the ${floor}Mi floor (the largest system pod, which can roll at the same " +
-      "time). Under it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
-      "Giving a pod more memory means taking it from another pod's over-ask, not from this margin: ") {
-      margin should be >= floor
+      budget.explain + s" (${NodeCapacityMib}Mi capacity - ${KubeletReserveMib}Mi kubelet reserves). Under the floor, a web " +
+      "rollout hangs Pending forever with maxUnavailable: 0 rather than failing. Giving a pod more memory means taking it " +
+      "from another pod's over-ask, not from this margin: ") {
+      budget.margin should be >= budget.floor
     }
-
-    info(f"requests ${total}Mi + surge ${surge}Mi = ${total + surge}Mi of ${NodeAllocatableMib}Mi " +
-         f"(${100.0 * (total + surge) / NodeAllocatableMib}%.1f%%, ${margin}Mi margin, floor ${floor}Mi)")
+    info(f"requests ${budget.total}Mi + surge ${budget.surge}Mi = ${budget.total + budget.surge}Mi of ${NodeAllocatableMib}Mi " +
+         f"(${100.0 * (budget.total + budget.surge) / NodeAllocatableMib}%.1f%%, ${budget.margin}Mi margin, floor ${budget.floor}Mi)")
   }
 
   /** What each deployment's RSS actually PEAKED at, in mebibytes — first over the seven days to
@@ -447,96 +405,6 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
         javaOpts("web", cc) should include("-XX:HeapDumpPath=/data/heapdumps")
       }
     }
-  }
-
-  /** Every `requests: memory:` in one manifest. A file with several Deployments — Flux ships two
-   *  controllers in one — contributes all of them, or the ledger is under-counted by whatever the
-   *  first block happens to be. */
-  private def requestsIn(path: String): Seq[Int] = {
-    val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
-    lines.sliding(6).collect {
-      case window if window.head == "requests:" =>
-        window.tail.takeWhile(l => !l.startsWith("limits:")).collectFirst {
-          case l if l.startsWith("memory:") => parseMib(l.stripPrefix("memory:").trim.replace("\"", ""))
-        }.getOrElse(0)
-    }.toSeq
-  }
-
-  /** The non-kinowo manifests that schedule pods on k3s-worker-1, besides `OtherWorkloads`. */
-  private val SystemManifests = Seq(
-    "kube-state-metrics" -> "infra/kubernetes/kube-state-metrics/deployment.yaml",
-    "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
-    // Flux's controllers (source, kustomize, notification, image-reflector, image-automation),
-    // vendored from `flux install --export`.
-    "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
-    "reloader"           -> "infra/kubernetes/reloader/deployment.yaml",
-  )
-
-  /** Everything on k3s-worker-1 that is neither a kinowo tier nor `OtherWorkloads`: the GitOps
-   *  manifests above and the k3s add-ons left on. Read from the manifests, so this is what WILL be
-   *  requested, not what happens to be scheduled today. */
-  private lazy val systemPods: Seq[(String, Int)] = systemPodRequests.map { case (name, pods) => name -> pods.sum }
-
-  /** [[systemPods]], one entry per container's request. */
-  private lazy val systemPodRequests: Seq[(String, Seq[Int])] = {
-    val fromManifests = SystemManifests.map { case (name, path) =>
-      val pods = requestsIn(path)
-      withClue(s"$name declares no memory request in $path: ")(pods.sum should be > 0)
-      name -> pods
-    }
-    val addOns = K3sAddOnRequestsMib.toSeq.sortBy(_._1).collect {
-      case (name, requests) if !K3sDisabled(name) =>
-        withClue(s"k3s add-on $name is enabled (not in k3s-server.nix's disable list) but nobody has read what its pods request: ") {
-          requests should not be empty
-        }
-        s"k3s $name" -> requests.toSeq
-    }
-    fromManifests ++ addOns
-  }
-
-  /** The margin the surge must leave: the largest single system pod. The web tier is not the only
-   *  thing that rolls -- Flux's, coredns's and kube-state-metrics' Deployments surge one pod too --
-   *  and an image bump landing beside a Flux upgrade surges both at once. */
-  private lazy val SurgeMarginFloorMib: Int = systemPodRequests.flatMap(_._2).max
-
-  /** Every manifest under the GitOps checkout that declares a pod-scheduling kind. */
-  private lazy val workloadManifests: Set[String] = {
-    val workload = """(?m)^kind:\s*(Deployment|StatefulSet|DaemonSet|ReplicaSet|Job|CronJob|Pod)\s*$""".r
-    def walk(dir: java.io.File): Seq[java.io.File] =
-      Option(dir.listFiles).toSeq.flatten.flatMap(f => if (f.isDirectory) walk(f) else Seq(f))
-    walk(new java.io.File("infra/kubernetes"))
-      .map(_.getPath)
-      .filter(p => p.endsWith(".yaml") || p.endsWith(".yml"))
-      .filter(p => workload.findFirstIn(RepoFile.read(p)).isDefined)
-      .toSet
-  }
-
-  // THE LEDGER IS ONLY AS GOOD AS ITS LIST. It used to subtract a hand-set 576Mi "system reserve"
-  // and check four named manifests against it. Nothing asked whether the four were ALL of them:
-  // coredns -- a k3s add-on, in no manifest of ours -- was simply never counted, and a fifth
-  // manifest would have been missed the same way. So every manifest that schedules a pod must be
-  // one the ledger reads (a kinowo tier, `OtherWorkloads`, or `SystemManifests`), and every k3s
-  // add-on must be either disabled or have its requests read.
-  "the node's memory ledger" should "count every manifest under infra/kubernetes that schedules a pod" in {
-    val counted =
-      (for (tier <- Tiers; cc <- Countries) yield s"infra/kubernetes/$tier/overlays/$cc/patch.yaml").toSet ++
-        Tiers.map(t => s"infra/kubernetes/$t/base/all.yaml") ++
-        ManifestRequests.OtherWorkloads ++ SystemManifests.map(_._2)
-    withClue("these manifests schedule pods on the node and are in no row of the memory ledger -- add them to " +
-             "SystemManifests (or OtherWorkloads) so their requests count against the surge: ") {
-      (workloadManifests -- counted) shouldBe empty
-    }
-    withClue("the ledger names manifests that schedule no pod (renamed or removed?): ") {
-      (counted -- workloadManifests) shouldBe empty
-    }
-  }
-
-  it should "count every k3s add-on that is left on" in {
-    withClue("k3s-server.nix disables an add-on this ledger does not know (a typo, or a new k3s add-on to add a row for): ") {
-      (K3sDisabled -- K3sAddOnRequestsMib.keySet) shouldBe empty
-    }
-    systemPods.map(_._1) should contain("k3s coredns")
-    info(s"system pods: ${systemPods.map { case (n, m) => s"$n ${m}Mi" }.mkString(", ")} = ${systemPods.map(_._2).sum}Mi")
   }
 
   // A ConfigMap patch REPLACES the whole key, so an overlay that names JAVA_OPTS at all owns
