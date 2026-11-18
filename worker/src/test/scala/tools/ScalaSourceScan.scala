@@ -12,9 +12,10 @@ object ScalaSourceScan {
 
   val MainRoots: SourceTrees = SourceTrees("base/src/main", "common/src/main", "geodata/src/main", "http/src/main", "identity/src/main", "scrapers/src/main", "web/src/main", "worker/src/main")
 
-  /** Every test-side tree: specs, integration and page specs, fixtures, the shared testkit and the it trees' itkit. */
+  /** Every test-side tree: specs, integration and page specs, fixtures, the shared testkit, the it trees' itkit and the
+   *  code-quality measures (`quality`, tool code reading the sources: deployed nowhere). */
   val TestRoots: SourceTrees = SourceTrees(
-    "base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src", "itkit/src", "web/src/test", "web/src/it", "web/src/page",
+    "base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src", "itkit/src", "quality/src", "web/src/test", "web/src/it", "web/src/page",
     "worker/src/test", "worker/src/it", "worker/src/fixtures", "e2e/src/test")
 
   /** One class/def parameter that has a default: where, whose, and the default's text. */

@@ -39,6 +39,12 @@ object Dependencies {
   // histogram) and renders the text exposition via the exposition-formats
   // module, rather than hand-rolling the `0.0.4` format.
   private val prometheusVersion    = "1.10.0"
+  // THE CODE-QUALITY RATCHETS' tools (the `quality` module, not deployed): PMD's copy-paste detector with its Scala
+  // tokenizer, and the scalameta parser the complexity and length measures read the production sources with -- the
+  // SAME scalameta PMD's Scala module is built on (pmd-scala-common's `scalameta.version`), both its 2.13 build, so one
+  // classpath holds one scalameta. Bump them together.
+  private val pmdVersion           = "7.29.0"
+  private val scalametaVersion     = "4.17.4"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
@@ -58,5 +64,7 @@ object Dependencies {
   val scalatestScalaCheck = "org.scalatestplus"          %% "scalacheck-1-20"    % scalatestScalaCheckVersion
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
+  val pmdScala         = "net.sourceforge.pmd"             %  "pmd-scala_2.13"     % pmdVersion
+  val scalametaParsers = ("org.scalameta"                 %% "parsers"            % scalametaVersion).cross(CrossVersion.for3Use2_13)
   val prometheusJvm    = "io.prometheus"                  %  "prometheus-metrics-instrumentation-jvm" % prometheusVersion
 }

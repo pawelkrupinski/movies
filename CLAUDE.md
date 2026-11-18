@@ -249,6 +249,13 @@ dependency (a trait at the seam, the class moved to the package that owns it); w
 `scripts/coupling-report --update` and commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer:
 `--update` records it, so the ratchet tightens.
 
+**Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
+`scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala
+change): every method's cognitive complexity (Sonar's) ≤ 15, cyclomatic ≤ 10, inner defs ≤ 2
+(`test/resources/complexity-baseline.tsv`, trailer `Complexity: <why>`). The baseline freezes every method over a limit
+today; a new method over one, or a frozen row rising, fails until split or recorded (`scripts/quality-report --update`,
+committed with the trailer); a fall needs none.
+
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
 is broken. Read the `writing-fakes` skill before writing any `Fake*` / `Stub*` / `InMemory*`.

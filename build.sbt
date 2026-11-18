@@ -29,6 +29,9 @@
 //             e2e and web/PageTest depend on it via "test->fixtures" / "page->fixtures"
 //             so they compile only those 5 sources, not worker's full ~320-spec test tree.
 //   e2e     — cross-app end-to-end specs (not deployed). dependsOn(web, worker).
+//   quality — the code-quality ratchets' measures (not deployed; dependsOn nothing): it reads the production sources
+//             as text -- scalameta for method complexity and length, PMD CPD for duplication -- and writes the rows
+//             scripts/ci/quality_ratchet.py holds to their baselines (scripts/quality-report).
 //
 // `root` is a pure aggregator — no sources of its own. web and worker each
 // depend on common, and their Compile classpaths never see each other: the two
@@ -740,8 +743,24 @@ lazy val e2e = (project in file("e2e"))
 
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
+// ── Code-quality ratchets (not deployed) ────────────────────────────────────
+//
+// `quality/runMain quality.QualityReport ...` (scripts/quality-report, the pre-push hook's `sbt` check): method
+// complexity, duplication and length of the deployed modules' src/main, read as source text -- no production class is
+// on its classpath, so the measure needs no compile of what it measures.
+lazy val quality = (project in file("quality"))
+  .settings(
+    name := "quality",
+    publish / skip := true,
+    libraryDependencies ++= Seq(scalametaParsers, pmdScala, scalatestPlay % Test),
+  )
+  .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
+  .settings(noApiDocs)
+
 lazy val root = (project in file("."))
-  .aggregate(geodata, base, http, common, identity, scrapers, testkit, itkit, repochecks, web, worker, e2e)
+  .aggregate(geodata, base, http, common, identity, scrapers, testkit, itkit, repochecks, web, worker, e2e, quality)
   .settings(
     name := "movies",
     publish / skip := true,
@@ -756,7 +775,7 @@ ForkedTests.forkSlots
 // instead of stopping at the first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "; all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test ; e2eShared")
+addCommandAlias("testUnit", "; all base/Test/test quality/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test ; e2eShared")
 // The e2e module MINUS the country-scoped specs. Those install a country's
 // TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
 // Polish whole-corpus specs (or with each other) silently normalises the wrong
@@ -770,10 +789,10 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
-addCommandAlias("testUnitNoE2e", "all base/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitNoE2e", "all base/Test/test quality/Test/test http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test repochecks/Test/test web/Test/test worker/Test/test")
 addCommandAlias("testUnitWorker", "worker/Test/test")
 addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test scrapers/Test/test repochecks/Test/test")
-addCommandAlias("testUnitRest", "all base/Test/test http/Test/test common/Test/test identity/Test/test testkit/Test/test")
+addCommandAlias("testUnitRest", "all base/Test/test quality/Test/test http/Test/test common/Test/test identity/Test/test testkit/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
 // @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in

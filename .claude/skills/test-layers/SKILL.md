@@ -16,7 +16,7 @@ is that the local toolchain is missing (e.g. no full Xcode for
 - **`sbt testUnit`** — every module's unit specs in one run; or
   `sbt web/Test/test` / `worker/Test/test` / `scrapers/Test/test` (the cinema scrapers) / `common/Test/test` / `identity/Test/test` (the resolver) /
   `testkit/Test/test` / `repochecks/Test/test` (the repository-text checks: workflows, scripts, nix and monitoring
-  config; package `deploy`) / `e2e/Test/test` to scope to one module.
+  config; package `deploy`) / `quality/Test/test` (the code-quality measures) / `e2e/Test/test` to scope to one module.
   Unit specs for controllers, services, enrichment, clients, models.
   Each unit module runs in its own forked, heap-capped test JVM (`project/ForkedTests.scala`; web's
   fork is Play's), so nothing a run leaves behind stays in the kept sbt server; only `e2eShared`
@@ -86,6 +86,13 @@ is that the local toolchain is missing (e.g. no full Xcode for
   `--linux` runs them in CI's ubuntu-26.04 container (Docker / Rancher
   Desktop; the pre-push hook runs that leg beside the native one when Docker
   is up). A new self-test needs no wiring: name it by the scheme and CI runs it.
+
+- **`scripts/quality-report`** — the code-quality ratchets (CLAUDE.md, "Code quality ratchets") over the
+  production Scala, in the warm server (~3 s): the methods over each limit and the worst ones, then each ratchet's
+  verdict against its baseline; the pre-push hook runs the same on any production Scala change. A method you made more
+  complex than its row (or a new one over a limit) fails it: split it, or `--update` and commit the baseline with its
+  trailer. `--update` after a cleanup records the falls (no trailer). A measure change runs `quality/Test/test`
+  (Sonar's published examples) and `scripts/run-script-tests quality` (the ratchet and its mutation test).
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 

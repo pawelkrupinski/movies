@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# THE CODE-QUALITY REPORT (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, measured from
+# its sources (`quality/runMain quality.QualityReport`, the `quality` module), through this checkout's kept sbt server
+# (scripts/sbt-warm).
+#
+#   scripts/quality-report             the markdown report (the counts over each limit, the worst methods) to stdout,
+#                                      then each ratchet's verdict against its baseline (scripts/ci/quality_ratchet.py)
+#   scripts/quality-report --update    the same, then the measured rows written to each baseline
+#                                      (test/resources/complexity-baseline.tsv): every fall recorded; a rise must be
+#                                      committed with its trailer (`Complexity: <why>`)
+#   scripts/quality-report --out DIR   keep rows.tsv, files.tsv and report.md in DIR (default: a temporary directory)
+#
+# The pre-push hook's `quality` step runs the same measure and ratchet over the pushed range.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+update="" out=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --update) update=1 ;;
+        --out) out="$2"; shift ;;
+        -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "quality-report: unknown argument $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
+mkdir -p "$out"
+out="$(cd "$out" && pwd)"
+cd "$root"
+"$root/scripts/sbt-warm" "quality/runMain quality.QualityReport --root $root --rows $out/rows.tsv --files $out/files.tsv --report $out/report.md" \
+    > "$out/sbt.log" 2>&1 \
+    || { tail -30 "$out/sbt.log" >&2; echo "quality-report: sbt quality/runMain failed (log: $out/sbt.log)" >&2; exit 2; }
+cat "$out/report.md"
+echo
+if [ -n "$update" ]; then
+    python3 "$root/scripts/ci/quality_ratchet.py" update --current "$out/rows.tsv"
+    exit 0
+fi
+python3 "$root/scripts/ci/quality_ratchet.py" check --current "$out/rows.tsv"
