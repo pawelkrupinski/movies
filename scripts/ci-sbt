@@ -57,7 +57,9 @@ ci_sbt_snapshot() {
   left=$(git ls-files --others --exclude-standard | grep -v '^[^/]*/src/' | head -5)
   [ -z "$left" ] || say "untracked files outside */src/ are not run: $(echo "$left" | paste -sd' ' -)"
   if [ "$tree" = "$(git rev-parse "$head^{tree}")" ]; then echo "$head"; return 0; fi
-  git commit-tree "$tree" -p "$head" -m "ci-sbt: the working tree of $(git rev-parse --short "$head")"
+  # a throwaway commit: an identity where none is configured (a CI container), the configured one otherwise
+  git -c user.name="$(git config user.name || echo ci-sbt)" -c user.email="$(git config user.email || echo ci-sbt@localhost)" \
+    commit-tree "$tree" -p "$head" -m "ci-sbt: the working tree of $(git rev-parse --short "$head")"
 }
 
 if [ "$mode" = tree ]; then

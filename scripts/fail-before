@@ -160,7 +160,9 @@ before_commit() {
   done
   tree=$(GIT_INDEX_FILE=$index git -C "$top" write-tree); rm -f "$index"
   [ -n "$tree" ] || return 1
-  git -C "$top" commit-tree "$tree" -p "$parent" -m "fail-before: BEFORE of $(git -C "$top" rev-parse --short "$sha") (its parent and its test-side files)"
+  # a throwaway commit: an identity where none is configured (a CI container), the configured one otherwise
+  git -C "$top" -c user.name="$(git -C "$top" config user.name || echo fail-before)" \
+    -c user.email="$(git -C "$top" config user.email || echo fail-before@localhost)" commit-tree "$tree" -p "$parent" -m "fail-before: BEFORE of $(git -C "$top" rev-parse --short "$sha") (its parent and its test-side files)"
 }
 
 verdict() { # <before rc> <after rc> <before log> <after log>
