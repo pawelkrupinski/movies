@@ -105,26 +105,32 @@ object FilterDescription {
     // city (almost all of them) has no towns to name and keeps the sentence,
     // byte for byte.
     val places = if (towns.isEmpty) "" else towns.mkString(" (", ", ", ")")
-    if (city.country.language.getLanguage == "pl")
-      // A generated town or cluster page has no hand-declined adjective
-      // ("poznańskich"), so it says where the cinemas are instead.
-      (if (genitiveLabel.nonEmpty) s"Repertuar wszystkich $genitiveLabel kin$places"
-       else s"Repertuar wszystkich kin $locative$places") + " – godziny seansów na dziś, " +
-        s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes." +
-        (if (towns.isEmpty) s" Sprawdź, co dziś grają w kinie $locative." else "")
-    else if (city.country.language.getLanguage == "es")
-      s"La cartelera de todos los cines de $genitiveLabel$places – sesiones de hoy, " +
-        s"valoraciones de IMDb, Metacritic y Rotten Tomatoes." +
-        (if (towns.isEmpty) s" Mira qué ponen hoy en el cine $locative." else "")
-    else if (city.country.language.getLanguage == "de")
-      s"Das Kinoprogramm aller Kinos in $genitiveLabel$places – Spielzeiten heute, " +
-        s"Bewertungen von IMDb, Metacritic und Rotten Tomatoes." +
-        (if (towns.isEmpty) s" Sieh nach, was heute $locative im Kino läuft." else "")
-    else
-      s"All $genitiveLabel cinema listings$places – today's showtimes, " +
-        // No Filmweb: a Polish site, which only the Polish deployment rates or links.
-        s"IMDb, Metacritic and Rotten Tomatoes ratings." +
-        (if (towns.isEmpty) s" See what's on today $locative." else "")
+    def onlyForOneTown(sentence: String): String = if (towns.isEmpty) sentence else ""
+    // A match rather than [[tr]]: only the deployment's own sentence is built, on every render.
+    city.country.language.getLanguage match {
+      case "pl" =>
+        // A generated town or cluster page has no hand-declined adjective
+        // ("poznańskich"), so it says where the cinemas are instead.
+        val polishLead =
+          if (genitiveLabel.nonEmpty) s"Repertuar wszystkich $genitiveLabel kin$places"
+          else s"Repertuar wszystkich kin $locative$places"
+        s"$polishLead – godziny seansów na dziś, " +
+          s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes." +
+          onlyForOneTown(s" Sprawdź, co dziś grają w kinie $locative.")
+      case "es" =>
+        s"La cartelera de todos los cines de $genitiveLabel$places – sesiones de hoy, " +
+          s"valoraciones de IMDb, Metacritic y Rotten Tomatoes." +
+          onlyForOneTown(s" Mira qué ponen hoy en el cine $locative.")
+      case "de" =>
+        s"Das Kinoprogramm aller Kinos in $genitiveLabel$places – Spielzeiten heute, " +
+          s"Bewertungen von IMDb, Metacritic und Rotten Tomatoes." +
+          onlyForOneTown(s" Sieh nach, was heute $locative im Kino läuft.")
+      case _ =>
+        s"All $genitiveLabel cinema listings$places – today's showtimes, " +
+          // No Filmweb: a Polish site, which only the Polish deployment rates or links.
+          s"IMDb, Metacritic and Rotten Tomatoes ratings." +
+          onlyForOneTown(s" See what's on today $locative.")
+    }
   }
 
   /** The page's `<h1>` — the city heading, plus the towns a multi-town listing
@@ -323,17 +329,7 @@ object FilterDescription {
 
   private def checkboxPhrase(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule],
                              filter: CheckboxFilter): Option[String] =
-    maybeListOf(query, filter.parameter).flatMap { included =>
-      inclusionPhrase(
-        included                    = included,
-        universe                    = filter.universeOf(city, schedules),
-        includedSingularPreposition = filter.includedSingularPreposition.in(city),
-        includedPluralPreposition   = filter.includedPluralPreposition.in(city),
-        excludedPreposition         = filter.excludedPreposition.in(city),
-        display                     = filter.display(city),
-        countNoun                   = filter.countNoun.in(city),
-      )
-    }
+    maybeListOf(query, filter.parameter).flatMap(inclusionPhrase(city, filter, _, filter.universeOf(city, schedules)))
 
   /** Express a multi-checkbox filter as one phrase using the smaller of the
    *  inclusion / exclusion sets — "tylko te trzy" reads better than "wszystkie
@@ -341,33 +337,24 @@ object FilterDescription {
    *  checked = no filter never reaches here.) An empty `included` means "parameter
    *  present but with zero values = nothing visible" which we still skip in the
    *  description (the page is empty, the OG would read oddly). */
-  private def inclusionPhrase(
-    included: Set[String],
-    universe: Set[String],
-    includedSingularPreposition: String,
-    includedPluralPreposition: String,
-    excludedPreposition: String,
-    display: String => String,
-    countNoun: String,
-  ): Option[String] =
-    if (included.isEmpty || universe.isEmpty) None
-    else {
-      // Restrict to items we recognise — a URL listing a stale (dropped from
-      // the corpus today) room shouldn't be counted toward "all visible".
-      val incInUniverse = included.intersect(universe)
-      val excluded      = universe.diff(incInUniverse)
-      if (incInUniverse.isEmpty || excluded.isEmpty) None
-      else {
-        val pickIncluded = incInUniverse.size <= excluded.size
-        val (set, prep) =
-          if (pickIncluded) (incInUniverse, if (incInUniverse.size == 1) includedSingularPreposition else includedPluralPreposition)
-          else              (excluded,      excludedPreposition)
-        val items = set.map(display).filter(_.nonEmpty).toSeq.sorted
-        if (items.isEmpty) None
-        else if (items.size <= 3) Some(prep + items.mkString(", "))
-        else Some(s"${set.size} $countNoun") // too many to enumerate — summarise
-      }
-    }
+  private def inclusionPhrase(city: City, filter: CheckboxFilter, included: Set[String], universe: Set[String]): Option[String] = {
+    // Restrict to items we recognise — a URL listing a stale (dropped from
+    // the corpus today) room shouldn't be counted toward "all visible".
+    val recognised = included.intersect(universe)
+    val excluded   = universe.diff(recognised)
+    if (recognised.isEmpty || excluded.isEmpty) None
+    else if (recognised.size > excluded.size) enumerated(city, filter, excluded, filter.excludedPreposition)
+    else if (recognised.size == 1) enumerated(city, filter, recognised, filter.includedSingularPreposition)
+    else enumerated(city, filter, recognised, filter.includedPluralPreposition)
+  }
+
+  /** The items after their preposition, or their count once there are too many to enumerate. */
+  private def enumerated(city: City, filter: CheckboxFilter, set: Set[String], preposition: Localized): Option[String] = {
+    val items = set.map(filter.display(city)).filter(_.nonEmpty).toSeq.sorted
+    if (items.isEmpty) None
+    else if (items.size <= 3) Some(preposition.in(city) + items.mkString(", "))
+    else Some(s"${set.size} ${filter.countNoun.in(city)}")
+  }
 
   private def parameterOf(query: Map[String, Seq[String]], key: String): Option[String] =
     query.get(key).flatMap(_.headOption).map(_.trim).filter(_.nonEmpty)

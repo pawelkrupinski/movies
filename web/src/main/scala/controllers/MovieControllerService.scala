@@ -7,6 +7,7 @@ import services.readmodel.WebReadModel
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime}
+import scala.collection.mutable.ArrayBuffer
 
 // What the listing IS, apart from how a request asks for it: the schedules the web serves,
 // read from the read model. A file of its own because the convergence legs read their
@@ -132,45 +133,41 @@ class MovieControllerService(
     // copied nodes on every insert: ~1.7 MB a New York render, for 2,600 rows.
     val byFilm = new java.util.HashMap[String, Vector[CityScreening]](cityScreenings.size * 2)
     cityScreenings.foreach(sc => byFilm.merge(sc.filmId, Vector(sc), _ ++ _))
-    val films = scala.collection.mutable.ArrayBuffer.empty[(LocalDateTime, FilmSchedule)]
-    byFilm.forEach { (filmId, screenings) =>
-      readModel.movie(filmId).flatMap { resolved =>
-        val key   = (city.slug, filmId)
-        val prior = built.getIfPresent(key)
-        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff, readModel.filmSlugs.slugFor(resolved._id)))
-          Some((prior.earliest, prior.schedule))
-        else {
-          val byDate = showingsByDate(screenings, cutoff)
-          if (byDate.isEmpty) None
-          else {
-            // A film with no future showing in this city drops out of its list view (its
-            // documents stay in the store); one with any is ordered by its earliest.
-            val earliest = byDate.head._2.iterator.map(_.showtimes.head.dateTime).min
-            val cinemaFilmUrls: Seq[(Cinema, String)] =
-              screenings
-                .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
-                .sortBy(_._1.displayName)
-            val schedule = filmSchedule(resolved, cinemaFilmUrls, byDate, city, asOf)
-            val upcoming = cutoff.earliest(byDate.iterator.flatMap(_._2).map(run => run.cinema -> run.showtimes.head.dateTime))
-            built.put(key, Built(screenings, resolved, asOf, earliest, upcoming, schedule))
-            Some((earliest, schedule))
-          }
-        }
-      }
-      .foreach(films += _)
-    }
-    // Earliest showtime, then title, then film id — a total order, so two same-titled films
-    // tied on their earliest showing never take the grouping map's iteration order, which moves
-    // with the city's row count. Compared field by field, not as a tuple built per comparison.
-    films.sortInPlaceWith { case ((e1, f1), (e2, f2)) =>
-      val byTime = e1.compareTo(e2)
-      if (byTime != 0) byTime < 0
-      else {
-        val byTitle = f1.movie.title.compareTo(f2.movie.title)
-        if (byTitle != 0) byTitle < 0 else f1.resolved._id.compareTo(f2.resolved._id) < 0
-      }
-    }
+    val films = ArrayBuffer.empty[(LocalDateTime, FilmSchedule)]
+    byFilm.forEach((filmId, screenings) => scheduleOf(city, filmId, screenings, asOf, cutoff).foreach(films += _))
+    films.sortInPlaceWith(MovieControllerService.earlierInListing)
     films.iterator.map(_._2).toList
+  }
+
+  /** One film's schedule in `city` with its earliest upcoming showtime: the one built
+   *  before when it [[Built.stillHolds]], else built afresh. `None` while its
+   *  `ResolvedMovie` has not landed, or once nothing of it is upcoming here. */
+  private def scheduleOf(city: City, filmId: String, screenings: Vector[CityScreening], asOf: LocalDate,
+                         cutoff: StartedShowtimeCut): Option[(LocalDateTime, FilmSchedule)] =
+    readModel.movie(filmId).flatMap { resolved =>
+      val key   = (city.slug, filmId)
+      val prior = built.getIfPresent(key)
+      if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff, readModel.filmSlugs.slugFor(resolved._id)))
+        Some((prior.earliest, prior.schedule))
+      else buildSchedule(city, key, screenings, resolved, asOf, cutoff)
+    }
+
+  private def buildSchedule(city: City, key: (String, String), screenings: Vector[CityScreening], resolved: ResolvedMovie,
+                            asOf: LocalDate, cutoff: StartedShowtimeCut): Option[(LocalDateTime, FilmSchedule)] = {
+    val byDate = MovieControllerService.showingsByDate(screenings, cutoff)
+    // A film with no future showing in this city drops out of its list view (its
+    // documents stay in the store); one with any is ordered by its earliest.
+    Option.when(byDate.nonEmpty) {
+      val earliest = byDate.head._2.iterator.map(_.showtimes.head.dateTime).min
+      val cinemaFilmUrls: Seq[(Cinema, String)] =
+        screenings
+          .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
+          .sortBy(_._1.displayName)
+      val schedule = filmSchedule(resolved, cinemaFilmUrls, byDate, city, asOf)
+      val upcoming = cutoff.earliest(byDate.iterator.flatMap(_._2).map(run => run.cinema -> run.showtimes.head.dateTime))
+      built.put(key, Built(screenings, resolved, asOf, earliest, upcoming, schedule))
+      (earliest, schedule)
+    }
   }
 
   /** A film's schedule as last built for a city, and what it was built from.
@@ -212,52 +209,6 @@ class MovieControllerService(
   private val built: com.github.benmanes.caffeine.cache.Cache[(String, String), Built] =
     tools.BoundedCache.ofSize(MovieControllerService.BuiltSchedules)
       .build[(String, String), Built]()
-
-  /** One film's upcoming showtimes in this city, by date and then by cinema: dates
-   *  ascending, a date's cinemas by their earliest showtime that day with
-   *  `displayName` breaking ties (the "Kino Malta vs Kino Meduza" snapshot-flake fix),
-   *  each cinema's showtimes by time.
-   *
-   *  Built by sorting each cinema's showtimes ONCE and cutting them into per-date
-   *  runs, rather than regrouping (cinema, showtime) tuples by date and again by
-   *  cinema: on a New-York-sized city that was 25 MB of tuples, maps and orderings per
-   *  render, where this is an array per cinema and a `CinemaShowtimes` per run. */
-  private def showingsByDate(screenings: Seq[CityScreening], cutoff: StartedShowtimeCut): Seq[(LocalDate, Seq[CinemaShowtimes])] = {
-    // A cinema can carry the film on more than one row; its showtimes merge, in row order.
-    val perCinema = new java.util.LinkedHashMap[Cinema, scala.collection.mutable.ArrayBuffer[Showtime]]()
-    for (sc <- screenings; cinema <- MovieControllerService.cinemaByName(sc.cinema); venueCut = cutoff.at(cinema); st <- sc.showtimes)
-      if (st.dateTime.isAfter(venueCut)) perCinema.computeIfAbsent(cinema, _ => scala.collection.mutable.ArrayBuffer.empty).addOne(st)
-    if (perCinema.isEmpty) return Nil
-    val runs = scala.collection.mutable.ArrayBuffer.empty[(LocalDate, CinemaShowtimes)]
-    perCinema.forEach { (cinema, showtimes) =>
-      val sorted = showtimes.sortInPlaceBy(_.dateTime)      // stable, as `sortBy` was
-      var from = 0
-      while (from < sorted.length) {
-        val date = sorted(from).dateTime.toLocalDate
-        var to = from + 1
-        while (to < sorted.length && sorted(to).dateTime.toLocalDate == date) to += 1
-        runs += date -> CinemaShowtimes(cinema, sorted.slice(from, to).toList)
-        from = to
-      }
-    }
-    runs.sortInPlaceWith { case ((d1, a), (d2, b)) =>
-      val byDate = d1.compareTo(d2)
-      if (byDate != 0) byDate < 0
-      else {
-        val byFirst = a.showtimes.head.dateTime.compareTo(b.showtimes.head.dateTime)
-        if (byFirst != 0) byFirst < 0 else a.cinema.displayName < b.cinema.displayName
-      }
-    }
-    val days = List.newBuilder[(LocalDate, Seq[CinemaShowtimes])]
-    var i = 0
-    while (i < runs.length) {
-      val date = runs(i)._1
-      val day  = List.newBuilder[CinemaShowtimes]
-      while (i < runs.length && runs(i)._1 == date) { day += runs(i)._2; i += 1 }
-      days += date -> day.result()
-    }
-    days.result()
-  }
 
   /** Assemble a [[FilmSchedule]] from a resolved movie + its (possibly empty)
    *  showings. Shared by the live `toSchedules` join and the deep-link
@@ -415,6 +366,79 @@ object MovieControllerService {
     // Nested `exists` rather than an iterator chain, which allocated an iterator per
     // list it crossed: 1.6 MB a New York render, for one boolean.
     schedules.exists(_.showings.exists(_._2.exists(_.showtimes.exists(_.format.contains("IMAX")))))
+
+  /** Earliest showtime, then title, then film id — a total order, so two same-titled films
+   *  tied on their earliest showing never take the grouping map's iteration order, which moves
+   *  with the city's row count. Compared field by field, not as a tuple built per comparison. */
+  private def earlierInListing(a: (LocalDateTime, FilmSchedule), b: (LocalDateTime, FilmSchedule)): Boolean = {
+    val byTime = a._1.compareTo(b._1)
+    if (byTime != 0) return byTime < 0
+    val byTitle = a._2.movie.title.compareTo(b._2.movie.title)
+    if (byTitle != 0) byTitle < 0 else a._2.resolved._id.compareTo(b._2.resolved._id) < 0
+  }
+
+  /** One film's upcoming showtimes in this city, by date and then by cinema: dates
+   *  ascending, a date's cinemas by their earliest showtime that day with
+   *  `displayName` breaking ties (the "Kino Malta vs Kino Meduza" snapshot-flake fix),
+   *  each cinema's showtimes by time.
+   *
+   *  Built by sorting each cinema's showtimes ONCE and cutting them into per-date
+   *  runs, rather than regrouping (cinema, showtime) tuples by date and again by
+   *  cinema: on a New-York-sized city that was 25 MB of tuples, maps and orderings per
+   *  render, where this is an array per cinema and a `CinemaShowtimes` per run. */
+  private def showingsByDate(screenings: Seq[CityScreening], cutoff: StartedShowtimeCut): Seq[(LocalDate, Seq[CinemaShowtimes])] = {
+    val perCinema = upcomingPerCinema(screenings, cutoff)
+    if (perCinema.isEmpty) Nil else byDay(dateRuns(perCinema))
+  }
+
+  /** Each cinema's upcoming showtimes. A cinema can carry the film on more than one row; its showtimes merge, in row order. */
+  private def upcomingPerCinema(screenings: Seq[CityScreening], cutoff: StartedShowtimeCut): java.util.LinkedHashMap[Cinema, ArrayBuffer[Showtime]] = {
+    val perCinema = new java.util.LinkedHashMap[Cinema, ArrayBuffer[Showtime]]()
+    for (sc <- screenings; cinema <- cinemaByName(sc.cinema); venueCut = cutoff.at(cinema); st <- sc.showtimes)
+      if (st.dateTime.isAfter(venueCut)) perCinema.computeIfAbsent(cinema, _ => ArrayBuffer.empty).addOne(st)
+    perCinema
+  }
+
+  /** Every cinema's per-date runs, in the listing's order ([[runBefore]]). */
+  private def dateRuns(perCinema: java.util.LinkedHashMap[Cinema, ArrayBuffer[Showtime]]): ArrayBuffer[(LocalDate, CinemaShowtimes)] = {
+    val runs = ArrayBuffer.empty[(LocalDate, CinemaShowtimes)]
+    perCinema.forEach((cinema, showtimes) => cutIntoDates(cinema, showtimes, runs))
+    runs.sortInPlaceWith(runBefore)
+  }
+
+  /** One cinema's showtimes sorted ONCE and cut into per-date runs, appended to `runs`. */
+  private def cutIntoDates(cinema: Cinema, showtimes: ArrayBuffer[Showtime], runs: ArrayBuffer[(LocalDate, CinemaShowtimes)]): Unit = {
+    val sorted = showtimes.sortInPlaceBy(_.dateTime)      // stable, as `sortBy` was
+    var from = 0
+    while (from < sorted.length) {
+      val date = sorted(from).dateTime.toLocalDate
+      var to = from + 1
+      while (to < sorted.length && sorted(to).dateTime.toLocalDate == date) to += 1
+      runs += date -> CinemaShowtimes(cinema, sorted.slice(from, to).toList)
+      from = to
+    }
+  }
+
+  /** Dates ascending, a date's cinemas by their earliest showtime that day, `displayName` breaking ties. */
+  private def runBefore(x: (LocalDate, CinemaShowtimes), y: (LocalDate, CinemaShowtimes)): Boolean = {
+    val byDate = x._1.compareTo(y._1)
+    if (byDate != 0) return byDate < 0
+    val byFirst = x._2.showtimes.head.dateTime.compareTo(y._2.showtimes.head.dateTime)
+    if (byFirst != 0) byFirst < 0 else x._2.cinema.displayName < y._2.cinema.displayName
+  }
+
+  /** Consecutive runs of one date gathered into that day's list. */
+  private def byDay(runs: ArrayBuffer[(LocalDate, CinemaShowtimes)]): List[(LocalDate, Seq[CinemaShowtimes])] = {
+    val days = List.newBuilder[(LocalDate, Seq[CinemaShowtimes])]
+    var i = 0
+    while (i < runs.length) {
+      val date = runs(i)._1
+      val day  = List.newBuilder[CinemaShowtimes]
+      while (i < runs.length && runs(i)._1 == date) { day += runs(i)._2; i += 1 }
+      days += date -> day.result()
+    }
+    days.result()
+  }
 
   /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
   private def cinemaByName(name: String): Option[Cinema] =

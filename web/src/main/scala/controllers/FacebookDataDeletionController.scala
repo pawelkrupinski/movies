@@ -40,44 +40,51 @@ class FacebookDataDeletionController(
 ) extends AbstractController(cc) with Logging {
 
   def callback(): Action[AnyContent] = Action { request =>
-    appSecret.map(_.value) match {
-      case None =>
-        logger.error("Facebook data-deletion callback hit but FACEBOOK_APP_SECRET is unset")
-        ServiceUnavailable(Json.obj("error" -> "Facebook integration not configured"))
-      case Some(secret) =>
-        request.body.asFormUrlEncoded.flatMap(_.get("signed_request")).flatMap(_.headOption) match {
-          case None =>
-            logger.warn("Facebook data-deletion callback missing signed_request")
-            BadRequest(Json.obj("error" -> "missing signed_request"))
-          case Some(signed) =>
-            FacebookSignedRequest.parse(signed, secret) match {
-              case Left(reason) =>
-                logger.warn(s"Rejected Facebook data-deletion callback: $reason")
-                BadRequest(Json.obj("error" -> reason))
-              case Right(parsed) =>
-                // The receipt confirms the deletion to Meta, so it goes out only once the
-                // account was found and deleted, or found absent. A lookup that FAILED is
-                // neither: answer 503 so Meta retries, instead of confirming a deletion
-                // that never ran.
-                scala.util.Try(userRepository.findByProviderSub("facebook", parsed.userId)) match {
-                  case scala.util.Failure(e) =>
-                    logger.warn(s"Facebook data-deletion: account lookup for fb ${parsed.userId} failed: ${e.getMessage}")
-                    ServiceUnavailable(Json.obj("error" -> "account store unavailable, retry later"))
-                  case scala.util.Success(found) =>
-                    found match {
-                      case Some(user) =>
-                        accountDeletion.delete(user.id)
-                        logger.info(s"Facebook data-deletion: removed account ${user.id} (fb ${parsed.userId})")
-                      case None =>
-                        logger.info(s"Facebook data-deletion: no local account for fb ${parsed.userId} — nothing to delete")
-                    }
-                    val statusUrl = ForwardedUrl.base(request) +
-                      routes.FacebookDataDeletionController.status(parsed.userId).url
-                    Ok(Json.obj("url" -> statusUrl, "confirmation_code" -> parsed.userId))
-                }
-            }
-        }
+    (for {
+      secret <- configuredSecret
+      signed <- signedRequestOf(request)
+      parsed <- verified(signed, secret)
+      _      <- deleteAccountOf(parsed.userId)
+    } yield receipt(request, parsed.userId)).merge
+  }
+
+  private def configuredSecret: Either[Result, String] =
+    appSecret.map(_.value).toRight {
+      logger.error("Facebook data-deletion callback hit but FACEBOOK_APP_SECRET is unset")
+      ServiceUnavailable(Json.obj("error" -> "Facebook integration not configured"))
     }
+
+  private def signedRequestOf(request: Request[AnyContent]): Either[Result, String] =
+    request.body.asFormUrlEncoded.flatMap(_.get("signed_request")).flatMap(_.headOption).toRight {
+      logger.warn("Facebook data-deletion callback missing signed_request")
+      BadRequest(Json.obj("error" -> "missing signed_request"))
+    }
+
+  private def verified(signed: String, secret: String): Either[Result, FacebookSignedRequest] =
+    FacebookSignedRequest.parse(signed, secret).left.map { reason =>
+      logger.warn(s"Rejected Facebook data-deletion callback: $reason")
+      BadRequest(Json.obj("error" -> reason))
+    }
+
+  /** The receipt confirms the deletion to Meta, so it goes out only once the
+   *  account was found and deleted, or found absent. A lookup that FAILED is
+   *  neither: answer 503 so Meta retries, instead of confirming a deletion
+   *  that never ran. */
+  private def deleteAccountOf(facebookUserId: String): Either[Result, Unit] =
+    scala.util.Try(userRepository.findByProviderSub("facebook", facebookUserId)).toEither match {
+      case Left(e) =>
+        logger.warn(s"Facebook data-deletion: account lookup for fb $facebookUserId failed: ${e.getMessage}")
+        Left(ServiceUnavailable(Json.obj("error" -> "account store unavailable, retry later")))
+      case Right(Some(user)) =>
+        accountDeletion.delete(user.id)
+        Right(logger.info(s"Facebook data-deletion: removed account ${user.id} (fb $facebookUserId)"))
+      case Right(None) =>
+        Right(logger.info(s"Facebook data-deletion: no local account for fb $facebookUserId — nothing to delete"))
+    }
+
+  private def receipt(request: RequestHeader, facebookUserId: String): Result = {
+    val statusUrl = ForwardedUrl.base(request) + routes.FacebookDataDeletionController.status(facebookUserId).url
+    Ok(Json.obj("url" -> statusUrl, "confirmation_code" -> facebookUserId))
   }
 
   /** `GET /facebook/data-deletion` — the human-readable deletion instructions,

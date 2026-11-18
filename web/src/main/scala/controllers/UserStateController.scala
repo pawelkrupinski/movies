@@ -104,43 +104,42 @@ class UserStateController(
    */
   def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
     inSignedInCountry(request, country) { (userId, signedInCountry) =>
-      val code = signedInCountry.code
       val ifNoneMatch     = request.headers.get("If-None-Match")
       val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
-
-      // Fast path: `If-None-Match` always needs real content to compare —
-      // it's an opaque string, not derivable from a timestamp — so it's
-      // excluded here. `If-Modified-Since` alone is exactly what
-      // `userChangeTimeCache` answers: a 304 with ZERO reads from storage
-      // when it can already prove nothing changed since then. The cache is
-      // keyed by userId alone, not (userId, country) — it tracks the WHOLE
-      // document's `updatedAt`, so a change to a DIFFERENT country's list
-      // also (over-cautiously) invalidates this one's fast path. That's a
-      // missed optimization, never a wrong answer: the cache only ever
-      // proves "nothing at all changed", which safely implies "this
-      // country's subset didn't either".
-      val cacheProvenUnchanged =
-        if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
-        else None
-
-      cacheProvenUnchanged match {
+      cacheProvenUnchanged(userId, ifNoneMatch, ifModifiedSince) match {
         case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
-        case None              =>
-          readState(userId) { state =>
-            val hidden = state.hiddenFilmsByCountry.getOrElse(code, Set.empty)
-            val body   = hiddenFilmsJson(hidden)
-            val etag   = hiddenFilmsETag(body)
-
-            val notModified = ifNoneMatch match {
-              case Some(inm) => inm.contains(etag)
-              case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
-            }
-
-            if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
-            else respondWithHiddenFilms(hidden, state.updatedAt)
-          }
+        case None             =>
+          readState(userId)(hiddenFilmsAnswer(_, signedInCountry.code, ifNoneMatch, ifModifiedSince))
       }
     }
+  }
+
+  /** Fast path: `If-None-Match` always needs real content to compare —
+   *  it's an opaque string, not derivable from a timestamp — so it's
+   *  excluded here. `If-Modified-Since` alone is exactly what
+   *  `userChangeTimeCache` answers: a 304 with ZERO reads from storage
+   *  when it can already prove nothing changed since then. The cache is
+   *  keyed by userId alone, not (userId, country) — it tracks the WHOLE
+   *  document's `updatedAt`, so a change to a DIFFERENT country's list
+   *  also (over-cautiously) invalidates this one's fast path. That's a
+   *  missed optimization, never a wrong answer: the cache only ever
+   *  proves "nothing at all changed", which safely implies "this
+   *  country's subset didn't either". */
+  private def cacheProvenUnchanged(userId: String, ifNoneMatch: Option[String], ifModifiedSince: Option[Instant]): Option[Instant] =
+    if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
+    else None
+
+  /** The read-through answer: a 304 when the request's validators still match `state`, else the bucket. */
+  private def hiddenFilmsAnswer(state: UserState, countryCode: String, ifNoneMatch: Option[String],
+                                ifModifiedSince: Option[Instant]): Result = {
+    val hidden = state.hiddenFilmsByCountry.getOrElse(countryCode, Set.empty)
+    val etag   = hiddenFilmsETag(hiddenFilmsJson(hidden))
+    val notModified = ifNoneMatch match {
+      case Some(inm) => inm.contains(etag)
+      case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
+    }
+    if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
+    else respondWithHiddenFilms(hidden, state.updatedAt)
   }
 
   /** `PUT /api/me/:country/hidden-films/:title` — hide one film. Idempotent:
