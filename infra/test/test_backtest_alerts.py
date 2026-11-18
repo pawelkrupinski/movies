@@ -229,5 +229,57 @@ class RecordingRuleExpansion(unittest.TestCase):
         self.assertEqual(records["ci:job_seconds:baseline"]["interval"], "5m")
 
 
+class ChunkSplitting(unittest.TestCase):
+    """A query_range chunk Prometheus cannot evaluate inside its query timeout is halved and both
+    halves asked again, down to a floor -- not retried whole (which times out the same way) and
+    not dropped as an `error` row, which is how ten heavy rules sat in the 2026-11-18 baseline."""
+
+    STEP = 60
+
+    def fake(self, max_span, calls):
+        """A query_range that times out on any span over `max_span` seconds, else returns one
+        sample per step of one series."""
+        def get_chunk(start, end):
+            calls.append((start, end))
+            if end - start > max_span:
+                raise bt.QueryTimeout("query timed out in expression evaluation")
+            return [{"metric": {"a": "1"}, "values": [[t, "1"] for t in range(start, end + 1, self.STEP)]}]
+        return get_chunk
+
+    def test_a_chunk_that_times_out_is_halved_until_it_answers_and_nothing_is_lost(self):
+        calls = []
+        day = 86400
+        series = bt.fetch_range(self.fake(day // 4, calls), 0, day - self.STEP, self.STEP, chunk=day, min_chunk=3600)
+        self.assertEqual(series['{"a": "1"}'], set(range(0, day, self.STEP)))
+        self.assertEqual(calls[0], (0, day - self.STEP))             # the whole day first
+        answered = [c for c in calls if c[1] - c[0] <= day // 4]
+        self.assertEqual(len(answered), 4)                            # then four quarters
+        self.assertEqual(sorted(answered)[0][0], 0)
+        self.assertEqual(sorted(answered)[-1][1], day - self.STEP)
+
+    def test_split_points_stay_on_the_step_grid(self):
+        calls = []
+        bt.fetch_range(self.fake(7 * 3600, calls), 0, 86400 - self.STEP, self.STEP, chunk=86400, min_chunk=3600)
+        for start, end in calls:
+            self.assertEqual(start % self.STEP, 0)
+            self.assertEqual(end % self.STEP, 0)
+
+    def test_a_chunk_still_timing_out_at_the_floor_raises(self):
+        with self.assertRaises(bt.QueryTimeout):
+            bt.fetch_range(self.fake(60, []), 0, 86400 - self.STEP, self.STEP, chunk=86400, min_chunk=3600)
+
+    def test_a_query_that_answers_is_asked_once_per_chunk(self):
+        calls = []
+        bt.fetch_range(self.fake(10 ** 9, calls), 0, 2 * 86400 - self.STEP, self.STEP, chunk=86400, min_chunk=3600)
+        self.assertEqual(calls, [(0, 86400 - self.STEP), (86400, 2 * 86400 - self.STEP)])
+
+    def test_timeouts_are_told_apart_from_other_errors(self):
+        for message in ("query timed out in expression evaluation", "expanding series: context deadline exceeded",
+                        "curl: (28) Operation timed out after 180002 milliseconds with 0 bytes received"):
+            self.assertTrue(bt.is_query_timeout(message), message)
+        for message in ("curl: (97) connection to proxy closed", "parse error at char 3", "exceeded maximum resolution"):
+            self.assertFalse(bt.is_query_timeout(message), message)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

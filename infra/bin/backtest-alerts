@@ -377,6 +377,49 @@ def iso(ts):
     return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+class QueryTimeout(RuntimeError):
+    """Prometheus could not evaluate a query inside its query timeout (or curl gave up waiting)."""
+
+
+_TIMEOUT_MARKERS = ("query timed out", "context deadline exceeded", "curl: (28)")
+
+
+def is_query_timeout(message):
+    """Whether an error says the query ran out of time -- which a SMALLER range can fix -- rather
+    than being wrong (a parse error) or the path to Prometheus failing (a proxy drop), which it cannot."""
+    return any(m in message for m in _TIMEOUT_MARKERS)
+
+
+def fetch_range(get_chunk, start, end, step, chunk=86400, min_chunk=3600):
+    """{series key: set(timestamps)} over [start, end] on a `step` grid, asking `get_chunk(t0, t1)`
+    for `chunk`-second ranges. A range that times out is HALVED (on the step grid) and both halves
+    asked, down to `min_chunk`: a heavy rule over a day can exceed Prometheus's query timeout where
+    the same rule over six hours does not, and retrying the day whole only times out again. A range
+    still timing out at the floor raises QueryTimeout."""
+    series = {}
+
+    def fetch(t0, t1):
+        try:
+            results = get_chunk(t0, t1)
+        except QueryTimeout:
+            if t1 - t0 < 2 * min_chunk:
+                raise
+            mid = t0 + ((t1 - t0) // 2 // step) * step
+            fetch(t0, mid)
+            fetch(mid + step, t1)
+            return
+        for result in results:
+            key = json.dumps(result["metric"], sort_keys=True)
+            series.setdefault(key, set()).update(float(v[0]) for v in result["values"])
+
+    t = start
+    while t <= end:
+        chunk_end = min(t + chunk - step, end)
+        fetch(t, chunk_end)
+        t = chunk_end + step
+    return series
+
+
 # ── PROMETHEUS ───────────────────────────────────────────────────────────────────────────────────
 
 
@@ -406,6 +449,9 @@ class Prometheus(object):
                     raise RuntimeError(error)
             else:
                 error = out.stderr.strip()[:200]
+            # A timeout fails the same way again at the same size: the caller splits the range instead.
+            if is_query_timeout(error):
+                raise QueryTimeout(error)
             time.sleep(2 * (attempt + 1))
         raise RuntimeError(error)
 
@@ -435,17 +481,9 @@ class Prometheus(object):
 
     def presence(self, expr, start, end, step, chunk=86400):
         """{series key: set(timestamps)} for `expr` over [start, end] on a `step` grid."""
-        series = {}
-        t = start
-        while t <= end:
-            chunk_end = min(t + chunk - step, end)
-            data = self.get("/api/v1/query_range",
-                            {"query": expr, "start": t, "end": chunk_end, "step": step})
-            for result in data["result"]:
-                key = json.dumps(result["metric"], sort_keys=True)
-                series.setdefault(key, set()).update(float(v[0]) for v in result["values"])
-            t = chunk_end + step
-        return series
+        def get_chunk(t0, t1):
+            return self.get("/api/v1/query_range", {"query": expr, "start": t0, "end": t1, "step": step})["result"]
+        return fetch_range(get_chunk, start, end, step, chunk=chunk, min_chunk=min(3600, chunk))
 
 
 def grid_of(start, end, step):
