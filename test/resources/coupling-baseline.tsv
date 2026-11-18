@@ -254,7 +254,6 @@ fanout	services.sharecards.FacebookRescrapeDrain	16
 fanout	services.sharecards.FilmPageUrls	11
 fanout	services.sharecards.RenderCityCardHandler	12
 fanout	services.sharecards.ShareCardBackfill	14
-fanout	services.sharecards.ShareCardJanitor	10
 fanout	services.sharecards.ShareCardService	20
 fanout	services.tasks.CinemaContentCensus	13
 fanout	services.tasks.EnrichmentReaper	21

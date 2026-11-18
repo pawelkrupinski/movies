@@ -114,7 +114,7 @@ trait ShareCardWiring { self: WorkerWiring =>
     if (shareCardsEnabled) new BackfilledShareCardLedger(shareCardService, shareCardBackfill) else ShareCardLedger.none
 
   lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
-    shareCardStore, readModelRepository, shareCardBudget, shareCardMetrics, clock,
+    shareCardStore, new services.sharecards.LiveShareCards(readModelRepository), shareCardBudget, shareCardMetrics, clock,
     refresh = readModelProjector.refreshShareCard, cities = country.cities.iterator.map(_.slug).toSet)
 
   /** The country's city cards, each re-rendered weekly at its own phase. */

@@ -64,7 +64,6 @@ cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:T
 cognitive	worker/src/main/scala/services/identityadapters/VenuePageIndex.scala:VenuePageIndex.settle	16
 cognitive	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanLean	32
 cognitive	worker/src/main/scala/services/sharecards/PosterPipeline.scala:JpegHeader.read	31
-cognitive	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	34
 cognitive	worker/src/main/scala/services/sharecards/ShareCardStore.scala:ShareCardStore.list	16
 cognitive	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	16
 cognitive	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	17
@@ -163,7 +162,6 @@ cyclomatic	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:
 cyclomatic	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanLean	14
 cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:JpegHeader.read	18
 cyclomatic	worker/src/main/scala/services/sharecards/PosterPipeline.scala:VipsPosterShrinker.knownFormat	11
-cyclomatic	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	29
 cyclomatic	worker/src/main/scala/services/sharecards/ShareCardService.scala:ShareCardService.render	14
 cyclomatic	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	11
 cyclomatic	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	11
@@ -192,6 +190,5 @@ inner-defs	identity/src/main/scala/services/identity/agreement/AgreementTakes.sc
 inner-defs	worker/src/main/scala/services/alerts/FallbackAlert.scala:FallbackAlert.messageFor	3
 inner-defs	worker/src/main/scala/services/enrichment/WikidataClient.scala:WikidataClient.statingItems	3
 inner-defs	worker/src/main/scala/services/scrapes/VenueClosure.scala:VenueClosure.sourceDropped	5
-inner-defs	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	4
 inner-defs	worker/src/main/scala/services/sharecards/ShareCardService.scala:ShareCardService.render	4
 inner-defs	worker/src/main/scala/services/venuepages/VenuePageStore.scala:MongoVenuePageStore.detailOf	3

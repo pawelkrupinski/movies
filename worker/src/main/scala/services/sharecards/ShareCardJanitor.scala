@@ -1,7 +1,6 @@
 package services.sharecards
 
 import play.api.Logging
-import services.readmodel.ReadModelReader
 
 import java.time.Clock
 import scala.concurrent.duration.*
@@ -29,7 +28,8 @@ import scala.concurrent.duration.*
  */
 class ShareCardJanitor(
   store:       ShareCardStore,
-  reader:      ReadModelReader,
+  // Which films' cards are live, read from the read model.
+  liveCards:   LiveShareCards,
   budget:      settings.ShareCardStorageBudget,
   metrics:     ShareCardMetrics,
   clock:       Clock,
@@ -40,83 +40,56 @@ class ShareCardJanitor(
   // (whichever pass finds it) once the city is not.
   cities:      Set[String] = Set.empty
 ) extends Logging {
-  import ShareCardMetrics.PruneReason
-
   def prune(): ShareCardJanitor.Report         = run(daily = true)
   def enforceBudget(): ShareCardJanitor.Report = run(daily = false)
 
   private def run(daily: Boolean): ShareCardJanitor.Report = {
-    val cutoff               = clock.instant().minusMillis(grace.toMillis)
-    val refsRead = reader.findAllShareCardRefsChecked().answered
-    val refs     = refsRead.getOrElse(Seq.empty)
-    // Which films are on screen takes a scan of every screenings id — a country's largest
-    // collection — so only the daily prune pays for it. The budget pass protects every film with a
-    // card instead.
-    val screenedRead =
-      if (daily) reader.findAllScreeningRefsChecked().answered.map(_.iterator.map(_.filmId).toSet)
-      else Some(refs.iterator.filter(_.shareCard.nonEmpty).map(_.filmId).toSet)
-    val screened   = screenedRead.getOrElse(Set.empty[String])
-    val complete   = refsRead.isDefined && screenedRead.isDefined
-    val liveTokens = refs.iterator.filter(ref => screened(ref.filmId)).map(ref => ShareCardFile.token(ref.filmId)).toSet
-
-    val files   = store.list()
-    val deleted = scala.collection.mutable.Set.empty[java.nio.file.Path]
-    val counts  = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
-    def old(file: StoredFile): Boolean = file.modified.isBefore(cutoff)
-    def current(file: StoredFile): Boolean = file.token.exists(liveTokens) || file.citySlug.exists(cities)
-    def delete(file: StoredFile, reason: String): Unit =
-      if (store.delete(file)) { deleted += file.path; counts(reason) += 1; metrics.pruned(file.kind, reason) }
-
-    // One film whose re-projection fails (its row unreadable for a moment) is logged and left for
-    // the next prune; thrown on, it ended the loop, and every film after it kept pointing at a card
-    // this run had just deleted, with the budget pass and the metrics skipped.
-    def refreshEach(filmId: String): Unit =
-      try refresh(filmId)
-      catch { case scala.util.control.NonFatal(e) => logger.warn(s"share cards: re-projecting $filmId after retiring its card failed: $e", e) }
-
-    files.filter(file => file.temp && old(file)).foreach(delete(_, PruneReason.Temp))
-    // A city gone from the catalog: its card goes at the next pass. Read from the code, not the read
-    // model, so no incomplete read can hold it back.
-    files.filter(file => file.citySlug.exists(slug => !cities(slug)) && old(file)).foreach(delete(_, PruneReason.Retired))
-
-    if (daily && complete) {
-      files.filter(file => !file.temp && old(file) && !current(file)).foreach(delete(_, PruneReason.Retired))
+    val live = liveCards.read(daily)
+    val pass = new ShareCardPrunePass(store, metrics, store.list(), clock.instant().minusMillis(grace.toMillis), live.tokens, cities)
+    pass.deleteAbandonedTemps()
+    pass.deleteRetiredCities()
+    if (daily && live.complete) {
+      pass.deleteRetired()
       // A film off the screens whose document still points at a card just retired: re-project it,
       // so it points at nothing rather than at a missing file.
-      refs.filter(ref => ref.shareCard.nonEmpty && !screened(ref.filmId) && deleted.contains(store.cardPath(ref.filmId)))
+      live.refs.filter(ref => ref.shareCard.nonEmpty && !live.screened(ref.filmId) && pass.deletedPath(store.cardPath(ref.filmId)))
         .foreach(ref => refreshEach(ref.filmId))
     }
-
-    val remaining    = files.filterNot(file => deleted(file.path))
-    val currentBytes = remaining.filter(file => !file.temp && current(file)).groupMapReduce(_.kind)(_.bytes)(_ + _)
-    var total = remaining.iterator.map(_.bytes).sum
-    if (total > budget.bytes && complete) {
-      val it = remaining.filter(file => !file.temp && old(file) && !current(file)).sortBy(_.modified).iterator
-      while (total > budget.bytes && it.hasNext) {
-        val file = it.next()
-        delete(file, PruneReason.Budget)
-        if (deleted(file.path)) total -= file.bytes
-      }
-    }
+    val currentBytes = pass.currentBytesByKind
     // What happens AT the limit: what the eviction could not bring under the budget is referenced,
     // so the directory takes no NEW file until a pass finds it back under ([[ShareCardRoom]]).
-    if (complete) store.room.measured(overBudget = total > budget.bytes)
+    if (live.complete) store.room.measured(overBudget = pass.evictOver(budget.bytes) > budget.bytes)
+    val kept = pass.kept
+    record(kept, currentBytes)
+    val report = ShareCardJanitor.Report(pass.deletions, kept.iterator.map(_.bytes).sum, currentBytes.values.sum, live.complete)
+    logReport(report, daily)
+    report
+  }
+
+  // One film whose re-projection fails (its row unreadable for a moment) is logged and left for
+  // the next prune; thrown on, it ended the loop, and every film after it kept pointing at a card
+  // this run had just deleted, with the budget pass and the metrics skipped.
+  private def refreshEach(filmId: String): Unit =
+    try refresh(filmId)
+    catch { case scala.util.control.NonFatal(e) => logger.warn(s"share cards: re-projecting $filmId after retiring its card failed: $e", e) }
+
+  private def record(kept: Seq[StoredFile], currentBytes: Map[String, Long]): Unit = {
     metrics.volume(store.room.free(), ShareCardRoom.volumeSize(store.root), store.room.minimumFreeBytes)
-    val kept = files.filterNot(file => deleted(file.path))
     metrics.directory(
       bytesByKind   = kept.groupMapReduce(_.kind)(_.bytes)(_ + _),
       filesByKind   = kept.groupMapReduce(_.kind)(_ => 1L)(_ + _),
       currentByKind = currentBytes,
       budgetBytes   = budget.bytes)
-    val report = ShareCardJanitor.Report(counts.toMap, kept.iterator.map(_.bytes).sum, currentBytes.values.sum, complete)
+  }
+
+  private def logReport(report: ShareCardJanitor.Report, daily: Boolean): Unit = {
     if (report.currentBytes > budget.bytes)
       logger.error(s"share cards: the ${report.currentBytes} bytes of CURRENT cards, bases and posters alone exceed the " +
         s"${budget.bytes}-byte budget — nothing more can be pruned, and no new file is written; raise KINOWO_SHARE_CARD_BUDGET_MB.")
-    if (!complete) logger.warn("share cards: web_movies/web_screenings read incomplete — pruned abandoned temp files only.")
-    if (daily || counts.nonEmpty)
-      logger.info(s"share cards ${if (daily) "prune" else "budget"}: deleted ${counts.toSeq.sorted.map { case (r, n) => s"$r=$n" }.mkString(", ")}; " +
+    if (!report.complete) logger.warn("share cards: web_movies/web_screenings read incomplete — pruned abandoned temp files only.")
+    if (daily || report.deleted.nonEmpty)
+      logger.info(s"share cards ${if (daily) "prune" else "budget"}: deleted ${report.deleted.toSeq.sorted.map { case (r, n) => s"$r=$n" }.mkString(", ")}; " +
         s"${report.bytes} bytes on disk (${report.currentBytes} current) of ${budget.bytes} budget.")
-    report
   }
 }
 
@@ -126,4 +99,5 @@ object ShareCardJanitor {
   val Grace: FiniteDuration = 1.hour
 
   final case class Report(deleted: Map[String, Int], bytes: Long, currentBytes: Long, complete: Boolean)
+
 }

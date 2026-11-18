@@ -58,7 +58,7 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     val blind = new InMemoryReadModelRepository {
       override def findAllShareCardRefsChecked() = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable")))
     }
-    new ShareCardJanitor(store, blind, budget = settings.ShareCardStorageBudget(1), metrics, clock, _ => ()).prune().deleted shouldBe empty
+    new ShareCardJanitor(store, new LiveShareCards(blind), budget = settings.ShareCardStorageBudget(1), metrics, clock, _ => ()).prune().deleted shouldBe empty
     filmFiles("fgone") shouldBe 3
   }
 
@@ -88,11 +88,11 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     val capped = new ShareCardStore(store.root, room)
     withCard("flive")
     putFilm("flive", old, size = 400)
-    new ShareCardJanitor(capped, readModel, settings.ShareCardStorageBudget(500), metrics, clock, _ => ()).enforceBudget()
+    new ShareCardJanitor(capped, new LiveShareCards(readModel), settings.ShareCardStorageBudget(500), metrics, clock, _ => ()).enforceBudget()
     a[NoRoomForShareCard] should be thrownBy capped.writeAtomically(capped.cardPath("fnew"), ShareCardTestKit.posterJpeg, "v")
     Files.exists(capped.cardPath("fnew")) shouldBe false
     capped.writeAtomically(capped.cardPath("flive"), ShareCardTestKit.posterJpeg, "v") // an overwrite adds nothing
-    new ShareCardJanitor(capped, readModel, settings.ShareCardStorageBudget(1L << 30), metrics, clock, _ => ()).enforceBudget()
+    new ShareCardJanitor(capped, new LiveShareCards(readModel), settings.ShareCardStorageBudget(1L << 30), metrics, clock, _ => ()).enforceBudget()
     capped.writeAtomically(capped.cardPath("fnew"), ShareCardTestKit.posterJpeg, "v")
     Files.exists(capped.cardPath("fnew")) shouldBe true
   }
@@ -116,7 +116,7 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     put(cityCard("poznan"), old, size = 70); put(cityCard("krakow"), old, size = 30); putFilm("flive", old, size = 5)
     withCard("flive")
     val room = new ShareCardRoom(4096L, () => 123456L)
-    new ShareCardJanitor(new ShareCardStore(store.root, room), readModel, settings.ShareCardStorageBudget(1L << 30), series.forCountry("pl"),
+    new ShareCardJanitor(new ShareCardStore(store.root, room), new LiveShareCards(readModel), settings.ShareCardStorageBudget(1L << 30), series.forCountry("pl"),
       clock, _ => (), cities = Set("poznan", "krakow")).enforceBudget()
     series.directoryFor("pl", ShareCardStore.Kind.City) shouldBe (100.0, 2.0)
     series.directoryFor("pl", ShareCardStore.Kind.Card) shouldBe (5.0, 1.0)
@@ -136,7 +136,7 @@ object ShareCardJanitorSpec {
     val young: Instant = T0.minusSeconds(600)
 
     def janitor(budget: Long = 1L << 30, refresh: String => Unit = _ => (), cities: Set[String] = Set.empty) =
-      new ShareCardJanitor(store, readModel, settings.ShareCardStorageBudget(budget), metrics, clock, refresh, cities = cities)
+      new ShareCardJanitor(store, new LiveShareCards(readModel), settings.ShareCardStorageBudget(budget), metrics, clock, refresh, cities = cities)
 
     def cityCard(slug: String): String = s"city-$slug.jpg"
 
