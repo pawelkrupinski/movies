@@ -1,47 +1,78 @@
-# The identity specs' seconds in the landing check's identity shards, from one run under one load (precommit-check run
-# 41616356612, 2026-11-03, ci-metrics `suite` lines: the slowest of each shard), so they compare with each other; a part
-# of a real-family spec (SliceParts) that run did not list weighs its listed parts' mean, and the small rows it did not
-# list are kept from runs 41611692664 / 41389472643. Only shard_tests.py's balance reads them: a missing or stale row
-# moves a class to another shard, never out of the check (an unknown class weighs 3).
-# TitleRelationPart1-4: that run's seconds x 0.2 (2026-11-03: the spec reads each listing's title forms once per slice, not
-# three times per related pair; laptop 490 -> 91 cpu-s over every slice), Part1 + 24 s of its whole checks.
-# PopulationMonotonicityPart1-4: that run's seconds x 3.2 (2026-11-04: the walk takes the final take too and walks a family
-# of 7 or fewer over every subset; laptop 233 -> 749 cpu-s over every slice).
+# The identity specs' seconds in the landing check's identity shards: each suite's MEDIAN over the precommit-check
+# identity shard jobs of the last 8 days (ci-metrics `suite` lines, victoria-logs-ci), a suite seen in fewer than
+# 3 runs kept from the file before. Only shard_tests.py's balance reads them: a missing or stale row moves a
+# class to another shard, never out of the check (an unknown class weighs 3).
+# Refresh: python3 scripts/ci/shard_weights.py refresh > scripts/ci/shard-weights-identity.tsv
 # class	seconds
-scripts.IdentityDriftSlicesSpec	481
-scripts.IdentityDriftSlicesShard1Spec	407
-scripts.IdentityDriftSlicesShard3Spec	374
-services.identity.ReadSetClosurePart2Spec	328
-services.identity.TitleRelationPart4Spec	62
-scripts.IdentityDriftSlicesShard2Spec	283
-services.identity.TitleRelationPart1Spec	80
-services.identity.TitleRelationPart2Spec	50
-services.identity.PopulationMonotonicityPart1Spec	778
-services.identity.PopulationMonotonicityPart2Spec	749
+services.identity.FamilyIndexCompletenessSpec	405
+services.identity.PopulationMonotonicityPart2Spec	265
+services.identity.ReadSetClosurePart2Spec	233
 services.identity.ReadSetClosurePart4Spec	220
-services.identity.TitleRelationPart3Spec	44
-services.identity.PopulationMonotonicityPart3Spec	675
 services.identity.ReadSetClosurePart1Spec	210
-services.identity.IncrementalResolverSpec	157
-services.identity.PopulationMonotonicityPart4Spec	496
-services.identity.agreement.IncrementalWholeEquivalenceSpec	155
-scripts.IdentityRefitMeasureAllSpec	148
-services.identity.agreement.LateInputEquivalenceSpec	143
-services.identity.ScopedProjectionEquivalenceSpec	126
-scripts.IdentityUnifiedFitSpec	122
-services.identity.IdentitySliceCasesSpec	121
-services.identity.IdentityResolverPropertiesSpec	102
-scripts.IdentityRefitCaptureReplaySpec	99
-services.identity.LiveCorpusSpec	96
+scripts.IdentityDriftSlicesShard3Spec	173
+services.identity.PopulationMonotonicityPart1Spec	165
+scripts.IdentityDriftSlicesSpec	163
+services.identity.FamilyConvergenceSlicesSpec	159
+scripts.IdentityDriftSlicesShard2Spec	154
+scripts.IdentityDriftSlicesShard1Spec	150
+services.identity.PopulationMonotonicityPart4Spec	126
+services.identity.agreement.IncrementalWholeEquivalenceSpec	89
 services.identity.ReadSetClosurePart3Spec	86
-services.identity.IncrementalWholeDivergenceSpec	84
-services.identity.UnmatchedClustersRatchetSpec	84
-services.identity.NonFilmEventsFixtureSpec	83
-services.identity.IncrementalResolverStoreSpec	55
-scripts.IdentityDriftSpec	51
-services.identity.IdentityResolverCasesSpec	26
+services.identity.TitleRelationPart1Spec	80
+services.identity.PopulationMonotonicityPart3Spec	80
+scripts.IdentityRefitMeasureAllSpec	66
+services.identity.UnmatchedClustersRatchetSpec	62
+services.identity.TitleRelationPart4Spec	62
+services.identity.FamilyConvergenceSpec	60
+services.identity.agreement.LateInputEquivalenceSpec	57
+services.identity.ScopedProjectionEquivalenceSpec	55
+scripts.IdentityUnifiedFitSpec	55
+services.identity.IdentitySliceCasesSpec	54
+services.identity.TitleRelationPart2Spec	50
+services.identity.IncrementalResolverSpec	48
+services.identity.TitleRelationPart3Spec	44
+scripts.IdentityRefitCaptureReplaySpec	43
+services.identity.IdentityResolverPropertiesSpec	37
+services.identity.LiveCorpusSpec	27
+services.identity.NonFilmEventsFixtureSpec	19
 services.identity.MatchedTakesLabelSpec	17
-scripts.DecorationDiscoverySpec	15
-services.identity.IncrementalResolverFamilyIdSpec	15
+services.identity.IncrementalResolverStoreSpec	15
+scripts.IdentityDriftSpec	14
+services.identity.RelayOwnFactsSpec	13
+services.identity.IncrementalWholeDivergenceSpec	13
+services.titlerules.TitleRulesGoldenSpec	11
 services.identity.adapters.TmdbChangesSweepSpec	9
+services.identity.adapters.IdentityStagingPublisherSpec	8
+services.identity.IdentityResolverCasesSpec	8
+services.identity.LiveProjectionIndexSpec	7
 services.identity.IdentityMeasuresSpec	6
+clients.CinemaScraperCatalogSpec	6
+services.identity.IncrementalResolverFamilyIdSpec	5
+scripts.DecorationDiscoverySpec	5
+services.identity.SiblingReachedRunnerUpSpec	4
+scripts.IdentitySliceCoverageSpec	4
+services.cinemas.DeferredDetailSpec	3
+scripts.VenueReplaySpec	3
+services.identity.adapters.IdentityProjectionSpec	3
+services.identity.WhatIfAnswersSpec	2
+services.cinemas.AdaptiveTimeoutScraperSpec	2
+clients.secondfeed.SecondFeedFactsSpec	2
+services.identity.FamilyCounterfactualSpec	2
+services.identity.adapters.LookupFillSpec	1
+services.cinemas.ScraperOutageSpec	1
+scripts.IdentityLiveDriftSpec	1
+clients.FormatTokensSpec	1
+clients.biletyna.BiletynaNationalFeedSpec	1
+services.cinemas.VenueDayPlanningSpec	1
+clients.msi.MsiClientSpec	1
+clients.showcase.GatsbyBoxOfficeClientSpec	1
+clients.kinoprogramm.KinoprogrammClientSpec	1
+scripts.ToolCommandLinesSpec	1
+tools.ParallelDetailFetchSpec	1
+services.identity.RealFamilyPartsSpec	1
+scripts.IdentityRefitSpec	0
+scripts.IdentityCaptureSpec	0
+scripts.IdentitySliceEmitCaseSpec	0
+services.identity.PopulationWalkCacheSpec	0
+services.identity.WhatIfResolveSpec	0
+services.identity.RuleContractWalkSpec	0
