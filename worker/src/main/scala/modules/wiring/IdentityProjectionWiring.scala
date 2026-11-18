@@ -101,7 +101,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
   lazy val suspectTakeCount: services.identityadapters.SuspectTakeCount =
     new services.identityadapters.SuspectTakeCount(venueDetailLookups(),
-      services.identityadapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
+      services.identityadapters.PrefetchedRecords.of(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed(), judgements = judged,

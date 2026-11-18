@@ -100,7 +100,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
         Answer.Known(Option.when(id != 2)(IdentityMeasures.Film(s"film $id")))
       }
     }
-    SuspectTakeCount.recordsOf(store)(Seq(1, 2, 3)).keySet shouldBe Set(1, 3)
+    PrefetchedRecords.of(store)(Seq(1, 2, 3)).keySet shouldBe Set(1, 3)
     calls.toSeq shouldBe Seq("prefetch 1,2,3", "answered")
   }
 

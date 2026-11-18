@@ -98,12 +98,4 @@ object SuspectTakeCount {
     val billings = suspected.flatMap { case (billing, found) => found.map(_.signal -> billing) }.distinct
     SuspectTakes.Signal.values.map(signal => signal -> billings.count(_._1 == signal)).toMap
   }
-
-  /** The records `lookups` holds of the films asked for, read in ONE prefetch rather than a read per film, and let go
-   *  once read: `lookups` must be the caller's own, as a prefetch drops whatever the last one held. */
-  def recordsOf(lookups: IdentityLookups): Seq[Int] => Map[Int, IdentityMeasures.Film] = films => {
-    lookups.prefetch(Nil, films, Nil)
-    try films.flatMap(id => lookups.film(id).answered.flatten.map(id -> _)).toMap
-    finally lookups.prefetchAnswered()
-  }
 }
