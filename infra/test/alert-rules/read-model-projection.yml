@@ -1316,3 +1316,76 @@ tests:
               summary: "kinowo-web-de's web_movies change stream has been down for 10 minutes"
               description: "The read model in kinowo-web-de (de) has had no live `web_movies` change stream for ten minutes: it ended (a Mongo outage, a primary change, mongod restarted) and every reopen since has failed or is held back by its backoff. Until it reopens the pod sees that collection's writes only through the backstop catch-up read, so its pages can be up to that interval stale with nothing else red. `kinowo_web_readmodel_stream_reopens_total` climbing is a stream that cannot stay open; the pod's WARN lines (\"WebReadModel\", \"reopening\") say why. If Mongo is healthy and it does not recover, restart the web deployment for de (`kubectl -n kinowo rollout restart deployment/web-de`) -- a rollout keeps a pod serving throughout."
 
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A WEB POD'S CHANGE STREAM THAT KEEPS REOPENING AND DYING -- what StreamDown above cannot see:
+  # live flips 1 -> 0 -> 1 faster than its ten minutes, so it never holds, yet each death leaves
+  # the pod reading that collection only through catch-up reads. The reopen COUNTER sees every
+  # death, even one whose 0 falls between two scrapes. Fourteen days of real history (2026-11-04
+  # .. 11-18, mongo-1's kexec on 11-17 15:48Z included) peak at ONE reopen an hour per stream.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a web change stream reopening every few minutes fires; a stuck one and one reboot's reopen do not
+    input_series:
+      # de/web_movies dies and is reopened every 4 minutes from 5m: live reads 0 at every death's scrape.
+      - series: 'kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",instance="kinowo-web-de",country="de",collection="web_movies"}'
+        values: '0x5 0+0.25x40'
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-de",country="de",collection="web_movies"}'
+        values: '1x5 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1 0 1 1 1'
+      # uk/web_screenings dies every 5 minutes, but each death is reopened before the next scrape:
+      # live never reads 0, and only the counter shows it.
+      - series: 'kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",instance="kinowo-web-uk",country="uk",collection="web_screenings"}'
+        values: '0x5 0+0.2x40'
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-uk",country="uk",collection="web_screenings"}'
+        values: '1x45'
+      # pl/web_screenings: mongod's kexec (one reopen) and a primary change 20 minutes later (a second):
+      # two reopens in the hour, the most a planned restart sequence makes. Quiet.
+      - series: 'kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",instance="kinowo-web-pl",country="pl",collection="web_screenings"}'
+        values: '0x5 1x20 2x20'
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-pl",country="pl",collection="web_screenings"}'
+        values: '1x5 0x2 1x18 0 1x20'
+      # es/web_movies is stuck at 0 and never reopens: StreamDown's case, not this one.
+      - series: 'kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",instance="kinowo-web-es",country="es",collection="web_movies"}'
+        values: '0x5 1x40'
+      - series: 'kinowo_web_readmodel_stream_live{job="kinowo-web",instance="kinowo-web-es",country="es",collection="web_movies"}'
+        values: '1x5 0x40'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: WebReadModelStreamFlapping
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: WebReadModelStreamDown
+        exp_alerts:
+          - exp_labels:
+              domain: serving
+              severity: warning
+              job: kinowo-web
+              instance: kinowo-web-es
+              country: es
+              collection: web_movies
+            exp_annotations:
+              summary: "kinowo-web-es's web_movies change stream has been down for 10 minutes"
+              description: "The read model in kinowo-web-es (es) has had no live `web_movies` change stream for ten minutes: it ended (a Mongo outage, a primary change, mongod restarted) and every reopen since has failed or is held back by its backoff. Until it reopens the pod sees that collection's writes only through the backstop catch-up read, so its pages can be up to that interval stale with nothing else red. `kinowo_web_readmodel_stream_reopens_total` climbing is a stream that cannot stay open; the pod's WARN lines (\"WebReadModel\", \"reopening\") say why. If Mongo is healthy and it does not recover, restart the web deployment for es (`kubectl -n kinowo rollout restart deployment/web-es`) -- a rollout keeps a pod serving throughout."
+      - eval_time: 30m
+        alertname: WebReadModelStreamFlapping
+        exp_alerts:
+          - exp_labels:
+              domain: serving
+              severity: warning
+              job: kinowo-web
+              instance: kinowo-web-de
+              country: de
+              collection: web_movies
+            exp_annotations:
+              summary: "kinowo-web-de's web_movies change stream keeps dying: 6 reopens in the last hour"
+              description: "The read model in kinowo-web-de (de) has reopened its `web_movies` change stream 6 times in the last hour: each one ended and was reopened within a cold-retry tick or a few, so WebReadModelStreamDown's ten minutes at 0 never held. Every death leaves the pod seeing that collection's writes only through catch-up reads -- pages stale or partial in between -- and each reopen pays a full reload. Something keeps cutting the cursor: Mongo flapping (elections, a restart loop, a network path dropping idle connections) or the pod itself (GC pauses past the driver's timeouts, memory pressure). The pod's WARN lines (\"WebReadModel\", \"reopening, attempt N\") give each death's cause; `kinowo_web_readmodel_stream_live` and Mongo's own alerts say which side it is."
+          - exp_labels:
+              domain: serving
+              severity: warning
+              job: kinowo-web
+              instance: kinowo-web-uk
+              country: uk
+              collection: web_screenings
+            exp_annotations:
+              summary: "kinowo-web-uk's web_screenings change stream keeps dying: 5 reopens in the last hour"
+              description: "The read model in kinowo-web-uk (uk) has reopened its `web_screenings` change stream 5 times in the last hour: each one ended and was reopened within a cold-retry tick or a few, so WebReadModelStreamDown's ten minutes at 0 never held. Every death leaves the pod seeing that collection's writes only through catch-up reads -- pages stale or partial in between -- and each reopen pays a full reload. Something keeps cutting the cursor: Mongo flapping (elections, a restart loop, a network path dropping idle connections) or the pod itself (GC pauses past the driver's timeouts, memory pressure). The pod's WARN lines (\"WebReadModel\", \"reopening, attempt N\") give each death's cause; `kinowo_web_readmodel_stream_live` and Mongo's own alerts say which side it is."

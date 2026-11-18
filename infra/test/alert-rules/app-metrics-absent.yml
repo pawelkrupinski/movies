@@ -29,6 +29,8 @@ tests:
     values: '0x30'
   - series: kinowo_web_readmodel_stream_live{job="kinowo-web",country="pl"}
     values: '0x30'
+  - series: kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",country="pl"}
+    values: '0x30'
   - series: kinowo_web_scheduled_tick_interval_seconds{job="kinowo-web",country="pl"}
     values: '0x30'
   - series: kinowo_web_user_state_userid_index_unique{job="kinowo-web",country="pl"}
@@ -236,6 +238,17 @@ tests:
           country for 15m. Every web metric family exists from boot, so this is a fault, not a quiet day: the family was unwired,
           renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and cannot fire:
           read-model-projection.rules WebReadModelStreamDown.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_web_readmodel_stream_reopens
+        severity: warning
+      exp_annotations:
+        summary: de's web is up but publishes no kinowo_web_readmodel_stream_reopens
+        description: 'The web answers its scrape (`up`) but has published no kinowo_web_readmodel_stream_reopens series for
+          this country for 15m. Every web metric family exists from boot, so this is a fault, not a quiet day: the family
+          was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing
+          and cannot fire: read-model-projection.rules WebReadModelStreamFlapping.'
     - exp_labels:
         country: de
         domain: monitoring
@@ -931,6 +944,8 @@ tests:
     values: '0x30'
   - series: kinowo_web_readmodel_stream_live{job="kinowo-web",country="pl"}
     values: '0x30'
+  - series: kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",country="pl"}
+    values: '0x30'
   - series: kinowo_web_scheduled_tick_interval_seconds{job="kinowo-web",country="pl"}
     values: '0x30'
   - series: kinowo_web_user_state_userid_index_unique{job="kinowo-web",country="pl"}
@@ -1080,6 +1095,8 @@ tests:
   - series: kinowo_web_mongo_write_errors_total{job="kinowo-web",country="pl"}
     values: '0x30'
   - series: kinowo_web_readmodel_stream_live{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_readmodel_stream_reopens_total{job="kinowo-web",country="pl"}
     values: '0x30'
   - series: kinowo_web_scheduled_tick_interval_seconds{job="kinowo-web",country="pl"}
     values: '0x30'

@@ -416,11 +416,11 @@ incidents:
     description: >-
       mongo-1 kexec'd at 15:48:07Z; every web pod's change streams ended (11600 InterruptedAtShutdown)
       and reopened by themselves (WebReadModel "reopening, attempt 1"). A reboot that the streams
-      survive is not a stuck stream.
+      survive is not a stuck stream, and its one reopen per stream is not a flapping one.
     source: node_boot_time_seconds{instance=~"10.20.0.13.*"} 15:48:13Z; kinowo_web_readmodel_stream_live 1 for all 10 series after
     start: 2026-11-17T15:45:00Z
     end: 2026-11-17T16:30:00Z
-    expect_quiet: [WebReadModelStreamDown, WebCountryDown]
+    expect_quiet: [WebReadModelStreamDown, WebReadModelStreamFlapping, WebCountryDown]
 
   - id: worker-pl-uk-live-sets-outgrew-old-gens-2026-11
     description: >-

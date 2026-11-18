@@ -947,6 +947,44 @@ groups:
             rollout keeps a pod serving throughout.
 
       # -----------------------------------------------------------------------------------------
+      # A WEB POD'S CHANGE STREAM THAT KEEPS REOPENING AND DYING.
+      #
+      # StreamDown above needs ten minutes at 0. A stream that dies, is reopened on the next
+      # 30-second cold-retry tick (the backoff resets once a tick finds it live) and dies again
+      # never holds that long -- and its 0 can fall between two scrapes altogether -- yet every
+      # death leaves the pod reading that collection only through catch-up reads, stale or
+      # partial in between. The reopen COUNTER sees each death whatever the scrape sampled.
+      #
+      # THREE IN AN HOUR: 14 days of real history (2026-11-04..18; mongo-1's kexec on 11-17
+      # 15:48Z and the 11-09/11-10 restarts included) peak at ONE reopen an hour per stream; a
+      # mongod restart plus a primary change is two. Three is a stream that cannot stay open.
+      # `increase` extrapolates two reopens to ~2.02, hence > 2.5 rather than >= 3. A stream
+      # reopened into a Mongo that is still away also counts here (attempts back off 1, 3, 7 ...
+      # ticks), alongside StreamDown: both are true then. keep_firing_for holds it through the
+      # gap between flaps so one flapping episode is one alert.
+      # -----------------------------------------------------------------------------------------
+      - alert: WebReadModelStreamFlapping
+        expr: increase(kinowo_web_readmodel_stream_reopens_total[1h]) > 2.5
+        keep_firing_for: 15m
+        labels:
+          severity: warning
+          domain: serving
+        annotations:
+          summary: "{{ $labels.instance }}'s {{ $labels.collection }} change stream keeps dying: {{ printf \"%.0f\" $value }} reopens in the last hour"
+          description: >-
+            The read model in {{ $labels.instance }} ({{ $labels.country }}) has reopened its
+            `{{ $labels.collection }}` change stream {{ printf "%.0f" $value }} times in the last
+            hour: each one ended and was reopened within a cold-retry tick or a few, so
+            WebReadModelStreamDown's ten minutes at 0 never held. Every death leaves the pod
+            seeing that collection's writes only through catch-up reads -- pages stale or
+            partial in between -- and each reopen pays a full reload. Something keeps cutting
+            the cursor: Mongo flapping (elections, a restart loop, a network path dropping idle
+            connections) or the pod itself (GC pauses past the driver's timeouts, memory
+            pressure). The pod's WARN lines ("WebReadModel", "reopening, attempt N") give each
+            death's cause; `kinowo_web_readmodel_stream_live` and Mongo's own alerts say which
+            side it is.
+
+      # -----------------------------------------------------------------------------------------
       # THE CURSOR DELIVERS, AND THE APPLY THREAD IS NOT KEEPING UP.
       #
       # `ChangeStreamMoviesCursorSilent` above asks whether a cursor DELIVERS. This asks the other
