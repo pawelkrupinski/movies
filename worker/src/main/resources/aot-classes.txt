@@ -9843,6 +9843,7 @@ services.cinemas.us.CinemaPlusClient$Slot
 services.cinemas.us.CinemaPlusClient$Slot$
 services.cinemas.us.MitchellTheatresClient
 services.cinemas.us.MitchellTheatresClient$
+services.cinemas.us.MitchellTheatresClient$$anon$1
 services.cinemas.us.RegalClient
 services.cinemas.us.RegalClient$
 services.cinemas.us.RegalParser
