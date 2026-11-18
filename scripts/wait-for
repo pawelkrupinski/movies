@@ -5,24 +5,31 @@
 # `until grep -q ...; do sleep; done` loop in the foreground, which held 2026-10-18's agents in 10-minute polls they
 # could not leave (the agent-time buckets "poll: slice" / "poll: measure").
 #
-#   scripts/wait-for <file> <pattern> [--timeout SECONDS] [--poll SECONDS] [--pid PID]
+#   scripts/wait-for <file> --contains <text> [--timeout DURATION]   the file has a line containing <text>
+#   scripts/wait-for <file> <pattern> [--timeout DURATION]           ... a line matching <pattern> (grep -E)
+#   scripts/wait-for <file> [--timeout DURATION]                     ... any content at all (`until [ -s f ]`)
+#     [--poll SECONDS] [--pid PID]
 #
+#   --contains  a literal text (grep -F) a line must contain; instead of <pattern>
 #   <pattern>   an extended regex (grep -E) a line of <file> must match; the file may not exist yet
-#   --timeout   give up after this many seconds (default 7200)
+#   --timeout   give up after this long: whole seconds, or with a unit, 90s / 30m / 2h (default 2h). Every form is
+#               bounded, so it is the fix unbounded-poll-guard prints for a background `until grep ...; sleep` loop.
 #   --poll      seconds between looks (default 5)
 #   --pid       the process writing the file: once it is gone and nothing matched, stop waiting (it never will)
 #
-# Prints the first matching line and exits 0; exits 1 when --pid's process ended with no match (the file's last 20
-# lines printed), 2 on a timeout or a usage error.
+# Prints the first matching line (with no pattern, the file's first line) and exits 0; exits 1 when --pid's process
+# ended with no match (the file's last 20 lines printed), 2 on a timeout or a usage error.
 set -uo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
 case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
-[ $# -ge 2 ] || usage_error "a file and a pattern are required"
-file=$1 pattern=$2 timeout=7200 poll=5 pid=""
-shift 2
+[ $# -ge 1 ] || usage_error "a file is required"
+file=$1 pattern="" fixed="" timeout=7200 poll=5 pid=""
+shift
+case "${1:-}" in ""|--*) ;; *) pattern=$1; shift ;; esac
 while [ $# -gt 0 ]; do
   case "$1" in
+    --contains) flag_value "$@"; fixed=$2; shift 2 ;;
     --timeout) flag_value "$@"; timeout=$2; shift 2 ;;
     --poll) flag_value "$@"; poll=$2; shift 2 ;;
     --pid) flag_value "$@"; pid=$2; shift 2 ;;
@@ -30,22 +37,34 @@ while [ $# -gt 0 ]; do
   esac
 done
 # a usage error is 2, never the 1 that says the writer ended
-[[ $timeout =~ ^[0-9]+$ ]] || usage_error "--timeout needs whole seconds, not '$timeout'"
+[[ -n $pattern && -n $fixed ]] && usage_error "give a <pattern> or --contains, not both"
+[[ $timeout =~ ^([0-9]+)([smh]?)$ ]] || usage_error "--timeout needs whole seconds or 90s / 30m / 2h, not '$timeout'"
+case "${BASH_REMATCH[2]}" in
+  m) timeout=$((BASH_REMATCH[1] * 60)) ;; h) timeout=$((BASH_REMATCH[1] * 3600)) ;; *) timeout=${BASH_REMATCH[1]} ;;
+esac
 [[ $poll =~ ^[0-9]+(\.[0-9]+)?$ ]] || usage_error "--poll needs seconds, not '$poll'"
 [[ -z $pid || $pid =~ ^[0-9]+$ ]] || usage_error "--pid needs a process id, not '$pid'"
+if [ -n "$fixed" ]; then what="a line containing '$fixed'"; elif [ -n "$pattern" ]; then what="a line matching /$pattern/"
+else what="content"; fi
+
+# The first line that answers, on stdout; non-zero when none does yet.
+first_match() {
+  [ -f "$file" ] || return 1
+  if [ -n "$fixed" ]; then grep -m1 -F -- "$fixed" "$file"
+  elif [ -n "$pattern" ]; then grep -m1 -E -- "$pattern" "$file"
+  else [ -s "$file" ] && head -1 "$file"; fi
+}
 
 SECONDS=0
 while :; do
-  if [ -f "$file" ] && line=$(grep -m1 -E -- "$pattern" "$file"); then
-    echo "$line"; exit 0
-  fi
+  if line=$(first_match); then echo "$line"; exit 0; fi
   if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
     # one last look: the writer may have finished between the two checks
-    if [ -f "$file" ] && line=$(grep -m1 -E -- "$pattern" "$file"); then echo "$line"; exit 0; fi
-    echo "wait-for: process $pid ended without a line matching /$pattern/ in $file; its last lines:" >&2
+    if line=$(first_match); then echo "$line"; exit 0; fi
+    echo "wait-for: process $pid ended without $what in $file; its last lines:" >&2
     [ -f "$file" ] && tail -20 "$file" >&2
     exit 1
   fi
-  [ "$SECONDS" -lt "$timeout" ] || { echo "wait-for: no line matching /$pattern/ in $file after ${timeout}s" >&2; exit 2; }
+  [ "$SECONDS" -lt "$timeout" ] || { echo "wait-for: no $what in $file after ${timeout}s" >&2; exit 2; }
   sleep "$poll"
 done

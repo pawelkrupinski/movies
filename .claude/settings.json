@@ -28,7 +28,8 @@
         "hooks": [
           { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/masked-exit-guard\"", "timeout": 10 },
           { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/gh-run-guard\"", "timeout": 10 },
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/foreground-wait-guard\"", "timeout": 10 }
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/foreground-wait-guard\"", "timeout": 10 },
+          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/unbounded-poll-guard\"", "timeout": 10 }
         ]
       }
     ],

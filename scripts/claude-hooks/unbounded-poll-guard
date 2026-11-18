@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""Refuse a background poll loop that has no bound: it outlives the agent that started it.
+
+On 2026-11-18 seven background `until grep -q DONE log; do sleep 10; done` loops were still running 22-46 hours after
+the agents that started them had finished, and agents' land watchers outlived their agents the same way: nothing ends
+a loop whose condition never comes true. foreground-wait-guard only reads FOREGROUND waits.
+
+PreToolUse on Bash (.claude/settings.json): for a call with run_in_background, or a command that backgrounds part of
+itself with `&`, DENIES (exit 2, the reason and a one-command fix on stderr) any of:
+  - a `while` / `until` loop that sleeps (`sleep` anywhere in it) with no bound of its own;
+  - a `for ((;;))` loop that sleeps;
+  - `tail -f` / `-F` / `--follow` without `--pid`.
+Bounded, and so allowed: a `for i in $(seq 1 N)` / `{1..N}` / list count; a loop reading a deadline or a counter
+(`$SECONDS`, `date +%s`, a variable named *deadline*, `-lt`/`-le`/`-gt`/`-ge`, `(( i < N ))`); a `timeout N` (N > 0)
+wrapper around the shell or script that runs the loop, or around `tail -f`; scripts/wait-for, scripts/ci-wait and
+agentctl's waits, which are commands with their own bound, not loops. A loop that never sleeps (`while read`, an
+argument parser) is no poll. It reads, beside the command itself: `bash -c` / `sh -c` / `zsh -c` scripts, a heredoc
+fed to a shell or written to a file the command then runs, and a script file the command runs from a temporary
+directory (the scratchpad: /tmp, /private/tmp, /var/folders, any `.../scratchpad/...`) -- never a repository script,
+so long-running servers (scripts/sbt-warm --serve, scripts/local-mirror/mirror.sh) are never read as loops.
+
+It reads the command, not the shell: what it cannot tokenize is allowed, and a broken guard never blocks (exit 0).
+Self-test: scripts/claude-hooks/unbounded-poll-guard-test.sh.
+"""
+import importlib.machinery
+import importlib.util
+import json
+import os
+import re
+import shlex
+import sys
+
+
+def load_shell_reader():
+    """masked-exit-guard's tokenizer, which reads a command the way the shell does: shared, not copied."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "masked-exit-guard")
+    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    loader.exec_module(module)
+    return module
+
+
+shell = load_shell_reader()
+
+REDIRECTS = {"<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"}
+# Words after which the next word is still a command.
+COMMAND_START = {"then", "do", "else", "elif", "if", "while", "until", "!", "{", "time", "nohup", "exec", "command",
+                 "builtin", "env", "nice", "caffeinate", "setsid", "disown"}
+OPTION_VALUES = {"-s", "-k", "--signal", "--kill-after", "-n", "-u", "-a", "-t", "-w"}
+TIMEOUTS = {"timeout", "gtimeout"}
+SHELLS = {"bash", "sh", "zsh"}
+SCRATCH = re.compile(r"^(/private)?/tmp/|^/var/folders/|^/private/var/folders/|/scratchpad/")
+MAX_SCRIPT_BYTES = 256 * 1024
+MAX_DEPTH = 4
+NUMERIC_TESTS = {"-lt", "-le", "-gt", "-ge"}
+
+ADVICE = (
+    "A background loop with no bound keeps running after you finish (2026-11-18: seven `until grep -q DONE log; do "
+    "sleep 10; done` loops ran 22-46 h after their agents ended). Bound it: wait for a file with "
+    "`scripts/wait-for <file> --contains <text> --timeout 2h` (or `<file> <regex>`; `<file>` alone = any content), "
+    "CI with `scripts/ci-wait`; otherwise count (`for i in $(seq 1 120); do ...; sleep 30; done`), check a deadline "
+    "(`[ $SECONDS -lt 3600 ]`) or wrap the shell or script in `timeout 7200 bash ...`; `tail -f` takes `--pid` or "
+    "a `timeout`."
+)
+
+
+class Finding(Exception):
+    def __init__(self, what, fix=None):
+        super().__init__(what)
+        self.what, self.fix = what, fix
+
+
+def seconds(value):
+    match = re.fullmatch(r"([0-9.]+)([smhd]?)", value or "")
+    if not match:
+        return None
+    return float(match.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
+
+
+def heredocs(command):
+    """(the line that opens it, its body) for every heredoc, in order."""
+    found, pending, body, header = [], [], [], None
+    for line in command.split("\n"):
+        if pending:
+            if line.strip() == pending[0][0]:
+                found.append((pending[0][1], "\n".join(body)))
+                pending.pop(0)
+                body = []
+            else:
+                body.append(line)
+            continue
+        pending.extend((m.group(2), line) for m in shell.HEREDOC.finditer(line))
+    return found
+
+
+def positions(words):
+    """For each word, whether it stands where the shell reads a command name."""
+    out, position, prefix = [], True, False
+    for index, word in enumerate(words):
+        if shell.is_punctuation(word):
+            out.append(False)
+            position, prefix = word not in REDIRECTS, False
+            continue
+        out.append(position)
+        if not position:
+            continue
+        if word in COMMAND_START or word in TIMEOUTS:
+            prefix = word not in ("then", "do", "else", "elif", "if", "while", "until", "!", "{")
+            continue
+        if shell.ASSIGNMENT.match(word):
+            continue
+        if prefix and (word.startswith("-") or seconds(word) is not None or words[index - 1] in OPTION_VALUES):
+            continue
+        position, prefix = False, False
+    return out
+
+
+def loop_end(words, where, start):
+    """The index of the `done` closing the loop whose keyword is at `start` (len(words) when it never closes)."""
+    depth = 0
+    for index in range(start + 1, len(words)):
+        if not where[index]:
+            continue
+        if words[index] == "do":
+            depth += 1
+        elif words[index] == "done":
+            depth -= 1
+            if depth == 0:
+                return index
+    return len(words)
+
+
+def sleeps(words, where):
+    return any(where[i] and os.path.basename(w) == "sleep" for i, w in enumerate(words))
+
+
+def has_bound(words):
+    if any("SECONDS" in w or "deadline" in w.lower() or "+%s" in w for w in words):
+        return True
+    if any(w in NUMERIC_TESTS for w in words):
+        return True
+    joined = " ".join(words)
+    return bool(re.search(r"\( \(.*[<>]", joined))
+
+
+def fix_for(condition, region, keyword):
+    """The scripts/wait-for command that replaces an `until <file check>; do sleep N; done`, or None."""
+    poll = None
+    for index, word in enumerate(region[:-1]):
+        if word == "sleep" and seconds(region[index + 1]) is not None:
+            poll = region[index + 1]
+            break
+    poll_flag = f" --poll {poll}" if poll and poll != "5" else ""
+    if keyword != "until" or any(w in ("!", "&&", "||", "|", ";") for w in condition):
+        return None
+    if condition[:1] in (["["], ["[["], ["test"]) and len(condition) >= 3 and condition[1] in ("-s", "-f", "-e"):
+        return f"scripts/wait-for {shlex.quote(condition[2])} --timeout 2h{poll_flag}"
+    if condition[:1] == ["grep"]:
+        options = [w for w in condition[1:] if w.startswith("-")]
+        operands = [w for w in condition[1:] if not w.startswith("-") and not shell.is_punctuation(w)]
+        if len(operands) >= 2:
+            pattern, file = operands[0], operands[1]
+            regex = any("E" in o or "e" in o for o in options) or re.search(r"[\\^$|()\[\]*+?{}]", pattern)
+            how = shlex.quote(pattern) if regex else f"--contains {shlex.quote(pattern)}"
+            return f"scripts/wait-for {shlex.quote(file)} {how} --timeout 2h{poll_flag}"
+    return None
+
+
+class Reader:
+    def __init__(self, cwd):
+        self.cwd = cwd or os.getcwd()
+
+    def script_text(self, path, assigned, written):
+        expanded = re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?",
+                          lambda m: assigned.get(m.group(1), os.environ.get(m.group(1), m.group(0))), path)
+        expanded = os.path.expanduser(expanded)
+        if expanded in written:
+            return written[expanded]
+        if "$" in expanded:
+            return None
+        full = os.path.realpath(os.path.join(self.cwd, expanded))
+        if not SCRATCH.search(full) or not os.path.isfile(full):
+            return None
+        try:
+            if os.path.getsize(full) > MAX_SCRIPT_BYTES:
+                return None
+            with open(full, errors="replace") as handle:
+                return handle.read()
+        except OSError:
+            return None
+
+    def check(self, command, depth=0):
+        """Raises Finding for the first unbounded poll in `command`."""
+        if depth > MAX_DEPTH:
+            return
+        assigned, written = {}, {}
+        for header, body in heredocs(command):
+            try:
+                head = shell.tokens(header)
+            except ValueError:
+                continue
+            for index, word in enumerate(head[:-1]):
+                if word in (">", ">>", ">|"):
+                    written[os.path.expanduser(head[index + 1])] = body
+            commands = [w for w, p in zip(head, positions(head)) if p and w not in COMMAND_START]
+            if commands and os.path.basename(commands[0]) in SHELLS and "-c" not in head:
+                self.check(body, depth + 1)
+        try:
+            words = shell.tokens(shell.without_heredoc_bodies(command))
+        except ValueError:
+            return
+        for word in words:
+            if shell.ASSIGNMENT.match(word):
+                name, value = word.split("=", 1)
+                assigned[name] = value
+        # written files are keyed by the path as written; also by the path with its variables expanded
+        for path in list(written):
+            expanded = re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?",
+                              lambda m: assigned.get(m.group(1), os.environ.get(m.group(1), m.group(0))), path)
+            written[expanded] = written[path]
+        where = positions(words)
+        bounded_by_timeout = False
+        index = 0
+        while index < len(words):
+            word = words[index]
+            if shell.is_punctuation(word):
+                if word not in REDIRECTS:
+                    bounded_by_timeout = False
+                index += 1
+                continue
+            if not where[index]:
+                index += 1
+                continue
+            if word in TIMEOUTS:
+                index += 1
+                while index < len(words) and not shell.is_punctuation(words[index]):
+                    value = words[index]
+                    if value in OPTION_VALUES:
+                        index += 2
+                        continue
+                    if value.startswith("-"):
+                        index += 1
+                        continue
+                    duration = seconds(value)
+                    bounded_by_timeout = bool(duration)
+                    index += 1
+                    break
+                continue
+            if word in ("while", "until"):
+                end = loop_end(words, where, index)
+                region, region_where = words[index:end + 1], where[index:end + 1]
+                body_start = next((i for i in range(len(region)) if region_where[i] and region[i] == "do"),
+                                  len(region))
+                if sleeps(region, region_where) and not has_bound(region):
+                    condition = [w for w in region[1:body_start] if w not in (";", "\n")]
+                    raise Finding(f"`{word} {' '.join(condition)[:80]}; do ... sleep ...; done` has no bound",
+                                  fix_for(condition, region, word))
+                index += 1
+                continue
+            if word == "for":
+                end = loop_end(words, where, index)
+                region, region_where = words[index:end + 1], where[index:end + 1]
+                endless = region[1:3] == ["(", "("] and re.match(r"\( \( ;\s*; \) \)", " ".join(region[1:7]))
+                if endless and sleeps(region, region_where):
+                    raise Finding("`for ((;;)); do ... sleep ...; done` has no bound")
+                index += 1
+                continue
+            if index + 1 < len(words) and where[index + 1]:
+                index += 1  # a prefix (`nohup`, `env X=1`, `nice -n 5`): the command is still to come
+                continue
+            name = os.path.basename(word)
+            arguments = []
+            for later in words[index + 1:]:
+                if shell.is_punctuation(later):
+                    break
+                arguments.append(later)
+            if name == "tail" and not bounded_by_timeout:
+                follows = any(re.fullmatch(r"-[a-zA-Z0-9]*[fF][a-zA-Z0-9]*", a) or a.startswith("--follow")
+                              for a in arguments)
+                if follows and not any(a.startswith("--pid") for a in arguments):
+                    raise Finding("`tail -f` never ends by itself")
+            script = None
+            if name in SHELLS or name in ("source", "."):
+                rest = list(arguments)
+                while rest and rest[0].startswith("-") and rest[0] != "-c":
+                    rest.pop(0)
+                if rest[:1] == ["-c"] and len(rest) > 1:
+                    script = rest[1]
+                elif rest and rest[0] != "-c":
+                    script = self.script_text(rest[0], assigned, written)
+            elif "/" in word:
+                script = self.script_text(word, assigned, written)
+            if script is not None and not bounded_by_timeout:
+                self.check(script, depth + 1)
+            bounded_by_timeout = False
+            index += 1 + len(arguments)
+
+
+def backgrounds_itself(command):
+    try:
+        return "&" in shell.tokens(shell.without_heredoc_bodies(command))
+    except ValueError:
+        return False
+
+
+def main():
+    try:
+        event = json.load(sys.stdin)
+        tool_input = event.get("tool_input", {})
+        command = tool_input.get("command", "")
+        if not isinstance(command, str):
+            return 0
+        if tool_input.get("run_in_background") is not True and not backgrounds_itself(command):
+            return 0
+        try:
+            Reader(event.get("cwd")).check(command)
+        except Finding as finding:
+            fix = f" Here: `{finding.fix}`." if finding.fix else ""
+            print(f"unbounded-poll-guard: a background {finding.what}.{fix} {ADVICE}", file=sys.stderr)
+            return 2
+    except Exception:  # a broken guard must not wedge every session
+        return 0
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

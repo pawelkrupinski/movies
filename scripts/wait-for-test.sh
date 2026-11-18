@@ -29,8 +29,25 @@ check "its writer ended with no match: exit 1, the file's tail shown" "1 yes" \
 "$wf" "$work/never.log" 'x' --poll 0.1 --timeout 0 2> "$work/err"; status=$?
 check "nothing by the deadline: exit 2, said" "2 yes" "$status $(grep -q 'after 0s' "$work/err" && echo yes || echo no)"
 
-"$wf" "$work/never.log" > /dev/null 2>&1; status=$?
-check "no pattern: a usage error, exit 2" "2" "$status"
+"$wf" > /dev/null 2>&1; status=$?
+check "no file: a usage error, exit 2" "2" "$status"
+
+( sleep 0.3; echo "[x] DONE (a+b)" ) > "$work/literal.log" &
+out=$("$wf" "$work/literal.log" --contains '[x] DONE (a+b)' --poll 0.1 --timeout 1m); status=$?
+check "--contains: a literal text, regex characters and all; --timeout with a unit" "0 [x] DONE (a+b)" "$status $out"
+
+( sleep 0.3; printf 'first\nsecond\n' > "$work/any.log" ) &
+out=$("$wf" "$work/any.log" --poll 0.1 --timeout 10); status=$?
+check "no pattern: any content answers (the old \`until [ -s f ]\`), its first line printed" "0 first" "$status $out"
+
+"$wf" "$work/never.log" --poll 0.1 --timeout 0 2> "$work/err"; status=$?
+check "...an empty file is no content: exit 2 at the deadline" "2 yes" \
+  "$status $(grep -q 'no content in' "$work/err" && echo yes || echo no)"
+
+"$wf" "$work/never.log" x --contains y > /dev/null 2>&1; status=$?
+check "a pattern and --contains: a usage error" "2" "$status"
+"$wf" "$work/never.log" x --timeout 2d > /dev/null 2>&1; status=$?
+check "a unit it does not know: a usage error" "2" "$status"
 
 "$wf" "$work/never.log" x --timeout > /dev/null 2> "$work/err"; status=$?
 check "a flag with no value: a usage error, exit 2 -- never 1, which says the writer ended" "2 yes" \

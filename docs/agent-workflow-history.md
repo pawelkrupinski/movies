@@ -69,3 +69,14 @@ incidents that produced them, so the rules can stay short. Append here when a ne
   last command's status (head's 0), and `head` cut sbt's failure summary off. Hence
   `scripts/claude-hooks/masked-exit-guard`, which denies a test runner piped into another command unless the
   command keeps its status (`set -o pipefail`, `PIPESTATUS`, zsh's `pipestatus`); write the run to a log and read the log.
+
+## Background watchers that outlived their agents
+
+- 2026-11-18 (owner: "reduce orchestration noise and stop orphaned watcher shells"): seven background
+  `until grep -q DONE log; do sleep 10; done` loops were still running 22-46 h after the agents that started them had
+  finished, agents' land watchers outlived their agents, and the main session re-armed a 30-minute
+  `agentctl inbox wait` Monitor over and over. foreground-wait-guard read only foreground waits. Hence
+  `scripts/claude-hooks/unbounded-poll-guard` (a background loop that sleeps needs a count, a deadline or a `timeout`;
+  its fix is `scripts/wait-for <file> --contains <text>`), `scripts/agent-procs` listing orphaned watchers and
+  `kill --mine` reaping the caller's session's, and the owner notifier as a one-shot background `agentctl inbox wait`
+  (a Monitor expires after 30 minutes whatever it runs).
