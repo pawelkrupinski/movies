@@ -1248,6 +1248,11 @@ fi
 # what it ran when it always set up: nothing else reads the list.
 if [ "${PREPUSH_LIST:-}" = 1 ]; then printf '%s\n' "$checks" | grep -v '^$' || true; exit 0; fi
 [ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
+# THE JOB'S SPLIT IS THIS RUN'S ALONE: read here, never handed to what the checks run -- a self-test running a hook of its
+# own inherited the landing check's PREPUSH_ONLY / _HEAVY_MONGODB_URI and judged another job's share (landing check run
+# 44246845439). Kept as this shell's variables (heavy_row and the identity shard still read theirs).
+export -n PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS PREPUSH_HEAVY_MONGODB_URI PREPUSH_HEAVY_MONGODB_DB \
+    PREPUSH_IDENTITY_SHARD 2>/dev/null || true
 
 # ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
 # A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote

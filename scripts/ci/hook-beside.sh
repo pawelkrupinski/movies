@@ -23,12 +23,13 @@ if [ $named = 0 ] || [ $others = 0 ]; then exec "$@"; fi
 
 log="${TMPDIR:-/tmp}/$check-beside.log"
 mkdir -p "$(dirname "$log")"
-PREPUSH_ONLY="$check" "$@" > "$log" 2>&1 &
+env PREPUSH_ONLY="$check" "$@" > "$log" 2>&1 &
 beside=$!
 # the job's timeout (or a cancel) ends both runs, not the foreground one alone
 trap 'kill "$beside" 2>/dev/null; exit 143' TERM INT
 echo "hook-beside: $check runs beside the rest's checks (its output below, once both end)"
-PREPUSH_ELSEWHERE="${PREPUSH_ELSEWHERE:+$PREPUSH_ELSEWHERE }$check" "$@"
+# never a PREPUSH_ONLY this script was handed: it would make the rest's run <check>'s again
+env -u PREPUSH_ONLY PREPUSH_ELSEWHERE="${PREPUSH_ELSEWHERE:+$PREPUSH_ELSEWHERE }$check" "$@"
 rest_rc=$?
 wait "$beside"
 beside_rc=$?

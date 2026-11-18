@@ -516,7 +516,7 @@ printf 'population-walk-diff [%s]\n' "$(ls "$1")" >> "$AREA_CALLS"
 echo "population walk: 1 slice(s) judged against the base: nothing new"
 STUB
 chmod +x "$area/scripts/ci/population-walk-diff"
-printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; printf " {MONGODB_URI=%%s}" "${MONGODB_URI:-}" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
+printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; printf " {MONGODB_URI=%%s}" "${MONGODB_URI:-}" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n[ -z "${PREPUSH_ONLY:-}${PREPUSH_ELSEWHERE:-}${PREPUSH_HEAVY_ROWS:-}${PREPUSH_HEAVY_MONGODB_URI:-}" ] || echo sbt-saw-the-split >> "$AREA_CALLS"\n' > "$areabin/sbt"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$areabin/java"
 chmod +x "$area/scripts/sbt-warm" "$areabin/sbt" "$areabin/java"
 scratch_git "$area" add -A; scratch_git "$area" commit -qm base
@@ -646,6 +646,8 @@ check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1"
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_HEAVY_MONGODB_URI=mongodb://heavy)"
 check "...beside the sbt check, the heavy rows alone get the job's MongoDB" "0 1 1 0" \
   "$code $(basic_ran) $(calls '\[itAll\] {MONGODB_URI=mongodb://heavy}') $(grep -E '(\[|; )Test/compile(\]|;)' "$AREA_CALLS" | grep -c 'mongodb://heavy')"
+check "...and no check the hook runs inherits the job's split (a self-test's own hook took the landing check's: run 44246845439)" "0" \
+  "$(calls sbt-saw-the-split)"
 mkdir -p "$area/infra/bin"
 printf '#!/usr/bin/env bash\necho fetch-gitops >> "$AREA_CALLS"; mkdir -p "$KINOWO_GITOPS_DEST"\n' > "$area/infra/bin/fetch-gitops"
 chmod +x "$area/infra/bin/fetch-gitops"; scratch_git "$area" add infra/bin/fetch-gitops; scratch_git "$area" commit -qm "a fake fetch-gitops"

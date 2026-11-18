@@ -29,7 +29,7 @@ HOOK
 chmod +x "$work/hook"
 run() { # [env...]: hook-beside over the fake hook; its output to $work/out, its exit printed
     rm -rf "$work/marks"; mkdir -p "$work/marks"
-    env MARKS="$work/marks" TMPDIR="$work/tmp" "$@" bash "$REPO_ROOT/scripts/ci/hook-beside.sh" scripttests -- \
+    env -u PREPUSH_ONLY -u PREPUSH_ELSEWHERE MARKS="$work/marks" TMPDIR="$work/tmp" "$@" bash "$REPO_ROOT/scripts/ci/hook-beside.sh" scripttests -- \
         "$work/hook" --checks-only base..HEAD > "$work/out" 2>&1
     echo $?
 }
@@ -46,6 +46,12 @@ check "a beside run's failure fails the job" "1" "$(run CHECKS="scripttests sbt"
 check "...as does the rest's" "1" "$(run CHECKS="scripttests sbt" RC_REST=1)"
 check "...a failure outranks the other's stall signal" "1" "$(run CHECKS="scripttests sbt" RC_REST=75 RC_ONLY=1)"
 check "...and a stall alone is the stall signal" "75" "$(run CHECKS="scripttests sbt" RC_ONLY=75)"
+
+# a run inside another hook's check (this test, under the landing check's beside run) inherits PREPUSH_ONLY: the rest's
+# part never takes it (landing check run 44246845439: both parts ran as scripttests')
+code="$(run CHECKS="scripttests sbt" PREPUSH_ONLY=scripttests WAIT_FOR_OTHER=1)"
+check "an inherited PREPUSH_ONLY never reaches the rest's part" "0 0 1" \
+  "$code $(grep -c 'NEVER SAW' "$work/out") $(grep -c '^rest ONLY= ELSEWHERE=scripttests ' "$work/out")"
 
 code="$(run CHECKS="sbt actionlint" PREPUSH_ELSEWHERE="oldrefs identity")"
 check "no scripttests in the share: the hook runs once, as it is" "0 1 0" \
