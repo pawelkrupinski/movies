@@ -7,12 +7,15 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 . "$REPO_ROOT/scripts/scratch-git.sh"
 TOOL="$REPO_ROOT/scripts/agent-procs"
+# The orphaned-watcher reaping below acts for the session named here: never the session running this test.
+unset CLAUDE_CODE_SESSION_ID
 
 printf '\033[36m▸\033[0m agent-procs\n'
 
 work="$(cd "$(mktemp -d)" && pwd -P)"
-victim="" bystander="" session=""
+victim="" bystander="" session="" watchers=""
 cleanup() {
+  for pid in $watchers; do kill "$pid" 2>/dev/null; done
   [ -n "$victim" ] && kill "$victim" 2>/dev/null
   [ -n "$bystander" ] && kill "$bystander" 2>/dev/null
   [ -n "$session" ] && kill "$session" 2>/dev/null
@@ -144,6 +147,57 @@ check "a >1 GB process outside every worktree is listed as heavy" "1" "$(printf 
 check "a lifetime-CPU hog outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c "pid $hog ")"
 check "a small, cool process is not" "0" "$(printf '%s\n' "$heavy" | grep -c "pid $small ")"
 check "a process inside a worktree is not listed as heavy" "0" "$(printf '%s\n' "$heavy" | grep -c "pid $victim ")"
+
+# Orphaned watchers (2026-11-18: seven poll loops ran 22-46 h after their agents ended): a poll loop, or the sleep it
+# left, whose CLAUDE_PID is gone. Real processes stand in for them (the table gives their command lines).
+for _ in 1 2 3 4 5 6 7; do sleep 300 & watchers="$watchers $!"; done
+# shellcheck disable=SC2086
+set -- $watchers
+loop=$1 loopsleep=$2 other=$3 live=$4 terminal=$5 server=$6 serversleep=$7
+{
+  printf '%s 1 4096 0:01.00 1-22:00:00 /bin/zsh -c eval '"'"'until grep -q DONE log; do sleep 10; done'"'"'\n' "$loop"
+  printf '%s %s 900 0:00.00 00:05 sleep 10\n' "$loopsleep" "$loop"
+  printf '%s 1 4096 0:01.00 22:00:00 /bin/bash -c while ! grep -q LANDED l; do sleep 30; done\n' "$other"
+  printf '%s %s 4096 0:01.00 01:00 /bin/zsh -c tail -f /x/log\n' "$live" "$session"
+  printf '%s 1 4096 0:01.00 3-00:00:00 bash -c until false; do sleep 1; done\n' "$terminal"
+  printf '%s 1 4096 0:01.00 3-00:00:00 /bin/bash scripts/local-mirror/mirror.sh\n' "$server"
+  printf '%s %s 900 0:00.00 00:30 sleep 60\n' "$serversleep" "$server"
+} >> "$work/ps.txt"
+{
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-mine HOME=/x\n' "$loop" "$dead_pid"
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-mine\n' "$loopsleep" "$dead_pid"
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-other\n' "$other" "$dead_pid"
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-mine\n' "$live" "$session"
+  printf '%s HOME=/x\n' "$terminal"
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-mine\n' "$server" "$dead_pid"
+  printf '%s CLAUDE_PID=%s CLAUDE_CODE_SESSION_ID=S-mine\n' "$serversleep" "$dead_pid"
+} > "$work/env.txt"
+export AGENT_PROCS_ENV_COMMAND="cat $work/env.txt"
+orphans="$(cd "$root" && CLAUDE_CODE_SESSION_ID=S-mine "$TOOL" | sed -n '/^Orphaned watchers/,/^$/p')"
+check "an orphaned poll loop is listed, with its session, as the caller's" "1" \
+  "$(printf '%s\n' "$orphans" | grep -c "pid $loop .*session S-mine  (yours)")"
+check "...and the sleep it left behind" "1" "$(printf '%s\n' "$orphans" | grep -c "pid $loopsleep .*session S-mine")"
+check "another session's orphan is listed, not as the caller's" "1 0" \
+  "$(printf '%s\n' "$orphans" | grep -c "pid $other .*session S-other") $(printf '%s\n' "$orphans" | grep -c "pid $other .*yours")"
+check "a watcher whose claude still runs is no orphan" "0" "$(printf '%s\n' "$orphans" | grep -c "pid $live ")"
+check "a loop with no agent session in its environment (a terminal's) is not listed" "0" \
+  "$(printf '%s\n' "$orphans" | grep -c "pid $terminal ")"
+check "a server script and its sleep are no watchers" "0 0" \
+  "$(printf '%s\n' "$orphans" | grep -c "pid $server ") $(printf '%s\n' "$orphans" | grep -c "pid $serversleep ")"
+(cd "$work/wt-merged" && CLAUDE_CODE_SESSION_ID=S-mine "$TOOL" kill --mine > /dev/null)
+check "kill --mine reaps the caller's session's orphaned loop and its sleep" "no no" \
+  "$(alive_after_term "$loop") $(alive_after_term "$loopsleep")"
+check "...never another session's, a live session's, a terminal's or a server's" "yes yes yes yes yes" \
+  "$(for pid in "$other" "$live" "$terminal" "$server" "$serversleep"; do kill -0 "$pid" 2>/dev/null && echo yes || echo no; done | xargs)"
+(cd "$work/wt-merged" && "$TOOL" kill --mine > /dev/null)
+check "kill --mine without a session id reaps none" "yes" "$(kill -0 "$other" 2>/dev/null && echo yes || echo no)"
+# The real environment (ps eww on macOS, /proc/<pid>/environ on Linux), real ps: a loop whose claude is gone.
+env CLAUDE_PID="$dead_pid" CLAUDE_CODE_SESSION_ID=S-real bash -c 'until false; do sleep 1; done' & real=$!
+watchers="$watchers $real"
+(cd "$work/wt-merged" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND -u AGENT_PROCS_ENV_COMMAND \
+  CLAUDE_CODE_SESSION_ID=S-real "$TOOL" kill --mine > /dev/null)
+check "a real orphaned loop, read from its own environment, is reaped" "no" "$(alive_after_term "$real")"
+unset AGENT_PROCS_ENV_COMMAND
 
 # kill: only the named worktree's processes, never the caller's own ancestors.
 dry="$(cd "$work/wt-orphan" && "$TOOL" kill --mine --dry-run)"

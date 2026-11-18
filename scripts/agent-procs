@@ -14,7 +14,8 @@ match the same pattern.
                                           lock owner pid and whether it lives, the processes whose cwd is inside it,
                                           and a SUGGESTION: removable | orphan-procs | keep. Then the heavy
                                           processes (RSS > 1 GB or lifetime CPU > 50%) that belong to no worktree.
-  scripts/agent-procs kill --mine         SIGTERM the work processes under the CURRENT worktree (never the root
+  scripts/agent-procs kill --mine         first reap YOUR SESSION's orphaned watchers (below); then
+                                          SIGTERM the work processes under the CURRENT worktree (never the root
                                           checkout, an open shell or agent session or the MCP servers it started,
                                           this process,
                                           its ancestors — your own shell and agent — or the other commands of its
@@ -23,11 +24,20 @@ match the same pattern.
   scripts/agent-procs prune [--yes]       remove the `removable` worktrees and their fully merged branches; prints
                                           the plan, acts only with --yes
 
+ORPHANED WATCHERS. A poll loop (`until grep ...; do sleep ...; done`, `tail -f`, a wait-for / ci-wait / agentctl
+wait, a scratchpad script that loops) or its leftover `sleep` whose agent session has ended: its environment's
+CLAUDE_PID (the `claude` process that ran it) is gone, or is no longer `claude`. On 2026-11-18 seven of them had run
+22-46 h after their agents finished. The listing reports every one of the user's, with its session id; `kill --mine`
+reaps only those whose CLAUDE_CODE_SESSION_ID is the caller's own (a resumed session keeps its id) -- never another
+session's, never a process without that environment (a terminal's), never another user's (ps -U reads only ours).
+scripts/claude-hooks/unbounded-poll-guard keeps new unbounded ones from starting.
+
 There is deliberately no pattern-wide kill. `--dry-run` and `--force` (SIGKILL) apply to kill.
 
 Test seams (scripts/agent-procs-test.sh): AGENT_PROCS_PS_COMMAND prints `pid ppid rss-kb cputime etime command`
 per process; AGENT_PROCS_CWD_COMMAND prints `lsof -Fpn` records (p<pid> / n<cwd>); AGENT_PROCS_REPO names the
-repository when the working directory is not inside it.
+repository when the working directory is not inside it; AGENT_PROCS_ENV_COMMAND prints `pid KEY=value ...` per
+process (the CLAUDE_PID / CLAUDE_CODE_SESSION_ID read from its environment otherwise).
 """
 import argparse
 import concurrent.futures
@@ -43,6 +53,11 @@ GIB_KB = 1024 * 1024
 HEAVY_CPU_SHARE = 0.5
 # Processes that are only somebody's open terminal or agent session: they sit in a worktree without working in it.
 IDLE_COMMANDS = {"zsh", "-zsh", "bash", "-bash", "sh", "login", "claude", "tmux", "less", "man", "ssh"}
+# A poll loop or a waiting tool, in a command line or a scratchpad script's text.
+WATCHING = re.compile(r"\b(until|while)\b[\s\S]*\bsleep\b|\btail\s+(\S+\s+)*(-[a-zA-Z0-9]*[fF]|--follow)"
+                      r"|(^|[\s/])(wait-for|ci-wait)(\s|$)|\bagentctl\s+(inbox\s+)?wait\b")
+SCRATCH = re.compile(r"^(/private)?/tmp/|^(/private)?/var/folders/|/scratchpad/")
+SESSION_KEYS = ("CLAUDE_PID", "CLAUDE_CODE_SESSION_ID")
 WORK_KEYWORDS = ("sbt", "java", "identity-slice", "convergence-local", "mongod", "playwright", "chrome", "node ")
 
 
@@ -220,6 +235,13 @@ def list_command(root, all_worktrees, found, args):
     owned = {p.pid for tree in all_worktrees for p in tree.processes}
     heavy = [p for p in found.values() if p.pid not in owned and p.pid != os.getpid() and
              (p.rss_kb > GIB_KB or (p.age_seconds > 60 and p.cpu_seconds / p.age_seconds > HEAVY_CPU_SHARE))]
+    orphans = orphaned_watchers(found)
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    print("\nOrphaned watchers (poll loops whose agent session ended; `kill --mine` reaps your session's):")
+    for process, owner in orphans:
+        print(f"      {process.describe()}  session {owner}{'  (yours)' if session and owner == session else ''}")
+    if not orphans:
+        print("      none")
     print("\nHeavy processes (RSS > 1 GB or lifetime CPU > 50%) outside every worktree:")
     for process in sorted(heavy, key=lambda p: -p.rss_kb):
         print(f"      {process.describe()}")
@@ -259,8 +281,86 @@ def started_by_session(process, found):
     return False
 
 
+def session_environments(pids):
+    """{pid: {CLAUDE_PID, CLAUDE_CODE_SESSION_ID}} for those of `pids` started by an agent session."""
+    out = {}
+    override = os.environ.get("AGENT_PROCS_ENV_COMMAND")
+    if override:
+        lines = run(shlex.split(override)).stdout.splitlines()
+    else:
+        lines = []
+        for pid in pids:
+            try:
+                with open(f"/proc/{pid}/environ", "rb") as handle:
+                    lines.append(f"{pid} " + handle.read().decode(errors="replace").replace("\0", " "))
+                continue
+            except OSError:
+                pass
+            lines.append(f"{pid} " + run(["ps", "eww", "-o", "command=", "-p", str(pid)]).stdout)
+    for line in lines:
+        head, _, rest = line.partition(" ")
+        if not head.isdigit() or int(head) not in pids:
+            continue
+        values = {key: m.group(1) for key in SESSION_KEYS
+                  for m in [re.search(rf"(?:^|\s){key}=(\S+)", rest)] if m}
+        if "CLAUDE_PID" in values and values["CLAUDE_PID"].isdigit():
+            out[int(head)] = values
+    return out
+
+
+def first_word(process):
+    return os.path.basename(process.command.split()[0]) if process.command.split() else ""
+
+
+def watching(process, found, depth=0):
+    """Whether this process is a poll loop / waiting tool, or the `sleep` / `tail` such a loop left behind."""
+    if WATCHING.search(process.command):
+        return True
+    for word in process.command.split()[1:3]:
+        if SCRATCH.search(word) and os.path.isfile(word):
+            try:
+                with open(word, errors="replace") as handle:
+                    if WATCHING.search(handle.read(256 * 1024)):
+                        return True
+            except OSError:
+                pass
+    if first_word(process) in ("sleep", "tail") and depth == 0:
+        parent = found.get(process.ppid)
+        return process.ppid == 1 or (parent is not None and watching(parent, found, 1))
+    return False
+
+
+def orphaned_watchers(found):
+    """[(process, its session id)] for every watcher whose agent session (CLAUDE_PID) has ended."""
+    candidates = {p.pid: p for p in found.values() if p.pid != os.getpid() and watching(p, found)}
+    environments = session_environments(set(candidates))
+    orphans = []
+    for pid, values in environments.items():
+        session_pid = int(values["CLAUDE_PID"])
+        owner = found.get(session_pid)
+        if owner is None or first_word(owner) != "claude":
+            orphans.append((candidates[pid], values.get("CLAUDE_CODE_SESSION_ID", "?")))
+    return sorted(orphans, key=lambda pair: pair[0].pid)
+
+
+def reap_orphaned_watchers(found, args):
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    mine = [p for p, owner in orphaned_watchers(found) if session and owner == session]
+    if not mine:
+        return
+    print(f"{len(mine)} orphaned watcher(s) of this session ({session}), its earlier `claude` gone")
+    for process in mine:
+        print(f"  {'would kill' if args.dry_run else 'kill'} {process.describe()}")
+        if not args.dry_run:
+            try:
+                os.kill(process.pid, signal.SIGKILL if args.force else signal.SIGTERM)
+            except OSError as error:
+                print(f"    {error}")
+
+
 def kill_command(all_worktrees, found, args, here):
     if args.mine:
+        reap_orphaned_watchers(found, args)
         target = owner_of(here, all_worktrees)
     else:
         target = owner_of(os.path.realpath(args.worktree), all_worktrees)
