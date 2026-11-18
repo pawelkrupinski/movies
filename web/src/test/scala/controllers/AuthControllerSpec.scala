@@ -54,13 +54,15 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private def fixtureFor(country: models.Country, providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
+    val byName = providers.map(p => p.name -> p).toMap
     val ctl  = new AuthController(
       Helpers.stubControllerComponents(),
-      providers.map(p => p.name -> p).toMap,
+      byName,
       repository,
       codes,
       country,
-      clock = fixedClk
+      clock = fixedClk,
+      nativeTokens = services.auth.NativeTokenVerifier.codeExchangeOnly(byName)
     )
     (ctl, repository, codes)
   }

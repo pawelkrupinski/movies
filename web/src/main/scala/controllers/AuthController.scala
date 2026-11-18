@@ -4,7 +4,7 @@ import models.User
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.auth.{AppleTokenValidator, AuthExchangeCodes, FacebookTokenValidator, GoogleTokenValidator, NativeTokenVerifier, OauthAccounts, OauthProvider}
+import services.auth.{AuthExchangeCodes, NativeTokenVerifier, OauthAccounts, OauthProvider}
 import services.users.UserRepository
 
 import java.net.URLEncoder
@@ -57,10 +57,9 @@ class AuthController(
   // request: it is what a starting flow stamps into its `state`, and what tells
   // a finishing one whether it is home or standing in for a sibling.
   country:                models.Country,
-  googleTokenValidator:   Option[GoogleTokenValidator] = None,
-  facebookTokenValidator: Option[FacebookTokenValidator] = None,
-  appleTokenValidator:    Option[AppleTokenValidator] = None,
-  clock:                  Clock
+  clock:                  Clock,
+  // Who a native app's provider token names (`POST /auth/token`).
+  nativeTokens:           NativeTokenVerifier = NativeTokenVerifier.Unconfigured
 ) extends AbstractController(cc) with Logging {
 
   // OAuth state cookie expires after this — long enough that the user
@@ -71,8 +70,7 @@ class AuthController(
   // is hygiene.
   private val OauthStateTtl = java.time.Duration.ofMinutes(10)
 
-  // Composed from the collaborators above: who a native token names, and the account a profile signs in as.
-  private val nativeTokens = new NativeTokenVerifier(providers, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  // Composed from the collaborators above: the account a profile signs in as.
   private val accounts     = new OauthAccounts(userRepository, clock)
 
   def start(provider: String): Action[AnyContent] = Action { request =>

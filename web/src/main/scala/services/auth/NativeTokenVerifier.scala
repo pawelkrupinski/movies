@@ -25,3 +25,12 @@ final class NativeTokenVerifier(providers: Map[String, OauthProvider],
   private def configured[A](validator: Option[A], label: String): A =
     validator.getOrElse(throw new RuntimeException(s"$label not configured"))
 }
+
+object NativeTokenVerifier {
+  /** No token validator: only a code one of `providers` exchanges (a `redirectUri` sign-in) names anybody. */
+  def codeExchangeOnly(providers: Map[String, OauthProvider]): NativeTokenVerifier =
+    new NativeTokenVerifier(providers, None, None, None)
+
+  /** Nothing configured: every native sign-in refused. */
+  val Unconfigured: NativeTokenVerifier = codeExchangeOnly(Map.empty)
+}
