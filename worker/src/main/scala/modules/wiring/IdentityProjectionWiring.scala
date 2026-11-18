@@ -163,11 +163,15 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val identityStagingPublisher: services.identityadapters.IdentityStagingPublisher = managedResources.stopping(
     new services.identityadapters.IdentityStagingPublisher(country.code, identityStaging,
       taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
-      waitingOn = agreementStage.waitingOn, clusterKey = agreementStage.keyOf,
-      outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
-      takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
+      snapshots = stagingSnapshots, clock = clock, ticks = ticks,
+      takeMetrics = workerMetrics.identityTakes.forCountry(country.code), threadPools = threadPools))
+  /** What each staging publish works out ([[identityStagingPublisher]]): the clusters staging, what resolved, the beat. */
+  private lazy val stagingSnapshots: services.identityadapters.StagingSnapshots =
+    new services.identityadapters.StagingSnapshots(waitingOn = agreementStage.waitingOn,
+      outcomes = identityQuestionMemory.outcomes,
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
-      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()), threadPools = threadPools))
+      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()),
+      clusterKey = agreementStage.keyOf)
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
