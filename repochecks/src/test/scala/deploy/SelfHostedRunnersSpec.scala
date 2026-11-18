@@ -208,7 +208,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     val drift = labels("identity-drift-explorer.yml", main.copy(steps = Map("lane.label" -> "movies-explore")))
     drift("drift / leg / convergence") shouldBe "movies-explore"
     yml("identity-takes.yml") should include("INPUT_LANE: ${{ inputs.measurement-lane && 'explore' || inputs.lane }}")
-    val walk = labels("identity-family-explorer.yml", main.copy(outputs = Map("plan.runner" -> "movies-explore")))
+    val walk = labels("identity-family-explorer.yml", main.copy(outputs = Map("plan.lane" -> "movies-explore")))
     walk("walk") shouldBe "movies-explore"
     labels("identity-family-explorer.yml", main)("walk") shouldBe "movies-measure"
     RepoFile.jobs(yml("identity-family-explorer.yml"))("plan") should include("scripts/ci/measure-lane.sh explore")
