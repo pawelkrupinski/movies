@@ -214,7 +214,8 @@ script_push() {
   local floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/} floor")
   case "${floor:-}" in '') ;; found) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}") ;;
     *) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}" PREPUSH_FLOOR_BASH="$floor") ;; esac
-  rm -f "$gate/args"; (cd "$grepo" && all_green env -u PREPUSH_FLOOR_BASH "${floor_env[@]}" STUB_RUNNER_ARGS="$gate/args" "$@" \
+  # a Mac's push (PREPUSH_UNAME): on Linux the hook runs no Docker pass of its own (pre-push-test.sh holds that)
+  rm -f "$gate/args"; (cd "$grepo" && all_green env -u PREPUSH_FLOOR_BASH "${floor_env[@]}" PREPUSH_UNAME=Darwin STUB_RUNNER_ARGS="$gate/args" "$@" \
   bash "$REPO_ROOT/scripts/hooks/pre-push" "${mode:---range}" "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
 check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
   "$(script_push) $(cat "$gate/args")"
