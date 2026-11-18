@@ -1,0 +1,107 @@
+# UNIT TESTS FOR THE IDENTITY MODEL'S HEALTH ALERTS (identity-agreement.rules, group identity-model-health).
+#
+# Each counter is 0 on a healthy worker, and each rule asks for a REPEAT, so every case pairs a country that repeats
+# (fires) with one that does it once (quiet) -- the one-offs prod showed over 2026-11-04..18: UK's single rebuild on
+# 11-16, its burst of three `shrink` refusals on 11-09 and its single `failed` one on 11-17.
+#
+# IdentityModelTakeUpFailing fires for DE's take-up failing and its 1-minute retry failing too, and stays quiet for PL's
+# one failure the retry answered and UK's two failures four hours apart. IdentityModelRebuildLoop fires for DE's three
+# rebuilds in twenty minutes and stays quiet for UK's one. IdentityProjectionRefusing fires for DE's projections refused
+# every half hour for three hours, across a worker restart (its counter seeded at 0 again), and stays quiet for UK's
+# burst of three. IdentityProjectionDrifting fires for DE's drift in three hourly reconciles running and stays quiet
+# for PL's one.
+rule_files:
+  - ../../nix/files/monitoring/rules/identity-agreement.rules
+
+evaluation_interval: 1m
+
+tests:
+  # DE: a take-up fails at 10m and its retry a minute later fails too. PL: one failure at 10m, the retry takes it up.
+  # UK: one failure at 10m and another at 4h10m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x9 1 2x290'
+      - series: 'kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '0x9 1x290'
+      - series: 'kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",instance="kinowo-worker-uk",country="uk"}'
+        values: '0x9 1x240 2x40'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: IdentityModelTakeUpFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: IdentityModelTakeUpFailing
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: the identity model failed 2 take-ups in the last hour"
+              description: "IdentityModelService could not take its model up from its store, and the retry failed too, so the model is down: no scrape is drained into identity and every projection is refused (`notready`) -- the site keeps serving the films as they were, and no new film reaches it. The worker logs \"identity model: take-up failed\" with the exception, and \"identity model: down -- take-up retried in Ns\" (VictoriaLogs `country:<cc> \"identity model:\"`). Usually the identity store's read (Mongo, a decode); the retry backs off to 30 minutes, so once the cause is fixed a worker restart takes it up at once."
+      - eval_time: 4h20m
+        alertname: IdentityModelTakeUpFailing
+        exp_alerts: []
+
+  # DE: a drain throws and rebuilds at 10m, 15m and 25m. UK: one rebuild at 10m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_model_rebuilds_total{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x9 1x5 2x10 3x60'
+      - series: 'kinowo_worker_identity_model_rebuilds_total{job="kinowo-worker",instance="kinowo-worker-uk",country="uk"}'
+        values: '0x9 1x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IdentityModelRebuildLoop
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: IdentityModelRebuildLoop
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: the identity model rebuilt itself 3 times in the last hour"
+              description: "Drains of the incremental identity model keep throwing, and each one rebuilds the model from its store, so scrapes are taken into identity late or not at all. The worker logs \"identity model: <what> failed -- rebuilding from its store\" with the exception (VictoriaLogs `country:<cc> \"rebuilding from its store\"`): the same <what> and exception every time is one input the drain cannot take -- find the listing or event it names. A \"rebuild failed\" after it also counts in IdentityModelTakeUpFailing."
+
+  # DE: a projection refused every 30 minutes from 10m; its worker restarts at 1h30m (the `stale` gap, the counter
+  # seeded at 0 again) and the refusals go on. UK: three `shrink` refusals at 10m, then written projections.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_projection_refusals_total{job="kinowo-worker",instance="kinowo-worker-de",country="de",reason="shrink"}'
+        values: '0x9 1x30 2x30 3x20 stale _x2 0x7 1x30 2x30 3x30 4x30'
+      - series: 'kinowo_worker_identity_projection_refusals_total{job="kinowo-worker",instance="kinowo-worker-uk",country="uk",reason="shrink"}'
+        values: '0x9 3x230'
+    alert_rule_test:
+      - eval_time: 1h50m
+        alertname: IdentityProjectionRefusing
+        exp_alerts: []
+      - eval_time: 2h30m
+        alertname: IdentityProjectionRefusing
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: identity projections have been refused for two hours (2 in the last hour)"
+              description: "Every hour for two hours the identity projection was refused, so nothing it resolved has been written: the site serves the films as they stood before, new films do not appear and corrected takes do not land. The `reason` label of kinowo_worker_identity_projection_refusals_total says which guard: `shrink` (ProjectionGuard: the projection would drop too large a share of films -- a scrape that came back empty, or a resolver change), `crossing` (a family crossing), `unreadablemap` (the FilmId map could not be read), `notready` (the model is down: see IdentityModelTakeUpFailing) or `failed` (it threw). Each refusal logs \"identity projection refused (<reason>): <why>\" (VictoriaLogs `country:<cc> \"identity projection refused\"`); `failed` logs \"identity projection failed\" with the stack trace."
+      - eval_time: 3h
+        alertname: IdentityProjectionRefusing
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: identity projections have been refused for two hours (2 in the last hour)"
+              description: "Every hour for two hours the identity projection was refused, so nothing it resolved has been written: the site serves the films as they stood before, new films do not appear and corrected takes do not land. The `reason` label of kinowo_worker_identity_projection_refusals_total says which guard: `shrink` (ProjectionGuard: the projection would drop too large a share of films -- a scrape that came back empty, or a resolver change), `crossing` (a family crossing), `unreadablemap` (the FilmId map could not be read), `notready` (the model is down: see IdentityModelTakeUpFailing) or `failed` (it threw). Each refusal logs \"identity projection refused (<reason>): <why>\" (VictoriaLogs `country:<cc> \"identity projection refused\"`); `failed` logs \"identity projection failed\" with the stack trace."
+
+  # DE: the hourly reconcile finds drift at 30m, 1h30m and 2h30m. PL: once, at 30m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_projection_drift_total{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x29 2x60 3x60 5x60'
+      - series: 'kinowo_worker_identity_projection_drift_total{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '0x29 2x180'
+    alert_rule_test:
+      - eval_time: 1h50m
+        alertname: IdentityProjectionDrifting
+        exp_alerts: []
+      - eval_time: 2h40m
+        alertname: IdentityProjectionDrifting
+        exp_alerts:
+          - exp_labels: { domain: identity, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: hourly identity projections keep finding films the scoped ones missed (2)"
+              description: "Two or more hourly whole-corpus identity projections running changed films that the scoped projections between them (ProjectionScope: only the films a change reaches) left as they were, so those films were served stale for up to an hour each time. The reconcile has put each right; the bug is in the scope -- a change whose reach ProjectionScope does not follow. The projection's log line names the drifted films (VictoriaLogs `country:<cc> \"identity projection drift\"`); reproduce one with scripts/identity-slice."

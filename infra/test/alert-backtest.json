@@ -734,6 +734,46 @@
       "series_episodes": 0,
       "status": "quiet"
     },
+    "IdentityModelRebuildLoop": {
+      "episodes": 0,
+      "file": "identity-agreement.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "IdentityModelTakeUpFailing": {
+      "episodes": 0,
+      "file": "identity-agreement.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "IdentityProjectionDrifting": {
+      "episodes": 0,
+      "file": "identity-agreement.rules",
+      "firing_fraction": 0.0,
+      "for": "90m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "IdentityProjectionRefusing": {
+      "episodes": 0,
+      "file": "identity-agreement.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
     "IdentityProjectionSlower": {
       "episodes": 0,
       "file": "identity-agreement.rules",
@@ -1500,6 +1540,16 @@
       "series_episodes": 0,
       "status": "quiet"
     },
+    "RatingFetchNeverRuns": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
     "ReadModelContentMismatch": {
       "episodes": 0,
       "file": "runtime-invariants.rules",
@@ -1929,6 +1979,16 @@
       "file": "web-errors.rules",
       "firing_fraction": 0.0,
       "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "VenueListingsIncompleteStreak": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
       "observed_firing_fraction": 0.0,
       "peak_series": 0,
       "series_episodes": 0,

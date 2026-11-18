@@ -14,6 +14,9 @@
 #   - `kinowo_worker_identity_model_kept_listings` / `..._present_listings` -- the departed listings the model keeps as
 #     inputs beside the billed ones (docs/design/identity-listing-retention.md): the retention window's cost.
 #   - `kinowo_worker_identity_projection_seconds` -- the last identity projection's wall clock.
+#
+# And, in the `identity-model-health` group at the end, whether the model is up and its projection writing: the model's
+# take-up failures and rebuilds, the projection's refusals and the drift its hourly reconcile finds.
 groups:
   - name: identity-agreement-recorded
     rules:
@@ -193,3 +196,91 @@ groups:
             Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let
             them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs
             `country:<cc> "identity staging"` has the WARN line per drop and the failed publishes before it.
+
+  # IS THE IDENTITY MODEL UP, AND IS ITS PROJECTION WRITING? -- the incremental model (IdentityModelService) and the
+  # projection it feeds (IdentityProjection). Each of these counters is 0 on a healthy worker and seeded at 0 per
+  # country from boot, so increase() sees the first one and bridges a restart's reset. Over 2026-11-04..18 they counted:
+  # take-up failures none; rebuilds one (UK 11-16 23:45, a single drain that failed and rebuilt cleanly); refusals two
+  # bursts (UK `shrink` x3 on 11-09 18:45, UK `failed` x1 on 11-17 08:40), each followed by written projections;
+  # drift none. Every rule below asks for a REPEAT, so each of those one-offs stays quiet.
+  - name: identity-model-health
+    rules:
+      # THE MODEL CANNOT BE TAKEN UP. A failed take-up leaves the model DOWN (`model = None`) and retries it after 1, 2,
+      # 4 ... up to 30 minutes. While it is down nothing drains: no scrape reaches identity, every projection is
+      # refused `notready`, and the site serves the films as they were when it went down -- new films never appear.
+      # One failure the first retry answers is a blip (a Mongo read timing out at boot); a SECOND within the hour is
+      # the retry failing too. Pipeline, not identity: this is the scrape-to-site path stopped, not a take's quality.
+      - alert: IdentityModelTakeUpFailing
+        expr: sum by (country) (increase(kinowo_worker_identity_model_takeup_failures_total[1h])) >= 2
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $labels.country }}: the identity model failed {{ $value | printf \"%.0f\" }} take-ups in the last hour"
+          description: >-
+            IdentityModelService could not take its model up from its store, and the retry failed too, so the model is
+            down: no scrape is drained into identity and every projection is refused (`notready`) -- the site keeps
+            serving the films as they were, and no new film reaches it. The worker logs "identity model: take-up
+            failed" with the exception, and "identity model: down -- take-up retried in Ns" (VictoriaLogs
+            `country:<cc> "identity model:"`). Usually the identity store's read (Mongo, a decode); the retry backs off
+            to 30 minutes, so once the cause is fixed a worker restart takes it up at once.
+
+      # THE MODEL KEEPS REBUILDING. A drain that throws rebuilds the whole model from its store (`safely`): minutes on
+      # US, during which nothing drains. One is the backstop working (UK 11-16). Three in an hour is a drain that fails
+      # every time it runs -- the model spends its time rebuilding, and listings reach the site only between rebuilds.
+      - alert: IdentityModelRebuildLoop
+        expr: sum by (country) (increase(kinowo_worker_identity_model_rebuilds_total[1h])) > 2
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $labels.country }}: the identity model rebuilt itself {{ $value | printf \"%.0f\" }} times in the last hour"
+          description: >-
+            Drains of the incremental identity model keep throwing, and each one rebuilds the model from its store, so
+            scrapes are taken into identity late or not at all. The worker logs "identity model: <what> failed --
+            rebuilding from its store" with the exception (VictoriaLogs `country:<cc> "rebuilding from its store"`):
+            the same <what> and exception every time is one input the drain cannot take -- find the listing or event
+            it names. A "rebuild failed" after it also counts in IdentityModelTakeUpFailing.
+
+      # THE PROJECTION KEEPS BEING REFUSED. A refused projection writes nothing and the stored films keep serving --
+      # right for one bad run, and identity frozen in silence when every run is refused: new films do not appear,
+      # moved takes do not move. Refused in every hour's window for two hours (the hourly whole-corpus projection
+      # alone keeps the window full when it is the one refused), so a burst -- UK's three `shrink`s on 11-09 -- holds
+      # the condition for an hour and stays quiet.
+      - alert: IdentityProjectionRefusing
+        expr: sum by (country) (increase(kinowo_worker_identity_projection_refusals_total[1h])) > 0
+        for: 2h
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $labels.country }}: identity projections have been refused for two hours ({{ $value | printf \"%.0f\" }} in the last hour)"
+          description: >-
+            Every hour for two hours the identity projection was refused, so nothing it resolved has been written: the
+            site serves the films as they stood before, new films do not appear and corrected takes do not land. The
+            `reason` label of kinowo_worker_identity_projection_refusals_total says which guard: `shrink`
+            (ProjectionGuard: the projection would drop too large a share of films -- a scrape that came back empty, or
+            a resolver change), `crossing` (a family crossing), `unreadablemap` (the FilmId map could not be read),
+            `notready` (the model is down: see IdentityModelTakeUpFailing) or `failed` (it threw). Each refusal logs
+            "identity projection refused (<reason>): <why>" (VictoriaLogs `country:<cc> "identity projection
+            refused"`); `failed` logs "identity projection failed" with the stack trace.
+
+      # A SCOPED PROJECTION MISSED FILMS, AGAIN. Between hourly whole-corpus projections the worker projects only the
+      # films a change reaches (ProjectionScope); the hourly one counts the films it changed that those scopes should
+      # have (`drift_total`) and puts them right. One drifting reconcile is a film stale for under an hour and a scope
+      # bug worth a look; drift in TWO reconciles running (the 70-minute window bridges the hour's jitter, so one
+      # holds it 70 minutes and two 130) is a scope that keeps missing. None in 2026-11-04..18.
+      - alert: IdentityProjectionDrifting
+        expr: sum by (country) (increase(kinowo_worker_identity_projection_drift_total[70m])) > 0
+        for: 90m
+        labels:
+          severity: warning
+          domain: identity
+        annotations:
+          summary: "{{ $labels.country }}: hourly identity projections keep finding films the scoped ones missed ({{ $value | printf \"%.0f\" }})"
+          description: >-
+            Two or more hourly whole-corpus identity projections running changed films that the scoped projections
+            between them (ProjectionScope: only the films a change reaches) left as they were, so those films were
+            served stale for up to an hour each time. The reconcile has put each right; the bug is in the scope -- a
+            change whose reach ProjectionScope does not follow. The projection's log line names the drifted films
+            (VictoriaLogs `country:<cc> "identity projection drift"`); reproduce one with scripts/identity-slice.

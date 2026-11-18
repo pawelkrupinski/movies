@@ -451,6 +451,74 @@ groups:
     expr: |-
       max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_model_rebuilds_total[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_model_rebuilds
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_model_rebuilds'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_rebuilds series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: identity-agreement.rules IdentityModelRebuildLoop.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_model_takeup_failures_total[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_model_takeup_failures
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_model_takeup_failures'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_takeup_failures
+        series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+        the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+        nothing and cannot fire: identity-agreement.rules IdentityModelTakeUpFailing.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_projection_drift_total[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_projection_drift
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_projection_drift'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_projection_drift series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: identity-agreement.rules IdentityProjectionDrifting.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_projection_refusals_total[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_projection_refusals
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_projection_refusals'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_projection_refusals series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: identity-agreement.rules IdentityProjectionRefusing.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
       count by (country) (last_over_time(kinowo_worker_identity_projection_seconds[10m]))
     for: 15m
     keep_firing_for: 10m
@@ -689,6 +757,40 @@ groups:
     expr: |-
       max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
+      count by (country) (last_over_time(kinowo_worker_rating_resolved_not_run[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_rating_resolved_not_run
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_rating_resolved_not_run'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_rating_resolved_not_run series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: worker-pipeline.rules RatingFetchNeverRuns.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_rating_resolved_not_run_oldest_age_seconds[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_rating_resolved_not_run_oldest_age_seconds
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_rating_resolved_not_run_oldest_age_seconds'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_rating_resolved_not_run_oldest_age_seconds
+        series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+        the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+        nothing and cannot fire: worker-pipeline.rules RatingFetchNeverRuns.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
       count by (country) (last_over_time(kinowo_worker_readmodel_content_audit_confirmed_total[10m]))
     for: 15m
     keep_firing_for: 10m
@@ -855,6 +957,23 @@ groups:
         this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
         was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
         cannot fire: cinema-scrape.rules ScrapeGuardStuckRejecting.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_scrape_listing_incomplete_streak_venues[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_scrape_listing_incomplete_streak_venues
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_scrape_listing_incomplete_streak_venues'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_scrape_listing_incomplete_streak_venues
+        series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+        the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+        nothing and cannot fire: cinema-scrape.rules VenueListingsIncompleteStreak.'
   - alert: AppMetricAbsent
     expr: |-
       max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)

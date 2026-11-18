@@ -428,6 +428,33 @@ groups:
             that read's failure — fix or remove the document by hand. A change stream that meets
             one skips that event ("skipping undecodable document", rate-limited) and stays open.
 
+      # A RESOLVED FILM'S RATING HAS NEVER BEEN FETCHED, AND STILL ISN'T. RatingRunCensus (every 5 min) counts the
+      # films resolved on TMDB whose rating for a site (imdb, fw, rt, mc) has never run -- no freshness stamp -- and how
+      # long the oldest has waited since it resolved. The reaper enqueues them within minutes: over 2026-11-04..18 the
+      # backlog was 0 at every sample but ~100 single ones in 70k, each gone by the next census, and the oldest age's
+      # peaks (DE imdb 820 h, PL fw 1608 h -- a film resolved long ago and newly eligible) the same one sample. So the
+      # age alone is no signal; a backlog whose oldest is past an hour and that a whole hour of censuses (twelve) has not
+      # cleared is: the rating reaper is not enqueueing that site, or its handler never completes, and the films show
+      # no rating on the site. `last_over_time(...[15m])` bridges a worker restart (the census reseeds at its boot).
+      - alert: RatingFetchNeverRuns
+        expr: >-
+          max by (country, site) (last_over_time(kinowo_worker_rating_resolved_not_run_oldest_age_seconds[15m])) > 3600
+          and on (country, site)
+          max by (country, site) (last_over_time(kinowo_worker_rating_resolved_not_run[15m])) > 0
+        for: 1h
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $labels.country }}: resolved films have waited {{ $value | humanizeDuration }} for a first {{ $labels.site }} rating fetch"
+          description: >-
+            For an hour, films resolved on TMDB in "{{ $labels.country }}" have had no {{ $labels.site }} rating run at
+            all (kinowo_worker_rating_resolved_not_run{site="{{ $labels.site }}"} says how many), so they show no
+            {{ $labels.site }} rating. The reaper (RatingTasks / RatingSources) should enqueue each within minutes:
+            check the country's /tasks page for the site's rating task type (none queued: the enqueuer skips them --
+            its eligibility or enqueue cap; queued but never done: the handler fails or is starved -- see
+            WorkerTasksFailingRepeatedly and WorkerQueueHeadOld), and EnrichmentApiKeyRefused for the site's key.
+
   # ---------------------------------------------------------------------------------------------
   # IS EVERYTHING THE WORKER SHOULD BE DOING ACTUALLY WIRED? The in-app Telegram alerters and the
   # external integrations are each built from `Env.get(...)` in a for-comprehension, so a missing

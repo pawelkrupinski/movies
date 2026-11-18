@@ -261,6 +261,38 @@ groups:
             `services.cinemas.roster.DistinctVenuePairs` with the reason.
 
       # -----------------------------------------------------------------------------------------
+      # A VENUE LANDS INCOMPLETE EVERY TIME.
+      #
+      # `kinowo_worker_scrape_listing_incomplete_streak_venues` counts the venues whose last 24
+      # landed listings (ListingIncompleteMetrics.StreakThreshold) were ALL incomplete -- a page
+      # the scrape read failed, or a chunked run came up short. An incomplete listing skips the
+      # prune, which is right for one scrape and silent staleness for a venue incomplete every
+      # scrape: films it stopped showing stay on the site, and nothing else says so (the scrape
+      # "succeeds", so neither CinemaScrapeOldestAgeHigh nor the failure share sees it). 24 in a
+      # row is already the sustained part; the hour only lets a venue whose next scrape lands
+      # whole drop out first. 0 at every sample over 2026-11-04..18 in every country. The streaks
+      # are the worker's memory, so a restart starts every venue's count again -- the alert then
+      # clears, and comes back once the venue has run 24 incomplete again.
+      #
+      # `last_over_time(...[10m])` bridges a restart's scrape gap, as RetiredVenueRowsLingering's.
+      - alert: VenueListingsIncompleteStreak
+        expr: max by (country) (last_over_time(kinowo_worker_scrape_listing_incomplete_streak_venues[10m])) > 0
+        for: 1h
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $value }} venue(s) in {{ $labels.country }} have landed 24+ incomplete listings in a row"
+          description: >-
+            In "{{ $labels.country }}" a venue's last 24 or more scrapes all landed INCOMPLETE (a page
+            failed, or a chunked run came up short), so none has pruned it: films it no longer shows
+            are still listed. The worker logs a WARN naming the venue when it reaches the streak
+            (VictoriaLogs `country:{{ $labels.country }} "incomplete listings in a row"`), and
+            kinowo_worker_scrape_listing_incomplete_total{reason} says which way. Fetch the venue's
+            failing page by hand: a page that moved or now 404s is a scraper to fix; a chunk the
+            upstream times out on is a chunk size or host timeout (RealHttpFetch.HostPolicies).
+
+      # -----------------------------------------------------------------------------------------
       # A COUNTRY'S SCRAPES ARE FAILING, NOT COMING BACK EMPTY.
       #
       # The share of the last 30 minutes' cinema uptime checks that FAILED (fetch or parse threw),

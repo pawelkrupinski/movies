@@ -67,6 +67,14 @@ tests:
     values: '0x30'
   - series: kinowo_worker_identity_model_promoted_total{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_identity_model_rebuilds_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_drift_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_refusals_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_identity_projection_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
@@ -95,6 +103,10 @@ tests:
     values: '0x30'
   - series: kinowo_worker_queue_parked_max_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_readmodel_content_audit_confirmed_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_readmodel_content_audited_total{job="kinowo-worker",country="pl"}
@@ -114,6 +126,8 @@ tests:
   - series: kinowo_worker_scheduled_tick_interval_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_guard_verdicts_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scrape_listing_incomplete_streak_venues{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_write_skipped_total{job="kinowo-worker",country="pl"}
     values: '0x30'
@@ -453,6 +467,50 @@ tests:
     - exp_labels:
         country: de
         domain: monitoring
+        metric: kinowo_worker_identity_model_rebuilds
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_model_rebuilds
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_rebuilds series
+          for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the
+          family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityModelRebuildLoop.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_identity_model_takeup_failures
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_model_takeup_failures
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_takeup_failures
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityModelTakeUpFailing.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_identity_projection_drift
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_projection_drift
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_projection_drift series
+          for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the
+          family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityProjectionDrifting.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_identity_projection_refusals
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_projection_refusals
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_projection_refusals
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityProjectionRefusing.'
+    - exp_labels:
+        country: de
+        domain: monitoring
         metric: kinowo_worker_identity_projection_seconds
         severity: warning
       exp_annotations:
@@ -607,6 +665,28 @@ tests:
     - exp_labels:
         country: de
         domain: monitoring
+        metric: kinowo_worker_rating_resolved_not_run
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_rating_resolved_not_run
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_rating_resolved_not_run series
+          for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the
+          family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: worker-pipeline.rules RatingFetchNeverRuns.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_rating_resolved_not_run_oldest_age_seconds
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_rating_resolved_not_run_oldest_age_seconds
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_rating_resolved_not_run_oldest_age_seconds
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: worker-pipeline.rules RatingFetchNeverRuns.'
+    - exp_labels:
+        country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_content_audit_confirmed
         severity: warning
       exp_annotations:
@@ -714,6 +794,17 @@ tests:
           for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the
           family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
           nothing and cannot fire: cinema-scrape.rules ScrapeGuardStuckRejecting.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_scrape_listing_incomplete_streak_venues
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_scrape_listing_incomplete_streak_venues
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_scrape_listing_incomplete_streak_venues
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: cinema-scrape.rules VenueListingsIncompleteStreak.'
     - exp_labels:
         country: de
         domain: monitoring
@@ -982,6 +1073,14 @@ tests:
     values: '0x30'
   - series: kinowo_worker_identity_model_promoted_total{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_identity_model_rebuilds_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_drift_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_refusals_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_identity_projection_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
@@ -1010,6 +1109,10 @@ tests:
     values: '0x30'
   - series: kinowo_worker_queue_parked_max_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_readmodel_content_audit_confirmed_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_readmodel_content_audited_total{job="kinowo-worker",country="pl"}
@@ -1029,6 +1132,8 @@ tests:
   - series: kinowo_worker_scheduled_tick_interval_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_guard_verdicts_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scrape_listing_incomplete_streak_venues{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_write_skipped_total{job="kinowo-worker",country="pl"}
     values: '0x30'
@@ -1134,6 +1239,14 @@ tests:
     values: '0x30'
   - series: kinowo_worker_identity_model_promoted_total{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_identity_model_rebuilds_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_takeup_failures_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_drift_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_projection_refusals_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_identity_projection_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
@@ -1162,6 +1275,10 @@ tests:
     values: '0x30'
   - series: kinowo_worker_queue_parked_max_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_readmodel_content_audit_confirmed_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_readmodel_content_audited_total{job="kinowo-worker",country="pl"}
@@ -1181,6 +1298,8 @@ tests:
   - series: kinowo_worker_scheduled_tick_interval_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_guard_verdicts_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scrape_listing_incomplete_streak_venues{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_scrape_write_skipped_total{job="kinowo-worker",country="pl"}
     values: '0x30'

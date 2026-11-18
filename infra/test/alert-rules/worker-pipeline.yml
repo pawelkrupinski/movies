@@ -900,3 +900,34 @@ tests:
             exp_annotations:
               summary: "pl: 10 hosts' circuit breakers are open at once -- a shared egress failure (DNS, the node's network), not the hosts"
               description: "10 distinct hosts have had their breaker tripped and unrecovered for 30 minutes in pl's worker. Unrelated cinema sites do not fail together, so look at what they share: DNS first (CoreDNS `i/o timeout` lines to its upstream; the 2026-11-05 outage was Hetzner's resolvers), then the k3s node's network and the direct egress. `kinowo_worker_http_circuit_open` by host lists them; the \"failed:\" WARN lines name the exception (`ConnectException: null` is an unresolved name)."
+
+  # RatingFetchNeverRuns. The census samples every 5 minutes. DE: three resolved films have had no IMDb rating run, the
+  # oldest resolved two hours ago, for two hours -- across a worker restart (the `stale` sample) after which the census
+  # reads them again. PL: one Filmweb film resolved 1608 hours ago is newly eligible for one census and fetched by the
+  # next (prod, 11-17 17:51). US: films flowing through Metacritic, two waiting at every census but none for more than
+  # five minutes.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",instance="kinowo-worker-de",country="de",site="imdb"}'
+        values: '7200+300x6 stale 9300+300x20'
+      - series: 'kinowo_worker_rating_resolved_not_run{job="kinowo-worker",instance="kinowo-worker-de",country="de",site="imdb"}'
+        values: '3x6 stale 3x20'
+      - series: 'kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",instance="kinowo-worker-pl",country="pl",site="fw"}'
+        values: '0x3 5788800 0x23'
+      - series: 'kinowo_worker_rating_resolved_not_run{job="kinowo-worker",instance="kinowo-worker-pl",country="pl",site="fw"}'
+        values: '0x3 1 0x23'
+      - series: 'kinowo_worker_rating_resolved_not_run_oldest_age_seconds{job="kinowo-worker",instance="kinowo-worker-us",country="us",site="mc"}'
+        values: '240x27'
+      - series: 'kinowo_worker_rating_resolved_not_run{job="kinowo-worker",instance="kinowo-worker-us",country="us",site="mc"}'
+        values: '2x27'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: RatingFetchNeverRuns
+        exp_alerts: []
+      - eval_time: 1h30m
+        alertname: RatingFetchNeverRuns
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de, site: imdb }
+            exp_annotations:
+              summary: "de: resolved films have waited 3h 25m 0s for a first imdb rating fetch"
+              description: "For an hour, films resolved on TMDB in \"de\" have had no imdb rating run at all (kinowo_worker_rating_resolved_not_run{site=\"imdb\"} says how many), so they show no imdb rating. The reaper (RatingTasks / RatingSources) should enqueue each within minutes: check the country's /tasks page for the site's rating task type (none queued: the enqueuer skips them -- its eligibility or enqueue cap; queued but never done: the handler fails or is starved -- see WorkerTasksFailingRepeatedly and WorkerQueueHeadOld), and EnrichmentApiKeyRefused for the site's key."

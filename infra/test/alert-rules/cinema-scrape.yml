@@ -536,3 +536,26 @@ tests:
                 no feed of its own is to drop; two venues genuinely selling each other's sessions go on
                 `services.cinemas.roster.DistinctVenuePairs` with the reason.
 
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A VENUE LANDING INCOMPLETE EVERY TIME. DE has one venue on a 24+ streak for two hours, across
+  # a worker restart (the `stale` gap): fires after the hour. PL's venue lands whole after half an
+  # hour: quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_scrape_listing_incomplete_streak_venues{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '1x30 stale _x2 1x90'
+      - series: 'kinowo_worker_scrape_listing_incomplete_streak_venues{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '1x30 0x90'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: VenueListingsIncompleteStreak
+        exp_alerts: []
+      - eval_time: 1h20m
+        alertname: VenueListingsIncompleteStreak
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
+            exp_annotations:
+              summary: "1 venue(s) in de have landed 24+ incomplete listings in a row"
+              description: "In \"de\" a venue's last 24 or more scrapes all landed INCOMPLETE (a page failed, or a chunked run came up short), so none has pruned it: films it no longer shows are still listed. The worker logs a WARN naming the venue when it reaches the streak (VictoriaLogs `country:de \"incomplete listings in a row\"`), and kinowo_worker_scrape_listing_incomplete_total{reason} says which way. Fetch the venue's failing page by hand: a page that moved or now 404s is a scraper to fix; a chunk the upstream times out on is a chunk size or host timeout (RealHttpFetch.HostPolicies)."
