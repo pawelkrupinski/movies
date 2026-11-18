@@ -78,17 +78,21 @@ private[identity] object NumeralMeasures {
       if (billed == Category("different")) billed else relation
     } else relation
   }
-  private def numeralRelation(shapes: Seq[Numbered], f: Film): Measure = {
-    lazy val related = for (a <- shapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers)
+  private def numeralRelation(shapes: Seq[Numbered], f: Film): Measure =
     if (f.season.isDefined) Missing("season")
-    else if (related.isEmpty) Missing("unrelated")
+    else seriesNumbersRelation(for (a <- shapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers))
+  /** How the numbers of each pair of one series' titles — the listing's, the film's — relate: the first pair decides
+   *  which side alone numbers it, unless some pair numbers alike or neither numbers. */
+  private def seriesNumbersRelation(related: Seq[(Set[Int], Set[Int])]): Measure =
+    if (related.isEmpty) Missing("unrelated")
     else if (related.exists { case (a, b) => a.nonEmpty && a == b }) Category("same")
     else if (related.exists { case (a, b) => a.isEmpty && b.isEmpty }) Missing("none")
-    else related.head match {
-      case (_, b) if b.isEmpty => Category("listing_only")
-      case (a, _) if a.isEmpty => Category("film_only")
-      case _                   => Category("different")
-    }
+    else onlyOneNumbers(related.head)
+  /** Which side alone numbers a pair of one series' titles, or `different` numbers on both. */
+  private def onlyOneNumbers(pair: (Set[Int], Set[Int])): Measure = pair match {
+    case (_, b) if b.isEmpty => Category("listing_only")
+    case (a, _) if a.isEmpty => Category("film_only")
+    case _                   => Category("different")
   }
 
   /** The numeral relations under which the listing numbers ANOTHER instalment than the film. */

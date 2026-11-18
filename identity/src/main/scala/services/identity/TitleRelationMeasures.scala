@@ -60,31 +60,49 @@ private[identity] object TitleRelationMeasures {
     val ls  = l.ownForms
     val all = f.forms
     val own = l.ownKeys
+    val (originalForms, alternativeForms) = all.tail.splitAt(f.originalTitle.size)
+    if (namesTitle(ls, own, all.head)) Category("exact")
+    else if (namesOneOf(ls, own, originalForms)) Category("original")
+    else if (namesOneOf(ls, own, alternativeForms)) Category("alternative")
+    else containedIn(l, f, houses, qualifiers).getOrElse(
+      if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
+  }
+  /** Does a listing's title (its forms `ls`, their keys `own`) name the film's own title form exactly: its key, its
+   *  [[articleless]] or [[partSpelled]] spelling, a word a typo apart, its Latin, ampersand or sharp-s spelling? */
+  private def namesTitle(ls: Seq[TitleForm], own: Set[String], titleForm: TitleForm): Boolean =
+    own.contains(titleForm.key) || articleless(ls)(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
+      spelledAlike(ls, titleForm) || partSpelled(ls)(titleForm)
+  /** Does a listing's title spell the film's title form alike: in Latin letters, with `&` for its "and", or with `ss` for
+   *  its `ß`? */
+  private def spelledAlike(ls: Seq[TitleForm], titleForm: TitleForm): Boolean =
+    (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey)) ||
+      ls.exists(a => a.ampersand && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey) ||
+      titleForm.sharpS && ls.exists(a => a.sharpSKey.nonEmpty && a.sharpSKey == titleForm.sharpSKey)
+  /** Does a listing's title name one of the film's `forms` (its original or its alternative titles): by key, or by its
+   *  [[articleless]] or [[partSpelled]] spelling? */
+  private def namesOneOf(ls: Seq[TitleForm], own: Set[String], forms: Seq[TitleForm]): Boolean =
+    forms.map(_.key).exists(own) || forms.exists(articleless(ls)) || forms.exists(partSpelled(ls))
+  /** The film's title with the part it numbers spelled otherwise: "Diuna: część 3" is "Diuna: Część trzecia" (PL Kino
+   *  ODEON's billing measured an `overlap` of it, and was denied as another instalment). */
+  private def partSpelled(ls: Seq[TitleForm])(t: TitleForm): Boolean = t.partKey.nonEmpty && ls.exists(_.partKey == t.partKey)
+  /** The film's title with the leading article the venue dropped: "Brides of Dracula" is "The Brides of Dracula"
+   *  (US Metrograph's listing took Fisher's "Dracula" over a `fragment` of its own film). Three words left at least —
+   *  "Spookies" is no more "The Spookies" than any other — and never the other way: a listing's own article is its title's.
+   *  A plain title, not a banner's: "Royal Ballet: Swan Lake" is not thereby "The Royal Ballet: Swan Lake" (2024), the
+   *  house's earlier recording, over the 2026/27 broadcast its banner names. */
+  private def articleless(ls: Seq[TitleForm])(t: TitleForm): Boolean =
+    !t.text.contains(':') && t.afterArticle.exists(rest => rest.sizeIs >= 3 && ls.exists(a => !a.text.contains(':') && a.words == rest))
+  /** How the listing's shapes contain the film's titles ([[containment]]) — those the listing's qualifiers leave
+   *  ([[Qualifiers.of]]) — when no title names it whole: a segment also where the billing names a house's season
+   *  production or bills works of two titles. None when the qualifiers leave no title. */
+  private def containedIn(l: Listing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Option[Category] = {
+    val all = f.forms
     lazy val qualifying = qualifiers.of(l)
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
-    val (titleForm, rest) = (all.head, all.tail)
-    val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
-    // The film's title with the leading article the venue dropped: "Brides of Dracula" is "The Brides of Dracula"
-    // (US Metrograph's listing took Fisher's "Dracula" over a `fragment` of its own film). Three words left at least —
-    // "Spookies" is no more "The Spookies" than any other — and never the other way: a listing's own article is its title's.
-    // A plain title, not a banner's: "Royal Ballet: Swan Lake" is not thereby "The Royal Ballet: Swan Lake" (2024), the
-    // house's earlier recording, over the 2026/27 broadcast its banner names.
-    // The film's title with the part it numbers spelled otherwise: "Diuna: część 3" is "Diuna: Część trzecia" (PL Kino
-    // ODEON's billing measured an `overlap` of it, and was denied as another instalment).
-    val partSpelled = (t: TitleForm) => t.partKey.nonEmpty && ls.exists(_.partKey == t.partKey)
-    val articleless = (t: TitleForm) => !t.text.contains(':') && t.afterArticle.exists(rest => rest.sizeIs >= 3 &&
-      ls.exists(a => !a.text.contains(':') && a.words == rest))
-    if (own.contains(titleForm.key) || articleless(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
-        (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey)) ||
-        ls.exists(a => a.ampersand && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey) ||
-        titleForm.sharpS && ls.exists(a => a.sharpSKey.nonEmpty && a.sharpSKey == titleForm.sharpSKey) || partSpelled(titleForm)) Category("exact")
-    else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless) || originalForms.exists(partSpelled)) Category("original")
-    else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless) || alternativeForms.exists(partSpelled)) Category("alternative")
-    else (if (fs.isEmpty) None
-          else containment(ls, l.shapeKeys, fs,
-            houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same) ||
-              billsWorksOfTwoTitles(l, f), l.shapeWords, l.undecoratedWords)).getOrElse(
-      if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
+    if (fs.isEmpty) None
+    else containment(l.ownForms, l.shapeKeys, fs,
+      houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same) ||
+        billsWorksOfTwoTitles(l, f), l.shapeWords, l.undecoratedWords)
   }
 
   /** How one side's titles name the other's once no whole title matches: a whole delimited piece
@@ -175,22 +193,28 @@ private[identity] object TitleRelationMeasures {
    *    Worlds25 - Finals in Cinema", is no title of that record.
    *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
   def venueTitles(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
-    val translated = listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
-      .filter { case (t, o, _) => t.nonEmpty && o.nonEmpty && t != o }.toSeq
+    val translated = translatedTitles(listings)
     val unanimous = translated.groupMap(_._1)(_._2).collect { case (t, os) if os.distinct.sizeIs == 1 => t -> os.head }
     val spelling  = translated.groupMapReduce(_._1)(_._3)((a, b) => if (a <= b) a else b)
     val filmsByKey = films.toSeq.flatMap { case (id, f) => f.ownTitleKeys.map(_ -> (id, f)) }
       .groupMap(_._1)(_._2)
     val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
-        case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) &&
-          !StageRelays.namesAnotherStageWork(Listing(spelling(t)), f) &&
-          numeralRelation(Listing(spelling(t)), f) != Category("different") => Some(id -> spelling(t))
+        case Seq((id, f)) if gainsVenueTitle(Listing(spelling(t)), f) => Some(id -> spelling(t))
         case _ => None
       }
     }
     byOriginal.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
   }
+  /** Each listing publishing an original title apart from its title: the title's key, the original's, and the title. */
+  private def translatedTitles(listings: Iterable[Listing]): Seq[(String, String, String)] =
+    listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
+      .filter { case (t, o, _) => t.nonEmpty && o.nonEmpty && t != o }.toSeq
+  /** Does the record `f` gain the venue's title `titled` ([[venueTitles]]): a title that does not name it already, bills no
+   *  other stage work and numbers no other instalment? */
+  private def gainsVenueTitle(titled: Listing, f: Film): Boolean =
+    !NamingRelations(titleRelation(titled, f).value) && !StageRelays.namesAnotherStageWork(titled, f) &&
+      numeralRelation(titled, f) != Category("different")
 
   /** The second way a venue publishes a record's title in its language — asked per title key, of that key's
    *  listings and the records their own searches and walks reached (so it is local to the key, as the live
@@ -205,38 +229,46 @@ private[identity] object TitleRelationMeasures {
    *  relay of another stage work than the record's ([[StageRelays.namesAnotherStageWork]]). */
   def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
-    // A bill's title names two works: its facts may single out one, but the title is no record's own.
-    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !BillJoins.joinsWorks(l.title)).map { l =>
+    singledByFacts(listings, pool).groupBy(_._1).toSeq.flatMap { case (_, ls) =>
+      // A listing whose facts single out no record here, or several, says nothing; one singling out another denies.
+      ls.map(_._3).filter(_.sizeIs == 1).distinct match {
+        case Seq(Seq(id)) =>
+          val spelling = ls.map(_._2).min
+          Option.when(learnedByFacts(spelling, ls.flatMap(_._4).distinct, id, pool))(id -> spelling)
+        case _ => None
+      }
+    }
+  }
+  /** Each listing whose own director and year may single out a record of `pool`: its title's key, its title, the records
+   *  its facts single out, and its year. A bill's title names two works: its facts may single out one, but the title is
+   *  no record's own. */
+  private def singledByFacts(listings: Iterable[Listing], pool: Seq[(Int, Film)]): Seq[(String, String, Seq[Int], Option[Int])] =
+    listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !BillJoins.joinsWorks(l.title)).map { l =>
       val year = l.statedYear.get
       val ids  = pool.collect { case (id, f) if f.year.exists(FactRelations.yearsNear(_, year)) &&
         creditsItsDirector(l, f) => id }.distinct
       (key(l.title), l.title, ids, l.statedYear)
     }.filter(_._1.nonEmpty).toSeq
-    singled.groupBy(_._1).toSeq.flatMap { case (_, ls) =>
-      // A listing whose facts single out no record here, or several, says nothing; one singling out another denies.
-      ls.map(_._3).filter(_.sizeIs == 1).distinct match {
-        // A title some record of the pool carries already is that record's to answer for ("Obcy" is Ozon's
-        // 2025 film however a 2026 listing's facts lean): only a title no record its years do not rule out names is
-        // learned. PL "Ktoś całkiem obcy" [2024, 2026] {Brandt Andersen} is his "I Was a Stranger", titled in Arabic and
-        // English only, not Foley's 2007 "Perfect Stranger", whose Polish title it is.
-        // Nor a title pointing at ANOTHER record its facts do not rule out: "BTS World Tour 'ARIRANG' In Buenos
-        // Aires: Live" credits the tour's director, whom only the São Paulo record carries, while its title
-        // names the Buenos Aires one ("…: Live Viewing").
-        case Seq(Seq(id)) =>
-          val spelling = ls.map(_._2).min
-          val years    = ls.flatMap(_._4).distinct
-          def relation(f: Film) = titleRelation(Listing(spelling), f).value
-          def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => !FactRelations.yearsNear(l, y)))
-          // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
-          // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
-          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !StageRelays.namesAnotherStageWork(Listing(spelling), f) }
-              .getOrElse(false) &&
-            !pool.exists { case (_, f) => Rivalling(relation(f)) && !ruledOut(f) } &&
-            !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOut(f) })(id -> spelling)
-        case _ => None
-      }
-    }
+  /** Is `spelling`, whose listings' facts (their `years`) single out the record `id`, learned as its title?
+   *  A title some record of the pool carries already is that record's to answer for ("Obcy" is Ozon's
+   *  2025 film however a 2026 listing's facts lean): only a title no record its years do not rule out names is
+   *  learned. PL "Ktoś całkiem obcy" [2024, 2026] {Brandt Andersen} is his "I Was a Stranger", titled in Arabic and
+   *  English only, not Foley's 2007 "Perfect Stranger", whose Polish title it is.
+   *  Nor a title pointing at ANOTHER record its facts do not rule out: "BTS World Tour 'ARIRANG' In Buenos
+   *  Aires: Live" credits the tour's director, whom only the São Paulo record carries, while its title
+   *  names the Buenos Aires one ("…: Live Viewing"). */
+  private def learnedByFacts(spelling: String, years: Seq[Int], id: Int, pool: Seq[(Int, Film)]): Boolean = {
+    def relation(f: Film) = titleRelation(Listing(spelling), f).value
+    // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
+    // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
+    pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !StageRelays.namesAnotherStageWork(Listing(spelling), f) }
+        .getOrElse(false) &&
+      !pool.exists { case (_, f) => Rivalling(relation(f)) && !ruledOutByYears(f, years) } &&
+      !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOutByYears(f, years) }
   }
+  /** Do the listings' `years` rule the record `f` out: it is dated, and none of them is within a year of it? */
+  private def ruledOutByYears(f: Film, years: Seq[Int]): Boolean =
+    f.year.exists(y => years.nonEmpty && years.forall(l => !FactRelations.yearsNear(l, y)))
 
   /** `f` with the titles venues publish for it ([[venueTitles]]) among its alternative titles. */
   def withVenueTitles(f: Film, titles: Seq[String]): Film =
@@ -286,18 +318,20 @@ private[identity] object TitleRelationMeasures {
       case None => MissingListing
       case Some(o) =>
         if (others.isEmpty) MissingFilm
-        // The same title — or the film's without its trailing gloss ("TKT (T'inquiète)") — or once years
-        // and seasons are dropped: "The Metropolitan Opera: Così fan tutte
-        // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
-        else if (others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key) || o.versionlessKey.contains(t.key)) ||
-                 others.exists(t => oneTypoApart(o.form.words, t.words)) ||
-                 others.exists(_.latinKey == o.form.latinKey) ||
-                 (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty &&
-                   (t.yearlessWords == o.form.yearlessWords || withoutOwnYear(t.yearlessWords, filmYear) == o.form.yearlessWords))))
-          Category("match")
+        else if (originalMatches(o, others, filmYear)) Category("match")
         else containment(Seq(o.form), o.shapeKeys, others, undecorated = o.segmentWords).getOrElse {
           if (others.exists(t => (t.words.filter(_.length >= 4).toSet intersect o.longWords).nonEmpty)) Category("overlap")
           else Category("disjoint")
         }
     }
+  /** Is the original title one of `others`: the same title — or the film's without its trailing gloss ("TKT
+   *  (T'inquiète)") or its own without its version tag — a typo apart, the same in Latin letters, or the same once years
+   *  and seasons are dropped: "The Metropolitan Opera: Così fan tutte (2026)" is "The Metropolitan Opera 2026/27: Così
+   *  fan tutte" (the year is measured apart)? */
+  private def originalMatches(o: OriginalForm, others: Seq[TitleForm], filmYear: Option[Int]): Boolean =
+    others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key) || o.versionlessKey.contains(t.key)) ||
+      others.exists(t => oneTypoApart(o.form.words, t.words)) ||
+      others.exists(_.latinKey == o.form.latinKey) ||
+      (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty &&
+        (t.yearlessWords == o.form.yearlessWords || withoutOwnYear(t.yearlessWords, filmYear) == o.form.yearlessWords)))
 }

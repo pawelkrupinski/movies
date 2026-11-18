@@ -88,12 +88,18 @@ object TitleRelation {
    *  rest of a title naming a film of its own, reads the candidates and stays with [[ConstraintEdges]]. */
   def tier(a: Forms, b: Forms, besideA: String => Boolean, besideB: String => Boolean, sharedOriginal: Boolean = true): Option[(Int, String)] =
     if (a.whole.nonEmpty && a.whole == b.whole) Some((2, ConstraintEdges.SameTitle))
-    else if (a.searchForm.nonEmpty && a.searchForm == b.searchForm && !besideA(a.searchForm) && !besideB(a.searchForm))
-      Some((3, ConstraintEdges.SameSearchForm))
-    else if ((a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) || (sharedOriginal && a.originals.nonEmpty && a.originals == b.originals))
-      Some((3, ConstraintEdges.OriginalTitle))
+    else if (sameSearchForm(a, b, besideA, besideB)) Some((3, ConstraintEdges.SameSearchForm))
+    else if (sameOriginal(a, b, sharedOriginal)) Some((3, ConstraintEdges.OriginalTitle))
     else if (segmentOf(a, b) || segmentOf(b, a)) Some((4, ConstraintEdges.TitleSegment))
     else None
+
+  /** Do two titles search as one form, beside neither's own film? */
+  private def sameSearchForm(a: Forms, b: Forms, besideA: String => Boolean, besideB: String => Boolean): Boolean =
+    a.searchForm.nonEmpty && a.searchForm == b.searchForm && !besideA(a.searchForm) && !besideB(a.searchForm)
+
+  /** Does one title's original name the other's whole title, or (`sharedOriginal`) do the two bill the same originals? */
+  private def sameOriginal(a: Forms, b: Forms, sharedOriginal: Boolean): Boolean =
+    (a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) || (sharedOriginal && a.originals.nonEmpty && a.originals == b.originals)
 
   /** Is `whole`'s title a delimited segment of `decorated`'s? */
   def segmentOf(whole: Forms, decorated: Forms): Boolean = decorated.segments.contains(whole.whole)

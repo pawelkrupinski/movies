@@ -86,17 +86,23 @@ private[identity] object YearRuntimeMeasures {
       var longest = 0
       def against(runtime: Int): Unit = if (runtime > 0) {
         val d = stated - runtime
-        if (math.abs(d) < math.abs(off) || (math.abs(d) == math.abs(off) && d > off)) off = d
+        if (closerRuntime(d, off)) off = d
         longest = math.max(longest, runtime)
       }
       f.runtime.foreach(against)
       if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
       FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
       if (longest == 0) MissingFilm
-      else if (stated > longest && (billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))))
-        MissingListing
+      else if (stated > longest && runsPastTheRecord(l, f, country, title, off)) MissingListing
       else Number(off.toDouble)
   }
+  /** Is a runtime `d` minutes off the stated one closer to it than the closest yet (`off`): fewer minutes off, or as many
+   *  and the venue's longer? */
+  private def closerRuntime(d: Int, off: Int): Boolean = math.abs(d) < math.abs(off) || (math.abs(d) == math.abs(off) && d > off)
+  /** Of a listing billing longer than every runtime of the record, `off` minutes past the closest: is that no fact about
+   *  the record — an edition it bills, or, past the band, an event it runs or the record's own relay? */
+  private def runsPastTheRecord(l: Listing, f: Film, country: Option[String], title: Category, off: Int): Boolean =
+    billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))
 
   /** The title relation a caller of [[runtimeDelta]] that read none passes: no relay of the record is then read (a value,
    *  not a by-name test: the measure runs for every listing against every candidate, and a thunk a call is its allocation). */

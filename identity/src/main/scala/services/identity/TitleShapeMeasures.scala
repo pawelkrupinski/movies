@@ -221,31 +221,43 @@ private[identity] object TitleShapeMeasures {
     if (!title.exists(_.isLower) || !title.exists(_.isUpper)) Nil
     else {
       val words = CaseWord.findAllMatchIn(title).toVector
-      // a Roman numeral is the film's number, never a word in capitals, and closes the run as a word in lower case does: DE
-      // Babylon's "Halloween II [OV]" split at "II" searched "Halloween" and lost Halloween II's family (measure 41438444822)
-      def capitals(w: String) = !numeral(w) && w.count(_.isLetter) >= 2 && !w.exists(_.isLower)
-      def lettered(w: String) = w.exists(_.isLetter)
-      // the half in capitals is the head (a programme heading the film) or the tail (a strand closing it, or the film
-      // billed in capitals after its programme)
-      def split(at: Int, capitalsHead: Boolean): Option[Seq[String]] = {
-        val (head, tail) = (title.substring(0, words(at).start), title.substring(words(at).start))
-        val stop = head.reverse.takeWhile(c => !c.isLetterOrDigit)
-        val spaced = stop.exists(_.isWhitespace)
-        val allowed = stop.trim.isEmpty || stop.trim.forall(".!?…".contains(_)) || (stop.trim.forall("-–—".contains(_)) && !spaced)
-        val halves = Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim)
-        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter) && bracketsClosed(head) &&
-          tail.trim.headOption.exists(c => c.isUpper || c.isDigit) && !partsInCapitals(if (capitalsHead) head else tail) &&
-          !halves.exists(onlyBilledAround))(halves)
-      }
-      // a closing run of capitals
-      val closing = words.reverseIterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
-      val opening = words.iterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
-      val tailRun = Option.when(closing >= 2 && closing < words.size && words.takeRight(closing).count(m => capitals(m.matched)) >= 2 &&
-        words.dropRight(closing).exists(_.matched.exists(_.isLower)))(words.size - closing).flatMap(split(_, capitalsHead = false))
-      val headRun = Option.when(opening >= 2 && opening < words.size && words.take(opening).count(m => capitals(m.matched)) >= 2 &&
-        words.drop(opening).exists(_.matched.exists(_.isLower)))(opening).flatMap(split(_, capitalsHead = true))
+      // a closing run of capitals, then an opening one
+      val closing = words.reverseIterator.takeWhile(inCapitalsRun).size
+      val opening = words.iterator.takeWhile(inCapitalsRun).size
+      val tailRun = Option.when(runSplits(closing, words.takeRight(closing), words.dropRight(closing), words.size))(words.size - closing)
+        .flatMap(caseSplitAt(title, words, _, capitalsHead = false))
+      val headRun = Option.when(runSplits(opening, words.take(opening), words.drop(opening), words.size))(opening)
+        .flatMap(caseSplitAt(title, words, _, capitalsHead = true))
       (tailRun.toSeq ++ headRun.toSeq).flatten.filter(_.nonEmpty)
     }
+  /** A word in capitals: two letters or more, none lower case, and no Roman numeral — a numeral is the film's number,
+   *  never a word in capitals, and closes the run as a word in lower case does: DE Babylon's "Halloween II [OV]" split at
+   *  "II" searched "Halloween" and lost Halloween II's family (measure 41438444822). */
+  private def inCapitals(word: String): Boolean = !numeral(word) && word.count(_.isLetter) >= 2 && !word.exists(_.isLower)
+  /** Does a word continue a run of capitals: a word in capitals, or one with no letter at all? */
+  private def inCapitalsRun(word: scala.util.matching.Regex.Match): Boolean =
+    inCapitals(word.matched) || !word.matched.exists(_.isLetter)
+  /** Does a run of `run` words (`inRun`) split the billing: two words or more, not all of them, two in capitals, and a word in
+   *  lower case among the `rest`? */
+  private def runSplits(run: Int, inRun: => Vector[scala.util.matching.Regex.Match], rest: => Vector[scala.util.matching.Regex.Match], words: Int): Boolean =
+    run >= 2 && run < words && inRun.count(m => inCapitals(m.matched)) >= 2 && rest.exists(_.matched.exists(_.isLower))
+  /** The two halves at the word `at`, when the stop before it allows a split and neither half is barred: the half in capitals
+   *  is the head (a programme heading the film) or the tail (a strand closing it, or the film billed in capitals after its
+   *  programme). */
+  private def caseSplitAt(title: String, words: Vector[scala.util.matching.Regex.Match], at: Int, capitalsHead: Boolean): Option[Seq[String]] = {
+    val (head, tail) = (title.substring(0, words(at).start), title.substring(words(at).start))
+    val stop = head.reverse.takeWhile(c => !c.isLetterOrDigit)
+    val halves = Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim)
+    Option.when(caseStopAllowed(stop) && halvesSplit(head, tail, capitalsHead) && !halves.exists(onlyBilledAround))(halves)
+  }
+  /** Does the stop before a case change allow a split: none, a sentence's stop, or an unspaced dash? */
+  private def caseStopAllowed(stop: String): Boolean =
+    stop.trim.isEmpty || stop.trim.forall(".!?…".contains(_)) || (stop.trim.forall("-–—".contains(_)) && !stop.exists(_.isWhitespace))
+  /** May a billing split into `head` and `tail`: letters on both sides, every bracket the head opens closed, the tail
+   *  starting with a capital or a digit, and no stops inside the half in capitals ([[partsInCapitals]])? */
+  private def halvesSplit(head: String, tail: String, capitalsHead: Boolean): Boolean =
+    head.exists(_.isLetter) && tail.exists(_.isLetter) && bracketsClosed(head) &&
+      tail.trim.headOption.exists(c => c.isUpper || c.isDigit) && !partsInCapitals(if (capitalsHead) head else tail)
   /** Does the half in capitals hold stops of its own — a programme of parts, PL "24. Festiwal TERRA - BANGLADESZ -
    *  NIEZNOŚNY CIĘŻAR ŻYCIA", whose pieces the searches would read alone ("TERRA" took Terra, 2007)? No case change
    *  splits such a billing. */
@@ -325,14 +337,18 @@ private[identity] object TitleShapeMeasures {
   private[identity] def oneTypoApart(a: Seq[String], b: Seq[String]): Boolean =
     // Two words at least: a one-word title a letter from another is another film ("Lalka"/"Lalkar").
     a.size >= 2 && a.size == b.size && a != b && {
-      // The one index the two differ at, or -1 for more than one: counted in place, not as a vector of them per pair.
-      val differing = { var at = -1; var i = 0; var n = 0
-        while (i < a.size && n < 2) { if (a(i) != b(i)) { at = i; n += 1 }; i += 1 }
-        if (n == 1) at else -1 }
-      differing >= 0 && {
-        val (x, y) = (a(differing), b(differing))
-        x.length >= 5 && y.length >= 5 && !Seq(x, y).exists(w => w.exists(_.isDigit) || RomanNumeral.pattern.matcher(w).matches()) &&
-          tools.EditDistance.within(x, y, 1)
-      }
+      val differing = onlyDifferingWord(a, b)
+      differing >= 0 && typoApart(a(differing), b(differing))
     }
+  /** The one index two titles' words of one count differ at, or -1 for none or more than one: counted in place, not as a
+   *  vector of them per pair. */
+  private def onlyDifferingWord(a: Seq[String], b: Seq[String]): Int = {
+    var at = -1; var i = 0; var n = 0
+    while (i < a.size && n < 2) { if (a(i) != b(i)) { at = i; n += 1 }; i += 1 }
+    if (n == 1) at else -1
+  }
+  /** Are two words a typo apart: five letters or more each, neither a number nor a Roman numeral, one edit between them? */
+  private def typoApart(x: String, y: String): Boolean =
+    x.length >= 5 && y.length >= 5 && !Seq(x, y).exists(w => w.exists(_.isDigit) || RomanNumeral.pattern.matcher(w).matches()) &&
+      tools.EditDistance.within(x, y, 1)
 }
