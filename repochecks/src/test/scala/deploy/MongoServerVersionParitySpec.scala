@@ -77,7 +77,8 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   }
 
   "every CI job starting mongod" should s"run on $MongoRunner, whose kernel mongod $productionVersion starts on" in {
-    val RunsOn = """runs-on:\s*(\$\{\{[^}]*}}|\S+)""".r.unanchored
+    // the whole expression to its line's last `}}`: a `format('["{0}", ...]')` holds a `}` of its own (precommit-check's rest)
+    val RunsOn = """runs-on:\s*(\$\{\{.*}}|\S+)""".r.unanchored
     val wrong = for {
       file        <- RepoFile.workflows()
       yml          = RepoFile.withoutComments(RepoFile.read(file.getPath))
