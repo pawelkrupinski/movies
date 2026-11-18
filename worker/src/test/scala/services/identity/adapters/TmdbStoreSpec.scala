@@ -5,6 +5,7 @@ import tools.SpecPool
 import tools.SpecTimeouts
 
 import clients.TmdbClient
+import services.identity.adapters.TmdbIdentityReads.*
 import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

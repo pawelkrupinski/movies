@@ -35,7 +35,6 @@ module-edge	worker->common	1607
 module-edge	worker->http	192
 module-edge	worker->identity	447
 module-edge	worker->scrapers	142
-cycle-edge	clients->services.identity	3
 cycle-edge	modules->modules.webwiring	14
 cycle-edge	modules->modules.wiring	23
 cycle-edge	modules.webwiring->modules	8
@@ -45,14 +44,12 @@ cycle-edge	services.cinemas->services.enrichment	5
 cycle-edge	services.cinemas->services.identity	8
 cycle-edge	services.cinemas->services.movies	100
 cycle-edge	services.cinemas->services.scrapes	11
-cycle-edge	services.enrichment->clients	4
 cycle-edge	services.enrichment->services.events	2
 cycle-edge	services.enrichment->services.identity	4
 cycle-edge	services.enrichment->services.movies	50
 cycle-edge	services.enrichment->services.resolution	26
 cycle-edge	services.enrichment->services.tasks	6
 cycle-edge	services.events->services.tasks	2
-cycle-edge	services.identity->clients	13
 cycle-edge	services.identity->services.billing	39
 cycle-edge	services.identity->services.cinemas	22
 cycle-edge	services.identity->services.enrichment	21
@@ -71,7 +68,6 @@ cycle-edge	services.metrics->services.readmodel	9
 cycle-edge	services.metrics->services.resolution	2
 cycle-edge	services.metrics->services.scrapes	6
 cycle-edge	services.metrics->services.tasks	23
-cycle-edge	services.movies->clients	1
 cycle-edge	services.movies->services.billing	2
 cycle-edge	services.movies->services.enrichment	1
 cycle-edge	services.movies->services.events	3
@@ -102,7 +98,7 @@ cycle-edge	services.venuepages->services.cinemas	17
 cycle-edge	services.venuepages->services.events	2
 cycle-edge	services.venuepages->services.identity	2
 cycle-edge	services.venuepages->services.tasks	13
-ce	clients	4
+ce	clients	3
 ce	controllers	18
 ce	diagnostics	5
 ce	models	1

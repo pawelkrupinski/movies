@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import clients.TmdbClient
+import services.identity.adapters.TmdbIdentityReads.*
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
 import play.api.Logging
 import services.cadence.DueBoundary

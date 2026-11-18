@@ -44,7 +44,7 @@ class TmdbClient(
   // `val` so the enrichment (`MovieService`) can canonicalise the country names
   // TMDB returns in the SAME language it fetched them in.
   val language: Locale = TmdbClient.DefaultLanguage,
-  // How a film's two responses (`details`, `fullDetails`, `identityRecord`) are parsed: shared with
+  // How a film's two responses (`details`, `fullDetails`, `filmAnswers`) are parsed: shared with
   // the identity store's normalizer, which parsed the same bodies a moment before on this thread
   // (`tools.JsonBodies`) — every reader of them takes that parse, so none stays on the thread.
   bodies: _root_.tools.JsonBodies = new _root_.tools.JsonBodies,
@@ -209,27 +209,18 @@ class TmdbClient(
   private def fullDetailsUrl(tmdbId: Int): String =
     s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits,release_dates${apiKeyParameter("&")}"
 
-  /** The film as the identity measures read it (`services.identity.TmdbFilmRecord`), from the two
-   *  answers this client already asks about it — [[fullDetails]]'s and [[details]]'s — so a tree
-   *  recorded for either serves it. `None` when TMDB knows no such film; a failed read THROWS, so
-   *  the identity resolver's lookups can tell "no film" from "not answered". */
-  def identityRecord(tmdbId: Int): Option[services.identity.IdentityMeasures.Film] = authHeader.flatMap { auth =>
-    services.identity.TmdbFilmRecord.parse(Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId))
-      .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
+  /** The film's two answers this client asks about it — [[fullDetails]]' localized record and [[details]]' en-US
+   *  one, in that order, each parsed (a film TMDB does not know read as an empty answer) — for a reader that builds its
+   *  own reading off both (the identity lookups' `services.identity.adapters.TmdbIdentityReads`), so a tree recorded
+   *  for either serves it. `None` without a key; a failed read THROWS, so a reader can tell "no film" from "not
+   *  answered". */
+  def filmAnswers(tmdbId: Int): Option[Seq[JsValue]] = authHeader.map { auth =>
+    Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId)).map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth))))
   }
 
-  /** The film's top-billed cast off its localized record ([[fullDetails]]' request, as [[identityRecord]] reads it): what
-   *  the identity store files of it, and the cast evidence reads (`services.identity.CastEvidence`). */
-  def identityCast(tmdbId: Int): Option[Seq[String]] = authHeader.flatMap { auth =>
-    services.identity.TmdbFilmRecord.cast(Seq(bodies.parse(orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))))
-  }
-
-  /** The words the film's overviews capitalise, off both answers [[identityRecord]] reads (`services.identity.TmdbFilmRecord.overview`):
-   *  what the identity store files of them, and the synopsis evidence reads (`services.identity.agreement.SynopsisEvidence`). */
-  def identityOverview(tmdbId: Int): Option[services.identity.ProseWords] = authHeader.flatMap { auth =>
-    services.identity.TmdbFilmRecord.overview(Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId))
-      .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth)))))
-  }
+  /** The localized answer alone ([[fullDetails]]' request), parsed as [[filmAnswers]] parses it. */
+  def localizedAnswer(tmdbId: Int): Option[JsValue] =
+    authHeader.map(auth => bodies.parse(orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth))))
 
   /** Asks TMDB for the film's localized record again ([[fullDetails]]' request, no poster call): what the identity
    *  store files as the record's localized response — a record filed with only its release year gains its day

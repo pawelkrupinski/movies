@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import clients.TmdbClient
+import services.identity.adapters.TmdbIdentityReads.*
 import models.Cinema
 import services.cinemas.common.DetailEnricher
 import services.enrichment.ImdbClient

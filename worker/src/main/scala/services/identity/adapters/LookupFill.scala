@@ -237,7 +237,7 @@ final class LookupFill(
   private def renew(lookups: TmdbIdentityLookups, client: TmdbClient, budget: LookupFillBudget): Unit =
     tools.HttpPath.within(tools.HttpPath.Refresh)(renewals().iterator.takeWhile(_ => budget.remaining > 0).foreach {
       case Question.Candidate(query) => lookups.candidates(query)
-      case Question.FilmRecord(id)   => try client.identityRecord(id) catch { case NonFatal(_) => () }
+      case Question.FilmRecord(id)   => try client.filmAnswers(id) catch { case NonFatal(_) => () }
       case Question.Person(id)       => try client.personDirectorCredits(id) catch { case NonFatal(_) => () }
       case _                         => ()
     })

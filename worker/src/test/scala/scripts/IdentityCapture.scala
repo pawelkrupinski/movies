@@ -160,7 +160,8 @@ object IdentityCapture {
     "identity/src/main/scala/services/identity/", "identity/src/main/resources/identity-", "common/src/main/scala/services/titlerules/",
     "common/src/main/resources/title-rules.tsv", "common/src/main/scala/services/movies/TitleNormalizer.scala",
     "worker/src/main/scala/services/identity/adapters/TmdbIdentityLookups.scala",
-    "worker/src/main/scala/services/TmdbClient.scala", "worker/src/it/scala/IdentityShadow.scala")
+    "worker/src/main/scala/clients/TmdbClient.scala", "worker/src/main/scala/services/identity/adapters/TmdbIdentityReads.scala",
+    "worker/src/it/scala/IdentityShadow.scala")
   val NotDecisionInputs: Seq[String] = Seq("identity/src/main/scala/services/identity/agreement/")
 
   def isDecisionInput(path: String): Boolean = DecisionInputs.exists(path.startsWith) && !NotDecisionInputs.exists(path.startsWith)

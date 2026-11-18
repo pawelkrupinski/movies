@@ -13,15 +13,15 @@ package tools
 object HttpReadBacklog {
 
   val Swallows: Map[(String, String, String), String] = Map(
-    ("worker/src/main/scala/services/TmdbClient.scala", "details",
+    ("worker/src/main/scala/clients/TmdbClient.scala", "details",
       "Try(httpGet(detailsUrl(tmdbId), auth))") -> "TODO-HttpRead",
-    ("worker/src/main/scala/services/TmdbClient.scala", "fullDetails",
+    ("worker/src/main/scala/clients/TmdbClient.scala", "fullDetails",
       "Try(httpGet(fullDetailsUrl(tmdbId), auth))") -> "TODO-HttpRead"
   )
 
   /** The client files that still call an `HttpFetch` directly — the migration backlog for
    *  [[ClientReadsThroughHttpReadSpec]]. Every entry is `TODO-HttpRead`. */
   val NotYetMigrated: Map[String, String] = Map(
-    "worker/src/main/scala/services/TmdbClient.scala" -> "TODO-HttpRead"
+    "worker/src/main/scala/clients/TmdbClient.scala" -> "TODO-HttpRead"
   )
 }

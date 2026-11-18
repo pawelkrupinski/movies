@@ -1,6 +1,7 @@
 package tools
 
 import clients.TmdbClient
+import services.identity.adapters.TmdbIdentityReads.*
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
