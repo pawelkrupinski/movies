@@ -12,9 +12,9 @@ class WebReadModelStreamMetricsSpec extends AnyFlatSpec with Matchers {
   "the read-model stream metrics" should "show an ended stream as 0 and count its reopen, per collection" in {
     val registry   = new PrometheusRegistry()
     val repository = new InMemoryReadModelRepository
-    @volatile var model: WebReadModel = null
+    @volatile var model: KeptReadModel = null
     val metrics = new WebReadModelStreamMetrics(registry, "pl", collection => model.streamLive(collection))
-    model = new WebReadModel(repository, streamMetrics = metrics, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
+    model = TestReadModel.kept(repository, streamMetrics = metrics, clock = _root_.tools.SpecClock.Pinned)
     model.start()
     try {
       PrometheusExposition.render(registry) should include ("""kinowo_web_readmodel_stream_live{collection="web_movies",country="pl"} 1""")

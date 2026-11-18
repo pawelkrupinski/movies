@@ -7,7 +7,7 @@ import org.bson.{BsonArray, BsonDocument}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.readmodel.{MongoReadModelRepository, WebReadModel}
+import services.readmodel.{MongoReadModelRepository, TestReadModel}
 import tools.{Eventually, SpecTimeouts}
 
 import java.util.concurrent.ConcurrentHashMap
@@ -80,7 +80,7 @@ class WebReadModelServedFieldsIntegrationSpec extends AnyFlatSpec with Matchers 
       // beats the asynchronous cursor open and is never delivered. This client's Java-default
       // codec registry once made every checkpoint here fail.
       repository.streamCheckpoint().answered shouldBe defined
-      val model = new WebReadModel(repository, clock = tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
+      val model = TestReadModel.kept(repository, clock = tools.SpecClock.Pinned)
       model.start()
       try {
         model.hydrated shouldBe true

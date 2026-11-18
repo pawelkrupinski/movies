@@ -72,7 +72,7 @@ trait Wiring
     envConfigService.start()
     // Hydrate the read model from the derived collections + open their change
     // streams. (No `movies` watch — see ReadModelWiring.)
-    webReadModel.start()
+    readModelUpkeep.start()
     // Sample per-city served-film counts once a minute for /metrics. Started
     // after the read model so the first sample reads a warm corpus.
     webMovieMetrics.start()

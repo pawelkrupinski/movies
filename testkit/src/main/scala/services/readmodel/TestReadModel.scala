@@ -4,6 +4,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.MovieRecord
 import java.time.Clock
+import scala.concurrent.duration.FiniteDuration
 import tools.SpecClock.given
 import services.movies.StoredMovieRecord
 
@@ -33,9 +34,25 @@ object TestReadModel {
    *  `FilmId`, so a spec that matches rendered rows back to cache rows must project
    *  the cache's own rows, not rebuild them from (title, year, record). */
   def fromRows(rows: Seq[StoredMovieRecord], clock: Clock = tools.SpecClock.Pinned): WebReadModel = {
-    val readModel = new WebReadModel(storeRows(rows), clock = clock, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
+    val readModel = new WebReadModel(storeRows(rows), clock = clock)
     readModel.reload()
     readModel
+  }
+
+  /** A [[WebReadModel]] over `reader` with the [[ReadModelStreams]] and the [[ReadModelUpkeep]] that keep it
+   *  current, wired as the web's root wires them (unscheduled pools), for a spec that starts, ticks or stops it. */
+  def kept(reader: ReadModelReader,
+           clock: Clock = tools.SpecClock.Pinned,
+           servingCountry: Option[models.Country] = None,
+           streamMetrics: ReadModelStreamMetrics = ReadModelStreamMetrics.noop,
+           driftSettle: ReadModelUpkeep.DriftSettle = ReadModelUpkeep.DefaultDriftSettle,
+           ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+           sleep: FiniteDuration => Unit = tools.Sleep.Blocking): KeptReadModel = {
+    val model   = new WebReadModel(reader, clock = clock, servingCountry = servingCountry)
+    val streams = new ReadModelStreams(reader, model, ReadModelUpkeep.DefaultReloadInterval, ReadModelUpkeep.DefaultColdRetryInterval,
+      streamMetrics, clock)
+    new KeptReadModel(model, streams, new ReadModelUpkeep(model, streams, ReadModelUpkeep.DefaultReloadInterval,
+      ReadModelUpkeep.DefaultColdRetryInterval, driftSettle, ticks, tools.ThreadPools.Unmanaged, sleep))
   }
 
   /** The projected store alone, for a spec that wants its own [[WebReadModel]]
@@ -55,4 +72,12 @@ object TestReadModel {
     }
     store
   }
+}
+
+/** A [[WebReadModel]] with what keeps it current ([[TestReadModel.kept]]): the model's reads, the streams'
+ *  cold-retry tick and liveness, and the upkeep's lifecycle and backstop tick, on one value. */
+final class KeptReadModel(val model: WebReadModel, val streams: ReadModelStreams, val upkeep: ReadModelUpkeep) {
+  export model.*
+  export streams.{coldRetryTick, streamLive, streamsLive}
+  export upkeep.{backstopTick, start, stop}
 }

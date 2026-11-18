@@ -435,14 +435,14 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   /** Two Polish cities screening the same film, wired straight to the store so
    *  the spec can push single change-stream events at one city. */
-  private def twoCities(): (MovieApiController, services.readmodel.InMemoryReadModelRepository, WebReadModel) = {
+  private def twoCities(): (MovieApiController, services.readmodel.InMemoryReadModelRepository, services.readmodel.KeptReadModel) = {
     val store = new services.readmodel.InMemoryReadModelRepository
     store.upsertMovie(resolved("belle|2021", "Belle"))
     store.upsertScreening(models.CityScreening("s-waw", "belle|2021", "warszawa", "Muranow", None, Nil))
     store.upsertScreening(models.CityScreening("s-poz", "belle|2021", "poznan", "Malta", None, Nil))
-    val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking)
+    val readModel = services.readmodel.TestReadModel.kept(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.start()
-    (TestCityControllers.build(Seq.empty, readModel = Some(readModel)).api, store, readModel)
+    (TestCityControllers.build(Seq.empty, readModel = Some(readModel.model)).api, store, readModel)
   }
 
   "A conditional GET for one city" should "still be answered 304 after ANOTHER city's showtimes change" in {
@@ -526,11 +526,10 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "weigh a film a payload leaves out, so the byte bound can evict it" in {
-    val (ctrl, readModel) = twoFilmController()
+    val (ctrl, _) = twoFilmController()
     contentAsString(ctrl.apiDetails("poznan")(FakeRequest())) should not include "Drugi"   // no detail content: left out
     ctrl.jsonPayloads.filmJsonHeld shouldBe 2                                                            // kept all the same
     // Caffeine never evicts a zero-weight entry: each held film must weigh something.
     ctrl.jsonPayloads.filmJsonWeighed should be >= ctrl.jsonPayloads.filmJsonHeld * CityJsonPayloads.FilmJsonEntryBytes
-    readModel.stop()
   }
 }

@@ -6,7 +6,7 @@ import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
-import services.readmodel.{MongoReadModelRepository, WebReadModel}
+import services.readmodel.{MongoReadModelRepository, TestReadModel}
 import services.users.InMemoryUserRepository
 import tools.ConcurrentInstances
 import tools.Eventually.eventually
@@ -96,7 +96,7 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
       val writer = new MongoReadModelRepository(Some(worker.database), stopwatch = _root_.tools.Stopwatch.System)
       writer.upsertMovie(film)
       writer.upsertScreening(screening(18))
-      val pods = Seq(podA, podB).map(pod => new WebReadModel(new MongoReadModelRepository(Some(pod.database), stopwatch = _root_.tools.Stopwatch.System), clock = _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking))
+      val pods = Seq(podA, podB).map(pod => TestReadModel.kept(new MongoReadModelRepository(Some(pod.database), stopwatch = _root_.tools.Stopwatch.System), clock = _root_.tools.SpecClock.Pinned))
       try {
         pods.foreach(_.start())
         pods.foreach(pod => pod.screeningsForCity("poznan").flatMap(_.showtimes).map(_.dateTime.getHour) shouldBe Seq(18))

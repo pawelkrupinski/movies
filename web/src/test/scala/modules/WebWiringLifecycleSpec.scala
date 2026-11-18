@@ -15,7 +15,7 @@ class WebWiringLifecycleSpec extends AnyFlatSpec with Matchers {
       ObjectGraph.forceLazyMembers(wiring) shouldBe empty
       withClue("wrap its creation in managedResources.stopping / stoppingEach / executor / register:\n")(
         UnmanagedMembers.of(wiring, wiring.managedResources) shouldBe empty)
-      wiring.managedResources.holds(wiring.webReadModel) shouldBe true
+      wiring.managedResources.holds(wiring.readModelUpkeep) shouldBe true
     } finally wiring.shutdown()
   }
 

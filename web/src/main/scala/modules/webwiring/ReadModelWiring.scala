@@ -3,12 +3,12 @@ package modules.webwiring
 import controllers.MovieControllerService
 import services.MongoConnection
 import services.movies.{MongoMovieRepository, MovieRepository}
-import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
+import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelStreams, ReadModelUpkeep, WebReadModel}
 
 /** ── Denormalised read model ──────────────────────────────────────────────────
  *  The serving app reads from the worker-maintained `web_movies` /
  *  `web_screenings` collections via `WebReadModel`, kept warm by their change
- *  streams. It deliberately does NOT watch `movies` — a showtime edit there
+ *  streams (`ReadModelStreams`) and the backstop (`ReadModelUpkeep`). It deliberately does NOT watch `movies` — a showtime edit there
  *  now reaches the web as one small screening-document delta, not a full-record
  *  re-push. `movieRepository` survives only for the on-demand /debug corpus dump
  *  (a one-off `findAll`, no change stream). */
@@ -62,17 +62,17 @@ trait ReadModelWiring { self: Wiring =>
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
-  lazy val webReadModel: WebReadModel = managedResources.stopping(new WebReadModel(readModelRepository,
-    reloadInterval    = processConfiguration.readModelReloadInterval(WebReadModel.DefaultReloadInterval),
-    coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval),
-    streamMetrics     = webReadModelStreamMetrics,
-    clock             = clock,
-    servingCountry    = Some(country),
-    ticks             = ticks, threadPools = threadPools, sleep = sleep))
+  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country))
+  lazy val readModelReloadInterval    = processConfiguration.readModelReloadInterval(ReadModelUpkeep.DefaultReloadInterval)
+  lazy val readModelColdRetryInterval = processConfiguration.readModelColdRetryInterval(ReadModelUpkeep.DefaultColdRetryInterval)
+  lazy val readModelStreams: ReadModelStreams = new ReadModelStreams(readModelRepository, webReadModel,
+    readModelReloadInterval, readModelColdRetryInterval, webReadModelStreamMetrics, clock)
+  lazy val readModelUpkeep: ReadModelUpkeep = managedResources.stopping(new ReadModelUpkeep(webReadModel, readModelStreams,
+    readModelReloadInterval, readModelColdRetryInterval, ticks = ticks, threadPools = threadPools, sleep = sleep))
 
   // Read at scrape time, so the model (forced at boot) is never built by the metric.
   lazy val webReadModelStreamMetrics = new services.metrics.WebReadModelStreamMetrics(webJvmMetrics.registry, country.code,
-    collection => webReadModel.streamLive(collection))
+    collection => readModelStreams.streamLive(collection))
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.

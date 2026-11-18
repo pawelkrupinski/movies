@@ -202,7 +202,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     } finally ids.foreach(paged.deleteScreening)
   }
 
-  // THE WEB'S BOOT GAP, against a real change stream. `WebReadModel.start` hydrates, then
+  // THE WEB'S BOOT GAP, against a real change stream. `ReadModelStreams.open` hydrates, then
   // watches; a watch opened "from now" missed every write between the two (2026-09-23: two
   // Włodawa screenings, served 30 minutes late). A checkpoint taken before the write must make
   // the watch replay it — the server's cluster time, handed to `startAtOperationTime`.

@@ -1,6 +1,6 @@
 package services.readmodel
 
-/** Where [[WebReadModel]] says it reopened a change stream that had ended — once per collection
+/** Where [[ReadModelStreams]] says it reopened a change stream that had ended — once per collection
  *  per reopen, so a stream dying over and over (Mongo still down, or a stream that cannot open at
  *  all) is a climbing series rather than a log line. */
 trait ReadModelStreamMetrics {
