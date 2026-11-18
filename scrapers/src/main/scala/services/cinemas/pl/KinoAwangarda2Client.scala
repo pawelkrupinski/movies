@@ -59,7 +59,7 @@ object KinoAwangarda2Client {
    *  dot optional). Anchoring at the start is what separates a header block from
    *  a screening line, which never starts with a weekday word. */
   private val DayHeader =
-    """^(?:Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela)\s+(\d{1,2})\.(\d{1,2})""".r
+    """^(?:Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela)\s+(\d{1,2})\.(\d{1,2})""".r.unanchored
 
   /** The screening time on a film line: `HH.MM` (or `HH:MM`). The only `DD.MM`-
    *  shaped token on a screening line is the time (day headers are separate
@@ -80,17 +80,9 @@ object KinoAwangarda2Client {
 
     // Walk the article's `<p>` blocks in document order, carrying the current
     // day forward across screenings until the next day header resets it.
-    var currentDate: Option[LocalDate] = None
-    val slots = document.select("p").asScala.toSeq.flatMap { p =>
-      val text = p.text.trim
-      DayHeader.findFirstMatchIn(text) match {
-        case Some(m) =>
-          currentDate = dateOf(m.group(1).toInt, m.group(2).toInt, today)
-          Seq.empty
-        case None =>
-          currentDate.toSeq.flatMap(date => screeningSlot(p, text, date))
-      }
-    }
+    val slots = ScraperParse.underDayHeaders(document.select("p").asScala.map(p => p -> p.text.trim)) {
+      case (_, DayHeader(day, month)) => dateOf(day.toInt, month.toInt, today)
+    } { case ((p, text), date) => screeningSlot(p, text, date) }
 
     SlotsToMovies.fold(
       slots,

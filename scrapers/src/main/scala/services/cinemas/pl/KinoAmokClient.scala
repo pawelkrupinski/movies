@@ -65,24 +65,15 @@ object KinoAmokClient {
     val container = document.selectFirst("div.repertoire_list_f")
     if (container == null) return Seq.empty
 
-    var currentDate: Option[LocalDate] = None
-    val slots = scala.collection.mutable.Buffer.empty[ScrapedSlot]
-
-    container.children.asScala.foreach { child =>
-      if (child.hasClass("ribbon") && child.hasClass("rep-ribbon")) {
-        // Date header — extract "DD miesiąca"
-        val h3 = Option(child.selectFirst("h3")).map(_.text.trim).getOrElse("")
-        currentDate = parsePolishDate(h3, today)
-      } else if (child.hasClass("post-list")) {
-        // Film list for the current date
-        currentDate.foreach { date =>
-          child.select("div.post").asScala.foreach { post =>
-            parsePost(post, date, BaseUrl).foreach(slots += _)
-          }
-        }
-      }
+    ScraperParse.underDayHeaders(container.children.asScala) {
+      // Date header — extract "DD miesiąca"
+      case ribbon if ribbon.hasClass("ribbon") && ribbon.hasClass("rep-ribbon") =>
+        parsePolishDate(Option(ribbon.selectFirst("h3")).map(_.text.trim).getOrElse(""), today)
+    } { (child, date) =>
+      // Film list for the current date
+      if (!child.hasClass("post-list")) Nil
+      else child.select("div.post").asScala.flatMap(parsePost(_, date, BaseUrl))
     }
-    slots.toSeq
   }
 
   /** Parse a single screening `div.post` into a `ScrapedSlot`. */

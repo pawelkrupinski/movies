@@ -107,17 +107,11 @@ object KinoMetalowiecNowaDebaClient {
   /** The sidebar schedule: day headers and `HH:MM Title` lines, in order. */
   private def scheduleSlots(document: Document, today: LocalDate): Seq[RawSlot] =
     document.select("aside p").asScala.toSeq.flatMap { p =>
-      var currentDate: Option[LocalDate] = None
-      ScraperParse.linesOf(p).flatMap {
-        case line @ DayHeader(_, _) =>
-          currentDate = ScraperParse.parseDayMonth(line).flatMap(ScraperParse.upcomingDate(_, today))
-          None
-        case Screening(time, title) =>
-          for {
-            date <- currentDate
-            tm   <- ScraperParse.parseHHmm(time)
-          } yield RawSlot(title.trim, LocalDateTime.of(date, tm))
-        case _ => None
+      ScraperParse.underDayHeaders(ScraperParse.linesOf(p)) {
+        case line @ DayHeader(_, _) => ScraperParse.parseDayMonth(line).flatMap(ScraperParse.upcomingDate(_, today))
+      } {
+        case (Screening(time, title), date) => ScraperParse.parseHHmm(time).map(tm => RawSlot(title.trim, LocalDateTime.of(date, tm)))
+        case _                              => None
       }
     }
 

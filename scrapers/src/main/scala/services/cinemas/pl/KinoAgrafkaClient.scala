@@ -4,6 +4,7 @@ import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScra
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -71,40 +72,29 @@ object KinoAgrafkaClient {
     }
   }
 
-  private[cinemas] def parseDocument(html: String): Seq[CreditedScreening] = {
-    val document = Jsoup.parse(html)
-    var currentDate: Option[LocalDate] = None
-    val slots = collection.mutable.ArrayBuffer.empty[CreditedScreening]
+  // Each day block is a <div> wrapping an <h3> date header and a <table>.
+  // Alternatively the h3 and tables are siblings. We walk ALL elements in
+  // document order to carry the last-seen date forward across rows.
+  private[cinemas] def parseDocument(html: String): Seq[CreditedScreening] =
+    ScraperParse.underDayHeaders(Jsoup.parse(html).select("h3, table.repertoire tbody tr").asScala) {
+      case h3 if h3.tagName == "h3" => ScraperParse.parseDayMonthYear(h3.text)  // "7 czerwca 2026 /niedziela/"
+    }(screeningOf)
 
-    // Each day block is a <div> wrapping an <h3> date header and a <table>.
-    // Alternatively the h3 and tables are siblings. We walk ALL elements in
-    // document order to carry the last-seen date forward across rows.
-    document.select("h3, table.repertoire tbody tr").asScala.foreach { element =>
-      element.tagName match {
-        case "h3" =>
-          currentDate = ScraperParse.parseDayMonthYear(element.text)  // "7 czerwca 2026 /niedziela/"
-        case "tr" =>
-          currentDate.foreach { date =>
-            val timeText  = Option(element.selectFirst("td.hour")).map(_.text.trim).getOrElse("")
-            val titleElement   = Option(element.selectFirst("td.title a"))
-            val meta      = parseMeta(Option(element.selectFirst("td.title")).map(_.text).getOrElse(""))
-            val time      = ScraperParse.parseHHmm(timeText)
-            val rawTitle  = titleElement.map(_.text.trim).getOrElse("")
-            // Titles are ALL-CAPS on the page; normalise to title-case.
-            val title     = tools.TextNormalization.titleCaseIfAllLower(rawTitle)
-            val filmHref  = titleElement.map(_.attr("href").trim).filter(_.nonEmpty)
-            val filmUrl   = filmHref.map(h => if (h.startsWith("http")) h else s"$BaseUrl/$h")
-            val bookingUrl = Option(element.selectFirst("td.link a[href]"))
-              .map(_.attr("href").trim).filter(_.nonEmpty)
-              .map(h => if (h.startsWith("http")) h else s"$BaseUrl/$h")
-
-            for {
-              t     <- time if title.nonEmpty
-            } slots += CreditedScreening(title, filmUrl, LocalDateTime.of(date, t), bookingUrl, meta)
-          }
-        case _ =>
-      }
-    }
-    slots.toSeq
+  private def screeningOf(row: Element, date: LocalDate): Option[CreditedScreening] = {
+    val titleElement = Option(row.selectFirst("td.title a"))
+    // Titles are ALL-CAPS on the page; normalise to title-case.
+    val title        = tools.TextNormalization.titleCaseIfAllLower(titleElement.map(_.text.trim).getOrElse(""))
+    for {
+      time <- ScraperParse.parseHHmm(Option(row.selectFirst("td.hour")).map(_.text.trim).getOrElse("")) if title.nonEmpty
+    } yield CreditedScreening(
+      title,
+      filmUrl    = absolute(titleElement.map(_.attr("href").trim)),
+      dateTime   = LocalDateTime.of(date, time),
+      bookingUrl = absolute(Option(row.selectFirst("td.link a[href]")).map(_.attr("href").trim)),
+      facts      = parseMeta(Option(row.selectFirst("td.title")).map(_.text).getOrElse(""))
+    )
   }
+
+  private def absolute(href: Option[String]): Option[String] =
+    href.filter(_.nonEmpty).map(h => if (h.startsWith("http")) h else s"$BaseUrl/$h")
 }

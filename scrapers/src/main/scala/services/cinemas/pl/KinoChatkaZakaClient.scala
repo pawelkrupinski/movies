@@ -86,18 +86,15 @@ object KinoChatkaZakaClient {
     // The list is a flat sibling stream: a `<h3>` date header, then the
     // `.box-row` events under it, then the next header. Walk the whole list
     // container's children in order, carrying the most recent date forward.
-    var currentDate = Option.empty[java.time.LocalDate]
-    document.select("h3.header-light, div.box-row").asScala.toSeq.flatMap { el =>
-      if (el.tagName == "h3") {
-        currentDate = ListDatePat.findFirstMatchIn(el.text)
+    ScraperParse.underDayHeaders(document.select("h3.header-light, div.box-row").asScala) {
+      case h3 if h3.tagName == "h3" =>
+        ListDatePat.findFirstMatchIn(h3.text)
           .flatMap(m => Try(java.time.LocalDate.of(m.group(3).toInt, m.group(2).toInt, m.group(1).toInt)).toOption)
-        None
-      } else
-        for {
-          date  <- currentDate
-          title <- Option(el.selectFirst("h4.header")).map(_.text.trim).filter(_.nonEmpty)
-          link  <- Option(el.selectFirst("div.link a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty)
-        } yield ListEntry(date, title, link)
+    } { (el, date) =>
+      for {
+        title <- Option(el.selectFirst("h4.header")).map(_.text.trim).filter(_.nonEmpty)
+        link  <- Option(el.selectFirst("div.link a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty)
+      } yield ListEntry(date, title, link)
     }
   }
 

@@ -251,6 +251,21 @@ private[cinemas] object ScraperParse {
     if (to.isBefore(from)) Seq.empty
     else Iterator.iterate(from)(_.plusDays(1)).takeWhile(!_.isAfter(to)).map(_.atTime(time)).toSeq
 
+  /** A day-grouped listing read in document order -- a day header, the screenings under it, the next header: an item
+    * `dayHeader` takes sets the day the items after it fall on (a header it cannot read sets none), and every other
+    * item is read by `row` under the day last set. An item before the first header, or under an unreadable one, reads
+    * nothing. */
+  def underDayHeaders[E, A](items: Iterable[E])(dayHeader: PartialFunction[E, Option[LocalDate]])(
+    row: (E, LocalDate) => IterableOnce[A]
+  ): Seq[A] = {
+    val out = Seq.newBuilder[A]
+    items.foldLeft(Option.empty[LocalDate]) { (day, item) =>
+      if (dayHeader.isDefinedAt(item)) dayHeader(item)
+      else { day.foreach(d => out ++= row(item, d)); day }
+    }
+    out.result()
+  }
+
   /** The `<br>`-separated lines of `el`'s text, trimmed and with blanks
     * dropped — a small venue often packs a multi-line "Label: value" block
     * or a run-per-line schedule into ONE `<br>`-joined paragraph, and jsoup's

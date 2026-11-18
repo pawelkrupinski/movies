@@ -6,6 +6,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -122,55 +123,35 @@ object KinoPodBaranamiClient {
     bookingUrl:    Option[String]
   )
 
-  private[cinemas] def parseDocument(html: String, today: LocalDate): Seq[RawSlot] = {
-    val document = Jsoup.parse(html)
-    val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
-    var currentDate: Option[LocalDate] = None
+  private[cinemas] def parseDocument(html: String, today: LocalDate): Seq[RawSlot] =
+    ScraperParse.underDayHeaders(Jsoup.parse(html).select("p.rep_date, ul.program_list").asScala) {
+      // "Niedziela 7 czerwca // Sunday, June 7"
+      case p if p.tagName == "p" => ScraperParse.parseDayMonth(p.text.trim).flatMap(ScraperParse.upcomingDate(_, today))
+    }((list, date) => list.select("li").asScala.flatMap(slotsOf(_, date)))
 
-    document.select("p.rep_date, ul.program_list").asScala.foreach { element =>
-      element.tagName match {
-        case "p" if element.hasClass("rep_date") =>
-          // "Niedziela 7 czerwca // Sunday, June 7"
-          val text = element.text.trim
-          currentDate = ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
-
-        case "ul" if element.hasClass("program_list") =>
-          currentDate.foreach { date =>
-            element.select("li").asScala.foreach { li =>
-              val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
-              // The trailing "(Napisy PL)"/"(Dubbing PL)" language tag is peeled by
-              // the shared FormatTags at ingest; here we only drop the "(SMAK)"
-              // discussion-club label (not a format word) so it doesn't fork the row.
-              val title       = titleAnchor.map(a => stripProgrammeLabel(a.text.trim)).filter(_.nonEmpty).getOrElse("")
-              val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)
-              // The anchor's `title=` attribute carries the film's original
-              // (usually international/English) title — "Gourou" for "Guru",
-              // "Fight Club" for "Podziemny krąg". The cinema exposes it for
-              // every film; we keep it (when it actually differs from the
-              // displayed Polish title) as a TMDB-search hint, which lets a
-              // same-Polish-title film resolve to the right TMDB entry instead
-              // of an arrival-order-dependent guess between same-title candidates.
-              val originalTitle = titleAnchor.map(_.attr("title").trim)
-                .filter(_.nonEmpty).filterNot(_.equalsIgnoreCase(title))
-
-              if (title.nonEmpty) {
-                // One or more time links inside <span>
-                li.select("span a[href^=\"/rezerwacja_start.php\"]").asScala.foreach { a =>
-                  val time       = ScraperParse.parseHHmm(a.text.trim)
-                  val bookingUrl = Some(a.attr("href").trim).filter(_.nonEmpty)
-                    .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
-                  time.foreach { t =>
-                    slots += RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl)
-                  }
-                }
-              }
-            }
-          }
-
-        case _ =>
-      }
+  private def slotsOf(li: Element, date: LocalDate): Seq[RawSlot] = {
+    val titleAnchor = Option(li.selectFirst("a[href^=\"film.php\"]"))
+    // The trailing "(Napisy PL)"/"(Dubbing PL)" language tag is peeled by
+    // the shared FormatTags at ingest; here we only drop the "(SMAK)"
+    // discussion-club label (not a format word) so it doesn't fork the row.
+    val title       = titleAnchor.map(a => stripProgrammeLabel(a.text.trim)).filter(_.nonEmpty).getOrElse("")
+    val filmUrl     = titleAnchor.map(a => s"$BaseUrl/${a.attr("href").trim}").filter(_.nonEmpty)
+    // The anchor's `title=` attribute carries the film's original
+    // (usually international/English) title — "Gourou" for "Guru",
+    // "Fight Club" for "Podziemny krąg". The cinema exposes it for
+    // every film; we keep it (when it actually differs from the
+    // displayed Polish title) as a TMDB-search hint, which lets a
+    // same-Polish-title film resolve to the right TMDB entry instead
+    // of an arrival-order-dependent guess between same-title candidates.
+    val originalTitle = titleAnchor.map(_.attr("title").trim)
+      .filter(_.nonEmpty).filterNot(_.equalsIgnoreCase(title))
+    // One or more time links inside <span>
+    if (title.isEmpty) Seq.empty
+    else li.select("span a[href^=\"/rezerwacja_start.php\"]").asScala.toSeq.flatMap { a =>
+      val bookingUrl = Some(a.attr("href").trim).filter(_.nonEmpty)
+        .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
+      ScraperParse.parseHHmm(a.text.trim).map(t => RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl))
     }
-    slots.toSeq
   }
 
   /** Parse a `film.php?film_id=…` detail page into a [[FilmDetail]]. The static

@@ -54,13 +54,9 @@ object KinoEvaClient {
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, RepertoireUrl)
     // Headers and tables in document order; each table belongs to the header before it.
-    var currentDate: Option[LocalDate] = None
-    val slots = document.select("h2.title, table.table_theater").asScala.toSeq.flatMap { el =>
-      if (el.tagName == "h2") {
-        currentDate = DayHeader.findFirstMatchIn(el.text).flatMap(m => ScraperParse.parseDayMonthYear(m.matched))
-        Seq.empty
-      } else currentDate.toSeq.flatMap(date => el.select("td.c1").asScala.toSeq.flatMap(slotOf(_, date)))
-    }
+    val slots = ScraperParse.underDayHeaders(document.select("h2.title, table.table_theater").asScala) {
+      case h2 if h2.tagName == "h2" => DayHeader.findFirstMatchIn(h2.text).flatMap(m => ScraperParse.parseDayMonthYear(m.matched))
+    }((table, date) => table.select("td.c1").asScala.toSeq.flatMap(slotOf(_, date)))
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, group, showtimes) =>
       val head = group.head

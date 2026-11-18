@@ -9096,6 +9096,7 @@ services.cinemas.pl.IksorisRepertoireClient$RawSlot
 services.cinemas.pl.IksorisRepertoireClient$RawSlot$
 services.cinemas.pl.IluzjonClient
 services.cinemas.pl.IluzjonClient$
+services.cinemas.pl.IluzjonClient$$anon$1
 services.cinemas.pl.IluzjonClient$Detail
 services.cinemas.pl.IluzjonClient$Detail$
 services.cinemas.pl.IluzjonClient$RawSlot
@@ -9108,8 +9109,10 @@ services.cinemas.pl.KinematografLodzClient
 services.cinemas.pl.KinematografLodzClient$
 services.cinemas.pl.KinoAgrafkaClient
 services.cinemas.pl.KinoAgrafkaClient$
+services.cinemas.pl.KinoAgrafkaClient$$anon$1
 services.cinemas.pl.KinoAmokClient
 services.cinemas.pl.KinoAmokClient$
+services.cinemas.pl.KinoAmokClient$$anon$1
 services.cinemas.pl.KinoApolloClient
 services.cinemas.pl.KinoApolloClient$DetailMeta
 services.cinemas.pl.KinoApolloClient$DetailMeta$
@@ -9121,6 +9124,7 @@ services.cinemas.pl.KinoAurumClient
 services.cinemas.pl.KinoAurumClient$
 services.cinemas.pl.KinoAwangarda2Client
 services.cinemas.pl.KinoAwangarda2Client$
+services.cinemas.pl.KinoAwangarda2Client$$anon$1
 services.cinemas.pl.KinoAwangarda2Client$RawSlot
 services.cinemas.pl.KinoAwangarda2Client$RawSlot$
 services.cinemas.pl.KinoBajkaBlonieClient
@@ -9145,6 +9149,7 @@ services.cinemas.pl.KinoCentrumCswClient$RawSlot
 services.cinemas.pl.KinoCentrumCswClient$RawSlot$
 services.cinemas.pl.KinoChatkaZakaClient
 services.cinemas.pl.KinoChatkaZakaClient$
+services.cinemas.pl.KinoChatkaZakaClient$$anon$1
 services.cinemas.pl.KinoChatkaZakaClient$CleanTitle
 services.cinemas.pl.KinoChatkaZakaClient$CleanTitle$
 services.cinemas.pl.KinoChatkaZakaClient$Detail
@@ -9160,6 +9165,7 @@ services.cinemas.pl.KinoDianaClient
 services.cinemas.pl.KinoDianaClient$
 services.cinemas.pl.KinoEvaClient
 services.cinemas.pl.KinoEvaClient$
+services.cinemas.pl.KinoEvaClient$$anon$1
 services.cinemas.pl.KinoEvaClient$RawSlot
 services.cinemas.pl.KinoEvaClient$RawSlot$
 services.cinemas.pl.KinoFenomenClient
@@ -9231,6 +9237,7 @@ services.cinemas.pl.KinoMarzenieClient$RawSlot
 services.cinemas.pl.KinoMarzenieClient$RawSlot$
 services.cinemas.pl.KinoMetalowiecNowaDebaClient
 services.cinemas.pl.KinoMetalowiecNowaDebaClient$
+services.cinemas.pl.KinoMetalowiecNowaDebaClient$$anon$1
 services.cinemas.pl.KinoMetalowiecNowaDebaClient$FilmBlock
 services.cinemas.pl.KinoMetalowiecNowaDebaClient$FilmBlock$
 services.cinemas.pl.KinoMetalowiecNowaDebaClient$RawSlot
@@ -9268,6 +9275,7 @@ services.cinemas.pl.KinoPatriaClient
 services.cinemas.pl.KinoPatriaClient$
 services.cinemas.pl.KinoPodBaranamiClient
 services.cinemas.pl.KinoPodBaranamiClient$
+services.cinemas.pl.KinoPodBaranamiClient$$anon$1
 services.cinemas.pl.KinoPodBaranamiClient$RawSlot
 services.cinemas.pl.KinoPodBaranamiClient$RawSlot$
 services.cinemas.pl.KinoPortClient

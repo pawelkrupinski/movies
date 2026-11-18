@@ -13,6 +13,13 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
   * a custom `<dt>` selector) so a future tweak can't silently break one scraper. */
 class ScraperParseSpec extends AnyFlatSpec with Matchers {
 
+  "underDayHeaders" should "read each row under the last day header, and nothing before the first or under an unreadable one" in {
+    val items = Seq("early", "day 3", "a", "b", "day ?", "lost", "day 5", "c")
+    ScraperParse.underDayHeaders(items) {
+      case header if header.startsWith("day ") => header.drop(4).toIntOption.map(LocalDate.of(2026, 6, _))
+    }((row, day) => Seq(s"$row@${day.getDayOfMonth}")) shouldBe Seq("a@3", "b@3", "c@5")
+  }
+
   "parseHHmm" should "pull the first HH:mm out of surrounding text" in {
     ScraperParse.parseHHmm("seans o 19:30 dziś") shouldBe Some(LocalTime.of(19, 30))
   }
