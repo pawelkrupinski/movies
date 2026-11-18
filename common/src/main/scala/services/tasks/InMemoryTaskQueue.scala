@@ -12,11 +12,11 @@ import scala.jdk.CollectionConverters._
  * In-memory `TaskQueue` for tests and Mongo-less dev. Mirrors
  * [[MongoTaskQueue]]'s semantics: per-dedupKey idempotent enqueue, and the lease
  * cycle — FIFO atomic claim, ownership-guarded complete/release, lease reaping —
- * from the same [[TaskLeases]] rules over its own rows. All
+ * is [[LeasedTaskQueue]]'s, the same [[TaskLeases]] rules over its own rows. All
  * mutations are guarded by one monitor — fine at test/dev scale. What a task is written with — its payload and its
  * instants — is written as [[MongoTaskQueue]] inserts it to BSON and read back ([[tools.BsonRoundTrip]]).
  */
-class InMemoryTaskQueue extends TaskQueue {
+class InMemoryTaskQueue extends LeasedTaskQueue {
 
   private case class Row(
     id:             String,
@@ -95,8 +95,8 @@ class InMemoryTaskQueue extends TaskQueue {
     }
   }
 
-  // The rows as [[TaskRows]], under the one monitor: the lease cycle's rules are [[TaskLeases]]',
-  // shared with [[MongoTaskQueue]].
+  // The rows as [[TaskRows]], under the one monitor: the lease cycle's rules are [[TaskLeases]]'
+  // ([[LeasedTaskQueue]]), shared with [[MongoTaskQueue]].
   private object rowStore extends TaskRows {
     def claimOldest(matching: TaskRowMatch, change: TaskRowChange): Option[Task] = lock.synchronized {
       rows.values.filter(_.matches(matching)).toSeq.sortBy(_.submittedAt).headOption.map { r =>
@@ -118,19 +118,7 @@ class InMemoryTaskQueue extends TaskQueue {
     }
   }
 
-  private val leases = new TaskLeases(rowStore)
-
-  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = leases.claim(workerId, lease, now)
-
-  // Finishing removes the row outright (parity with MongoTaskQueue's delete-on-complete) — a
-  // gone row allows re-enqueue just as an old tombstone did, and nothing lists finished tasks.
-  override def complete(id: String, workerId: String): Unit = leases.complete(id, workerId)
-
-  override def release(id: String, workerId: String, error: Option[String],
-                       notBefore: Option[Instant], refundAttempt: Boolean): Unit =
-    leases.release(id, workerId, error, notBefore, refundAttempt)
-
-  override def reapExpiredLeases(now: Instant): Int = leases.reap(now)
+  protected def taskRows: TaskRows = rowStore
 
   override def countByState(): Map[String, Long] = lock.synchronized {
     rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }

@@ -116,3 +116,27 @@ object TaskLeases {
   private def heldBy(id: String, workerId: String) =
     TaskRowMatch(id = Some(id), state = Some(TaskState.WorkedOn), workerId = Some(workerId))
 }
+
+/**
+ * A [[TaskQueue]] whose lease cycle — claim, complete, release, reap — is [[TaskLeases]]' over the [[TaskRows]] its
+ * store supplies: [[MongoTaskQueue]] and [[InMemoryTaskQueue]] extend it and differ only in `taskRows`, never in the
+ * lease rules. Finishing a task removes its row outright (no tombstone): a gone row allows the key's re-enqueue, and
+ * nothing lists finished tasks. The ownership guard keeps a late call from a reaped worker off a task another worker
+ * has since reclaimed.
+ */
+abstract class LeasedTaskQueue extends TaskQueue {
+
+  /** Where the rows live: read once, on the first lease call. */
+  protected def taskRows: TaskRows
+
+  private lazy val leases = new TaskLeases(taskRows)
+
+  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = leases.claim(workerId, lease, now)
+
+  override def complete(id: String, workerId: String): Unit = leases.complete(id, workerId)
+
+  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant], refundAttempt: Boolean): Unit =
+    leases.release(id, workerId, error, notBefore, refundAttempt)
+
+  override def reapExpiredLeases(now: Instant): Int = leases.reap(now)
+}

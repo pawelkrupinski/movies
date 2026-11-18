@@ -57,7 +57,7 @@ import scala.util.Try
  * `Skipped`. Atomic, multi-machine-safe claiming is unaffected — it comes from
  * `findOneAndUpdate` on the primary, not from the write concern.
  */
-class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = "tasks") extends TaskQueue with Logging {
+class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = "tasks") extends LeasedTaskQueue with Logging {
   import MongoTaskQueue.*
 
   private val coll: Option[MongoCollection[Document]] =
@@ -142,32 +142,19 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.get
   }
 
-  // The lease cycle's rules are [[TaskLeases]]', shared with [[InMemoryTaskQueue]]; this queue
-  // supplies only where the rows live ([[MongoTaskRows]]).
-  private val leases = new TaskLeases(coll.fold(TaskRows.absent)(new MongoTaskRows(_)))
-
-  // Claiming is atomic and multi-machine-safe through `findOneAndUpdate` on the primary
-  // ([[MongoTaskRows.claimOldest]]), not through the write concern.
-  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = leases.claim(workerId, lease, now)
-
-  // Finishing a task DELETES the document outright (no tombstone): the dedup index is
-  // partial on `active:true`, so a gone doc allows re-enqueue; `monitor` never listed
-  // finished tasks; and the finished-count lives in the Prometheus counter. So `tasks`
-  // holds only the few active tasks (smaller working set, faster claim scans) with one
-  // change-stream/oplog event per completion. The ownership guard is unchanged, so a
-  // late call from a reaped worker can't remove a task another worker reclaimed.
-  override def complete(id: String, workerId: String): Unit = leases.complete(id, workerId)
-
-  override def release(id: String, workerId: String, error: Option[String],
-                       notBefore: Option[Instant], refundAttempt: Boolean): Unit =
-    leases.release(id, workerId, error, notBefore, refundAttempt)
+  // The lease cycle's rules are [[TaskLeases]]' ([[LeasedTaskQueue]]), shared with [[InMemoryTaskQueue]]; this queue
+  // supplies only where the rows live ([[MongoTaskRows]]). Claiming is atomic and multi-machine-safe through
+  // `findOneAndUpdate` on the primary ([[MongoTaskRows.claimOldest]]), not through the write concern; completing
+  // DELETES the document (the dedup index is partial on `active:true`, so a gone doc allows re-enqueue), leaving `tasks`
+  // only the few active tasks and one change-stream event per completion.
+  protected val taskRows: TaskRows = coll.fold(TaskRows.absent)(new MongoTaskRows(_))
 
   override def reapExpiredLeases(now: Instant): Int = coll match {
     case None => 0
     case Some(c) =>
       // A failed reap THROWS (after the retired-type sweep, which stands alone): answered as 0 it read as nothing
       // expired, and the lease reaper's tick completed while no lease came back.
-      val reaped = Try(leases.reap(now))
+      val reaped = Try(super.reapExpiredLeases(now))
       dropRetiredTypes(c, now)
       reaped.get
   }
