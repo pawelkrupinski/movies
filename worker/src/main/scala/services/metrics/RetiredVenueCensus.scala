@@ -5,9 +5,8 @@ import tools.ThreadPools
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
-import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotKeyed, SlotsRepository, VenueRoster}
+import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotsRepository}
 
-import java.time.{Clock, ZoneId}
 import scala.concurrent.duration._
 
 /**
@@ -33,8 +32,9 @@ class RetiredVenueCensus(
   roster:          Set[String],
   rows:            Gauge,
   futureShowtimes: Gauge,
+  // Counts the upcoming showtimes on the rows filed under a retired venue.
+  upcoming:        RetiredVenueShowtimes,
   country:         Country,
-  clock:           Clock,
   override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval,
   override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
   override protected val threadPools: tools.ThreadPools
@@ -44,16 +44,6 @@ class RetiredVenueCensus(
   import RetiredVenueCensus._
 
   private val countryCode = country.code
-
-  private val venueClock = new models.VenueClock(clock)
-
-  // "Future" is judged on each venue's OWN clock: a retired Los Angeles venue's 21:30 is still ahead
-  // when New York is past midnight. `City.all` never lists a venue once it is retired from the
-  // roster, so a city's clock is found only for a venue still on it; one no city lists falls back
-  // to the country's first city.
-  private val fallbackZone: ZoneId = country.cities.headOption.map(_.zoneId).getOrElse(java.time.ZoneOffset.UTC)
-  private def zoneOf(venue: String): ZoneId =
-    models.City.all.find(_.cinemas.exists(_.displayName == venue)).fold(fallbackZone)(_.zoneId)
 
   Collections.foreach(coll => rows.labelValues(countryCode, coll).set(0.0))
   futureShowtimes.labelValues(countryCode).set(0.0)
@@ -66,29 +56,11 @@ class RetiredVenueCensus(
       screenings.rowIdsChecked().answered.foreach { screeningIds =>
         val retiredRows = retiredOf(screeningIds)
         rows.labelValues(countryCode, ScreeningsRepository.Collection).set(retiredRows.size.toDouble)
-        futureOf(retiredRows).foreach(n => futureShowtimes.labelValues(countryCode).set(n.toDouble))
+        upcoming.on(retiredRows).foreach(n => futureShowtimes.labelValues(countryCode).set(n.toDouble))
       }
     }
 
   private def retiredOf(ids: Set[String]): Set[String] = ids.filterNot(id => roster(RetiredVenueRows.venueOf(id)))
-
-  /** Upcoming showtimes on `retiredRows`, or None when their showtimes could not be read. */
-  private def futureOf(retiredRows: Set[String]): Option[Int] =
-    if (retiredRows.isEmpty) Some(0)
-    else {
-      val slotKeysByFilm = retiredRows.groupMap(SlotKeyed.filmIdOf)(SlotKeyed.slotKeyOf)
-      screenings.findForFilmsChecked(slotKeysByFilm.keySet).answered.map { byFilm =>
-        val nowAt = scala.collection.mutable.Map.empty[String, java.time.LocalDateTime]
-        def now(venue: String) = nowAt.getOrElseUpdate(venue, venueClock.now(zoneOf(venue)))
-        slotKeysByFilm.iterator.map { case (filmId, keys) =>
-          val showtimes = byFilm.getOrElse(filmId, Map.empty)
-          keys.iterator.map { key =>
-            val venueNow = now(VenueRoster.venueOf(key))
-            showtimes.getOrElse(key, Nil).count(_.isUpcoming(venueNow))
-          }.sum
-        }.sum
-      }
-    }
 
   override protected val censusName: String = "retired-venue-census"
 }

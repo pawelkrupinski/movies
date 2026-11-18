@@ -213,7 +213,7 @@ fanout	services.identityadapters.TmdbStore	14
 fanout	services.identityadapters.VenueDetailLookups	14
 fanout	services.identityadapters.VenuePageWait	10
 fanout	services.identityadapters.WikiFamily	10
-fanout	services.metrics.RetiredVenueCensus	15
+fanout	services.metrics.RetiredVenueCensus	10
 fanout	services.movies.CaffeineMovieCache	45
 fanout	services.movies.CinemaSlotBuilder	14
 fanout	services.movies.CinemaSlotReadings	13
@@ -260,7 +260,6 @@ fanout	services.tasks.InMemoryTaskQueue	12
 fanout	services.tasks.MongoTaskQueue	17
 fanout	services.tasks.QueueEnrichmentRetrigger	14
 fanout	services.tasks.RatingEnqueuer	13
-fanout	services.tasks.RatingHandler	10
 fanout	services.tasks.RatingRunCensus	12
 fanout	services.tasks.RatingSchedule	10
 fanout	services.tasks.WorkerTaskMetrics	21

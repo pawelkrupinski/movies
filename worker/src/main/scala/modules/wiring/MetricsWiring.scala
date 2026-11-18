@@ -73,5 +73,6 @@ trait MetricsWiring { self: WorkerWiring =>
   // nothing deleted them (Kino Etiuda OBK, 2026-09). The watchdog for the cleanup that should.
   lazy val retiredVenueCensus: RetiredVenueCensus = managedResources.stopping(
     new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
-      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country, clock = clock, ticks = ticks, threadPools = threadPools))
+      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge,
+      new services.metrics.RetiredVenueShowtimes(screeningsRepository, country, clock), country, ticks = ticks, threadPools = threadPools))
 }

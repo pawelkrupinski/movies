@@ -31,7 +31,8 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
                      roster: Set[String] = VenueRoster.venuesOf(Country.Poland)) = {
     val registry = new PrometheusRegistry()
     val (rows, future) = RetiredVenueCensus.gauges(registry)
-    (new RetiredVenueCensus(screenings, slots, roster, rows, future, Country.Poland, Clock.fixed(now, ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged),
+    (new RetiredVenueCensus(screenings, slots, roster, rows, future,
+      new RetiredVenueShowtimes(screenings, Country.Poland, Clock.fixed(now, ZoneOffset.UTC)), Country.Poland, threadPools = tools.ThreadPools.Unmanaged),
       rows, future)
   }
 
@@ -64,7 +65,8 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
     val registry       = new PrometheusRegistry()
     val (rows, future) = RetiredVenueCensus.gauges(registry)
     new RetiredVenueCensus(screenings, new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned), VenueRoster.venuesOf(Country.UnitedStates) - venue,
-      rows, future, Country.UnitedStates, Clock.fixed(Instant.parse("2026-11-02T05:00:00Z"), ZoneOffset.UTC), threadPools = tools.ThreadPools.Unmanaged).sample()
+      rows, future, new RetiredVenueShowtimes(screenings, Country.UnitedStates, Clock.fixed(Instant.parse("2026-11-02T05:00:00Z"), ZoneOffset.UTC)),
+      Country.UnitedStates, threadPools = tools.ThreadPools.Unmanaged).sample()
     Country.UnitedStates.cities.head.zoneId should not be losAngeles.zoneId // else the country's fallback would agree
     future.labelValues("us").get() shouldBe 1.0
   }
