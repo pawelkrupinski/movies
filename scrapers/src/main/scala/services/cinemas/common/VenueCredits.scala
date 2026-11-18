@@ -113,44 +113,52 @@ object VenueCredits {
     if (labelled.exists(_._1 == Director)) labelled
     else inlineCredit(line) match {
       case credit if credit.nonEmpty => labelled ++ credit
-      case _ =>
-        // Unlabelled pieces state a production only beside something that marks the line as the
-        // film's facts — a year, a running time, or a labelled fact on the same line.
-        val loose      = segments.filter(labelledFacts(_).isEmpty).flatMap(items)
-        val countries  = loose.filter(isCountry)
-        val year       = loose.collectFirst { case YearAtEnd(before, y) if before.trim.isEmpty || isCountry(before) => y.toInt }
-        val runtime    = loose.flatMap(runtimeOf).headOption
-        val production =
-          if (countries.isEmpty && year.isEmpty) Nil
-          else if (year.isEmpty && runtime.isEmpty && labelled.isEmpty) Nil
-          else countries.map(stripYear).distinct match {
-            case Nil => year.map(Year -> _).toSeq
-            case cs  => Seq(Countries -> cs) ++ year.map(Year -> _)
-          }
-        labelled ++ production ++ runtime.filter(_ => production.nonEmpty).map(Runtime -> _)
+      case _                         => labelled ++ looseProduction(segments.filter(labelledFacts(_).isEmpty).flatMap(items), labelled.nonEmpty)
     }
+  }
+
+  /** Unlabelled pieces state a production only beside something that marks the line as the film's facts — a year, a
+   *  running time, or a labelled fact on the same line (`besideLabelled`). */
+  private def looseProduction(loose: Seq[String], besideLabelled: Boolean): Seq[Fact] = {
+    val countries  = loose.filter(isCountry)
+    val year       = productionYear(loose)
+    val runtime    = loose.flatMap(runtimeOf).headOption
+    val production =
+      if (countries.isEmpty && year.isEmpty) Nil
+      else if (year.isEmpty && runtime.isEmpty && !besideLabelled) Nil
+      else countries.map(stripYear).distinct match {
+        case Nil => year.map(Year -> _).toSeq
+        case cs  => Seq(Countries -> cs) ++ year.map(Year -> _)
+      }
+    production ++ runtime.filter(_ => production.nonEmpty).map(Runtime -> _)
   }
 
   private def labelledFacts(segment: String): Seq[Fact] = segment match {
     case Labelled(label, value) =>
       LabelOf(label.toLowerCase(Locale.ROOT)) match {
-        case Director      => Some(names(value)).filter(_.nonEmpty).map(Director -> _).toSeq
-        case Cast          => Some(names(value)).filter(_.nonEmpty).map(Cast -> _).toSeq
-        case OriginalTitle => Seq(OriginalTitle -> value.trim)
-        case Runtime       => runtimeOf(value).map(Runtime -> _).toSeq
-        case Year          => ScraperParse.yearIn(value).map(Year -> _).toSeq
-        case _             =>
-          // Only names the dictionary knows: "Produkcja" names a studio as often as a country
-          // ("Produkcja: Detours Film" beside "Miejsce produkcji: Szwajcaria"), and a genre rides
-          // on the same value ("Prod. Kanada/USA/Wlk. Brytania 2026, animacja, 95 min").
-          val its       = items(value)
-          val countries = its.filter(isCountry).map(stripYear).distinct
-          val year      = its.collectFirst { case YearAtEnd(before, y) if before.trim.isEmpty || isCountry(before) => y.toInt }
-          Option.when(countries.nonEmpty || year.isDefined)(Production -> (countries, year)).toSeq ++
-            its.flatMap(runtimeOf).headOption.map(Runtime -> _)
+        case field @ (Director | Cast) => Some(names(value)).filter(_.nonEmpty).map(field -> _).toSeq
+        case OriginalTitle             => Seq(OriginalTitle -> value.trim)
+        case Runtime                   => runtimeOf(value).map(Runtime -> _).toSeq
+        case Year                      => ScraperParse.yearIn(value).map(Year -> _).toSeq
+        case _                         => labelledProduction(value)
       }
     case _ => Nil
   }
+
+  // Only names the dictionary knows: "Produkcja" names a studio as often as a country
+  // ("Produkcja: Detours Film" beside "Miejsce produkcji: Szwajcaria"), and a genre rides
+  // on the same value ("Prod. Kanada/USA/Wlk. Brytania 2026, animacja, 95 min").
+  private def labelledProduction(value: String): Seq[Fact] = {
+    val its       = items(value)
+    val countries = its.filter(isCountry).map(stripYear).distinct
+    val year      = productionYear(its)
+    Option.when(countries.nonEmpty || year.isDefined)(Production -> (countries, year)).toSeq ++
+      its.flatMap(runtimeOf).headOption.map(Runtime -> _)
+  }
+
+  /** The year of the first piece that is a bare year or a country with one ("Francja 2026"). */
+  private def productionYear(pieces: Seq[String]): Option[Int] =
+    pieces.collectFirst { case YearAtEnd(before, y) if before.trim.isEmpty || isCountry(before) => y.toInt }
 
   /** "… reż. A, B | Polska | 2025 | 34 min" / "reż. Natxo Leuza, Hiszpania 2025, 85'": the directors,
    *  then what the line says of the production. A "reż." inside a sentence ("w reż. Andrzeja Wajdy")
@@ -165,7 +173,7 @@ object VenueCredits {
           (d.flatMap(names), r.flatMap(items))
         }
       val countries = rest.filter(isCountry).map(stripYear).distinct
-      val year      = rest.collectFirst { case YearAtEnd(before, y) if before.trim.isEmpty || isCountry(before) => y.toInt }
+      val year      = productionYear(rest)
       val runtime   = rest.flatMap(runtimeOf).headOption
       val corroborated = countries.nonEmpty || year.isDefined || runtime.isDefined
       if (directors.isEmpty || (m.start > 0 && !corroborated)) Nil

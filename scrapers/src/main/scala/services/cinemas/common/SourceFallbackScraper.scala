@@ -113,51 +113,54 @@ class SourceFallbackScraper(
     val nowI          = now()
     val withinBackoff = active && previous.flatMap(_.nextPrimaryProbeAt).exists(nowI.isBefore)
 
-    if (withinBackoff) {
-      // On fallback, not yet time to re-probe → skip the broken primary entirely.
-      // The fallback is the ONLY source this tick, so its failure is the scrape's: it
-      // fails (red) rather than reading as an empty listing. Only a fallback that
-      // answered empty is an empty tick.
-      val (fwResult, fwMs, fwAnswer) = fetchFallback()
-      previous.foreach(p => store.put(witness(p.copy(updatedAt = nowI), fwAnswer, nowI)))
-      fwResult match {
-        case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
-          monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
-        case scala.util.Success(_) =>
-          monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty)
-        case scala.util.Failure(t) =>
+    if (withinBackoff) fallbackOnly(previous, nowI)
+    else runPrimary() match {
+      case PrimaryOutcome.Healthy(movies, ms) =>
+        endFailingSpell(previous, nowI)
+        monitor.recordSuccess(service, ms, thin(movies))
+        primaryServed(movies)
+
+      case PrimaryOutcome.Threw(t) =>
+        // A throw is unambiguously a failure — no need to consult the fallback to
+        // classify it; only reach for it once the grace window has elapsed.
+        onFailure(previous, nowI, active, UptimeRecordingScraper.errorLabel(t)) {
           monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
-      }
+        }
+
+      case PrimaryOutcome.Empty(movies, ms) => afterEmptyPrimary(previous, nowI, active, movies, ms)
+    }
+  }
+
+  /** On fallback, not yet time to re-probe → skip the broken primary entirely.
+   *  The fallback is the ONLY source this tick, so its failure is the scrape's: it
+   *  fails (red) rather than reading as an empty listing. Only a fallback that
+   *  answered empty is an empty tick. */
+  private def fallbackOnly(previous: Option[FallbackState], nowI: Instant): CinemaScraper.Scraped = {
+    val (fwResult, fwMs, fwAnswer) = fetchFallback()
+    previous.foreach(p => store.put(witness(p.copy(updatedAt = nowI), fwAnswer, nowI)))
+    fwResult match {
+      case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
+        monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
+      case scala.util.Success(_) =>
+        monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty)
+      case scala.util.Failure(t) =>
+        monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
+    }
+  }
+
+  /** Empty only counts as a failure if the fallback can actually cover it —
+   *  otherwise it's a genuine empty repertoire and must never trip. */
+  private def afterEmptyPrimary(previous: Option[FallbackState], nowI: Instant, active: Boolean,
+                                movies: Seq[CinemaMovie], ms: Long): CinemaScraper.Scraped = {
+    val (fwMovies, fwMs, fwAnswer) = tryFallback()
+    if (fwAnswer != FallbackAnswer.Served) {
+      if (active) markPrimaryDown(previous, nowI, EmptyReason, fwAnswer)  // already on fallback: still a failed re-probe
+      monitor.recordEmpty(service, ms); primaryServed(movies)
+    } else if (active || graceElapsed(previous, nowI)) {
+      if (active) markPrimaryDown(previous, nowI, EmptyReason, fwAnswer) else enterFallback(previous, nowI, EmptyReason)
+      monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
     } else {
-      runPrimary() match {
-        case PrimaryOutcome.Healthy(movies, ms) =>
-          endFailingSpell(previous, nowI)
-          monitor.recordSuccess(service, ms, thin(movies))
-          primaryServed(movies)
-
-        case PrimaryOutcome.Threw(t) =>
-          // A throw is unambiguously a failure — no need to consult the fallback to
-          // classify it; only reach for it once the grace window has elapsed.
-          onFailure(previous, nowI, active, UptimeRecordingScraper.errorLabel(t)) {
-            monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
-          }
-
-        case PrimaryOutcome.Empty(movies, ms) =>
-          // Empty only counts as a failure if the fallback can actually cover it —
-          // otherwise it's a genuine empty repertoire and must never trip.
-          val (fwMovies, fwMs, fwAnswer) = tryFallback()
-          val fwServed = fwAnswer == FallbackAnswer.Served
-          if (!fwServed) {
-            if (active) markPrimaryDown(previous, nowI, EmptyReason, fwAnswer)  // already on fallback: still a failed re-probe
-            monitor.recordEmpty(service, ms); primaryServed(movies)
-          } else if (active) {
-            markPrimaryDown(previous, nowI, EmptyReason, fwAnswer); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
-          } else if (graceElapsed(previous, nowI)) {
-            enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
-          } else {
-            recordGraceFailure(previous, nowI, EmptyReason); monitor.recordEmpty(service, ms); primaryServed(movies)
-          }
-      }
+      recordGraceFailure(previous, nowI, EmptyReason); monitor.recordEmpty(service, ms); primaryServed(movies)
     }
   }
 

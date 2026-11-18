@@ -67,37 +67,8 @@ object Bilety24Client {
 
   def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String, titles: TitleNormalizer): Option[CinemaMovie] = {
     val document = Jsoup.parse(html)
-
-    // Peel a language/format suffix ("Supergirl/dubbing", "… /napisy") off the
-    // title into format tokens, so the dub/subtitle editions collapse onto one
-    // clean-titled film instead of each fragmenting into its own row. The buy
-    // button carries its own per-screening format when present; the title token
-    // is the fallback for the (common) case where the button format span is empty.
-    val titled   = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
-      .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
-      .map(t => titles.cinemaClean(cinema.slug, t))
-      .filter(_.nonEmpty)
-      .map(FormatTags.extractFormatTags)
-    val title    = titled.map(_._1)
-    val titleFmt = titled.map(_._2).getOrElse(Nil)
-
-    // Buy buttons are rendered twice (desktop + mobile) — dedup by booking URL.
-    val slots = document.select("a.b24-button[title^=\"Kup bilet - Film:\"]").asScala.toSeq.flatMap { a =>
-      val href = a.attr("href")
-      // Skip disabled/placeholder buttons (href="#") — only real kup-bilety
-      // links are bookable slots.
-      // Active buttons link to a real URL (/kup-bilety/ or /b24-do-miejsc-numerowanych-i-nienumerowanych/);
-      // inactive/disabled buttons use href="#".
-      if (href == "#") None
-      else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
-        ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
-          val booking = if (href.startsWith("http")) href else baseUrl + href
-          val buttonFmt = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
-                          .filter(_.nonEmpty).map(_.split("\\s+").toList.filter(_.nonEmpty)).getOrElse(Nil)
-          Showtime(dt, Some(booking), None, if (buttonFmt.nonEmpty) buttonFmt else titleFmt)
-        }
-      }
-    }.distinctBy(_.dateTime).sortBy(_.dateTime)
+    val titled   = titleAndFormat(document, cinema, titles)
+    val slots    = showtimes(document, baseUrl, titled.map(_._2).getOrElse(Nil))
 
     val (runtime, genres) = movieParameters(document)
     // The description block also carries a "czytaj więcej" toggle, an empty
@@ -108,19 +79,14 @@ object Bilety24Client {
     val synopsis = description.map(ScraperParse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
     // What the venue typed of the film into the same box ("Reżyseria: …", "Czas trwania: 45 minut").
     val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
-    // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
-    // the first real raster image, else fall back to the og:image poster.
-    val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
-                     .find(s => s.nonEmpty && !s.toLowerCase(Locale.ROOT).endsWith(".svg"))
-                     .orElse(ScraperParse.ogImage(document))
 
     for {
-      t <- title if slots.nonEmpty
+      t <- titled.map(_._1) if slots.nonEmpty
     } yield CinemaMovie(
       movie     = Movie(title = t, runtimeMinutes = runtime.orElse(credits.runtimeMinutes), releaseYear = credits.releaseYear,
                         countries = credits.countries, genres = genres, originalTitle = credits.originalTitle),
       cinema    = cinema,
-      posterUrl = poster,
+      posterUrl = poster(document),
       filmUrl   = Some(s"$baseUrl/wydarzenie/?id=$eventId"),
       synopsis  = synopsis,
       cast      = credits.cast,
@@ -128,4 +94,46 @@ object Bilety24Client {
       showtimes = slots
     )
   }
+
+  // Peel a language/format suffix ("Supergirl/dubbing", "… /napisy") off the
+  // title into format tokens, so the dub/subtitle editions collapse onto one
+  // clean-titled film instead of each fragmenting into its own row. The buy
+  // button carries its own per-screening format when present; the title token
+  // is the fallback for the (common) case where the button format span is empty.
+  private def titleAndFormat(document: org.jsoup.nodes.Document, cinema: Cinema, titles: TitleNormalizer): Option[(String, List[String])] =
+    Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
+      .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
+      .map(t => titles.cinemaClean(cinema.slug, t))
+      .filter(_.nonEmpty)
+      .map(FormatTags.extractFormatTags)
+
+  // Buy buttons are rendered twice (desktop + mobile) — dedup by booking URL.
+  private def showtimes(document: org.jsoup.nodes.Document, baseUrl: String, titleFormat: List[String]): Seq[Showtime] =
+    document.select("a.b24-button[title^=\"Kup bilet - Film:\"]").asScala.toSeq
+      .flatMap(showtimeOf(_, baseUrl, titleFormat))
+      .distinctBy(_.dateTime).sortBy(_.dateTime)
+
+  // Skip disabled/placeholder buttons (href="#") — only real kup-bilety
+  // links are bookable slots.
+  // Active buttons link to a real URL (/kup-bilety/ or /b24-do-miejsc-numerowanych-i-nienumerowanych/);
+  // inactive/disabled buttons use href="#".
+  private def showtimeOf(a: org.jsoup.nodes.Element, baseUrl: String, titleFormat: List[String]): Option[Showtime] = {
+    val href = a.attr("href")
+    if (href == "#") None
+    else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
+      ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
+        val booking   = if (href.startsWith("http")) href else baseUrl + href
+        val buttonFmt = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
+                        .filter(_.nonEmpty).map(_.split("\\s+").toList.filter(_.nonEmpty)).getOrElse(Nil)
+        Showtime(dt, Some(booking), None, if (buttonFmt.nonEmpty) buttonFmt else titleFormat)
+      }
+    }
+  }
+
+  // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
+  // the first real raster image, else fall back to the og:image poster.
+  private def poster(document: org.jsoup.nodes.Document): Option[String] =
+    document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
+      .find(s => s.nonEmpty && !s.toLowerCase(Locale.ROOT).endsWith(".svg"))
+      .orElse(ScraperParse.ogImage(document))
 }

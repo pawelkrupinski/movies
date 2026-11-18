@@ -216,27 +216,32 @@ object OdeonParser {
    *  showtime pill. Substring-matched so a decorated variant ("IMAX with Laser",
    *  "Dolby Atmos") still resolves. */
   def formatToken(rawName: String): Option[String] = {
-    val n = rawName.toLowerCase(Locale.ROOT).trim
-    if (n.isEmpty) None
-    else if (n.contains("imax")) Some("IMAX")
-    else if (n.contains("screenx")) Some("ScreenX")
-    else if (n.contains("4dx")) Some("4DX")
-    else if (n.contains("isense")) Some("iSense")
-    else if (n.contains("dolby")) Some("Dolby")
-    else if (n.contains("d-box") || n.contains("dbox")) Some("D-BOX")
-    else if (n.contains("70mm")) Some("70mm")
-    else if (n.contains("35mm")) Some("35mm")
-    else if (n.contains("recliner")) Some("Recliner")
-    else if (n.contains("gallery")) Some("The Gallery")
-    else if (n.contains("silver")) Some("Silver Cinema")
-    else if (n.contains("audio described")) Some("Audio Described")
-    else if (n.contains("open captioned") || n.contains("subtitled") || n.endsWith("(sub)")) Some("Subtitled")
-    else if (n.contains("closed captioned")) Some("Closed Captions")
-    else if (n.contains("relaxed") || n.contains("autism")) Some("Relaxed")
-    else if (n.contains("kids club") || n.contains("baby club") || n.contains("odeon kids")) Some("Kids")
-    else if (n.contains("wheelchair")) Some("Wheelchair Accessible")
-    else None
+    val name = rawName.toLowerCase(Locale.ROOT).trim
+    FormatTokens.collectFirst { case (matches, token) if matches(name) => token }
   }
+
+  /** [[formatToken]]'s table, first match wins: what a lower-cased attribute name contains, and its token. */
+  private val FormatTokens: Seq[(String => Boolean, String)] = Seq(
+    containsAny("imax")                                    -> "IMAX",
+    containsAny("screenx")                                 -> "ScreenX",
+    containsAny("4dx")                                     -> "4DX",
+    containsAny("isense")                                  -> "iSense",
+    containsAny("dolby")                                   -> "Dolby",
+    containsAny("d-box", "dbox")                           -> "D-BOX",
+    containsAny("70mm")                                    -> "70mm",
+    containsAny("35mm")                                    -> "35mm",
+    containsAny("recliner")                                -> "Recliner",
+    containsAny("gallery")                                 -> "The Gallery",
+    containsAny("silver")                                  -> "Silver Cinema",
+    containsAny("audio described")                         -> "Audio Described",
+    ((name: String) => containsAny("open captioned", "subtitled")(name) || name.endsWith("(sub)")) -> "Subtitled",
+    containsAny("closed captioned")                        -> "Closed Captions",
+    containsAny("relaxed", "autism")                       -> "Relaxed",
+    containsAny("kids club", "baby club", "odeon kids")    -> "Kids",
+    containsAny("wheelchair")                              -> "Wheelchair Accessible"
+  )
+
+  private def containsAny(needles: String*)(name: String): Boolean = needles.exists(name.contains)
 
   /** Lower-case, `&`→`and`, non-alphanumerics collapsed to single hyphens —
    *  the `slugify(title, {strict:true})` shape Odeon's own film-page URLs use. */

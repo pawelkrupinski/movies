@@ -377,25 +377,29 @@ object WebediaShowtimesClient {
     val isDubbed   = key.startsWith("dubbed")
     val isOriginal = key.startsWith("original") ||
       (!isLocal && !isDubbed && tags.exists(_.contains("localization.version.original")))
-    val subtitles  = tags.filter(_.contains("localization.subtitle."))
-
     if (isLocal)         Nil
-    else if (isOriginal) {
-      val english = subtitles.exists(_.endsWith("english"))
-      // A print subtitled in English AND another language is both versions, and badged as both:
-      // the market's own subtitled token is the one its "subtitles" filter reads.
-      val other   = subtitles.exists(!_.endsWith("english"))
-      if (english && other)  List(market.subtitledToken, market.englishSubtitledToken)
-      else if (english)      List(market.englishSubtitledToken)
-      else if (other)        List(market.subtitledToken)
-      else                   List(market.originalVersionToken)
-    }
-    else if (isDubbed)   List(
-      market.dubbedLanguageTokens.collectFirst {
-        case (language, token) if tags.exists(_.contains(s"localization.language.$language")) => token
-      }.getOrElse(market.dubbedToken))
+    else if (isOriginal) originalVersionTokens(tags.filter(_.contains("localization.subtitle.")), market)
+    else if (isDubbed)   List(dubbedToken(tags, market))
     else                 Nil
   }
+
+  private def originalVersionTokens(subtitles: Seq[String], market: WebediaMarket): List[String] = {
+    val english = subtitles.exists(_.endsWith("english"))
+    // A print subtitled in English AND another language is both versions, and badged as both:
+    // the market's own subtitled token is the one its "subtitles" filter reads.
+    val other   = subtitles.exists(!_.endsWith("english"))
+    (english, other) match {
+      case (true, true)   => List(market.subtitledToken, market.englishSubtitledToken)
+      case (true, false)  => List(market.englishSubtitledToken)
+      case (false, true)  => List(market.subtitledToken)
+      case (false, false) => List(market.originalVersionToken)
+    }
+  }
+
+  private def dubbedToken(tags: Seq[String], market: WebediaMarket): String =
+    market.dubbedLanguageTokens.collectFirst {
+      case (language, token) if tags.exists(_.contains(s"localization.language.$language")) => token
+    }.getOrElse(market.dubbedToken)
 
   private def parseLocalDateTime(s: String): Option[LocalDateTime] =
     Try(LocalDateTime.parse(s.trim)).toOption

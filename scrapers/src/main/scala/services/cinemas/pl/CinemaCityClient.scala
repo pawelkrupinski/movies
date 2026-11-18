@@ -97,37 +97,8 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
 
     // A malformed film or event is dropped on its own (asOpt), so one bad entry
     // can't fail — and endlessly retry — a whole day that otherwise parses.
-    val info: Map[String, FilmInfo] = films.iterator.flatMap { film =>
-      for {
-        id   <- (film \ "id").asOpt[String]
-        name <- (film \ "name").asOpt[String]
-      } yield id -> FilmInfo(
-        name           = name,
-        posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
-        filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
-        runtimeMinutes = (film \ "length").asOpt[Int],
-        // releaseYear comes through as a String in the API (`"releaseYear":"2026"`);
-        // asOpt[Int] silently fails on a String, so try String first.
-        releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
-          .orElse((film \ "releaseYear").asOpt[Int]))
-    }.toMap
-
-    val slotsByFilm = events.iterator.flatMap { event =>
-      (event \ "filmId").asOpt[String].toSeq.flatMap { filmId =>
-        val bookingUrl = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
-        val room       = (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(CinemaCityClient.normalizeAuditorium)
-        val attrs      = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
-        // attrs is a kitchen-sink list (genre, 2d/3d, dubbed/subbed, IMAX, seating, age…);
-        // pick out the screen-feature tokens we display.
-        val format = List(
-          if (attrs.contains("imax")) Some("IMAX") else None,
-          if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None,
-          if (attrs.contains("dubbed")) Some("DUB") else if (attrs.contains("subbed")) Some("NAP") else None
-        ).flatten
-        Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
-          .map(dt => filmId -> Showtime(dt, bookingUrl, room, format))
-      }
-    }.toSeq
+    val info: Map[String, FilmInfo] = films.iterator.flatMap(filmInfo).toMap
+    val slotsByFilm = events.iterator.flatMap(slotOf).toSeq
 
     SlotsToMovies.foldSome(slotsByFilm, _._1, _._2, distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, _, showtimes) =>
       info.get(filmId).map { fi =>
@@ -145,9 +116,42 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
       }
     }
   }
+
+  private def filmInfo(film: JsValue): Option[(String, FilmInfo)] =
+    for {
+      id   <- (film \ "id").asOpt[String]
+      name <- (film \ "name").asOpt[String]
+    } yield id -> FilmInfo(
+      name           = name,
+      posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
+      filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
+      runtimeMinutes = (film \ "length").asOpt[Int],
+      // releaseYear comes through as a String in the API (`"releaseYear":"2026"`);
+      // asOpt[Int] silently fails on a String, so try String first.
+      releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
+        .orElse((film \ "releaseYear").asOpt[Int]))
+
+  private def slotOf(event: JsValue): Option[(String, Showtime)] =
+    for {
+      filmId   <- (event \ "filmId").asOpt[String]
+      dateTime <- Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
+    } yield filmId -> Showtime(
+      dateTime,
+      (event \ "bookingLink").asOpt[String].filter(_.nonEmpty),
+      (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(CinemaCityClient.normalizeAuditorium),
+      CinemaCityClient.formatOf((event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet))
 }
 
 object CinemaCityClient {
+
+  /** The screen-feature tokens we display, out of an event's kitchen-sink `attributeIds` (genre, 2d/3d,
+   *  dubbed/subbed, IMAX, seating, age…). */
+  private[pl] def formatOf(attributes: Set[String]): List[String] =
+    List(
+      Option.when(attributes.contains("imax"))("IMAX"),
+      Option.when(attributes.contains("3d"))("3D").orElse(Option.when(attributes.contains("2d"))("2D")),
+      Option.when(attributes.contains("dubbed"))("DUB").orElse(Option.when(attributes.contains("subbed"))("NAP"))
+    ).flatten
 
   /** The quickbook data-API base. Public so the 1:N `CinemaCityScraper`
    *  wrapper can derive its `scrapeHosts` from the same string the client
