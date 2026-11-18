@@ -1,5 +1,7 @@
 package modules
 
+import modules.webwiring.Wiring
+
 import models.{Country, MovieRecord}
 import services.MongoConnection
 import settings.MongoAddress

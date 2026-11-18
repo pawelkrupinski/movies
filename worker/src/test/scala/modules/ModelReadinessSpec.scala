@@ -1,5 +1,7 @@
 package modules
 
+import modules.wiring.WorkerWiring
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Listing, ListingReadiness, Question}

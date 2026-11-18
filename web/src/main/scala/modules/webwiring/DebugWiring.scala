@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, SnapshotStore}
-import modules.Wiring
 import play.api.Mode
 import services.{MongoConnection, ServiceTags}
 import services.movies.MongoMovieRepository

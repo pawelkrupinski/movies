@@ -22,7 +22,7 @@ import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder, HttpPath}
  * for opposite reasons — a rising scrape 403 is a cinema blocking us, while a
  * steady enrich 404 is the RT/Metacritic resolvers probing candidate slugs by
  * design — so a Grafana panel filtered to one phase reads a failure budget the
- * combined line would blur. [[modules.WorkerWiring]] builds one full fetch chain
+ * combined line would blur. [[modules.wiring.WorkerWiring]] builds one full fetch chain
  * per phase, differing ONLY at this counter's `phase` label.
  *
  * The `service` label (see [[WorkerHttpMetrics.Service]]) names WHICH external
@@ -71,7 +71,7 @@ class WorkerHttpMetrics(countryCodes: Seq[String], registry: PrometheusRegistry)
       requests.labelValues(c, p, o, s, path)
 
   /** A recorder bound to one country and call [[WorkerHttpMetrics.Phase]] — what a
-   *  [[modules.WorkerWiring]] injects into that phase's [[tools.CountingHttpFetch]].
+   *  [[modules.wiring.WorkerWiring]] injects into that phase's [[tools.CountingHttpFetch]].
    *  The counter asks it [[HttpOutcomeRecorder.forRequest]] per attempt, which binds
    *  the `service` label, and [[HttpOutcomeRecorder.forPath]], which binds `path`; a bare
    *  `record` (no URL known, no path named) is the phase's default service and `other`. */

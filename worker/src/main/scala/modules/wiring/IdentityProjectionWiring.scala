@@ -1,6 +1,5 @@
 package modules.wiring
 
-import modules.WorkerWiring
 import services.identity.{FilmIdCounterStore, IdentityListingIntake, InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
 import services.identity.adapters.IdentityProjection
 import services.identity.toAnswer

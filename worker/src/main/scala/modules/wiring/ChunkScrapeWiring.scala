@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.ScrapeChunkSpread
 
-import modules.WorkerWiring
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
 import services.tasks.{ChunkRun, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
 

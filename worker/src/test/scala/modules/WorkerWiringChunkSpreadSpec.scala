@@ -1,5 +1,7 @@
 package modules
 
+import modules.wiring.WorkerWiring
+
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

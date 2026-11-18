@@ -1,5 +1,6 @@
 package modules
 
+import modules.webwiring.Wiring
 
 import models.MovieRecord
 import services.MongoConnection

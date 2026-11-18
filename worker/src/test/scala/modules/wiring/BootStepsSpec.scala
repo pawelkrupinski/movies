@@ -1,4 +1,4 @@
-package modules
+package modules.wiring
 
 import tools.SpecTimeouts
 

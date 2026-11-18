@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
-import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
  *  The controllers a visitor (or the mobile apps) reach without signing in:

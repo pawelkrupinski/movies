@@ -1,4 +1,4 @@
-package modules
+package modules.wiring
 
 import play.api.Logging
 import tools.Stopwatch

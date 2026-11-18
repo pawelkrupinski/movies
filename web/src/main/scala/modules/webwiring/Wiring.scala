@@ -1,4 +1,4 @@
-package modules
+package modules.webwiring
 
 import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, ReviewWiring, UsersWiring}
 import play.api.Mode
@@ -11,7 +11,7 @@ import settings.MongoAddress
  * shared data layer (Mongo + the read model, kept warm purely from Mongo via the
  * change streams — this process never scrapes), the user/auth stack, and the
  * controllers. The scrape + enrichment half lives in the separate `worker` app
- * (`modules.WorkerWiring`); the two share only the Mongo database.
+ * (`modules.wiring.WorkerWiring`); the two share only the Mongo database.
  *
  * Each area's wiring lives in its own `modules.webwiring.*` trait — its own package,
  * because the worker's `modules.wiring` already has a `ReadModelWiring` and a

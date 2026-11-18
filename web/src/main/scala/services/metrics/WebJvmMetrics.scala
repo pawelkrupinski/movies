@@ -19,7 +19,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * so the scrape's `app` label identifies the country's process on its own (see
  * infra/nix/files/monitoring/scrape-kinowo-apps.yaml).
  *
- * One instance per process, built in [[modules.Wiring]] — the collector names
+ * One instance per process, built in [[modules.webwiring.Wiring]] — the collector names
  * may be registered only once per registry.
  *
  * The registry is the PROCESS-WIDE one, not a JVM-only one: [[WebHttpMetrics]]

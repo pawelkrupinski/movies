@@ -100,7 +100,7 @@ groups:
             `kinowo_worker_scheduled_tick_last_success_timestamp_seconds` has no series from any
             country, so `WorkerScheduledTickStale` cannot fire and no worker loop is watched. If
             the workers are down, `WorkerDown` is the alert to read; if they are up, the wiring's
-            `ticks` recorder is no longer reaching the loops (modules.WorkerWiring).
+            `ticks` recorder is no longer reaching the loops (modules.wiring.WorkerWiring).
 
       - alert: WebScheduledTickMetricsAbsent
         expr: absent(kinowo_web_scheduled_tick_last_success_timestamp_seconds)

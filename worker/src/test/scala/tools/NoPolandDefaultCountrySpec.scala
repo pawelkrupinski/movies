@@ -48,7 +48,7 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
     "worker/src/main/scala/services/tasks/EnrichDetailsHandler.scala: EnrichDetailsHandler.screeningTokens" -> Tests,
     "worker/src/main/scala/services/tasks/QueueEnrichmentRetrigger.scala: QueueEnrichmentRetrigger.country" -> Tests,
     "worker/src/main/scala/services/tasks/RatingEnqueuer.scala: RatingEnqueuer.country"             -> Tests,
-    "worker/src/main/scala/modules/WorkerWiring.scala: WorkerWiring.country" ->
+    "worker/src/main/scala/modules/wiring/WorkerWiring.scala: WorkerWiring.country" ->
       ("the worker test seam `TestWiring` is a trait, so it can only extend the no-argument constructor; " +
         "WorkerMain passes every country explicitly"),
     "scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala: this.titles" ->

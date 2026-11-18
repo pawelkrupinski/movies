@@ -175,7 +175,7 @@ tests:
                 any country, so `WorkerScheduledTickStale` cannot fire and no worker loop is
                 watched. If the workers are down, `WorkerDown` is the alert to read; if they are
                 up, the wiring's `ticks` recorder is no longer reaching the loops
-                (modules.WorkerWiring).
+                (modules.wiring.WorkerWiring).
       - eval_time: 70m
         alertname: WebScheduledTickMetricsAbsent
         exp_alerts:

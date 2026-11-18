@@ -3,7 +3,6 @@ package modules.wiring
 import scala.concurrent.duration.DurationInt
 import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
-import modules.WorkerWiring
 import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ResumeTokenStore, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, UnscreenedCleanup}
 import services.titles.TitleNormalizer
 import services.corpus.StrandedSideRowsCleanup

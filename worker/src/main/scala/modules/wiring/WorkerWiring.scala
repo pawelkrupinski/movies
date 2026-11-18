@@ -1,4 +1,4 @@
-package modules
+package modules.wiring
 
 import org.mongodb.scala.MongoClient
 import models.Country
@@ -21,7 +21,7 @@ import tools.{Env, ExecutionBudget, SharedExecutionBudget}
  * two apps share the database, not in-process objects.
  *
  * This is the scrape/enrich half of what used to be the monolith's single
- * `Wiring`; the serving half now lives in the web app's `modules.Wiring`.
+ * `Wiring`; the serving half now lives in the web app's `modules.webwiring.Wiring`.
  *
  * Parametrized by [[Country]]: the worker instantiates ONE of these per country
  * it runs (from `KINOWO_COUNTRIES`, see `WorkerMain`), each scraping only its

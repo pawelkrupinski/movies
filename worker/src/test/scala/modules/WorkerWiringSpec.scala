@@ -1,5 +1,7 @@
 package modules
 
+import modules.wiring.WorkerWiring
+
 import clients.tools.{AnyMethodByUrlHttpFetch, ScriptedByUrlHttpFetch}
 import tools.SpecClock.given
 

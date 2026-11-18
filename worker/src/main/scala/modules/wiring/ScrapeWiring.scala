@@ -3,7 +3,6 @@ package modules.wiring
 import settings.{ScrapeBootRamp, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
 
 import models.Cinema
-import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.de.GermanFeed

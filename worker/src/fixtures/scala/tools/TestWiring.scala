@@ -2,7 +2,7 @@ package tools
 
 import clients.TmdbClient
 import models.{Cinema, City}
-import modules.WorkerWiring
+import modules.wiring.WorkerWiring
 import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}

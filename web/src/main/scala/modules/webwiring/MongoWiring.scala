@@ -1,6 +1,5 @@
 package modules.webwiring
 
-import modules.Wiring
 import play.api.Mode
 import services.{MongoConnection, MongoRequirement, MongoTuning}
 

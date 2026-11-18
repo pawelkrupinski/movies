@@ -240,7 +240,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   /** THE WIRING RULE, not just the helper. `MongoTtlIndex.ensure` behaving well is worth
    *  nothing if the serving app never calls it, and a flag at a call site is one a future
    *  wiring can drop without any test noticing. `UptimeMonitor` takes it from its
-   *  `UptimeTier`, and `web.modules.Wiring` passes `UptimeTier.Surfacing` — so constructing one
+   *  `UptimeTier`, and `web.modules.webwiring.Wiring` passes `UptimeTier.Surfacing` — so constructing one
    *  the way that wiring does is the assertion. */
   it should "not rebuild the bucket index from a monitor wired the way the serving app wires it" in {
     val buckets = database.getCollection[Document]("uptimeBuckets")

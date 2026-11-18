@@ -1,5 +1,7 @@
 package modules
 
+import modules.wiring.WorkerWiring
+
 import clients.tools.FailingHttpFetch
 import models.{Cinema, Country}
 import services.MongoConnection

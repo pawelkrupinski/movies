@@ -256,8 +256,8 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   /** Main-source file → why it may read the process's time directly. */
   private val MainTimeSources: Map[String, String] = Map(
-    "web/src/main/scala/modules/Wiring.scala"            -> CompositionRoot,
-    "worker/src/main/scala/modules/WorkerWiring.scala"   -> CompositionRoot,
+    "web/src/main/scala/modules/webwiring/Wiring.scala"   -> CompositionRoot,
+    "worker/src/main/scala/modules/wiring/WorkerWiring.scala" -> CompositionRoot,
     "worker/src/main/scala/modules/WorkerMain.scala"     -> CompositionRoot,
     "base/src/main/scala/tools/Stopwatch.scala"          -> "defines Stopwatch.System, the process's monotonic source",
     "common/src/main/scala/models/VenueClock.scala"      -> "defines VenueClock.system, a launcher's venue clock over Clock.systemUTC()",

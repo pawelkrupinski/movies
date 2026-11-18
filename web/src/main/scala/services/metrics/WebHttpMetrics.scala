@@ -106,7 +106,7 @@ class WebHttpMetrics(registry: PrometheusRegistry, country: String) {
   responseBytes.labelValues(country, "GET", WebHttpMetrics.UnmatchedRoute)
 
   /** Seed every route the router defines (Play's `documentation`: method, generated path) at 0 for its error
-   *  classes — see the class comment. Called once at boot by [[modules.Wiring.metricsAtBoot]]. */
+   *  classes — see the class comment. Called once at boot by [[modules.webwiring.Wiring.metricsAtBoot]]. */
   def declareRoutes(routes: Seq[(String, String)]): Unit =
     for ((method, path) <- routes; status <- Seq("4xx", "5xx"))
       requests.labelValues(country, WebHttpMetrics.methodLabel(method), WebHttpMetrics.readablePattern(path), status)

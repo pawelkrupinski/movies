@@ -1,5 +1,8 @@
 package modules
 
+import modules.wiring.WorkerWiring
+import modules.wiring.BootSteps
+
 import com.sun.net.httpserver.HttpServer
 import models.Country
 import org.mongodb.scala.MongoClient

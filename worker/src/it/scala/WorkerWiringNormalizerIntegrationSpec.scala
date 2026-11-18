@@ -1,5 +1,7 @@
 package modules
 
+import modules.wiring.WorkerWiring
+
 import tools.SpecTimeouts
 
 import models.Country

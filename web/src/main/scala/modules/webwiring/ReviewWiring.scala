@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.ReviewController
-import modules.Wiring
 import play.api.Mode
 import services.MongoConnection
 import java.nio.file.Paths

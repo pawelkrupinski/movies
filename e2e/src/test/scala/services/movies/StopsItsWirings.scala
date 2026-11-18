@@ -1,6 +1,6 @@
 package services.movies
 
-import modules.WorkerWiring
+import modules.wiring.WorkerWiring
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 import java.util.concurrent.ConcurrentLinkedQueue

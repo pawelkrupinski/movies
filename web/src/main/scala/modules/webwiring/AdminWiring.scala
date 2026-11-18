@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.{AdminAction, EnvConfigController, TasksController, UptimeController}
-import modules.Wiring
 import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}

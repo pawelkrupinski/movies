@@ -35,10 +35,6 @@ module-edge	worker->common	1616
 module-edge	worker->http	192
 module-edge	worker->identity	447
 module-edge	worker->scrapers	143
-cycle-edge	modules->modules.webwiring	14
-cycle-edge	modules->modules.wiring	23
-cycle-edge	modules.webwiring->modules	8
-cycle-edge	modules.wiring->modules	18
 cycle-edge	services.cinemas->services.enrichment	5
 cycle-edge	services.cinemas->services.identity	8
 cycle-edge	services.corpus->services.identity	4
@@ -68,9 +64,9 @@ ce	clients	3
 ce	controllers	20
 ce	diagnostics	5
 ce	models	1
-ce	modules	23
-ce	modules.webwiring	21
-ce	modules.wiring	32
+ce	modules	11
+ce	modules.webwiring	20
+ce	modules.wiring	31
 ce	services	3
 ce	services.alerts	6
 ce	services.attempts	4
@@ -109,7 +105,6 @@ fanout	controllers.DebugController	35
 fanout	controllers.ReviewController	32
 fanout	modules.AppComponents	50
 fanout	modules.WorkerMain	49
-fanout	modules.WorkerWiring	114
 fanout	modules.webwiring.AdminWiring	42
 fanout	modules.webwiring.ControllersWiring	43
 fanout	modules.webwiring.DebugWiring	62
@@ -132,6 +127,7 @@ fanout	modules.wiring.ScrapeWiring	109
 fanout	modules.wiring.ShareCardWiring	82
 fanout	modules.wiring.TaskQueueWiring	48
 fanout	modules.wiring.WorkerMetrics	44
+fanout	modules.wiring.WorkerWiring	114
 fanout	services.cinemas.CinemaScraperCatalog	43
 fanout	services.cinemas.pl.HeliosNuxt	58
 fanout	services.cinemas.pl.venues.KrakowVenues	33

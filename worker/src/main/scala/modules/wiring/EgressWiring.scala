@@ -1,6 +1,5 @@
 package modules.wiring
 
-import modules.WorkerWiring
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester

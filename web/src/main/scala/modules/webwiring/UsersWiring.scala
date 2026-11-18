@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.{AuthController, FacebookDataDeletionController, SsoController, UserStateController}
-import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}

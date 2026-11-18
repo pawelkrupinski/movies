@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.ShareCardFirstHold
 
-import modules.WorkerWiring
 import services.identity.{EvidenceRatingGate, IdentityCalibration}
 import services.readmodel.RatingGate
 import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter, ShareCardGate}

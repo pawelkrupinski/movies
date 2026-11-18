@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.MovieControllerService
-import modules.Wiring
 import services.MongoConnection
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}

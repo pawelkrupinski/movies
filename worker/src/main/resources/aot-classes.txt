@@ -6450,8 +6450,6 @@ modules.BootLiveness
 modules.WorkerFleet
 modules.WorkerMain
 modules.WorkerMain$
-modules.WorkerWiring
-modules.WorkerWiring$
 modules.wiring.AlertingWiring
 modules.wiring.AlertingWiring$
 modules.wiring.ChunkScrapeWiring
@@ -6481,6 +6479,8 @@ modules.wiring.TaskQueueWiring
 modules.wiring.TaskQueueWiring$
 modules.wiring.WorkerIntegrations$
 modules.wiring.WorkerMetrics
+modules.wiring.WorkerWiring
+modules.wiring.WorkerWiring$
 org.bson.AbstractBsonReader
 org.bson.AbstractBsonReader$1
 org.bson.AbstractBsonReader$Context

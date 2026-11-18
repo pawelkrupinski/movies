@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
-import modules.WorkerWiring
 import services.cinemas.common.DetailEnricher
 import services.tasks.{DetailReaper, EnrichDetailsHandler}
 

@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardMinimumFree, ShareCardStorageBudget}
 
-import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
 import services.{MongoConnection, MongoRequirement, MongoTuning}

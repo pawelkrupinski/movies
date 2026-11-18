@@ -1,6 +1,5 @@
 package modules.wiring
 
-import modules.WorkerWiring
 import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusCensus, CorpusCensusMetrics, RatingRunCensus, RetiredVenueCensus, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the

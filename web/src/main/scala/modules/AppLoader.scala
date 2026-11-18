@@ -1,5 +1,7 @@
 package modules
 
+import modules.webwiring.Wiring
+
 import controllers.{AssetsComponents, CspFilter, TruncationTolerantHttpErrorHandler}
 import play.api.ApplicationLoader.Context
 import play.api.http.{HttpErrorConfig, HttpErrorHandler}

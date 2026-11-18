@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration}
 
-import modules.WorkerWiring
 import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, TelegramAlertKind, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature

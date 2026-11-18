@@ -32,7 +32,7 @@
 #                              (default: every kinowo* database the tunnel exposes)
 # Long-running — leave it in its own terminal; Ctrl-C to stop (or run it as a
 # login agent: service.sh). The web app reads the mirror only when ITS
-# MONGODB_MOVIES_MIRROR_URI is set (see web modules.Wiring); unset → /debug reads
+# MONGODB_MOVIES_MIRROR_URI is set (see web modules.webwiring.Wiring); unset → /debug reads
 # prod directly, exactly as before.
 #
 # Usage:  scripts/local-mirror/mirror.sh [--reseed]

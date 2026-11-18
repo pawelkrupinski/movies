@@ -1,7 +1,6 @@
 package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
-import modules.Wiring
 import services.metrics.{WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics, LegacyAddressMetrics}
 import services.users.{UserStateIndexMetrics, UserStateWriteMetrics}
 

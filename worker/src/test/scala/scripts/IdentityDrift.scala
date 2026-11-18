@@ -481,8 +481,8 @@ object IdentityDrift {
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
   final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock, filedDocs: FiledDocs = Noted,
                      /** The model's input gate from the families' readiness, as the worker composes it
-                      *  ([[modules.WorkerWiring.modelReadiness]]; the replay has every venue page it reads). */
-                     gating: ListingReadiness => ListingReadiness = modules.WorkerWiring.modelReadiness(ListingReadiness.Always, _)) {
+                      *  ([[modules.wiring.WorkerWiring.modelReadiness]]; the replay has every venue page it reads). */
+                     gating: ListingReadiness => ListingReadiness = modules.wiring.WorkerWiring.modelReadiness(ListingReadiness.Always, _)) {
     private val share    = new Share(seed, gatePercent)
     val gate             = new Gate(memo(reads), share)
     val docs             = new GatedDocuments(filedDocs(reads.filed), share)

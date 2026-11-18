@@ -1,6 +1,5 @@
 package modules.wiring
 
-import modules.WorkerWiring
 
 /** ── The incremental identity model ─────────────────────────────────────────
  * The resolver kept current by events (docs/design/identity-resolver.md §20) instead of a

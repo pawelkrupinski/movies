@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 /**
  * The single place that constructs every cinema's live scraper and files them under
- * the page their cinema is on. Extracted out of `modules.WorkerWiring` so the scraper
+ * the page their cinema is on. Extracted out of `modules.wiring.WorkerWiring` so the scraper
  * graph can be built without the worker's Mongo / event-bus / enrichment machinery — a
  * diagnostic such as `diagnostics.FilmwebDiff` needs only `(http) => Seq[CinemaScraper]`,
  * not the whole write composition root.

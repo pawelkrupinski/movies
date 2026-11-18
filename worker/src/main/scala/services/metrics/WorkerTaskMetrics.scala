@@ -49,7 +49,7 @@ object TaskObserver {
  * scrapes it over the pod's NodePort, and Grafana charts the `rate(...)` of each
  * family per `task_type`.
  *
- * Multi-country: ONE JVM runs a [[modules.WorkerWiring]] per country against a
+ * Multi-country: ONE JVM runs a [[modules.wiring.WorkerWiring]] per country against a
  * single shared [[WorkerTaskMetrics.Series]] (registered once on the shared
  * registry). Every series carries a `country` label so the two countries' rows
  * never collide on the single `/metrics` endpoint. This class is the cheap

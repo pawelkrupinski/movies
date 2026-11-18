@@ -2,7 +2,7 @@ package tools
 
 import clients.TmdbClient
 import models.{Cinema, CinemaMovie, Country}
-import modules.WorkerWiring
+import modules.wiring.WorkerWiring
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
 import services.readmodel.{ReadModelReader, ReadModelWriter}
 import services.scrapes.ScrapeArchiveRepository

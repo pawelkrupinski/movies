@@ -50,7 +50,7 @@ class WorkerResolutionMetrics(countryCodes: Seq[String], registry: PrometheusReg
     for (c <- countryCodes; s <- WorkerResolutionMetrics.Sources; o <- ResolutionOutcome.all)
       resolutions.labelValues(c, s, o)
 
-  /** A recorder bound to one country and source — what a [[modules.WorkerWiring]]
+  /** A recorder bound to one country and source — what a [[modules.wiring.WorkerWiring]]
    *  injects into each per-source [[services.resolution.WriteThroughResolutionCache]]. */
   def recorderFor(country: String, source: String): ResolutionOutcomeRecorder =
     (outcome: String) => resolutions.labelValues(country, source, outcome).inc()

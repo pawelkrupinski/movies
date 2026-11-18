@@ -1,6 +1,5 @@
 package modules.wiring
 
-import modules.WorkerWiring
 
 /** ── Venue closures ─────────────────────────────────────────────────────────
  *  The daily sweep that asks every venue its sources dropped whether it has closed. */

@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfillInterval}
 
-import modules.WorkerWiring
 import services.attempts.{EnrichmentAttemptStore, MongoEnrichmentAttemptStore}
 import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
 import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings}

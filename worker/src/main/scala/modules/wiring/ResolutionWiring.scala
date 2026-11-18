@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.SettleInterval
 
-import modules.WorkerWiring
 import services.enrichment.{CinemetaClient, ImdbIdResolver}
 import services.corpus.MovieService
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}

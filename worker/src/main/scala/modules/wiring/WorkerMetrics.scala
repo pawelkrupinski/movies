@@ -13,7 +13,7 @@ import models.Country
 
 /**
  * The process-wide worker metrics bundle: ONE Prometheus registry and ONE set of
- * metric objects, shared across every country's [[modules.WorkerWiring]] in the
+ * metric objects, shared across every country's [[modules.wiring.WorkerWiring]] in the
  * single JVM.
  *
  * WHY ONE registry: the worker now runs a wiring per country in one process, but

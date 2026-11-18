@@ -2,7 +2,6 @@ package modules.wiring
 
 import settings.{HeapDumpDirectory, LivenessStaleAfter, WorkerPoolSize}
 
-import modules.WorkerWiring
 import services.events.TaskFinished
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.metrics.MeteredTaskQueue
