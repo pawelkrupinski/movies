@@ -83,7 +83,6 @@ ce	services.users	4
 ce	services.venuepages	12
 ce	settings	2
 ce	tools	0
-fanout	controllers.ApiFilm	10
 fanout	controllers.AuthController	16
 fanout	controllers.CityJsonPayloads	13
 fanout	controllers.DebugController	22

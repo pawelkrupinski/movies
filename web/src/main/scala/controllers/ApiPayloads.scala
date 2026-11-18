@@ -6,6 +6,24 @@ import play.api.libs.json.{Json, Writes}
 // ── JSON API types ──────────────────────────────────────────────────────
 case class ApiShowtime(time: String, format: String, room: Option[String], bookingURL: Option[WebHref])
 case class ApiCinemaShowings(cinema: String, cinemaURL: Option[WebHref], showtimes: Seq[ApiShowtime])
+
+object ApiCinemaShowings {
+  /** One cinema's showtimes of a day, `cinemaUrlMap` naming its film page by its display name. */
+  def of(cs: CinemaShowtimes, cinemaUrlMap: Map[String, WebHref]): ApiCinemaShowings =
+    ApiCinemaShowings(
+      cinema    = cs.cinema.displayName,
+      cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
+      showtimes = cs.showtimes.map { st =>
+        ApiShowtime(
+          time       = CardFormat.time(st.dateTime),
+          format     = st.format.mkString(" "),
+          room       = st.room,
+          bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
+        )
+      }
+    )
+}
+
 case class ApiDayShowings(date: String, label: String, cinemas: Seq[ApiCinemaShowings])
 case class ApiRatings(
   imdb: Option[Double], imdbURL: Option[WebHref],
@@ -18,6 +36,22 @@ case class ApiRatings(
   // for a known IMDb id, rated or not.)
   filmwebRatingPending: Option[Boolean] = None
 )
+
+object ApiRatings {
+  /** A film's resolved ratings as the apps read them, every link http(s) and ASCII-encoded ([[WebHref]]). */
+  def of(ratings: ResolvedRatings): ApiRatings = ApiRatings(
+    imdb              = ratings.imdb,
+    imdbURL           = ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
+    metascore         = ratings.metascore,
+    metacriticURL     = WebHref.of(ratings.metacriticUrl).map(_.asciiEncoded),
+    rottenTomatoes    = ratings.rottenTomatoes,
+    rottenTomatoesURL = WebHref.of(ratings.rottenTomatoesUrl).map(_.asciiEncoded),
+    filmweb           = ratings.filmweb,
+    filmwebURL        = WebHref.of(ratings.filmwebUrl).map(_.asciiEncoded),
+    filmwebRatingPending = Option.when(ratings.filmweb.isEmpty && ratings.filmwebLinked)(true)
+  )
+}
+
 case class ApiFilm(
   title: String, slug: String,
   // What the search matches besides the title: the original title and its romanisation ([[SearchTitles]]).
@@ -121,7 +155,7 @@ object ApiFilm {
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ageRating        = resolved.ageRating,
-      ratings          = ratingsOf(resolved.ratings),
+      ratings          = ApiRatings.of(resolved.ratings),
       countries        = fs.movie.countries,
       directors        = fs.director,
       cast             = fs.cast,
@@ -129,37 +163,11 @@ object ApiFilm {
         ApiDayShowings(
           date    = date.toString,
           label   = CardFormat.date(date, fs.asOf, language),
-          cinemas = cinemas.map(cinemaShowingsOf(_, cinemaUrlMap))
+          cinemas = cinemas.map(ApiCinemaShowings.of(_, cinemaUrlMap))
         )
       },
       provisional      = Option.when(resolved.provisional)(true),
       genreIds         = fs.movie.genres.flatMap(models.GenreNames.idOf).distinct
     )
   }
-
-  private def ratingsOf(ratings: ResolvedRatings): ApiRatings = ApiRatings(
-    imdb              = ratings.imdb,
-    imdbURL           = ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
-    metascore         = ratings.metascore,
-    metacriticURL     = WebHref.of(ratings.metacriticUrl).map(_.asciiEncoded),
-    rottenTomatoes    = ratings.rottenTomatoes,
-    rottenTomatoesURL = WebHref.of(ratings.rottenTomatoesUrl).map(_.asciiEncoded),
-    filmweb           = ratings.filmweb,
-    filmwebURL        = WebHref.of(ratings.filmwebUrl).map(_.asciiEncoded),
-    filmwebRatingPending = Option.when(ratings.filmweb.isEmpty && ratings.filmwebLinked)(true)
-  )
-
-  private def cinemaShowingsOf(cs: CinemaShowtimes, cinemaUrlMap: Map[String, WebHref]): ApiCinemaShowings =
-    ApiCinemaShowings(
-      cinema    = cs.cinema.displayName,
-      cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
-      showtimes = cs.showtimes.map { st =>
-        ApiShowtime(
-          time       = CardFormat.time(st.dateTime),
-          format     = st.format.mkString(" "),
-          room       = st.room,
-          bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
-        )
-      }
-    )
 }
