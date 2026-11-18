@@ -11,10 +11,12 @@ ran one. Run as Claude Code hooks from .claude/settings.json:
                  unread owner alert that is a DECISION (its verdict says WAITING ON YOU / BLOCKED ON OWNER or carries
                  an `agentctl decide` command) -- the question, why, and the exact `! ~/bin/agentctl decide ...` line --
                  telling the model to put each to the user verbatim at the top of its reply. Other owner alerts
-                 (invariants, budgets) stay the orchestrator's Monitor's. Dedupe: an item is shown once per session,
+                 (invariants, budgets) stay the orchestrator's notifier's. Dedupe: an item is shown once per session,
                  again only when its verdict changes, after REMIND_SECONDS (30 min), or after a compaction; an acked
                  or closed alert is no longer unread and drops out by itself.
-  session-start  SessionStart: after a compaction (or /clear) says to re-arm the owner inbox Monitor and forgets the
+  session-start  SessionStart: after a compaction (or /clear) says to start the owner inbox notifier -- a one-shot
+                 `agentctl inbox wait` under Bash run_in_background, never a Monitor (a Monitor expires after at most
+                 30 minutes, so it was re-armed every half hour, 2026-11-18) -- and forgets the
                  session's shown items (the summary may have lost them); on startup/resume only in the root checkout
                  (the orchestrator's). Silent elsewhere.
 
@@ -33,7 +35,7 @@ AGENTCTL = os.environ.get("OWNER_DECISIONS_AGENTCTL", os.path.expanduser("~/bin/
 STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
 REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
 STATE_TTL_SECONDS = 7 * 24 * 3600
-MONITOR = "~/bin/agentctl inbox wait --forever --since-ack --audience owner"
+NOTIFIER = "~/bin/agentctl inbox wait --since-ack --audience owner --timeout 43200"
 DECISION = re.compile(r"WAITING ON YOU|BLOCKED ON OWNER|agentctl decide ")
 QUESTION = re.compile(r"WAITING ON YOU:\s*(.*?)(?:\s+Answer:|\s+Why:|$)", re.S)
 WHY = re.compile(r"\bWhy:\s*(.*?)(?:\s+Look:|\s+Auto-clears|$)", re.S)
@@ -162,9 +164,11 @@ def session_start(hook):
     elif not (source in ("startup", "resume") and in_root_checkout(cwd)):
         return
     emit("SessionStart",
-         "Re-arm the owner inbox Monitor now (a compaction or restart drops it): run `%s` as a Monitor (or Bash "
-         "run_in_background), then triage and ack each line it streams. "
-         "Pending owner decisions are also added to each prompt by scripts/claude-hooks/owner-decisions." % MONITOR)
+         "Start the owner inbox notifier now unless one is running: run `%s` with Bash run_in_background=true, not "
+         "as a Monitor (a Monitor expires after 30 minutes and needs re-arming; this waits up to 12 h and costs "
+         "nothing). It exits, waking you, on the first new owner item: triage and ack each entry it printed, then "
+         "start it again. Pending owner decisions are also added to each prompt by "
+         "scripts/claude-hooks/owner-decisions." % NOTIFIER)
 
 
 def main():

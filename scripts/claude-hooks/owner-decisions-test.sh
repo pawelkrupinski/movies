@@ -2,7 +2,7 @@
 # Self-test for scripts/claude-hooks/owner-decisions: a pending owner decision in agentctl's inbox is put to the model
 # (question, why, the exact `! ~/bin/agentctl decide ...` command) once per session, again only when its verdict
 # changes or the reminder interval passes, or after a compaction; non-decision owner alerts, an empty inbox, a missing
-# or failing agentctl and garbage input are silent and exit 0. SessionStart says to re-arm the inbox Monitor after a
+# or failing agentctl and garbage input are silent and exit 0. SessionStart says to start the inbox notifier after a
 # compaction, and on startup/resume only in the root checkout.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -94,10 +94,12 @@ start() { # <source> <cwd> [session]
     python3 "$hook" session-start 2>/dev/null
 }
 scratch_repo "$tmp/root" && scratch_git "$tmp/root" commit -q --allow-empty -m x && scratch_git "$tmp/root" worktree add -q "$tmp/wt" 2>/dev/null
-check "compact: re-arm the Monitor" 1 "$(start compact "$tmp/wt" | context | grep -c 'inbox wait --forever --since-ack --audience owner')"
+check "compact: start the notifier, a one-shot inbox wait in the background" 1 \
+  "$(start compact "$tmp/wt" | context | grep -c 'inbox wait --since-ack --audience owner --timeout 43200` with Bash run_in_background')"
+check "...never a Monitor's endless --forever" 0 "$(start compact "$tmp/wt" | context | grep -c -- '--forever')"
 check "compact: the session's pending decisions are shown again" 1 "$(prompt "$tmp/changed.json" | context | grep -c 'stage 6')"
-check "startup in the root checkout: re-arm" 1 "$(start startup "$tmp/root" | context | grep -c 'Monitor')"
-check "resume in the root checkout: re-arm" 1 "$(start resume "$tmp/root" | context | grep -c 'Monitor')"
+check "startup in the root checkout: start the notifier" 1 "$(start startup "$tmp/root" | context | grep -c 'notifier')"
+check "resume in the root checkout: start the notifier" 1 "$(start resume "$tmp/root" | context | grep -c 'notifier')"
 check "startup in a worktree: silent" "" "$(start startup "$tmp/wt")"
 check "startup outside git: silent" "" "$(start startup "$tmp/state")"
 

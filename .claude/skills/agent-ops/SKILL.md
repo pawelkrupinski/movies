@@ -94,11 +94,19 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 
 ## Waiting
 
-- **Your own long run** (slice batch, local measure, sbt suite, capture): `scripts/wait-for <log> <pattern>
-  [--pid P] [--timeout S]` with `run_in_background`, then act on its notification. Never a foreground
-  `until grep; sleep` loop, and never `wait-for` / `ci-wait` / `agentctl wait` itself in the foreground:
-  `scripts/claude-hooks/foreground-wait-guard` denies one bounded to more than a minute (a week of 2026-11 spent
-  7-11 agent-hours in ~170 s foreground `wait-for` slices).
+- **Your own long run** (slice batch, local measure, sbt suite, capture): `scripts/wait-for <log> --contains <text>`
+  (or `<log> <regex>`; `<log>` alone waits for any content) `[--pid P] [--timeout 2h]` with `run_in_background`,
+  then act on its notification. Never a foreground `until grep; sleep` loop, and never `wait-for` / `ci-wait` /
+  `agentctl wait` itself in the foreground: `scripts/claude-hooks/foreground-wait-guard` denies one bounded to more
+  than a minute (a week of 2026-11 spent 7-11 agent-hours in ~170 s foreground `wait-for` slices).
+- **No unbounded loop in the background either:** `scripts/claude-hooks/unbounded-poll-guard` denies a
+  `run_in_background` (or `&`) command whose `while`/`until` loop sleeps with no bound, a sleeping `for ((;;))`, or
+  `tail -f` without `--pid` -- in the command, a `bash -c` script, a heredoc it runs, or a scratchpad script it runs
+  -- and prints the one-command `scripts/wait-for` fix. Bounded: a `for i in $(seq 1 N)` count, a `$SECONDS` /
+  `date +%s` deadline or `-lt` counter in the loop, a `timeout N` around the shell or script, wait-for / ci-wait.
+  2026-11-18: seven `until grep -q DONE log; do sleep 10; done` loops ran 22-46 h after their agents ended.
+  Leftovers: `scripts/agent-procs` lists orphaned watchers (their `claude` gone, read from the process's
+  CLAUDE_PID), and `kill --mine` reaps your own session's (by CLAUDE_CODE_SESSION_ID), never another's.
 - **CI status, before any `gh run ...`:** `scripts/ci-status` (one line per gating workflow, newest run on main;
   `--sha <commit>`; `--run <id>` = that run's failed jobs and steps), then `~/bin/agentctl ci-why [<id>]` for the
   failure's log. ~450 hand-written `gh run list/view --json jobs/--log` calls a week (2026-11) asked exactly these.
@@ -106,8 +114,14 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - **Owner decisions reach every session:** `scripts/claude-hooks/owner-decisions` (UserPromptSubmit) adds each
   unread agentctl owner decision (WAITING ON YOU / BLOCKED ON OWNER, with its `! ~/bin/agentctl decide ...` line) to
   the prompt's context -- put it to the user verbatim at the top of your reply; once per session, again when it
-  changes, after 30 min or after a compaction. Its SessionStart half says, after a compaction and on startup in the
-  root checkout (the orchestrator), to re-arm the `agentctl inbox wait --forever --since-ack --audience owner` Monitor.
+  changes, after 30 min or after a compaction. It fires only when the owner sends a prompt and carries only
+  decisions, so it does not replace the orchestrator's notifier, which wakes an idle session for every owner alert.
+  Its SessionStart half says, after a compaction and on startup in the root checkout (the orchestrator), to start it.
+- **The orchestrator's owner notifier is a background Bash call, not a Monitor:** `~/bin/agentctl inbox wait
+  --since-ack --audience owner --timeout 43200` with `run_in_background=true`. It exits, and wakes you, on the first
+  new owner item (or after 12 h); ack what it printed, then start it again. Never a Monitor: every Monitor expires
+  after at most 30 minutes whatever its command (`--forever` included), so it was re-armed every half hour
+  (2026-11-18); and never `--forever` under Bash, which notifies only when the command exits.
 - **CI wait:** `scripts/ci-wait`, never a hand-written `gh run view`/`sleep` loop. `--run <id>`; `--workflow <w> --sha
   <commit>` (waits for the run to appear, then to finish); several `--workflow`s for a set; `--or-later` (a green run
   at that commit or later), `--until-green` (wait through reds), `--any-completed` (each workflow's newest verdict).
