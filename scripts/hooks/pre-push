@@ -1196,7 +1196,7 @@ if [ "$to_main" = 1 ]; then
     trailer_lint="$(dirname "${BASH_SOURCE[0]}")/../ci/trailers.py"
     if [ -f "$trailer_lint" ] && command -v python3 > /dev/null; then
         lint_ranges=(); for r in "${ranges[@]}"; do lint_ranges+=(--range "$r"); done
-        python3 "$trailer_lint" lint "${lint_ranges[@]}" || true
+        bounded "${PREPUSH_TRAILER_LINT_SECONDS:-20}" python3 "$trailer_lint" lint "${lint_ranges[@]}" || true  # warns only
     fi
     if skipped trailers; then warn "trailers SKIPPED (PREPUSH_SKIP)"
     else check_stranded_trailers "${ranges[@]}" || exit 1
