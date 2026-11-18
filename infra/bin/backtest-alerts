@@ -46,14 +46,28 @@ its metric existed.
 The result is written to test/alert-backtest.json, which is checked in: its diff between two runs
 is how a rule's behaviour on real data changes with the rule.
 
-Prometheus is on the private fleet network, so this reaches it over the SOCKS tunnel
-(`ssh -f -N kinowo-fleet` opens it). It is not part of the offline gate; bin/check runs it only
-when the tunnel answers. See nix/files/monitoring/README.md.
+WHERE THE HISTORY COMES FROM (`--source`):
+
+  snapshot (default)  a COPY of monitoring-1's persisted TSDB blocks -- on ci-runner, pulled nightly
+                      into /var/lib/prometheus-snapshot/current (bitcashier infra
+                      hosts/ci-runner/prometheus-snapshot.nix; this host's side is
+                      nix/modules/roles/prometheus-block-export.nix). A throwaway Prometheus of the
+                      version production runs is started over a private copy of it, queried, and
+                      torn down: production is never asked anything. The window ends where the copy
+                      does, and "deployed?" / "stale recording?" read the rules production had
+                      loaded, captured beside the blocks -- not the replay's, which loads none.
+                      .github/workflows/alert-backtest.yml runs it nightly and for any branch.
+  live                monitoring-1's own Prometheus over the SOCKS tunnel (`ssh -f -N kinowo-fleet`),
+                      for an ad-hoc look at the last hours. A full run this way took 60-70 min and
+                      slowed production's rule evaluation from 3 s to 21 s (2026-11-18): don't.
+
+See nix/files/monitoring/README.md.
 
 Usage:
   infra/bin/backtest-alerts                    # all rules, 14 days, write the baseline, check
   infra/bin/backtest-alerts --alert HostDown   # just these alerts, no baseline written
   infra/bin/backtest-alerts --no-write         # check without touching the baseline
+  infra/bin/backtest-alerts --source live --alert HostDown --days 1
 """
 
 import argparse
@@ -63,8 +77,11 @@ import glob
 import json
 import os
 import re
+import shutil
+import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 
@@ -83,6 +100,7 @@ INCIDENTS = os.path.join(INFRA, "test", "alert-incidents.yml")
 
 DEFAULT_PROMETHEUS = "http://10.20.0.11:9090"
 DEFAULT_SOCKS = "127.0.0.1:1080"
+DEFAULT_SNAPSHOT = "/var/lib/prometheus-snapshot/current"
 
 # ── PURE LOGIC (unit-tested in test/test_backtest_alerts.py) ─────────────────────────────────────
 
@@ -492,6 +510,129 @@ class Prometheus(object):
         return fetch_range(get_chunk, start, end, step, chunk=chunk, min_chunk=min(3600, chunk))
 
 
+def loaded_rules(document, kind):
+    """{name: query} of the `kind` ("alerting" / "recording") rules in a /api/v1/rules document."""
+    return {r["name"]: r["query"] for g in document["data"]["groups"] for r in g["rules"]
+            if r.get("type") == kind}
+
+
+class LiveSource(object):
+    """Production's Prometheus itself: what it has loaded now, its retention floor, the window to now."""
+
+    def __init__(self, prom):
+        self.prom = prom
+
+    def loaded_alerts(self):
+        return self.prom.loaded_alerts()
+
+    def loaded_recordings(self):
+        return self.prom.loaded_recordings()
+
+    def floor(self):
+        return self.prom.lowest_timestamp()
+
+    def latest(self):
+        return time.time()
+
+
+class Snapshot(object):
+    """A pulled copy of production's blocks (DIR/tsdb/<ulid>/), with what production had loaded
+    (rules.json, buildinfo.json) and the range its blocks cover (pull.json), all captured with it."""
+
+    def __init__(self, directory):
+        self.directory = os.path.realpath(directory)
+        self.tsdb = os.path.join(self.directory, "tsdb")
+
+        def read(name):
+            with open(os.path.join(self.directory, name), encoding="utf-8") as handle:
+                return json.load(handle)
+        self.pull, self.rules, self.buildinfo = read("pull.json"), read("rules.json"), read("buildinfo.json")
+        self.version = self.buildinfo["data"]["version"]
+
+    def loaded_alerts(self):
+        return set(loaded_rules(self.rules, "alerting"))
+
+    def loaded_recordings(self):
+        return loaded_rules(self.rules, "recording")
+
+    def floor(self):
+        return float(self.pull["min_time"])
+
+    def latest(self):
+        return float(self.pull["max_time"])
+
+
+def replay_arguments(binary, config, data, port, jobs):
+    """The throwaway Prometheus's command line. No scrape targets and no rules (`config` is empty), so
+    nothing is written but its own lock and WAL; compaction off (min = max block duration), so the
+    copied blocks are never rewritten; retention far past any block, so none is deleted; a query
+    timeout long enough that a heavy rule over a day finishes rather than being split."""
+    return [binary,
+            "--config.file=" + config,
+            "--storage.tsdb.path=" + data,
+            "--storage.tsdb.retention.time=3650d",
+            "--storage.tsdb.min-block-duration=2h",
+            "--storage.tsdb.max-block-duration=2h",
+            "--web.listen-address=127.0.0.1:%d" % port,
+            "--query.timeout=10m",
+            "--query.max-concurrency=%d" % max(jobs, 4),
+            "--query.max-samples=500000000",
+            "--log.level=warn"]
+
+
+class Replay(object):
+    """A throwaway Prometheus over a PRIVATE copy of a snapshot, for one run: the copy is taken so the
+    snapshot itself (read-only on ci-runner) is never touched, and is removed with the process."""
+
+    def __init__(self, snapshot, binary, jobs, ready_timeout=300):
+        self.snapshot, self.binary, self.jobs, self.ready_timeout = snapshot, binary, jobs, ready_timeout
+        self.work = self.process = None
+
+    def __enter__(self):
+        self.work = tempfile.mkdtemp(prefix="backtest-replay-")
+        data = os.path.join(self.work, "data")
+        started = time.time()
+        shutil.copytree(self.snapshot.tsdb, data)
+        config = os.path.join(self.work, "prometheus.yml")
+        with open(config, "w", encoding="utf-8") as handle:
+            handle.write("global: {}\n")
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        log = open(os.path.join(self.work, "prometheus.log"), "w")
+        self.process = subprocess.Popen(replay_arguments(self.binary, config, data, port, self.jobs),
+                                        stdout=log, stderr=subprocess.STDOUT)
+        prom = Prometheus("http://127.0.0.1:%d" % port, None)
+        deadline = time.time() + self.ready_timeout
+        while not prom.ready():
+            if self.process.poll() is not None or time.time() > deadline:
+                with open(log.name, encoding="utf-8") as handle:
+                    tail = handle.read()[-2000:]
+                self.__exit__(None, None, None)
+                raise RuntimeError("the replay Prometheus did not become ready:\n" + tail)
+            time.sleep(1)
+        version = prom.get("/api/v1/status/buildinfo", {})["version"]
+        if version != self.snapshot.version:
+            self.__exit__(None, None, None)
+            raise RuntimeError("the replay Prometheus is %s, production ran %s: install the same version"
+                               % (version, self.snapshot.version))
+        print("replay: Prometheus %s over %s, ready in %.0f s"
+              % (version, self.snapshot.directory, time.time() - started))
+        return prom
+
+    def __exit__(self, *_):
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(60)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+        if self.work:
+            shutil.rmtree(self.work, ignore_errors=True)
+        return False
+
+
 def grid_of(start, end, step):
     n = int((end - start) // step)
     return [start + i * step for i in range(n + 1)]
@@ -581,18 +722,46 @@ def main(argv=None):
     parser.add_argument("--alert", action="append", help="only these alerts (repeatable)")
     parser.add_argument("--no-write", action="store_true", help="do not write the baseline")
     parser.add_argument("--no-incidents", action="store_true")
-    parser.add_argument("--jobs", type=int, default=6)
-    parser.add_argument("--prometheus", default=os.environ.get("BACKTEST_PROMETHEUS", DEFAULT_PROMETHEUS))
+    parser.add_argument("--jobs", type=int, help="parallel queries (default 16 on a snapshot, 6 live)")
+    parser.add_argument("--source", choices=("snapshot", "live"), default="snapshot",
+                        help="a replay of the pulled copy (default), or production's Prometheus")
+    parser.add_argument("--snapshot", default=os.environ.get("BACKTEST_SNAPSHOT", DEFAULT_SNAPSHOT),
+                        help="the pulled copy (--source snapshot)")
+    parser.add_argument("--prometheus-binary", default=os.environ.get("BACKTEST_PROMETHEUS_BINARY", "prometheus"),
+                        help="the replay's Prometheus, the version production runs (--source snapshot)")
+    parser.add_argument("--prometheus", default=os.environ.get("BACKTEST_PROMETHEUS", DEFAULT_PROMETHEUS),
+                        help="production's Prometheus (--source live)")
     parser.add_argument("--socks", default=os.environ.get("BACKTEST_SOCKS", DEFAULT_SOCKS),
-                        help="SOCKS5 proxy host:port; empty for a direct connection")
+                        help="SOCKS5 proxy host:port, empty for a direct connection (--source live)")
     args = parser.parse_args(argv)
+    if args.jobs is None:
+        args.jobs = 16 if args.source == "snapshot" else 6
 
-    prom = Prometheus(args.prometheus, args.socks)
-    if not prom.ready():
-        print("Prometheus at %s is unreachable%s. Open the tunnel with: ssh -f -N kinowo-fleet"
-              % (args.prometheus, " via SOCKS " + args.socks if args.socks else ""))
+    if args.source == "live":
+        prom = Prometheus(args.prometheus, args.socks)
+        if not prom.ready():
+            print("Prometheus at %s is unreachable%s. Open the tunnel with: ssh -f -N kinowo-fleet"
+                  % (args.prometheus, " via SOCKS " + args.socks if args.socks else ""))
+            return 2
+        return run_backtest(args, prom, LiveSource(prom))
+    try:
+        snapshot = Snapshot(args.snapshot)
+    except (OSError, ValueError, KeyError) as err:
+        print("no usable snapshot at %s (%s). It exists on ci-runner: run this there with\n"
+              "  gh workflow run alert-backtest.yml --ref <branch>\nor ask production with --source live."
+              % (args.snapshot, err))
+        return 2
+    try:
+        with Replay(snapshot, args.prometheus_binary, args.jobs) as prom:
+            return run_backtest(args, prom, snapshot)
+    except (OSError, RuntimeError) as err:
+        print("could not start the replay: %s" % err)
         return 2
 
+
+def run_backtest(args, prom, source):
+    """The backtest proper, against `prom`, with what was deployed and the window from `source`."""
+    started = time.time()
     alerts = load_rules()
     # A recording changed in this tree is evaluated as written, not read from what Prometheus
     # recorded from the deployed rule (an alert over `ci:*:reference_threshold` would otherwise
@@ -607,7 +776,7 @@ def main(argv=None):
             except RuntimeError:
                 formatted[expr] = expr
         return formatted[expr]
-    stale = stale_recordings(records, prom.loaded_recordings(), normalise)
+    stale = stale_recordings(records, source.loaded_recordings(), normalise)
     if stale:
         print("recordings changed in this tree, evaluated as written: %s" % ", ".join(sorted(stale)))
     for name, rule in alerts.items():
@@ -624,15 +793,15 @@ def main(argv=None):
     }
 
     step = args.step
-    end = parse_time(args.end) if args.end else time.time()
+    end = parse_time(args.end) if args.end else source.latest()
     end = end - (end % step)
     start = end - args.days * 86400
-    floor = prom.lowest_timestamp()
+    floor = source.floor()
     if floor and start < floor:
         print("note: retention starts %s, so the window is clipped to it" % iso(floor))
         start = snap_up(floor, step)
     existing = prom.metric_names(start, end)
-    loaded = prom.loaded_alerts()
+    loaded = source.loaded_alerts()
 
     selected = sorted(alerts)
     if args.alert:
@@ -733,7 +902,7 @@ def main(argv=None):
     incident_report = []
     if not args.no_incidents:
         incident_report, incident_problems = check_incidents(prom, alerts, catalogue, step, floor,
-                                                             args.alert)
+                                                             args.alert, end)
         problems += incident_problems
 
     if not args.no_write and not args.alert:
@@ -747,6 +916,7 @@ def main(argv=None):
             handle.write("\n")
         print("wrote %s" % os.path.relpath(BASELINE))
 
+    print("backtest took %.0f s with %d parallel queries" % (time.time() - started, args.jobs))
     if problems:
         print("\nFAILED -- %d problem(s):" % len(problems))
         for p in problems:
@@ -759,10 +929,10 @@ def main(argv=None):
     return 0
 
 
-def check_incidents(prom, alerts, catalogue, step, floor, only):
-    """Replay each catalogued incident window; ([result], [problem])."""
+def check_incidents(prom, alerts, catalogue, step, floor, only, end):
+    """Replay each catalogued incident window up to `end`, where the history does; ([result], [problem])."""
     results, problems = [], []
-    now = time.time() - step
+    now = end - step
     for incident in catalogue:
         ident = incident["id"]
         start, end = parse_time(incident["start"]), parse_time(incident["end"])

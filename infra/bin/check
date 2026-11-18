@@ -542,28 +542,6 @@ else
   failed=1
 fi
 
-step "alert backtest against real history (optional)"
-# OPTIONAL BECAUSE IT NEEDS THE PRIVATE FLEET: every alert replayed over the last 14 days of the
-# real Prometheus, failing on an alert that is noisy, dead, or contradicts a catalogued incident.
-# promtool asks whether a rule does what its author meant on a series the author wrote; this asks
-# what it would have done on what the fleet actually reported. It takes several minutes and
-# rewrites test/alert-backtest.json, so it runs only when asked:
-#   INFRA_CHECK_BACKTEST=1 infra/bin/check      (tunnel: ssh -f -N kinowo-fleet)
-# See nix/files/monitoring/README.md.
-if [ "${INFRA_CHECK_BACKTEST:-0}" = "1" ]; then
-  if bin/backtest-alerts; then
-    :
-  else
-    rc=$?
-    if [ "$rc" -eq 2 ]; then
-      echo "  FAILED Prometheus unreachable; open the tunnel: ssh -f -N kinowo-fleet"
-    fi
-    failed=1
-  fi
-else
-  echo "  skipped: set INFRA_CHECK_BACKTEST=1 (needs the kinowo-fleet SOCKS tunnel)"
-fi
-
 if ((failed)); then
   printf '\n\033[1;31minfra/bin/check: FAILED\033[0m\n'
 else

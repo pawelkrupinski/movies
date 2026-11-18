@@ -11,7 +11,11 @@ Run: python3 infra/test/test_backtest_alerts.py
 
 import importlib.machinery
 import importlib.util
+import json
 import os
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -304,6 +308,125 @@ class ChunkSplitting(unittest.TestCase):
             self.assertTrue(bt.is_query_timeout(message), message)
         for message in ("curl: (97) connection to proxy closed", "parse error at char 3", "exceeded maximum resolution"):
             self.assertFalse(bt.is_query_timeout(message), message)
+
+
+RULES_DOCUMENT = {"status": "success", "data": {"groups": [
+    {"name": "a", "rules": [
+        {"type": "alerting", "name": "HostDown", "query": "up == 0"},
+        {"type": "recording", "name": "job:up:sum", "query": "sum by (job) (up)"}]},
+    {"name": "b", "rules": [{"type": "alerting", "name": "DiskFull", "query": "disk > 0.9"}]}]}}
+
+
+def write_snapshot(directory, version="3.12.0"):
+    os.makedirs(os.path.join(directory, "tsdb"))
+    for name, body in (("rules.json", RULES_DOCUMENT),
+                       ("buildinfo.json", {"status": "success", "data": {"version": version}}),
+                       ("pull.json", {"pulled_at": 1795000000, "blocks": [],
+                                      "min_time": 1793700000.0, "max_time": 1794990000.0})):
+        with open(os.path.join(directory, name), "w") as handle:
+            json.dump(body, handle)
+
+
+class SnapshotSource(unittest.TestCase):
+    """--source snapshot reads what PRODUCTION had loaded, and the window its copy covers -- never the
+    replay's own rules (it loads none) or the wall clock."""
+
+    def setUp(self):
+        self.work = tempfile.mkdtemp()
+        write_snapshot(self.work)
+        self.snapshot = bt.Snapshot(self.work)
+
+    def tearDown(self):
+        shutil.rmtree(self.work)
+
+    def test_loaded_rules_are_the_captured_ones(self):
+        self.assertEqual(self.snapshot.loaded_alerts(), {"HostDown", "DiskFull"})
+        self.assertEqual(self.snapshot.loaded_recordings(), {"job:up:sum": "sum by (job) (up)"})
+
+    def test_the_window_is_the_copy_s_range(self):
+        self.assertEqual((self.snapshot.floor(), self.snapshot.latest()), (1793700000.0, 1794990000.0))
+        self.assertEqual(self.snapshot.version, "3.12.0")
+
+    def test_the_replay_never_rewrites_or_retires_a_copied_block(self):
+        arguments = bt.replay_arguments("prometheus", "/c.yml", "/data", 9999, 16)
+        self.assertIn("--storage.tsdb.min-block-duration=2h", arguments)
+        self.assertIn("--storage.tsdb.max-block-duration=2h", arguments)
+        self.assertIn("--storage.tsdb.retention.time=3650d", arguments)
+        self.assertIn("--web.listen-address=127.0.0.1:9999", arguments)
+        self.assertIn("--query.max-concurrency=16", arguments)
+
+
+class SourceSwitch(unittest.TestCase):
+    def setUp(self):
+        self.constructed = []
+        test = self
+
+        class Unreachable(object):
+            def __init__(self, url, socks):
+                test.constructed.append((url, socks))
+
+            def ready(self):
+                return False
+        self.real = bt.Prometheus
+        bt.Prometheus = Unreachable
+
+    def tearDown(self):
+        bt.Prometheus = self.real
+
+    def test_the_default_is_the_snapshot_and_it_never_asks_production(self):
+        missing = os.path.join(tempfile.gettempdir(), "no-such-backtest-snapshot")
+        self.assertEqual(bt.main(["--snapshot", missing]), 2)
+        self.assertEqual(self.constructed, [])
+
+    def test_live_asks_production_through_the_tunnel(self):
+        self.assertEqual(bt.main(["--source", "live", "--prometheus", "http://p:9090", "--socks", "s:1"]), 2)
+        self.assertEqual(self.constructed, [("http://p:9090", "s:1")])
+
+
+class IncidentsEndWithTheHistory(unittest.TestCase):
+    def test_an_incident_window_is_clipped_to_the_end_of_the_history_not_the_wall_clock(self):
+        asked = []
+
+        class Recording(object):
+            def presence(self, expr, start, end, step, chunk=86400):
+                asked.append(end)
+                return {}
+        catalogue = [{"id": "i", "start": "2026-11-01T00:00:00Z", "end": "2026-11-30T00:00:00Z",
+                      "expect_quiet": ["A"]}]
+        end = bt.parse_time("2026-11-10T00:00:00Z")
+        bt.check_incidents(Recording(), {"A": {"expr": "x", "for": "0s"}}, catalogue, 60, None, None, end)
+        self.assertEqual(asked, [end - 60])
+
+
+@unittest.skipUnless(os.environ.get("BACKTEST_PROMETHEUS_BINARY"),
+                     "set BACKTEST_PROMETHEUS_BINARY to a Prometheus to start a real replay")
+class RealReplay(unittest.TestCase):
+    """The replay against a real Prometheus binary: it starts over a private copy, refuses another
+    version than production's, and leaves nothing behind."""
+
+    def setUp(self):
+        self.work = tempfile.mkdtemp()
+        self.binary = os.environ["BACKTEST_PROMETHEUS_BINARY"]
+        self.version = subprocess.run([self.binary, "--version"], capture_output=True, text=True) \
+            .stdout.split()[2]
+
+    def tearDown(self):
+        shutil.rmtree(self.work)
+
+    def test_it_answers_and_tears_down(self):
+        write_snapshot(self.work, self.version)
+        replay = bt.Replay(bt.Snapshot(self.work), self.binary, 4)
+        with replay as prom:
+            self.assertTrue(prom.ready())
+        self.assertIsNotNone(replay.process.poll())
+        self.assertFalse(os.path.exists(replay.work))
+        self.assertEqual(os.listdir(os.path.join(self.work, "tsdb")), [], "the snapshot was written to")
+
+    def test_another_version_than_production_s_is_refused(self):
+        write_snapshot(self.work, "2.0.0")
+        with self.assertRaises(RuntimeError):
+            with bt.Replay(bt.Snapshot(self.work), self.binary, 4):
+                pass
 
 
 if __name__ == "__main__":

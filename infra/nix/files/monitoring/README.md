@@ -6,7 +6,7 @@ Three layers, each asking a question the one before cannot:
 |---|---|---|
 | `infra/test/test_alert_rules.sh` (promtool) | Does each rule fire on the series its author wrote, and stay quiet on the healthy one? | `infra/bin/check`, CI |
 | `infra/test/test_alert_rule_coverage.py`, `test_label_shapes.py` | Does every alert have both cases? Do its label matchers name values the fleet really emits? | `infra/bin/check`, CI |
-| `infra/bin/backtest-alerts` | What would each rule, **as written in this tree**, have done over the last 14 days of **real** Prometheus data? | by hand, weekly, and before merging a rule change |
+| `infra/bin/backtest-alerts` | What would each rule, **as written in this tree**, have done over the last 14 days of **real** Prometheus data? | daily on ci-runner (`.github/workflows/alert-backtest.yml`), and for a branch before merging a rule change |
 
 ## Why the backtest exists
 
@@ -19,15 +19,21 @@ only contains what its author thought of.
 ## Running it
 
 ```sh
-ssh -f -N kinowo-fleet                          # SOCKS tunnel to 10.20.0.0/24 on 127.0.0.1:1080
-infra/bin/backtest-alerts                       # all alerts, writes infra/test/alert-backtest.json
-infra/bin/backtest-alerts --alert HostOomKilled # a subset; does not touch the baseline
-INFRA_CHECK_BACKTEST=1 infra/bin/check          # as the optional last step of the infra gate
+gh workflow run alert-backtest.yml --ref <branch>   # your branch's rules over the copy; artifact + summary
+infra/bin/backtest-alerts --source live --alert HostOomKilled --days 1   # ad hoc, against production itself
 ```
 
-A full run takes about ten minutes. It is **not** a CI job: GitHub's runners cannot reach the
-private fleet network, and opening Prometheus to them is not worth a weekly report. Run it weekly
-by hand and commit the refreshed `infra/test/alert-backtest.json`; its diff is how a rule's
+**It replays a copy, never production** (the owner, 2026-11-18). ci-runner pulls monitoring-1's
+persisted TSDB blocks for the last 15 days every night (bitcashier infra
+`hosts/ci-runner/prometheus-snapshot.nix`; this side is `nix/modules/roles/prometheus-block-export.nix`:
+an `rrsync -ro` key, no admin API, no restart), with the rules production had loaded. The default
+`--source snapshot` starts a throwaway Prometheus of production's version over a private copy of it
+and backtests against that, 16 queries at a time, ending where the copy ends. Against production
+(`--source live`, over `ssh -f -N kinowo-fleet`) a full run took 60-70 min and slowed its rule
+evaluation from 3 s to 21 s: keep that for a quick look at one alert.
+
+The daily run publishes `alert-backtest.json` to the rolling release `alert-backtest`; commit it over
+`infra/test/alert-backtest.json` to move the checked-in baseline, whose diff is how a rule's
 behaviour on real data moved.
 
 It covers every `alert:` in `rules/*.rules` and every Grafana-managed rule in
@@ -53,7 +59,7 @@ metric existed.
 | noisy | Fired more than 5% of the window, or more than 7 episodes a week, outside catalogued incidents | Fix the rule with a promtool case; or, if the firing was a real incident, catalogue it (below); or allowlist it in `infra/test/alert-backtest-allowlist.yml` with a reason |
 | dead | Returned nothing for the whole window **and** reads a metric with no series in it | Point it at a metric that exists; or, if the metric is published only in an exceptional state, list it under `conditional_metrics` with a reason |
 | incident | An alert in `infra/test/alert-incidents.yml` did not fire in its incident window, or one expected quiet fired | The rule no longer catches (or newly misfires on) a real past event |
-| error | The query failed | Usually a timeout on a heavy expression; rerun once |
+| error | The query failed | A parse error, or a timeout on a heavy expression the replay's 10-minute query timeout did not cover; investigate it |
 
 An alert Prometheus has not loaded yet (a rule on a branch) whose metrics do not exist yet is
 reported `not-deployed`, not dead.
