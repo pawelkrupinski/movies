@@ -33,7 +33,8 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs").foreach { case (job, share) =>
       jobs(job) should include(s"SHARE: $share")
       jobs(job) should include("""scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"""")
-      jobs(job) should include("""timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
+      jobs(job) should include("timeout --kill-after=60 80m ")
+      jobs(job) should include("""scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
     }
     val share = RepoFile.read("scripts/ci/precommit-share.sh")
     // old refs are another job's in every mode; identity only for a change's own checks (--checks-only): the
@@ -117,6 +118,16 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     ci should include("cmd: e2eRest")
     ci should include("cmd: e2eCorpus")
     RepoFile.commandAlias("itAll") should not be empty
+  }
+
+  /** The rest's hook ran `scripttests` (143-186 s) and then `sbt` (96-385 s), one after the other, in 5 of 5 sampled runs
+   *  (2026-11-18): they share nothing, so the job runs the hook twice at once (scripts/ci/hook-beside.sh), the script
+   *  self-tests alone beside every other check of the share. */
+  "the rest's job" should "run the script self-tests beside its other checks, not after them" in {
+    val step = RepoFile.step(jobs("check"), "The pre-push hook's checks of the change")
+    step should include("""timeout --kill-after=60 80m scripts/ci/hook-beside.sh scripttests -- scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
+    step should include("CHECKS: ${{ steps.share.outputs.checks }}")
+    RepoFile.read("scripts/ci/hook-beside.sh") should include("""PREPUSH_ONLY="$check" "$@"""")
   }
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {

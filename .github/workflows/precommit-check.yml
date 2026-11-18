@@ -156,11 +156,15 @@ jobs:
               uses: ./.github/actions/hook-tools
               with:
                   checks: ${{ steps.share.outputs.checks }}
+            # THE SCRIPT SELF-TESTS BESIDE THE REST (scripts/ci/hook-beside.sh): `scripttests` (143-186 s) and then `sbt`
+            # (96-385 s) ran one after the other in 5 of 5 sampled runs (2026-11-18), sharing nothing; the hook runs twice
+            # at once, scripttests alone beside every other check of the share ($CHECKS), and the job needs both.
             - name: The pre-push hook's checks of the change
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: rest
+                  CHECKS: ${{ steps.share.outputs.checks }}
               run: |
                   mkdir -p "$TMPDIR"
                   # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
@@ -169,8 +173,7 @@ jobs:
                   # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
                   # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
                   # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
-                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
-                  timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
+                  timeout --kill-after=60 80m scripts/ci/hook-beside.sh scripttests -- scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
