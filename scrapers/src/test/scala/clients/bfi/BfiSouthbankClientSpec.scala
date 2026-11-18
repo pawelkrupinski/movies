@@ -120,6 +120,14 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
       Seq(models.Showtime(LocalDateTime.of(2026, 11, 3, 18, 15), None, room = Some("NFT1")))
   }
 
+  it should "read the screen off the block's \"Screen NFT1\" line, as the site has spelt it since 2026-11" in {
+    // Captured 2026-11-18 (https://cinemas.bfi.org.uk/whats-on/a-man-for-all-seasons): the site began
+    // labelling the screen "Screen NFT1", where it had said "NFT1"; reading only the bare name, every
+    // performance was dropped and the venue rode its Flicks fallback, which has no times (2026-11-10..18).
+    BfiSouthbankClient.performances(shows("screen-labelled-a-man-for-all-seasons"), LocalDate.of(2026, 11, 18)).map(s => (s.dateTime, s.room)) shouldBe
+      Seq(LocalDateTime.of(2026, 12, 19, 12, 0) -> Some("NFT1"))
+  }
+
   it should "leave out the talks the site sells in the BFI Reuben Library" in {
     // UEA Film50's talk on the James Bond franchise, 30 Nov, in the Reuben Library
     BfiSouthbankClient.performances(shows("reuben-library-talk-james-bond-franchise"), today) shouldBe empty

@@ -103,8 +103,9 @@ object BfiSouthbankClient {
   /** A guard on the page walk: the site lists five or six pages. */
   private val MaxPages = 40
 
-  /** The four NFT screens. The site also sells talks in the BFI Reuben Library. */
-  private val Screen = """NFT\s*\d+""".r
+  /** The four NFT screens, on a line of their own: "NFT1" until 2026-11, "Screen NFT1" since. The site
+   *  also sells talks in the BFI Reuben Library. */
+  private val Screen = """(?:Screen\s+)?(NFT\s*\d+)""".r
 
   private val ImageProxyHref = """/_image\?(?:[^#]*&)?href=([^&]+)""".r
 
@@ -164,7 +165,7 @@ object BfiSouthbankClient {
         for {
           sale   <- Option(block.selectFirst("a, button"))
           time   <- ScraperParse.parseHHmm(sale.text)
-          screen <- block.select("p").asScala.map(_.text.trim).find(Screen.matches)
+          screen <- block.select("p").asScala.map(_.text.trim).collectFirst { case Screen(name) => name }
         } yield Showtime(
           dateTime   = day.atTime(time),
           bookingUrl = Some(sale.attr("abs:href")).filter(_.startsWith("http")),

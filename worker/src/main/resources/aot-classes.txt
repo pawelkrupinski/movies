@@ -9736,6 +9736,7 @@ services.cinemas.uk.BfiSouthbankClient
 services.cinemas.uk.BfiSouthbankClient$
 services.cinemas.uk.BfiSouthbankClient$$anon$1
 services.cinemas.uk.BfiSouthbankClient$$anon$2
+services.cinemas.uk.BfiSouthbankClient$$anon$3
 services.cinemas.uk.BfiSouthbankClient$Card
 services.cinemas.uk.BfiSouthbankClient$Card$
 services.cinemas.uk.BfiSouthbankClient$Slot
