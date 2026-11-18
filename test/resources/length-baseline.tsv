@@ -20,10 +20,7 @@ method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrec
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	72
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala:AgreementStage.resolved	67
 method-lines	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.main	57
-method-lines	worker/src/main/scala/services/identityadapters/IdentityProjection.scala:IdentityProjection.write	54
-method-lines	worker/src/main/scala/services/identityadapters/IdentityStagingPublisher.scala:IdentityStagingPublisher.publish	98
 method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59
 method-lines	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.renderBase	59
 file-lines	common/src/main/scala/models/Cinema.scala	1067
-file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	836
 file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1351
