@@ -251,6 +251,7 @@ def load_rules(pattern=RULES_GLOB, grafana=GRAFANA_RULES):
                 if "alert" in rule:
                     entry = dict(rule)
                     entry["file"] = os.path.basename(path)
+                    entry["interval"] = group.get("interval")
                     alerts[rule["alert"]] = entry
     if grafana and os.path.exists(grafana):
         with open(grafana, encoding="utf-8") as handle:
@@ -501,7 +502,13 @@ def snap_up(t, step):
 
 
 def backtest(prom, rule, start, end, step, floor, excused=(), lead_in=True):
-    """Statistics for one alert over [start, end]."""
+    """Statistics for one alert over [start, end], at `step` or its group's interval if longer.
+
+    Prometheus asks a rule its question once per group interval; a finer grid only asks the same
+    one again, and a rule in a slow group is slow because each evaluation is costly
+    (CityDarkInBothTiers, every five minutes, read six days of a per-city census raw: a day at a
+    one-minute step ran past the query timeout, at five minutes it took 24 s)."""
+    step = max(step, int(seconds(rule.get("interval"))))
     hold = seconds(rule.get("for"))
     keep = seconds(rule.get("keep_firing_for"))
     lead = start

@@ -180,6 +180,24 @@ class GrafanaTranslation(unittest.TestCase):
         alerts = bt.load_rules()
         self.assertTrue(any(a.get("grafana") for a in alerts.values()))
         self.assertIn("MongodNoPrimary", alerts)
+        self.assertEqual("5m", alerts["CityDarkInBothTiers"]["interval"])
+
+
+class EvaluationStep(unittest.TestCase):
+    class Recorder(object):
+        def __init__(self):
+            self.steps = []
+
+        def presence(self, expr, start, end, step):
+            self.steps.append(step)
+            return {}
+
+    def test_a_rule_is_asked_once_per_group_interval_not_more_often(self):
+        prom = self.Recorder()
+        bt.backtest(prom, {"expr": "x", "interval": "5m"}, 3600, 7200, 60, None)
+        bt.backtest(prom, {"expr": "x", "interval": "30s"}, 3600, 7200, 60, None)
+        bt.backtest(prom, {"expr": "x"}, 3600, 7200, 60, None)
+        self.assertEqual([300, 60, 60], prom.steps)
 
 
 class RecordingRuleExpansion(unittest.TestCase):
