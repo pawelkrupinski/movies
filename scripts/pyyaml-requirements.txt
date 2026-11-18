@@ -1,0 +1,3 @@
+# The pinned PyYAML the infra checks that read rule files use locally (infra/test/test_metric_alert_coverage.py,
+# the pre-push `metricalerts` check), installed by scripts/python-venv into a venv of its own.
+pyyaml==6.0.3

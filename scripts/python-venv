@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused --
+# for a check to put first on PATH when the PATH's python3 lacks a package (the pre-push `drift` check's timezonefinder,
+# via scripts/timezonefinder-python; the `metricalerts` check's PyYAML, scripts/pyyaml-requirements.txt).
+#
+#   scripts/python-venv scripts/pyyaml-requirements.txt yaml        # -> ~/.cache/kinowo-python-venvs/<key>/bin
+#   PATH="$(scripts/python-venv scripts/pyyaml-requirements.txt yaml):$PATH" python3 infra/test/test_metric_alert_coverage.py
+#
+# The python3 on PATH, when it imports <module> already (CI's, after its pip install), is used as it is. Otherwise a
+# venv of that python3 with <requirements.txt> (every version pinned) is built once under $KINOWO_PYTHON_VENVS (default
+# ~/.cache/kinowo-python-venvs), keyed by the lock file's hash and the python's version, and reused by every worktree and
+# agent after. WHY: 2026-11-17, `python3 -m pip install timezonefinder`, the hook's old fix, is refused on Homebrew's
+# python (PEP 668, externally-managed-environment), so an agent skipped the drift check with PREPUSH_SKIP=drift. A venv
+# is what PEP 668 asks for, and needs no hand step. PYTHON_VENV_RERUN names the command a failure tells you to rerun.
+#
+# Exit 0 with the directory; 1 when the venv cannot be built (no network, no wheel and no compiler), the pip log's tail
+# on stderr; 2 on a usage error.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$here/tool-conventions.sh"
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+[ $# -eq 2 ] || usage_error "usage: python-venv <requirements.txt> <module>"
+lock="$1"; module="$2"
+[ -f "$lock" ] || usage_error "no requirements file: $lock"
+rerun="${PYTHON_VENV_RERUN:-scripts/python-venv $lock $module}"
+
+python="$(command -v python3)" || die "python3 not found: install Python 3 (brew install python)"
+if "$python" -c "import $module" 2>/dev/null; then dirname "$python"; exit 0; fi
+
+version="$("$python" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+key="py$version-$( { echo "$version"; cat "$lock"; } | git hash-object --stdin | cut -c1-12)"
+venvs="${KINOWO_PYTHON_VENVS:-${XDG_CACHE_HOME:-$HOME/.cache}/kinowo-python-venvs}"
+venv="$venvs/$key"
+if [ -x "$venv/bin/python3" ] && "$venv/bin/python3" -c "import $module" 2>/dev/null; then
+    echo "$venv/bin"; exit 0
+fi
+
+# Built aside and renamed into place: two agents building at once each finish, and one rename wins.
+mkdir -p "$venvs"
+build="$(mktemp -d "$venvs/.build.XXXXXX")"
+trap 'rm -rf "$build"' EXIT
+echo "python-venv: building the pinned $module venv (once) at $venv" >&2
+"$python" -m venv "$build/venv" >"$build/log" 2>&1 \
+    && bounded 600 "$build/venv/bin/python3" -m pip install --quiet --disable-pip-version-check -r "$lock" >>"$build/log" 2>&1 \
+    && "$build/venv/bin/python3" -c "import $module" >>"$build/log" 2>&1 \
+    || { tail -20 "$build/log" >&2; die "could not build the $module venv (python $version, $lock): fix the error above and run $rerun again"; }
+rm -rf "$venv" 2>/dev/null || true
+mv "$build/venv" "$venv" 2>/dev/null || [ -x "$venv/bin/python3" ] || die "could not move the venv into $venv"
+echo "$venv/bin"

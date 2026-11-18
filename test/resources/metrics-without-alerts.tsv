@@ -1,0 +1,133 @@
+# Every kinowo_* metric family and recording rule that NO alert reads, with why (infra/test/test_metric_alert_coverage.py).
+# One row each: metric, reason, owner (the area that decides). `TODO alert?` marks one that looks like it should page
+# and does not yet. A row whose metric gains an alert, or stops being exported, fails the lint until it is struck.
+metric	reason	owner
+flux:kustomization_reconcile_duration_seconds:p95	dashboard only: kept visible rather than alerted, no measured baseline for a threshold (flux.rules' comment)	fleet
+k3s:deployment_not_settled	dashboard only: rollout-duration history; K3sDeploymentReplicasMissing alerts on the same comparison (k3s.rules' comment)	fleet
+kinowo_ci_http_calls	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_ci_job_queue_seconds	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_ci_phase_seconds	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_ci_run_number	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_heapdumps_budget_bytes	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet
+kinowo_heapdumps_bytes	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet
+kinowo_heapdumps_files	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet
+kinowo_identity_cures	never alerted by design: a cure is a fix, not a fault (its own HELP text)	identity
+kinowo_identity_drift_compared	dashboard only: denominators beside kinowo_identity_drift_listings, which is the alerted series	identity
+kinowo_identity_drift_unsettled	dashboard only: denominators beside kinowo_identity_drift_listings, which is the alerted series	identity
+kinowo_identity_regressions_lines	debug: input volume of the regression watch; its freshness (identity_regressions_last_success_timestamp_seconds) is alerted	identity
+kinowo_mongodump_offbox_copies	dashboard only: off-box copy inventory; off-box freshness is alerted through kinowo_mongodump_offbox_newest_dump_timestamp_seconds	fleet
+kinowo_mongodump_offbox_last_size_bytes	dashboard only: off-box copy inventory; off-box freshness is alerted through kinowo_mongodump_offbox_newest_dump_timestamp_seconds	fleet
+kinowo_mongodump_offbox_last_success_timestamp_seconds	dashboard only: off-box copy inventory; off-box freshness is alerted through kinowo_mongodump_offbox_newest_dump_timestamp_seconds	fleet
+kinowo_web_cache_entries	dashboard only: cache sizing and hit-ratio tuning	web
+kinowo_web_cache_evictions_total	dashboard only: cache sizing and hit-ratio tuning	web
+kinowo_web_cache_held_bytes	dashboard only: cache sizing and hit-ratio tuning	web
+kinowo_web_cache_hit_ratio	dashboard only: cache sizing and hit-ratio tuning	web
+kinowo_web_cache_max_bytes	dashboard only: cache sizing and hit-ratio tuning	web
+kinowo_web_host_disk_free_bytes	dashboard only: root filesystem of the web pod's node; disk exhaustion is filesystem-capacity.rules' (node_exporter) to page on	web
+kinowo_web_host_disk_total_bytes	dashboard only: root filesystem of the web pod's node; disk exhaustion is filesystem-capacity.rules' (node_exporter) to page on	web
+kinowo_web_legacy_address_hits	debug: temporary usage census of legacy city addresses, deciding when to drop them	web
+kinowo_web_legacy_address_last_called_seconds	debug: temporary usage census of legacy city addresses, deciding when to drop them	web
+kinowo_web_page_render_allocated_bytes	dashboard only: per-render allocation, a performance-tuning signal	web
+kinowo_web_route_defined	debug: route inventory and last-call census, for finding dead routes	web
+kinowo_web_route_last_called_seconds	debug: route inventory and last-call census, for finding dead routes	web
+kinowo_web_user_state_writes	dashboard only: signed-in visitor write volume; write failures are alerted through kinowo_web_mongo_write_errors	web
+kinowo_worker_cache_entries	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_evictions_total	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_held_bytes	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_hit_ratio	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_max_bytes	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_max_entries	dashboard only: cache sizing and hit-ratio tuning	worker
+kinowo_worker_cache_rehydrate_changes	TODO alert? rows the backstop rehydrate caught that the change stream MISSED: a sustained rate is a lossy stream, today only charted	read-model
+kinowo_worker_change_apply	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_change_stream_apply_pending	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_chunk_page_memo	dashboard only: page-memo hit rate, a scrape-cost signal	scrape
+kinowo_worker_cinema_content_oldest_age_seconds	dashboard only: companions of the alerted census series (cinema_content_stale_venues, cinema_scrape_oldest_age_seconds, cinema_scrape_never_scraped)	scrape
+kinowo_worker_cinema_never_content	dashboard only: companions of the alerted census series (cinema_content_stale_venues, cinema_scrape_oldest_age_seconds, cinema_scrape_never_scraped)	scrape
+kinowo_worker_cinema_scrape_age_quantile_seconds	dashboard only: companions of the alerted census series (cinema_content_stale_venues, cinema_scrape_oldest_age_seconds, cinema_scrape_never_scraped)	scrape
+kinowo_worker_cinema_scrape_due_venues	dashboard only: companions of the alerted census series (cinema_content_stale_venues, cinema_scrape_oldest_age_seconds, cinema_scrape_never_scraped)	scrape
+kinowo_worker_film_widest_slots	dashboard only: slot fan-out census, a memory-sizing signal	read-model
+kinowo_worker_http_breaker_open_hosts	dashboard only: breaker activity; an open breaker is alerted through kinowo_worker_http_circuit_open	scrape
+kinowo_worker_http_breaker_opens	dashboard only: breaker activity; an open breaker is alerted through kinowo_worker_http_circuit_open	scrape
+kinowo_worker_identity_agreement_answers	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_enqueued	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_inline_ask_seconds	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_open_questions	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_resolves	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_seconds	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_taken	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_agreement_validated	dashboard only: agreement-stage throughput and timing; its outcomes are alerted via identity_agreement_clusters and agreement_phase_seconds	identity
+kinowo_worker_identity_cutover_films	dashboard only: projected film count; listing-level cutover (identity_cutover_listings) is alerted	identity
+kinowo_worker_identity_history_dropped	debug: the history is diagnostic and never back-pressures (its HELP text)	identity
+kinowo_worker_identity_model_departed_listings	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_drain_seconds	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_events	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_families	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_hold_seconds	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_large_families	TODO alert? 0 is healthy (its HELP text): a family past one region is the drift shape the model guards against, today only charted	identity
+kinowo_worker_identity_model_largest_family_listings	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_largest_family_nodes	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_rebuilds	TODO alert? 0 is healthy (its HELP text): a drain that fails and rebuilds the model from its store, today only charted	identity
+kinowo_worker_identity_model_resolved	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_retained_twins_deleted	dashboard only: identity-model size, drain and hold telemetry; held/kept/present listings and promotions are the alerted series	identity
+kinowo_worker_identity_model_takeup_failures	TODO alert? a failed take-up leaves the identity model DOWN until a retry succeeds (its HELP text), today only charted	identity
+kinowo_worker_identity_projection_drift	TODO alert? 0 unless a scoped projection missed a film (its HELP text), today only charted	identity
+kinowo_worker_identity_projection_reconciles	dashboard only: hourly reconcile count, the denominator of identity_projection_drift	identity
+kinowo_worker_identity_projection_refusals	TODO alert? a projection refused keeps the stored films serving: a run of refusals is identity frozen in silence, today only charted	identity
+kinowo_worker_identity_regroupings	dashboard only: regrouping churn; the published effect is alerted via identity_take_changes / take_reversals	identity
+kinowo_worker_identity_relay_days_unread	dashboard only: relay days unread make the broadcast take wait for a next read; a transient by design	identity
+kinowo_worker_identity_rule_counted_listings	dashboard only: rule-firing shares (fires over counted listings), an identity-design signal	identity
+kinowo_worker_identity_rule_fires	dashboard only: rule-firing shares (fires over counted listings), an identity-design signal	identity
+kinowo_worker_identity_shadow_lookups	dashboard only: live lookup fill outcomes; failures surface in kinowo_worker_http and the resolution counters	identity
+kinowo_worker_identity_suspect_takes_wrong	dashboard only: judged-wrong takes on prod are the CI ratchet's to gate (identity-judgements.tsv); identity_suspect_takes is the alerted series	identity
+kinowo_worker_identity_take_causes	dashboard only: take-change causes and flip ages; flips and changes themselves are alerted (identity_take_changes, identity_listing_flips)	identity
+kinowo_worker_identity_take_flip_seconds	dashboard only: take-change causes and flip ages; flips and changes themselves are alerted (identity_take_changes, identity_listing_flips)	identity
+kinowo_worker_identity_take_flips	dashboard only: take-change causes and flip ages; flips and changes themselves are alerted (identity_take_changes, identity_listing_flips)	identity
+kinowo_worker_identity_take_listings	dashboard only: matched/unmatched take census	identity
+kinowo_worker_identity_takes	dashboard only: matched/unmatched take census	identity
+kinowo_worker_movie_change_update_kinds	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_movie_coalesced_changes	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_movie_slots_coalesced_changes	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_native_offbook_gap_bytes	dashboard only: native-memory accounting gap; worker_native_memory_bytes is the alerted series	worker
+kinowo_worker_pool_size	dashboard only: configured pool size, a denominator for queue panels	worker
+kinowo_worker_process_rss_bytes	dashboard only: native-memory accounting gap; worker_native_memory_bytes is the alerted series	worker
+kinowo_worker_queue_held_by_type	dashboard only: per-type queue breakdown; queue_depth and queue_oldest_waiting_age_seconds are the alerted series	worker
+kinowo_worker_queue_waiting_by_type	dashboard only: per-type queue breakdown; queue_depth and queue_oldest_waiting_age_seconds are the alerted series	worker
+kinowo_worker_rating_first_attempt_delay_seconds	dashboard only: reaper scheduling latency	enrichment
+kinowo_worker_rating_resolved_not_run	TODO alert? resolved films whose rating fetch never ran, and the oldest one's age: a stuck enrichment reaper shows only here	enrichment
+kinowo_worker_rating_resolved_not_run_oldest_age_seconds	TODO alert? resolved films whose rating fetch never ran, and the oldest one's age: a stuck enrichment reaper shows only here	enrichment
+kinowo_worker_readmodel_card_rewrite_parts	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_card_writes	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_cards_retired	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_catchup_rows	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_content_audit_suspects	dashboard only: audit suspects before confirmation; readmodel_content_audit_confirmed is the alerted series	read-model
+kinowo_worker_readmodel_drift_writes	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_metadata_projections	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_project_cpu_seconds	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_project_duration_seconds	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_reconcile_sweeps	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_unlisted_venues	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_readmodel_writes	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_resolution	dashboard only: resolution attempts by outcome; HTTP failures are alerted via kinowo_worker_http	enrichment
+kinowo_worker_retired_venue_future_showtimes	TODO alert? retired venues' FUTURE showtimes a reader would take as live; retired_venue_side_rows is alerted, this sharper series is not	scrape
+kinowo_worker_scrape_listing_incomplete	dashboard only: incomplete-listing reasons	scrape
+kinowo_worker_scrape_listing_incomplete_streak_venues	TODO alert? venues whose last N listings all landed incomplete: a venue silently losing showtimes, today only charted	scrape
+kinowo_worker_scrapes_parked	dashboard only: parking churn; its causes (residential proxy, upstream down) are alerted at their source	scrape
+kinowo_worker_scrapes_unparked	dashboard only: parking churn; its causes (residential proxy, upstream down) are alerted at their source	scrape
+kinowo_worker_screenings_coalesced_changes	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model
+kinowo_worker_screenings_writes	dashboard only: read-model write and projection volume/cost; correctness is alerted via readmodel_content_audit_confirmed, heals and write bursts	read-model
+kinowo_worker_share_cards_audit_suspects	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_city_render	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_facebook_app_usage	dashboard only: Facebook app quota share; rescrape and rescrape_waiting are the alerted series	share-cards
+kinowo_worker_share_cards_files	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_poster_cache	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_poster_fetch	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_pruned	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_render_path	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_share_cards_volume_size_bytes	dashboard only: share-card render, cache and pruning telemetry; coverage, budget, free space and refusals are the alerted series	share-cards
+kinowo_worker_string_pool_entries	dashboard only: string intern pool sizing	worker
+kinowo_worker_string_pool_evictions_total	dashboard only: string intern pool sizing	worker
+kinowo_worker_string_pool_hit_ratio	dashboard only: string intern pool sizing	worker
+kinowo_worker_string_pool_max_entries	dashboard only: string intern pool sizing	worker
+kinowo_worker_task_duration_seconds	dashboard only: task volume and duration; tasks_started/finished and the queue age are the alerted series	worker
+kinowo_worker_tasks_enqueued	dashboard only: task volume and duration; tasks_started/finished and the queue age are the alerted series	worker
+kinowo_worker_venue_apply_declines	dashboard only: change-stream apply volume by path; the stream's health is alerted via change_stream_apply_lag_seconds and last_event_age_seconds	read-model

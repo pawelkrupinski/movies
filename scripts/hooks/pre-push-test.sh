@@ -26,6 +26,13 @@ check "any Scala source runs the sbt lints" "sbt" "$(plan web/src/main/scala/con
 # for lint-registry-test.sh, a .py anywhere for python_floor_lint_test.py, a workflow for the workflow lints (#259-263)
 check "a Scala spec runs the self-tests reading every spec, and the sbt lints" "scripttests sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
 check "a Python file outside the script roots runs the self-tests reading every .py" "scripttests" "$(plan tools/devpanel/x.py)"
+check "an alerting rule file runs the dashboard tests and the metric-alert lint" "dashboards metricalerts" \
+  "$(plan infra/nix/files/monitoring/rules/k3s.rules)"
+check "the metric catalogue (a new registration) runs the metric-alert lint" "metricalerts" \
+  "$(plan infra/test/app-metrics-catalogue/worker.json)"
+check "...and so does its exemptions file" "metricalerts" "$(plan test/resources/metrics-without-alerts.tsv)"
+check "a metrics source runs the metric-alert lint and the sbt lints" "metricalerts sbt" \
+  "$(plan web/src/main/scala/services/metrics/WebCacheMetrics.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs the gating-checks registry lint, the schedules check, the workflow lints' self-tests, actionlint, and the silenced-read lint" "newchecks schedules scripttests actionlint sbt" "$(plan .github/workflows/ci.yml)"

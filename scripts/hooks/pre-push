@@ -31,6 +31,12 @@
 #                 PREPUSH_SKIP=coupling skips just it
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
+#   `metricalerts` infra/test/test_metric_alert_coverage.py — every kinowo_* metric family and recording rule is read by
+#                 an alert or has a row (metric, reason, owner) in test/resources/metrics-without-alerts.tsv; on a change
+#                 to the rule files, the Grafana alerts, the metric catalogue (what a new registration regenerates), a
+#                 metrics source (`*/src/main/*etrics*`), a fleet exporter (an infra/nix *.sh/*.nix or scripts/ci/*.py
+#                 echoing `# TYPE kinowo_`) or the TSV. Its PyYAML comes from the pinned venv scripts/python-venv builds
+#                 once (about a second)
 #   `scripttests` scripts/run-script-tests --changed <base>, on any change under the script-test roots (scripts/,
 #                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data) or matching a glob a self-test
 #                 declares it reads (`run-script-tests --reads`: every workflow, .py and Scala spec): only the self-tests
@@ -187,8 +193,8 @@
 #
 # A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
 # its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
-# actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder (the pinned venv
-# scripts/timezonefinder-python builds by itself; blocked only when it cannot), gh (judgements; the
+# actionlint, npm (eslint), python3 (drift, dashboards, judgements, metricalerts) and the drift's timezonefinder and metricalerts' PyYAML (the
+# pinned venvs scripts/python-venv builds by itself; blocked only when it cannot), gh (judgements; the
 # red gate); the red gate unread blocks a production
 # push (THE GATE FAILS CLOSED, above). What stays a WARNING is what lies outside
 # this machine's install: an external service unreachable (a served-takes download) and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
@@ -379,7 +385,7 @@ is_drift_path() { # <path>
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
     local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0
     local tools script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
@@ -422,6 +428,16 @@ plan() {
         read_by_lint_specs "$path" && sbt=1
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
+        esac
+        # What test_metric_alert_coverage.py reads: the alerts, the code's metric declarations, the fleet's exporters.
+        case "$path" in
+            infra/nix/files/monitoring/rules/*|infra/nix/files/monitoring/grafana/alerting/*|\
+            infra/test/app-metrics-catalogue/*|infra/test/test_metric_alert_coverage.py|\
+            infra/test/app_metrics_catalogue.py|infra/test/app_metrics_absent.py|infra/test/promql_selectors.py|\
+            test/resources/metrics-without-alerts.tsv|scripts/pyyaml-requirements.txt|scripts/python-venv|\
+            */src/main/*etrics*) metricalerts=1 ;;
+            # a fleet exporter: a script that echoes a `# TYPE kinowo_...` header
+            infra/nix/*.sh|infra/nix/*.nix|scripts/ci/*.py) grep -q '# TYPE kinowo_' "$path" 2>/dev/null && metricalerts=1 ;;
         esac
         case "$path" in
             scripts/*|.github/scripts/*|.github/actions/*|android/scripts/*|ios/scripts/*|infra/bin/*|data/*) scripttests=1 ;;
@@ -469,6 +485,7 @@ plan() {
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
     [ $dashboards = 1 ] && echo dashboards
+    [ $metricalerts = 1 ] && echo metricalerts
     [ $scripttests = 1 ] && echo scripttests
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
@@ -1374,6 +1391,17 @@ check_dashboards() {
     need dashboards python3 "install Python 3 (brew install python)" || return 1
     python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
         || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
+}
+
+check_metricalerts() {
+    need metricalerts python3 "install Python 3 (brew install python)" || return 1
+    local yaml_bin tools
+    tools="$(dirname "${BASH_SOURCE[0]}")/.."
+    yaml_bin="$("$tools/python-venv" "$tools/pyyaml-requirements.txt" yaml)" \
+        || { missing_tool metricalerts "python3's PyYAML" "scripts/python-venv (it builds the pinned venv; its error is above)"
+             return 1; }
+    PATH="$yaml_bin:$PATH" python3 infra/test/test_metric_alert_coverage.py > "$tmp/metricalerts.log" 2>&1 \
+        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,$p' "$tmp/metricalerts.log" | head -60 >&2; return 1; }
 }
 
 # The floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57 it builds), its

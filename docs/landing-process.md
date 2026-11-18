@@ -251,6 +251,7 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
 | `drift` | `*/src/main/scala/models/*`, `data/`, the City models, the drift script | `scripts/ci/generated-artefacts-drift.sh` | seconds |
 | `snapshot` | `test/resources/fixtures/08-06-2026/`, its inputs script | `scripts/read-model-snapshot-inputs.sh check` | seconds |
 | `dashboards` | `infra/nix/files/monitoring/`, `infra/test/test_dashboards.py` | `infra/test/test_dashboards.py` | < 1 s |
+| `metricalerts` | the rule files, the Grafana alerts, `infra/test/app-metrics-catalogue/`, `*/src/main/*etrics*`, the fleet exporters (an `infra/nix` `*.sh`/`*.nix` or `scripts/ci/*.py` echoing `# TYPE kinowo_`), `test/resources/metrics-without-alerts.tsv` | `infra/test/test_metric_alert_coverage.py`: every `kinowo_*` family and recording rule read by an alert, or a row (metric, reason, owner) in the TSV; PyYAML from `scripts/python-venv`'s pinned venv | ~1 s |
 | `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/`, or a path matching a glob a self-test declares it reads (`# script-test-reads:`; `scripts/run-script-tests --reads`: every workflow, `.py` and Scala spec) | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`; not when the hook already runs on Linux, as ci-runner's landing checks do); and the floor bash 3.2 in its own scope (`--bash`: every bash file the push touches parsed by it, its added lines held to the constructs 3.2 lacks, their own self-tests re-run under it; `scripts/floor-bash`: a Mac's `/bin/bash`, on Linux -- ci-runner -- the GNU 3.2.57 `--install` builds; none BLOCKS, `PREPUSH_SKIP=floor`) | seconds to minutes |
 | `actionlint` | workflow files, composite actions | actionlint (+ shellcheck on `run:` blocks) | seconds |
 | `schedules` | workflow files, `infra/nix/files/scheduled-workflows.json`, `infra/nix/files/scheduled_dispatch.py` | `infra/nix/files/scheduled_dispatch.py check`: monitoring-1's dispatch timers match the workflows' own crons, and every covered workflow treats the external scheduler's `repository_dispatch` as its schedule | < 1 s |
@@ -268,7 +269,8 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
 
 A local tool a check needs that is missing (sbt or a working java, shellcheck, actionlint, npm, python3, gh, curl, jq) **blocks** the push with the fix, never a skip. The drift check's timezonefinder is
 provisioned, not asked for: `scripts/timezonefinder-python` builds a pinned venv (`scripts/timezonefinder-requirements.txt`)
-once under `~/.cache/kinowo-timezonefinder`, and the check blocks only when that build fails, printing its error. Only what lies outside the machine's
+once under `~/.cache/kinowo-timezonefinder`, as `scripts/python-venv` does metricalerts' PyYAML (`scripts/pyyaml-requirements.txt`, under
+`~/.cache/kinowo-python-venvs`), and the check blocks only when that build fails, printing its error. Only what lies outside the machine's
 install warns and passes: Docker or Xcode not running. GitOps manifests
 that cannot be fetched block (the checkout left behind is stale).
 
