@@ -146,6 +146,15 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}ObservationReads.scala#films"   -> Content("prefetched records by TMDB id"),
     s"${I}ObservationReads.scala#details" -> Pass("prefetched venue pages: cleared at each prefetch and consumed in the same read"),
     // ── a resolve's scratch
+    // ── one solve, update or stored decision's read: the state each builds and drops
+    s"${I}ConstraintSolver.scala#cannot"    -> Pass("a field of ConstraintSolver's Partition, built per solve: each root's cannot-links"),
+    s"${I}ConstraintSolver.scala#film"      -> Pass("a field of ConstraintSolver's Partition, built per solve: each root's film"),
+    s"${I}ConstraintSolver.scala#ambiguous" -> Pass("a field of ConstraintSolver's TieredJoins, built per solve"),
+    s"${I}ConstraintSolver.scala#sides"     -> Pass("a field of ConstraintSolver's TieredJoins, built per solve"),
+    s"${I}IncrementalResolver.scala#settled"      -> Pass("a field of IncrementalResolver's UpdateRounds, built per update: the families it settled"),
+    s"${I}IncrementalResolver.scala#settledOfKey" -> Pass("a field of IncrementalResolver's UpdateRounds, built per update: its settled families by block key"),
+    s"${I}ResolverDecisionBson.scala#agreed"      -> Pass("a field of ResolverDecisionBson's DecisionFields, built per stored decision read"),
+    s"${I}ResolverDecisionBson.scala#filmTitled"  -> Pass("a field of ResolverDecisionBson's DecisionFields, built per stored decision read"),
     s"${I}FamilyScope.scala#overruledMemo"  -> Pass(PerResolve),
     s"${I}FamilyScope.scala#reachMemo"      -> Pass(PerResolve),
     s"${I}FamilyScope.scala#memo"           -> Pass(PerResolve),
