@@ -15,11 +15,11 @@ import tools.TestWiring
  *  moved the planner's spread while the reaper kept budgeting for the default. */
 class WorkerWiringChunkSpreadSpec extends AnyFlatSpec with Matchers {
 
-  "the worker's composition root" should "hand the scrape reaper the chunk planner's configured spread" in {
+  "the worker's composition root" should "hand the scrape reaper's admission the chunk planner's configured spread" in {
     val wiring = new WorkerWiring(Country.default) with TestWiring {
       override def scrapeChunkSpread: ScrapeChunkSpread = ScrapeChunkSpread(17.minutes)
     }
-    try wiring.scrapeReaper.chunkSpread shouldBe ScrapeChunkSpread(17.minutes)
+    try wiring.scrapeAdmission.chunkSpread shouldBe ScrapeChunkSpread(17.minutes)
     finally wiring.stop()
   }
 }

@@ -29,7 +29,6 @@ method-lines	worker/src/main/scala/services/identityadapters/IdentityStagingPubl
 method-lines	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:ShareCardJanitor.run	73
 method-lines	worker/src/main/scala/services/tasks/ChunkScrapePlanner.scala:ChunkScrapePlanner.plan	55
 method-lines	worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala:ScrapeCinemaHandler.handle	70
-method-lines	worker/src/main/scala/services/tasks/ScrapeReaper.scala:ScrapeReaper.tick	69
 method-lines	worker/src/main/scala/services/tasks/TaskWorker.scala:TaskWorker.runHandler	51
 method-lines	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	55
 method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59

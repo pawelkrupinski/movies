@@ -271,7 +271,6 @@ fanout	services.tasks.RatingSchedule	10
 fanout	services.tasks.ScrapeChunkHandler	18
 fanout	services.tasks.ScrapeChunkReduceHandler	20
 fanout	services.tasks.ScrapeCinemaHandler	26
-fanout	services.tasks.ScrapeReaper	27
 fanout	services.tasks.TaskWorker	15
 fanout	services.tasks.WorkerTaskMetrics	21
 fanout	services.titles.TitleNormalizer	11

@@ -12,7 +12,7 @@ import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.schedule.AlwaysClaimScheduledRunStore
-import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
+import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick}
 import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
@@ -392,30 +392,37 @@ trait ScrapeWiring { self: WorkerWiring =>
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
   // first tick, so the whole-corpus backlog drains gradually (pool idles → the just-
   // reset CPU-credit balance rebuilds) rather than pinning the pool flat-out and
-  // re-draining credit — the residual boot-storm spike. See ScrapeReaper.bootRamp.
+  // re-draining credit — the residual boot-storm spike. See ScrapeAdmission.bootRamp.
   def scrapeBootRamp: ScrapeBootRamp = configuration.scrapeBootRamp(ScrapeBootRamp(5.minutes))
   // How many staggered sub-slices each healthy reaper tick spreads its due batch
   // over the 1-min interval, so the batch's scrape parses don't clump into a single
   // CPU spike that floors the CPU-credit balance (the parse-wave burst). Same total
   // work and freshness; only the enqueue timing is staggered. Sized in ScrapeCadence;
-  // 1 disables the spread. See ScrapeReaper.enqueueSpread.
+  // 1 disables the spread. See ScrapeTick.enqueueSpread.
   def scrapeEnqueueSpreadSlices: ScrapeEnqueueSpreadSlices =
     configuration.scrapeEnqueueSpreadSlices(ScrapeEnqueueSpreadSlices(ScrapeCadence.EnqueueSpreadSlices))
   // Ceiling on outstanding scrape TASKS, the bound that survives the healthy path —
   // the per-tick caps above count VENUES, which on a chunked country understates the
-  // work by the fan-out factor. Sized in ScrapeCadence. See ScrapeReaper's parameter.
+  // work by the fan-out factor. Sized in ScrapeCadence. See ScrapeAdmission's parameter.
   def maxOutstandingScrapeTasks: ScrapeMaxOutstandingTasks =
     configuration.scrapeMaxOutstandingTasks(ScrapeMaxOutstandingTasks(ScrapeCadence.MaxOutstandingScrapeTasks))
   // What a venue costs in scrape tasks BEFORE any is measured — the prior under
   // `scrapeCostEstimates`. Per country because the fan-out is a property of that
   // country's scrapers. Default 1 (unchunked).
   def scrapeTasksPerVenue: ScrapeTasksPerVenue = configuration.scrapeTasksPerVenue(ScrapeTasksPerVenue(1))
-  lazy val scrapeReaper = managedResources.stopping(
-    new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
-      initialDelay = initialScrapeDelay,
-      maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
-      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
-      chunkSpread = scrapeChunkSpread,
-      inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock, ticks = ticks, scheduler = threadPools.scheduler("scrape-reaper")))
+  /** How often the scrape reaper ticks. */
+  def scrapeReaperInterval: ScrapeReaper.TickInterval = ScrapeReaper.TickInterval(1.minute)
+  /** What a scrape-reaper tick may admit: it reads the SAME spread the chunk planner staggers a venue's fan-out by. */
+  lazy val scrapeAdmission: ScrapeAdmission = new ScrapeAdmission(cinemaScrapers.size, scrapeDueWindow.period,
+    scrapeReaperInterval.value, maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
+    maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates, chunkSpread = scrapeChunkSpread)
+  lazy val scrapeReaper = {
+    val scheduler = threadPools.scheduler("scrape-reaper")
+    val interval  = scrapeReaperInterval
+    val due       = new DueScrapes(cinemaScrapers, freshnessStore, scrapeDueWindow, chunkRunInFlight)
+    val tick      = new ScrapeTick(due, scrapeAdmission, new ScrapeEnqueuer(taskQueue, scrapeAdmission, clock), interval.value,
+      scrapeEnqueueSpreadSlices, ticks, scheduler)
+    managedResources.stopping(new ScrapeReaper(due, tick, interval, initialDelay = initialScrapeDelay,
+      runStore = scheduledRunStore, clock = clock, scheduler = scheduler, ticks = ticks))
+  }
 }

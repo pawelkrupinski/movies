@@ -47,7 +47,7 @@ class ProxyParkingSpec extends AnyFlatSpec with Matchers {
     val scrapers: Seq[StubCinemaScraper] =
       proxied.map(c => new StubCinemaScraper(c, if (probe.up.get) listing(c) else proxyDown())) ++
         own.map(c => new StubCinemaScraper(c, throw new HttpStatusException(500, "GET", "https://own.example", None)))
-    val reaper    = new ScrapeReaper(scrapers, queue, fresh, clock = clock, scheduler = tools.DaemonExecutors.scheduler("scrape-reaper"))
+    val reaper    = ScrapeReapers(scrapers, queue, fresh, clock = clock, scheduler = tools.DaemonExecutors.scheduler("scrape-reaper"))
     private val runner = new CinemaScrapeRunner(new services.identity.IdentityListingIntake(
       new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository, new services.movies.InMemoryScrapeGuardLedger,
       titleNormalizer, 3, clock, services.movies.ListingIntakeMetrics.noop), clock)

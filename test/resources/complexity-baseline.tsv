@@ -68,7 +68,6 @@ cognitive	worker/src/main/scala/services/sharecards/ShareCardJanitor.scala:Share
 cognitive	worker/src/main/scala/services/sharecards/ShareCardStore.scala:ShareCardStore.list	16
 cognitive	worker/src/main/scala/services/tasks/ChunkScrapePlanner.scala:ChunkScrapePlanner.plan	30
 cognitive	worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala:ScrapeCinemaHandler.handle	16
-cognitive	worker/src/main/scala/services/tasks/ScrapeReaper.scala:ScrapeReaper.tick	19
 cognitive	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	16
 cognitive	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	17
 cyclomatic	common/src/main/scala/models/SourceData.scala:SourceData.equals	22
@@ -171,7 +170,6 @@ cyclomatic	worker/src/main/scala/services/sharecards/ShareCardService.scala:Shar
 cyclomatic	worker/src/main/scala/services/tasks/ChunkScrapePlanner.scala:ChunkScrapePlanner.plan	15
 cyclomatic	worker/src/main/scala/services/tasks/ScrapeChunkReduceHandler.scala:ScrapeChunkReduceHandler.handle	12
 cyclomatic	worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala:ScrapeCinemaHandler.handle	12
-cyclomatic	worker/src/main/scala/services/tasks/ScrapeReaper.scala:ScrapeReaper.tick	13
 cyclomatic	worker/src/main/scala/services/tasks/TaskWorker.scala:TaskWorker.runHandler	14
 cyclomatic	worker/src/main/scala/services/venuepages/EnrichDetailsHandler.scala:EnrichDetailsHandler.targetSlots	11
 cyclomatic	worker/src/main/scala/tools/AdaptiveParallel.scala:AdaptiveParallel.map	11
