@@ -221,6 +221,90 @@ object Coupling {
     g.types.map(t => t.name -> ((in.getOrElse(t.name, 0), out.getOrElse(t.name, 0)))).toMap
   }
 
+  /** Per class: its fan-out as the limit counts it -- every member of a declared contract the class is a user of
+   *  ([[Exemptions]]: `contract` / `member` rows) counted as ONE dependency, every other class as one each. With no
+   *  contract it is the plain fan-out of [[fans]]. */
+  def heldFanOut(g: Graph, exemptions: Exemptions): Map[String, Int] = {
+    val out = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+    g.types.map { t =>
+      val targets = out.getOrElse(t.name, Set.empty[String])
+      val contracts = exemptions.contractsOf(t.name)
+      val folded = targets.map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
+      t.name -> folded.size
+    }.toMap
+  }
+
+  // ── exemptions ──
+
+  /** One row of the exemption table (test/resources/coupling-exemptions.tsv): what it names (`pattern`: a class or package
+   *  name, `*` any run of characters, `p.*` also `p` itself), its `kind` and `value` (`exempt` or a limit of its own, or,
+   *  for a contract's rows, the contract's name), whose it is and why. */
+  final case class Exemption(kind: String, pattern: String, value: String, owner: String, why: String) {
+    def matches(name: String): Boolean = Exemptions.matches(pattern, name)
+  }
+
+  /** THE EXEMPTIONS: the classes and packages the fan-out and distance limits do not hold (or hold to a limit of their
+   *  own), and the declared contracts whose members a user's fan-out counts as one. */
+  final case class Exemptions(rows: Seq[Exemption]) {
+    private def limitOf(kinds: Set[String], name: String, default: Int): Option[Int] =
+      rows.find(r => kinds(r.kind) && r.matches(name)).fold(Option(default))(r => if (r.value == "exempt") None else Some(r.value.toInt))
+    /** A class's fan-out limit: None when exempt. */
+    def fanOutLimit(cls: String, default: Int): Option[Int] = limitOf(Exemptions.FanOutKinds, cls, default)
+    /** A package's distance limit (hundredths): None when exempt. */
+    def distanceLimit(pkg: String, default: Int): Option[Int] = limitOf(Exemptions.DistanceKinds, pkg, default)
+    /** The contracts `cls` is a user of, each with its members. */
+    def contractsOf(cls: String): Seq[(String, Set[String])] =
+      rows.filter(r => r.kind == "contract" && r.matches(cls)).map(_.value).distinct.sorted
+        .map(name => name -> rows.filter(r => r.kind == "member" && r.value == name).map(_.pattern).toSet)
+    /** Every contract: its name, its users' patterns, its members. */
+    def contracts: Seq[(String, Seq[String], Seq[String])] =
+      rows.filter(_.kind == "contract").map(_.value).distinct.sorted.map { name =>
+        (name, rows.filter(r => r.kind == "contract" && r.value == name).map(_.pattern),
+          rows.filter(r => r.kind == "member" && r.value == name).map(_.pattern).sorted)
+      }
+  }
+
+  object Exemptions {
+    val FanOutKinds: Set[String] = Set("root", "registry", "config")
+    val DistanceKinds: Set[String] = Set("root", "foundation")
+    val ContractKinds: Set[String] = Set("contract", "member")
+    val empty: Exemptions = Exemptions(Nil)
+
+    def matches(pattern: String, name: String): Boolean =
+      (pattern.endsWith(".*") && name == pattern.dropRight(2)) ||
+        name.matches(pattern.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString(".*"))
+
+    /** The table's rows, `kind<TAB>pattern<TAB>limit|exempt|contract<TAB>owner<TAB>why`; `#` and blank lines are comments.
+     *  An unknown kind, a value that is neither `exempt` nor a number (for an exempting kind), a member of a contract no
+     *  `contract` row has users for (or the reverse), or a row without its owner or why is an error. */
+    def parse(lines: Seq[String]): Exemptions = {
+      val rows = lines.zipWithIndex.flatMap { case (line, index) =>
+        val n: Int = index + 1
+        def bad(why: String): Nothing = throw new IllegalArgumentException(s"coupling-exemptions.tsv line $n: $why")
+        if (line.trim.isEmpty || line.startsWith("#")) None
+        else {
+          val cols: Array[String] = line.split("\t", -1)
+          if (cols.length != 5) bad("not `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why`")
+          val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4))
+          if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds)(row.kind)) bad(s"unknown kind `${row.kind}`")
+          if (row.pattern.isEmpty) bad("no pattern")
+          if (!ContractKinds(row.kind) && row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))
+            bad(s"`${row.value}` is neither `exempt` nor a limit")
+          if (ContractKinds(row.kind) && row.value.trim.isEmpty) bad("a contract row names its contract")
+          if (row.owner.trim.isEmpty || row.why.trim.isEmpty) bad(s"${row.pattern} has no owner or no why")
+          Some(row)
+        }
+      }
+      val users = rows.filter(_.kind == "contract").map(_.value).toSet
+      val members = rows.filter(_.kind == "member").map(_.value).toSet
+      (users ++ members).foreach { c =>
+        if (!users(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has members but no `contract` row naming its users")
+        if (!members(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has users but no `member` rows")
+      }
+      Exemptions(rows)
+    }
+  }
+
   /** Split packages: a full package whose classes live in 2+ modules -> (module, class count) per module. */
   def splitPackages(g: Graph): Seq[(String, Seq[(String, Int)])] =
     g.types.groupBy(t => fullPackageOf(t.name)).toSeq.map { case (p, ts) =>
@@ -229,35 +313,56 @@ object Coupling {
 
   // ── the baseline ──
 
-  /** The fan-out at and above which a class has a row of its own (below it, a class is held to the limit). */
-  val DefaultFanOutLimit = 30
+  /** The fan-out above which a class needs a row of its own: a frozen baseline row (it may only fall) or an exemption. */
+  val DefaultFanOutLimit = 9
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
+  /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
+  val DefaultDistanceLimit = 20
+  /** The types a package needs before its distance is held: a smaller one's D swings on one class. */
+  val DefaultDistanceMinTypes = 8
 
-  /** The ratchet's rows (TAB-separated `kind key value`, sorted): what scripts/ci/coupling_ratchet.py compares. */
+  /** A package's distance D in hundredths, as the baseline holds it. */
+  def hundredths(d: Double): Int = math.round(d * 100).toInt
+
+  /** The ratchet's rows (TAB-separated `kind key value`, sorted): what scripts/ci/coupling_ratchet.py compares. A class
+   *  past its fan-out limit ([[heldFanOut]]) and a package of `distanceMinTypes` types or more past the distance limit get
+   *  a row, unless an exemption covers them. */
   def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit,
-                   layers: Option[Layers] = None): Seq[String] = {
-    val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tnew-package-ce\t$newPackageCeLimit")
+                   layers: Option[Layers] = None, exemptions: Exemptions = Exemptions.empty,
+                   distanceLimit: Int = DefaultDistanceLimit, distanceMinTypes: Int = DefaultDistanceMinTypes): Seq[String] = {
+    val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tnew-package-ce\t$newPackageCeLimit",
+      s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
-    val ce = packages(g).map(p => s"ce\t${p.name}\t${p.cePackages}")
-    val fanout = fans(g).toSeq.collect { case (c, (_, out)) if out >= fanOutLimit => s"fanout\t$c\t$out" }.sorted
+    val pkgs = packages(g)
+    val ce = pkgs.map(p => s"ce\t${p.name}\t${p.cePackages}")
+    val fanout = heldFanOut(g, exemptions).toSeq
+      .collect { case (c, out) if exemptions.fanOutLimit(c, fanOutLimit).exists(out > _) => s"fanout\t$c\t$out" }.sorted
+    val distance = pkgs.collect {
+      case p if p.types >= distanceMinTypes && exemptions.distanceLimit(p.name, distanceLimit).exists(hundredths(p.distance) > _) =>
+        s"distance\t${p.name}\t${hundredths(p.distance)}"
+    }.sorted
     val layerRows = layers.toSeq.flatMap(l => layerViolations(g, l)).map { case ((a, b), refs) => s"layer-violation\t$a->$b\t${refs.size}" }
     val rankRows = layers.toSeq.flatMap(l => rankViolations(g, l)).map { case ((a, b), refs) => s"rank-violation\t$a->$b\t${refs.size}" }
-    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ layerRows ++ rankRows
+    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ distance ++ layerRows ++ rankRows
   }
 
   val BaselineHeader: Seq[String] = Seq(
     "# THE COUPLING BASELINE (scripts/coupling-report --update writes it; scripts/ci/coupling_ratchet.py holds every push to it).",
     "# Production code only (*/src/main), from Zinc's class-dependency record (project/Coupling.scala). One row a fact,",
     "# `kind<TAB>key<TAB>value`:",
-    "#   limit        fanout / new-package-ce: a class without a fanout row stays below the first, a package without a ce row",
-    "#                at or below the second",
+    "#   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; new-package-ce: a",
+    "#                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of",
+    "#                that many types or more without a distance row (or an exemption) has at most this D",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --",
     "#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file",
     "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
-    "#   fanout       <class>, its fan-out (distinct production classes it uses), at or above the limit: it may not rise",
+    "#   fanout       <class>, its fan-out (distinct production classes it uses, a declared contract's members one) past the",
+    "#                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption",
+    "#                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit",
+    "#   distance     <package>, its D in hundredths past the limit: frozen the same way",
     "#   layer-violation <from>-><to>, a package edge into a higher layer (test/resources/coupling-layers.tsv): never",
     "#                held here -- the ratchet fails on any (cut it, or allow it in the layer table with its why)",
     "#   rank-violation <from>-><to>, inside an ordered layer an edge to a higher-ranked package, or <package>->? for a",
@@ -272,7 +377,8 @@ object Coupling {
     Seq(header.mkString("| ", " | ", " |"), header.map(_ => "---").mkString("|", "|", "|")) ++ rows.map(_.mkString("| ", " | ", " |"))
 
   /** The markdown summary. `declared`: each module's direct Compile dependencies (build.sbt's dependsOn). */
-  def report(g: Graph, declared: Map[String, Set[String]], top: Int = 20, layers: Option[Layers] = None): String = {
+  def report(g: Graph, declared: Map[String, Set[String]], top: Int = 20, layers: Option[Layers] = None,
+             exemptions: Exemptions = Exemptions.empty): String = {
     val modules = g.types.map(_.module).distinct.sorted
     val medges = moduleEdges(g)
     val pkgs = packages(g)
@@ -350,6 +456,27 @@ object Coupling {
     ranked(s"## Top $top classes by fan-in", _._1)
     ranked(s"## Top $top classes by fan-out", _._2)
     ranked(s"## God hubs\n\nHigh fan-in AND high fan-out: the top $top by the smaller of the two.", f => math.min(f._1, f._2))
+    val held = heldFanOut(g, exemptions)
+    val heldOver = held.toSeq.filter { case (c, o) => exemptions.fanOutLimit(c, DefaultFanOutLimit).exists(o > _) }
+    out += s"## Limits: fan-out ${DefaultFanOutLimit}, distance ${f2(DefaultDistanceLimit / 100.0)}"
+    out += ""
+    out += "A class's held fan-out counts each declared contract it uses as one dependency; the exemptions " +
+      "(test/resources/coupling-exemptions.tsv) take the composition roots, the registries, the typed-config root and the foundation packages out."
+    out += ""
+    out += s"Classes past the fan-out limit (not exempt): ${heldOver.size} -- " +
+      Seq(9, 14, 20, 30).map(k => s">$k: ${held.toSeq.count { case (c, o) => o > k && exemptions.fanOutLimit(c, DefaultFanOutLimit).isDefined }}").mkString(", ")
+    out += ""
+    val far = pkgs.filter(p => p.types >= DefaultDistanceMinTypes && exemptions.distanceLimit(p.name, DefaultDistanceLimit).exists(hundredths(p.distance) > _))
+    out += s"Packages of ${DefaultDistanceMinTypes}+ types past the distance limit (not exempt): " +
+      (if (far.isEmpty) "none" else far.sortBy(-_.distance).map(p => s"`${p.name}` ${f2(p.distance)}").mkString(", "))
+    out += ""
+    exemptions.contracts.foreach { case (name, users, members) =>
+      val uses = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+      val using = g.types.count(t => users.exists(u => Exemptions.matches(u, t.name)) && uses.getOrElse(t.name, Set.empty[String]).exists(members.contains))
+      out += s"Contract `$name` (${members.size} members, one dependency for ${users.map(u => s"`$u`").mkString(" ")}; $using classes use it): " +
+        members.map(m => s"`$m`").mkString(", ")
+      out += ""
+    }
     out += "## Split packages"
     out += ""
     val split = splitPackages(g)

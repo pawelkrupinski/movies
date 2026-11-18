@@ -105,13 +105,80 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.splitPackages(split) shouldBe Seq("tools" -> Seq("base" -> 2, "http" -> 1))
   }
 
-  "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs at the limit" in {
-    Coupling.baselineRows(graph, fanOutLimit = 3, newPackageCeLimit = 15) shouldBe Seq(
-      "limit\tfanout\t3", "limit\tnew-package-ce\t15",
+  "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
+    Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
+      "limit\tfanout\t2", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
       "fanout\tservices.movies.MovieService\t3", "fanout\tworker.Main\t3")
+  }
+
+  // a scraper using three of its contract's four members and one class besides; a registry naming five scrapers
+  private val contracted = Graph(
+    Seq(t("services.cinemas.pl.HeliosClient"), t("services.cinemas.common.CinemaScraper", isAbstract = true), t("models.Cinema"),
+      t("models.CinemaMovie"), t("models.Showtime"), t("tools.Slugify"), t("services.cinemas.pl.venues.WarszawaVenues"),
+      t("services.identity.Film")),
+    Set("services.cinemas.pl.HeliosClient" -> "services.cinemas.common.CinemaScraper", "services.cinemas.pl.HeliosClient" -> "models.Cinema",
+      "services.cinemas.pl.HeliosClient" -> "models.CinemaMovie", "services.cinemas.pl.HeliosClient" -> "tools.Slugify",
+      "services.identity.Film" -> "models.Cinema", "services.identity.Film" -> "models.CinemaMovie", "services.identity.Film" -> "models.Showtime",
+      "services.cinemas.pl.venues.WarszawaVenues" -> "services.cinemas.pl.HeliosClient", "services.cinemas.pl.venues.WarszawaVenues" -> "models.Cinema",
+      "services.cinemas.pl.venues.WarszawaVenues" -> "tools.Slugify"))
+  private val exemptions = Coupling.Exemptions.parse(Seq(
+    "# kind\tpattern\tvalue\towner\twhy",
+    "contract\tservices.cinemas.*\tscrape\tscrapers\tthe scrape contract",
+    "member\tservices.cinemas.common.CinemaScraper\tscrape\tscrapers\tentry", "member\tmodels.Cinema\tscrape\tscrapers\tvenue",
+    "member\tmodels.CinemaMovie\tscrape\tscrapers\tfilm", "member\tmodels.Showtime\tscrape\tscrapers\tscreening",
+    "registry\tservices.cinemas.*Venues\texempt\tscrapers\ta venue roster",
+    "foundation\tmodels\texempt\tcoupling\tvalues"))
+
+  "a declared contract" should "count as ONE dependency of its users, and as its members of everyone else" in {
+    val held = Coupling.heldFanOut(contracted, exemptions)
+    held("services.cinemas.pl.HeliosClient") shouldBe 2 // the contract, tools.Slugify
+    held("services.identity.Film") shouldBe 3 // not a user: Cinema, CinemaMovie, Showtime each count
+    Coupling.heldFanOut(contracted, Coupling.Exemptions.empty)("services.cinemas.pl.HeliosClient") shouldBe 4
+  }
+
+  "an exemption" should "take a class out of the fan-out limit, a package out of the distance limit, by pattern" in {
+    exemptions.fanOutLimit("services.cinemas.pl.venues.WarszawaVenues", 9) shouldBe None
+    exemptions.fanOutLimit("services.cinemas.pl.HeliosClient", 9) shouldBe Some(9)
+    exemptions.distanceLimit("models", 20) shouldBe None
+    exemptions.distanceLimit("services.identity", 20) shouldBe Some(20)
+    Coupling.Exemptions.matches("modules.*", "modules") shouldBe true
+    Coupling.Exemptions.matches("modules.*", "modules.wiring.HttpWiring") shouldBe true
+    Coupling.Exemptions.matches("modules.*", "modulesX") shouldBe false
+    Coupling.Exemptions.parse(Seq("config\tsettings.ProcessConfiguration\t90\tcoupling\tthe typed-config root"))
+      .fanOutLimit("settings.ProcessConfiguration", 9) shouldBe Some(90)
+  }
+
+  "the baseline rows" should "freeze a class past the limit unless exempt, and a large package past the distance limit unless exempt" in {
+    val rows = Coupling.baselineRows(contracted, fanOutLimit = 1, exemptions = exemptions, distanceLimit = 20, distanceMinTypes = 3)
+    rows should contain("fanout\tservices.cinemas.pl.HeliosClient\t2")
+    rows should contain("fanout\tservices.identity.Film\t3")
+    rows.filter(_.contains("WarszawaVenues")) shouldBe empty // a registry
+    rows.filter(_.startsWith("distance\t")) shouldBe Seq("distance\tservices.cinemas\t33") // models (3 types, D 1) is a foundation; services.cinemas: A 1/3, I 1
+    Coupling.baselineRows(contracted, fanOutLimit = 1, distanceMinTypes = 3).filter(_.startsWith("distance\t")) shouldBe
+      Seq("distance\tmodels\t100", "distance\tservices.cinemas\t33")
+  }
+
+  "the exemption table" should "refuse an unknown kind, a value neither exempt nor a limit, a row without its why, and a half contract" in {
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("rooot\tmodules.*\texempt\to\tw"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\tmany\to\tw"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to\t "))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("member\tmodels.Cinema\tscrape\to\tw"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw"))
+  }
+
+  "the checked-in exemption table" should "parse, exempt the roots, registries, config root and foundations, and declare the scrape contract" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    Seq("modules.WorkerMain", "modules.wiring.HttpWiring", "services.cinemas.pl.venues.KrakowVenues", "services.cinemas.CinemaScraperCatalog",
+      "settings.ProcessConfiguration").map(table.fanOutLimit(_, 9)) shouldBe Seq(None, None, None, None, None)
+    Seq("models", "tools", "settings", "services.titles", "modules.wiring").map(table.distanceLimit(_, 20)) shouldBe Seq(None, None, None, None, None)
+    table.fanOutLimit("services.identity.IdentityResolver", 9) shouldBe Some(9)
+    table.distanceLimit("services.movies", 20) shouldBe Some(20)
+    table.contractsOf("services.cinemas.pl.HeliosClient").map(c => c._1 -> c._2.size) shouldBe Seq("scrape" -> 12)
+    table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
   "the edge rows" should "give every class reference with its package edge, a package's own included" in {
@@ -217,10 +284,11 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val rows = lines.filterNot(l => l.startsWith("#") || l.trim.isEmpty).map(_.split("\t", -1).toSeq)
     all(rows.map(_.size)) shouldBe 3
     rows.map(_.head).distinct.toSet should contain allElementsOf Set("limit", "module-edge", "ce")
-    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout") shouldBe empty // no cycle-edge: the graph has none
+    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance") shouldBe empty // no cycle-edge: the graph has none
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe
-      Map("fanout" -> Coupling.DefaultFanOutLimit, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit)
+      Map("fanout" -> Coupling.DefaultFanOutLimit, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
+        "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes)
   }
 }

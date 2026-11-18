@@ -1,0 +1,42 @@
+# THE COUPLING EXEMPTIONS (CLAUDE.md, Design rules; project/Coupling.scala `Exemptions`, scripts/ci/coupling_ratchet.py):
+# the classes and packages the two limits -- class fan-out (`limit fanout`) and package distance D (`limit distance`,
+# packages of `limit distance-min-types` types or more) in test/resources/coupling-baseline.tsv -- do not hold, and the
+# declared contracts a class's fan-out counts as ONE dependency. A class or package past a limit with neither a frozen
+# baseline row nor a row here fails the push; `scripts/coupling-report --update` never admits it. A row added or loosened
+# here lands only in a commit carrying `Coupling: <why>` (the ratchet checks it); a row dropped needs none.
+#
+#   kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why
+#
+# pattern: a class or package name; `*` matches any run of characters (dots too); `p.*` also matches `p` itself.
+# kind, and what it exempts:
+#   root        fan-out and distance: the composition roots wire everything and nothing depends on them
+#   registry    fan-out: data tables (venue rosters, scraper catalogues) that name one entry per class they list
+#   foundation  distance: the bottom layers every package rests on -- stable and concrete on purpose (D near 1 is right)
+#   config      fan-out: the typed-config root, which resolves every setting into its typed value in one place
+#   contract    (column 3: the contract's name) the classes matching `pattern` are its USERS: their fan-out counts every
+#               member of that contract they use as one dependency
+#   member      (column 3: the contract's name) `pattern` is one of the contract's member types
+# column 3, for the exempting kinds: `exempt`, or a number -- a limit of the class's own, above the shared one.
+root	modules.*	exempt	coupling	the composition roots (AppLoader, WorkerMain, AppComponents and the modules.wiring / modules.webwiring traits): every collaboration is wired here (DIP), so their fan-out is the application's size, and their D is a top layer's
+root	diagnostics.*	exempt	coupling	command-line programs built from the whole stack like a composition root (FilmwebDiff, RosterAudit)
+registry	services.cinemas.*Venues	exempt	scrapers	a city's or chain's venue roster: one entry a venue, each naming the scraper class that reads it -- data, its fan-out is its row count
+registry	services.cinemas.*ScraperCatalog	exempt	scrapers	a country's scraper catalogue: one entry a source, each naming its client class -- data, its fan-out is its row count
+registry	services.cinemas.pl.PolishVenueRegistry	exempt	scrapers	the Polish venues' registry over the city rosters: one reference a roster
+config	settings.ProcessConfiguration	exempt	coupling	the typed-config root: every environment variable is read here once and resolved into its typed setting (typed config conventions), so it names every setting type
+foundation	models	exempt	coupling	the domain data every layer reads: stable (I near 0) and concrete (A near 0), as values are
+foundation	tools	exempt	coupling	generic utilities and the HTTP and Mongo layers, below everything: stable and concrete
+foundation	settings	exempt	coupling	typed configuration values, read by every layer: stable and concrete
+foundation	services.titles	exempt	identity	the title text as a pure function library (TitleNormalizer, FormatTags): stable and concrete, nothing to abstract
+contract	services.cinemas.*	scrape	scrapers	a scraper's side of the scrape contract (CLAUDE.md: a new cinema is a new CinemaXClient on it): the twelve types every scraper is written against are one dependency, not twelve
+member	services.cinemas.common.CinemaScraper	scrape	scrapers	the contract's entry point: what a scraper is
+member	services.cinemas.common.ScraperParse	scrape	scrapers	the shared parse helpers every scraper reads its page with
+member	services.cinemas.common.SlotsToMovies	scrape	scrapers	slots folded into the films a scraper returns
+member	services.cinemas.common.DetailEnricher	scrape	scrapers	a scraper's per-film detail page reader
+member	services.cinemas.common.DetailFetchOutcome	scrape	scrapers	what a detail fetch came back with
+member	services.cinemas.common.FilmDetail	scrape	scrapers	what a detail page reads into
+member	models.Cinema	scrape	scrapers	the venue a scraper reads
+member	models.CinemaMovie	scrape	scrapers	a film a scraper returns
+member	models.Movie	scrape	scrapers	a film's own fields within it
+member	models.Showtime	scrape	scrapers	one screening of it
+member	tools.HttpFetch	scrape	scrapers	the fetch a scraper is handed
+member	tools.HttpRead	scrape	scrapers	one read over it
