@@ -162,7 +162,6 @@ donaueschingen	donaueschingen-baden-wuerttemberg	Donaueschingen	Baden-Württembe
 dreieich	dreieich-hessen	Dreieich	Hessen	50.02	8.6961	true	Dreieich|Mörfelden-Walldorf|Langen|Neu-Isenburg
 duderstadt	duderstadt-niedersachsen	Duderstadt	Niedersachsen	51.5131	10.2595	true	Duderstadt|Herzberg am Harz
 duelmen	duelmen-nordrhein-westfalen	Dülmen	Nordrhein-Westfalen	51.8315	7.2808	true	Dülmen|Coesfeld
-dueren	dueren-nordrhein-westfalen	Düren	Nordrhein-Westfalen	50.8043	6.493	true	Düren|Eschweiler
 ebersbach	ebersbach-sachsen	Ebersbach	Sachsen	50.9944	14.6	true	Ebersbach|Neustadt in Sachsen|Mittelherwigsdorf|Großhennersdorf
 eberswalde-finow	eberswalde-finow-brandenburg	Eberswalde-Finow	Brandenburg	52.8349	13.8195	false	Eberswalde-Finow
 eckental	eckental-bayern	Eckental	Bayern	49.5841	11.2175	false	Eckental
@@ -245,7 +244,7 @@ kehl	kehl-baden-wuerttemberg	Kehl	Baden-Württemberg	48.573	7.8152	true	Kehl|Obe
 kelheim	kelheim-bayern	Kelheim	Bayern	48.9173	11.8862	true	Kelheim|Abensberg
 kelkheim	kelkheim-hessen	Kelkheim	Hessen	50.137	8.4502	false	Kelkheim
 kempten-im-allgaeu	kempten-im-allgaeu-bayern	Kempten im Allgäu	Bayern	47.7267	10.3139	true	Kempten im Allgäu|Marktoberdorf|Immenstadt im Allgäu
-kerpen	kerpen-nordrhein-westfalen	Kerpen	Nordrhein-Westfalen	50.8699	6.6969	true	Kerpen|Frechen
+kerpen	kerpen-nordrhein-westfalen	Kerpen	Nordrhein-Westfalen	50.8699	6.6969	true	Kerpen|Düren|Frechen
 kirchheim-unter-teck	kirchheim-unter-teck-baden-wuerttemberg	Kirchheim unter Teck	Baden-Württemberg	48.6468	9.4538	true	Kirchheim unter Teck|Nürtingen|Plochingen|Ensingen
 kitzingen	kitzingen-bayern	Kitzingen	Bayern	49.7397	10.1507	true	Kitzingen|Ochsenfurt|Dettelbach|Sommerach
 kleve	kleve-nordrhein-westfalen	Kleve	Nordrhein-Westfalen	51.7883	6.1387	true	Kleve|Goch

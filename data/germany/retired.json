@@ -346,5 +346,11 @@
     "reason": "closed",
     "retiredOn": "2026-11-18",
     "evidence": "scala-hof.de is a 'domain is for sale' page (2026-11-18); Filmstarts A1051 404 since 2026-08-31, kinoprogramm.com lists nothing (closure sweep, 2026-11-14)."
+  },
+  "A1041": {
+    "name": "Primus-Kinocenter",
+    "reason": "closed",
+    "retiredOn": "2026-11-18",
+    "evidence": "Google Maps: 'Permanently closed' (Marienstrasse 45, newest review 6 years old, 2026-11-18); its last show was 2 November 2020, Eschweiler's last cinema: Aachener Zeitung https://www.aachener-zeitung.de/lokales/region-aachen/eschweiler/der-vorhang-offnet-sich-anfang-november-zum-letzten-mal/4016580.html , Filmpost https://www.filmpost.de/aktuell/archiv/kino-schlie%C3%9Ft-nun-schon-am-2.-november.html ; its domain no longer answers."
   }
 }

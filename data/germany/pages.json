@@ -3365,24 +3365,6 @@
    ]
   },
   {
-   "slug": "dueren",
-   "kind": "cluster",
-   "name": "Düren",
-   "anchor": "Düren",
-   "bundesland": "Nordrhein-Westfalen",
-   "qualifiedSlug": "dueren-nordrhein-westfalen",
-   "lat": 50.8043,
-   "lon": 6.493,
-   "towns": [
-    "Düren",
-    "Eschweiler"
-   ],
-   "cinemas": [
-    "Das Lumen Filmtheater",
-    "Primus-Kinocenter"
-   ]
-  },
-  {
    "slug": "ebersbach",
    "kind": "cluster",
    "name": "Ebersbach",
@@ -4949,11 +4931,13 @@
    "lon": 6.6969,
    "towns": [
     "Kerpen",
+    "Düren",
     "Frechen"
    ],
    "cinemas": [
     "Capitol-Theater Kerpen",
     "Euromax - Cinemas",
+    "Das Lumen Filmtheater",
     "Linden Theater Frechen"
    ]
   },
@@ -8709,6 +8693,10 @@
   "dorsten": {
    "page": "marl",
    "qualifiedSlug": "dorsten-nordrhein-westfalen"
+  },
+  "dueren": {
+   "page": "kerpen",
+   "qualifiedSlug": "dueren-nordrhein-westfalen"
   },
   "ehingen": {
    "page": "biberach-an-der-riss",
