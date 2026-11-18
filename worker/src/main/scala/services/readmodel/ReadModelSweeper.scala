@@ -19,8 +19,9 @@ import scala.util.Try
  *    and judges which of its heals and rewrites were real misses (`verdictOnSweep`).
  *  - THE FULL RECONCILE (`reconcile`, never scheduled): re-project every row and prune — the
  *    one-shot seed/backfill primitive.
- *  - THE DERIVATION PASS (`advanceDerivationPass`, paced): the whole-corpus re-projection a deploy
- *    owes when it changes what the projection derives from an unchanged row.
+ *  - THE DERIVATION PASS ([[ReadModelDerivationPass]], paced): the whole-corpus re-projection a
+ *    deploy owes when it changes what the projection derives from an unchanged row; the first
+ *    complete prune sweep arms it with a walk over the rows it saw ([[ReadModelSweeper.SliceWalk]]).
  *  - THE BOOT HEAL (`healMissingCards`): every ready row one of whose cards or venues is missing,
  *    projected before the first prune can delete the card it has under an old id.
  *
@@ -39,15 +40,11 @@ class ReadModelSweeper(
   // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnSweep`).
   // The root passes the wait on its own `sleep`; the default serves the specs that build a sweeper bare.
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_, tools.Sleep.Blocking),
-  // Which derivation the stored read model was last re-projected whole under — see
-  // [[ReadModelDerivationMarker]] and `advanceDerivationPass`. `none` owes no pass.
-  derivationMarker:  ReadModelDerivationMarker = ReadModelDerivationMarker.none,
-  // Every derivation this code knows, the last its own: what a store behind it is owed (see
-  // [[ReadModelDerivation.owedSince]]). A parameter so a spec can stage a history.
-  derivationHistory: Seq[Derivation] = ReadModelDerivation.History
+  // The derivation pass the first complete sweep arms, and `schedule` paces; `None` owes no pass.
+  derivationPass: Option[ReadModelDerivationPass] = None
 ) extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, Target}
-  import ReadModelSweeper.{ContentSlices, DerivationPass, DerivationPassTickSeconds}
+  import ReadModelSweeper.{ContentSlices, SliceWalk}
   // The stores and clock the projection writes and keeps time by: a sweep passes over exactly those.
   private val movieRepository = projection.movieRepository
   private val writer          = projection.writer
@@ -74,8 +71,6 @@ class ReadModelSweeper(
   // The rows the running sweep's content check rewrote, held for the same verdict as its heals:
   // only a row the stream does not then apply itself drifted (`verdictOnSweep`).
   private val sweepDrift = scala.collection.mutable.Buffer.empty[RowDrift]
-  // Where the whole-corpus re-projection a derivation change owes stands — see `advanceDerivationPass`.
-  private var derivationPass: DerivationPass = DerivationPass.Unchecked
 
   /** Caller holds the projection lock. The change stream applied (or deleted) `rowId`: a heal or a
    *  rewrite of it by the running sweep was in flight, not missed (`verdictOnSweep`). */
@@ -90,19 +85,21 @@ class ReadModelSweeper(
    *  the projector's stream watch is up. */
   def schedule(scheduler: ScheduledExecutorService, ticks: TickRecorder): Unit = {
     val prune      = scala.concurrent.duration.Duration(PruneSeconds, TimeUnit.SECONDS)
-    val derivation = scala.concurrent.duration.Duration(DerivationPassTickSeconds, TimeUnit.SECONDS)
     val bootDelay  = scala.concurrent.duration.Duration(PruneBootDelaySeconds, TimeUnit.SECONDS)
     ticks.started("read-model-prune", prune, bootDelay)
-    ticks.started("read-model-derivation-pass", derivation, bootDelay)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
       () => ScheduledTick.recorded("read-model-prune", prune, logger, ticks)(pruneOrphans()),
       PruneBootDelaySeconds, PruneSeconds, TimeUnit.SECONDS)
     // The derivation pass's slices, paced: a no-op unless the first sweep found one owed.
-    scheduler.scheduleAtFixedRate(
-      () => ScheduledTick.recorded("read-model-derivation-pass", derivation, logger, ticks)(advanceDerivationPass()),
-      PruneBootDelaySeconds, DerivationPassTickSeconds, TimeUnit.SECONDS)
+    derivationPass.foreach { pass =>
+      val derivation = scala.concurrent.duration.Duration(ReadModelDerivationPass.TickSeconds, TimeUnit.SECONDS)
+      ticks.started("read-model-derivation-pass", derivation, bootDelay)
+      scheduler.scheduleAtFixedRate(
+        () => ScheduledTick.recorded("read-model-derivation-pass", derivation, logger, ticks)(pass.advance()),
+        PruneBootDelaySeconds, ReadModelDerivationPass.TickSeconds, TimeUnit.SECONDS)
+    }
     logger.info(s"read-model sweeps scheduled: orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s).")
   }
 
@@ -330,7 +327,7 @@ class ReadModelSweeper(
   private def checkContentSlice(kind: String, liveRowIds: collection.Seq[services.movies.FilmId]): Unit = {
     val slice = math.floorMod(sweepCount, ContentSlices.toLong).toInt
     reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Content))
-    if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
+    derivationPass.foreach(_.armIfUnchecked(sliceWalk(liveRowIds.toVector)))
   }
 
   /** A sweep's metric and summary line. A `prune` sweep with didWork=true is the deletes/re-keys
@@ -495,118 +492,17 @@ class ReadModelSweeper(
     (written, complete)
   }
 
-  /** Caller holds the projection lock. Read which derivation the stored read model was last re-projected whole
-   *  under and, when this code derives another, start the pass it owes over `rowIds` — the cards
-   *  alone when every derivation since moved only cards ([[ReadModelDerivation.owedSince]]), and
-   *  from the slice a previous process's pass towards the same version had reached. A read that
-   *  fails decides nothing: the next sweep reads again. */
-  private def armDerivationPass(rowIds: Vector[services.movies.FilmId]): Unit =
-    (for (recorded <- derivationMarker.recorded(); progress <- derivationMarker.progress()) yield (recorded, progress)) match {
-      case scala.util.Failure(exception) =>
-        logger.warn(s"read-model derivation pass: the recorded derivation could not be read (${exception.getMessage}) — " +
-          "asking again next sweep.")
-      case scala.util.Success((recorded, progress)) =>
-        ReadModelDerivation.owedSince(recorded, derivationHistory) match {
-          case None =>
-            derivationPass = DerivationPass.Current
-            resetStaleProgress(progress)
-          case Some(scope) => startDerivationPass(rowIds, recorded, progress, scope)
-        }
-    }
-
-  /** Progress towards some other version is void once this store is current under this code: a pass
-   *  for version B stopped at slice k, then a rollback to A (current), and A's change-stream
-   *  projections rewrite cards in slices before k under A. Resumed at k on the roll forward, B's pass
-   *  would never reach them — so the progress starts over. */
-  private def resetStaleProgress(progress: Option[DerivationProgress]): Unit = {
-    val reset = DerivationProgress(derivationHistory.last.version, 0)
-    if (progress.exists(_ != reset))
-      continuing("read-model derivation pass: resetting a stale pass's progress failed; a later pass may resume past rows it owes") {
-        derivationMarker.recordProgress(reset)
-      }
+  /** The walk a derivation pass makes over `rowIds`, a slice at a time: each row read whole and re-projected, or, for a
+   *  cards-only derivation, read slots-only — no `screenings` read — and its cards alone re-projected (`projectCards`). */
+  private def sliceWalk(rowIds: Vector[services.movies.FilmId]): SliceWalk = new SliceWalk {
+    def rows: Int = rowIds.size
+    def reproject(slice: Int, scope: DerivationScope): (Int, Boolean) =
+      if (scope == DerivationScope.Cards)
+        reprojectSlice(rowIds, slice, "derivation pass (cards)",
+                       movieRepository.findByIdWithSlotsChecked, row => projection.projectCards(projection.partition(row)))
+      else
+        reprojectSlice(rowIds, slice, "derivation pass", movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Derivation))
   }
-
-  /** Caller holds the projection lock. Start the pass `scope` owes over `rowIds`, from the slice a previous
-   *  process's pass towards the same version had reached. */
-  private def startDerivationPass(rowIds: Vector[services.movies.FilmId], recorded: Option[DerivationVersion],
-                                  progress: Option[DerivationProgress], scope: DerivationScope): Unit = {
-    val current = derivationHistory.last.version
-    val from    = progress.collect { case DerivationProgress(`current`, next) => next }.getOrElse(0)
-    derivationPass = DerivationPass.Running(rowIds, scope, nextSlice = from, written = 0, complete = true)
-    logger.warn(s"read-model derivation pass: the stored read model was derived under " +
-      s"${recorded.getOrElse("no recorded version")}, this worker derives $current — re-projecting " +
-      s"${if (scope == DerivationScope.Cards) "the cards of" else "all"} ${rowIds.size} row(s), one content slice of " +
-      s"$ContentSlices every ${DerivationPassTickSeconds}s" +
-      (if (from > 0) s", resuming at slice $from where an earlier pass stopped." else "."))
-  }
-
-  /** THE DERIVATION PASS: one content slice of the whole-corpus re-projection a derivation change
-   *  owes, per tick.
-   *
-   *  A deploy that changes what the projection DERIVES from an unchanged row moves no row, so the
-   *  change stream re-projects nothing and each stored card keeps the old derivation until the
-   *  rolling content check reaches its slice — up to a day. On 2026-09-24 the poster selection
-   *  changed that way and `ReadModelContentMismatch` held ~2.5 h, until a human forced a
-   *  whole-corpus content check by hand. So the first complete prune sweep compares this code's
-   *  derivation ([[ReadModelDerivation.current]]) with the one the store recorded and, when they
-   *  differ, walks the same 48 content slices over every row it saw — one slice per tick, each
-   *  under the lock only for its own rows, so the change stream keeps flowing and Mongo takes a
-   *  slice's reads at a time: the whole corpus in 8 minutes, inside the content audit's
-   *  15-minute re-check. Diff-based like every projection, so only cards that moved are written.
-   *  When only card fields moved it reads each row slots-only and re-projects its cards alone.
-   *  Each complete slice records the pass's progress, so a restart resumes rather than repeats.
-   *  Only a pass that read and projected every row records the new version; one that did not
-   *  leaves the old one, and the next sweep starts it again from the first slice that missed a
-   *  row. Nothing happens when the store's version is this process's.
-   *
-   *  As a tick's run: [[TickRun.Incomplete]] when the slice missed a row, or its progress or the
-   *  pass's derivation could not be recorded (each logged) — a pass owed and failing every slice
-   *  must go stale. Nothing owed is a completed run. */
-  def advanceDerivationPass(): TickRun = projection.exclusively {
-    derivationPass match {
-      case running: DerivationPass.Running =>
-        val (written, complete) = reprojectDerivationSlice(running)
-        val next = running.copy(nextSlice = running.nextSlice + 1, written = running.written + written,
-                                complete = running.complete && complete)
-        // Only while every slice so far was complete: a restart then resumes after the last one,
-        // and a pass that missed a row starts over from the first slice it missed one in.
-        val progressRecorded =
-          if (next.complete && next.nextSlice < ContentSlices)
-            continuing("read-model derivation pass: recording its progress failed; a restart repeats this slice") {
-              derivationMarker.recordProgress(DerivationProgress(derivationHistory.last.version, next.nextSlice))
-            }.isDefined
-          else true
-        derivationPass = if (next.nextSlice < ContentSlices) next else finishDerivationPass(next)
-        TickRun.completedWhen(complete && progressRecorded && derivationPass != DerivationPass.Unchecked)
-      case _ => TickRun.Completed
-    }
-  }
-
-  /** Caller holds the projection lock. One slice of a running pass. A cards-only derivation reads each row
-   *  slots-only — no `screenings` read — and re-projects its cards alone (`projectCards`). */
-  private def reprojectDerivationSlice(running: DerivationPass.Running): (Int, Boolean) =
-    if (running.scope == DerivationScope.Cards)
-      reprojectSlice(running.rows, running.nextSlice, "derivation pass (cards)",
-                     movieRepository.findByIdWithSlotsChecked, row => projection.projectCards(projection.partition(row)))
-    else
-      reprojectSlice(running.rows, running.nextSlice, "derivation pass",
-                     movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Derivation))
-
-  /** Caller holds the projection lock. A pass past its last slice: recorded when it read and projected every
-   *  row, otherwise left unrecorded for the next sweep to run again. */
-  private def finishDerivationPass(done: DerivationPass.Running): DerivationPass =
-    if (!done.complete) {
-      logger.warn(s"read-model derivation pass: re-projected ${done.rows.size} row(s), rewrote ${done.written} " +
-        "document(s), but some rows could not be read or projected — the derivation stays unrecorded and the " +
-        "next sweep runs the pass again.")
-      DerivationPass.Unchecked
-    } else
-      continuing("read-model derivation pass: recording the derivation failed; the next sweep runs the pass again") {
-        derivationMarker.record(derivationHistory.last.version)
-        logger.info(s"read-model derivation pass: re-projected ${if (done.scope == DerivationScope.Cards) "the cards of " else ""}" +
-          s"all ${done.rows.size} row(s) under ${derivationHistory.last.version}, rewriting ${done.written} document(s); recorded.")
-        DerivationPass.Current
-      }.getOrElse(DerivationPass.Unchecked)
 
   /** Project, at boot, every ready row one of whose cards is missing — before the
    *  first prune can delete the card it has under an old id.
@@ -767,20 +663,14 @@ object ReadModelSweeper {
   private[readmodel] def contentSliceOf(id: services.movies.FilmId): Int =
     math.floorMod(id.value.##.toLong, ContentSlices.toLong).toInt
 
-  /** Seconds between two slices of a derivation pass: 48 slices, the whole corpus in 8 minutes. */
-  private val DerivationPassTickSeconds = 10L
-
-  /** Where the whole-corpus re-projection a derivation change owes stands. */
-  private sealed trait DerivationPass
-  private object DerivationPass {
-    /** The store's recorded derivation has not been read (yet, or again after a failed pass). */
-    case object Unchecked extends DerivationPass
-    /** The store was derived under this process's version: nothing owed. */
-    case object Current extends DerivationPass
-    /** Re-projecting `rows` (their cards alone, for a `Cards` scope), slice `nextSlice` next;
-     *  `complete` while every row so far was read and projected. */
-    final case class Running(rows: Vector[services.movies.FilmId], scope: DerivationScope, nextSlice: Int, written: Int,
-                             complete: Boolean) extends DerivationPass
+  /** The rows a complete prune sweep saw, walked one content slice at a time: what a derivation pass
+   *  ([[ReadModelDerivationPass]]) re-projects, without knowing the rows or how they are read. */
+  private[readmodel] trait SliceWalk {
+    /** How many rows the walk covers. */
+    def rows: Int
+    /** Caller holds the projection lock. Re-project the rows in content slice `slice` — their cards alone for a
+     *  `Cards` scope: the documents written, and whether every row was read and projected. */
+    def reproject(slice: Int, scope: DerivationScope): (Int, Boolean)
   }
 
   /** The id-only orphan prune's compiled-in cadence: every 30 minutes, first 5 minutes after boot. */

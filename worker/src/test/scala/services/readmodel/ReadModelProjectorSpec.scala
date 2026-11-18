@@ -1704,7 +1704,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val projector = new ReadModelProjector(repository, rm, rm, scheduler = fakeScheduler, clock = specClock)
-    val sweeper   = new ReadModelSweeper(projector.projection)
+    val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(new ReadModelDerivationPass(projector.projection)))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.start(sweeper)
     sweeper.schedule(fakeScheduler, tools.TickRecorder.Unrecorded)

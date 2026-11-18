@@ -31,4 +31,3 @@ file-lines	common/src/main/scala/models/Cinema.scala	1067
 file-lines	common/src/main/scala/services/movies/MongoMovieRepository.scala	816
 file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	836
 file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1351
-file-lines	worker/src/main/scala/services/readmodel/ReadModelSweeper.scala	838

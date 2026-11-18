@@ -26,7 +26,7 @@ import scala.util.Try
  *     window, or the card was written by an earlier process — see `onMovieDelete`). It re-projects nothing, so it can't spike CPU.
  *
  * A deploy that changes what the projection DERIVES from an unchanged row reaches the stored
- * cards through neither: the sweeper's DERIVATION PASS (`advanceDerivationPass`) re-projects the whole
+ * cards through neither: the DERIVATION PASS ([[ReadModelDerivationPass]]) re-projects the whole
  * corpus once, paced, when the store records another derivation ([[ReadModelDerivation]]) — only
  * the cards, off the slots-only read, when all that moved since was what a card shows.
  *
