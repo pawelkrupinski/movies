@@ -27,9 +27,14 @@ mutants=(
   'violations never fail @@     if found:
         failed = True @@     if found:
         failed = False'
-  'a move needs no departure @@ if old not in present and identity(old) == identity(key) and was >= value), None) @@ if identity(old) == identity(key) and was >= value), None)'
-  'a move may grow @@ if old not in present and identity(old) == identity(key) and was >= value), None) @@ if old not in present and identity(old) == identity(key)), None)'
-  'a move is growth @@ and not (key not in before and moved_from(key, value, before, after)): @@ :'
+  'a move needs no departure @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if moved_key(old, renames) == key and was >= value), None)'
+  'a move may grow @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and moved_key(old, renames) == key), None)'
+  'a same-named source is a move @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and old.rsplit("/", 1)[-1] == key.rsplit("/", 1)[-1] and was >= value), None)'
+  'a deleted source counts as renamed @@             if path not in renames:
+                return None @@             if path not in renames:
+                return path.replace("a/src/main/scala/", "b/src/main/scala/x/")'
+  'a move may change the method name @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and (moved_key(old, renames) or "").partition(":")[0] == key.partition(":")[0] and was >= value), None)'
+  'a move is growth @@ and not (key not in before and moved_from(key, value, before, after, renames)): @@ :'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
 )
 

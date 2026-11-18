@@ -2,7 +2,8 @@
 """quality_ratchet.py: a measured row past its baseline row fails, and so does a row-less key past its kind's limit (a
 NEW method over a limit) and a measure whose limit rose past the baseline's; a baseline grown in a range passes only
 when a commit changing it carries the ratchet's trailer (`Complexity: <why>`, `Length: <why>`), each ratchet
-judged on its own rows, baseline and trailer; falls pass and are said; `update` writes
+judged on its own rows, baseline and trailer; a source moved keeps its rows only when git's rename detection followed it
+and no value rose; falls pass and are said; `update` writes
 the baseline. QUALITY_RATCHET_UNDER_TEST names another copy of the tool (quality-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -107,19 +108,65 @@ class QualityRatchetTest(unittest.TestCase):
     def test_a_new_method_with_too_many_inner_defs_fails(self):
         self.assert_fails(rows("inner-defs\ta/src/main/scala/C.scala:C.h\t3"), "inner-defs a/src/main/scala/C.scala:C.h: 3")
 
+    # A move: the baseline's sources committed, then `git mv`d (or replaced) in a commit of their own -- git's rename
+    # detection, over the repository's history, is what pairs a vanished row with its new key.
+    A_OLD, A_NEW = "a/src/main/scala/A.scala", "b/src/main/scala/x/A.scala"
+    A_SOURCE = "".join(f"object A {{ def f{i}(x: Int): Int = x * {i} + {i * 7} }}\n" for i in range(30))
+    MOVED = ("cognitive\tb/src/main/scala/x/A.scala:A.f\t20", "cyclomatic\tb/src/main/scala/x/A.scala:A.f\t12",
+             "method-lines\tb/src/main/scala/x/A.scala:A.f\t70", "file-lines\tb/src/main/scala/x/A.scala\t900",
+             "copies\ta/src/main/scala/B.scala|b/src/main/scala/x/A.scala\t2")
+    MOVED_FROM = ("cognitive\ta/src/main/scala/A", "cyclomatic\ta/", "method-lines\ta/", "file-lines\ta/", "copies\ta/")
+
+    def move_a(self, new_text=None):
+        """A.scala and B.scala committed, then A.scala moved to package x: `git mv` (new_text None), or deleted and an
+        unrelated source of the same name written there."""
+        self.commit({self.A_OLD: self.A_SOURCE, "a/src/main/scala/B.scala": "object B\n"}, "the sources")
+        if new_text is None:
+            os.makedirs(os.path.dirname(os.path.join(self.repo, self.A_NEW)), exist_ok=True)
+            self.scratch("scratch_git", "mv", self.A_OLD, self.A_NEW)
+            self.scratch("scratch_git", "commit", "-qm", "move A to package x")
+        else:
+            os.remove(os.path.join(self.repo, self.A_OLD))
+            self.commit({self.A_NEW: new_text}, "drop A, write another A in package x")
+        return self.scratch("scratch_git", "rev-parse", "HEAD")
+
     def test_a_source_moved_to_another_package_keeps_its_rows(self):
-        moved = rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t20", "cyclomatic\tb/src/main/scala/x/A.scala:A.f\t12",
-                     "method-lines\tb/src/main/scala/x/A.scala:A.f\t70", "file-lines\tb/src/main/scala/x/A.scala\t900",
-                     drop=("cognitive\ta/src/main/scala/A", "cyclomatic\ta/", "method-lines\ta/", "file-lines\ta/"))
+        self.move_a()
+        moved = rows(*self.MOVED, drop=self.MOVED_FROM)
         self.assert_passes(moved)
-        head = self.commit({COMPLEXITY: moved, LENGTH: moved}, "move A to package x")
+        head = self.commit({COMPLEXITY: moved, LENGTH: moved, DUPLICATION: moved}, "the baselines follow the move")
         self.assert_passes(moved, rng=f"{self.base}..{head}")
 
+    def test_a_moved_source_lowering_a_value_keeps_its_rows(self):
+        self.move_a()
+        self.assert_passes(rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t18", drop=("cognitive\ta/src/main/scala/A",)))
+
     def test_a_moved_source_growing_fails(self):
-        self.assert_fails(rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t21", drop=("cognitive\ta/src/main/scala/A",)),
-                          "cognitive b/src/main/scala/x/A.scala:A.f: 21, past the limit 15 (no baseline row)")
+        # THE MOVE LOOPHOLE: a source moved and one method's score raised, no trailer -- a rise, not a move
+        self.move_a()
+        raised = rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t21", drop=("cognitive\ta/src/main/scala/A",))
+        self.assert_fails(raised, "cognitive b/src/main/scala/x/A.scala:A.f: 21, past the limit 15 (no baseline row)")
+        for kind, row in (("method-lines", "method-lines\tb/src/main/scala/x/A.scala:A.f\t71"),
+                          ("file-lines", "file-lines\tb/src/main/scala/x/A.scala\t901"),
+                          ("copies", "copies\ta/src/main/scala/B.scala|b/src/main/scala/x/A.scala\t3")):
+            self.assert_fails(rows(row, drop=(f"{kind}\ta/",)), row.split("\t")[1])
         # ...and a copy beside the original is no move: the original is still measured
         self.assert_fails(rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t20"), "b/src/main/scala/x/A.scala:A.f: 20")
+        # ...and recorded in the baselines with no trailer, the growth fails the range
+        head = self.commit({COMPLEXITY: raised}, "move A, a hairier A.f")
+        self.assert_fails(raised, "cognitive b/src/main/scala/x/A.scala:A.f raised <=15 -> 21", rng=f"{self.base}..{head}")
+
+    def test_a_same_named_source_git_does_not_call_a_rename_is_no_move(self):
+        self.move_a("".join(f"object A {{ val other{i} = \"{i}\" }}\n" for i in range(30)))
+        unrelated = rows(*self.MOVED[:2], drop=self.MOVED_FROM[:2])
+        self.assert_fails(unrelated, "cognitive b/src/main/scala/x/A.scala:A.f: 20, past the limit 15 (no baseline row)")
+        head = self.commit({COMPLEXITY: unrelated}, "the baseline re-keyed")
+        self.assert_fails(unrelated, "cognitive b/src/main/scala/x/A.scala:A.f raised <=15 -> 20", rng=f"{self.base}..{head}")
+
+    def test_a_moved_source_keeps_only_its_own_method_names(self):
+        self.move_a()
+        self.assert_fails(rows("cognitive\tb/src/main/scala/x/A.scala:A.renamed\t20", drop=("cognitive\ta/src/main/scala/A",)),
+                          "A.renamed: 20, past the limit 15")
 
     def test_a_frozen_method_rising_fails(self):
         self.assert_fails(rows("cyclomatic\ta/src/main/scala/A.scala:A.f\t13", drop=("cyclomatic\ta/",)),

@@ -256,7 +256,8 @@ change): every method's cognitive complexity (Sonar's) ≤ 15, cyclomatic ≤ 10
 (`length-baseline.tsv`, `Length: <why>`); no new clone group of 100+ tokens (PMD CPD) and no group gaining a copy
 (`duplication-baseline.tsv`, `Duplication: <why>`). Each baseline freezes what is over a limit today; a new method or file over
 one, or a frozen row rising, fails until split or recorded (`scripts/quality-report --update`, committed with the
-trailer); a fall needs none. `scripts/hotspots` (a report, not a gate; monthly as the `quality-hotspots` release's
+trailer); a fall needs none. A moved source keeps its rows only when git sees the rename (`git diff -M`) and no value
+rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `quality-hotspots` release's
 assets) ranks sources by 90-day relative churn × cognitive complexity and names change-coupled pairs across packages.
 
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary

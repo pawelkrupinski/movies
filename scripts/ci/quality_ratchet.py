@@ -10,8 +10,11 @@
 #
 # A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments. The measure
 # writes a row for each key past its kind's limit. A key with a baseline row may not rise past it; a key without one
-# fails (a NEW method over a limit) -- unless it is a MOVE: a baseline row of the same name less its directories, gone
-# from the measure, at or above it (a source moved to another package re-keys its rows); the measure's limit may not rise past the baseline's. The baseline itself may grow
+# fails (a NEW method over a limit) -- unless it is a MOVE: a baseline row gone from the measure whose source git's
+# rename detection (`git diff -M`, content similarity) followed to this key's source, the method or class name unchanged,
+# at or above it (a source moved to another package re-keys its rows; the move carries the value over and may lower it,
+# never raise it -- a higher moved row is a rise, and a same-named source git does not call a rename is no move). The
+# measure's limit may not rise past the baseline's. The baseline itself may grow
 # (a row added or raised, a limit raised) only in a commit changing it that carries the ratchet's trailer
 # (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`). A fall needs none: `update` writes the measured rows, every fall included.
 #
@@ -23,6 +26,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -100,20 +104,54 @@ def limit_of(rows: Rows, kind: str) -> int:
     return limits[kind]
 
 
-def identity(key: str) -> str:
-    """A key less its directories (`<File>.scala:<Owner.method>`, `<File>.scala`, `<File>.scala|<File>.scala`): what a
-    move of a source to another package or module leaves alone."""
-    return "|".join(part.rsplit("/", 1)[-1] for part in key.split("|"))
+class Renames:
+    """Where git's rename detection says a source that is no longer in the tree went: the commit that deleted it,
+    diffed against its parent with `-M` (content similarity, git's default 50%), followed hop by hop until a source in
+    the tree. A path still in the tree stays itself; one git saw deleted, not renamed, has no target (None)."""
+
+    def __init__(self):
+        self.known: Dict[str, object] = {}
+
+    def follow(self, path: str):
+        if path not in self.known:
+            self.known[path] = self.trace(path)
+        return self.known[path]
+
+    @staticmethod
+    def trace(path: str):
+        seen = set()
+        while not os.path.exists(path):
+            if path in seen:
+                return None
+            seen.add(path)
+            deleted = git("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
+            if not deleted:
+                return None
+            fields = git("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
+            renames = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
+            if path not in renames:
+                return None
+            path = renames[path]
+        return path
 
 
-def moved_from(key: str, value: int, before: Dict[str, int], present: Dict[str, int]):
-    """The row `key` is a MOVE of: a row of `before` of the same identity, no longer `present`, at or above `value`
-    (a source moved to another package re-keys its rows, and the move adds nothing). None for none."""
+def moved_key(key: str, renames: Renames):
+    """`key` with each of its sources (`<path>:<Owner.method>`, `<path>`, `<path>|<path>...`) replaced by where git
+    renamed it, the method or class name kept; None when a source is gone with no rename."""
+    paths, sep, name = key.partition(":")
+    followed = [renames.follow(p) for p in paths.split("|")]
+    return None if None in followed else "|".join(sorted(followed)) + sep + name
+
+
+def moved_from(key: str, value: int, before: Dict[str, int], present: Dict[str, int], renames: Renames):
+    """The row `key` is a MOVE of: a row of `before` no longer `present` whose sources git renamed to `key`'s, the
+    name unchanged, at or above `value` (a source moved to another package re-keys its rows, and the move adds
+    nothing). None for none."""
     return next((old for old, was in sorted(before.items())
-                 if old not in present and identity(old) == identity(key) and was >= value), None)
+                 if old not in present and moved_key(old, renames) == key and was >= value), None)
 
 
-def violations(ratchet: Ratchet, current: Rows, baseline: Rows) -> List[str]:
+def violations(ratchet: Ratchet, current: Rows, baseline: Rows, renames: Renames) -> List[str]:
     """The measured rows past the baseline, one sentence each."""
     out = []
     for kind in ratchet.kinds:
@@ -125,12 +163,12 @@ def violations(ratchet: Ratchet, current: Rows, baseline: Rows) -> List[str]:
             if key in base:
                 if value > base[key]:
                     out.append(f"{kind} {key}: {value}, past its baseline {base[key]}")
-            elif value > limit and not moved_from(key, value, base, of_kind(current, kind)):
+            elif value > limit and not moved_from(key, value, base, of_kind(current, kind), renames):
                 out.append(f"{kind} {key}: {value}, past the limit {limit} (no baseline row)")
     return out
 
 
-def growth(ratchet: Ratchet, old: Rows, new: Rows) -> List[str]:
+def growth(ratchet: Ratchet, old: Rows, new: Rows, renames: Renames) -> List[str]:
     """How the baseline grew from `old` to `new`: a limit raised, a row added past the old limit or raised."""
     out = []
     for kind in ratchet.kinds:
@@ -142,7 +180,7 @@ def growth(ratchet: Ratchet, old: Rows, new: Rows) -> List[str]:
         before = of_kind(old, kind)
         after = of_kind(new, kind)
         for key, value in sorted(after.items()):
-            if value > before.get(key, allowed_new) and not (key not in before and moved_from(key, value, before, after)):
+            if value > before.get(key, allowed_new) and not (key not in before and moved_from(key, value, before, after, renames)):
                 out.append(f"{kind} {key} raised {before.get(key, f'<={allowed_new}')} -> {value}")
     return out
 
@@ -173,20 +211,22 @@ def justified(rng: str, path: str, trailer: str) -> bool:
     return any(entry.strip() for entry in log.split("\x00"))
 
 
-def check_one(ratchet: Ratchet, current: Rows, ranges: List[str]) -> bool:
+def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renames) -> bool:
     with open(ratchet.baseline) as f:
         baseline = parse(f.read())
     failed = False
-    found = violations(ratchet, current, baseline)
+    found = violations(ratchet, current, baseline, renames)
     if found:
         failed = True
         print(f"{ratchet.name.upper()} GREW past {ratchet.baseline}:")
         for v in found:
             print(f"  - {v}")
         print(f"  {ratchet.hint}")
+        print("  (A moved source keeps its rows only when git sees a rename -- `git mv`, the content mostly unchanged --"
+              " and no value rises in the move.)")
     for rng in ranges:
         old = file_at(rng.split("..")[0], ratchet.baseline)
-        grown = growth(ratchet, parse(old), baseline) if old else []
+        grown = growth(ratchet, parse(old), baseline, renames) if old else []
         if grown and not justified(rng, ratchet.baseline, ratchet.trailer):
             failed = True
             print(f"THE {ratchet.name.upper()} BASELINE GREW in {rng} with no `{ratchet.trailer}: <why>` trailer on the"
@@ -235,7 +275,8 @@ def main(argv: List[str]) -> int:
             for ratchet in chosen:
                 update_one(ratchet, current)
             return 0
-        results = [check_one(ratchet, current, args.range) for ratchet in chosen]
+        renames = Renames()
+        results = [check_one(ratchet, current, args.range, renames) for ratchet in chosen]
         return 0 if all(results) else 1
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"quality_ratchet: {e}", file=sys.stderr)
