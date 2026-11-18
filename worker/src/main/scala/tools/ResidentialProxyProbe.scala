@@ -26,7 +26,7 @@ trait ProxyProbe {
  * venue sticky to a port still dead fails again on its own and backs off as its own failure.
  */
 final class ResidentialProxyProbe(
-  config:  RealHttpFetch.ProxyConfig,
+  config:  ProxyConfig,
   // What each CONNECT asks for. A neutral host, never a scraped one: the probe must not count as a visit to a site.
   target:  String         = ResidentialProxyProbe.Target,
   timeout: FiniteDuration = 5.seconds

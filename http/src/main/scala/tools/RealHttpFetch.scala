@@ -4,15 +4,13 @@ import play.api.Logging
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpConnectTimeoutException, HttpRequest, HttpResponse, HttpTimeoutException}
-import java.net.{CookieManager, CookiePolicy, InetSocketAddress, ProxySelector}
-import java.nio.charset.StandardCharsets
+import java.net.{CookieManager, CookiePolicy}
 import java.time.Duration
 import java.util.concurrent.{CompletableFuture, CountDownLatch, ExecutionException, TimeUnit, TimeoutException}
 import scala.annotation.unused
-import scala.concurrent.duration.FiniteDuration
 
 class RealHttpFetch(
-  proxy: Option[RealHttpFetch.ProxyConfig] = None,
+  proxy: Option[ProxyConfig] = None,
   // The TLS context every client below handshakes with (see TlsTrust). A wiring builds
   // one and hands it to each fetch it composes, so they share its session cache; a
   // fetch built without one gets its own.
@@ -101,41 +99,42 @@ class RealHttpFetch(
       case (connectTimeout, version) => buildClient(connectTimeout, version)
     })
 
+  /** What an exchange's reply or failure becomes -- a body, a typed status failure -- and the line it is logged as,
+   *  under this class's logger. */
+  private[tools] val replies = new HttpReplies(logger, requestTimeoutFor, connectTimeoutFor)
+
   override def get(url: String): String = get(url, Map.empty)
 
   /** Raw wire bytes (gunzipped, NOT charset-decoded) so a caller can pick the
    *  right charset itself. See [[HttpFetch.getBytes]] — only the charset-quirky
    *  scrapers (Kino Charlie) use this; everyone else gets the UTF-8 `get`. */
   override def getBytes(url: String): Array[Byte] = {
-    val response = send(buildRequest(url, Map.empty))
-    val code = response.statusCode()
-    if (code >= 200 && code < 300) Gunzip.decode(response.body())
-    else throw new HttpStatusException(code, "GET", url, retryAfterOf(response))
+    replies.bytes(url, send(buildRequest(url, Map.empty)))
   }
 
   override def get(url: String, headers: Map[String, String]): String =
-    checkStatus("GET", url, sendLogged("GET", url, send(buildRequest(url, headers))))
+    replies.body("GET", url, replies.sentLogged("GET", url, send(buildRequest(url, headers))))
 
   /** GET, also reporting the URL the redirects ended on — for a caller that
    *  must know whether the address it holds is the one the upstream serves (the
    *  roster audit's stale-slug check). Same status handling as `get`. */
   def getPage(url: String): FetchedPage = {
-    val response = sendLogged("GET", url, send(buildRequest(url)))
-    FetchedPage(response.uri().toString, checkStatus("GET", url, response))
+    val response = replies.sentLogged("GET", url, send(buildRequest(url)))
+    FetchedPage(response.uri().toString, replies.body("GET", url, response))
   }
 
   override def getAsync(url: String): CompletableFuture[String] =
     sendAsync(buildRequest(url), hops = 0)
       .handle[String] { (response, throwable) =>
         if (throwable != null) {
-          logFailure("GET", url, unwrap(throwable))
+          replies.failed("GET", url, unwrap(throwable))
           throw throwable
         }
-        checkStatus("GET", url, response)
+        replies.body("GET", url, response)
       }
 
   override def post(url: String, body: String, contentType: String = "application/json"): String =
-    checkStatus("POST", url, sendLogged("POST", url, send(postRequest(url, body, contentType))))
+    replies.body("POST", url, replies.sentLogged("POST", url, send(postRequest(url, body, contentType))))
 
   /** [[sendAsync]], waited for. A failure is rethrown as its cause (an `HttpTimeoutException`,
    *  a `ConnectException`, …) — the shape `HttpClient.send` throws.
@@ -222,7 +221,7 @@ class RealHttpFetch(
       .timeout(requestTimeoutFor(url))
       .header("Content-Type", contentType)
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      // Decoded transparently in `decodeBody` below. See the matching
+      // Decoded transparently ([[HttpReplies]]). See the matching
       // header on `buildRequest` for the GET path.
       .header("Accept-Encoding", "gzip")
       .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -230,98 +229,6 @@ class RealHttpFetch(
     HostPolicies.headersFor(url).foreach { case (k, v) => builder.setHeader(k, v) }
     withProxyCredentials(builder).build()
   }
-
-  // ── Logging hooks ─────────────────────────────────────────────────────────
-  //
-  // Every HTTP client in the app (TMDB, Filmweb, MC, RT, IMDb, every cinema
-  // scraper) routes through this class, so failure visibility added here
-  // surfaces in every caller at once. Two failure shapes worth seeing:
-  //
-  //   - **Network / timeout** — the service didn't respond at all (DNS,
-  //     connection refused, socket timeout, request timeout). WARN —
-  //     this is what masks the symptom users hit (e.g. Kino Muza's burst
-  //     limiter stalling our detail fetches: no logs, just silently empty
-  //     synopses).
-  //   - **5xx response** — the service returned an error status. Also WARN.
-  //     Both are DEBUG under the retry layer ([[OutcomeLoggedAbove]]), which
-  //     warns once for the whole call if it still fails, naming its attempts.
-  //   - **403 / 429 response** — WARN. A soft-block / rate-limit (a Cloudflare
-  //     or datacenter-IP block) is a real outage the enrichment sources hit; at
-  //     DEBUG it was INVISIBLE at the prod INFO level, hiding e.g. a Filmweb
-  //     block for days. Also classified as a failure by MonitoringHttpFetch, so
-  //     it now surfaces on /uptime instead of reading green.
-  //   - **other 4xx (esp. 404)** — DEBUG only. Several callers (MetacriticClient's
-  //     slug probe, RT's URL probe) deliberately use 404 as the "this
-  //     slug doesn't exist" signal; WARN-ing every probe miss would flood
-  //     the logs with hundreds of expected 404s per refresh tick.
-
-  /** `send`, logging a transport failure before it propagates. The response is
-   *  returned unchecked — the caller runs [[checkStatus]]. */
-  private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): HttpResponse[Array[Byte]] =
-    AnyThrowable.rethrownAfter(send)(logFailure(method, url, _))
-
-  private def checkStatus(method: String, url: String, response: HttpResponse[Array[Byte]]): String = {
-    val code = response.statusCode()
-    if (code >= 200 && code < 300) decodeBody(response.body())
-    else {
-      // Logged REDACTED: TMDB/OMDb authenticate in the query string, so the bare
-      // url would write their key into the 14-day persistent log (see RedactedUrl).
-      val safeUrl = RedactedUrl(url)
-      // Typed so a decorator (ThrottledHttpFetch) can react to 429 + Retry-After.
-      // Message shape is unchanged, so MonitoringHttpFetch's 5xx classifier and
-      // any message-matching caller keep working.
-      val failure = new HttpStatusException(code, method, url, retryAfterOf(response))
-      if (code >= 500)                     warnUnlessLoggedAbove(failure, s"HTTP $code from $method $safeUrl (server-side)")
-      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $safeUrl (blocked/throttled)")
-      else                                 logger.debug(s"HTTP $code from $method $safeUrl")
-      throw failure
-    }
-  }
-
-  /** The server's `Retry-After` hint, if any (delta-seconds, or an HTTP-date read against its `Date`). */
-  private def retryAfterOf(response: HttpResponse[Array[Byte]]): Option[FiniteDuration] = {
-    def header(name: String) = Option(response.headers().firstValue(name).orElse(null))
-    HttpStatusException.parseRetryAfter(header("Retry-After"), header("Date"))
-  }
-
-  /** Decode the raw response bytes to a UTF-8 string. `Gunzip.decode`
-   *  loops while the bytes still start with the gzip magic prefix
-   *  `1F 8B` — TMDB (or its CDN) ships some responses as
-   *  `gzip(gzip(json))` under a single `Content-Encoding: gzip` header,
-   *  so one round of decompression isn't enough. Non-gzip and
-   *  single-gzip bodies are handled by the same call. */
-  private def decodeBody(bytes: Array[Byte]): String =
-    new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
-
-  /** WARN for a transport failure. A read its caller abandoned ([[CallerCancelled]]) is not one: the caller logs why
-   *  it cut the call (AdaptiveTimeoutScraper's "scrape cut" line), and a WARN here blamed the host for it. */
-  private def logFailure(method: String, url: String, exception: Throwable): Unit =
-    if (CallerCancelled(exception)) logger.debug(s"HTTP $method ${RedactedUrl(url)} cancelled by its caller")
-    else warnUnlessLoggedAbove(exception, failureLine(method, url, exception))
-
-  /** WARN, unless a layer above logs this failure as its call's outcome ([[OutcomeLoggedAbove]]: the retry, which
-   *  asks a recoverable failure again and warns once if the call still fails) -- then DEBUG, one attempt's detail. */
-  private def warnUnlessLoggedAbove(failure: Throwable, line: => String): Unit =
-    if (OutcomeLoggedAbove() && RetryingHttpFetch.recoverable(failure)) logger.debug(line) else logger.warn(line)
-
-  /** The line a transport failure is logged as. A timeout names the budget that ran out: a connect timeout used to
-   *  read "timed out after 30s" -- the REQUEST budget -- while the connect budget (5 s by default, bounding TCP and the
-   *  TLS handshake together) was what expired, which sent a loopback flake hunting for a 30 s connect that never
-   *  happened (IssuerCertificateFetchingSpec, run 4360). */
-  private[tools] def failureLine(method: String, url: String, exception: Throwable): String = {
-    val safeUrl = RedactedUrl(url)
-    exception match {
-      case _: HttpConnectTimeoutException =>
-        s"HTTP $method $safeUrl: connect (TCP + TLS handshake) timed out after ${shown(connectTimeoutFor(url))}"
-      case _: HttpTimeoutException =>
-        s"HTTP $method $safeUrl timed out after ${shown(requestTimeoutFor(url))} (service not responding)"
-      case _ =>
-        s"HTTP $method $safeUrl failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}"
-    }
-  }
-
-  private def shown(budget: Duration): String =
-    if (budget.toMillis % 1000 == 0) s"${budget.toSeconds}s" else s"${budget.toMillis}ms"
 
   // Async failures come wrapped in `CompletionException`; unwrap so the
   // log line names the real cause (`HttpTimeoutException`, …) rather than
@@ -337,7 +244,7 @@ class RealHttpFetch(
       .timeout(requestTimeoutFor(url))
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-      // Advertise gzip — `decodeBody` decompresses transparently. Without
+      // Advertise gzip — [[HttpReplies]] decompresses transparently. Without
       // this header some CDNs still gzip based on the Chrome-shaped UA we
       // send, so the decode path runs regardless; advertising it makes the
       // negotiation explicit and shrinks the wire payload.
@@ -367,51 +274,3 @@ class RealHttpFetch(
 
 /** A page body and the URL it was finally served from, after redirects. */
 final case class FetchedPage(finalUrl: String, body: String)
-
-object RealHttpFetch {
-
-  /** Routes a `RealHttpFetch`'s outbound requests through an authenticated HTTP
-   *  proxy — the Decodo static-residential (ISP) egress used for cinema sites
-   *  that Cloudflare-block our Fly datacenter IP at the ASN level (Multikino,
-   *  biletyna). The proxy IPs are genuine PL ISP (Netia, AS12741), so the target
-   *  sees a residential egress and returns 200.
-   *
-   *  Holds the full egress pool — `ports` is one Decodo IP each. [[perPort]]
-   *  yields a config pinned to each ([[pinnedTo]]); `StickyShardHttpFetch` fans a
-   *  client's venues across those per-IP shards, keyed by venue URL so each venue
-   *  sticks to one IP. Stickiness matters because Multikino's session cookie is
-   *  bound to the egress IP — a venue's homepage-warm + API retry must share an
-   *  IP (rotation warmed on one IP, retried on another → still 401, verified
-   *  2026-06-16) — and each IP warms its own session once, reused across the
-   *  venues routed to it. Spreading matters because funnelling all proxied auth
-   *  through one IP tripped Decodo's "too many authentication attempts. Limit: 3"
-   *  cap and rolled all proxied traffic to Zyte on 2026-06-16. See the
-   *  `reference_decodo_isp_proxy` memory. */
-  case class ProxyConfig(host: String, ports: Seq[Int], user: tools.ProxyUser, password: tools.ProxyPassword) {
-    require(ports.nonEmpty, "ProxyConfig needs at least one port")
-
-    /** This config's sticky egress: the sole port of a [[pinnedTo]] config, or
-     *  `ports.head` for the full pool (whose selector is unused — clients always
-     *  pin first). */
-    val port: Int = ports.head
-    val selector: ProxySelector =
-      ProxySelector.of(new InetSocketAddress(host, port))
-
-    /** A copy pinned to a single egress IP from this pool — one shard's egress.
-     *  Its own [[RealHttpFetch]] gives it its own cookie jar, so a sharded proxy
-     *  can warm + reuse one Multikino session per IP while spreading venues across
-     *  the pool rather than hammering one IP past Decodo's "Limit: 3" cap. */
-    def pinnedTo(port: Int): ProxyConfig = {
-      require(ports.contains(port), s"port $port is not one of the pool ports $ports")
-      copy(ports = Seq(port))
-    }
-
-    /** One pinned config per pool port — the per-IP egresses a sharded proxy
-     *  (see `StickyShardHttpFetch`) fans venues across. */
-    def perPort: Seq[ProxyConfig] = ports.map(pinnedTo)
-
-    /** The `Proxy-Authorization` value every request through this proxy carries. */
-    def basicCredentials: String =
-      "Basic " + java.util.Base64.getEncoder.encodeToString(s"${user.value}:${password.value}".getBytes(StandardCharsets.UTF_8))
-  }
-}

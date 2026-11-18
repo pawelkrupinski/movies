@@ -7,7 +7,7 @@ class ResidentialShardsSpec extends AnyFlatSpec with Matchers {
   private val tls = TlsTrust.newContext()
 
   "ResidentialShards" should "build one pinned fetch per pool port" in {
-    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
+    val pool = ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
     ResidentialShards(Some(pool), tls).map(_.size) shouldBe Some(3)
   }
 

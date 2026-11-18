@@ -5,7 +5,7 @@ import play.api.Logging
 import services.readmodel.ReadModelReader
 import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer}
 import services.tasktypes.TaskType
-import tools.{CityCardRenderer, Digest, OgCardRenderer, PosterDecode}
+import tools.{CityCardRenderer, Digest}
 
 import java.nio.file.{Files, Path}
 import java.time.{Clock, Instant}
@@ -58,6 +58,8 @@ class CityCardService(
 
   private val backoff = new CityCardBackoff(clock)
 
+  private val cityFilms = new CityFilms(reader, citiesBySlug.keySet, clock)
+
   /** The reaper's tick: enqueue the cities with no card, then those due, up to the cap; publish
    *  the coverage gauge. Returns what its enqueues came to: how many renders it added, and how many failed. */
   def enqueueDue(): Enqueued = {
@@ -89,12 +91,11 @@ class CityCardService(
     var posters = Vector.empty[Path]
     val outcome = Try {
       store.admitNew(path)
-      posters = filmsOf(city).iterator.map(store.posterPath).filter(Files.isRegularFile(_)).take(CityCardRenderer.PosterCount).toVector
+      posters = cityFilms.of(city.slug).iterator.map(store.posterPath).filter(Files.isRegularFile(_)).take(CityCardRenderer.PosterCount).toVector
       val version = versionOf(city, posters)
       if (store.version(path).contains(version)) { store.touch(path, clock.instant()); CityOutcome.Unchanged }
       else {
-        val images = posters.flatMap(poster => Try(PosterDecode.fromFile(poster.toFile, CityCardRenderer.TileWidth, CityCardRenderer.TileHeight)).toOption.flatten)
-        store.writeAtomically(path, OgCardRenderer.encodeCard(CityCardRenderer.render(city.heading, brand, images)), version)
+        store.writeAtomically(path, CityCardDrawing.png(city.heading, brand, posters), version)
         // The schedule reads the injected clock, so the file is stamped by it, not the filesystem's.
         store.touch(path, clock.instant())
         CityOutcome.Rendered
@@ -119,38 +120,6 @@ class CityCardService(
   private def versionOf(city: City, posters: Seq[Path]): String =
     Digest.sha256Hex((Seq(TemplateVersion.toString, city.heading, brand.toString) ++
       posters.map(poster => s"${poster.getFileName}:${store.version(poster).getOrElse("")}")).mkString("\u0000")).take(16)
-
-  // THE FILMS OF EVERY CITY, from one read of the screenings' ids, kept for an hour: a render needs
-  // a city's films, and one `_id` scan an hour (the janitor's daily prune reads the same) is cheaper
-  // than a query per city on a collection with no city index. Held: each city's first
-  // [[Candidates]] film ids — strings the ids already are — so at most cities × 24 references.
-  private final case class Films(byCity: Map[String, Vector[String]], readAt: Instant)
-  @volatile private var films: Option[Films] = None
-
-  /** The city's films, the most widely shown first. Throws when no read has ever succeeded. */
-  private def filmsOf(city: City): Vector[String] = {
-    val now = clock.instant()
-    val snapshot = synchronized {
-      if (!films.exists(_.readAt.isAfter(now.minusMillis(FilmsMaxAge.toMillis))))
-        reader.findAllScreeningRefsChecked().answered match {
-          case Some(refs) => films = Some(Films(rank(refs), now))
-          case None       => logger.warn("city cards: web_screenings read failed — drawing from the last read, if any.")
-        }
-      films.getOrElse(throw new IllegalStateException("no read of web_screenings has succeeded yet"))
-    }
-    snapshot.byCity.getOrElse(city.slug, Vector.empty)
-  }
-
-  private def rank(refs: Seq[services.readmodel.ScreeningRef]): Map[String, Vector[String]] = {
-    val venues = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.HashMap[String, Int]]
-    refs.foreach(ref => ref.citySlug.filter(citiesBySlug.contains).foreach { slug =>
-      val counts = venues.getOrElseUpdate(slug, scala.collection.mutable.HashMap.empty)
-      counts.update(ref.filmId, counts.getOrElse(ref.filmId, 0) + 1)
-    })
-    venues.iterator.map { case (slug, counts) =>
-      slug -> counts.toVector.sortBy { case (film, n) => (-n, film) }.iterator.take(Candidates).map(_._1).toVector
-    }.toMap
-  }
 }
 
 object CityCardService {

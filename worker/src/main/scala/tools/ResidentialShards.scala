@@ -5,7 +5,7 @@ package tools
  *  local, CI, fixture replay). Shared by the worker's egress wiring and the tools that reach the
  *  same Cloudflare-blocked sites, so neither builds the shards its own way. */
 object ResidentialShards {
-  def apply(config: Option[RealHttpFetch.ProxyConfig], tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
+  def apply(config: Option[ProxyConfig], tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
     config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg), tls)).toIndexedSeq)
 
   /** The shards of the proxy these credentials sign in to. */

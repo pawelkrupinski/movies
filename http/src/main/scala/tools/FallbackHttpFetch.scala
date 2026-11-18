@@ -98,7 +98,7 @@ class FallbackHttpFetch(
     /** The key the "all failed" warning is told apart by: the URL's, unless a leg found its host's breaker open
      *  (`hostKey`). */
     private def incidentKey(failed: Seq[FallbackHttpFetch.LegFailure]): String =
-      if (failed.exists(_.failure.isInstanceOf[CircuitOpenException])) hostKey(verb, url) else key
+      if (LegFailures.hostWide(failed.map(_.failure))) hostKey(verb, url) else key
 
     /** One leg's answer, or its failure -- unless the failure is the origin's own answer (`endsChain`), thrown as
      *  it is, the rest of the chain untried. */
@@ -153,7 +153,7 @@ class FallbackHttpFetch(
       // Only the LAST backend's verdict qualifies. An earlier leg missing (no
       // fixture recorded) says nothing about the resource; the leg that actually
       // reached the upstream is the one whose answer this is.
-      failed.lastOption.map(_.failure).filter(ReadOutcome.isAbsent).foreach { absent =>
+      LegFailures.notFound(failed.map(_.failure)).foreach { absent =>
         logger.debug(s"FallbackHttpFetch $verb $shown — every backend failed and the last says NOT FOUND; " +
                      s"propagating that rather than a composite failure")
         failureLog.cleared(key, s"answered not found (${masked(absent.getMessage)})")
@@ -171,11 +171,11 @@ class FallbackHttpFetch(
       // composite it saw a plain RuntimeException, so TMDB's 429s through the recording's
       // direct → proxy route were never paced and ~6,000 a minute went out (record-scrape-fixtures).
       // The leg asking for the longest wait wins; every leg's failure rides along as suppressed.
-      val limits = failed.map(_.failure).collect { case s: HttpStatusException if HttpStatusException.isRateLimit(s) => s }
-      if (limits.isEmpty) throw composite
-      val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
-      limit.addSuppressed(composite)
-      throw limit
+      LegFailures.longestRateLimit(failed.map(_.failure)).foreach { limit =>
+        limit.addSuppressed(composite)
+        throw limit
+      }
+      throw composite
     }
   }
 
@@ -238,6 +238,11 @@ object FallbackHttpFetch {
 
   val NeverEnds: Throwable => Boolean = _ => false
 
+  /** The chain-ending policies a wiring passes as `endsChain`, named where the chain is built
+   *  ([[LegFailures]] says what each one ends on). */
+  val OriginAnswered: Throwable => Boolean   = LegFailures.OriginAnswered
+  val SameOnEveryRoute: Throwable => Boolean = LegFailures.SameOnEveryRoute
+
   /** An open circuit's countdown in its message ([[CircuitOpenException]]): different on every fast-fail. */
   private val Countdown   = """ \(\d+ms before half-open\)""".r
   private val UrlInDetail = """https?://\S+""".r
@@ -247,23 +252,4 @@ object FallbackHttpFetch {
   private val ChallengeSearchBytes = 64 * 1024
   private[tools] def asciiHead(bytes: Array[Byte]): String =
     new String(bytes, 0, math.min(bytes.length, ChallengeSearchBytes), java.nio.charset.StandardCharsets.ISO_8859_1)
-
-  /** For a chain of egress ROUTES to one origin: the origin's "not found" (404/410)
-   *  through any route is final. Letting it fall through buried it — Odeon's ocapi
-   *  404'd a business date through the proxy, the Zyte and direct legs then failed on
-   *  their own blocks, and the composite failure read as transient, so the
-   *  `ScrapeChunk` retried a permanent answer to exhaustion on paid egress (UK
-   *  2026-09-21/22). An egress provider's OWN 404 is not an `HttpStatusException`
-   *  (see `EgressProviderException`), so it still falls through. */
-  val OriginAnswered: Throwable => Boolean = ReadOutcome.isAbsent
-
-  /** For the residential-proxy chain ([[ProxyChain]]): [[OriginAnswered]], and the origin's 401 too -- it saying who
-   *  we are NOT (no token, no session yet), which is the same through every route, unlike a 403, often an egress IP's
-   *  block that the next route exists to clear. Not a "gone": the caller refreshes its token or session and asks
-   *  again. Falling through, Vue's cold-token films GET warned "All 2 backends failed" once per venue
-   *  (2026-10-29..11-12) on its way to the client's token refresh, which then read the venue fine. */
-  val SameOnEveryRoute: Throwable => Boolean = failure => OriginAnswered(failure) || (failure match {
-    case s: HttpStatusException => s.code == 401
-    case _                      => false
-  })
 }

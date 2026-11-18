@@ -46,7 +46,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
 
-  private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =
+  private def selectedPort(pc: ProxyConfig): Int =
     pc.selector.select(URI.create("https://www.multikino.pl/api/x")).get(0)
       .address().asInstanceOf[InetSocketAddress].getPort
 
@@ -63,7 +63,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   "ProxyConfig.pinnedTo" should "pin the selector to the chosen pool port, stickily" in {
-    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
+    val pool = ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
     val pinned = pool.pinnedTo(10002)
     // Sticky: every selection resolves to the one pinned IP — Multikino's session
     // cookie is IP-bound, so the homepage-warm + API retry must share an egress.
@@ -72,17 +72,17 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "give distinct pool ports distinct selectors (so clients spread across IPs)" in {
-    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
+    val pool = ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
     pool.ports.map(p => selectedPort(pool.pinnedTo(p))) shouldBe List(10001, 10002, 10003)
   }
 
   it should "reject a port that isn't one of the pool's ports" in {
     an[IllegalArgumentException] should be thrownBy
-      RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002), tools.ProxyUser("u"), tools.ProxyPassword("p")).pinnedTo(10099)
+      ProxyConfig("isp.decodo.com", Seq(10001, 10002), tools.ProxyUser("u"), tools.ProxyPassword("p")).pinnedTo(10099)
   }
 
   "ProxyConfig.perPort" should "yield one config pinned to each pool port (the shard egresses)" in {
-    val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
+    val pool = ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), tools.ProxyUser("u"), tools.ProxyPassword("p"))
     pool.perPort.map(selectedPort) shouldBe List(10001, 10002, 10003)
   }
 
@@ -105,7 +105,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     })
     proxy.start()
     try {
-      val config = RealHttpFetch.ProxyConfig("127.0.0.1", Seq(proxy.getAddress.getPort), tools.ProxyUser("u"), tools.ProxyPassword("p"))
+      val config = ProxyConfig("127.0.0.1", Seq(proxy.getAddress.getPort), tools.ProxyUser("u"), tools.ProxyPassword("p"))
       val failure = intercept[HttpStatusException](new RealHttpFetch(proxy = Some(config)).get("http://kino.invalid/api/films"))
       failure.code shouldBe 401
       seen.get shouldBe "Basic " + java.util.Base64.getEncoder.encodeToString("u:p".getBytes(java.nio.charset.StandardCharsets.UTF_8))
@@ -114,7 +114,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   "ProxyConfig" should "reject an empty port list (a misconfigured proxy)" in {
     an[IllegalArgumentException] should be thrownBy
-      RealHttpFetch.ProxyConfig("isp.decodo.com", Seq.empty, tools.ProxyUser("u"), tools.ProxyPassword("p"))
+      ProxyConfig("isp.decodo.com", Seq.empty, tools.ProxyUser("u"), tools.ProxyPassword("p"))
   }
 
   // ── Caller-supplied headers must REPLACE the defaults ─────────────────────
@@ -385,7 +385,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       val (failure, _) = timedFailure(fetch.get(s"https://127.0.0.1:${listener.getLocalPort}/"))
       val timeout = unwrapped(failure)
       timeout shouldBe a [java.net.http.HttpConnectTimeoutException]
-      val line = fetch.failureLine("GET", s"https://127.0.0.1:${listener.getLocalPort}/", timeout)
+      val line = fetch.replies.failureLine("GET", s"https://127.0.0.1:${listener.getLocalPort}/", timeout)
       line should include ("connect")
       line should include ("after 300ms")
       line should not include "30s"

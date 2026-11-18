@@ -64,7 +64,7 @@ trait NeverSent { self: Throwable => }
  *
  * Other 4xx and non-failure outcomes never trip it — 404 is a real "not found"
  * signal for the MC/RT slug probes, not host trouble; sustained 429 is the one
- * 4xx that does (see `isTripWorthy`). `now` is injectable for tests. Wire it CLOSE
+ * 4xx that does (see `HostFailure.isTripWorthy`). `now` is injectable for tests. Wire it CLOSE
  * to the wire (inside `ThrottledHttpFetch`/`MonitoringHttpFetch`) so a fast-fail
  * still surfaces to uptime as the genuine unavailability it is.
  */
@@ -164,8 +164,8 @@ class HostCircuitBreakerHttpFetch(
    *  which of the two it was. A server error from a page already counted since the host last answered is not
    *  counted again (see the class doc), unless it is an open host's probe failing. */
   private def onFailure(host: String, url: String, cause: Throwable): Unit = {
-    val why     = Some(HostCircuitBreakerHttpFetch.describe(cause))
-    val page    = HostCircuitBreakerHttpFetch.failingPage(url, cause)
+    val why     = Some(HostFailure.describe(cause))
+    val page    = HostFailure.failingPage(url, cause)
     val opening = new AtomicReference[Option[Opening]](None)
     breakers.compute(host, (_, prev) => {
       val (next, opened) = afterFailure(Option(prev), page, why, clock.instant())
@@ -209,29 +209,6 @@ class HostCircuitBreakerHttpFetch(
     }
   }
 
-  /** Trip-worthy = the host is failing to serve us: a timeout (request OR connect —
-   *  HttpConnectTimeoutException is a subtype), a 5xx, a 429, or a lower-level IO
-   *  error (connection refused/reset).
-   *
-   *  429 is the one 4xx that counts. Every other 4xx is the host ANSWERING (404 is
-   *  a real "not found" for the MC/RT slug probes) — but a 429 is it declining to,
-   *  and `failureThreshold` CONSECUTIVE ones (any success resets the count) mean it
-   *  is refusing us outright rather than shaping a burst. Without this the breaker
-   *  could not open on the case that most needs it: Filmstarts 429'd every request
-   *  for hours on 2026-07-18 while the worker kept firing ~14k of them an hour,
-   *  since ThrottledHttpFetch's gate only paces retries and never gives up. */
-  private def isTripWorthy(e: Throwable): Boolean = e match {
-    case s: HttpStatusException                 => s.code >= 500 || s.code == 429
-    case _: java.net.http.HttpTimeoutException  => true
-    case _: java.io.IOException                 => true
-    case _                                      => false
-  }
-
-  /** A call that ended before the host could answer -- never sent ([[NeverSent]]) or abandoned by its caller
-   *  ([[CallerCancelled]]): neither a failure nor the host answering, so the breaker records nothing. An interrupted
-   *  half-open probe used to count as an answer and close the breaker on a host that had said nothing. */
-  private def saysNothing(e: Throwable): Boolean = e.isInstanceOf[NeverSent] || CallerCancelled(e)
-
   private def unwrap(e: Throwable): Throwable = e match {
     case ce: CompletionException if ce.getCause != null => ce.getCause
     case other                                          => other
@@ -274,8 +251,8 @@ class HostCircuitBreakerHttpFetch(
       // strength of a reply that proves it recovered. A fatal error (an OutOfMemoryError, a LinkageError) is this
       // JVM's, never the host's answer: it goes through unrecorded, as an interrupt does.
       catch {
-        case NonFatal(e) if saysNothing(e)  => throw e
-        case NonFatal(e) if isTripWorthy(e) => onFailure(host, url, e); throw e
+        case NonFatal(e) if HostFailure.saysNothing(e)  => throw e
+        case NonFatal(e) if HostFailure.isTripWorthy(e) => onFailure(host, url, e); throw e
         case NonFatal(e)                    => onSuccess(host); throw e
       }
   }
@@ -292,8 +269,8 @@ class HostCircuitBreakerHttpFetch(
         // closes the breaker rather than leaving a re-armed window in place.
         else {
           unwrap(throwable) match {
-            case failure if saysNothing(failure)  => ()
-            case failure if isTripWorthy(failure) => onFailure(host, url, failure)
+            case failure if HostFailure.saysNothing(failure)  => ()
+            case failure if HostFailure.isTripWorthy(failure) => onFailure(host, url, failure)
             case _                                => onSuccess(host)
           }
           throw throwable
@@ -319,7 +296,7 @@ object HostCircuitBreakerHttpFetch {
 
   /** Per-host state: consecutive trip-worthy failures, (once tripped) the instant
    *  the breaker goes half-open, WHY it last failed, and the pages whose server error is already counted
-   *  (`failedPages`, see [[failingPage]]). `openUntil = None` ⇒ closed.
+   *  (`failedPages`, see [[HostFailure.failingPage]]). `openUntil = None` ⇒ closed.
    *
    *  `lastFailure` exists because an open breaker otherwise erases the only useful
    *  fact about the outage. Every call to a blocked host reports "circuit open for
@@ -330,14 +307,6 @@ object HostCircuitBreakerHttpFetch {
   private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None,
                                     windowMs: Long = 0L, failedPages: Set[String] = Set.empty)
 
-  /** The page a failure is about, when it is about one: a server error is the host answering for that URL, so it
-   *  counts once per page. Any other trip-worthy failure (a timeout, a lost connection, a 429) is the host's, and
-   *  counts every time. */
-  private def failingPage(url: String, cause: Throwable): Option[String] = cause match {
-    case s: HttpStatusException if s.code >= 500 => Some(url)
-    case _                                       => None
-  }
-
   /** The default ceiling on a host's cooldown between failed probes: past Filmstarts' ~5-minute 429 blocks (one
    *  probe, at most, lands after a block has ended), short enough that a host that comes back is read again
    *  within minutes. */
@@ -346,14 +315,4 @@ object HostCircuitBreakerHttpFetch {
   /** How long a host that failed is remembered across a restart with no failure since: past the hourly scrape of a
    *  parked venue several times over, so an outage of any length carries on through every boot inside it. */
   val RememberFor: FiniteDuration = 6.hours
-
-  /** The causing failure as one short line for the breaker to carry — type plus
-   *  message, since `SSLHandshakeException` and `HttpTimeoutException` are already
-   *  half the diagnosis. Bounded, because it rides in an exception message that
-   *  uptime truncates. */
-  private def describe(cause: Throwable): String = {
-    val message = Option(cause.getMessage).getOrElse("")
-    val line    = if (message.isEmpty) cause.getClass.getSimpleName else s"${cause.getClass.getSimpleName}: $message"
-    if (line.length <= 120) line else line.take(117) + "..."
-  }
 }

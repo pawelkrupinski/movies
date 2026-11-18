@@ -95,7 +95,7 @@ object WikidataUserAgent {
 }
 /** `ZYTE_API_KEY`. */
 final case class ZyteApiKey(value: String) extends AnyVal
-// (ProxyUser and ProxyPassword live in the http module, beside RealHttpFetch.ProxyConfig.)
+// (ProxyUser and ProxyPassword live in the http module, beside ProxyConfig.)
 /** `FACEBOOK_APP_ID` — the Facebook app sign-in and the share-card re-scrape run as. */
 final case class FacebookAppId(value: String) extends AnyVal
 /** `FACEBOOK_APP_SECRET`. */

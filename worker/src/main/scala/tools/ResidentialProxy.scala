@@ -11,7 +11,7 @@ import java.util.Properties
  *     `DECODO_PROXY_PASS`, resolved by `settings.ProcessConfiguration`), so credentials
  *     never land in the repo.
  *
- * Returns a [[RealHttpFetch.ProxyConfig]] only when ALL four are present, so the
+ * Returns a [[ProxyConfig]] only when ALL four are present, so the
  * proxy stays disabled — and the worker falls back to direct — wherever the
  * credentials aren't set: a local run not launched under `secrets run movies DECODO_PROXY_USER DECODO_PROXY_PASS …`, CI, fixture replay.
  * See the `reference_decodo_isp_proxy` memory.
@@ -21,20 +21,20 @@ object ResidentialProxy {
 
   /** The configured proxy, or None when host/ports (file) or user/pass (env) are
    *  absent — in which case the caller keeps the direct egress. */
-  def fromCredentials(user: Option[ProxyUser], password: Option[ProxyPassword]): Option[RealHttpFetch.ProxyConfig] =
+  def fromCredentials(user: Option[ProxyUser], password: Option[ProxyPassword]): Option[ProxyConfig] =
     fromConfig(loadProperties(PropertiesResource), user, password)
 
   private[tools] def fromConfig(
     props:    Properties,
     user:     Option[tools.ProxyUser],
     password: Option[tools.ProxyPassword]
-  ): Option[RealHttpFetch.ProxyConfig] =
+  ): Option[ProxyConfig] =
     for {
       host  <- Option(props.getProperty("host")).map(_.trim).filter(_.nonEmpty)
       ports <- Option(props.getProperty("ports")).map(parsePorts).filter(_.nonEmpty)
       u     <- user
       p     <- password
-    } yield RealHttpFetch.ProxyConfig(host, ports, u, p)
+    } yield ProxyConfig(host, ports, u, p)
 
   /** Comma-separated port list → ints, silently dropping blanks/garbage. */
   private[tools] def parsePorts(raw: String): Seq[Int] =
