@@ -292,6 +292,18 @@ same run already runs -- and the self-tests that hold repo-wide files to a rule 
 --readers`) when the combined change touches what they read -- the two sides share no file, yet a .py or a spec of
 either can break them -- with no area tests and no red gate.
 
+**When main's move costs a full round, a verify round, or a verify round with the area tests** (agentctl's THE RULE,
+`~/bin/AGENTCTL.md` "checked -> pushing -> landed"; the owner, 2026-11-18, item 6, accepting that a cross-change break
+the narrower round misses is caught on Main): a file BOTH sides change, or a forcing path landing that moves what the
+check selects -> the full round. The hook, its lint registry, local-tests.txt and `scripts/ci/precommit-share.sh` are
+SELECTION paths: agentctl compares, for the change's paths, the hook's `--plan` / `--compile-plan` / `--unit-plan` /
+`--lint-plan`, the local-tests lines of the areas run, and the union of what `precommit-share.sh checks
+rest|identity|oldrefs|plan` runs, at the full check's tip and the rebased tip -- only a check added (the verify round runs
+added compile, unit and lint plans itself) forces the full round. No shared file but an sbt module both sides touch
+(MODULE OVERLAP) -> the verify round PLUS the area tests: the branch is `check/verifyareas-<full base>-<id>`, on which
+`precommit-share.sh` gives the `identity` share `PREPUSH_MODE=--checks-only` over `<full base>..HEAD` (the plan names it,
+so `check (identity k/2)` runs; the rest is the verify round's). Disjoint modules -> the plain verify round.
+
 **The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
 jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
 `check (oldrefs)`, and the `heavy rows` job running each of Main's heavy rows the change can move

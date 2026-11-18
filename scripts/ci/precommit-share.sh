@@ -10,7 +10,10 @@
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
 # fully checked on that older main, rebased onto one that moved with no file overlap; its range is `<that sha>..HEAD`,
-# what landed since and the change together), every other branch the change's own checks (--checks-only); a red- after
+# what landed since and the change together), check/verifyareas-<full base sha>-<id> the same verification plus the area
+# tests (agentctl's MODULE OVERLAP, the owner 2026-11-18: the two sides touch one sbt module, so the area shares --
+# `identity` -- run the change's own checks, --checks-only, over that same range; the rest is the verify round's), every
+# other branch the change's own checks (--checks-only); a red- after
 # check/ (a gate-red fix's: check/red-fast-<id>, check/red-<id>) changes nothing here. The range is
 # otherwise the change since it left main (`<merge-base with origin/main>..HEAD`); origin/main is fetched before.
 #
@@ -28,17 +31,19 @@ case "$share" in rest|identity|oldrefs|heavy|plan) ;; *) usage ;; esac
 ref="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
 # a gate-red fix's check is check/red-<the rest>: the prefix names the runner lane (precommit-check.yml), not the mode
 ref="${ref#check/}"; ref="${ref#red-}"
-mode=--checks-only
-case "$ref" in fast-*) mode=--fast-only ;; verify-*) mode=--verify-only ;; esac
+mode=--checks-only areas=""
+case "$ref" in fast-*) mode=--fast-only ;; verify-*) mode=--verify-only ;; verifyareas-*) mode=--verify-only areas=1 ;; esac
 if [ "$mode" = --verify-only ]; then
-    full="${ref#verify-}"; full="${full:0:40}"
+    full="${ref#verify-}"; full="${full#verifyareas-}"; full="${full:0:40}"
     git rev-parse --verify -q "$full^{commit}" > /dev/null || { echo "$0: $ref names no commit ($full)" >&2; exit 1; }
     range="$full..HEAD"
 else
     range="$(git merge-base HEAD origin/main)..HEAD"
 fi
 
-vars=("PREPUSH_MODE=$mode" "PREPUSH_RANGE=$range")
+# the area shares of a verifyareas- round: the change's own checks of the area, over the verification's range
+area_mode=$mode; [ -z "$areas" ] || [ "$share" != identity ] || area_mode=--checks-only
+vars=("PREPUSH_MODE=$area_mode" "PREPUSH_RANGE=$range")
 case "$share" in
     rest)
         elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"
@@ -50,6 +55,12 @@ esac
 
 if [ "$what" = env ]; then printf '%s\n' "${vars[@]}"; exit 0; fi
 # the fast-only and verify-only sets are the sbt check and the linters, all the rest's: nothing for another share
-if [ "$mode" != --checks-only ] && [ "$share" != rest ] && [ "$share" != plan ]; then echo; exit 0; fi
-env "${vars[@]}" PREPUSH_LIST=1 "$(dirname "$0")/../hooks/pre-push" "$mode" "$range" | tr '\n' ' ' | sed 's/ *$//'
+# (a verifyareas- round's identity share aside: the area's own checks)
+if [ "$area_mode" != --checks-only ] && [ "$share" != rest ] && [ "$share" != plan ]; then echo; exit 0; fi
+listed="$(env "${vars[@]}" PREPUSH_LIST=1 "$(dirname "$0")/../hooks/pre-push" "$area_mode" "$range")"
+if [ -n "$areas" ] && [ "$share" = plan ]; then # the plan names the area the identity share runs
+    listed+=$'\n'"$(env "PREPUSH_MODE=--checks-only" "PREPUSH_RANGE=$range" PREPUSH_ONLY=identity PREPUSH_LIST=1 \
+        "$(dirname "$0")/../hooks/pre-push" --checks-only "$range")"
+fi
+printf '%s\n' "$listed" | { grep -v '^$' || true; } | tr '\n' ' ' | sed 's/ *$//'
 echo

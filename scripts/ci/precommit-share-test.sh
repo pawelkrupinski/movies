@@ -50,6 +50,20 @@ check "...a branch naming no commit fails" "1" \
 check "a gate-red fix's branch (check/red-...) names the runner lane only: the same mode and range" \
     "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ')|$(REF=check/fast-ab12 share env rest | tr '\n' ' ')" \
     "$(REF="check/red-verify-$full-x" share env rest | tr '\n' ' ')|$(REF=check/red-fast-ab12 share env rest | tr '\n' ' ')"
+# MODULE OVERLAP (agentctl, the owner, 2026-11-18): check/verifyareas-<full>-<id> is the verify round plus the area tests
+change identity/src/main/scala/services/identity/Other.scala
+va="check/verifyareas-$full-x"
+check "a module both sides touch: the rest's share is the verify round's" "$(REF="check/verify-$full-x" share checks rest)" \
+    "$(REF="$va" share checks rest)"
+check "...and the identity share runs the area's tests" "identity" "$(REF="$va" share checks identity)"
+check "...which the plan names" "1" "$(REF="$va" share checks plan | tr ' ' '\n' | grep -cx identity)"
+check "...as the change's own checks over what landed since its full check and the change, together" \
+    "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$full..HEAD PREPUSH_ONLY=identity" \
+    "$(REF="$va" share env identity | tr '\n' ' ' | sed 's/ $//')"
+check "...the rest's environment the verify round's" "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ')" \
+    "$(REF="$va" share env rest | tr '\n' ' ')"
+check "...no old-ref share" "" "$(REF="$va" share checks oldrefs)"
+check "...a gate-red fix's too" "identity" "$(REF="check/red-verifyareas-$full-x" share checks identity)"
 g update-ref refs/remotes/origin/main "$full"
 change web/src/main/twirl/views/x.scala.html
 check "a page change: no share of its own -- the page tests run on Main, after landing (the owner, 2026-11-17)" "sbt|" \
