@@ -1,13 +1,11 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
 import services.titles.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import java.util.Locale
@@ -29,34 +27,12 @@ import scala.jdk.CollectionConverters._
  * The date is parsed from the `data-date` attribute (`DD.MM.YYYY`), so the
  * year is unambiguous and no inference is needed.
  */
-class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper with DetailEnricher {
+class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema)
+    extends ListingPageScraper(http, KinoParadoxClient.RepertoireUrl, KinoParadoxClient.BaseUrl) with DetailEnricher {
 
   import KinoParadoxClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] = {
-    val html  = HttpRead.page(http, RepertoireUrl)
-    val slots = parseDocument(html)
-
-    SlotsToMovies.fold(slots, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
-      val directors = group.map(_.directors).find(_.nonEmpty).getOrElse(Seq.empty)
-      val year      = group.flatMap(_.year).headOption
-      val runtime   = group.flatMap(_.runtime).headOption
-      val countries = group.map(_.countries).find(_.nonEmpty).getOrElse(Seq.empty)
-      CinemaMovie(
-        movie     = Movie(title, runtimeMinutes = runtime, releaseYear = year, countries = countries),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = filmUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = directors,
-        showtimes = showtimes
-      )
-    }
-  }
+  protected def parsePage(html: String): Seq[CinemaMovie] = SlotsToMovies.byTitleAndFilmPage(parseDocument(html), cinema)
 
   // The listing already carries director + release year (TMDB-identity hints),
   // so the film resolves immediately from the listing; the detail page adds the
@@ -94,31 +70,13 @@ object KinoParadoxClient {
   // A runtime slash-part ("125’" / "106'"), the minutes followed by a prime.
   private val RuntimePat  = """^(\d{1,3})\s*['’]""".r
 
-  private[cinemas] case class Meta(
-    directors: Seq[String]  = Seq.empty,
-    countries: Seq[String]  = Seq.empty,
-    year:      Option[Int]  = None,
-    runtime:   Option[Int]  = None
-  )
-
-  private[cinemas] case class RawSlot(
-    title:      String,
-    filmUrl:    Option[String],
-    dateTime:   LocalDateTime,
-    bookingUrl: Option[String],
-    directors:  Seq[String],
-    countries:  Seq[String],
-    year:       Option[Int],
-    runtime:    Option[Int]
-  )
-
   /** The `div.item-director` line is slash-delimited:
    *  `reż. <dirs> / <countries> / <year> / <runtime>’`. Each part is optional —
    *  some films carry no `reż.` prefix and some no year — so pick the director
    *  part by its `reż` marker, the year by the only bare 4-digit part, the
    *  runtime by the prime-suffixed part, and read whatever non-marker part is
    *  left as the (comma-separated) production countries. */
-  private[cinemas] def parseMeta(itemDirector: String): Meta = {
+  private[cinemas] def parseMeta(itemDirector: String): ListingFacts = {
     val parts = itemDirector.split("/").iterator.map(_.trim).filter(_.nonEmpty).toSeq
     val directors = parts.find(_.toLowerCase(Locale.ROOT).startsWith("reż"))
       .map(_.replaceFirst("(?i)^reż\\.?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
@@ -133,10 +91,10 @@ object KinoParadoxClient {
       .filterNot(p => YearOnlyPat.matches(p))
       .filterNot(p => RuntimePat.matches(p))
       .flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
-    Meta(directors, countries, year, runtime)
+    ListingFacts(directors, countries, year, runtime)
   }
 
-  private[cinemas] def parseDocument(html: String): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(html: String): Seq[CreditedScreening] = {
     val document = Jsoup.parse(html)
     document.select("div.list-item__content__row[data-date]").asScala.toSeq.flatMap { row =>
       val dateAttr = row.attr("data-date").trim
@@ -155,14 +113,13 @@ object KinoParadoxClient {
         .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
 
       val meta = Option(row.selectFirst("div.item-director"))
-        .map(e => parseMeta(e.text.trim)).getOrElse(Meta())
+        .map(e => parseMeta(e.text.trim)).getOrElse(ListingFacts())
 
       for {
         d <- date
         t <- time
         n <- title
-      } yield RawSlot(n, filmUrl, LocalDateTime.of(d, t), bookingUrl,
-                      meta.directors, meta.countries, meta.year, meta.runtime)
+      } yield CreditedScreening(n, filmUrl, LocalDateTime.of(d, t), bookingUrl, meta)
     }
   }
 

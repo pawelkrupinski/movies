@@ -1,12 +1,9 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -35,31 +32,11 @@ import models.CountryNames
  * as KinoSfinksClient does. There is no per-film detail page fetch — the
  * schedule is self-contained for showtimes. TMDB enriches the rest downstream.
  */
-class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema)
+    extends ListingPageScraper(http, KinoAgrafkaClient.RepertoireUrl, KinoAgrafkaClient.BaseUrl) {
 
-  import KinoAgrafkaClient._
-
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] = {
-    val html = HttpRead.page(http, RepertoireUrl)
-    val slots = parseDocument(html)
-
-    SlotsToMovies.fold(slots, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
-      val meta = group.map(_.meta).find(m => m.directors.nonEmpty || m.year.isDefined).getOrElse(MetaInfo.empty)
-      CinemaMovie(
-        movie     = Movie(title, releaseYear = meta.year),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = filmUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = meta.directors,
-        showtimes = showtimes
-      )
-    }
-  }
+  protected def parsePage(html: String): Seq[CinemaMovie] =
+    SlotsToMovies.byTitleAndFilmPage(KinoAgrafkaClient.parseDocument(html), cinema)
 }
 
 object KinoAgrafkaClient {
@@ -78,22 +55,11 @@ object KinoAgrafkaClient {
    *  87’"). Directors are therefore the leading comma-segments that look like
    *  person names: no digit, no slash (multi-country marker) and not a recognised
    *  country. The year is the first 4-digit token anywhere in the tail. */
-  private[cinemas] case class MetaInfo(directors: Seq[String], year: Option[Int])
-  private[cinemas] object MetaInfo { val empty = MetaInfo(Seq.empty, None) }
-
-  private[cinemas] case class RawSlot(
-    title:      String,
-    filmUrl:    Option[String],
-    dateTime:   LocalDateTime,
-    bookingUrl: Option[String],
-    meta:       MetaInfo
-  )
-
   private val DirectoryMarker = "reż."
 
-  private[cinemas] def parseMeta(cellText: String): MetaInfo = {
+  private[cinemas] def parseMeta(cellText: String): ListingFacts = {
     val index = cellText.indexOf(DirectoryMarker)
-    if (index < 0) MetaInfo.empty
+    if (index < 0) ListingFacts()
     else {
       val tail = cellText.substring(index + DirectoryMarker.length)
       val directors = tail.split(",").iterator.map(_.trim)
@@ -101,14 +67,14 @@ object KinoAgrafkaClient {
         .flatMap(_.split(";")).map(_.trim)   // some films join co-directors with ';'
         .filter(_.nonEmpty).toSeq
       val year = YearPat.findFirstMatchIn(tail).map(_.matched.toInt)
-      MetaInfo(directors, year)
+      ListingFacts(directors, year = year)
     }
   }
 
-  private[cinemas] def parseDocument(html: String): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(html: String): Seq[CreditedScreening] = {
     val document = Jsoup.parse(html)
     var currentDate: Option[LocalDate] = None
-    val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
+    val slots = collection.mutable.ArrayBuffer.empty[CreditedScreening]
 
     // Each day block is a <div> wrapping an <h3> date header and a <table>.
     // Alternatively the h3 and tables are siblings. We walk ALL elements in
@@ -134,7 +100,7 @@ object KinoAgrafkaClient {
 
             for {
               t     <- time if title.nonEmpty
-            } slots += RawSlot(title, filmUrl, LocalDateTime.of(date, t), bookingUrl, meta)
+            } slots += CreditedScreening(title, filmUrl, LocalDateTime.of(date, t), bookingUrl, meta)
           }
         case _ =>
       }

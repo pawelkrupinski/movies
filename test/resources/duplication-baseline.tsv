@@ -11,6 +11,5 @@ copies	common/src/main/scala/services/UptimeMonitor.scala	2
 copies	common/src/main/scala/services/tasks/InMemoryTaskQueue.scala|common/src/main/scala/services/tasks/MongoTaskQueue.scala	2
 copies	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala|scrapers/src/main/scala/services/cinemas/pl/DcfClient.scala	2
 copies	scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
-copies	scrapers/src/main/scala/services/cinemas/pl/KinoAgrafkaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoParadoxClient.scala	2
 copies	web/src/main/scala/controllers/UserStateController.scala	2
 copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala	2

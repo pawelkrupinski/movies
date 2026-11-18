@@ -29,6 +29,25 @@ private[cinemas] final case class FilmPageCard(
   year:      Option[Int]    = None
 )
 
+/** The film facts a listing row prints beside its screening (a `reż.` credit line): directors, production countries,
+  * year, runtime -- each optional. */
+private[cinemas] final case class ListingFacts(
+  directors: Seq[String] = Seq.empty,
+  countries: Seq[String] = Seq.empty,
+  year:      Option[Int] = None,
+  runtime:   Option[Int] = None
+)
+
+/** One screening row of a listing that links its film's page, may sell a ticket, and prints the film's
+  * [[ListingFacts]]: folded by [[SlotsToMovies.byTitleAndFilmPage]]. */
+private[cinemas] final case class CreditedScreening(
+  title:      String,
+  filmUrl:    Option[String],
+  dateTime:   LocalDateTime,
+  bookingUrl: Option[String],
+  facts:      ListingFacts
+)
+
 /** The "fold raw screening slots into [[CinemaMovie]]s" shape every cinema
   * scraper repeats: group the per-screening slots by one film's key (its cleaned
   * title, or a feed's film id / slug), turn each group's slots into
@@ -180,5 +199,22 @@ private[cinemas] object SlotsToMovies {
         showtimes = showtimes
       )
     }
-}
 
+  /** The whole fold for a listing of [[CreditedScreening]]s: one film per title and film page, one showtime per time
+    * and booking link, each of the film's facts the first its rows state. */
+  def byTitleAndFilmPage(screenings: Seq[CreditedScreening], cinema: Cinema): Seq[CinemaMovie] =
+    fold(screenings, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
+      val facts = group.map(_.facts)
+      CinemaMovie(
+        movie     = Movie(title, runtimeMinutes = facts.flatMap(_.runtime).headOption, releaseYear = facts.flatMap(_.year).headOption,
+                          countries = facts.map(_.countries).find(_.nonEmpty).getOrElse(Seq.empty)),
+        cinema    = cinema,
+        posterUrl = None,
+        filmUrl   = filmUrl,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = facts.map(_.directors).find(_.nonEmpty).getOrElse(Seq.empty),
+        showtimes = showtimes
+      )
+    }
+}

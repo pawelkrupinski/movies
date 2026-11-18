@@ -8676,6 +8676,8 @@ services.cinemas.common.CinemaScraper
 services.cinemas.common.CinemaScraper$
 services.cinemas.common.CinemaScraper$Scraped
 services.cinemas.common.CinemaScraper$Scraped$
+services.cinemas.common.CreditedScreening
+services.cinemas.common.CreditedScreening$
 services.cinemas.common.DayChunks
 services.cinemas.common.DayChunks$
 services.cinemas.common.DayPickerProgramme
@@ -8758,6 +8760,8 @@ services.cinemas.common.ListingCompleteness$$anon$2
 services.cinemas.common.ListingCompleteness$$anon$3
 services.cinemas.common.ListingCompletenessRecorder
 services.cinemas.common.ListingCompletenessRecorder$
+services.cinemas.common.ListingFacts
+services.cinemas.common.ListingFacts$
 services.cinemas.common.ListingFeed
 services.cinemas.common.ListingFeed$
 services.cinemas.common.ListingFeed$$anon$1
