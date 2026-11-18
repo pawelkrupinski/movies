@@ -22,6 +22,7 @@
 # column 3, for the exempting kinds: `exempt`, or a number -- a limit of the class's own, above the shared one.
 root	modules.*	exempt	coupling	the composition roots (AppLoader, WorkerMain, AppComponents and the modules.wiring / modules.webwiring traits): every collaboration is wired here (DIP), so their fan-out is the application's size, and their D is a top layer's
 root	diagnostics.*	exempt	coupling	command-line programs built from the whole stack like a composition root (FilmwebDiff, RosterAudit)
+root	services.review.ReviewLabelsCli	exempt	web	the review answers' command-line program (`web/runMain services.review.ReviewLabelsCli`): its main wires the mirror client, the answer store and every country's review source like a composition root
 registry	services.cinemas.*Venues	exempt	scrapers	a city's or chain's venue roster: one entry a venue, each naming the scraper class that reads it -- data, its fan-out is its row count
 registry	services.cinemas.*ScraperCatalog	exempt	scrapers	a country's scraper catalogue: one entry a source, each naming its client class -- data, its fan-out is its row count
 registry	services.cinemas.pl.PolishVenueRegistry	exempt	scrapers	the Polish venues' registry over the city rosters: one reference a roster
