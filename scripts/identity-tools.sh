@@ -281,10 +281,26 @@ identity_tree_older_titles() {
   printf '%s\n' "$out" | cmp -s - "$main/titles/OlderRefTitles.scala" 2>/dev/null || printf '%s\n' "$out" > "$main/titles/OlderRefTitles.scala"
 }
 
+# identity_tree_older_models <dir> -> in a ref from before the corpus' value types moved into models (ListingKey,
+# ShowtimesDigest, EmbeddedYear, TrailerEmbed; 2026-11-18), a file exporting them under their new names from
+# services.movies, so a tool file naming models.ListingKey compiles there too. A ref after the move has the real ones.
+identity_tree_older_models() {
+  local dir=$1 movies=$1/common/src/main/scala/services/movies models=$1/common/src/main/scala/models n out
+  [ -f "$movies/ListingKey.scala" ] && [ ! -f "$models/ListingKey.scala" ] || return 0
+  out=$(
+    printf 'package models\n\n// identity-tools.sh (identity_tree_older_models): this ref predates models.ListingKey\n'
+    for n in ListingKey ShowtimesDigest EmbeddedYear TrailerEmbed; do
+      [ ! -f "$movies/$n.scala" ] || echo "export services.movies.$n"
+    done
+  )
+  printf '%s\n' "$out" | cmp -s - "$models/OlderRefModels.scala" 2>/dev/null || printf '%s\n' "$out" > "$models/OlderRefModels.scala"
+}
+
 # identity_tree_tools <dir> <file>... -> each named file dropped into the laid-out tree from this checkout, whole or not at all
 identity_tree_tools() {
   local dir=$1 t seed=$1/target/identity-tools/seed; shift
   identity_tree_older_titles "$dir"
+  identity_tree_older_models "$dir"
   # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
   for t in "$@"; do
     mkdir -p "$(dirname "$dir/$t")"
