@@ -73,6 +73,100 @@ tests:
                 commits between them.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SHIFT IS REPORTED FOR A DAY, THEN LEARNED (2026-11-18: 70 regression alerts in one digest, nearly all for
+  # changes made on purpose). Poland's takes move from 25.5 minutes to 45 at run #1064 and stay: fired at 408h, as in
+  # the first case; a day on its recent median was already over the threshold, so that level is the reference and it
+  # is quiet (444h). Germany's move the same way, then rise again, to 66.7 minutes from run #1070: over the learned
+  # level's threshold (45 + 40%), so it fires, against the level of a day before.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: a lasting shift fires for a day and is then learned, and a further rise on top of it fires again
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Identity model convergence",ref="main"}'
+        values: '1000+1x104'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x40'
+      - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",step="Run the poland takes suite"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x40'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",measure="wall",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x40'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (germany)",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x5 4000x34'
+    alert_rule_test:
+      - eval_time: 408h
+        alertname: CiStepDurationRegressed
+        exp_alerts:
+          - exp_labels:
+              window: 2d
+              domain: ci
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (poland)
+              step: Run the poland takes suite
+            exp_annotations:
+              summary: 'Identity model convergence / takes (poland) step `Run the poland takes suite` on main got slower: a median of 45m 0s'
+              description: >-
+                The main runs of the step `Run the poland takes suite` in takes (poland) (Identity model convergence)
+                over the last two days took a median of 45m 0s, against a median of 25m 30s over the week before the
+                last two days. Last run at baseline #1063, first slow run after it #1064: the regression is in the
+                commits between them.
+      - eval_time: 444h
+        alertname: CiStepDurationRegressed
+        exp_alerts: []
+      - eval_time: 444h
+        alertname: CiRunWallClockRegressed
+        exp_alerts: []
+      - eval_time: 444h
+        alertname: CiJobDurationRegressed
+        exp_alerts:
+          - exp_labels:
+              window: 2d
+              domain: ci
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (germany)
+              conclusion: success
+            exp_annotations:
+              summary: 'Identity model convergence / takes (germany) on main got slower: a median of 1h 6m 40s'
+              description: >-
+                The successful main runs of takes (germany) (Identity model convergence) over the last two days took a
+                median of 1h 6m 40s, against 45m 0s, its median a day before, when it was already past its baseline of
+                26m 0s: only the rise since then is new. Last run at baseline #1069, first slow run after it #1070: the
+                regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by
+                this one): none. Every job of a workflow slowing at once is the runner host, not a commit. A job that
+                times out has no successful run to judge: CiJobNearTimeout is the alert for that.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SERIES THAT STOPPED IS NOT JUDGED (2026-11-18: 27 of 36 regression alerts in a day). A nightly job's series ends at
+  # day 50 (its `runner` label changed: the runs go on under another series). With no runs in two days it falls to
+  # the two-week tier, whose window still holds its last ten slow runs, against six weeks of fast ones before. It has
+  # no run in 8 days, so it says nothing about how long the job takes now.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1d
+    name: a series with no run in eight days is not judged
+    input_series:
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Nightly stress",ref="main",ci_job="webkit phones x5 (1/4)",conclusion="success"}'
+        values: '1200x40 2700x9'
+      - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Nightly stress",ref="main",ci_job="webkit phones x5 (1/4)",step="Run ./.github/actions/run-page-test"}'
+        values: '1200x40 2700x9'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Nightly stress",ref="main",measure="wall",conclusion="success"}'
+        values: '1200x40 2700x9'
+    alert_rule_test:
+      - eval_time: 59d
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 59d
+        alertname: CiStepDurationRegressed
+        exp_alerts: []
+      - eval_time: 59d
+        alertname: CiRunWallClockRegressed
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # NOISE: one 45-minute run among normal ones, then back to normal (quiet when it lands, at 408h, and after); the
   # latest run slow but alone (quiet); a one-minute job taking three (3.3x, but 140 s under the 5-minute floor).
   # ────────────────────────────────────────────────────────────────────────────────────────────
@@ -204,8 +298,8 @@ tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A WEEKLY WORKFLOW (or a dispatch-only one run about weekly) has one run in two days and one in the week before,
   # so the two-day window can never judge it: its window is two weeks, its baseline the six weeks before. Runs every
-  # 7 days (index i is day i): six at 20-25 minutes, then two at 45. Quiet a day after the first slow run is not
-  # asserted (a median of two is their mean, as for a nightly job); fired a day after the second.
+  # 7 days (index i is day i): six at 20-25 minutes, then two at 45. It fires a day after the first slow run (the median
+  # of two is their mean, as for a nightly job), and a week later, at the second, that level is learned: quiet.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1d
     name: a weekly workflow's jump fires, judged over its own two weeks
@@ -220,6 +314,9 @@ tests:
         exp_alerts: []
       - eval_time: 56d1h
         alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 49d1h
+        alertname: CiJobDurationRegressed
         exp_alerts:
           - exp_labels:
               domain: ci
@@ -231,10 +328,10 @@ tests:
               conclusion: success
               window: 14d
             exp_annotations:
-              summary: 'Weekly sweep / sweep on main got slower: a median of 45m 0s'
+              summary: 'Weekly sweep / sweep on main got slower: a median of 34m 10s'
               description: >-
                 The successful main runs of sweep (Weekly sweep) over the last two weeks took a
-                median of 45m 0s, against a median of 22m 30s over the six weeks before the last two weeks. Last run at
+                median of 34m 10s, against a median of 21m 40s over the six weeks before the last two weeks. Last run at
                 baseline #1006, first slow run after it #1007: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
                 once is the runner host, not a commit. A job that times out has no successful run to judge:
                 CiJobNearTimeout is the alert for that.

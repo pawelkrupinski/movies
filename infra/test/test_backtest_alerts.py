@@ -182,5 +182,52 @@ class GrafanaTranslation(unittest.TestCase):
         self.assertIn("MongodNoPrimary", alerts)
 
 
+class RecordingRuleExpansion(unittest.TestCase):
+    """An alert over a recording rule reads what Prometheus RECORDED, i.e. the deployed rule. A
+    recording changed in this tree is backtested as written by substituting its expression."""
+
+    RECORDS = {
+        "ci:x:baseline": {"expr": "quantile_over_time(0.5, x[7d] offset 2d)", "interval": "5m"},
+        "ci:x:threshold": {"expr": "ci:x:baseline * 1.4", "interval": "5m"},
+        "ci:x:recent": {"expr": "quantile_over_time(0.5, x[2d])", "interval": "5m"},
+    }
+
+    def test_a_changed_recording_is_inlined_and_an_unchanged_one_is_read(self):
+        out = bt.expand_recordings("ci:x:recent > ci:x:threshold", self.RECORDS, {"ci:x:recent"})
+        self.assertEqual(out, "(quantile_over_time(0.5, x[2d])) > ci:x:threshold")
+
+    def test_a_recording_over_a_changed_one_is_stale_too(self):
+        stale = bt.stale_recordings(self.RECORDS, {"ci:x:baseline": "changed", "ci:x:threshold": "same",
+                                                   "ci:x:recent": "same"},
+                                    lambda name, expr: "same" if name != "ci:x:baseline" else expr)
+        self.assertEqual(stale, {"ci:x:baseline", "ci:x:threshold"})
+
+    def test_a_recording_prometheus_has_not_loaded_is_stale(self):
+        stale = bt.stale_recordings(self.RECORDS, {"ci:x:recent": "same", "ci:x:threshold": "same"},
+                                    lambda name, expr: "same")
+        self.assertEqual(stale, {"ci:x:baseline", "ci:x:threshold"})
+
+    def test_nested_recordings_expand_all_the_way_down(self):
+        out = bt.expand_recordings("ci:x:threshold", self.RECORDS, {"ci:x:baseline", "ci:x:threshold"})
+        self.assertEqual(out, "((quantile_over_time(0.5, x[7d] offset 2d)) * 1.4)")
+
+    def test_an_offset_reads_the_recording_as_it_was_then_through_a_subquery(self):
+        out = bt.expand_recordings("ci:x:recent offset 1d > 3", self.RECORDS, {"ci:x:recent"})
+        self.assertEqual(out, "last_over_time((quantile_over_time(0.5, x[2d]))[5m:5m] offset 1d) > 3")
+
+    def test_a_name_inside_a_longer_name_or_a_string_is_left_alone(self):
+        records = {"ci:x": {"expr": "up", "interval": "1m"}}
+        self.assertEqual(bt.expand_recordings('ci:x:other + ci:xy{a="ci:x"}', records, {"ci:x"}),
+                         'ci:x:other + ci:xy{a="ci:x"}')
+
+    def test_matchers_on_a_changed_recording_are_refused(self):
+        with self.assertRaises(ValueError):
+            bt.expand_recordings('ci:x:recent{window="2d"}', self.RECORDS, {"ci:x:recent"})
+
+    def test_the_tree_s_recordings_load_with_their_group_interval(self):
+        records = bt.load_recordings()
+        self.assertEqual(records["ci:job_seconds:baseline"]["interval"], "5m")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

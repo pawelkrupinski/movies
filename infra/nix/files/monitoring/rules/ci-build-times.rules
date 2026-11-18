@@ -31,9 +31,8 @@
 #
 # THE BASELINE is each series' own: the median of its SUCCESSFUL main runs from 9 to 2 days ago, given at least three.
 # Successful only: a failed or cancelled job stopped early, and its short time would drag the median down. Ending two
-# days back keeps the runs being judged out of the baseline that judges them. A cost that stays -- a slowdown nobody
-# will undo, a deliberate new check -- becomes the baseline once it is half of the week: it is reported for about five
-# days and then learned, by the same median, with nothing to silence. (A fortnight took nine.)
+# days back keeps the runs being judged out of the baseline that judges them. A cost that stays becomes this baseline
+# once it is half of the week; until then the REFERENCE below has already learned it.
 #
 # A REGRESSION is the MEDIAN of the last two days' successful runs over baseline + max(40%, 5 minutes): the ratio
 # because legs vary +-25% run to run (Poland's takes 19-33 around 26), the floor so a 40-second job taking a minute is
@@ -57,6 +56,27 @@
 # weeks', given two (`or ignoring (window)` keeps one tier per series; retention is 90 days). The alert pairs a
 # recent median with the baseline of its own tier, so it carries `window`, and its description reads that tier's
 # words and looks the runs up over its span (9 days at a 5-minute step, 56 days at an hourly one).
+#
+# A SHIFT IS REPORTED FOR A DAY, THEN LEARNED (2026-11-18). A cost that stays -- a slowdown nobody will undo, a
+# deliberate change (runner caches, a test shard split, a cpuset) -- reached the baseline only once it was half of
+# the baseline's window: it was reported for about five days on the two-day tier and weeks on the two-week one, in
+# every daily digest. On 2026-11-17 that was 34 step and 36 job alerts, nearly all for changes made on purpose. So a
+# series is judged against its REFERENCE: the baseline, or, when its recent median was ALREADY over the threshold a
+# day ago, that recent median of a day ago -- the level it moved to. A regression fires on the day it shows (held 6 h
+# past, so it is in one digest) and is quiet the next; a further rise on top of the new level (40% / 5 minutes over
+# it) fires again; once the baseline has caught up, the reference is the baseline again. A known change needs no
+# reset by hand: the day after it shows, it is the level. (A nightly jump whose first median is half old, half new,
+# is reported for two days: the day-old median it learns is the mix.)
+#
+# A SERIES THAT STOPPED IS NOT JUDGED. A label change (`runner`, 2026-11-06; a renamed job or step) ends a series;
+# with no runs in the last two days it falls to the two-week tier, whose window still holds its final runs, judged
+# against the six weeks before: of the 36 regression alerts firing in the day to 2026-11-18, 27 were series with no
+# run in 8 days. The two-week tier needs a run in the last 8 days (a weekly workflow always has one).
+#
+# THE DESCRIPTIONS' RUN LOOKUPS READ ONLY THEIR OWN SERIES' THRESHOLD. They compared each run with every series'
+# threshold (`ci:step_seconds:regression_threshold @ end()`, unfiltered) over a 56-day subquery, once per firing alert
+# per evaluation: on 2026-11-18 the group took 420 s of its 300 s interval, 370 of them CiStepDurationRegressed's
+# thirteen descriptions, so evaluations were skipped and the recordings had gaps. One such lookup took 3.9 s, scoped 0.8.
 groups:
   - name: ci-build-times
     # Every rule reads days of a sparse series; nothing here needs to be fresher than a run is long.
@@ -84,8 +104,16 @@ groups:
             "window", "2d", "", "")
           or
           label_replace(
-            quantile_over_time(0.5, kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d]) and count_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d]) >= 2,
+            quantile_over_time(0.5, kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d]) and count_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d]) >= 2
+            and count_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[8d]) >= 1,
             "window", "14d", "", "")
+      # the reference it is judged by: the baseline, or the level it was already past its threshold at a day ago
+      - record: ci:job_seconds:reference
+        expr: >-
+          (ci:job_seconds:recent_median offset 1d > ci:job_seconds:regression_threshold offset 1d)
+          or ignoring (window) ci:job_seconds:baseline
+      - record: ci:job_seconds:reference_threshold
+        expr: ci:job_seconds:reference + clamp_min(0.4 * ci:job_seconds:reference, 300)
 
       # step: the two-day tier where the week before holds three runs, else the two-week tier (`or ignoring (window)`).
       - record: ci:step_seconds:baseline
@@ -109,8 +137,16 @@ groups:
             "window", "2d", "", "")
           or
           label_replace(
-            quantile_over_time(0.5, kinowo_ci_step_seconds{ref="main"}[14d]) and count_over_time(kinowo_ci_step_seconds{ref="main"}[14d]) >= 2,
+            quantile_over_time(0.5, kinowo_ci_step_seconds{ref="main"}[14d]) and count_over_time(kinowo_ci_step_seconds{ref="main"}[14d]) >= 2
+            and count_over_time(kinowo_ci_step_seconds{ref="main"}[8d]) >= 1,
             "window", "14d", "", "")
+      # the reference it is judged by: the baseline, or the level it was already past its threshold at a day ago
+      - record: ci:step_seconds:reference
+        expr: >-
+          (ci:step_seconds:recent_median offset 1d > ci:step_seconds:regression_threshold offset 1d)
+          or ignoring (window) ci:step_seconds:baseline
+      - record: ci:step_seconds:reference_threshold
+        expr: ci:step_seconds:reference + clamp_min(0.4 * ci:step_seconds:reference, 300)
 
       # run_wall: the two-day tier where the week before holds three runs, else the two-week tier (`or ignoring (window)`).
       - record: ci:run_wall_seconds:baseline
@@ -134,13 +170,21 @@ groups:
             "window", "2d", "", "")
           or
           label_replace(
-            quantile_over_time(0.5, kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d]) and count_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d]) >= 2,
+            quantile_over_time(0.5, kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d]) and count_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d]) >= 2
+            and count_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[8d]) >= 1,
             "window", "14d", "", "")
+      # the reference it is judged by: the baseline, or the level it was already past its threshold at a day ago
+      - record: ci:run_wall_seconds:reference
+        expr: >-
+          (ci:run_wall_seconds:recent_median offset 1d > ci:run_wall_seconds:regression_threshold offset 1d)
+          or ignoring (window) ci:run_wall_seconds:baseline
+      - record: ci:run_wall_seconds:reference_threshold
+        expr: ci:run_wall_seconds:reference + clamp_min(0.4 * ci:run_wall_seconds:reference, 300)
 
       # A WHOLE RUN, first job start to last job end: Main's 28 -> 42 minutes.
       - alert: CiRunWallClockRegressed
         expr: >-
-          ci:run_wall_seconds:recent_median > ci:run_wall_seconds:regression_threshold
+          ci:run_wall_seconds:recent_median > ci:run_wall_seconds:reference_threshold
         # HELD SIX HOURS PAST THE LAST EVALUATION THAT SHOWED IT, so a median hovering at the threshold is one episode.
         keep_firing_for: 6h
         labels:
@@ -150,10 +194,9 @@ groups:
           summary: "{{ $labels.workflow }} on main got slower: a median of {{ $value | humanizeDuration }} end to end"
           description: >-
             {{ $recent := "two days" }}{{ $before := "the week" }}{{ $span := "9d" }}{{ $step := "5m" }}{{ $spanText := "9 days" }}{{ if eq $labels.window "14d" }}{{ $recent = "two weeks" }}{{ $before = "the six weeks" }}{{ $span = "56d" }}{{ $step = "1h" }}{{ $spanText = "56 days" }}{{ end }}The successful main runs of {{ $labels.workflow }} over the last {{ $recent }} took a median of
-            {{ $value | humanizeDuration }} from their first job's start to their last job's end, against a median of
-            {{ with printf `ci:run_wall_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q}` $labels.window $labels.workflow $labels.ref $labels.runner | query }}{{ . | first | value | humanizeDuration }}{{ end }}
-            over {{ $before }} before the last {{ $recent }}.
-            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success"}[%s]) <= ignoring (window) ci:run_wall_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $step $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success"}[%s]) > ignoring (window) ci:run_wall_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $step $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
+            {{ $value | humanizeDuration }} from their first job's start to their last job's end, against
+            {{ $baseline := 0.0 }}{{ with printf `ci:run_wall_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q}` $labels.window $labels.workflow $labels.ref $labels.runner | query }}{{ $baseline = . | first | value }}{{ end }}{{ with printf `ci:run_wall_seconds:reference{window=%q,workflow=%q,ref=%q,runner=%q}` $labels.window $labels.workflow $labels.ref $labels.runner | query }}{{ $reference := . | first | value }}{{ if eq $reference $baseline }}a median of {{ $reference | humanizeDuration }} over {{ $before }} before the last {{ $recent }}{{ else }}{{ $reference | humanizeDuration }}, its median a day before, when it was already past its baseline of {{ $baseline | humanizeDuration }}: only the rise since then is new{{ end }}{{ end }}.
+            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success"}[%s]) <= ignoring (window) ci:run_wall_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success",window=%q} @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $step $labels.workflow $labels.runner $labels.window $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success"}[%s]) > ignoring (window) ci:run_wall_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,measure="wall",conclusion="success",window=%q} @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $step $labels.workflow $labels.runner $labels.window $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
             Jobs regressed in it (their own alerts are inhibited by this one):
             {{ range printf `ALERTS{alertname="CiJobDurationRegressed",alertstate="firing",workflow=%q,runner=%q}` $labels.workflow $labels.runner | query }}{{ .Labels.ci_job }}; {{ else }}none.{{ end }}
             Compare the two runs' jobs on the "CI — build timings" dashboard.
@@ -161,7 +204,7 @@ groups:
       # A JOB: the convergence `takes` rows, a capture leg, a CI shard.
       - alert: CiJobDurationRegressed
         expr: >-
-          ci:job_seconds:recent_median > ci:job_seconds:regression_threshold
+          ci:job_seconds:recent_median > ci:job_seconds:reference_threshold
         # HELD SIX HOURS PAST THE LAST EVALUATION THAT SHOWED IT, so a median hovering at the threshold is one episode.
         keep_firing_for: 6h
         labels:
@@ -171,10 +214,9 @@ groups:
           summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} on main got slower: a median of {{ $value | humanizeDuration }}"
           description: >-
             {{ $recent := "two days" }}{{ $before := "the week" }}{{ $span := "9d" }}{{ $step := "5m" }}{{ $spanText := "9 days" }}{{ if eq $labels.window "14d" }}{{ $recent = "two weeks" }}{{ $before = "the six weeks" }}{{ $span = "56d" }}{{ $step = "1h" }}{{ $spanText = "56 days" }}{{ end }}The successful main runs of {{ $labels.ci_job }} ({{ $labels.workflow }}) over the last {{ $recent }} took a
-            median of {{ $value | humanizeDuration }}, against a median of
-            {{ with printf `ci:job_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job | query }}{{ . | first | value | humanizeDuration }}{{ end }}
-            over {{ $before }} before the last {{ $recent }}.
-            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q}[%s]) <= ignoring (window) ci:job_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $labels.ci_job $step $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q}[%s]) > ignoring (window) ci:job_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $labels.ci_job $step $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
+            median of {{ $value | humanizeDuration }}, against
+            {{ $baseline := 0.0 }}{{ with printf `ci:job_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job | query }}{{ $baseline = . | first | value }}{{ end }}{{ with printf `ci:job_seconds:reference{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job | query }}{{ $reference := . | first | value }}{{ if eq $reference $baseline }}a median of {{ $reference | humanizeDuration }} over {{ $before }} before the last {{ $recent }}{{ else }}{{ $reference | humanizeDuration }}, its median a day before, when it was already past its baseline of {{ $baseline | humanizeDuration }}: only the rise since then is new{{ end }}{{ end }}.
+            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q}[%s]) <= ignoring (window) ci:job_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q,window=%q} @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $labels.ci_job $step $labels.workflow $labels.runner $labels.ci_job $labels.window $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q}[%s]) > ignoring (window) ci:job_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,conclusion="success",ci_job=%q,window=%q} @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $labels.ci_job $step $labels.workflow $labels.runner $labels.ci_job $labels.window $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
             Steps regressed in it (their own alerts are inhibited by this one):
             {{ range printf `ALERTS{alertname="CiStepDurationRegressed",alertstate="firing",workflow=%q,runner=%q,ci_job=%q}` $labels.workflow $labels.runner $labels.ci_job | query }}{{ .Labels.step }}; {{ else }}none.{{ end }}
             Every job of a workflow slowing at once is the runner host, not a commit. A job that times out has no
@@ -184,7 +226,7 @@ groups:
       # upload steps out unless one really grows.
       - alert: CiStepDurationRegressed
         expr: >-
-          ci:step_seconds:recent_median > ci:step_seconds:regression_threshold
+          ci:step_seconds:recent_median > ci:step_seconds:reference_threshold
         # HELD SIX HOURS PAST THE LAST EVALUATION THAT SHOWED IT, so a median hovering at the threshold is one episode.
         keep_firing_for: 6h
         labels:
@@ -194,10 +236,9 @@ groups:
           summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} step `{{ $labels.step }}` on main got slower: a median of {{ $value | humanizeDuration }}"
           description: >-
             {{ $recent := "two days" }}{{ $before := "the week" }}{{ $span := "9d" }}{{ $step := "5m" }}{{ $spanText := "9 days" }}{{ if eq $labels.window "14d" }}{{ $recent = "two weeks" }}{{ $before = "the six weeks" }}{{ $span = "56d" }}{{ $step = "1h" }}{{ $spanText = "56 days" }}{{ end }}The main runs of the step `{{ $labels.step }}` in {{ $labels.ci_job }} ({{ $labels.workflow }}) over the last
-            {{ $recent }} took a median of {{ $value | humanizeDuration }}, against a median of
-            {{ with printf `ci:step_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q,step=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job $labels.step | query }}{{ . | first | value | humanizeDuration }}{{ end }}
-            over {{ $before }} before the last {{ $recent }}.
-            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q}[%s]) <= ignoring (window) ci:step_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $labels.ci_job $labels.step $step $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q}[%s]) > ignoring (window) ci:step_seconds:regression_threshold @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $labels.ci_job $labels.step $step $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
+            {{ $recent }} took a median of {{ $value | humanizeDuration }}, against
+            {{ $baseline := 0.0 }}{{ with printf `ci:step_seconds:baseline{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q,step=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job $labels.step | query }}{{ $baseline = . | first | value }}{{ end }}{{ with printf `ci:step_seconds:reference{window=%q,workflow=%q,ref=%q,runner=%q,ci_job=%q,step=%q}` $labels.window $labels.workflow $labels.ref $labels.runner $labels.ci_job $labels.step | query }}{{ $reference := . | first | value }}{{ if eq $reference $baseline }}a median of {{ $reference | humanizeDuration }} over {{ $before }} before the last {{ $recent }}{{ else }}{{ $reference | humanizeDuration }}, its median a day before, when it was already past its baseline of {{ $baseline | humanizeDuration }}: only the rise since then is new{{ end }}{{ end }}.
+            {{ with printf `max_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q}[%s]) <= ignoring (window) ci:step_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q,window=%q} @ end()))[%s:%s])` $labels.workflow $step $labels.workflow $labels.runner $labels.ci_job $labels.step $step $labels.workflow $labels.runner $labels.ci_job $labels.step $labels.window $span $step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((max without (runner) (last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[%s])) > %f and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q}[%s]) > ignoring (window) ci:step_seconds:reference_threshold{workflow=%q,ref="main",runner=%q,ci_job=%q,step=%q,window=%q} @ end()))[%s:%s])` $labels.workflow $step $good $labels.workflow $labels.runner $labels.ci_job $labels.step $step $labels.workflow $labels.runner $labels.ci_job $labels.step $labels.window $span $step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in {{ $spanText }} was at baseline.{{ end }}
 
       # WITHIN 80% OF ITS CEILING, whatever the job's conclusion: a job that hit its `timeout-minutes` is cancelled or
       # failed, and that is the run this has to see -- before it, ideally, as US takes at 46.5 of 55 would have been.

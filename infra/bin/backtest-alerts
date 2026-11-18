@@ -21,6 +21,10 @@ grafana/alerting/alert-rules.yaml, translated to the Prometheus alert it is equi
   3. reports the fraction of the window the ALERT (any series) was firing, the number of distinct
      episodes, and the peak number of firing series.
 
+An alert over a RECORDING rule would read what Prometheus recorded from the DEPLOYED recording, so a
+recording changed in this tree (or new, or reading one that is) is inlined as written: `name`
+becomes its expression, `name offset D` a one-point subquery D ago (expand_recordings).
+
 It fails (exit 1) when
 
   * NOISY -- an alert fires more than `max_firing_fraction` of the window or more than
@@ -257,6 +261,84 @@ def load_rules(pattern=RULES_GLOB, grafana=GRAFANA_RULES):
     return alerts
 
 
+def load_recordings(pattern=RULES_GLOB):
+    """{record name: {expr, interval}} for every recording rule in the tree, with its group's interval.
+
+    A name recorded by more than one rule is left out: which of them an expression means is not
+    something to guess, so such a name is always read as Prometheus recorded it."""
+    records, seen = {}, set()
+    for path in sorted(glob.glob(pattern)):
+        with open(path, encoding="utf-8") as handle:
+            document = yaml.safe_load(handle) or {}
+        for group in document.get("groups") or []:
+            for rule in group.get("rules") or []:
+                if "record" in rule:
+                    name = rule["record"]
+                    if name in seen:
+                        records.pop(name, None)
+                        continue
+                    seen.add(name)
+                    records[name] = {"expr": str(rule["expr"]).strip(),
+                                     "interval": group.get("interval") or "1m"}
+    return records
+
+
+def _record_reference(name):
+    # The name as a whole identifier (recording names carry colons), outside a quoted string, with
+    # an optional matcher block and `offset`.
+    return re.compile(r'(?<![\w:"])' + re.escape(name) + r'(?![\w:])(\s*\{[^}]*\})?(\s+offset\s+([0-9a-z]+))?')
+
+
+def _outside_strings(expr, start):
+    return expr[:start].count('"') % 2 == 0
+
+
+def stale_recordings(records, loaded, normalise):
+    """The recordings whose recorded series do NOT say what the tree's rule says: changed since
+    Prometheus loaded it (compared through `normalise(name, expr)`, Prometheus's own formatter), not
+    loaded at all, or reading -- however deeply -- one that is."""
+    stale = {name for name, rule in records.items()
+             if name not in loaded or normalise(name, rule["expr"]) != normalise(name, loaded[name])}
+    grew = True
+    while grew:
+        grew = False
+        for name, rule in records.items():
+            if name not in stale and any(_record_reference(dep).search(rule["expr"]) for dep in stale):
+                stale.add(name)
+                grew = True
+    return stale
+
+
+def expand_recordings(expr, records, stale):
+    """`expr` with every stale recording replaced by its tree expression, so a backtest evaluates
+    the rules AS WRITTEN rather than what Prometheus recorded from the deployed ones.
+
+    `name` becomes `(expr)`; `name offset D` -- the recording as it was D ago -- becomes
+    `last_over_time((expr)[I:I] offset D)` at the recording's own interval I, the one point it
+    would have been recorded at. A matcher block on a stale recording cannot be applied to an
+    expression and is refused."""
+    for _ in range(10):
+        before = expr
+        for name in stale:
+            pattern = _record_reference(name)
+            rule = records[name]
+
+            def substitute(match):
+                if not _outside_strings(match.string, match.start()):
+                    return match.group(0)
+                if match.group(1):
+                    raise ValueError("cannot inline %s: it is read with matchers %s"
+                                     % (name, match.group(1).strip()))
+                if match.group(2):
+                    return "last_over_time((%s)[%s:%s] offset %s)" % (
+                        rule["expr"], rule["interval"], rule["interval"], match.group(3))
+                return "(%s)" % rule["expr"]
+            expr = pattern.sub(substitute, expr)
+        if expr == before:
+            return expr
+    raise ValueError("recording rules nest more than ten deep, or cyclically")
+
+
 def grafana_as_prometheus(rule, file):
     nodes = {node["refId"]: node["model"] for node in rule["data"]}
     condition = nodes[rule["condition"]]
@@ -339,6 +421,13 @@ class Prometheus(object):
     def loaded_alerts(self):
         data = self.get("/api/v1/rules", {"type": "alert"})
         return {r["name"] for g in data["groups"] for r in g["rules"]}
+
+    def loaded_recordings(self):
+        data = self.get("/api/v1/rules", {"type": "record"})
+        return {r["name"]: r["query"] for g in data["groups"] for r in g["rules"]}
+
+    def format_query(self, expr):
+        return self.get("/api/v1/format_query", {"query": expr})
 
     def lowest_timestamp(self):
         data = self.get("/api/v1/query", {"query": "min(prometheus_tsdb_lowest_timestamp_seconds)"})
@@ -455,6 +544,25 @@ def main(argv=None):
         return 2
 
     alerts = load_rules()
+    # A recording changed in this tree is evaluated as written, not read from what Prometheus
+    # recorded from the deployed rule (an alert over `ci:*:reference_threshold` would otherwise
+    # be backtested against the old one, or against nothing).
+    records = load_recordings()
+    formatted = {}
+
+    def normalise(name, expr):
+        if expr not in formatted:
+            try:
+                formatted[expr] = prom.format_query(expr)
+            except RuntimeError:
+                formatted[expr] = expr
+        return formatted[expr]
+    stale = stale_recordings(records, prom.loaded_recordings(), normalise)
+    if stale:
+        print("recordings changed in this tree, evaluated as written: %s" % ", ".join(sorted(stale)))
+    for name, rule in alerts.items():
+        if not rule.get("grafana"):
+            rule["expr"] = expand_recordings(rule["expr"], records, stale)
     allowlist = load_yaml(ALLOWLIST, {})
     defaults = allowlist.get("defaults") or {}
     allowed = allowlist.get("allow") or {}
