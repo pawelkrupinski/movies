@@ -90,7 +90,6 @@ fanout	controllers.MovieControllerService	15
 fanout	controllers.ReviewController	28
 fanout	controllers.ShowingsMarkup	12
 fanout	controllers.SsoController	11
-fanout	controllers.StructuredData	11
 fanout	controllers.TuneSamples	15
 fanout	controllers.UptimeController	12
 fanout	models.City	18

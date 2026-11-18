@@ -155,7 +155,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   private val canonical = "https://kinowo.net/poznan/movie/diuna"
 
   "film JSON-LD" should "emit a Movie with the core fields" in {
-    val arr   = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)))))
+    val arr   = parseArray(FilmStructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)))))
     val movie = byType(arr, "Movie").head
     (movie \ "name").as[String]        shouldBe "Diuna"
     (movie \ "url").as[String]         shouldBe canonical
@@ -174,14 +174,14 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   // even when all four sources have scored the film.
   it should "never claim an aggregateRating, however many sources have a score" in {
     val scored = ratings(imdb = Some(8.5), filmweb = Some(7.3), metascore = Some(82), rt = Some(91))
-    val json   = StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = scored))
+    val json   = FilmStructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = scored))
     val movie  = byType(parseArray(json), "Movie").head
     (movie \ "aggregateRating").asOpt[JsObject] shouldBe None
     json should not include "AggregateRating"
   }
 
   it should "emit one ScreeningEvent per showtime with a zoned startDate and theater location" in {
-    val arr = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq(
+    val arr = parseArray(FilmStructuredData.film(canonical, Poznan, film("Diuna", Seq(
       (Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), Some("https://book.example/1")),
       (Multikino, LocalDateTime.of(2026, 5, 17, 20, 30), None),
     ))))
@@ -197,7 +197,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "point a ScreeningEvent whose booking URL is not http(s) at the film page instead" in {
-    val arr = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq(
+    val arr = parseArray(FilmStructuredData.film(canonical, Poznan, film("Diuna", Seq(
       (Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), Some("javascript:alert(1)")),
       (Multikino, LocalDateTime.of(2026, 5, 17, 20, 30), Some("intent://book#Intent;end")),
     ))))
@@ -205,12 +205,12 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry a Home › City › Film breadcrumb" in {
-    val crumb = byType(parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))), "BreadcrumbList").head
+    val crumb = byType(parseArray(FilmStructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))), "BreadcrumbList").head
     (crumb \ "itemListElement").as[JsArray].value.map(i => (i \ "name").as[String]) shouldBe Seq("Kinowo", "Poznań", "Diuna")
   }
 
   it should "escape angle brackets so an embedded </script> can't break out" in {
-    val raw = StructuredData.film(canonical, Poznan, film("Diuna",
+    val raw = FilmStructuredData.film(canonical, Poznan, film("Diuna",
       Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)),
       synopsis = Some("Atak </script><img> w opisie.")))
     raw                 should include("\\u003c/script")

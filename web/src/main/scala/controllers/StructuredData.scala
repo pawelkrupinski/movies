@@ -1,9 +1,7 @@
 package controllers
 
 import models.City
-import play.api.libs.json.{JsArray, JsValue, Json}
-
-import java.time.format.DateTimeFormatter
+import play.api.libs.json.{JsValue, Json}
 
 /** Builds the schema.org JSON-LD emitted in a `<script type="application/ld+json">`
  *  block (see `views.html._jsonLd`) on each public page. Pure (no I/O) so it
@@ -13,7 +11,8 @@ import java.time.format.DateTimeFormatter
  *  Three page shapes:
  *    - landing  → WebSite + Organization
  *    - city     → BreadcrumbList + ItemList of the films on show
- *    - film     → Movie + BreadcrumbList + one ScreeningEvent per showtime
+ *    - film     → Movie + BreadcrumbList + one ScreeningEvent per showtime ([[FilmStructuredData]],
+ *                 the events [[ScreeningEvents]]), on the shared pieces below
  *
  *  No `aggregateRating`: every score we show is somebody else's (IMDb, Filmweb,
  *  Metacritic, Rotten Tomatoes), and Google's review-snippet guidelines say
@@ -25,7 +24,7 @@ import java.time.format.DateTimeFormatter
  */
 object StructuredData {
 
-  private val Ctx = "https://schema.org"
+  private[controllers] val Ctx = "https://schema.org"
 
   /** `scheme://host` from a full page URL, falling back to `city`'s own country
    *  host when the caller has no request context (fixture/snapshot renders pass
@@ -136,57 +135,9 @@ object StructuredData {
     )
   }
 
-  /** A film detail page: the Movie itself + a breadcrumb + a ScreeningEvent per
-   *  showtime (which makes the screenings eligible for Google's event surfaces). */
-  def film(canonicalUrl: String, city: City, fs: FilmSchedule): String = {
-    val origin  = originOf(canonicalUrl, city)
-    val cityUrl = s"$origin/${city.slug}/"
-    val m       = fs.movie
-
-    // Merging an empty object adds no fields, so the optional pieces below drop
-    // out cleanly when their data is absent.
-    val movie = Json.obj("@context" -> Ctx, "@type" -> "Movie", "name" -> m.title, "url" -> canonicalUrl)
-      .++(optStr("description", fs.synopsis))
-      .++(optStr("image", fs.posterHref.map(_.url)))
-      .++(seqObj("genre", m.genres))
-      .++(seqPersons("director", fs.director))
-      .++(seqPersons("actor", fs.cast.take(15)))
-      .++(m.releaseYear.fold(Json.obj())(y => Json.obj("dateCreated" -> y.toString)))
-      .++(m.runtimeMinutes.fold(Json.obj())(min => Json.obj("duration" -> s"PT${min}M")))
-
-    val events = fs.showings.flatMap { case (_, perCinema) =>
-      perCinema.flatMap { cs =>
-        cs.showtimes.map { st =>
-          val start = st.dateTime.atZone(city.zoneId).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-          Json.obj(
-            "@context" -> Ctx, "@type" -> "ScreeningEvent",
-            "name" -> m.title,
-            "startDate" -> start,
-            "url" -> st.bookingUrl.flatMap(WebHref.of).fold(canonicalUrl)(_.url),
-            "location" -> Json.obj(
-              "@type" -> "MovieTheater", "name" -> cs.cinema.displayName,
-              "address" -> Json.obj(
-                "@type" -> "PostalAddress",
-                "addressLocality" -> city.labels.nominative,
-                "addressCountry" -> city.country.language.getCountry,
-              ),
-            ),
-            "workPresented" -> Json.obj("@type" -> "Movie", "name" -> m.title),
-          )
-        }
-      }
-    }
-
-    val crumb = breadcrumb(Seq(
-      city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl, m.title -> canonicalUrl,
-    ))
-
-    render(JsArray(movie +: crumb +: events))
-  }
-
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  private def breadcrumb(crumbs: Seq[(String, String)]): JsValue =
+  private[controllers] def breadcrumb(crumbs: Seq[(String, String)]): JsValue =
     Json.obj(
       "@context" -> Ctx, "@type" -> "BreadcrumbList",
       "itemListElement" -> crumbs.zipWithIndex.map { case ((name, url), i) =>
@@ -194,17 +145,7 @@ object StructuredData {
       },
     )
 
-  private def optStr(key: String, v: Option[String]) =
-    v.filter(_.nonEmpty).fold(Json.obj())(s => Json.obj(key -> s))
-
-  private def seqObj(key: String, vs: Seq[String]) =
-    if (vs.isEmpty) Json.obj() else Json.obj(key -> vs)
-
-  private def seqPersons(key: String, names: Seq[String]) =
-    if (names.isEmpty) Json.obj()
-    else Json.obj(key -> names.map(n => Json.obj("@type" -> "Person", "name" -> n)))
-
   /** Compact JSON, safe inside the `<script type="application/ld+json">` block — a
    *  `</script>` in a synopsis or title cannot close it (see [[ScriptJson]]). */
-  private def render(v: JsValue): String = ScriptJson.stringify(v)
+  private[controllers] def render(v: JsValue): String = ScriptJson.stringify(v)
 }
