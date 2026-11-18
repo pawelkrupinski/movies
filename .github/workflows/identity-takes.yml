@@ -258,12 +258,13 @@ jobs:
                   INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
                   INPUT_DRIFT_EXPLORE: ${{ inputs.drift-explore }}
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
-            # Off main, the measure lane every leg queues in: the dispatch's `lane` where this runner's scheduler serves it.
+            # Off main, the measure lane every leg queues in: the dispatch's `lane` where this runner's scheduler serves it;
+            # the drift explorer's call (`measurement-lane`), the explorer lane, below every optional measurement.
             - name: Which measure lane do the legs queue in?
               id: lane
-              if: ${{ github.ref != 'refs/heads/main' }}
+              if: ${{ github.ref != 'refs/heads/main' || inputs.measurement-lane }}
               env:
-                  INPUT_LANE: ${{ inputs.lane }}
+                  INPUT_LANE: ${{ inputs.measurement-lane && 'explore' || inputs.lane }}
               run: scripts/ci/measure-lane.sh "$INPUT_LANE" >> "$GITHUB_OUTPUT"
             # THE A/A ROWS (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
             # only when the range since the previous run of this workflow on main that ran (else the parent) changed a harness

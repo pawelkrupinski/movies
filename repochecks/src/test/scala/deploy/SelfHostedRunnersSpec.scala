@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   private val SelfHosted = Map("MOVIES_CI_RUNNERS" -> "self-hosted")
-  private val Ours       = Set("movies-check", "movies-check-red-fix", "movies-measure", "movies")
+  private val Ours       = Set("movies-check", "movies-check-red-fix", "movies-measure", "movies-explore", "movies")
   private val Hosted     = Set("ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04", "ubuntu-latest", "macos-latest")
   private val RunsOn     = """(?m)^\s+runs-on:\s*(\$\{\{.*}}|\S+)""".r
 
@@ -197,6 +197,22 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     all(called.values) should (be("movies") or be("movies-measure"))
     called("drift / leg / convergence") shouldBe "movies-measure"
     withClue("ci-runner switched off: ")(all(labels("identity-drift-explorer.yml", ctx(RunnerLabel.Main, Map.empty)).values.map(Hosted)) shouldBe true)
+  }
+
+  /** THE EXPLORER LANE (the owner, 2026-11-18, "7"): the nightly explorers' rows queue below every optional measurement,
+   *  and none starts while a landing check waits for a runner (runner_scheduler.py EXPLORE_LANE) -- on 2026-11-17
+   *  21:15-21:40Z the drift explorer's rows refilled the measure CPUs and a landing check could not borrow them. Each
+   *  asks for the lane its plan's measure-lane.sh names: movies-explore where ci-runner's scheduler serves it. */
+  "the explorers' rows" should "queue in the explorer lane where ci-runner's scheduler serves it, movies-measure otherwise" in {
+    val main  = ctx(RunnerLabel.Main)
+    val drift = labels("identity-drift-explorer.yml", main.copy(steps = Map("lane.label" -> "movies-explore")))
+    drift("drift / leg / convergence") shouldBe "movies-explore"
+    yml("identity-takes.yml") should include("INPUT_LANE: ${{ inputs.measurement-lane && 'explore' || inputs.lane }}")
+    val walk = labels("identity-family-explorer.yml", main.copy(outputs = Map("plan.runner" -> "movies-explore")))
+    walk("walk") shouldBe "movies-explore"
+    labels("identity-family-explorer.yml", main)("walk") shouldBe "movies-measure"
+    RepoFile.jobs(yml("identity-family-explorer.yml"))("plan") should include("scripts/ci/measure-lane.sh explore")
+    RepoFile.read("scripts/ci/runner_scheduler.py") should include("""EXPLORE_LANE = MEASURE_LANES[-1]""")
   }
 
   "the timings report" should "run where its caller does: hosted for THE GATE's workflows on main, ci-runner otherwise" in {

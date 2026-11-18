@@ -88,11 +88,24 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
   * THE MEASURE LANES (2026-11-16: Main red, and its fix's pre-push drift check -- Identity takes 43816825023, ten rows
     on movies-measure -- ran 1-3 rows at a time for 80+ min while 14-27 optional measurement jobs shared the label;
     GitHub hands a runner to any job its labels match). A measurement runner registers ONE lane's label
-    (MEASURE_LANES): movies-red-fix, movies-landing, movies-measure. Each free measure start goes to the highest lane
-    with a job no runner of that lane waits for, so a landing check's rows take the next measure slot ahead of every
+    (MEASURE_LANES): movies-red-fix, movies-landing, movies-measure, movies-explore (below). Each free measure start
+    goes to the highest lane with a job no runner of that lane waits for, so a landing check's rows take the next measure slot ahead of every
     optional measurement, a gate-red fix's ahead of those. In everything else a lane is a measurement: size, slice,
     admission, caps. Light runners also register LANES_MARKER, which says to a plan job (scripts/ci/measure-lane.sh)
     that this scheduler serves the lanes.
+  * THE EXPLORER LANE (the owner, 2026-11-18, "7"): the nightly drift and family explorers' rows ask for movies-explore,
+    a fourth measure lane below movies-measure, and none of it starts while a landing check waits for a runner; an idle
+    explorer runner then goes. On 2026-11-17 21:15-21:40Z the drift explorer's rows refilled the measure CPUs each
+    time one ended, and a landing check could not borrow them ("held by cpu", borrowed []). A running row is never
+    stopped: the rows yield the measure CPUs as they end. measure-lane.sh asks for the lane only where a light runner
+    says this scheduler serves it (EXPLORE_MARKER).
+  * THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): a check job queued ~30 s with nothing ahead of it -- up to a tick
+    before this saw it, ~7 s to start and register its ephemeral runner. A runner registered ahead with a lane's label
+    alone takes no check job (each asks for its run's pin, OLDEST FIRST), so while a precommit-check run's plan runs,
+    ONE check runner is registered with the lane and pin its later checks (identity's shards, the old refs) ask for,
+    admitted as a check is, after every queued one; with nothing of its run queued or to come it goes after
+    warm_grace_seconds, its cores back to measurements. And while a check is queued or to come, a tick every
+    busy_tick_seconds, not tick_seconds.
   * THE CHECK LANES (2026-11-17: a red fix still checking 41 min after it was queued, its jobs queued for
     `movies-check` runners with every other landing's): the same for the check class, CHECK_LANES
     movies-check-red-fix then movies-check; a red fix's precommit-check jobs ask for the first.
@@ -143,10 +156,20 @@ LABELS = {"check": "movies-check", "measure": "movies-measure", "light": "movies
 # only that lane's job, and a free measure start goes to the highest lane with a job no runner waits for. Every lane is a
 # measurement in all else: its size, its slice, its admission. A red-fix's and a landing check's heavy rows ask for theirs
 # (scripts/ci/measure-lane.sh), so they never queue behind optional measurements for a runner GitHub hands to any of them.
-MEASURE_LANES = ("movies-red-fix", "movies-landing", LABELS["measure"])
+#
+# THE EXPLORER LANE (the owner, 2026-11-18, "7"): the nightly drift and family explorers' rows ask for the LAST lane,
+# movies-explore, below every optional measurement -- and none of it starts while a landing check waits for a runner
+# (decide: their rows yield the measure CPUs as they end, so a check can borrow them). On 2026-11-17 21:15-21:40Z the
+# drift explorer's rows refilled the measure slot each time one ended, and precommit-check run 44177877990's jobs waited
+# with borrowed [] (ExplorerLaneTest).
+MEASURE_LANES = ("movies-red-fix", "movies-landing", LABELS["measure"], "movies-explore")
+EXPLORE_LANE = MEASURE_LANES[-1]
 # The extra label a light runner of a scheduler serving the lanes registers: a workflow's plan job, on a light runner,
 # asks for a lane only where its own RUNNER_LABELS name this (a lane no scheduler serves would wait forever).
 LANES_MARKER = "movies-lanes"
+# ...and the one that says it serves the explorer lane too (measure-lane.sh `explore`): a light runner of an older
+# scheduler lacks it, and an explorer's rows then ask for movies-measure, which that scheduler serves
+EXPLORE_MARKER = "movies-lanes-explore"
 # THE CHECK LANES (2026-11-17: red fix 20261117-110122-...-2ed6cd, Fixes-Red 2564, was still checking 41 min after it
 # was queued: agentctl puts a red fix first in its own queue, but its precommit-check jobs then waited ~9.5 min a job
 # for a `movies-check` runner like every other landing's). The same as the measure lanes, for the check class: a check
@@ -158,8 +181,13 @@ LANES = {"check": CHECK_LANES, "measure": MEASURE_LANES}
 # that run's jobs -- the run of the oldest queued job no runner waits for (uncovered). Never a class's or a lane's.
 PIN_PREFIX = "movies-run-"
 # The measure lanes on a landing's path (a gate-red fix's rows, a landing check's): served ahead of a borrowed check.
-# The last lane's optional measurements are not (the owner, 2026-11-17, "A3"): a landing check borrows ahead of them.
-LANDING_MEASURE_LANES = MEASURE_LANES[:-1]
+# The optional ones are not (the owner, 2026-11-17, "A3"): a landing check borrows ahead of them, and of the explorers'.
+LANDING_MEASURE_LANES = MEASURE_LANES[:2]
+OPTIONAL_MEASURE_LANES = (LABELS["measure"],)
+# THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): the job whose run's later check jobs are known before they queue --
+# precommit-check's plan, which the identity shards and the old refs `need` (decide's warm_check)
+WARM_WORKFLOW = "Pre-commit check"
+WARM_PLAN_JOB = "plan"
 CLASS_OF = {label: cls for cls, label in LABELS.items()} | {lane: cls for cls, order in LANES.items() for lane in order}
 # The limits that hold a measurement, in whole jobs (Decision.limits; the other entries there only explain them).
 ADMISSION_LIMITS = ("memory", "slice", "caps", "cpu", "slots", "peak")
@@ -225,6 +253,13 @@ class Config:
     # holds it (Scala Steward #145, 2026-11-08: an hour queued on movies-measure, its stuck red naming no cause)
     starve_report_seconds: int = 900
     tick_seconds: int = 30
+    # while a check is queued or to come (a precommit-check plan running): a tick this often, so a check job waits less
+    # for the scheduler to see it (half a tick on average); the other ticks list only ETag-cached pages (free)
+    busy_tick_seconds: int = 15
+    # THE WARM CHECK RUNNER: at most this many check runners registered ahead for a run's checks to come, and a pinned
+    # check runner with nothing of its run queued or to come goes after this long idle (not idle_stop_seconds)
+    warm_max_checks: int = 1
+    warm_grace_seconds: int = 60
     state_dir: str = "/run/movies-runner"
     unit: str = "movies-runner"
     token_helper: str = ""
@@ -318,6 +353,7 @@ class Decision:
     borrowed: tuple = ()  # the slots of `starts` that are checks started in the measure slice (borrow_check)
     labels: tuple = ()  # ((slot, label), ...): the lane each measurement start registers (MEASURE_LANES)
     pins: tuple = ()  # ((slot, pin), ...): the run's pin each lane start registers beside it ("": none; OLDEST FIRST)
+    warm: tuple = ()  # the slots of `starts` that are check runners registered ahead for a run's checks to come
 
 
 # ── the decision, pure ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -455,12 +491,13 @@ def queued_for(inst: Instance, demand: dict, queue: list) -> int:
 
 
 def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings,
-                  queue: list) -> list:
+                  queue: list, anticipated: list) -> list:
     """Bitcashier saturated: the idle heavy runners (a light lane runner is too small to hold bitcashier back). Past
     max_slots, or memory short of what our settling runners still owe: idle ones, lowest class first. An idle borrowed
     check while a queued landing-path measurement has no runner of its lane waiting (it holds that one's slot, cap and
     cores). And an idle runner whose
-    class has nothing queued for longer than idle_stop_seconds."""
+    class has nothing queued (or, a check's, to come: anticipated) for longer than idle_stop_seconds -- a pinned check
+    runner's run for longer than warm_grace_seconds (THE WARM CHECK RUNNER: its cores go back to measurements)."""
     rank = {c: i for i, c in enumerate(CLASSES)}
     idle = [i for i in instances if not i.busy]
     stops = [i.slot for i in idle if i.cls != "light"] if saturated(cfg, bc) else []
@@ -478,16 +515,20 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
     waiting_for = [q for q in uncovered(queue, [(i.lane, i.pin) for i in idle if i.cls == "measure" and i.slot not in stops])
                    if q.lane in LANDING_MEASURE_LANES]
     stops += [i.slot for i in idle if i.slot not in stops and i.borrowed and waiting_for]
-    return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, queue) == 0
-                    and now - i.idle_since >= cfg.idle_stop_seconds]
+    wanted = queue + list(anticipated)
+    return stops + [i.slot for i in idle if i.slot not in stops and queued_for(i, demand, wanted) == 0
+                    and now - i.idle_since >= (cfg.warm_grace_seconds if i.cls == "check" and i.pin
+                                               else cfg.idle_stop_seconds)]
 
 
 def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings,
-           lanes: dict | None = None, queue: list | None = None) -> Decision:
+           lanes: dict | None = None, queue: list | None = None, anticipated: list | None = None) -> Decision:
     """The runners to start ((slot, class), highest class first, then the light lane) and the idle ones to stop, for
     `demand` (queued jobs per class), the laned classes' queued jobs (`queue`, queue_of; or only their counts per lane,
-    `lanes`, none pinned; neither given: all in the classes' plain labels' lanes), the `instances` that exist and the
-    host's live readings `r`."""
+    `lanes`, none pinned; neither given: all in the classes' plain labels' lanes), the check jobs to come
+    (`anticipated`, anticipated_of: THE WARM CHECK RUNNER), the `instances` that exist and the host's live readings
+    `r`."""
+    anticipated = sorted(anticipated or [], key=lambda q: q.created)
     if queue is None:
         lanes = dict(lanes or {})
         queue = [Queued(lane) for lane, n in lanes.items() for _ in range(n)]
@@ -496,7 +537,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         if not any(lane in (lanes or {}) for lane in order) and not any(q.lane in order for q in queue):
             queue += [Queued(LABELS[cls])] * demand.get(cls, 0)
     full = saturated(cfg, bc)
-    stops = _idle_to_stop(cfg, bc, demand, instances, now, r, queue)
+    stops = _idle_to_stop(cfg, bc, demand, instances, now, r, queue, anticipated)
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
     pending = [i for i in alive if settling(cfg, i, now)]
@@ -577,13 +618,16 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         return max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy)
                    - sum(1 for _, c in starts if c == cls))
 
-    def take(slot: int, cls: str, home: str) -> None:
+    def take(slot: int, cls: str, home: str, among: tuple | None = None, job: Queued | None = None) -> None:
         """Start `cls` in `home`'s slice: charge its memory, its slice and caps, and its cores on every class sharing
-        that slice's CPUs. A check or a measurement registers its class's highest lane still unserved."""
+        that slice's CPUs. A check or a measurement registers its class's highest lane still unserved (`among`: of
+        those lanes), or `job`'s lane and pin (a warm check runner's)."""
         nonlocal memory
         size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
-        if cls in LANES:  # the highest lane unserved, pinned to its oldest unserved job's run (OLDEST FIRST)
-            label = next(label for label in LANES[cls] if lane_unserved(label))
+        if job is not None:
+            labels[slot], pins[slot] = job.lane, job.pin
+        elif cls in LANES:  # the highest lane unserved, pinned to its oldest unserved job's run (OLDEST FIRST)
+            label = next(label for label in (among or LANES[cls]) if lane_unserved(label))
             pins[slot] = unserved_jobs(label)[0].pin
             labels[slot] = label
         starts.append((slot, cls))
@@ -595,10 +639,9 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             if share_cpus(r, other, home):
                 cpu[other] -= cores
 
-    def admit(cls: str, slots: list, among: tuple | None = None, keep_measurements: int = 0) -> None:
-        """Start runners for `cls`'s unserved jobs (`among`: of those lanes alone) while everything holds one, past
-        what is kept: the check lane from a measurement, and `keep_measurements` measurements' room."""
-        need = unserved(cls, among)
+    def room_for(cls: str, slots: list, keep_measurements: int = 0) -> bool:
+        """Whether everything holds one more `cls` job past what is kept: the check lane from a measurement, and
+        `keep_measurements` measurements' room."""
         size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
         # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
         keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
@@ -607,16 +650,20 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         keep_gib += keep_measurements * cfg.job_expected_gib["measure"]
         keep_cpus += keep_measurements * cfg.job_cpus["measure"]
         keep_held = keep_measurements * cfg.job_expected_gib["measure"]
-        def cpu_holds() -> bool:
-            """The CPUs hold the job -- or it is a check inside the lane, which the CPU never holds: a lane check waits
-            for nothing (2026-11-08 18:55-18:57Z: lane checks queued 57 min "held by cpu" on 5-8 of 12 busy cores; a
-            busy core slows it, under its slice's weight, but never queues it)."""
-            return cpu[cls] - keep_cpus >= cores or (cls == "check" and lane()[0] > 0)
+        # the CPUs hold the job -- or it is a check inside the lane, which the CPU never holds: a lane check waits for
+        # nothing (2026-11-08 18:55-18:57Z: lane checks queued 57 min "held by cpu" on 5-8 of 12 busy cores; a busy
+        # core slows it, under its slice's weight, but never queues it)
+        cpu_holds = cpu[cls] - keep_cpus >= cores or (cls == "check" and lane()[0] > 0)
+        return (len(slots) > keep_slots and memory - keep_gib >= size and cpu_holds
+                and (cls != "check" or peak_room() is None or peak_room() > 0)
+                and (held[cls] is None or held[cls] - keep_held >= size) and caps.get(cls, 1) - keep_measurements >= 1)
 
-        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu_holds()
-               and (cls != "check" or peak_room() is None or peak_room() > 0)
-               and (held[cls] is None or held[cls] - keep_held >= size) and caps.get(cls, 1) - keep_measurements >= 1):
-            take(slots.pop(0), cls, cls)
+    def admit(cls: str, slots: list, among: tuple | None = None, keep_measurements: int = 0) -> None:
+        """Start runners for `cls`'s unserved jobs (`among`: of those lanes alone) while everything holds one
+        (room_for)."""
+        need = unserved(cls, among)
+        while need and room_for(cls, slots, keep_measurements):
+            take(slots.pop(0), cls, cls, among)
             need -= 1
 
     def borrow_check(slots: list) -> None:
@@ -658,18 +705,48 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             borrowed.append(slot)
             need -= 1
 
+    def warm_check(slots: list) -> None:
+        """THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): a check job waited ~30 s with nothing ahead of it -- up
+        to a tick before this saw it, then ~7 s to start its container and register. A runner registered ahead with a
+        lane's label alone takes no check job (each asks for its run's pin too: OLDEST FIRST), but a run's checks that
+        need its plan have a known lane and pin while the plan runs (`anticipated`): up to warm_max_checks runners are
+        registered for them, the oldest run first, once every queued check has its runner and as a check is admitted.
+        One idle with nothing of its run queued or to come goes after warm_grace_seconds (_idle_to_stop)."""
+        checks = [q for q in queue if q.lane in CHECK_LANES]
+        waiting = ([(i.lane, i.pin) for i in alive if i.cls == "check" and not i.busy]
+                   + [(labels[slot], pins[slot]) for slot, cls in starts if cls == "check"])
+        coming = {id(q) for q in anticipated}
+        left = [q for q in uncovered(checks + anticipated, waiting) if id(q) in coming]
+        if any(id(q) not in coming for q in uncovered(checks, waiting)):
+            return  # a queued check still without a runner: no room for one to come
+        warm_now = len(anticipated) - len(left)
+        while left and warm_now < cfg.warm_max_checks and room_for("check", slots):
+            slot = slots.pop(0)
+            take(slot, "check", "check", job=left.pop(0))
+            warm.append(slot)
+            warm_now += 1
+
+    warm = []
     if not full:
         admit("check", heavy_slots)
         admit("measure", heavy_slots, LANDING_MEASURE_LANES)
         borrow_check(heavy_slots)
+        warm_check(heavy_slots)
         # optional measurements after the borrows, leaving the kept measurements' room while a borrowed check runs
         any_borrowed = borrowed or any(i.borrowed for i in alive)
-        admit("measure", heavy_slots, keep_measurements=cfg.measure_reserve_jobs if any_borrowed else 0)
+        keep = cfg.measure_reserve_jobs if any_borrowed else 0
+        admit("measure", heavy_slots, OPTIONAL_MEASURE_LANES, keep_measurements=keep)
+        # THE EXPLORER LANE last, and none of it while a check still waits for a runner: an idle explorer runner goes
+        # too (what it is charged is what may hold the check's borrow back), and the running rows yield as they end
+        if unserved("check"):
+            stops += [i.slot for i in alive if not i.busy and i.lane == EXPLORE_LANE and i.slot not in stops]
+        else:
+            admit("measure", heavy_slots, (EXPLORE_LANE,), keep_measurements=keep)
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
     room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
     return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits, tuple(borrowed),
-                    tuple(sorted(labels.items())), tuple(sorted(pins.items())))
+                    tuple(sorted(labels.items())), tuple(sorted(pins.items())), tuple(warm))
 
 
 def demand_of(jobs: list) -> dict:
@@ -701,6 +778,34 @@ def queue_of(jobs: list) -> list:
             if named:
                 out.append(Queued(min(named, key=order.index), pin, created))
     return sorted(out, key=lambda q: q.created)
+
+
+def is_warm_plan(job: dict) -> bool:
+    """A precommit-check run's plan job not done yet (WARM_WORKFLOW, WARM_PLAN_JOB): its run's later checks are to come."""
+    return (job.get("workflow_name") == WARM_WORKFLOW and job.get("name") == WARM_PLAN_JOB
+            and job.get("status") in ("queued", "in_progress"))
+
+
+def listed(job: dict) -> bool:
+    """Whether GitHub.queued_jobs keeps a job: every queued one, and a running plan of a run whose checks are to come."""
+    return job.get("status") == "queued" or is_warm_plan(job)
+
+
+def anticipated_of(jobs: list) -> list:
+    """THE WARM CHECK RUNNER's jobs to come, oldest first, from jobs-API job dicts: one per precommit-check run whose plan
+    has not ended, in the check lane its later jobs ask for (a gate-red fix's branch, check/red-<...>: the red-fix lane;
+    precommit-check.yml's plan job) with its run's pin."""
+    out = [Queued(CHECK_LANES[0] if (job.get("head_branch") or "").startswith("check/red-") else LABELS["check"],
+                  f"{PIN_PREFIX}{job['run_id']}", iso_seconds(job["created_at"]) if job.get("created_at") else 0.0)
+           for job in jobs if is_warm_plan(job) and job.get("run_id")]
+    return sorted(out, key=lambda q: q.created)
+
+
+def pace_seconds(cfg: Config, queue: list, anticipated: list, remaining: int) -> int:
+    """The loop's pause between ticks: busy_tick_seconds while a check is queued or to come, else tick_seconds; four
+    times that when the reader's rate budget runs low (under 1500), so the App's other users never starve."""
+    pace = cfg.busy_tick_seconds if anticipated or any(q.lane in CHECK_LANES for q in queue) else cfg.tick_seconds
+    return pace if remaining > 1500 else cfg.tick_seconds * 4
 
 
 def lane_demand_of(jobs: list) -> dict:
@@ -973,7 +1078,7 @@ class Host:
         measure lanes (LANES_MARKER)."""
         labels = (label or LABELS[cls]) + (f",{pin}" if pin else "")
         if cls == "light":
-            labels += f",{LANES_MARKER}"
+            labels += f",{LANES_MARKER},{EXPLORE_MARKER}"
         os.makedirs(self.cfg.state_dir, mode=0o700, exist_ok=True)
         with open(os.path.join(self.cfg.state_dir, f"{slot}.env"), "w") as f:
             f.write(f"RUNNER_CLASS={cls}\nRUNNER_LABELS={labels}\n"
@@ -1044,13 +1149,14 @@ class GitHub:
             raise
 
     def queued_jobs(self) -> list:
-        """Every queued job of the repository's queued and in-progress runs (a matrix row waits inside a running run)."""
+        """Every queued job of the repository's queued and in-progress runs (a matrix row waits inside a running run), and
+        the running plan jobs whose runs' checks are to come (listed)."""
         jobs = []
         for status in ("queued", "in_progress"):
             runs = self.request("GET", f"/repos/{self.cfg.repo}/actions/runs?status={status}&per_page=100") or {}
             for run in runs.get("workflow_runs", []):
                 page = self.request("GET", f"/repos/{self.cfg.repo}/actions/runs/{run['id']}/jobs?filter=latest&per_page=100")
-                jobs += [j for j in (page or {}).get("jobs", []) if j.get("status") == "queued"]
+                jobs += [j for j in (page or {}).get("jobs", []) if listed(j)]
         return jobs
 
 
@@ -1060,10 +1166,10 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     jobs = reader.queued_jobs()
-    demand, lanes, queue = demand_of(jobs), lane_demand_of(jobs), queue_of(jobs)
+    demand, lanes, queue, coming = demand_of(jobs), lane_demand_of(jobs), queue_of(jobs), anticipated_of(jobs)
     r = read_readings(cfg, cpu, now)
     instances = host.instances(now)
-    d = decide(cfg, bc, demand, instances, now, r, queue=queue)
+    d = decide(cfg, bc, demand, instances, now, r, queue=queue, anticipated=coming)
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
     cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731
     ours = [(i.slot, i.cls + (f"@{i.runs_in}" if i.borrowed else "") + (f"/{i.label}" if i.label else "")
@@ -1077,18 +1183,19 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
           f"ci {gib(r.ci_free_gib)} {({c: round(v) for c, v in r.class_free_gib.items()})}; cpu busy "
           f"{gib(r.cpu_busy_cores)}/{r.cpu_cores} "
           f"{({c: f'{gib(v.busy_cores)}/{len(v.cpus)}' for c, v in r.class_cpu.items()})}; queued {demand} "
-          f"lanes {lanes}; ours {ours}; "
-          f"start {list(d.starts)} lanes {list(d.labels)} pins {[(s, p[len(PIN_PREFIX):]) for s, p in d.pins if p]} borrowed {list(d.borrowed)} stop {list(d.stops)}", flush=True)
+          f"lanes {lanes}; coming {[q.pin[len(PIN_PREFIX):] for q in coming]}; ours {ours}; "
+          f"start {list(d.starts)} lanes {list(d.labels)} pins {[(s, p[len(PIN_PREFIX):]) for s, p in d.pins if p]} borrowed {list(d.borrowed)} warm {list(d.warm)} "
+          f"stop {list(d.stops)}", flush=True)
     for line in starved(cfg, d, demand, oldest_waits(jobs, now)):
         print(line, flush=True)
     if dry_run:
-        return d
+        return d, pace_seconds(cfg, queue, coming, reader.remaining)
     for slot in d.stops:
         host.stop(slot)
     labels, pins = dict(d.labels), dict(d.pins)
     for slot, cls in d.starts:
         host.start(slot, cls, "measure" if slot in d.borrowed else "", labels.get(slot, ""), pins.get(slot, ""))
-    return d
+    return d, pace_seconds(cfg, queue, coming, reader.remaining)
 
 
 def cmd_run(cfg: Config, dry_run: bool, once: bool) -> int:
@@ -1097,14 +1204,13 @@ def cmd_run(cfg: Config, dry_run: bool, once: bool) -> int:
     cpu = CpuMeters(cfg.cpu_window_seconds)
     while True:
         started = time.time()
+        pace = cfg.tick_seconds if reader.remaining > 1500 else cfg.tick_seconds * 4
         try:
-            tick(cfg, host, reader, cpu, dry_run)
+            _d, pace = tick(cfg, host, reader, cpu, dry_run)
         except Exception as e:  # noqa: BLE001 -- one bad tick (GitHub down) must not end the loop
             print(f"tick failed: {e}", file=sys.stderr, flush=True)
         if once:
             return 0
-        # a reader budget running low slows the loop rather than starving the App's other users
-        pace = cfg.tick_seconds if reader.remaining > 1500 else cfg.tick_seconds * 4
         time.sleep(max(1.0, pace - (time.time() - started)))
 
 

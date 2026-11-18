@@ -61,6 +61,8 @@ jobs:
             matrix: ${{ steps.plan.outputs.matrix }}
             expect: ${{ steps.plan.outputs.expect }}
             week: ${{ steps.plan.outputs.week }}
+            # the walk's label: ci-runner's explorer lane, below every optional measurement, where its scheduler serves it
+            runner: ${{ steps.lane.outputs.label }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -70,12 +72,15 @@ jobs:
               env:
                   COUNTRIES: ${{ inputs.countries }}
               run: python3 scripts/ci/family_shards.py plan --countries "$COUNTRIES" >> "$GITHUB_OUTPUT"
+            - name: Which measure lane do the walks queue in?
+              id: lane
+              run: scripts/ci/measure-lane.sh explore >> "$GITHUB_OUTPUT"
 
     walk:
         name: family walk (${{ matrix.name }})
         needs: [plan]
         # ubuntu-22.04: the row starts mongod (convergence-setup), whose 8.3 does not start on 26.04's kernel (MongoServerVersionParitySpec)
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (needs.plan.outputs.runner || 'movies-measure') || 'ubuntu-22.04' }}
         # the walk step's 40 minutes plus the setup; a row is meant to take under 10 (the cost files and shard counts are refreshed from a run: family_shards.py costs)
         timeout-minutes: 60
         permissions:

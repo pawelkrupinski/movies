@@ -985,6 +985,164 @@ class OldestFirstTest(unittest.TestCase):
         self.assertEqual((i.lane, i.pin), ("movies-check", f"{rs.PIN_PREFIX}100"))
 
 
+EXPLORER_RUN = 44177877990  # the landing check run whose jobs waited (2026-11-17 21:15-21:40Z)
+
+
+def recorded(slot, cls, mem, cores, started_ago, pin_run=None, busy=True, label=""):
+    """A runner of ours as the scheduler's journal line names it: its working set, its cores over the window, its age."""
+    i = rs.Instance(slot, cls, busy, NOW, NOW - started_ago, mem_gib=mem, cpu_cores=cores,
+                    cpu_seconds=cores * min(started_ago, 300), label=label)
+    return dataclasses.replace(i, pin=f"{rs.PIN_PREFIX}{pin_run}") if pin_run else i
+
+
+class ExplorerLaneTest(unittest.TestCase):
+    """2026-11-17 21:15-21:40Z (ci-runner's movies-runner-scheduler journal): the nightly drift explorer's rows queued 6-9
+    deep on movies-measure and held the 14 measure threads, while precommit-check run 44177877990's jobs queued with the
+    checks' own 18 threads full ("held by cpu", borrowed []). Each time an explorer row ended (21:27:30, 21:31:00) the
+    freed measure slot went to the next explorer row, never to a borrowed check: the borrow needs every job on the
+    measure CPUs at its whole cap to fit beside the check, and the refilled rows never let it. The explorers now ask for
+    movies-explore, the lowest measure lane, and none of it starts while a check waits for a runner: the explorer's
+    running rows yield the measure CPUs as they end."""
+
+    def tick(self, ours, measure_busy, explore_label, explorers=6, check_busy=11):
+        r = rs.Readings(97, 86, {"measure": 82}, check_busy + measure_busy, CORES, (), 300,
+                        on_cpusets(check_busy, measure_busy, CHECK_CPUS_A2, MEASURE_CPUS_A2), {"measure": 96})
+        queue = ([rs.Queued("movies-check", f"{rs.PIN_PREFIX}{EXPLORER_RUN}", 1.0)]
+                 + [rs.Queued(explore_label, "", 0.5)] * explorers)
+        return rs.decide(CFG, IDLE, queued(check=1, measure=explorers), ours, NOW, r, queue=queue)
+
+    def at_212730(self, label):
+        # ours [(1, check/44177877990, busy, 1, 0.9) (2, measure, busy, 7, 1.7) (3, measure, busy, 6, 2.4)
+        #       (5, check/44177877990, busy, 8, 8.4)]; cpu {'check': '11/18', 'measure': '5/14'}; queued check 1, measure 6
+        return [recorded(1, "check", 1, 0.9, 60, EXPLORER_RUN), recorded(2, "measure", 7, 1.7, 1080, label=label),
+                recorded(3, "measure", 6, 2.4, 750, label=label), recorded(5, "check", 8, 8.4, 660, EXPLORER_RUN)]
+
+    def test_212730_before_an_explorer_row_took_the_freed_measure_slot(self):
+        # the journal: start [(4, 'measure')] lanes [(4, 'movies-measure')] borrowed []
+        d = self.tick(self.at_212730(""), 5, "movies-measure")
+        self.assertEqual((d.starts, d.labels, d.borrowed), (((4, "measure"),), ((4, "movies-measure"),), ()))
+
+    def test_212730_now_no_explorer_row_starts_while_the_check_waits(self):
+        d = self.tick(self.at_212730("movies-explore"), 5, "movies-explore")
+        self.assertEqual((d.starts, d.borrowed), ((), ()))
+
+    def test_213100_with_the_rows_yielding_the_check_borrows_the_measure_cpus(self):
+        # 21:31:00 had both checks (1: 3.3 cores, 5: 7.6) and the row started at 21:27:30 (2.6 of the 6 busy measure
+        # cores). Without that row, the two older rows ended and the checks' threads as full as at 21:26:30 (13 of 18),
+        # the check borrows the idle measure CPUs -- with the row there (the old order), the measure CPUs held no borrow
+        ours = [recorded(1, "check", 5, 3.3, 270, EXPLORER_RUN), recorded(5, "check", 8, 7.6, 870, EXPLORER_RUN)]
+        refilled = ours + [recorded(4, "measure", 7, 2.6, 210)]
+        self.assertEqual(self.tick(refilled, 6, "movies-measure", check_busy=13).borrowed, ())
+        d = self.tick(ours, 3.4, "movies-explore", check_busy=13)
+        self.assertIn((2, "check"), d.starts)
+        self.assertEqual((d.borrowed, dict(d.pins)[2]), ((2,), f"{rs.PIN_PREFIX}{EXPLORER_RUN}"))
+        self.assertNotIn("movies-explore", dict(d.labels).values(), "the borrow keeps the room an explorer would take")
+
+    def test_explorer_rows_start_when_no_check_waits(self):
+        d = rs.decide(CFG, IDLE, queued(measure=2), [], NOW, ROOMY, queue=[rs.Queued("movies-explore")] * 2)
+        self.assertEqual(dict(d.labels), {1: "movies-explore", 2: "movies-explore"})
+
+    def test_explorer_rows_go_last_of_the_measure_lanes(self):
+        queue = [rs.Queued("movies-explore", "", 0.0), rs.Queued("movies-measure", "", 1.0)]
+        d = rs.decide(rs.Config(max_slots=1, check_lane_jobs=0), IDLE, queued(measure=2), [], NOW, ROOMY, queue=queue)
+        self.assertEqual(dict(d.labels), {1: "movies-measure"})
+
+    def test_an_idle_explorer_runner_gives_way_to_a_waiting_check(self):
+        # the check lane full (two checks at 9 cores on the 18 threads) and the idle explorer runner's unshown cap all
+        # that holds a borrow back: it goes at once, not after idle_stop_seconds -- and stays while no check waits
+        checks = [recorded(1, "check", 8, 9, 900, EXPLORER_RUN), recorded(5, "check", 8, 9, 900, EXPLORER_RUN)]
+        ours = checks + [lane_runner(3, "movies-explore")]
+        d = self.tick(ours, 2, "movies-explore", explorers=1, check_busy=18)
+        self.assertEqual((d.borrowed, d.stops), ((), (3,)))
+        r = rs.Readings(97, 86, {"measure": 82}, 20, CORES, (), 300, on_cpusets(18, 2, CHECK_CPUS_A2, MEASURE_CPUS_A2),
+                        {"measure": 96})
+        quiet = rs.decide(CFG, IDLE, queued(measure=1), ours, NOW, r, queue=[rs.Queued("movies-explore")])
+        self.assertEqual(quiet.stops, ())
+
+    def test_explorer_jobs_count_as_measurements_in_their_lane(self):
+        jobs = [{"status": "queued", "labels": ["movies-explore"]}]
+        self.assertEqual((rs.demand_of(jobs), rs.lane_demand_of(jobs)), (queued(measure=1), {"movies-explore": 1}))
+
+
+def plan_job(run, created, status="in_progress", branch="check/20261118-0001-movies-x",
+             workflow=rs.WARM_WORKFLOW, name=rs.WARM_PLAN_JOB):
+    """A precommit-check run's plan job as the jobs API lists it (on the light lane)."""
+    return {"status": status, "labels": ["movies"], "created_at": created, "run_id": run, "name": name,
+            "workflow_name": workflow, "head_branch": branch}
+
+
+class WarmCheckTest(unittest.TestCase):
+    """THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): every check job queued ~30 s with nothing else ahead of it
+    (precommit-check, 2026-11-11..18, jobs queued <= 75 s: check (rest) p50 31 s, check (identity) p50 35.5 s) -- up to a
+    tick (30 s) before the scheduler saw it, then ~7 s to start the container and register the ephemeral runner. A
+    runner registered ahead with the lane's label alone could take no check job: each asks for its run's pin too
+    (OLDEST FIRST). But a run's later check jobs (the identity shards, the old refs) need its plan job, so while the plan
+    runs their lane and pin are known: ONE check runner is registered for them then, the oldest such run first, admitted
+    as a check is, after the queued ones. It goes as soon as its run has nothing left for it (warm_grace_seconds), so
+    its cores and memory return to the measure lane."""
+
+    def test_a_running_precommit_plan_is_a_check_to_come_in_its_runs_lane_and_pin(self):
+        jobs = [plan_job(200, "2026-11-18T10:00:05Z"), plan_job(100, "2026-11-18T10:00:00Z", status="queued",
+                                                                 branch="check/red-20261118-movies-y"),
+                plan_job(300, "2026-11-18T10:00:09Z", status="completed"),
+                plan_job(400, "2026-11-18T10:00:09Z", workflow="Identity takes"),
+                plan_job(500, "2026-11-18T10:00:09Z", name="check (rest)")]
+        self.assertEqual([(q.lane, q.pin) for q in rs.anticipated_of(jobs)],
+                         [("movies-check-red-fix", f"{rs.PIN_PREFIX}100"), ("movies-check", f"{rs.PIN_PREFIX}200")])
+        self.assertTrue(all(rs.listed(j) for j in jobs[:2]), "the jobs list keeps a running plan job")
+        self.assertFalse(rs.listed(plan_job(1, "2026-11-18T10:00:00Z", workflow="Identity takes")))
+
+    def test_one_warm_runner_for_the_oldest_run_to_come(self):
+        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}200", 2.0), rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
+        d = rs.decide(CFG, IDLE, queued(), [], NOW, ROOMY, queue=[], anticipated=coming)
+        self.assertEqual((d.starts, dict(d.pins), d.warm), (((1, "check"),), {1: f"{rs.PIN_PREFIX}100"}, (1,)))
+
+    def test_a_warm_runner_waiting_holds_off_a_second(self):
+        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0), rs.Queued("movies-check", f"{rs.PIN_PREFIX}200", 2.0)]
+        d = rs.decide(CFG, IDLE, queued(), [pinned_runner(1, 100)], NOW, ROOMY, queue=[], anticipated=coming)
+        self.assertEqual(d.starts, ())
+
+    def test_queued_checks_go_first(self):
+        jobs = [check_job(300, "2026-11-18T10:00:00Z")]
+        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
+        d = rs.decide(rs.Config(max_slots=1), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs),
+                      anticipated=coming)
+        self.assertEqual((dict(d.pins), d.warm), ({1: f"{rs.PIN_PREFIX}300"}, ()))
+
+    def test_no_warm_runner_where_a_check_would_not_start(self):
+        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
+        self.assertEqual(rs.decide(CFG, rs.Bitcashier(12, 0), queued(), [], NOW, ROOMY, queue=[],
+                                   anticipated=coming).starts, ())
+        full = rs.Readings(10, 10, {}, 0, CORES, (), 300, {}, {})  # no memory for a check
+        self.assertEqual(rs.decide(CFG, IDLE, queued(), [], NOW, full, queue=[], anticipated=coming).starts, ())
+
+    def test_a_warm_runner_stays_while_its_plan_runs(self):
+        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
+        waiting = pinned_runner(1, 100, idle_for=CFG.idle_stop_seconds * 2)
+        self.assertEqual(rs.decide(CFG, IDLE, queued(), [waiting], NOW, ROOMY, queue=[], anticipated=coming).stops, ())
+
+    def test_its_run_with_nothing_left_for_it_the_warm_runner_goes_after_the_grace(self):
+        # the plan said no identity check: nothing of its run will queue, so its 10 GiB and cores go back
+        young = pinned_runner(1, 100, idle_for=CFG.warm_grace_seconds - 1)
+        self.assertEqual(rs.decide(CFG, IDLE, queued(), [young], NOW, ROOMY, queue=[]).stops, ())
+        done = pinned_runner(1, 100, idle_for=CFG.warm_grace_seconds)
+        self.assertEqual(rs.decide(CFG, IDLE, queued(), [done], NOW, ROOMY, queue=[]).stops, (1,))
+
+    def test_the_jobs_it_was_warmed_for_are_its_own(self):
+        # the plan ended and its identity shards queued: the warm runner covers one, a second runner starts for the other
+        jobs = [check_job(100, "2026-11-18T10:01:00Z"), check_job(100, "2026-11-18T10:01:00Z")]
+        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [pinned_runner(1, 100)], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual((d.starts, dict(d.pins)), (((2, "check"),), {2: f"{rs.PIN_PREFIX}100"}))
+
+    def test_the_loop_ticks_faster_while_checks_are_queued_or_coming(self):
+        self.assertEqual(rs.pace_seconds(CFG, [], [], 5000), CFG.tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], [], 5000), CFG.busy_tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-measure")], [], 5000), CFG.tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [], [rs.Queued("movies-check")], 5000), CFG.busy_tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], [], 1000), CFG.tick_seconds * 4,
+                         "a reader budget running low still slows the loop")
+
+
 class StarvedTest(unittest.TestCase):
     """A class whose oldest queued job has waited past `starve_report_seconds` while nothing of it starts is said, with
     the limit that holds it -- Scala Steward #145 (2026-11-08) sat queued for an hour on movies-measure while every tick
@@ -1173,7 +1331,7 @@ class HostTest(unittest.TestCase):
         host = self.host(FakeDocker(["Runner.Listener"]))
         host.start(11, "light")
         with open(os.path.join(host.cfg.state_dir, "11.env")) as f:
-            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER}\n", f.read())
+            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER},{rs.EXPLORE_MARKER}\n", f.read())
         light = next(i for i in host.instances(NOW) if i.slot == 11)
         self.assertEqual(light.lane, "movies")
 
