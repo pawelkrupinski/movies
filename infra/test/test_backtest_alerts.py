@@ -406,6 +406,25 @@ class IncidentsEndWithTheHistory(unittest.TestCase):
         bt.check_incidents(Recording(), {"A": {"expr": "x", "for": "0s"}}, catalogue, 60, None, None, end)
         self.assertEqual(asked, [end - 60])
 
+    def test_an_incident_before_the_retained_history_is_skipped_and_reported_not_failed(self):
+        # Alert backtest #1 (run 44404703989): 29 September incidents of the catalogue start before the
+        # snapshot's retention, and each failed the run, so the check could never stay green as incidents age.
+        # The owner (2026-11-18): skip and report them, never prune the catalogue.
+        asked = []
+
+        class Recording(object):
+            def presence(self, expr, start, end, step, chunk=86400):
+                asked.append(start)
+                return {}
+        catalogue = [{"id": "old", "start": "2026-09-01T00:00:00Z", "end": "2026-09-02T00:00:00Z",
+                      "expect_firing": ["A"]}]
+        floor, end = bt.parse_time("2026-10-30T06:00:00Z"), bt.parse_time("2026-11-18T00:00:00Z")
+        results, problems = bt.check_incidents(Recording(), {"A": {"expr": "x", "for": "0s"}}, catalogue, 60,
+                                               floor, None, end)
+        self.assertEqual(problems, [])
+        self.assertEqual(results, [{"id": "old", "skipped": "starts before retention (2026-10-30T06:00:00Z)"}])
+        self.assertEqual(asked, [])
+
 
 @unittest.skipUnless(os.environ.get("BACKTEST_PROMETHEUS_BINARY"),
                      "set BACKTEST_PROMETHEUS_BINARY to a Prometheus to start a real replay")

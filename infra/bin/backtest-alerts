@@ -36,7 +36,9 @@ It fails (exit 1) when
     exceptional state -- never count as missing. An alert Prometheus has not loaded yet (a rule
     on a branch) is reported as NOT DEPLOYED and does not fail;
   * an INCIDENT in test/alert-incidents.yml is contradicted: an alert listed under `expect_firing`
-    never fired within the window (plus its `grace`), or one under `expect_quiet` fired in it;
+    never fired within the window (plus its `grace`), or one under `expect_quiet` fired in it (an
+    incident that starts before the retained history is skipped and reported, never a failure: the
+    catalogue keeps every incident, and each one ages out of retention in time);
   * the allowlist names an alert that no longer exists.
 
 A metric ROLLED OUT inside the window (absent, then present for the rest of it) clips the alerts
@@ -942,7 +944,11 @@ def check_incidents(prom, alerts, catalogue, step, floor, only, end):
         start, end = parse_time(incident["start"]), parse_time(incident["end"])
         grace = seconds(incident.get("grace", "1h"))
         if floor and start < floor:
-            problems.append("incident %s starts before retention (%s)" % (ident, iso(floor)))
+            # Outside the history the replay can read: reported, never a failure (the owner, 2026-11-18,
+            # Alert backtest #1) -- every catalogued incident ages past retention, and the catalogue is kept.
+            why = "starts before retention (%s)" % iso(floor)
+            print("  incident %-44s skipped: %s" % (ident, why))
+            results.append({"id": ident, "skipped": why})
             continue
         start -= start % step
         row = {"id": ident, "firing": {}, "quiet": {}}
