@@ -338,30 +338,39 @@ object UnifiedEvidence {
       private def and(on: Boolean) = if (on) takers else 0.0
       private val castNamed = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
 
-      private def counts: Seq[(String, Double)] = {
-        // [[PinnedSignals]]' families.current and family.facts
-        val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
-        val familiesCurrent = takers >= 2 && databaseTook && current
-        val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
-        val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains) && !copiedYearDenied.exists { case (id, year) =>
-          !contender.tmdb.contains(id) && records.flatMap(_.film.year).forall(_ < year) }
-        val familyDirector  = databaseTook && credited.nonEmpty &&
-          credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
-        val familyReleased  = databaseTook && contender.tmdb.exists(releaseKept)
-        // [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out
-        val vetoedAbove = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
-          node.candidates.exists(first => first.tmdbId != id && first.releasedBeside.isDefined && first.rank.contains(1))))
-        Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
-          "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
+      private def counts: Seq[(String, Double)] =
+        (Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
+          "count.takers2" -> one(takers >= 2), "count.takers3" -> one(takers >= 3),
           "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
           "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
-          "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
-          "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
-          "family.feedLink" -> (if (familyFeedLink) 1.0 else 0.0), "family.director" -> (if (familyDirector) 1.0 else 0.0),
-          "family.releaseKept" -> (if (familyReleased) 1.0 else 0.0), "model.vetoedAbove" -> (if (vetoedAbove) 1.0 else 0.0),
-          "film.current" -> (if (current) 1.0 else 0.0),
-          "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
+          "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id)))) ++
+          familyFlags.map { case (name, on) => name -> one(on) } ++
+          Seq("cast.venue" -> castNamed.size.toDouble)).filter(_._2 != 0.0)
+
+      private def one(on: Boolean): Double = if (on) 1.0 else 0.0
+
+      /** [[PinnedSignals]]' families.current and family.* signals, and the model's and the film's own. */
+      private def familyFlags: Seq[(String, Boolean)] = {
+        val databaseTook = VoterFamily.values.exists(f => f.namesFilms && took(f))
+        Seq(
+          "families.current"   -> (takers >= 2 && databaseTook && current),
+          "family.facts"       -> (databaseTook && votes(Agreement.ListingFacts)),
+          "family.feedLink"    -> (databaseTook && feedLinkStands),
+          "family.director"    -> (databaseTook && creditsItsDirector),
+          "family.releaseKept" -> (databaseTook && contender.tmdb.exists(releaseKept)),
+          "model.vetoedAbove"  -> vetoedAbove,
+          "film.current"       -> current)
       }
+
+      private def feedLinkStands: Boolean = contender.tmdb.exists(feedLinked.contains) && !copiedYearDenied.exists { case (id, year) =>
+        !contender.tmdb.contains(id) && records.flatMap(_.film.year).forall(_ < year) }
+
+      private def creditsItsDirector: Boolean = credited.nonEmpty &&
+        credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
+
+      /** [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out. */
+      private def vetoedAbove: Boolean = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
+        node.candidates.exists(first => first.tmdbId != id && first.releasedBeside.isDefined && first.rank.contains(1))))
 
       def signalled: Contender = {
         val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++

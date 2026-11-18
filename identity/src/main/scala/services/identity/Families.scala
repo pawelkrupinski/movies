@@ -88,31 +88,37 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
 
   /** [[deniedBySibling]]'s sibling and its own scoring of the film, which holds the denial. */
   def siblingDenying(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
-                     takenAlone: String => Option[Scored]): Option[(EvidenceNode, Scored)] = {
-    lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
-    def comparedUnpublished(denial: Scored) =
+                     takenAlone: String => Option[Scored]): Option[(EvidenceNode, Scored)] =
+    if (Authority.sparesEvery(best)) None
+    else {
+      val withdrawal = new Withdrawal(node, scope, best)
+      members.iterator.filter(_.id != node.id)
+        .flatMap { sibling =>
+          val taken = takenAlone(sibling.id)
+          // the title link last: a sibling taken alone almost never may withdraw, and a family can hold thousands of them
+          if (!taken.forall(withdrawal.namedCloser) || !links.titleLinked(node, sibling) || readsAsReusedIn(scope, sibling)) None
+          else scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied &&
+            withdrawal.withdraws(sibling, other, taken.isDefined)).map(other => sibling -> other)
+        }
+        .nextOption()
+    }
+
+  /** Whether a sibling's denial withdraws `node`'s own take `best` ([[siblingDenying]]). */
+  private final class Withdrawal(node: EvidenceNode, scope: FamilyScope, best: Scored) {
+    private lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
+    private def comparedUnpublished(denial: Scored) =
       (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
-    // the provenance table's withdrawal rows (Authority.withdraws): the sibling's provenance may, and the node's own
-    // statement does not answer the denial; then a weak denial (the cut alone, or a sibling's own take) only by a fact
-    // the node did not publish
-    def withdraws(sibling: EvidenceNode, denial: Scored, byTaken: Boolean) =
+    /** The provenance table's withdrawal rows (Authority.withdraws): the sibling's provenance may, and the node's own
+     *  statement does not answer the denial; then a weak denial (the cut alone, or a sibling's own take) only by a fact
+     *  the node did not publish. */
+    def withdraws(sibling: EvidenceNode, denial: Scored, byTaken: Boolean): Boolean =
       Authority.withdraws(sibling, denial, best) && (!(denial.deniedByCutOnly || byTaken) || comparedUnpublished(denial))
     // the node's take read by another title, corroborated by no other venue nor linked by its own feed: only then may a
     // sibling taken alone withdraw it
-    lazy val readOtherwise = !best.category("title").contains("exact") && best.number("venues.corroborating").forall(_ <= 0) &&
+    private lazy val readOtherwise = !best.category("title").contains("exact") && best.number("venues.corroborating").forall(_ <= 0) &&
       !(scope.feedLinked(node).exists(_._2 == best.candidate.tmdbId) && scope.overruled(node).isEmpty)
-    def namedCloser(taken: Scored) = readOtherwise && taken.candidate.tmdbId != best.candidate.tmdbId &&
+    def namedCloser(taken: Scored): Boolean = readOtherwise && taken.candidate.tmdbId != best.candidate.tmdbId &&
       scope.of(node).exists(own => own.candidate.tmdbId == taken.candidate.tmdbId && own.category("title").contains("exact"))
-    if (Authority.sparesEvery(best)) None
-    else members.iterator.filter(_.id != node.id)
-      .flatMap { sibling =>
-        val taken = takenAlone(sibling.id)
-        // the title link last: a sibling taken alone almost never may withdraw, and a family can hold thousands of them
-        if (!taken.forall(namedCloser) || !links.titleLinked(node, sibling) || readsAsReusedIn(scope, sibling)) None
-        else scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied &&
-          withdraws(sibling, other, taken.isDefined)).map(other => sibling -> other)
-      }
-      .nextOption()
   }
 
   /** How many listings every scope of every round scored ([[Resolution.scorings]]) — counted, not

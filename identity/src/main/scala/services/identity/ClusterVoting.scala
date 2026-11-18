@@ -176,30 +176,39 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  Read off the family's listings and the cluster's own searches alone, whatever order they arrived in. */
   private def unanimous(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int], linked: Set[String],
                         own: Set[String]): Option[(Int, Double, String)] = {
-    val normalizer = scoring.generation.normalizer
-    val inside     = cluster.map(_.id).toSet
-    val forms      = (node: EvidenceNode) => TitleRelation.of(node.evidence, normalizer)
-    val bare       = cluster.map(forms)
-    def carries(sibling: EvidenceNode) = { val titled = forms(sibling); titled.relays.isEmpty && bare.exists(TitleRelation.segmentOf(_, titled)) }
-    val siblings   = members.filter(sibling => !inside(sibling.id) && (linked(sibling.id) || carries(sibling)))
-    val taking     = siblings.filter(sibling => accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
+    val inside   = cluster.map(_.id).toSet
+    val carries  = carriedBy(cluster)
+    val siblings = members.filter(sibling => !inside(sibling.id) && (linked(sibling.id) || carries(sibling)))
+    val taking   = siblings.filter(sibling => accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
     taking.map(sibling => accepted(sibling.id)).distinct match {
       case Seq(film) =>
         val venues = taking.filter(carries).flatMap(_.venues).toSet -- own
         val total  = (taking.flatMap(_.venues).toSet ++ own).size
         val bound  = RateBounds.lower95(venues.size, total)
-        def oneWord = cluster.forall(_.titleWords.sizeIs <= 1)
-        def relation(node: EvidenceNode, id: Int) = scoring.generation.candidateOf(id).map(candidate => IdentityMeasures.titleRelation(node.evidence.measured, candidate.film).value)
-        def isItsTitle = cluster.forall(node => relation(node, film).exists(UnanimousTitles))
-        def namesAnother = cluster.exists { node =>
-          val reach = families.scopeOf(node).reach(node)
-          (reach.search.keySet ++ reach.imdbSuggested ++ reach.imdbTitled.keySet - film).exists(id => relation(node, id).exists(IdentityMeasures.NamingRelations))
-        }
         Option.when(venues.sizeIs >= 2 && calibration.showsRatings(bound) && !(cluster ++ siblings).exists(families.denies(_, film)) &&
-          (!oneWord || isItsTitle) && !namesAnother)(
+          (!cluster.forall(_.titleWords.sizeIs <= 1) || isItsTitle(cluster, film)) && !namesAnother(cluster, film))(
           (film, bound, s"title family's unanimous film $film: carried by ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
       case _ => None
     }
+  }
+
+  /** Does a sibling carry one of the cluster's bare titles as a segment of its own, relaying nothing? */
+  private def carriedBy(cluster: Seq[EvidenceNode]): EvidenceNode => Boolean = {
+    val normalizer = scoring.generation.normalizer
+    val bare       = cluster.map(node => TitleRelation.of(node.evidence, normalizer))
+    sibling => { val titled = TitleRelation.of(sibling.evidence, normalizer); titled.relays.isEmpty && bare.exists(TitleRelation.segmentOf(_, titled)) }
+  }
+
+  private def relation(node: EvidenceNode, id: Int): Option[String] =
+    scoring.generation.candidateOf(id).map(candidate => IdentityMeasures.titleRelation(node.evidence.measured, candidate.film).value)
+
+  /** Is `film`'s title every member's own, whole? */
+  private def isItsTitle(cluster: Seq[EvidenceNode], film: Int): Boolean = cluster.forall(node => relation(node, film).exists(UnanimousTitles))
+
+  /** Does a member's title name another film its own searches reached? */
+  private def namesAnother(cluster: Seq[EvidenceNode], film: Int): Boolean = cluster.exists { node =>
+    val reach = families.scopeOf(node).reach(node)
+    (reach.search.keySet ++ reach.imdbSuggested ++ reach.imdbTitled.keySet - film).exists(id => relation(node, id).exists(IdentityMeasures.NamingRelations))
   }
 
   /** The title relations under which a one-word title IS the film's title, whole ([[unanimous]]). */
