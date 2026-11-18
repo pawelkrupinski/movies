@@ -229,6 +229,15 @@ class RecordingRuleExpansion(unittest.TestCase):
                                     lambda name, expr: "same")
         self.assertEqual(stale, {"ci:x:baseline", "ci:x:threshold"})
 
+    def test_a_loaded_recording_with_no_series_in_the_window_is_stale(self):
+        # Loaded now but recorded nothing in the window (deployed after the copy ends, 2026-11-18:
+        # country_city:worker_movies_served:min2h read as DEAD over a copy ending at midnight): what it
+        # would have recorded is its expression, so it is inlined rather than read as absent.
+        loaded = {name: "same" for name in self.RECORDS}
+        stale = bt.stale_recordings(self.RECORDS, loaded, lambda name, expr: "same",
+                                    recorded={"ci:x:baseline", "ci:x:threshold"})
+        self.assertEqual(stale, {"ci:x:recent"})
+
     def test_nested_recordings_expand_all_the_way_down(self):
         out = bt.expand_recordings("ci:x:threshold", self.RECORDS, {"ci:x:baseline", "ci:x:threshold"})
         self.assertEqual(out, "((quantile_over_time(0.5, x[7d] offset 2d)) * 1.4)")

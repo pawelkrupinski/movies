@@ -313,12 +313,15 @@ def _outside_strings(expr, start):
     return expr[:start].count('"') % 2 == 0
 
 
-def stale_recordings(records, loaded, normalise):
+def stale_recordings(records, loaded, normalise, recorded=None):
     """The recordings whose recorded series do NOT say what the tree's rule says: changed since
     Prometheus loaded it (compared through `normalise(name, expr)`, Prometheus's own formatter), not
-    loaded at all, or reading -- however deeply -- one that is."""
+    loaded at all, loaded but with no series in the window (`recorded`, the metric names that have
+    some: deployed after the window, as a rule loaded today over a copy that ends at midnight is --
+    inlining one that is merely empty changes nothing), or reading -- however deeply -- one that is."""
     stale = {name for name, rule in records.items()
-             if name not in loaded or normalise(name, rule["expr"]) != normalise(name, loaded[name])}
+             if name not in loaded or normalise(name, rule["expr"]) != normalise(name, loaded[name])
+             or (recorded is not None and name not in recorded)}
     grew = True
     while grew:
         grew = False
@@ -776,11 +779,6 @@ def run_backtest(args, prom, source):
             except RuntimeError:
                 formatted[expr] = expr
         return formatted[expr]
-    stale = stale_recordings(records, source.loaded_recordings(), normalise)
-    if stale:
-        print("recordings changed in this tree, evaluated as written: %s" % ", ".join(sorted(stale)))
-    for name, rule in alerts.items():
-        rule["expr"] = expand_recordings(rule["expr"], records, stale)
     allowlist = load_yaml(ALLOWLIST, {})
     defaults = allowlist.get("defaults") or {}
     allowed = allowlist.get("allow") or {}
@@ -802,6 +800,12 @@ def run_backtest(args, prom, source):
         start = snap_up(floor, step)
     existing = prom.metric_names(start, end)
     loaded = source.loaded_alerts()
+    stale = stale_recordings(records, source.loaded_recordings(), normalise, recorded=existing)
+    if stale:
+        print("recordings changed in this tree or not recorded in the window, evaluated as written: %s"
+              % ", ".join(sorted(stale)))
+    for name, rule in alerts.items():
+        rule["expr"] = expand_recordings(rule["expr"], records, stale)
 
     selected = sorted(alerts)
     if args.alert:
