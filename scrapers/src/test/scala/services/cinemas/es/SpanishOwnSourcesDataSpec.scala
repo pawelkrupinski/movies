@@ -14,7 +14,7 @@ class SpanishOwnSourcesDataSpec extends AnyFlatSpec with Matchers {
   they should "name a venue's Taquilla id and path, and its Artesiete page" in {
     SpanishOwnSourcesData.taquilla.size shouldBe 60
     SpanishOwnSourcesData.artesiete.size shouldBe 10
-    SpanishOwnSourcesData.taquilla("E0547") shouldBe TaquillaVenue("33199", "/murcia/neocine-thader-murcia")
+    SpanishOwnSourcesData.taquilla("E0547") shouldBe TaquillaVenue("417441", "/churra/neocine-thader-churra")
     SpanishOwnSourcesData.ownSourced("E0547") shouldBe true
     SpanishOwnSourcesData.ownSourced(SpanishOwnSourcesData.artesiete.keys.head) shouldBe true
     SpanishOwnSourcesData.ownSourced("E0364") shouldBe false
