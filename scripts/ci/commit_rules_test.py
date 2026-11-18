@@ -66,10 +66,10 @@ class RatchetTest(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def run_rules(self, rule_set, rng):
+    def run_rules(self, rule_set, rng, tool=TOOL):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, rule_set, "--range", rng], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", tool, rule_set, "--range", rng], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         return done.returncode, done.stderr
 
@@ -450,21 +450,99 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({self.GATE_FILE: "r2\n"}, "Identity model: one name\n\nGauges: none")
         self.assertEqual(1, self.guards(f"{head}^..{head}"), "none without a why")
 
-    def test_a_serving_file_only_retyped_needs_no_gauges(self):
-        before = ("package services.identity.adapters\n\nimport services.tasks.TaskQueue\n\n"
-                  "final class VenuePageWait(index: VenuePageIndex, queue: TaskQueue,\n    clock: Clock) {\n"
-                  "  def request(page: String): Unit = queue.enqueue(page)\n}\n")
-        self.commit({self.GATE_FILE: before}, "Identity model: the page wait")
-        retyped = before.replace("import services.tasks.TaskQueue", "import services.tasks.TaskProducer") \
-                        .replace("queue: TaskQueue,", "queue: TaskProducer & TaskQueueMonitor,") + "// the producer role only\n"
-        head = self.commit({self.GATE_FILE: retyped}, "VenuePageWait: take the producer role")
-        self.assertEqual(0, self.guards(f"{head}^..{head}"), "imports, a comment and a declared type: no behaviour moved")
-        changed = retyped.replace("queue.enqueue(page)", "queue.enqueue(page.trim)")
-        head = self.commit({self.GATE_FILE: changed}, "VenuePageWait: trim the page")
-        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a changed statement is behaviour, however small")
-        moved = changed.replace("index: VenuePageIndex, queue", "queue").replace("    clock: Clock", "    index: VenuePageIndex, clock: Clock")
-        head = self.commit({self.GATE_FILE: moved}, "VenuePageWait: reorder")
-        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a reordered parameter list is not a retype")
+    # ── retypes_only: a serving file changed only in comments, imports and declared types (2026-11-18, the owner) ──
+    # A type change moves no behaviour only when it provably selects the same code: a rename of the type, or an alias of
+    # it. Int to Long, a narrowed role trait, a changed implicit / given / using or an ascription picking an overload
+    # can each select other code, and none of that is decided statically here: they need their gauges like any change.
+    TASKS = "worker/src/main/scala/services/tasks/TaskQueue.scala"
+    WAIT = ("package services.identity.adapters\n\nimport services.tasks.TaskQueue\n\n"
+            "final class VenuePageWait(index: VenuePageIndex, queue: TaskQueue,\n    clock: Clock, limit: Int) {\n"
+            "  def request(page: String): Unit = queue.enqueue(page)\n}\n")
+
+    def retype(self, edit, files=None, before=WAIT, tool=TOOL):
+        """rc of driftguards over one commit changing the serving file `before` by `edit` (and `files`)."""
+        self.commit({self.GATE_FILE: before, self.TASKS: "package services.tasks\n\ntrait TaskQueue\n"}, "the page wait")
+        head = self.commit({self.GATE_FILE: edit(before), **(files or {})}, "VenuePageWait: retyped")
+        return self.run_rules("driftguards", f"{head}^..{head}", tool)[0]
+
+    @staticmethod
+    def to_producer(text):
+        return text.replace("import services.tasks.TaskQueue", "import services.tasks.TaskProducer") \
+                   .replace("queue: TaskQueue,", "queue: TaskProducer,") + "// the producer role only\n"
+
+    def test_a_type_alias_in_its_place_needs_no_gauges(self):
+        alias = {self.TASKS: "package services.tasks\n\ntrait TaskQueue\ntype TaskProducer = TaskQueue\n"}
+        self.assertEqual(0, self.retype(self.to_producer, alias), "an alias is the same type: the same code runs")
+
+    def test_a_renamed_type_needs_no_gauges(self):
+        renamed = {self.TASKS: "package services.tasks\n\ntrait TaskProducer\n"}
+        self.assertEqual(0, self.retype(self.to_producer, renamed), "the type renamed everywhere: the same code runs")
+
+    def test_a_type_narrowed_to_a_role_trait_needs_its_gauges(self):
+        narrowed = lambda t: t.replace("queue: TaskQueue,", "queue: TaskProducer & TaskQueueMonitor,")  # noqa: E731
+        self.assertEqual(1, self.retype(narrowed), "another type may dispatch or overload otherwise: not decided here")
+
+    def test_int_to_long_needs_its_gauges(self):
+        self.assertEqual(1, self.retype(lambda t: t.replace("limit: Int", "limit: Long")), "Int to Long selects other code")
+
+    def test_an_opaque_type_is_no_alias(self):
+        opaque = {self.TASKS: "package services.tasks\n\ntrait TaskQueue\nopaque type TaskProducer = TaskQueue\n"}
+        self.assertEqual(1, self.retype(self.to_producer, opaque), "an opaque type is a type of its own")
+
+    def test_a_changed_using_clause_needs_its_gauges_even_through_an_alias(self):
+        before = self.WAIT.replace("clock: Clock, limit", "limit").replace(") {", ")(using clock: Clock) {")
+        alias = {self.TASKS: "package services.tasks\n\ntrait TaskQueue\ntype Clocks = Clock\n"}
+        edit = lambda t: t.replace("using clock: Clock", "using clock: Clocks")  # noqa: E731
+        self.assertEqual(1, self.retype(edit, alias, before), "a changed given search is not decided statically")
+
+    def test_an_added_given_or_wildcard_import_needs_its_gauges(self):
+        for imp in ("import services.time.given\n", "import services.time._\n", "import services.time.*\n"):
+            edit = lambda t, i=imp: t.replace("import services.tasks.TaskQueue\n", f"import services.tasks.TaskQueue\n{i}")
+            self.assertEqual(1, self.retype(edit), f"{imp.strip()} may bring another implicit or name in scope")
+
+    def test_an_ascription_choosing_an_overload_needs_its_gauges(self):
+        edit = lambda t: t.replace("queue.enqueue(page)", "queue.enqueue(page: CharSequence)")  # noqa: E731
+        self.assertEqual(1, self.retype(edit), "an ascription picks an overload")
+
+    def test_a_changed_statement_or_a_reorder_is_behaviour(self):
+        alias = {self.TASKS: "package services.tasks\n\ntrait TaskQueue\ntype TaskProducer = TaskQueue\n"}
+        trim = lambda t: self.to_producer(t).replace("queue.enqueue(page)", "queue.enqueue(page.trim)")  # noqa: E731
+        self.assertEqual(1, self.retype(trim, alias), "a changed statement is behaviour, however small")
+        moved = lambda t: t.replace("index: VenuePageIndex, queue", "queue").replace(  # noqa: E731
+            "    clock: Clock", "    index: VenuePageIndex, clock: Clock")
+        self.assertEqual(1, self.retype(moved), "a reordered parameter list is not a retype")
+
+    # MUTATION: each guard of retypes_only is load-bearing -- with it removed, a change one of the cases above refuses
+    # is let through (so that case would catch the regression).
+    RETYPE_MUTATIONS = (
+        ("    return all(same_type(c, old, new) for old, new in renamed.items())", "    return True",
+         "test_int_to_long_needs_its_gauges", lambda t: t.replace("limit: Int", "limit: Long"), None),
+        ("    if any(RETYPE_UNSAFE.search(line) for line in code):\n        return False\n", "",
+         "using clause", lambda t: t.replace("using clock: Clock", "using clock: Clocks"), "using"),
+        ("        if not explicit_import_of(line, names):", "        if False:",
+         "given import", lambda t: t.replace("import services.tasks.TaskQueue\n",
+                                             "import services.tasks.TaskQueue\nimport services.time.given\n"), None),
+        ("    if ALIAS_OPAQUE.search(line):", "    if False:", "opaque", None, "opaque"),
+    )
+
+    def test_every_retypes_only_guard_is_load_bearing(self):
+        with open(TOOL) as f:
+            source = f.read()
+        for old, new, case, edit, shape in self.RETYPE_MUTATIONS:
+            self.assertIn(old, source, f"the mutation for {case} no longer applies: update RETYPE_MUTATIONS")
+            mutant = os.path.join(self.dir.name, "commit_rules_mutant.py")
+            with open(mutant, "w") as f:
+                f.write(source.replace(old, new, 1))
+            if shape == "using":
+                before = self.WAIT.replace("clock: Clock, limit", "limit").replace(") {", ")(using clock: Clock) {")
+                rc = self.retype(edit, {self.TASKS: "package services.tasks\n\ntrait TaskQueue\ntype Clocks = Clock\n"},
+                                 before, tool=mutant)
+            elif shape == "opaque":
+                rc = self.retype(self.to_producer, {self.TASKS: "package services.tasks\n\ntrait TaskQueue\n"
+                                                                "opaque type TaskProducer = TaskQueue\n"}, tool=mutant)
+            else:
+                rc = self.retype(edit, tool=mutant)
+            self.assertEqual(0, rc, f"removing the guard behind {case} let nothing through: the guard is untested")
 
 
 if __name__ == "__main__":
