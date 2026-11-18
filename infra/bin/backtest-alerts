@@ -175,11 +175,14 @@ def summarise(series_present, grid, hold, keep_firing_for, window_start, excused
     in_window = [t for t in grid if t >= window_start]
     union = set()
     series_episodes = 0
+    series_runs = []
     peak = {}
-    for present in series_present.values():
+    for key, present in series_present.items():
         steps = {t for t in firing_steps(present, grid, hold, keep_firing_for) if t >= window_start}
         union |= steps
         series_episodes += len(episodes(steps, in_window))
+        own = {t for t in steps if not any(a <= t <= b for a, b in excused)}
+        series_runs += [(key, a, b) for a, b in episodes(own, in_window)]
         for t in steps:
             peak[t] = peak.get(t, 0) + 1
     unexcused = {t for t in union if not any(a <= t <= b for a, b in excused)}
@@ -194,7 +197,17 @@ def summarise(series_present, grid, hold, keep_firing_for, window_start, excused
         "peak_series": max(peak.values()) if peak else 0,
         "returned_data": returned,
         "runs": episodes(union, in_window),
+        # each series' firing outside the catalogued incidents: the evidence a noisy verdict is judged on
+        "series_runs": sorted(series_runs, key=lambda run: (run[1], run[0])),
     }
+
+
+def noisy_episodes(stats, limit=60):
+    """(how many, the first `limit` by start) of a noisy alert's firing runs outside catalogued incidents, each
+    with its series' labels: whether it was a real incident (catalogue it), a rule meaning the wrong thing (fix
+    it) or a fair rate (budget it) is read off these, not off one longest episode (Alert backtest #1)."""
+    runs = sorted(stats.get("series_runs", []), key=lambda run: (run[1], run[0]))
+    return len(runs), [{"series": json.loads(key), "from": iso(a), "to": iso(b)} for key, a, b in runs[:limit]]
 
 
 def rollout_start(presence, grid, min_coverage=0.9):
@@ -899,6 +912,8 @@ def run_backtest(args, prom, source):
         if stats.get("runs"):
             longest = max(stats["runs"], key=lambda r: r[1] - r[0])
             entry["longest_episode"] = [iso(longest[0]), iso(longest[1])]
+        if status == "noisy":
+            entry["noisy_episodes_total"], entry["noisy_episodes"] = noisy_episodes(stats)
         if stats.get("error"):
             entry["error"] = stats["error"]
         report[name] = entry

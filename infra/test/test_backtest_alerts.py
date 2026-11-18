@@ -94,6 +94,21 @@ class Summarise(unittest.TestCase):
         self.assertEqual(stats["peak_series"], 2)
         self.assertAlmostEqual(stats["firing_fraction"], 5 / 10.0)
 
+    # Alert backtest #1: eleven alerts failed as noisy with only their longest episode kept, so whether each
+    # firing was a real incident (catalogue it), a rule meaning the wrong thing (fix it) or a fair rate (budget
+    # it) could not be told from the run. Every series' firing outside the catalogued incidents is now kept.
+    def test_each_series_firing_outside_the_incidents_is_kept_as_evidence(self):
+        g = grid(10)
+        stats = bt.summarise({'{"host":"a"}': {0, 60, 120}, '{"host":"b"}': {120, 180}, '{"host":"c"}': {480}},
+                             g, 0, 0, 0, excused=[(480, 540)])
+        self.assertEqual(stats["series_runs"], [('{"host":"a"}', 0, 120), ('{"host":"b"}', 120, 180)])
+
+    def test_a_noisy_alert_reports_its_episodes_by_start_capped(self):
+        stats = {"series_runs": [('{"host":"b"}', 120, 180), ('{"host":"a"}', 0, 120), ('{"host":"c"}', 300, 360)]}
+        self.assertEqual(bt.noisy_episodes(stats, limit=2), (3, [
+            {"series": {"host": "a"}, "from": bt.iso(0), "to": bt.iso(120)},
+            {"series": {"host": "b"}, "from": bt.iso(120), "to": bt.iso(180)}]))
+
     def test_the_lead_in_ages_the_hold_but_is_not_counted(self):
         g = grid(10)  # the window opens at 300
         stats = bt.summarise({"a": set(g)}, g, hold=240, keep_firing_for=0, window_start=300)
