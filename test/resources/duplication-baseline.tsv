@@ -7,4 +7,3 @@
 # A row may only fall (--update records it, no trailer); a row added or raised lands only in a commit carrying
 # `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	copies	0
-copies	web/src/main/scala/controllers/UserStateController.scala	2

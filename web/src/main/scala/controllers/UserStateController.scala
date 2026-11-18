@@ -103,46 +103,44 @@ class UserStateController(
    *  through to `userStateRepository`.
    */
   def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
-      case (None, _)             => Unauthorized(Json.obj("error" -> "not logged in"))
-      case (Some(_), None)       => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
-      case (Some(userId), Some(country)) =>
-        val ifNoneMatch     = request.headers.get("If-None-Match")
-        val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
+    inSignedInCountry(request, country) { (userId, signedInCountry) =>
+      val code = signedInCountry.code
+      val ifNoneMatch     = request.headers.get("If-None-Match")
+      val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
 
-        // Fast path: `If-None-Match` always needs real content to compare —
-        // it's an opaque string, not derivable from a timestamp — so it's
-        // excluded here. `If-Modified-Since` alone is exactly what
-        // `userChangeTimeCache` answers: a 304 with ZERO reads from storage
-        // when it can already prove nothing changed since then. The cache is
-        // keyed by userId alone, not (userId, country) — it tracks the WHOLE
-        // document's `updatedAt`, so a change to a DIFFERENT country's list
-        // also (over-cautiously) invalidates this one's fast path. That's a
-        // missed optimization, never a wrong answer: the cache only ever
-        // proves "nothing at all changed", which safely implies "this
-        // country's subset didn't either".
-        val cacheProvenUnchanged =
-          if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
-          else None
+      // Fast path: `If-None-Match` always needs real content to compare —
+      // it's an opaque string, not derivable from a timestamp — so it's
+      // excluded here. `If-Modified-Since` alone is exactly what
+      // `userChangeTimeCache` answers: a 304 with ZERO reads from storage
+      // when it can already prove nothing changed since then. The cache is
+      // keyed by userId alone, not (userId, country) — it tracks the WHOLE
+      // document's `updatedAt`, so a change to a DIFFERENT country's list
+      // also (over-cautiously) invalidates this one's fast path. That's a
+      // missed optimization, never a wrong answer: the cache only ever
+      // proves "nothing at all changed", which safely implies "this
+      // country's subset didn't either".
+      val cacheProvenUnchanged =
+        if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
+        else None
 
-        cacheProvenUnchanged match {
-          case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
-          case None              =>
-            readState(userId) { state =>
-              val hidden = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
-              val body   = hiddenFilmsJson(hidden)
-              val etag   = hiddenFilmsETag(body)
+      cacheProvenUnchanged match {
+        case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
+        case None              =>
+          readState(userId) { state =>
+            val hidden = state.hiddenFilmsByCountry.getOrElse(code, Set.empty)
+            val body   = hiddenFilmsJson(hidden)
+            val etag   = hiddenFilmsETag(body)
 
-              val notModified = ifNoneMatch match {
-                case Some(inm) => inm.contains(etag)
-                case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
-              }
-
-              if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
-              else respondWithHiddenFilms(hidden, state.updatedAt)
+            val notModified = ifNoneMatch match {
+              case Some(inm) => inm.contains(etag)
+              case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
             }
-        }
-    })
+
+            if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
+            else respondWithHiddenFilms(hidden, state.updatedAt)
+          }
+      }
+    }
   }
 
   /** `PUT /api/me/:country/hidden-films/:title` — hide one film. Idempotent:
@@ -165,29 +163,21 @@ class UserStateController(
    *  write (see `HiddenFilmsChange.Hide`), so parallel hides can't overshoot it;
    *  the title missing from the bucket the store answers with is the refusal. */
   def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
-      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
-      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
-      case (Some(_), Some(_)) if title.length > MaxTitleLength =>
-        BadRequest(Json.obj("error" -> s"title longer than $MaxTitleLength characters"))
-      case (Some(userId), Some(c)) =>
+    inSignedInCountry(request, country) { (userId, c) =>
+      if (title.length > MaxTitleLength) BadRequest(Json.obj("error" -> s"title longer than $MaxTitleLength characters"))
+      else
         changeHiddenFilms(userId, c.code, HiddenFilmsChange.Hide(title, MaxHiddenPerCountry)) { (hidden, updatedAt) =>
           if (hidden.contains(title)) respondWithHiddenFilms(hidden, updatedAt)
           else EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry hidden films per country"))
         }
-    })
+    }
   }
 
   /** `DELETE /api/me/:country/hidden-films/:title` — unhide one film.
    *  Idempotent: unhiding a title that was never hidden (or already unhidden)
    *  is a no-op success. See `hideFilm` for the encoding note and response shape. */
   def unhideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
-      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
-      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
-      case (Some(userId), Some(c)) =>
-        changeHiddenFilms(userId, c.code, HiddenFilmsChange.Unhide(title))(respondWithHiddenFilms)
-    })
+    inSignedInCountry(request, country)((userId, c) => changeHiddenFilms(userId, c.code, HiddenFilmsChange.Unhide(title))(respondWithHiddenFilms))
   }
 
   /** `DELETE /api/me/:country/hidden-films` — unhide everything in ONE
@@ -195,13 +185,17 @@ class UserStateController(
    *  narrower than "clear everything", matching how `hiddenFilms()` reads
    *  only one country at a time. */
   def clearHiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
-      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
-      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
-      case (Some(userId), Some(c)) =>
-        changeHiddenFilms(userId, c.code, HiddenFilmsChange.Clear)(respondWithHiddenFilms)
-    })
+    inSignedInCountry(request, country)((userId, c) => changeHiddenFilms(userId, c.code, HiddenFilmsChange.Clear)(respondWithHiddenFilms))
   }
+
+  /** `answer` for the signed-in user in the country the path names: a 401 signed out, else a 400 for a country code
+   *  we do not know. */
+  private def inSignedInCountry(request: RequestHeader, country: String)(answer: (String, models.Country) => Result): Result =
+    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
+      case (None, _)                     => Unauthorized(Json.obj("error" -> "not logged in"))
+      case (Some(_), None)               => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
+      case (Some(userId), Some(resolved)) => answer(userId, resolved)
+    })
 
   /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: one atomic write to
    *  THIS country's bucket only (see `UserStateRepository.changeHiddenFilms`),

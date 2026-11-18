@@ -77,7 +77,7 @@ cognitive	web/src/main/scala/controllers/FilterDescription.scala:FilterDescripti
 cognitive	web/src/main/scala/controllers/FilterDescription.scala:FilterDescription.inclusionPhrase	21
 cognitive	web/src/main/scala/controllers/MovieControllerService.scala:MovieControllerService.schedulesFor#2	18
 cognitive	web/src/main/scala/controllers/MovieControllerService.scala:MovieControllerService.showingsByDate	22
-cognitive	web/src/main/scala/controllers/UserStateController.scala:UserStateController.hiddenFilms	20
+cognitive	web/src/main/scala/controllers/UserStateController.scala:UserStateController.hiddenFilms	18
 cognitive	web/src/main/scala/services/review/MongoReviewSource.scala:MongoReviewSource.films	18
 cognitive	web/src/main/scala/services/review/ReviewSource.scala:ListingFeed.catalogueIdsOf	24
 cognitive	web/src/main/scala/services/users/UserStateRepository.scala:MongoUserStateRepository.subscribe	22
