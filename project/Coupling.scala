@@ -134,21 +134,30 @@ object Coupling {
 
   // ── layers ──
 
-  /** THE LAYERING (test/resources/coupling-layers.tsv, [[Layers.parse]]): every package's layer, bottom (0) up, and the
-   *  few package edges allowed to point up anyway, each with its why. A package may depend only on its own layer or one
-   *  below; a package no row names is a violation too, so a new top-level package takes a place before it lands. */
-  final case class Layers(rows: Seq[(String, Int)], allowed: Set[(String, String)]) {
+  /** THE LAYERING (test/resources/coupling-layers.tsv, [[Layers.parse]]): every package's layer, bottom (0) up, the
+   *  order of the packages inside a layer (their ranks, bottom (0) up), and the few package edges allowed to point up
+   *  anyway, each with its why. A package may depend only on its own layer or one below, and inside an ORDERED layer
+   *  (one any `rank` row names) only on its own rank or a lower one; a package no row places is a violation too, so a
+   *  new package takes a place before it lands. With the package graph acyclic, the ranks are its order made explicit:
+   *  an edge that would close a cycle is an upward edge first, named with the direction allowed. */
+  final case class Layers(rows: Seq[(String, Int)], allowed: Set[(String, String)], ranks: Map[String, Int] = Map.empty) {
     /** A package's layer: the longest `prefix` row naming it (`services` names `services.movies`), None for none. */
     def layerOf(pkg: String): Option[Int] =
       rows.filter { case (prefix, _) => pkg == prefix || pkg.startsWith(prefix + ".") }.sortBy(-_._1.length).headOption.map(_._2)
+    /** A package's rank inside its layer: its own `rank` row (the package itself, never a prefix), None for none. */
+    def rankOf(pkg: String): Option[Int] = ranks.get(pkg)
+    /** Whether `layer` orders its packages: some `rank` row names a package of it. */
+    def ordered(layer: Int): Boolean = ranks.keys.exists(p => layerOf(p).contains(layer))
   }
 
   object Layers {
-    /** The table's rows: `layer<TAB><n><TAB><package prefix><TAB><why>` and `allow<TAB><from>-><to><TAB><why>`; `#` lines
-     *  and blank lines are comments. A row of any other shape, or an `allow` without its why, is an error. */
+    /** The table's rows: `layer<TAB><n><TAB><package prefix><TAB><why>`, `rank<TAB><n><TAB><package><TAB><why>` and
+     *  `allow<TAB><from>-><to><TAB><why>`; `#` lines and blank lines are comments. A row of any other shape, an `allow`
+     *  without its why, a package ranked twice or a ranked package no `layer` row places is an error. */
     def parse(lines: Seq[String]): Layers = {
       val layers = Seq.newBuilder[(String, Int)]
       val allowed = Set.newBuilder[(String, String)]
+      val ranks = scala.collection.mutable.LinkedHashMap.empty[String, Int]
       lines.zipWithIndex.foreach { case (line, index) =>
         val n: Int = index + 1
         val cols: Array[String] = line.split("\t", -1)
@@ -157,6 +166,11 @@ object Coupling {
         else if (cols(0) == "layer" && cols.length == 4) {
           if (cols(1).isEmpty || !cols(1).forall(_.isDigit)) bad(s"layer `${cols(1)}` is not a number")
           layers += ((cols(2), cols(1).toInt))
+        } else if (cols(0) == "rank" && cols.length == 4) {
+          if (cols(1).isEmpty || !cols(1).forall(_.isDigit)) bad(s"rank `${cols(1)}` is not a number")
+          if (cols(3).trim.isEmpty) bad(s"the rank of ${cols(2)} has no why")
+          if (ranks.contains(cols(2))) bad(s"${cols(2)} is ranked twice")
+          ranks(cols(2)) = cols(1).toInt
         } else if (cols(0) == "allow" && cols.length == 3) {
           if (cols(2).trim.isEmpty) bad(s"the allowed edge ${cols(1)} has no why")
           val ends: Array[String] = cols(1).split("->", -1)
@@ -164,7 +178,9 @@ object Coupling {
           allowed += ((ends(0), ends(1)))
         } else bad("not a `layer` or `allow` row")
       }
-      Layers(layers.result(), allowed.result())
+      val table = Layers(layers.result(), allowed.result(), ranks.toMap)
+      ranks.keys.filter(p => table.layerOf(p).isEmpty).foreach(p => throw new IllegalArgumentException(s"coupling-layers.tsv: $p is ranked but no `layer` row places it"))
+      table
     }
   }
 
@@ -180,6 +196,20 @@ object Coupling {
     }
     val upward: Seq[((String, String), Seq[(String, String)])] = packageEdges(g).toSeq.filter { case ((a, b), _) => up(a, b) }
     (unlayered ++ upward).sortBy { case ((a, b), _) => (a, b) }
+  }
+
+  /** The package edges the order inside a layer forbids, with the class references making each: inside an ordered
+   *  layer, an edge to a package of a higher rank that no `allow` row names, and (as `<package>->?`) every package of it
+   *  no `rank` row names. */
+  def rankViolations(g: Graph, layers: Layers): Seq[((String, String), Seq[(String, String)])] = {
+    val unranked: Seq[((String, String), Seq[(String, String)])] = packages(g).map(_.name)
+      .filter(p => layers.layerOf(p).exists(layers.ordered) && layers.rankOf(p).isEmpty).map(p => ((p, "?"), Seq.empty[(String, String)]))
+    def up(a: String, b: String): Boolean = {
+      val (la, lb, ra, rb) = (layers.layerOf(a), layers.layerOf(b), layers.rankOf(a), layers.rankOf(b))
+      la.isDefined && la == lb && ra.isDefined && rb.isDefined && rb.get > ra.get && !layers.allowed((a, b))
+    }
+    val upward: Seq[((String, String), Seq[(String, String)])] = packageEdges(g).toSeq.filter { case ((a, b), _) => up(a, b) }
+    (unranked ++ upward).sortBy { case ((a, b), _) => (a, b) }
   }
 
   // ── classes ──
@@ -213,7 +243,8 @@ object Coupling {
     val ce = packages(g).map(p => s"ce\t${p.name}\t${p.cePackages}")
     val fanout = fans(g).toSeq.collect { case (c, (_, out)) if out >= fanOutLimit => s"fanout\t$c\t$out" }.sorted
     val layerRows = layers.toSeq.flatMap(l => layerViolations(g, l)).map { case ((a, b), refs) => s"layer-violation\t$a->$b\t${refs.size}" }
-    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ layerRows
+    val rankRows = layers.toSeq.flatMap(l => rankViolations(g, l)).map { case ((a, b), refs) => s"rank-violation\t$a->$b\t${refs.size}" }
+    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ layerRows ++ rankRows
   }
 
   val BaselineHeader: Seq[String] = Seq(
@@ -223,13 +254,16 @@ object Coupling {
     "#   limit        fanout / new-package-ce: a class without a fanout row stays below the first, a package without a ce row",
     "#                at or below the second",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
-    "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): a new one adds a cycle",
+    "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --",
+    "#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file",
     "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
     "#   fanout       <class>, its fan-out (distinct production classes it uses), at or above the limit: it may not rise",
     "#   layer-violation <from>-><to>, a package edge into a higher layer (test/resources/coupling-layers.tsv): never",
     "#                held here -- the ratchet fails on any (cut it, or allow it in the layer table with its why)",
+    "#   rank-violation <from>-><to>, inside an ordered layer an edge to a higher-ranked package, or <package>->? for a",
+    "#                package of it with no `rank` row: never held here either -- the ratchet fails on any",
     "# A row added or raised lands only in a commit carrying `Coupling: <why>` (CLAUDE.md, Design rules); a fall is",
-    "# recorded by --update with no trailer. Module-edge and cycle-edge weights are information: only the pair is held.")
+    "# recorded by --update with no trailer. Module-edge weights are information: only the pair is held.")
 
   // ── the human report ──
 
@@ -284,16 +318,25 @@ object Coupling {
     }
     layers.foreach { l =>
       val bad = layerViolations(g, l)
+      val badRank = rankViolations(g, l)
+      def sample(refs: Seq[(String, String)]): String =
+        refs.take(3).map { case (x, y) => s"`$x` -> `$y`" }.mkString(", ") + (if (refs.size > 3) ", ..." else "")
+      def place(p: String): String = l.layerOf(p).map(n => l.rankOf(p).fold(s"$n")(r => s"$n.$r")).getOrElse("?")
       out += ""
-      out += s"## Layers (${bad.size} violations)"
+      out += s"## Layers (${bad.size + badRank.size} violations)"
       out += ""
-      out += "Each package's layer (test/resources/coupling-layers.tsv), bottom up; a package depends only on its own layer or below."
+      out += "Each package's layer and, inside an ordered layer, its rank (test/resources/coupling-layers.tsv: `layer.rank`), bottom " +
+        "up; a package depends only on its own layer or below, and inside an ordered layer only on its own rank or below."
       out += ""
-      out ++= table(Seq("layer", "packages"), pkgs.groupBy(p => l.layerOf(p.name).map(_.toString).getOrElse("?")).toSeq.sortBy(_._1)
+      out ++= table(Seq("layer", "packages"), pkgs.groupBy(p => place(p.name)).toSeq
+        .sortBy { case (n, _) => n.split('.').map(x => if (x == "?") Int.MaxValue else x.toInt).toSeq match { case Seq(a) => (a, -1); case Seq(a, b) => (a, b); case _ => (Int.MaxValue, 0) } }
         .map { case (n, ps) => Seq(n, ps.map(p => s"`${p.name}`").sorted.mkString(" ")) })
       bad.foreach { case ((a, b), refs) =>
-        val sample = refs.take(3).map { case (x, y) => s"`$x` -> `$y`" }.mkString(", ")
-        out += (if (b == "?") s"- `$a` has no layer" else s"- `$a -> $b` points up: ${refs.size} refs ($sample${if (refs.size > 3) ", ..." else ""})")
+        out += (if (b == "?") s"- `$a` has no layer" else s"- `$a -> $b` points up: ${refs.size} refs (${sample(refs)})")
+      }
+      badRank.foreach { case ((a, b), refs) =>
+        out += (if (b == "?") s"- `$a` has no rank in its layer (${place(a)})"
+                else s"- `$a -> $b` points up inside layer ${place(a).takeWhile(_ != '.')} (rank ${place(a)} -> ${place(b)}; the allowed direction is `$b -> $a`): ${refs.size} refs (${sample(refs)})")
       }
     }
     out += ""

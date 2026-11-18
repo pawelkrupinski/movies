@@ -31,7 +31,7 @@ cd "$root"
 cat "$out/report.md"
 echo
 rc=0
-python3 "$root/scripts/ci/coupling_ratchet.py" check --current "$out/rows.tsv" || rc=$?
+python3 "$root/scripts/ci/coupling_ratchet.py" check --current "$out/rows.tsv" --edges "$out/edges.tsv" || rc=$?
 if [ -n "$update" ]; then
     cp "$out/rows.tsv" "$root/test/resources/coupling-baseline.tsv"
     echo "coupling-report: wrote test/resources/coupling-baseline.tsv -- a rise is committed with a \`Coupling: <why>\` trailer"

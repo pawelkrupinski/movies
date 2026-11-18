@@ -4,13 +4,16 @@
 #   limit        fanout / new-package-ce: a class without a fanout row stays below the first, a package without a ce row
 #                at or below the second
 #   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind
-#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): a new one adds a cycle
+#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --
+#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file
 #   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise
 #   fanout       <class>, its fan-out (distinct production classes it uses), at or above the limit: it may not rise
 #   layer-violation <from>-><to>, a package edge into a higher layer (test/resources/coupling-layers.tsv): never
 #                held here -- the ratchet fails on any (cut it, or allow it in the layer table with its why)
+#   rank-violation <from>-><to>, inside an ordered layer an edge to a higher-ranked package, or <package>->? for a
+#                package of it with no `rank` row: never held here either -- the ratchet fails on any
 # A row added or raised lands only in a commit carrying `Coupling: <why>` (CLAUDE.md, Design rules); a fall is
-# recorded by --update with no trailer. Module-edge and cycle-edge weights are information: only the pair is held.
+# recorded by --update with no trailer. Module-edge weights are information: only the pair is held.
 limit	fanout	30
 limit	new-package-ce	8
 module-edge	common->base	52

@@ -153,16 +153,62 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.baselineRows(graph, fanOutLimit = 3, layers = Some(allowing)).last shouldBe "layer-violation\tworker->?\t0"
   }
 
+  // services.a -> services.b and services.b -> services.c inside layer 2, with services.b ranked above services.a: the
+  // first edge points up inside the layer
+  private val ordered = Graph(Seq(t("services.a.A"), t("services.b.B"), t("services.c.C"), t("services.d.D"), t("models.M")),
+    Set("services.a.A" -> "services.b.B", "services.b.B" -> "services.c.C", "services.c.C" -> "models.M", "services.d.D" -> "models.M"))
+  private val ranked = Coupling.Layers.parse(Seq("layer\t1\tmodels\tthe data", "layer\t2\tservices\tthe application",
+    "rank\t0\tservices.c\tthe bottom", "rank\t1\tservices.a\tover c", "rank\t2\tservices.b\tover a", "rank\t0\tservices.d\tbeside c"))
+
+  "the order inside a layer" should "forbid an edge to a higher rank, naming it with its class references" in {
+    Coupling.rankViolations(ordered, ranked) shouldBe Seq(("services.a", "services.b") -> Seq("services.a.A" -> "services.b.B"))
+    Coupling.layerViolations(ordered, ranked) shouldBe empty
+  }
+
+  it should "allow an edge down, or to the same rank, and an upward one an `allow` row names" in {
+    val flat = Coupling.Layers.parse(Seq("layer\t1\tmodels\td", "layer\t2\tservices\ta", "rank\t0\tservices.a\tx",
+      "rank\t0\tservices.b\tx", "rank\t0\tservices.c\tx", "rank\t0\tservices.d\tx"))
+    Coupling.rankViolations(ordered, flat) shouldBe empty
+    val allowing = Coupling.Layers.parse(Seq("layer\t1\tmodels\td", "layer\t2\tservices\ta", "rank\t0\tservices.c\tx",
+      "rank\t1\tservices.a\tx", "rank\t2\tservices.b\tx", "rank\t0\tservices.d\tx", "allow\tservices.a->services.b\tthe one seam"))
+    Coupling.rankViolations(ordered, allowing) shouldBe empty
+  }
+
+  it should "name a package of an ordered layer that has no rank, and leave an unordered layer alone" in {
+    val missing = Coupling.Layers.parse(Seq("layer\t1\tmodels\td", "layer\t2\tservices\ta", "rank\t0\tservices.c\tx",
+      "rank\t2\tservices.a\tx", "rank\t1\tservices.b\tx"))
+    Coupling.rankViolations(ordered, missing) shouldBe Seq(("services.d", "?") -> Nil)
+    Coupling.baselineRows(ordered, layers = Some(missing)).last shouldBe "rank-violation\tservices.d->?\t0"
+    missing.ordered(1) shouldBe false
+    missing.rankOf("models") shouldBe None
+  }
+
+  it should "say in the report which direction is allowed" in {
+    Coupling.report(ordered, Map.empty, layers = Some(ranked)) should include(
+      "- `services.a -> services.b` points up inside layer 2 (rank 2.1 -> 2.2; the allowed direction is `services.b -> services.a`)")
+  }
+
   "the layer table" should "refuse a row of another shape and an allowed edge without its why" in {
     an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("layer\tzero\ttools\tu"))
     an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("allow\tmodels->services\t "))
     an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("lyer\t0\ttools\tu"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "rank\tx\tservices.a\tu"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "rank\t0\tservices.a\t "))
+    an[IllegalArgumentException] should be thrownBy
+      Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "rank\t0\tservices.a\tu", "rank\t1\tservices.a\tv"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "rank\t0\tclients\tu"))
   }
 
   "the checked-in layer table" should "parse, and name every package's layer" in {
     val table = Coupling.Layers.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-layers.tsv").toPath).asScala.toSeq)
     Seq("tools", "models", "settings", "services.identity", "clients", "controllers", "modules.wiring").flatMap(table.layerOf) shouldBe
       Seq(0, 1, 2, 3, 3, 4, 5)
+    // the application and the composition roots are ordered: the identity model under the cinemas that build its
+    // readings, its worker adapters over them; the wirings under the roots
+    Seq(3, 5).forall(table.ordered) shouldBe true
+    Seq("services.identity", "services.cinemas", "services.tasks", "services.identityadapters").flatMap(table.rankOf) shouldBe
+      Seq("services.identity", "services.cinemas", "services.tasks", "services.identityadapters").flatMap(table.rankOf).sorted.distinct
+    table.rankOf("modules.wiring").get should be < table.rankOf("modules").get
   }
 
   "the checked-in baseline" should "be the rows' shape, one row a key, its limits the build's" in {
@@ -171,7 +217,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val rows = lines.filterNot(l => l.startsWith("#") || l.trim.isEmpty).map(_.split("\t", -1).toSeq)
     all(rows.map(_.size)) shouldBe 3
     rows.map(_.head).distinct.toSet should contain allElementsOf Set("limit", "module-edge", "ce")
-    rows.map(_.head).toSet -- Set("limit", "module-edge", "cycle-edge", "ce", "fanout") shouldBe empty
+    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout") shouldBe empty // no cycle-edge: the graph has none
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe

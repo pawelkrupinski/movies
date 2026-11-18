@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""coupling_ratchet.py: measured coupling past the baseline fails (a new cross-module edge kind, a new package cycle
-edge, a package's Ce past its row or the new-package limit, a class's fan-out past its row or reaching the limit, any package edge into a higher layer);
-a baseline grown in a range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table
-loosened in a range (an `allow` row added, a package moved to another layer); falls pass and are said.
+"""coupling_ratchet.py: any package cycle edge fails, measured or recorded in the baseline, whatever the trailer; so
+does measured coupling past the baseline (a new cross-module edge kind, a package's Ce past its row or the new-package
+limit, a class's fan-out past its row or reaching the limit), any package edge into a higher layer or, inside an ordered
+layer, a higher rank (naming the direction allowed), and a package without its layer or rank; a baseline grown in a
+range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table loosened in a range (an
+`allow` row added, a package given another layer or rank); falls pass and are said.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -25,14 +27,14 @@ layer\t0\ttools\tgeneric
 layer\t1\tmodels\tthe data
 layer\t3\tservices\tthe application
 layer\t4\tcontrollers\tthe web tier
+rank\t0\tservices.movies\tthe corpus
+rank\t1\tservices.tasks\tthe queue, over the corpus
 """
 
 ROWS = """# a comment
 limit\tfanout\t30
 limit\tnew-package-ce\t15
 module-edge\tworker->common\t40
-cycle-edge\tmodels->services.movies\t2
-cycle-edge\tservices.movies->models\t9
 ce\tmodels\t12
 ce\tservices.movies\t20
 fanout\tservices.movies.MovieService\t35
@@ -70,7 +72,7 @@ class CouplingRatchetTest(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def check(self, current, rng=None):
+    def check(self, current, rng=None, edges=None):
         path = os.path.join(self.dir.name, "current.tsv")
         with open(path, "w") as f:
             f.write(current)
@@ -79,11 +81,16 @@ class CouplingRatchetTest(unittest.TestCase):
         args = [sys.executable, "-I", TOOL, "check", "--current", path, "--baseline", BASELINE]
         if rng:
             args += ["--range", rng]
+        if edges is not None:
+            edges_path = os.path.join(self.dir.name, "edges.tsv")
+            with open(edges_path, "w") as f:
+                f.write(edges)
+            args += ["--edges", edges_path]
         done = subprocess.run(args, cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 
-    def assert_fails(self, current, *said, rng=None):
-        rc, out = self.check(current, rng)
+    def assert_fails(self, current, *said, rng=None, edges=None):
+        rc, out = self.check(current, rng, edges)
         self.assertEqual(1, rc, out)
         for s in said:
             self.assertIn(s, out)
@@ -102,8 +109,22 @@ class CouplingRatchetTest(unittest.TestCase):
     def test_a_heavier_known_module_edge_passes(self):
         self.assert_passes(rows("module-edge\tworker->common\t400", drop=("module-edge",)))
 
-    def test_a_new_package_cycle_edge_fails(self):
-        self.assert_fails(rows("cycle-edge\tmodels->tools\t1"), "a new package cycle edge: models->tools")
+    def test_a_new_package_cycle_fails(self):
+        self.assert_fails(rows("cycle-edge\tmodels->tools\t1", "cycle-edge\ttools->models\t2"),
+                          "a package cycle edge: models->tools", "a package cycle edge: tools->models", "no `Coupling:` trailer")
+
+    def test_a_cycle_fails_naming_the_class_references_behind_it(self):
+        edges = "models->tools\tmodels.Film->tools.Slugify\nmodels->tools\tmodels.Codec->tools.Digest\n"
+        self.assert_fails(rows("cycle-edge\tmodels->tools\t2"), "models.Film -> tools.Slugify, models.Codec -> tools.Digest",
+                          edges=edges)
+
+    def test_a_cycle_recorded_in_the_baseline_fails_even_with_a_trailer(self):
+        recorded = rows("cycle-edge\tmodels->tools\t1", "cycle-edge\ttools->models\t1")
+        head = self.commit({BASELINE: recorded}, "record the cycle\n\nCoupling: it is only one class")
+        self.assert_fails(recorded, "THE COUPLING BASELINE RECORDS A PACKAGE CYCLE", "cycle-edge models->tools",
+                          rng=f"{self.base}..{head}")
+        # ...and the code without the cycle still fails while the baseline keeps it
+        self.assert_fails(ROWS, "THE COUPLING BASELINE RECORDS A PACKAGE CYCLE")
 
     def test_a_package_ce_past_its_row_fails(self):
         self.assert_fails(rows("ce\tmodels\t13", drop=("ce\tmodels",)), "package models: Ce 13 past its baseline 12")
@@ -135,11 +156,21 @@ class CouplingRatchetTest(unittest.TestCase):
     def test_an_unlayered_package_fails(self):
         self.assert_fails(rows("layer-violation\tfresh->?\t0"), "package fresh has no layer")
 
+    def test_an_upward_edge_inside_a_layer_fails_naming_the_direction_allowed(self):
+        violation = "rank-violation\tservices.movies->services.tasks\t3"
+        self.commit({BASELINE: rows(violation)}, "a baseline that recorded the violation\n\nCoupling: no")
+        self.assert_fails(rows(violation), "an upward edge inside a layer: services.movies (rank 0) -> services.tasks (rank 1)",
+                          "the allowed direction is services.tasks -> services.movies",
+                          "services.movies.MovieService -> services.tasks.TaskQueue",
+                          edges="services.movies->services.tasks\tservices.movies.MovieService->services.tasks.TaskQueue\n")
+
+    def test_a_package_without_its_rank_fails(self):
+        self.assert_fails(rows("rank-violation\tservices.fresh->?\t0"), "package services.fresh has no rank in its layer")
+
     def test_falls_pass_and_are_said(self):
-        out = self.assert_passes(rows("ce\tmodels\t3", drop=("ce\tmodels", "cycle-edge", "fanout")))
+        out = self.assert_passes(rows("ce\tmodels\t3", drop=("ce\tmodels", "fanout")))
         self.assertIn("coupling fell", out)
         self.assertIn("ce models 12 -> 3", out)
-        self.assertIn("cycle-edge models->services.movies gone", out)
         self.assertIn("fanout services.movies.MovieService 35 -> below the limit", out)
 
     def test_a_grown_baseline_without_a_trailer_fails(self):
@@ -153,10 +184,10 @@ class CouplingRatchetTest(unittest.TestCase):
         self.assert_passes(grown, rng=f"{self.base}..{head}")
 
     def test_a_trailer_on_a_commit_not_changing_the_baseline_does_not_count(self):
-        grown = rows("cycle-edge\tmodels->tools\t1")
-        first = self.commit({BASELINE: grown}, "a cycle")
+        grown = rows("module-edge\tcommon->worker\t1")
+        first = self.commit({BASELINE: grown}, "a new edge kind")
         head = self.commit({"README": "x\n"}, "docs\n\nCoupling: not this commit's")
-        self.assert_fails(grown, "cycle-edge models->tools added", rng=f"{self.base}..{head}")
+        self.assert_fails(grown, "module-edge common->worker added", rng=f"{self.base}..{head}")
         self.assertTrue(first)
 
     def test_an_empty_trailer_does_not_count(self):
@@ -180,7 +211,7 @@ class CouplingRatchetTest(unittest.TestCase):
         self.assert_passes(grown, rng=f"{self.base}..{head}")
 
     def test_a_shrunk_baseline_needs_no_trailer(self):
-        shrunk = rows("ce\tmodels\t5", drop=("ce\tmodels", "cycle-edge"))
+        shrunk = rows("ce\tmodels\t5", drop=("ce\tmodels", "module-edge"))
         head = self.commit({BASELINE: shrunk}, "models uses less")
         self.assert_passes(shrunk, rng=f"{self.base}..{head}")
 
@@ -206,6 +237,19 @@ class CouplingRatchetTest(unittest.TestCase):
         self.commit({LAYERS: LAYER_ROWS + "allow\tmodels->services\tx\n"}, "allow")
         head = self.commit({BASELINE: ROWS + "# touched\n"}, "baseline\n\nCoupling: not the table's")
         self.assert_fails(ROWS, "allow models->services added", rng=f"{self.base}..{head}")
+
+    def test_a_re_ranked_package_without_a_trailer_fails(self):
+        head = self.commit({LAYERS: LAYER_ROWS.replace("rank\t0\tservices.movies", "rank\t2\tservices.movies")}, "movies up")
+        self.assert_fails(ROWS, "THE LAYER TABLE LOOSENED", "services.movies re-ranked from 0 to 2", rng=f"{self.base}..{head}")
+
+    def test_a_re_ranked_package_with_a_trailer_passes(self):
+        head = self.commit({LAYERS: LAYER_ROWS.replace("rank\t0\tservices.movies", "rank\t2\tservices.movies")},
+                           "movies up\n\nCoupling: the corpus reads the queue now, the queue no longer the corpus")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_a_new_package_rank_row_needs_no_trailer(self):
+        head = self.commit({LAYERS: LAYER_ROWS + "rank\t1\tservices.fresh\ta new package\n"}, "a new package")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
 
     def test_a_new_top_level_package_row_needs_no_trailer(self):
         head = self.commit({LAYERS: LAYER_ROWS + "layer\t5\tdiagnostics\tcommand-line programs\n"}, "a new package")

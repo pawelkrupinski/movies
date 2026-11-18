@@ -239,15 +239,19 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
 **Coupling is reviewed on every change, and only falls unless a commit says why.** `scripts/coupling-report` measures
 the production code from Zinc's own class-dependency record (`sbt couplingReport`, `project/Coupling.scala`): the
 module matrix, each package's Ca/Ce/instability/abstractness/distance, the package cycles with the class references
-behind every edge, the top fan-in/fan-out classes and god hubs, split packages. The pre-push `sbt` check holds the
-code to `test/resources/coupling-baseline.tsv` (`scripts/ci/coupling_ratchet.py`): no new package cycle edge, no new
-cross-module edge kind, no package's Ce past its row, no class's fan-out past its row or the limit, and no package edge
-into a higher layer: `test/resources/coupling-layers.tsv` gives every package its layer (tools < models < settings <
-clients/services < controllers < modules/diagnostics), a new top-level package its row in the commit adding it, and
-an `allow` row or a moved layer needs the same trailer as a baseline rise. Prefer cutting the
-dependency (a trait at the seam, the class moved to the package that owns it); when the coupling is right, run
-`scripts/coupling-report --update` and commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer:
-`--update` records it, so the ratchet tightens.
+behind every edge (`--out DIR` keeps every reference, `edges.tsv`), the top fan-in/fan-out classes and god hubs, split
+packages. **The package graph has no cycle** (0 since 2026-11-18, the owner's decision): the pre-push `sbt` check
+(`scripts/ci/coupling_ratchet.py`) refuses any package cycle edge, naming the class references behind it, and no
+`Coupling:` trailer or baseline row excuses one. `test/resources/coupling-layers.tsv` gives every package its layer
+(tools < models < settings < clients/services < controllers < modules/diagnostics) and, inside the services and
+composition-root layers, its RANK: a package uses only its own layer and rank or lower ones, so an edge that would close
+a cycle is refused first as an upward edge, saying which direction is allowed; a new package takes its row (and rank) in
+the commit adding it, and an `allow` row, a moved layer or a changed rank needs the same trailer as a baseline rise. The
+ratchet also holds the code to `test/resources/coupling-baseline.tsv`: no new cross-module edge kind, no package's Ce
+past its row, no class's fan-out past its row or the limit. Prefer cutting the dependency (a trait at the seam, the class
+moved to the package that owns it or one rank down); when a Ce or fan-out rise is right, run `scripts/coupling-report
+--update` and commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer: `--update` records it, so
+the ratchet tightens.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala

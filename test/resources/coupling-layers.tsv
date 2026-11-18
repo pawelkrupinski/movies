@@ -1,19 +1,67 @@
 # THE LAYERING (CLAUDE.md, Design rules; project/Coupling.scala `Layers`, `sbt couplingReport`, scripts/coupling-report):
-# every production package's layer, bottom (0) up. A package may depend only on its own layer or a lower one; the
-# coupling ratchet (scripts/ci/coupling_ratchet.py) fails on any package edge into a higher layer, and on a package no
-# row names -- a new top-level package takes its place here in the commit that adds it. Loosening the table -- an `allow`
-# row added, a package given another layer -- lands only in a commit carrying `Coupling: <why>` (the ratchet checks it).
+# every production package's layer, bottom (0) up, and inside an ORDERED layer (the application's, 3, and the composition
+# roots', 5) every package's rank, bottom (0) up. A package may depend only on its own layer or a lower one, and inside
+# an ordered layer only on its own rank or a lower one. The coupling ratchet (scripts/ci/coupling_ratchet.py) fails on
+# any package edge into a higher layer or a higher rank (naming the direction allowed), on a package no `layer` row
+# places, on a package of an ordered layer with no `rank` row -- a new package takes its place here in the commit that
+# adds it -- and on any package cycle at all (no row, no trailer excuses one). Loosening the table -- an `allow` row
+# added, a package given another layer or rank -- lands only in a commit carrying `Coupling: <why>` (the ratchet checks
+# it).
 #
 #   layer<TAB><n><TAB><package prefix><TAB><why it sits there>   the longest prefix naming a package decides
+#   rank<TAB><n><TAB><package><TAB><why it sits there>          the package itself (never a prefix), inside its layer
 #   allow<TAB><from>-><to><TAB><why>                          an upward edge kept on purpose (keep this list short)
 #
-# Packages inside one layer may still reach each other (services.* is one layer, and still one package cycle: the next
-# cut). To cut an upward edge: move the type to the layer its users sit on, or put a small trait in the lower package.
+# The ranks are the package graph's order, written down (2026-11-18: the last two cycles cut, 0 left): an edge that would
+# close a cycle is an upward edge first. To cut one: move the type to the package its users sit on, or one rank down,
+# or put a small trait in the lower package. Packages of one rank may use each other only one way (no cycle).
 layer	0	tools	generic utilities and the HTTP layer: text, digests, clocks, fetches; they know no film, venue or setting (they take values)
 layer	1	models	the domain data -- films, venues, cities, countries -- and the pure readings of it
 layer	2	settings	typed configuration: values resolved from the environment, which name models (a Country)
 layer	3	clients	the external services' clients, beside the services that use them
-layer	3	services	the application: scraping, identity, enrichment, the read model, metrics -- one layer, cycles inside it allowed
+layer	3	services	the application: scraping, identity, enrichment, the read model, metrics -- ordered by the ranks below
 layer	4	controllers	the web tier's HTTP endpoints, view models and filters, over the services
 layer	5	modules	the composition roots (AppLoader, WorkerMain and their wirings): everything is wired here, nothing depends on them
 layer	5	diagnostics	command-line programs run beside the app (FilmwebDiff, RosterAudit): built from the whole stack like a composition root
+#
+# The application's order (layer 3), bottom up.
+rank	0	clients	the external services' clients: they know a film, no service
+rank	0	services	the Mongo plumbing every store stands on: connections, write concerns, uptime
+rank	0	services.config	the admin overrides of the environment
+rank	0	services.lookups	a lookup: one external read, its key and its outcome
+rank	0	services.retention	stamped rows, kept while their stamp is young
+rank	0	services.tasktypes	the task types, by name: the queue's vocabulary
+rank	0	services.titles	the title text: normalising, reading and classifying a listing's title
+rank	1	services.cadence	when a rating is due again, and its report
+rank	1	services.events	the in-process event bus and its events
+rank	1	services.facebook	the Graph API reads of the film pages Facebook fetched
+rank	1	services.fallback	the Filmweb fallback's venues
+rank	1	services.freshness	when each record was last fetched
+rank	1	services.keyed	the keyed document store
+rank	1	services.movies	the corpus: film rows, screenings, slots, their stores and caches
+rank	1	services.schedule	the scheduled runs' claims
+rank	2	services.attempts	the enrichment attempts' records and report
+rank	2	services.readmodel	the served projection of the corpus
+rank	2	services.resolution	a listing's film resolution over the corpus
+rank	2	services.scrapes	the venues' scrape records and archives
+rank	2	services.users	the accounts and their state
+rank	3	services.auth	the sign-in flows over the accounts
+rank	3	services.closure	the venue closure checks and retirements over the scrape records
+rank	3	services.identity	the identity model: the resolver, its agreement stage, the readings scrapers and clients build
+rank	3	services.metrics	the metrics plumbing and the series of the packages below it
+rank	4	services.cinemas	the cinema scrapers and their contract, building the identity model's readings
+rank	4	services.review	the takes' review: fact checks and explanations over the identity model
+rank	5	services.alerts	the scrape and fallback alerts and their notifiers, over the cinemas
+rank	5	services.tasks	the task queue and worker, the scrape handlers and the pipeline's series
+rank	6	services.corpus	the worker's film-row orchestration over the tasks and the identity model
+rank	6	services.enrichment	the ratings and ids, run as tasks
+rank	6	services.sharecards	the share cards, rendered as tasks
+rank	6	services.venuepages	the venue pages a detail fetch keeps, fetched as tasks
+rank	7	services.identityadapters	the identity model's worker adapters: its stores, asks, projection and fill over everything below
+rank	7	services.refresh	the rating refresh sources, run as tasks over the enrichment
+#
+# The composition roots' order (layer 5), bottom up.
+rank	0	diagnostics	command-line programs, each its own root
+rank	0	modules.webwiring	the web tier's wiring, area by area
+rank	0	modules.wiring	the worker's wiring, area by area, and WorkerWiring over them
+rank	1	modules	the roots on top: AppLoader, WorkerMain, the filters

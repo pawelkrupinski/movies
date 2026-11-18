@@ -14,7 +14,17 @@ trap 'rm -rf "$work"' EXIT
 # <name> @@ <exact text in the tool> @@ <what replaces it>
 mutants=(
   'a new module edge passes @@ if key not in of_kind(baseline, "module-edge"): @@ if False:'
-  'a new cycle edge passes @@ if key not in of_kind(baseline, "cycle-edge"): @@ if False:'
+  'a new cycle passes @@ for key, refs in sorted(of_kind(current, "cycle-edge").items()): @@ for key, refs in []:'
+  'a cycle recorded in the baseline passes @@ recorded = sorted(of_kind(baseline, "cycle-edge")) @@ recorded = []'
+  'a refused edge names no class reference @@ }" if refs else "" @@ }" if False else ""'
+  'an unlayered new package passes @@ for key, refs in sorted(of_kind(current, "layer-violation").items()):
+        a, b = key.split("->")
+        if b == "?": @@ for key, refs in sorted(of_kind(current, "layer-violation").items()):
+        a, b = key.split("->")
+        if b == "?" and False:'
+  'an upward edge inside a layer passes @@ for key, refs in sorted(of_kind(current, "rank-violation").items()): @@ for key, refs in [kv for kv in sorted(of_kind(current, "rank-violation").items()) if kv[0].endswith("->?")]:'
+  'a package without its rank passes @@ out.append(f"package {a} has no rank in its layer @@ pass  # (f"package {a} has no rank in its layer'
+  'a re-ranked package is no loosening @@ if old[2][pkg] != new[2][pkg]: @@ if False:'
   'a layer violation passes @@ for key, refs in sorted(of_kind(current, "layer-violation").items()): @@ for key, refs in []:'
   'Ce is not compared @@         if ce > allowed:
             was @@         if False:
