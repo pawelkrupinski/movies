@@ -183,24 +183,11 @@ abstract class CacheRefresher(
     val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"$walkLabel: starting tick over ${snapshot.size} cached row(s) " +
                 s"($resolvable re-resolving their URL first).")
-    val changed       = new AtomicInteger(0)
-    val failed        = new AtomicInteger(0)
-    val urlDiscovered = new AtomicInteger(0)
+    val counts = new CacheRefresher.WalkCounts
 
     BoundedParallel.foreach(walkLabel.replace(' ', '-'), snapshot, refreshConcurrency) { case (key, enrichment) =>
-      // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
-      //    better match replaces the stored one; a failure leaves it be.
-      //    A re-derivation that THROWS (a failed read propagates: tools.ReadOutcome)
-      //    is that row's failure too, never the walk's: BoundedParallel loses the
-      //    whole batch to one throwing row.
-      if (enrichment.tmdbId.isDefined) Try(rediscoverUrl(key, enrichment)).flatten match {
-        case Success(true)  => urlDiscovered.incrementAndGet()
-        case Success(false) => ()
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"$walkLabel: ${key.cleanTitle} lookup failed: ${exception.getMessage}")
-      }
-
+      // 1. Re-derive the URL when the row has a tmdbId to derive it from.
+      if (enrichment.tmdbId.isDefined) rediscover(key, enrichment, walkLabel, rediscoverUrl, counts)
       // 2. Refresh the score off whatever URL the row NOW holds — possibly the
       //    one just re-resolved, possibly the pre-existing one.
       val current = cache.get(key).getOrElse(enrichment)
@@ -210,19 +197,42 @@ abstract class CacheRefresher(
             logger.debug(s"$walkLabel: ${key.cleanTitle} $url ${scoreOf(current).getOrElse("—")} → ${fresh.getOrElse("—")}")
             cache.putIfPresent(key, withScore(_, fresh))
             fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(badge(s))))
-            changed.incrementAndGet()
+            counts.changed.incrementAndGet()
           case Success(_) => ()
           case Failure(exception) =>
-            failed.incrementAndGet()
+            counts.failed.incrementAndGet()
             logger.debug(s"$walkLabel: $url lookup failed: ${exception.getMessage}")
         }
       }
     }
 
     val took = startedAt.millis
-    val message = s"tick done in ${took}ms — ${changed.get} $changedNoun changed, " +
-                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
+    val message = s"tick done in ${took}ms — ${counts.changed.get} $changedNoun changed, " +
+                  s"${counts.urlDiscovered.get} URL(s) newly discovered, ${counts.failed.get} failed."
     logger.info(s"$walkLabel: $message")
-    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
+    BulkRefreshResult.counts(walked = snapshot.size, changed = counts.changed.get, discovered = counts.urlDiscovered.get,
+      failed = counts.failed.get, message = message)
+  }
+
+  /** Re-derive a row's URL: a better match replaces the stored one; a failure leaves it be. A re-derivation that
+   *  THROWS (a failed read propagates: tools.ReadOutcome) is that row's failure too, never the walk's:
+   *  BoundedParallel loses the whole batch to one throwing row. */
+  private def rediscover(key: CacheKey, row: MovieRecord, walkLabel: String,
+                         rediscoverUrl: (CacheKey, MovieRecord) => Try[Boolean], counts: CacheRefresher.WalkCounts): Unit =
+    Try(rediscoverUrl(key, row)).flatten match {
+      case Success(true)  => counts.urlDiscovered.incrementAndGet(); ()
+      case Success(false) => ()
+      case Failure(exception) =>
+        counts.failed.incrementAndGet()
+        logger.debug(s"$walkLabel: ${key.cleanTitle} lookup failed: ${exception.getMessage}")
+    }
+}
+
+object CacheRefresher {
+  /** What a bulk url-then-score walk counted, row by row and from several threads. */
+  private[enrichment] final class WalkCounts {
+    val changed       = new AtomicInteger(0)
+    val failed        = new AtomicInteger(0)
+    val urlDiscovered = new AtomicInteger(0)
   }
 }

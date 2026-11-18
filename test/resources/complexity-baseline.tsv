@@ -147,7 +147,6 @@ cyclomatic	scrapers/src/main/scala/services/cinemas/PolishScraperCatalog.scala:P
 cyclomatic	scrapers/src/main/scala/services/cinemas/UkScraperCatalog.scala:UkScraperCatalog.scraper	15
 cyclomatic	worker/src/main/scala/services/alerts/FallbackAlert.scala:FallbackAlert.messageFor	13
 cyclomatic	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	23
-cyclomatic	worker/src/main/scala/services/enrichment/CacheRefresher.scala:CacheRefresher.refreshAllUrlThenScore	11
 cyclomatic	worker/src/main/scala/services/enrichment/FilmwebRatings.scala:FilmwebRatings.auditOneSync	12
 cyclomatic	worker/src/main/scala/services/enrichment/OMDbClient.scala:OMDbClient.record	11
 cyclomatic	worker/src/main/scala/services/identityadapters/AgreementHandlers.scala:AgreementAsker.ask#2	11
