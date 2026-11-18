@@ -16,6 +16,7 @@ class WebPersistenceRolesSpec extends AnyFlatSpec with Matchers {
   }
 
   "the tasks admin page" should "enqueue and monitor through the roles, never TaskQueue" in {
-    writerTypedIn(classOf[TasksController], classOf[TaskQueue]) shouldBe empty
+    (writerTypedIn(classOf[TasksController], classOf[TaskQueue]) ++
+      writerTypedIn(classOf[TaskRunController], classOf[TaskQueue])) shouldBe empty
   }
 }

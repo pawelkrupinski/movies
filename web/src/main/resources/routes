@@ -187,7 +187,7 @@ GET     /tasks/data                 controllers.TasksController.data()
 # match the other admin POSTs; the AdminAction gate is the auth check. `job` is
 # one of tmdb|imdb|filmweb|metacritic|rt.
 + nocsrf
-POST    /tasks/run/:job             controllers.TasksController.run(job: String)
+POST    /tasks/run/:job             controllers.TaskRunController.run(job: String)
 
 # ── Legal ─────────────────────────────────────────────────────────────────────
 # Public privacy policy. Required by Meta/Facebook before the Login app can

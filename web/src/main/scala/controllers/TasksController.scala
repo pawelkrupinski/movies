@@ -2,8 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskProducer, TaskQueueMonitor, TaskSummary}
-import services.tasktypes.TaskType
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, QueueSnapshot, TaskQueueMonitor, TaskSummary}
 
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a
@@ -13,9 +12,10 @@ import services.tasktypes.TaskType
  * waiting backlog — see `TaskState.activeByPriority`), so the cost
  * scales with viewers-while-open, not with queue churn. A persistent change
  * stream was rejected for the same reason `/uptime` dropped one — it would push
- * every task transition 24/7 even with nobody watching.
+ * every task transition 24/7 even with nobody watching. The page's run buttons
+ * post to [[TaskRunController]].
  */
-class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskProducer & TaskQueueMonitor,
+class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueueMonitor,
                       bulkResults: BulkTaskResultStore,
                       // The deployment's country — the one the page's country switch marks current.
                       country: models.Country,
@@ -33,35 +33,6 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
   def data: Action[AnyContent] = adminAction {
     val snap = queue.monitor(ActiveLimit)
     Ok(snapshotJson(snap))
-  }
-
-  /** The corpus-wide runs the `/tasks` page buttons trigger. Each maps a short
-   *  job slug → the bulk TaskType the worker's `BulkRefreshHandler` consumes; the
-   *  worker calls that source's existing `refreshAll`, or runs the
-   *  identity projection pass (`settle`) on demand. */
-  private val BulkJobs: Map[String, TaskType] = Map(
-    "imdb"       -> TaskType.RefreshAllImdb,
-    "filmweb"    -> TaskType.RefreshAllFilmweb,
-    "metacritic" -> TaskType.RefreshAllMetacritic,
-    "rt"         -> TaskType.RefreshAllRt,
-    "settle"     -> TaskType.SettleNow
-  )
-
-  /** Enqueue a corpus-wide refresh run. Idempotent: the constant per-type dedup
-   *  key means a second click while one is queued returns `duplicate` rather
-   *  than stacking a second run. The page's poll then surfaces the task. */
-  def run(job: String): Action[AnyContent] = adminAction {
-    BulkJobs.get(job) match {
-      case None => BadRequest(Json.obj("error" -> s"unknown job '$job'"))
-      case Some(taskType) =>
-        val result = queue.enqueue(taskType, EnrichTaskKeys.bulkDedup(taskType), submittedAt = clock.instant())
-        Ok(Json.obj(
-          "job"       -> job,
-          "taskType"  -> taskType.name,
-          "enqueued"  -> (result == EnqueueResult.Added),
-          "duplicate" -> (result == EnqueueResult.Duplicate)
-        ))
-    }
   }
 
   private def snapshotJson(snap: QueueSnapshot): JsObject = Json.obj(

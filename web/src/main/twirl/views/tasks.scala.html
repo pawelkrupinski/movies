@@ -83,23 +83,23 @@
     <div class="runbar-label">Run corpus-wide refresh</div>
     <div class="runjobs">
       <div class="runjob">
-        <button class="runbtn" data-tasktype="RefreshAllImdb" data-url="@routes.TasksController.run("imdb")">IMDb refresh</button>
+        <button class="runbtn" data-tasktype="RefreshAllImdb" data-url="@routes.TaskRunController.run("imdb")">IMDb refresh</button>
         <div class="runresult" data-tasktype="RefreshAllImdb"></div>
       </div>
       <div class="runjob">
-        <button class="runbtn" data-tasktype="RefreshAllFilmweb" data-url="@routes.TasksController.run("filmweb")">Filmweb refresh</button>
+        <button class="runbtn" data-tasktype="RefreshAllFilmweb" data-url="@routes.TaskRunController.run("filmweb")">Filmweb refresh</button>
         <div class="runresult" data-tasktype="RefreshAllFilmweb"></div>
       </div>
       <div class="runjob">
-        <button class="runbtn" data-tasktype="RefreshAllMetacritic" data-url="@routes.TasksController.run("metacritic")">Metacritic refresh</button>
+        <button class="runbtn" data-tasktype="RefreshAllMetacritic" data-url="@routes.TaskRunController.run("metacritic")">Metacritic refresh</button>
         <div class="runresult" data-tasktype="RefreshAllMetacritic"></div>
       </div>
       <div class="runjob">
-        <button class="runbtn" data-tasktype="RefreshAllRt" data-url="@routes.TasksController.run("rt")">Rotten Tomatoes refresh</button>
+        <button class="runbtn" data-tasktype="RefreshAllRt" data-url="@routes.TaskRunController.run("rt")">Rotten Tomatoes refresh</button>
         <div class="runresult" data-tasktype="RefreshAllRt"></div>
       </div>
       <div class="runjob">
-        <button class="runbtn settle" data-tasktype="SettleNow" data-url="@routes.TasksController.run("settle")"
+        <button class="runbtn settle" data-tasktype="SettleNow" data-url="@routes.TaskRunController.run("settle")"
                 title="Folds same-film editions into one record per shown title">Consolidate now (settle)</button>
         <div class="runresult" data-tasktype="SettleNow"></div>
       </div>

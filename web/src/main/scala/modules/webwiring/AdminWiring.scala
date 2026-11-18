@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AdminAction, EnvConfigController, ImageEventController, TasksController, UptimeBars, UptimeController, UptimeStreamController}
+import controllers.{AdminAction, EnvConfigController, ImageEventController, TaskRunController, TasksController, UptimeBars, UptimeController, UptimeStreamController}
 import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
@@ -49,6 +49,7 @@ trait AdminWiring { self: Wiring =>
   // Not behind the admin gate: every visitor's browser reports its poster loads (ImageEventController.imgEvent says why).
   lazy val imageEventController = new ImageEventController(controllerComponents, new controllers.ImageLoadBeacon(uptimeMonitor))
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
+  lazy val taskRunController = new TaskRunController(controllerComponents, adminAction, taskQueue, clock)
   // Live config: install the override cache as Env's source + publish web's knobs
   // to the shared registry, and serve the /admin/config page (see EnvConfigService).
   lazy val envConfigService = managedResources.stopping(new services.config.EnvConfigService(
