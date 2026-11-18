@@ -339,8 +339,45 @@ if command -v shellcheck >/dev/null; then
     "$(grep -c '^worker/testOnly \* -services' "$scratch/sbt-args" 2>/dev/null)"
   rm -f "$scratch/sbt-args"
   (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --verify-only "HEAD~1..HEAD" >/dev/null 2>&1)
+  # (the unit row's `*` leaves the worker's GitOps-reading specs out: nothing fetched the manifests)
   check "--verify-only (agentctl's combined tree) compiles the same and runs the worker's unit row in that one run" "1 1" \
-    "$(grep -c '^worker/It/compile$' "$scratch/sbt-args" 2>/dev/null) $(grep -cx 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\*' "$scratch/sbt-args" 2>/dev/null)"
+    "$(grep -c '^worker/It/compile$' "$scratch/sbt-args" 2>/dev/null) $(grep -cx 'worker/testOnly \* -services.identity.\* -scripts.\* -tools.\* -deploy.CinemaScrapeStalenessAlertSpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec -services.tasks.ScrapeCadenceSustainabilitySpec' "$scratch/sbt-args" 2>/dev/null)"
+  # NO SPEC READS THE GITOPS MANIFESTS THIS RUN DID NOT FETCH (precommit-check 44355591693, 2026-11-18): the basic line
+  # `repochecks/testOnly deploy.* -<a hand-kept list>` missed NodePodsSpec and FluxWebhookReceiverSpec, so every sbt
+  # check ran them whether or not infra/bin/fetch-gitops had run -- against a stale checkout on the laptop and ci-runner
+  # (green), against none on a fresh GitHub runner (red), for a web change that reads no manifest. Without the fetch,
+  # the hook leaves every `@gitops` row's spec out of each testOnly line whose patterns select it, from the registry.
+  cp "$REPO_ROOT/scripts/hooks/local-tests.txt" "$repo/scripts/hooks/local-tests.txt"
+  scratch_git "$repo" add scripts/hooks/local-tests.txt; scratch_git "$repo" commit -qm "the real basic set"
+  mkdir -p "$repo/web/src/main/scala"; echo 'object W' > "$repo/web/src/main/scala/W.scala"
+  scratch_git "$repo" add web; scratch_git "$repo" commit -qm "a web change no manifest-reading spec reads"
+  rm -f "$scratch/sbt-args"
+  (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  gitops_unfetched=""
+  while IFS=$'\t' read -r row reads _; do
+    case "$row" in ''|'#'*) continue ;; esac
+    case " $reads " in *" @gitops "*) ;; *) continue ;; esac
+    module="${row%%:*}" spec="${row#*:}"
+    while IFS= read -r line; do
+      case "$line" in "$module"/testOnly\ *|"$module"/Test/testOnly\ *) ;; *) continue ;; esac
+      selected=0
+      set -f
+      # shellcheck disable=SC2086 # the line's words, a pattern among them matched below, never expanded
+      for word in ${line#*testOnly }; do
+        # shellcheck disable=SC2254 # the line's patterns and exclusions, matched as patterns
+        case "$word" in
+          --) break ;;
+          -*) case "$spec" in ${word#-}) selected=0; break ;; esac ;;
+          *) case "$spec" in $word) selected=1 ;; esac ;;
+        esac
+      done
+      set +f
+      [ "$selected" = 0 ] || gitops_unfetched="$gitops_unfetched $row"
+    done < "$scratch/sbt-args"
+  done < "$REPO_ROOT/scripts/hooks/lint-registry.tsv"
+  check "a push the manifests are not fetched for runs no @gitops spec in the sbt check, the basic deploy.* line included" \
+    "1 " "$(grep -c '^repochecks/testOnly deploy\.\*' "$scratch/sbt-args" 2>/dev/null) ${gitops_unfetched# }"
+  scratch_git "$repo" reset -q --hard HEAD~2
   # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (GitHub
   # unreachable), the push is blocked, never checked against a stale checkout.
   mkdir -p "$repo/repochecks/src/test/scala/deploy" "$repo/infra/bin"

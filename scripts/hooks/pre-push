@@ -768,6 +768,40 @@ reads_gitops() {
     done
     return 1
 }
+# The testOnly lines on stdin, each with `-<spec>` added for every `@gitops` row's spec of its module its patterns select,
+# unless this run fetched the manifests (PREPUSH_GITOPS=1): the lint plan runs those specs once infra/bin/fetch-gitops
+# has; any other line (a basic `deploy.*`, a unit row's `*`) read whatever infra/kubernetes holds -- stale on the laptop
+# and ci-runner, absent on a fresh GitHub runner. precommit-check 44355591693 (2026-11-18): the basic line's hand-kept
+# exclusions missed NodePodsSpec and FluxWebhookReceiverSpec, red on a web change no manifest reads, green on retry.
+without_unfetched_gitops() {
+    local rows="" line module row spec word selected add
+    [ "${PREPUSH_GITOPS:-}" != 1 ] && [ -f "$LintRegistry" ] \
+        && rows="$(awk -F'\t' '!/^#/ && (" " $2 " ") ~ / @gitops / { print $1 }' "$LintRegistry")"
+    while IFS= read -r line; do
+        add=""
+        case "$line" in */testOnly\ *)
+            module="${line%%/*}"
+            while IFS= read -r row; do
+                [ -n "$row" ] && [ "${row%%:*}" = "$module" ] || continue
+                spec="${row#*:}" selected=0
+                set -f
+                # shellcheck disable=SC2086 # the line's words, a pattern among them matched below, never expanded
+                for word in ${line#*testOnly }; do
+                    # shellcheck disable=SC2254 # the line's patterns and exclusions, matched as patterns
+                    case "$word" in
+                        --) break ;;
+                        -*) case "$spec" in ${word#-}) selected=0; break ;; esac ;;
+                        *) case "$spec" in $word) selected=1 ;; esac ;;
+                    esac
+                done
+                set +f
+                [ "$selected" = 0 ] || add="$add -$spec"
+            done <<< "$rows" ;;
+        esac
+        # before a `--`: what follows it is the framework's (-z), not a suite to leave out
+        case "$line" in *" -- "*) printf '%s%s -- %s\n' "${line%% -- *}" "$add" "${line#* -- }" ;; *) printf '%s%s\n' "$line" "$add" ;; esac
+    done
+}
 lint_plan() {
     local paths repo_read=0 spec reads word path selected
     paths="$(cat)"
@@ -1639,7 +1673,7 @@ check_sbt() {
     # the `fast` set instead
     local set=basic
     [ -n "$fast_only" ] && set=fast
-    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt)
+    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt | without_unfetched_gitops)
     if [ -n "$verify_only" ]; then
         # THE COMBINED TREE'S UNIT TESTS, NARROWED TO WHAT THE CHANGE REACHES (TEST-IMPACT SELECTION, as the identity
         # area's): the worker's whole rest row cost every worker-touching verification ~70-90 s for the few specs the
@@ -1668,7 +1702,7 @@ check_sbt() {
             log "verify: no selection names the change's readers -- every module's source lints join ($(grep -c . "$tmp/unit.sourcelints" | tr -d ' ') sbt line(s))" >&2
             cat "$tmp/unit.sourcelints" >> "$tmp/unit.plan"
         fi
-        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < "$tmp/unit.plan"
+        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(without_unfetched_gitops < "$tmp/unit.plan")
     fi
     local coupling=""
     if [ -n "$(printf '%s\n' "$changed" | coupling_paths)" ] && [ -f coupling.sbt ]; then

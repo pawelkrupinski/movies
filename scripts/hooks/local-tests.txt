@@ -8,8 +8,10 @@
 # skipped. Sets:
 #   basic     rides the hook's `sbt` check, whenever that runs. Deterministic, self-contained, seconds to a few minutes
 #             warm: compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing needing Mongo or the network;
-#             the deploy specs needing the movies-gitops manifests stay out (the `sbt` check's lint plan runs them once
-#             infra/bin/fetch-gitops has fetched them). The generated-artefacts drift is the path-selected `drift` check.
+#             the deploy specs needing the movies-gitops manifests stay out -- the hook leaves every `@gitops` row of
+#             lint-registry.tsv out of these lines by itself (no list here to forget a new one: NodePodsSpec, 2026-11-18),
+#             and the `sbt` check's lint plan runs them once infra/bin/fetch-gitops has fetched them. The
+#             generated-artefacts drift is the path-selected `drift` check.
 #   fast      what `pre-push --fast-only` runs in place of `basic`: the `waiting` batch's combined check at green, after
 #             every change in it passed its own full checks (the owner, 2026-10-27: "when waiting is rebuilt, just run very
 #             basic checks like compile and the fast tests"). Every test config compiled, the lint and structure specs;
@@ -23,8 +25,8 @@
 basic sbt Test/compile
 basic sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
 basic sbt e2e/testOnly services.movies.FilmScheduleEndToEndSpec tools.ReadModelSnapshotSpec
-basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.CinemaScrapeStalenessAlertSpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
-basic sbt repochecks/testOnly deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec
+basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.*
+basic sbt repochecks/testOnly deploy.*
 fast sbt Test/compile
 fast sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
 fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.OverdueIsNotRedSpec
