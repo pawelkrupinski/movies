@@ -162,6 +162,8 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
     with GzipFilterComponents
     with AssetsComponents with Wiring {
   def environmentMode: Mode = environment.mode
+  // The one web process: its stores count into this wiring's registry.
+  protected def adoptMongoWriteErrors(series: services.MongoWriteErrors.Series): Unit = services.MongoWriteErrors.bind(series)
 
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)

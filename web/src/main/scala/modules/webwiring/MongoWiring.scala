@@ -34,13 +34,18 @@ trait MongoWiring { self: Wiring =>
   lazy val mongoConnection: MongoConnection =
     MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, mongoTuning, sharedClient = mongoSharedClient)
 
-  /** Where every store of this process counts a failed write or a refused grant ([[services.MongoWriteErrors]]), bound
-   *  before the client exists, on the tier's one registry. */
+  /** Where every store of this process counts a failed write or a refused grant ([[services.MongoWriteErrors]]), on the
+   *  tier's one registry, adopted before the client exists. */
   protected lazy val mongoWriteErrors: services.MongoWriteErrors.Series = {
     val series = services.MongoWriteErrors.Series.web(webJvmMetrics.registry)
-    services.MongoWriteErrors.bind(series)
+    adoptMongoWriteErrors(series)
     series
   }
+
+  /** Make `series` the PROCESS's Mongo write-error sink ([[services.MongoWriteErrors.bind]]) -- the production root's
+   *  call alone. A test wiring shares its JVM with every other spec running in parallel, and binding the process's
+   *  sink would count their stores into its registry (`deploy.WebMetricsAtBootSpec`, "a test wiring"). */
+  protected def adoptMongoWriteErrors(series: services.MongoWriteErrors.Series): Unit
 
   /** How every connection this deployment opens dials (`MONGODB_PROBE_TIMEOUT_SECONDS`,
    *  `KINOWO_MONGO_MAX_POOL_SIZE`). */

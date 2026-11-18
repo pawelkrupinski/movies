@@ -104,6 +104,25 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
       "web/testOnly deploy.WebMetricsAtBootSpec") shouldBe None
   }
 
+  /** The order guard. Specs share the forked test JVM and run in parallel (web's `Test / parallelExecution`), and
+   *  `services.MongoWriteErrors` is the PROCESS's sink: a test wiring that bound it counted every other spec's Mongo
+   *  store into its own registry -- `MongoUserStateRepositoryOutcomesSpec`'s store over a closed client seeded
+   *  `kinowo_web_mongo_write_errors{database="closed"}` here when the two ran side by side
+   *  (`web/testOnly services.users.* deploy.*`), failing the catalogue and NotSeededAtBoot cases. Only the production
+   *  root (`AppComponents`) binds the process's sink, so a test wiring's registry holds only what it built itself. */
+  "a test wiring" should "not count another spec's Mongo stores into its registry" in {
+    val wiring = new modules.TestWebWiring()
+    wiring.boot()
+    try {
+      wiring.metricsAtBoot(routes)
+      services.MongoWriteErrors.opened("another_spec") // what a connection another spec opens does, alongside this one
+      val mongoSeries = wiring.webJvmMetrics.registry.scrape().asScala.toSeq
+        .map(s => s.getMetadata.getPrometheusName.stripSuffix("_total") -> s.getDataPoints.size)
+        .filter(_._1.startsWith("kinowo_web_mongo_")).toMap
+      mongoSeries shouldBe Map("kinowo_web_mongo_write_errors" -> 0, "kinowo_web_mongo_unauthorized" -> 0)
+    } finally wiring.shutdown()
+  }
+
   "NotSeededAtBoot" should "not exempt a family that has its series after all, or that no longer exists" in {
     NotSeededAtBoot.keys.filterNot(atBoot.contains) shouldBe empty
     NotSeededAtBoot.keys.filter(f => atBoot.getOrElse(f, 0) > 0) shouldBe empty
