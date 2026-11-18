@@ -44,7 +44,7 @@ case "${BASH_REMATCH[2]}" in
 esac
 [[ $poll =~ ^[0-9]+(\.[0-9]+)?$ ]] || usage_error "--poll needs seconds, not '$poll'"
 [[ -z $pid || $pid =~ ^[0-9]+$ ]] || usage_error "--pid needs a process id, not '$pid'"
-if [ -n "$fixed" ]; then what="a line containing '$fixed'"; elif [ -n "$pattern" ]; then what="a line matching /$pattern/"
+if [ -n "$fixed" ]; then what="line containing '$fixed'"; elif [ -n "$pattern" ]; then what="line matching /$pattern/"
 else what="content"; fi
 
 # The first line that answers, on stdout; non-zero when none does yet.
@@ -61,7 +61,7 @@ while :; do
   if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
     # one last look: the writer may have finished between the two checks
     if line=$(first_match); then echo "$line"; exit 0; fi
-    echo "wait-for: process $pid ended without $what in $file; its last lines:" >&2
+    echo "wait-for: process $pid ended with no $what in $file; its last lines:" >&2
     [ -f "$file" ] && tail -20 "$file" >&2
     exit 1
   fi
