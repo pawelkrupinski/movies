@@ -237,7 +237,8 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
   trait yet — collapse it until a second appears. Test: would a reader guess from the name what it does?
 
 **Coupling is reviewed on every change, and only falls unless a commit says why.** `scripts/coupling-report` measures
-the production code from Zinc's own class-dependency record (`sbt couplingReport`, `project/Coupling.scala`): the
+the production code from Zinc's own class-dependency record and, between the classes of one source file (which Zinc
+does not record), their class files (`sbt couplingReport`, `project/Coupling.scala`): the
 module matrix, each package's Ca/Ce/instability/abstractness/distance, the package cycles with the class references
 behind every edge (`--out DIR` keeps every reference, `edges.tsv`), the top fan-in/fan-out classes and god hubs, split
 packages. **The package graph has no cycle** (0 since 2026-11-18, the owner's decision): the pre-push `sbt` check

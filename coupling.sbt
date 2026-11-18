@@ -31,7 +31,7 @@ couplingReport := {
   val args = Def.spaceDelimited("<rows out> [<markdown out> [<edges out> [<fanouts out>]]]").parsed
   require(args.size >= 1 && args.size <= 4, "couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out>]]]")
   val started = System.nanoTime
-  val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value)
+  val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value, fileConverter.value)
   val layers = Some(kinowo.build.Coupling.Layers.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-layers.tsv")))
   val exemptions = kinowo.build.Coupling.Exemptions.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-exemptions.tsv"))
   IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers, exemptions = exemptions))

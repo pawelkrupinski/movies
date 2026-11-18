@@ -1,6 +1,6 @@
 package tools
 
-import kinowo.build.Coupling
+import kinowo.build.{ClassReferences, Coupling}
 import kinowo.build.Coupling.{Graph, Type}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -107,7 +107,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
 
   "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
     Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
-      "limit\tfanout\t2", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
+      "limit\tfanout\t2", "limit\tfanout-measure\t2", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
@@ -283,6 +283,60 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.rankOf("modules.wiring").get should be < table.rankOf("modules").get
   }
 
+  // ── the same-file uses (ClassReferences: the fixture's class files, compiled into this test configuration) ──
+
+  private val fixture = "tools.couplingfixture"
+  private def compiled(pkg: String): Seq[ClassReferences.Compiled] = {
+    val dir = java.nio.file.Paths.get(getClass.getResource("/" + pkg.replace('.', '/')).toURI)
+    Files.list(dir).iterator.asScala.toSeq.filter(_.toString.endsWith(".class")).map(p => ClassReferences.read(Files.readAllBytes(p)))
+  }
+  /** One source's binary names (a class and its object) -> its top-level classes. */
+  private def tops(pkg: String, names: String*): Map[String, String] =
+    names.flatMap(n => Seq(s"$pkg.$n" -> s"$pkg.$n", s"$pkg.$n$$" -> s"$pkg.$n")).toMap
+  private val together = s"$fixture.together"
+  private val togetherTops = tops(together, "Schedule", "Showtimes", "Listing", "Venue", "Alone", "Event", "Started", "Stopped")
+  private lazy val sameFile = Coupling.sameFileEdges(compiled(together), togetherTops)
+
+  "a class's uses of the top-level classes of its own file" should "count, through a field, a lambda and an anonymous class" in {
+    sameFile.filter(_._1 == s"$together.Schedule") shouldBe
+      Set("Showtimes", "Listing", "Venue").map(n => s"$together.Schedule" -> s"$together.$n")
+  }
+
+  it should "leave out a class using none of them, and a sealed parent's compiler-written mirror of its children" in {
+    sameFile.filter(_._1 == s"$together.Alone") shouldBe empty
+    sameFile.filter(_._1 == s"$together.Event") shouldBe empty
+    sameFile should contain allOf (s"$together.Started" -> s"$together.Event", s"$together.Stopped" -> s"$together.Event")
+    sameFile.filter { case (from, to) => from == to } shouldBe empty
+  }
+
+  "a local or an anonymous class" should "fold into its nearest enclosing class of the source, any other name into none" in {
+    Coupling.foldBinary(s"$together.Schedule$$$$anon$$1", togetherTops) shouldBe Some(s"$together.Schedule")
+    Coupling.foldBinary(s"$together.Venue$$Local$$1", togetherTops) shouldBe Some(s"$together.Venue")
+    Coupling.foldBinary("scala.Option", togetherTops) shouldBe None
+    Coupling.foldBinary(s"$fixture.split.Schedule", togetherTops) shouldBe None
+  }
+
+  "moving a collaborator into a class's file" should "not lower its fan-out" in {
+    val split = s"$fixture.split"
+    def graph(pkg: String, zinc: Set[(String, String)], sameFileEdges: Set[(String, String)]) =
+      Graph(Seq("Schedule", "Showtimes", "Listing", "Venue").map(n => t(s"$pkg.$n")), zinc ++ sameFileEdges)
+    // split: Zinc records each use across files, and the one-class file adds none
+    val zinc = Set("Showtimes", "Listing", "Venue").map(n => s"$split.Schedule" -> s"$split.$n")
+    val apart = graph(split, zinc, Coupling.sameFileEdges(compiled(split), tops(split, "Schedule")))
+    // together: Zinc records none of them, the class files all
+    val joined = graph(together, Set.empty, sameFile)
+    Coupling.fans(apart)(s"$split.Schedule")._2 shouldBe 3
+    Coupling.fans(joined)(s"$together.Schedule")._2 shouldBe 3
+    Coupling.baselineRows(joined, fanOutLimit = 2).filter(_.startsWith("fanout")) shouldBe Seq(s"fanout\t$together.Schedule\t3")
+  }
+
+  "a descriptor or a generic signature" should "name its classes, not its type variables or primitives" in {
+    ClassReferences.Signatures.types("(ILa/B;[[Lc/D;)Le/F;") shouldBe Seq("a/B", "c/D", "e/F")
+    ClassReferences.Signatures.types("<T:Ljava/lang/Object;Lx:La/Bound;>(TT;Ljava/util/List<+La/Item;>;)TLx;") shouldBe
+      Seq("java/lang/Object", "a/Bound", "java/util/List", "a/Item")
+    ClassReferences.Signatures.types("La/Outer<TT;>.Inner<La/Arg;>;") shouldBe Seq("a/Outer", "a/Outer$Inner", "a/Arg")
+  }
+
   "the checked-in baseline" should "be the rows' shape, one row a key, its limits the build's" in {
     val lines = Files.readAllLines(RepoRoot.file("test/resources/coupling-baseline.tsv").toPath).asScala.toSeq
     lines.take(Coupling.BaselineHeader.size) shouldBe Coupling.BaselineHeader
@@ -293,7 +347,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe
-      Map("fanout" -> Coupling.DefaultFanOutLimit, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
+      Map("fanout" -> Coupling.DefaultFanOutLimit, "fanout-measure" -> Coupling.FanOutMeasure, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
         "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes)
   }
 }

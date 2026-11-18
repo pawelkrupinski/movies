@@ -41,7 +41,9 @@ mutants=(
             out.append(f"ce'
   'a raised frozen row is admitted @@ if value > before[key]: @@ if False:'
   'a new frozen row is admitted @@ elif not moved(key, value, before, after) and not (kind == "fanout" and key in split): @@ elif False:'
-  'every change re-freezes @@ return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind]) @@ return True'
+  'a measurement fix takes no rows again @@ LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), @@ LIMIT_KEYS = {"fanout": ("fanout",),'
+  'an absent measure row re-freezes every range @@ and key not in MEASURES) @@ and True)'
+  'every change re-freezes @@ return any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key) @@ return True or any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key)'
   'admitted frozen rows never fail @@         if frozen:
             failed = True @@         if frozen:
             failed = False'

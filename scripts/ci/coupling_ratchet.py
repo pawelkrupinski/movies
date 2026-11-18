@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # THE COUPLING RATCHET (the pre-push sbt check's coupling step; CLAUDE.md, Design rules): the production code's coupling,
-# measured from Zinc's class-dependency record (`sbt couplingReport`, project/Coupling.scala), has NO package cycle --
+# measured from Zinc's class-dependency record and one source file's class files (`sbt couplingReport`,
+# project/Coupling.scala), has NO package cycle --
 # any `cycle-edge` row fails, measured or recorded in the baseline, and no `Coupling:` trailer excuses one -- and may
 # not grow past the checked-in baseline (test/resources/coupling-baseline.tsv): no new cross-module edge kind, no
 # package's Ce (the outside packages its classes use) past its row (or past the new-package limit), no class's fan-out
@@ -17,7 +18,9 @@
 # the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
 # limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
 # and the exemption table may grow or loosen only in a commit changing it carrying `Coupling: <why>`. A frozen class that
-# moves keeps its row under its new name (the same simple name, at or below the old value, the old name gone).
+# moves keeps its row under its new name (the same simple name, at or below the old value, the old name gone). A
+# measurement fix (`limit fanout-measure` raised: a count that missed real uses) re-takes the rows at their true
+# values, as a changed limit does, under its `Coupling:` trailer.
 #
 # A SPLIT (the owner, 2026-11-18): a frozen class X cut into pieces may freeze the pieces past the limit at their new
 # values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>` names the pieces; without it
@@ -51,7 +54,10 @@ EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
 VALUED = ("ce", "fanout", "distance")
 FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
-DEFAULT_LIMITS = {"fanout": 9, "new-package-ce": 8, "distance": 20, "distance-min-types": 8}
+DEFAULT_LIMITS = {"fanout": 9, "fanout-measure": 1, "new-package-ce": 8, "distance": 20, "distance-min-types": 8}
+# How a frozen kind is measured (project/Coupling.scala's FanOutMeasure): a baseline without the row is measure 1. A
+# measurement fix raises it, re-taking the kind's rows at their true values under its `Coupling:` trailer.
+MEASURES = ("fanout-measure",)
 
 Rows = Dict[Tuple[str, str], int]
 Edges = Dict[str, List[str]]  # "<from package>-><to package>" -> its class references, "<from class> -> <to class>"
@@ -265,14 +271,16 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Dict[str
     return admitted, notes, refused
 
 
-LIMIT_KEYS = {"fanout": ("fanout",), "distance": ("distance", "distance-min-types")}
+LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types")}
 
 
 def refrozen(old: Rows, new: Rows, kind: str) -> bool:
     """Whether the limits of a frozen kind changed between `old` and `new`: its rows are then taken again, under the new
-    limit -- the change that sets a limit (a raise is growth, needing its trailer; a fall tightens)."""
+    limit -- the change that sets a limit (a raise is growth, needing its trailer; a fall tightens) or how the kind is
+    measured (a measure's absent row is measure 1)."""
     old_lim, new_lim = limits(old), limits(new)
-    return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind])
+    return any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key)
+               for key in LIMIT_KEYS[kind])
 
 
 def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset()) -> List[str]:

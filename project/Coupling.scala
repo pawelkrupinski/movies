@@ -16,7 +16,10 @@ package kinowo.build
  *  - CLASSES: fan-in and fan-out (distinct production classes referencing it / referenced by it);
  *  - SPLIT PACKAGES: a (full) package whose classes live in two or more modules.
  *
- * A nested class counts as its top-level class (`Outer.Inner` is `Outer`): a class's own pieces are no coupling.
+ * A nested class counts as its top-level class (`Outer.Inner` is `Outer`): a class's own pieces are no coupling. Two
+ * top-level classes of ONE source file are two classes: Zinc records no dependency between them (its compiler bridge
+ * drops a dependency on the source being compiled), so their uses of each other are read from their class files
+ * ([[sameFileEdges]], project/ClassReferences.scala) -- moving a collaborator into a class's file lowers no fan-out.
  *
  * Compiled twice: into the build (Scala 2.12) and into common's tests (Scala 3, CouplingSpec) -- so it is written in the
  * syntax both accept.
@@ -55,6 +58,23 @@ object Coupling {
     }
     names.map(n => n -> outer(n)).toMap
   }
+
+  /** The top-level class a compiled class (a binary name: `a.Outer$Inner`, `a.Outer$`) folds into, given one source's
+   *  binary names and their top-level classes: its own entry, else -- a local or an anonymous class (`a.Outer$$anon$1`,
+   *  `a.Outer$Local$1`) -- the nearest enclosing one, cut at each `$` from the right. None: not one of the source's. */
+  def foldBinary(binary: String, tops: Map[String, String]): Option[String] = {
+    var name = binary
+    while (!tops.contains(name) && name.lastIndexOf('$') > 0) name = name.substring(0, name.lastIndexOf('$'))
+    tops.get(name)
+  }
+
+  /** The dependencies between the top-level classes of ONE source file, which Zinc does not record: each compiled class's
+   *  uses (ClassReferences, its class file) folded as Zinc's record is -- a nested, companion, anonymous or local class
+   *  into its top-level class --, the self-edges dropped. `tops`: the source's binary names -> top-level classes. */
+  def sameFileEdges(compiled: Seq[ClassReferences.Compiled], tops: Map[String, String]): Set[(String, String)] =
+    compiled.flatMap { c =>
+      foldBinary(c.name, tops).toSeq.flatMap(from => c.uses.toSeq.flatMap(u => foldBinary(u, tops)).filter(_ != from).map(to => from -> to))
+    }.toSet
 
   // ── modules ──
 
@@ -321,6 +341,10 @@ object Coupling {
 
   /** The fan-out above which a class needs a row of its own: a frozen baseline row (it may only fall) or an exemption. */
   val DefaultFanOutLimit = 9
+  /** How fan-out is measured, held as a limit row so a measurement fix re-takes the frozen rows (coupling_ratchet.py's
+   *  `refrozen`, with its `Coupling:` trailer): 1, Zinc's record alone (a class's uses of the top-level classes of its own
+   *  file uncounted); 2, those counted ([[sameFileEdges]]). */
+  val FanOutMeasure = 2
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
   /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
@@ -337,7 +361,7 @@ object Coupling {
   def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit,
                    layers: Option[Layers] = None, exemptions: Exemptions = Exemptions.empty,
                    distanceLimit: Int = DefaultDistanceLimit, distanceMinTypes: Int = DefaultDistanceMinTypes): Seq[String] = {
-    val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tnew-package-ce\t$newPackageCeLimit",
+    val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tfanout-measure\t$FanOutMeasure", s"limit\tnew-package-ce\t$newPackageCeLimit",
       s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
@@ -356,9 +380,11 @@ object Coupling {
 
   val BaselineHeader: Seq[String] = Seq(
     "# THE COUPLING BASELINE (scripts/coupling-report --update writes it; scripts/ci/coupling_ratchet.py holds every push to it).",
-    "# Production code only (*/src/main), from Zinc's class-dependency record (project/Coupling.scala). One row a fact,",
+    "# Production code only (*/src/main), from Zinc's class-dependency record and, between the classes of one source file,",
+    "# their class files (project/Coupling.scala). One row a fact,",
     "# `kind<TAB>key<TAB>value`:",
-    "#   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; new-package-ce: a",
+    "#   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; fanout-measure: how",
+    "#                fan-out is counted (2: a class's uses of its own file's top-level classes too); new-package-ce: a",
     "#                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of",
     "#                that many types or more without a distance row (or an exemption) has at most this D",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",

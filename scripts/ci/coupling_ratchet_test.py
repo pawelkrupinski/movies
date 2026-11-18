@@ -208,6 +208,28 @@ class CouplingRatchetTest(RatchetHarness):
         head = self.commit({BASELINE: tighter}, "tighten, no why")
         self.assert_fails(tighter, "fanout rows taken again under new limits", rng=f"{self.base}..{head}")
 
+    def test_a_measurement_fix_takes_the_fan_out_rows_again_at_their_true_values_with_a_trailer(self):
+        # same-file uses counted (Coupling.FanOutMeasure 2): MovieService's true 38, and a class newly past the limit
+        measured = rows("limit\tfanout-measure\t2", "fanout\tservices.movies.MovieService\t38", "fanout\tworker.Wiring\t10",
+                        drop=("fanout",))
+        head = self.commit({BASELINE: measured}, "re-measure\n\nCoupling: fan-out counts same-file classes (measurement fix)")
+        self.assert_passes(measured, rng=f"{self.base}..{head}")
+        later = self.commit({BASELINE: measured + "fanout\tworker.Other\t10\n"}, "one more\n\nCoupling: no trailer admits it")
+        self.assert_fails(measured + "fanout\tworker.Other\t10\n", "fanout worker.Other added at 10", rng=f"{head}..{later}")
+
+    def test_a_measurement_fix_without_a_trailer_fails(self):
+        measured = rows("limit\tfanout-measure\t2", "fanout\tservices.movies.MovieService\t38", drop=("fanout",))
+        head = self.commit({BASELINE: measured}, "re-measure, no why")
+        self.assert_fails(measured, "limit fanout-measure raised 1 -> 2", "fanout rows taken again under new limits",
+                          rng=f"{self.base}..{head}")
+
+    def test_a_baseline_keeping_its_measure_takes_no_rows_again(self):
+        measured = rows("limit\tfanout-measure\t2")
+        mid = self.commit({BASELINE: measured}, "re-measure\n\nCoupling: measurement fix")
+        grown = measured.replace("MovieService\t35", "MovieService\t36")
+        head = self.commit({BASELINE: grown}, "record it\n\nCoupling: no trailer admits it")
+        self.assert_fails(grown, "fanout services.movies.MovieService raised 35 -> 36", rng=f"{mid}..{head}")
+
     def test_an_exemption_row_added_without_a_trailer_fails(self):
         head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "registry\tworker.Wiring\texempt\tworker\ta table\n"}, "exempt it")
         self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED", "registry worker.Wiring (exempt) added", rng=f"{self.base}..{head}")

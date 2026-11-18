@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # THE COUPLING REPORT (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record
-# (`sbt couplingReport`, project/Coupling.scala), through this checkout's kept sbt server (scripts/sbt-warm).
+# and, between the classes of one source file, their class files (`sbt couplingReport`, project/Coupling.scala), through this checkout's kept sbt server (scripts/sbt-warm).
 #
 #   scripts/coupling-report             the markdown report (module matrix, packages' Ca/Ce/I/A/D, package cycles with
 #                                       the class references behind every edge, top fan-in/fan-out classes, god hubs,
