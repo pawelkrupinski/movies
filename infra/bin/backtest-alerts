@@ -90,7 +90,7 @@ import urllib.parse
 import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "test"))
-from promql_selectors import metric_names  # noqa: E402  (shared with the dashboards' name check)
+from promql_selectors import metric_names, selectors  # noqa: E402  (shared with the dashboards' name check)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INFRA = os.path.dirname(HERE)
@@ -687,14 +687,32 @@ def observed_fraction(prom, name, start, end, step):
     return len(steps) / float(len(grid_of(start, end, step)))
 
 
+def rollout_queries(expr, existing, conditional):
+    """What `expr` reads that may have been rolled out inside the window: each metric name it reads that has
+    series in the window, and each selector over such a name with its label matchers, as written. A name can
+    exist from the start while the series a rule selects appear only later -- `coredns_dns_responses_total` under
+    another job, `mongodb_collstats_storageStats_storageSize` for other collections (Alert backtest #1:
+    CoreDnsMetricsAbsent and IdentityRetainedSizeAbsent fired in the replay until their selector appeared, and
+    never in production)."""
+    names = (metric_names(expr) - set(conditional)) & existing
+    found = set(names)
+    for selector in selectors(expr):
+        labels = selector.label_matchers
+        if selector.name in names and labels:
+            found.add("%s{%s}" % (selector.name, ",".join(
+                '%s%s%s' % (m.label, m.op, json.dumps(m.value)) for m in labels)))
+    return found
+
+
 def metric_rollouts(prom, metrics, start, end, jobs):
-    """{metric: rollout time} for every metric in `metrics` that was deployed inside the window."""
+    """{metric or selector: rollout time} for each one in `metrics` (rollout_queries) deployed inside the window."""
     step = 900
     grid = grid_of(start, end, step)
 
     def one(metric):
+        query = "count(%s)" % metric if "{" in metric else 'count({__name__="%s"})' % metric
         try:
-            present = prom.presence('count({__name__="%s"})' % metric, start, end, step,
+            present = prom.presence(query, start, end, step,
                                     chunk=end - start + step)
         except RuntimeError:
             return metric, None
@@ -826,13 +844,14 @@ def run_backtest(args, prom, source):
             problems.append("%s: allowlist entry has no reason" % name)
 
     reads = {n: metric_names(alerts[n]["expr"]) - set(conditional) for n in selected}
-    rollouts = metric_rollouts(prom, set().union(*reads.values()) & existing, start, end, args.jobs)
+    watched = {n: rollout_queries(alerts[n]["expr"], existing, conditional) for n in selected}
+    rollouts = metric_rollouts(prom, set().union(*watched.values()), start, end, args.jobs)
     excused = excused_windows(catalogue, step)
 
     print("backtesting %d alert(s) over %s .. %s at %ds" % (len(selected), iso(start), iso(end), step))
 
     def run(name):
-        clipped = max([start] + [rollouts[m] for m in reads[name] if m in rollouts])
+        clipped = max([start] + [rollouts[m] for m in watched[name] if m in rollouts])
         clipped = snap_up(clipped, step)
         if clipped >= end - step:
             return name, clipped, {"returned_data": True, "firing_fraction": 0.0, "episodes": 0,

@@ -120,6 +120,34 @@ class Rollout(unittest.TestCase):
         g = grid(100)
         self.assertIsNone(bt.rollout_start(set(g[40:45]) | set(g[80:85]), g))
 
+    # Alert backtest #1 (run 44404703989): CoreDnsMetricsAbsent and IdentityRetainedSizeAbsent "fired" until the
+    # SELECTOR they read appeared (11-12, 11-07) and production never fired them: their metric NAMES were present
+    # from the start under other labels (another job, other collections), so a rollout read by name alone missed it.
+    def test_a_selector_the_rule_reads_is_watched_for_a_rollout_beside_its_bare_name(self):
+        expr = ('absent(coredns_dns_responses_total{job="coredns"})\n or\n'
+                ' absent(coredns_proxy_request_duration_seconds_count{job="coredns"})')
+        self.assertEqual(bt.rollout_queries(expr, {"coredns_dns_responses_total",
+                                                   "coredns_proxy_request_duration_seconds_count"}, set()),
+                         {"coredns_dns_responses_total", "coredns_proxy_request_duration_seconds_count",
+                          'coredns_dns_responses_total{job="coredns"}',
+                          'coredns_proxy_request_duration_seconds_count{job="coredns"}'})
+
+    def test_a_selector_rolled_out_under_a_name_present_all_along_is_found(self):
+        start, step = 0, 900
+        end = start + 99 * step
+        g = bt.grid_of(start, end, step)
+        asked = []
+
+        class Prom(object):
+            def presence(self, expr, start, end, step, chunk=86400):
+                asked.append(expr)
+                late = 'collection="identity_retained"' in expr
+                return {"k": set(g[40:]) if late else set(g)}
+        selector = 'mongodb_collstats_storageStats_storageSize{collection="identity_retained"}'
+        rollouts = bt.metric_rollouts(Prom(), {"mongodb_collstats_storageStats_storageSize", selector}, start, end, 2)
+        self.assertEqual(rollouts, {selector: g[40]})
+        self.assertIn("count(%s)" % selector, asked)
+
 
 def stats(fraction=0.0, episodes=0, returned=True, days=14):
     return {"firing_fraction": fraction, "episodes": episodes, "budget_firing_fraction": fraction,
