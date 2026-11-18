@@ -9,11 +9,6 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import java.time.Clock
 import scala.util.Try
 
-/** Dedup/freshness key + payload for a rating-refresh task. The key encodes the
- *  rating source and the film, so "refresh the IMDb rating of film F" can't be
- *  queued twice while one is active (the queue's unique index), and is shared
- *  across servers. */
-
 /**
  * Handles one rating-refresh task by delegating to the existing per-row refresh
  * of a `*Ratings` class, re-gated at pickup by the SAME [[DueWindow]] the

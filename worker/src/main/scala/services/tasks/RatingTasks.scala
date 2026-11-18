@@ -4,6 +4,10 @@ import services.cadence.RatingCadenceStore
 import services.freshness.FreshnessKind
 import services.movies.CacheKey
 
+/** Dedup/freshness key + payload for a rating-refresh task. The key encodes the
+ *  rating source and the film, so "refresh the IMDb rating of film F" can't be
+ *  queued twice while one is active (the queue's unique index), and is shared
+ *  across servers. */
 object RatingTasks {
   val TitleKey = "title"
   val YearKey  = "year"
