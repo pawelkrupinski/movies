@@ -309,6 +309,44 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     stored.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(2, 1))
   }
 
+  /** One instance of the store's lookups is asked from two threads: the live agreement stage's, its apply on the
+   *  projection's thread and `questionsOf` on the model's input gate. A release on one -- the next prefetch, or
+   *  `prefetchAnswered` -- used to CLEAR the maps the other's prefetch was loading, so a document it held a moment
+   *  before was gone when it read it back: worker-uk's drain threw a NullPointerException out of `load` and the model
+   *  rebuilt from its store (2026-11-16, Sentry KINOWO-35). Here: an IMDb question and an IMDb-titled one of a title
+   *  hold its suggestions' finds, then load IMDb's titles of them beside those finds -- and the other thread lets go
+   *  while that read is out. */
+  it should "finish a prefetch that another thread's release lands in the middle of, and answer as the store holds it" in {
+    val w     = new World
+    val title = "Camino dla opornych"
+    w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl(title),
+      Success(FixtureFile.resource("fixtures/imdb/suggestion_camino_dla_opornych.json")))
+    val reading = new java.util.concurrent.CountDownLatch(1)
+    val proceed = new java.util.concurrent.CountDownLatch(1)
+    val paused  = new java.util.concurrent.atomic.AtomicBoolean(true)
+    val docs = new TmdbDocuments {
+      def get(kind: TmdbKind, ids: Seq[String]) = {
+        if (ids.exists(_.startsWith("imdbtitles|")) && paused.getAndSet(false)) {
+          reading.countDown()
+          proceed.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+        }
+        w.docs.get(kind, ids)
+      }
+      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
+    }
+    val lookups  = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
+    val queries  = Seq(CandidateQuery.Imdb(title), CandidateQuery.ImdbTitled(title))
+    val outcome  = new java.util.concurrent.atomic.AtomicReference[scala.util.Try[Unit]]()
+    val prefetch = new Thread(() => outcome.set(scala.util.Try(lookups.prefetch(queries, Nil, Nil))))
+    prefetch.start()
+    reading.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    lookups.prefetchAnswered() // the other thread's release, while the prefetch's read is out
+    proceed.countDown()
+    prefetch.join(SpecTimeouts.Io.toMillis)
+    outcome.get shouldBe Success(())
+    queries.map(lookups.candidates) shouldBe queries.map(w.lookups.candidates)
+  }
+
   /** A gap asked live is answered as the store now holds it -- popularity to its bucket -- not as TMDB stated it: the
    *  take-up decided on raw popularity and its first drain on the bucket, so every boot resolved twice, on two inputs. */
   "a gap the model asks live" should "be answered as the store holds what that ask filed" in {

@@ -23,10 +23,19 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     extends IdentityLookups {
   import StoredTmdbLookups._
 
-  private val held = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Held]()).toMap
+  // What the latest prefetch holds: each prefetch fills a holding of its OWN and puts it in place of the last, and a
+  // release puts an empty one in place -- never clears one a prefetch may be filling. One instance is asked from two
+  // threads (the live agreement stage's: its apply on the projection's, `questionsOf` on the model's input gate), and
+  // the release one made cleared the maps the other's prefetch was loading: an id it had just held was gone by the
+  // time it read it back (worker-uk 2026-11-16, Sentry KINOWO-35, the drain failing and the model rebuilt). A holding
+  // replaced under an ask only sends that ask to the store, as any document not held does.
+  @volatile private var holding = new Holding
 
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], pages: Iterable[Listing]): Unit = {
-    release()
+    val mine = new Holding
+    holding = mine
+    def load(kind: TmdbKind, ids: Seq[String], readThrough: Boolean = false): Unit = mine.load(store, kind, ids, readThrough)
+    def heldDocument(kind: TmdbKind, id: String): Option[BsonDocument] = mine.document(kind, id)
     val asked = queries.toSeq
     load(TmdbKind.Query, asked.map(TmdbStore.questionId(language, _)))
     // Each title credit's director, as its suggestions name him ([[TitleCredit.named]]): his person search, walked as a
@@ -49,10 +58,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     load(TmdbKind.Query, titled.map(TmdbStore.imdbTitlesId) ++ titled.map(TmdbStore.findId))
     // And every film any of them names, for its hit; the records asked for, read through — whoever asks for a
     // record keeps it decoded (the corpus its records) — and a fallback source's for the ids TMDB holds none of.
-    val named = held(TmdbKind.Query).values.asScala.flatMap(_.document).filter(_.containsKey("ids")).flatMap(intsOf(_)) ++
-      held(TmdbKind.Person).values.asScala.flatMap(_.document).flatMap(d => intsOf(d, "directed") ++ intsOf(d, "wrote"))
+    val named = mine.held(TmdbKind.Query).values.asScala.flatMap(_.document).filter(_.containsKey("ids")).flatMap(intsOf(_)) ++
+      mine.held(TmdbKind.Person).values.asScala.flatMap(_.document).flatMap(d => intsOf(d, "directed") ++ intsOf(d, "wrote"))
     val (fallbacks, tmdbFilms) = films.toSeq.partition(FallbackIds.isFallback)
-    loadHits(named.map(_.toString).toSeq)
+    mine.loadHits(store, named.map(_.toString).toSeq)
     load(TmdbKind.Film, tmdbFilms.map(_.toString), readThrough = true)
     load(TmdbKind.Query, fallbacks.flatMap(FallbackIds.imdbId).map(TmdbStore.imdbRecordId))
     details.prefetch(Nil, Nil, pages)
@@ -64,7 +73,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   override def prefetchAnswered(): Unit = { release(); details.prefetchAnswered() }
 
   /** Let go of every document, film and hit the last prefetch holds. */
-  private def release(): Unit = { held.values.foreach(_.clear()); films.clear(); hits.clear() }
+  private def release(): Unit = holding = new Holding
 
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
@@ -107,23 +116,21 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
     if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)
-    else Option(held(TmdbKind.Film).get(tmdbId.toString)) match {
+    else { val now = holding; Option(now.held(TmdbKind.Film).get(tmdbId.toString)) match {
       // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each
       // copy worked its titles, tokens and credits out afresh (worker-pl's identity model, JFR 2026-10-05). The document is
       // the prefetch's, unchanged until the next one, so its record is too.
       case Some(prefetched) if prefetched.document.isDefined =>
         reads.read(TmdbStore.keyOf(TmdbKind.Film, tmdbId.toString))
-        films.computeIfAbsent(tmdbId, _ => filmOf(prefetched.document))
+        now.films.computeIfAbsent(tmdbId, _ => filmOf(prefetched.document))
       case _ => filmOf(document(TmdbKind.Film, tmdbId.toString))
-    }
+    } }
 
   private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
     doc.flatMap(d => Option(d.get("record")).map(d -> _)) match {
       case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(film => withRuntimes(withImdbNumber(film, d), d)))
       case None              => Answer.Unknown
     }
-  // The films decoded from the documents the current prefetch holds; let go with them.
-  private val films = new ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
 
   /** The record's release day — `Unknown` while the localized response it was parsed from holds only a year: filed before
    *  records kept the whole day (`TmdbNormalizer.minimal` cut it to the year), the record states no day though TMDB does,
@@ -186,24 +193,14 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   // ── documents, read once per prefetch and filed with `reads` ──────────────────────
 
-  private def load(kind: TmdbKind, ids: Seq[String], readThrough: Boolean = false): Map[String, Option[BsonDocument]] = {
-    val wanted = ids.distinct.filterNot(held(kind).containsKey)
-    val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument]
-                 else if (readThrough) store.answersReadThrough(kind, wanted) else store.answers(kind, wanted)
-    wanted.foreach(id => held(kind).put(id, Held(got.get(id))))
-    ids.map(id => id -> held(kind).get(id).document).toMap
-  }
-
   private def document(kind: TmdbKind, id: String): Option[BsonDocument] = {
     reads.read(TmdbStore.keyOf(kind, id)) // tracked whatever it holds: its change re-asks the question
     // A document the prefetch found absent is read again: the gap's live ask files it moments later, and an absence
     // held would answer the question that filed it from before its own filing. So no negative memo, not even per
     // instance: `StoredFirstLookups.storedFirst` asks here, on a gap asks live (filing into this store), then asks
     // here AGAIN to answer as the store holds it — a remembered absence would hand it the unbucketed live answer.
-    Option(held(kind).get(id)).flatMap(_.document).orElse(store.answers(kind, Seq(id)).get(id))
+    holding.document(kind, id).orElse(store.answers(kind, Seq(id)).get(id))
   }
-
-  private def heldDocument(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)
 
   /** Each of `finds`' first film, as its hit reads — `Unknown` while any find, or any of those films, is not held. */
   private def firstFilms(finds: Seq[Option[BsonDocument]]): Answer[Seq[Seq[Hit]]] =
@@ -218,19 +215,11 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     if (found.exists(_.isEmpty)) Answer.Unknown else Answer.Known(found.flatten)
   }
 
-  // The hits the current prefetch holds, by film id: `None` for a film holding none. Let go with it.
-  private val hits = new ConcurrentHashMap[String, Option[Hit]]()
-
-  private def loadHits(ids: Seq[String]): Unit = {
-    val wanted = ids.distinct.filterNot(hits.containsKey)
-    if (wanted.nonEmpty) { val got = store.filmHits(wanted); wanted.foreach(id => hits.put(id, got.get(id))) }
-  }
-
   /** A film's hit, filed with `reads` under its document's key: its change re-asks the question. */
   private def hit(id: Int): Option[Hit] = {
     val key = id.toString
     reads.read(TmdbStore.keyOf(TmdbKind.Film, key))
-    Option(hits.get(key)).flatten.orElse(store.filmHits(Seq(key)).get(key)) // an absent one read again, as `document`'s
+    Option(holding.hits.get(key)).flatten.orElse(store.filmHits(Seq(key)).get(key)) // an absent one read again, as `document`'s
   }
 }
 
@@ -239,6 +228,29 @@ object StoredTmdbLookups {
   val MaxPersonCandidates: Int = clients.TmdbClient.MaxPersonCandidates
 
   private final case class Held(document: Option[BsonDocument])
+
+  /** What one prefetch read: its documents by kind (`None` for one the store holds none of), the films decoded from them
+   *  and the hits of the films they name, by film id (`None` for a film holding none). Filled only by the prefetch that
+   *  made it, and let go whole when the next one, or a release, takes its place. */
+  private final class Holding {
+    val held  = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Held]()).toMap
+    val films = new ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
+    val hits  = new ConcurrentHashMap[String, Option[Hit]]()
+
+    def document(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)
+
+    def load(store: TmdbStore, kind: TmdbKind, ids: Seq[String], readThrough: Boolean): Unit = {
+      val wanted = ids.distinct.filterNot(held(kind).containsKey)
+      val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument]
+                   else if (readThrough) store.answersReadThrough(kind, wanted) else store.answers(kind, wanted)
+      wanted.foreach(id => held(kind).put(id, Held(got.get(id))))
+    }
+
+    def loadHits(store: TmdbStore, ids: Seq[String]): Unit = {
+      val wanted = ids.distinct.filterNot(hits.containsKey)
+      if (wanted.nonEmpty) { val got = store.filmHits(wanted); wanted.foreach(id => hits.put(id, got.get(id))) }
+    }
+  }
 
   private def personSearchOf(name: String): String =
     TmdbStore.personSearchId(CandidateQuery.personName(name))
