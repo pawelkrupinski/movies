@@ -186,43 +186,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     ()
   }
 
-  /**
-   * One `$group` over the whole collection instead of a `countDocuments` per
-   * state. Runs on the 60s heartbeat AND on every `/debug` request and metrics
-   * scrape, so halving its round-trips is worth the aggregation.
-   *
-   * States with no documents stay ABSENT from the map rather than mapping to 0 —
-   * `$group` emits no bucket for them, which is the same contract the per-state
-   * version got from its `filter(_ > 0)`, and several specs assert on the empty
-   * map.
-   *
-   * The `$match` is what keeps the two versions equivalent, and is easy to drop
-   * by accident: asking for `countDocuments(state = waiting)` could only ever
-   * answer about the states we named, whereas `$group` buckets whatever value it
-   * finds — so without the filter a document carrying an unrecognised (or
-   * missing) `state` would surface as a new key and be rendered as a queue state
-   * on /debug and in the metrics export.
-   */
-  override def countByState(): Map[String, Long] = coll match {
-    case None => Map.empty
-    case Some(c) =>
-      val pipeline = Seq(
-        // Only types this build knows: a row of any other is a newer image's (left for it) or a retired
-        // type's (dropped by the lease reaper), never work this queue is behind on.
-        Aggregates.filter(Filters.and(Filters.in("state", TaskState.all*), Filters.in("taskType", MongoTaskQueue.KnownTypeNames*))),
-        Aggregates.group("$state", Accumulators.sum("n", 1)))
-      // A read failure PROPAGATES, as `waitingCount`'s does: an empty map is an empty
-      // queue, and was exported as a queue depth of 0 while the queue was unreadable.
-      Await.result(c.aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
-        .flatMap { doc =>
-          for {
-            state <- doc.get("_id").filter(_.isString).map(_.asString().getValue)
-            count <- doc.get("n").filter(_.isNumber).map(_.asNumber().longValue())
-            if count > 0
-          } yield state -> count
-        }.toMap
-  }
-
   // Counts via the {state, submittedAt} index prefix, then filters taskType over
   // the bounded waiting set — cheap (waiting ≤ corpus). A read failure PROPAGATES:
   // it used to answer 0, which is the reading of an empty queue, so the one moment
@@ -236,30 +199,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
           Filters.eq("state", TaskState.Waiting),
           Filters.eq("taskType", taskType.name))).toFuture(),
         10.seconds).toInt
-  }
-
-  override def monitor(activeLimit: Int): QueueSnapshot = coll match {
-    case None => QueueSnapshot(Map.empty, Seq.empty)
-    case Some(c) =>
-      // One `{state, submittedAt}`-index-backed query per state, walked in
-      // `activeByPriority` order and spending the remaining row budget each time.
-      // The alternative — a single `state: -1, submittedAt: 1` sort — is
-      // mixed-direction, which that index can't serve, so Mongo would blocking-sort
-      // the whole active set in memory on every 5s poll.
-      // A read failure propagates (see `countByState`): the worker's queue gauges hold their
-      // last reading and the admin pages show the error, instead of an empty queue.
-      val active =
-        TaskState.activeByPriority.foldLeft(Seq.empty[TaskSummary]) { (listed, state) =>
-          val remaining = activeLimit - listed.size
-          if (remaining <= 0) listed
-          else listed ++ Await.result(
-            c.find(Filters.and(Filters.eq("state", state), Filters.in("taskType", MongoTaskQueue.KnownTypeNames*)))
-              .sort(Indexes.ascending("submittedAt"))
-              .limit(remaining)
-              .batchSize(tools.MongoReplies.Default).toFuture(),
-            10.seconds).map(toSummary)
-        }
-      QueueSnapshot(countByState(), active)
   }
 
   /** Push: ring `onWaiting` on every freshly enqueued task. `enqueue` is the
@@ -285,20 +224,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     logger.info("MongoTaskQueue: watching change stream to wake workers on new tasks.")
     stream
   }
-
-  private def toSummary(document: Document): TaskSummary = TaskSummary(
-    id             = document.getString("_id"),
-    taskType       = document.getString("taskType"),
-    dedupKey       = document.getString("dedupKey"),
-    state          = document.getString("state"),
-    submittedAt    = Instant.ofEpochMilli(document.getDate("submittedAt").getTime),
-    attempts       = document.getInteger("attempts", 0),
-    workerId       = Option(document.getString("workerId")),
-    leaseExpiresAt = Option(document.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
-    lastError      = Option(document.getString("lastError")),
-    nextEligibleAt = Option(document.getDate("nextEligibleAt")).map(d => Instant.ofEpochMilli(d.getTime)),
-    enqueuedAt     = Option(document.getDate("enqueuedAt")).map(d => Instant.ofEpochMilli(d.getTime))
-  )
 }
 
 /** The `tasks` collection as [[TaskRows]]: each [[TaskRowMatch]] a filter, each [[TaskRowChange]] an
@@ -322,9 +247,41 @@ private[tasks] final class MongoTaskRows(c: MongoCollection[Document]) extends T
   def deleteOne(matching: TaskRowMatch): Unit = {
     Await.result(c.deleteOne(filter(matching)).toFuture(), 10.seconds); ()
   }
+
+  /** One `$group` over the matching rows instead of a `countDocuments` per state: the counts run on the 60s
+   *  heartbeat AND on every `/debug` request and metrics scrape, so halving their round-trips is worth it. */
+  def countByState(matching: TaskRowMatch): Map[String, Long] =
+    Await.result(c.aggregate(Seq(Aggregates.filter(filter(matching)), Aggregates.group("$state", Accumulators.sum("n", 1))))
+      .batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
+      .flatMap { doc =>
+        for {
+          state <- doc.get("_id").filter(_.isString).map(_.asString().getValue)
+          count <- doc.get("n").filter(_.isNumber).map(_.asNumber().longValue())
+        } yield state -> count
+      }.toMap
+
+  // Served by the `{state, submittedAt}` index for a one-state match (the snapshot's walk): a single mixed-direction
+  // sort over every active state would make Mongo blocking-sort the whole active set in memory on every 5s poll.
+  def oldest(matching: TaskRowMatch, limit: Int): Seq[TaskSummary] =
+    Await.result(c.find(filter(matching)).sort(Indexes.ascending("submittedAt")).limit(limit)
+      .batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).map(toSummary)
 }
 
 object MongoTaskQueue {
+  private[tasks] def toSummary(document: Document): TaskSummary = TaskSummary(
+    id             = document.getString("_id"),
+    taskType       = document.getString("taskType"),
+    dedupKey       = document.getString("dedupKey"),
+    state          = document.getString("state"),
+    submittedAt    = Instant.ofEpochMilli(document.getDate("submittedAt").getTime),
+    attempts       = document.getInteger("attempts", 0),
+    workerId       = Option(document.getString("workerId")),
+    leaseExpiresAt = Option(document.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
+    lastError      = Option(document.getString("lastError")),
+    nextEligibleAt = Option(document.getDate("nextEligibleAt")).map(d => Instant.ofEpochMilli(d.getTime)),
+    enqueuedAt     = Option(document.getDate("enqueuedAt")).map(d => Instant.ofEpochMilli(d.getTime))
+  )
+
   private[tasks] def toTask(document: Document, taskType: TaskType): Task =
     Task(
       id       = document.getString("_id"),
@@ -340,6 +297,7 @@ object MongoTaskQueue {
     Filters.and((
       matching.id.map(Filters.eq("_id", _)).toSeq ++
       matching.state.map(Filters.eq("state", _)) ++
+      Option.when(matching.states.nonEmpty)(Filters.in("state", matching.states*)) ++
       matching.workerId.map(Filters.eq("workerId", _)) ++
       Option.when(matching.knownTypesOnly)(Filters.in("taskType", KnownTypeNames*)) ++
       matching.eligibleAt.map(now => Filters.or(Filters.exists("nextEligibleAt", false), Filters.lte("nextEligibleAt", at(now)))) ++

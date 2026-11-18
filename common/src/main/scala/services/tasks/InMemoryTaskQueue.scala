@@ -33,7 +33,7 @@ class InMemoryTaskQueue extends LeasedTaskQueue {
     lastError:      Option[String]  = None
   ) {
     def matches(matching: TaskRowMatch): Boolean =
-      matching.id.forall(_ == id) && matching.state.forall(_ == state) && matching.workerId.forall(workerId.contains) &&
+      matching.id.forall(_ == id) && matching.state.forall(_ == state) && (matching.states.isEmpty || matching.states.contains(state)) && matching.workerId.forall(workerId.contains) &&
         (!matching.knownTypesOnly || TaskType.all.contains(taskType)) &&
         matching.eligibleAt.forall(now => !nextEligibleAt.exists(_.isAfter(now))) &&
         matching.leaseExpiredBefore.forall(now => leaseExpiresAt.exists(_.isBefore(now)))
@@ -116,27 +116,20 @@ class InMemoryTaskQueue extends LeasedTaskQueue {
     def deleteOne(matching: TaskRowMatch): Unit = lock.synchronized {
       rows.values.find(_.matches(matching)).foreach(r => rows.remove(r.id))
     }
+    def countByState(matching: TaskRowMatch): Map[String, Long] = lock.synchronized {
+      rows.values.filter(_.matches(matching)).groupBy(_.state).map { case (state, of) => state -> of.size.toLong }
+    }
+    def oldest(matching: TaskRowMatch, limit: Int): Seq[TaskSummary] = lock.synchronized {
+      rows.values.filter(_.matches(matching)).toSeq.sortBy(_.submittedAt).take(limit)
+        .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
+          r.attempts, r.workerId, r.leaseExpiresAt, r.lastError, r.nextEligibleAt, r.enqueuedAt))
+    }
   }
 
   protected def taskRows: TaskRows = rowStore
 
-  override def countByState(): Map[String, Long] = lock.synchronized {
-    rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
-  }
-
   override def waitingCount(taskType: TaskType): Int = lock.synchronized {
     rows.values.count(r => r.state == TaskState.Waiting && r.taskType == taskType)
-  }
-
-  override def monitor(activeLimit: Int): QueueSnapshot = lock.synchronized {
-    val counts = rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
-    val active = rows.values.toSeq
-      .filter(r => TaskState.activeByPriority.contains(r.state))
-      .sortBy(r => (TaskState.activeByPriority.indexOf(r.state), r.submittedAt))
-      .take(activeLimit)
-      .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
-        r.attempts, r.workerId, r.leaseExpiresAt, r.lastError, r.nextEligibleAt, r.enqueuedAt))
-    QueueSnapshot(counts, active)
   }
 
   /** Push parity with [[MongoTaskQueue]] for Mongo-less dev/tests: fire

@@ -162,5 +162,22 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
       queue.complete(reclaimed.id, "w2")
       queue.countByState() shouldBe empty
     }
+
+    // The counts and the snapshot ([[services.tasks.LeasedTaskQueue]]): one rule both stores read through.
+
+    it should s"[$name] count by state, and list the active tasks worked-on first, each state oldest first, to the limit" in {
+      val queue = fresh(cls)
+      queue.enqueue(TaskType.ResolveImdbId, "c|2026", Map.empty, t0.plusSeconds(20))
+      queue.enqueue(TaskType.ScrapeCinema, "b|2026", Map.empty, t0.plusSeconds(10))
+      queue.enqueue(TaskType.ResolveImdbId, "a|2026", Map.empty, t0)
+      queue.claim("w1", 1.minute, t0.plusSeconds(30)).map(_.dedupKey) shouldBe Some("a|2026")
+      queue.countByState() shouldBe Map(services.tasks.TaskState.Waiting -> 2L, services.tasks.TaskState.WorkedOn -> 1L)
+      def listed(limit: Int) = queue.monitor(limit).active.map(row => (row.dedupKey, row.taskType, row.state, row.workerId))
+      listed(2) shouldBe Seq(("a|2026", "ResolveImdbId", services.tasks.TaskState.WorkedOn, Some("w1")),
+                             ("b|2026", "ScrapeCinema", services.tasks.TaskState.Waiting, None))
+      listed(10).map(_._1) shouldBe Seq("a|2026", "b|2026", "c|2026")
+      queue.monitor(0).active shouldBe empty
+      queue.monitor(10).counts shouldBe queue.countByState()
+    }
   }
 }

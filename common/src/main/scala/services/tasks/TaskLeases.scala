@@ -12,6 +12,8 @@ import scala.util.Try
 final case class TaskRowMatch(
   id:                 Option[String]  = None,
   state:              Option[String]  = None,
+  // In one of these states (none given: any) -- an index-served condition, unlike reading every state and dropping some.
+  states:             Seq[String]     = Nil,
   workerId:           Option[String]  = None,
   // Only types this build has a decoder for: a row of any other is, on a rollback, a newer image's.
   knownTypesOnly:     Boolean         = false,
@@ -50,6 +52,10 @@ trait TaskRows {
   def updateAll(matching: TaskRowMatch, change: TaskRowChange): Int
   /** Remove one matching row, if any. */
   def deleteOne(matching: TaskRowMatch): Unit
+  /** How many rows match, by their state. */
+  def countByState(matching: TaskRowMatch): Map[String, Long]
+  /** Up to `limit` matching rows, the oldest `submittedAt` first. */
+  def oldest(matching: TaskRowMatch, limit: Int): Seq[TaskSummary]
 }
 
 object TaskRows {
@@ -59,6 +65,8 @@ object TaskRows {
     def updateOne(matching: TaskRowMatch, change: TaskRowChange): Unit           = ()
     def updateAll(matching: TaskRowMatch, change: TaskRowChange): Int            = 0
     def deleteOne(matching: TaskRowMatch): Unit                                  = ()
+    def countByState(matching: TaskRowMatch): Map[String, Long]                  = Map.empty
+    def oldest(matching: TaskRowMatch, limit: Int): Seq[TaskSummary]             = Seq.empty
   }
 }
 
@@ -119,8 +127,8 @@ object TaskLeases {
 
 /**
  * A [[TaskQueue]] whose lease cycle — claim, complete, release, reap — is [[TaskLeases]]' over the [[TaskRows]] its
- * store supplies: [[MongoTaskQueue]] and [[InMemoryTaskQueue]] extend it and differ only in `taskRows`, never in the
- * lease rules. Finishing a task removes its row outright (no tombstone): a gone row allows the key's re-enqueue, and
+ * store supplies, and whose counts and snapshot are read through them by one rule: [[MongoTaskQueue]] and
+ * [[InMemoryTaskQueue]] extend it and differ only in `taskRows`, never in the rules. Finishing a task removes its row outright (no tombstone): a gone row allows the key's re-enqueue, and
  * nothing lists finished tasks. The ownership guard keeps a late call from a reaped worker off a task another worker
  * has since reclaimed.
  */
@@ -139,4 +147,21 @@ abstract class LeasedTaskQueue extends TaskQueue {
     leases.release(id, workerId, error, notBefore, refundAttempt)
 
   override def reapExpiredLeases(now: Instant): Int = leases.reap(now)
+
+  /** Only the queue's own states, of the types this build knows: a row of any other type is a newer image's (left
+   *  for it) or a retired type's (dropped by the lease reaper), never work this queue is behind on, and a state no
+   *  rule writes is never shown as a queue state. A state with no rows stays absent, never 0. */
+  override def countByState(): Map[String, Long] =
+    taskRows.countByState(TaskRowMatch(states = TaskState.all, knownTypesOnly = true)).filter(_._2 > 0)
+
+  /** The active rows of known types, walked in `activeByPriority` order — each state's oldest first — spending what
+   *  is left of `activeLimit` on each state in turn (one index-served query a state in Mongo). */
+  override def monitor(activeLimit: Int): QueueSnapshot = {
+    val active = TaskState.activeByPriority.foldLeft(Seq.empty[TaskSummary]) { (listed, state) =>
+      val remaining = activeLimit - listed.size
+      if (remaining <= 0) listed
+      else listed ++ taskRows.oldest(TaskRowMatch(state = Some(state), knownTypesOnly = true), remaining)
+    }
+    QueueSnapshot(countByState(), active)
+  }
 }
