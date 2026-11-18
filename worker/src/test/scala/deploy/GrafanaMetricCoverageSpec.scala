@@ -4,7 +4,7 @@ import testsupport.SourceTrees
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.WorkerMetrics
+import modules.wiring.WorkerMetrics
 
 import scala.jdk.CollectionConverters._
 
@@ -131,7 +131,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_legacy_address_last_called_seconds",
     "kinowo_web_legacy_address_hits",
     // Every atomic user-state write by endpoint and outcome — see
-    // `services.metrics.UserStateWriteMetrics`.
+    // `services.users.UserStateWriteMetrics`.
     "kinowo_web_user_state_writes",
     // Whether `userStates` has its unique userId index — `UserStateIndexMetrics`.
     "kinowo_web_user_state_userid_index_unique",

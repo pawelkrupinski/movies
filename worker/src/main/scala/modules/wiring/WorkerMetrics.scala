@@ -1,4 +1,8 @@
-package services.metrics
+package modules.wiring
+
+import services.metrics.*
+
+import services.alerts.TelegramNotificationMetrics
 
 import tools.CacheOccupancy
 import tools.ThreadPools

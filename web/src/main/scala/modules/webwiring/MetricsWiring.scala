@@ -2,7 +2,8 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics, LegacyAddressMetrics}
+import services.metrics.{WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics, LegacyAddressMetrics}
+import services.users.{UserStateIndexMetrics, UserStateWriteMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served

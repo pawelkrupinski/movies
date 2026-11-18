@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.metrics.{PrometheusExposition, UserStateWriteMetrics}
+import services.metrics.PrometheusExposition
 import services.users.UserStateWriteOutcomes.{Endpoint, Outcome}
 
 import java.time.Instant

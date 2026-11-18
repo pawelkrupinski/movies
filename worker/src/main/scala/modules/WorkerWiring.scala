@@ -9,7 +9,7 @@ import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoConnection, MongoTuning, UptimeMonitor, UptimeTier}
 import settings.MongoAddress
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
-import services.metrics.WorkerMetrics
+import modules.wiring.WorkerMetrics
 import services.tasks.{CostSpacedPhaseOffset, DueWindow, ScrapeCadence, VenueCadenceStore}
 import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 

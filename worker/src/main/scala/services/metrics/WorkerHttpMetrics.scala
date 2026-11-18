@@ -41,7 +41,7 @@ import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder, HttpPath}
  * it. Per-path rate per country:
  * `sum by (country, path) (rate(kinowo_worker_http_total[5m]))`.
  *
- * Registered ONCE on the shared [[WorkerMetrics]] registry with a leading
+ * Registered ONCE on the shared [[modules.wiring.WorkerMetrics]] registry with a leading
  * `country` label (like every other `kinowo_worker_*` series), and seeded to 0
  * for the full country × (phase, service) × path × outcome grid so no Grafana line
  * starts with a gap. The grid is bounded: [[WorkerHttpMetrics.Service.grid]]

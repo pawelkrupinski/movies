@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 
 /** Registers the Prometheus client's standard JVM + process resource collectors
  *  into a metrics registry — the RESOURCE signals, not any business data. Shared
- *  by BOTH deployed JVMs (the worker's [[WorkerMetrics]] and the web app's
+ *  by BOTH deployed JVMs (the worker's [[modules.wiring.WorkerMetrics]] and the web app's
  *  `WebJvmMetrics`) so the two expose the same series names and one Grafana panel
  *  shape reads either. One `JvmMetrics.builder().register(...)` call installs:
  *

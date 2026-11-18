@@ -4,7 +4,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 
 /**
  * The web app's Prometheus registry, carrying the JVM + process resource
- * collectors — the web-side counterpart to the worker's [[WorkerMetrics]].
+ * collectors — the web-side counterpart to the worker's [[modules.wiring.WorkerMetrics]].
  *
  * WHY: until this existed the web app exported only hand-rendered business
  * gauges (`kinowo_uptime_*`, `kinowo_web_movies_served`), so every JVM question

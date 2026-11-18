@@ -106,7 +106,7 @@ object WorkerMain extends Logging {
     boot:             BootSteps,
     budget:           ExecutionBudget,
     client:           Option[MongoClient],
-    metrics:          services.metrics.WorkerMetrics,
+    metrics:          modules.wiring.WorkerMetrics,
     posterShrinkGate: tools.PosterDecodeGate
   )
 
@@ -122,7 +122,7 @@ object WorkerMain extends Logging {
       // country's wiring. This is what fixes the earlier "primary country's registry
       // only, others headless" gap — every country writes its own `country="…"` slice
       // and ALL of them surface on the single /metrics endpoint.
-      val metrics = boot.step("metrics bundle")(new services.metrics.WorkerMetrics(
+      val metrics = boot.step("metrics bundle")(new modules.wiring.WorkerMetrics(
         countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize),
         // The process-wide bundle outlives every country's wiring; its own stop() shuts its sampler.
         tools.ThreadPools.Unmanaged))
@@ -168,7 +168,7 @@ object WorkerMain extends Logging {
 
   /** /metrics — registered now that every country's queue + metrics are live: one scrape renders the
    *  shared registry with all countries' series — and the on-demand /heapdump and /profile. */
-  private def addOperatorEndpoints(health: HttpServer, port: Int, metrics: services.metrics.WorkerMetrics,
+  private def addOperatorEndpoints(health: HttpServer, port: Int, metrics: modules.wiring.WorkerMetrics,
                                    wirings: Seq[WorkerWiring], heapDumpDir: HeapDumpDirectory): Unit = {
     addMetricsEndpoint(health, metrics, wirings)
     logger.info(s"Worker metrics up on :$port/metrics")
@@ -328,7 +328,7 @@ object WorkerMain extends Logging {
    *  WorkerWiring is up since it reads the live queue + metrics. Served from a
    *  [[services.metrics.MetricsSnapshotCache]] so the scrape never blocks on the
    *  Mongo reads taskMetrics.scrape performs — see that class for why. */
-  private def addMetricsEndpoint(server: HttpServer, workerMetrics: services.metrics.WorkerMetrics, wirings: Seq[WorkerWiring]): Unit = {
+  private def addMetricsEndpoint(server: HttpServer, workerMetrics: modules.wiring.WorkerMetrics, wirings: Seq[WorkerWiring]): Unit = {
     // Render the exposition OFF the scrape request path. The per-country scrape
     // reads each country's queue depth + staging counts from Mongo (a find + three
     // countDocuments + a full staging scan, each a 10s Await); doing that inside the

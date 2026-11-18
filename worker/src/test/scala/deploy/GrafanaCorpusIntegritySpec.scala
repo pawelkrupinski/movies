@@ -3,7 +3,8 @@ package deploy
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusCensus, CorpusCensusMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{CorpusCensus, CorpusCensusMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import modules.wiring.WorkerMetrics
 
 /**
  * Guards the dashboard/alert coverage over the CORPUS-INTEGRITY event families —

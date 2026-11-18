@@ -138,7 +138,7 @@ object RecheckedAudit {
   }
 
   /** One audit's three counters ([[Names]]), registered once with a leading `country` label (see
-   *  [[services.metrics.WorkerMetrics]]). Counters, not a gauge of the last run's findings: a run
+   *  [[modules.wiring.WorkerMetrics]]). Counters, not a gauge of the last run's findings: a run
    *  executes on whichever replica claims it, and a gauge would freeze at its last value on the
    *  replica that stopped running it. Counters from every replica `sum` correctly. */
   final class Series(names: Names, invariant: String, countryCodes: Seq[String], registry: PrometheusRegistry) {

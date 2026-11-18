@@ -33,7 +33,7 @@ import services.movies.StringPool
  *     healthy; a fall alongside rising evictions is the degradation itself.
  *
  * Process-level, like [[JvmVitalsSampler]] and unlike the census gauges: the pool
- * is one instance, owned by [[WorkerMetrics]] and shared by every country's wiring in
+ * is one instance, owned by [[modules.wiring.WorkerMetrics]] and shared by every country's wiring in
  * the JVM, so a `country` label would be a lie. Read at scrape time through callback gauges — three field
  * reads, cheaper than a timer and with no staleness.
  */

@@ -8,7 +8,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{PrometheusExposition, TelegramNotificationMetrics}
+import services.metrics.PrometheusExposition
 import tools.{GetOnlyHttpFetch, HttpFetch, LogCapture}
 
 class TelegramNotifierSpec extends AnyFlatSpec with Matchers {

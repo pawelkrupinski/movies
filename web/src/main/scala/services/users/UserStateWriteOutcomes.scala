@@ -2,7 +2,7 @@ package services.users
 
 /**
  * Where a user-state store reports how each atomic write went — the seam
- * `services.metrics.UserStateWriteMetrics` counts through, so the store knows
+ * `services.users.UserStateWriteMetrics` counts through, so the store knows
  * nothing about Prometheus.
  *
  * Exactly one outcome per write, which is what makes the four add up to the

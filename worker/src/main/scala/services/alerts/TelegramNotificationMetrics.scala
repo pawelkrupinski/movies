@@ -1,8 +1,7 @@
-package services.metrics
+package services.alerts
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.alerts.{TelegramAlertKind, TelegramNotificationRecorder, TelegramOutcome}
 
 /**
  * `kinowo_worker_telegram_notifications_total` — one count per in-app Telegram
@@ -15,7 +14,7 @@ import services.alerts.{TelegramAlertKind, TelegramNotificationRecorder, Telegra
  * failing since its token was rotated" had an answer. `WorkerTelegramAlertsFailing`
  * (worker-pipeline.rules) reads the failed half.
  *
- * Registered once on the shared [[WorkerMetrics]] registry and seeded to 0 over
+ * Registered once on the shared [[modules.wiring.WorkerMetrics]] registry and seeded to 0 over
  * country × known kind × outcome, so `increase` sees each kind's first attempt.
  */
 class TelegramNotificationMetrics(countryCodes: Seq[String], registry: PrometheusRegistry) {

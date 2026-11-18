@@ -29,7 +29,7 @@ import services.resolution.{ResolutionOutcome, ResolutionOutcomeRecorder}
  *    rather than repeating, which is a different bug from a cache that is too
  *    small.
  *
- * Registered ONCE on the shared [[WorkerMetrics]] registry with a leading
+ * Registered ONCE on the shared [[modules.wiring.WorkerMetrics]] registry with a leading
  * `country` label, and seeded to 0 across the full country × source × outcome
  * grid so no Grafana line starts with a gap.
  */

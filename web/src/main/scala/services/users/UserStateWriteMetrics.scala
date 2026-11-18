@@ -1,8 +1,7 @@
-package services.metrics
+package services.users
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.users.UserStateWriteOutcomes
 import services.users.UserStateWriteOutcomes.{Endpoint, Outcome}
 
 /**

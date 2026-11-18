@@ -1,8 +1,9 @@
-package services.metrics
+package services.users
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.metrics.PrometheusExposition
 import services.users.UserStateWriteOutcomes.{Endpoint, Outcome}
 
 class UserStateWriteMetricsSpec extends AnyFlatSpec with Matchers {

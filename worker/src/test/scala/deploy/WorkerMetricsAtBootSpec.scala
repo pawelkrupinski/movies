@@ -3,7 +3,7 @@ package deploy
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.WorkerMetrics
+import modules.wiring.WorkerMetrics
 
 import scala.jdk.CollectionConverters._
 

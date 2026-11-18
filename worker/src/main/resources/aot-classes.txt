@@ -6480,6 +6480,7 @@ modules.wiring.ShareCardWiring$
 modules.wiring.TaskQueueWiring
 modules.wiring.TaskQueueWiring$
 modules.wiring.WorkerIntegrations$
+modules.wiring.WorkerMetrics
 org.bson.AbstractBsonReader
 org.bson.AbstractBsonReader$1
 org.bson.AbstractBsonReader$Context
@@ -10304,7 +10305,6 @@ services.metrics.WorkerCorpusScan$
 services.metrics.WorkerCorpusScan$$anon$1
 services.metrics.WorkerHttpMetrics
 services.metrics.WorkerHttpMetrics$Phase$
-services.metrics.WorkerMetrics
 services.metrics.WorkerResolutionMetrics
 services.metrics.WorkerResolutionMetrics$
 services.metrics.WorkerShowtimesMetrics

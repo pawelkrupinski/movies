@@ -1,5 +1,7 @@
 package services.metrics
 
+import modules.wiring.WorkerMetrics
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

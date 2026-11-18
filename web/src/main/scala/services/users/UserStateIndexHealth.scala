@@ -3,7 +3,7 @@ package services.users
 /**
  * Where `MongoUserStateRepository` reports whether `userStates` has the UNIQUE
  * `userId` index its atomic writes depend on — the seam
- * `services.metrics.UserStateIndexMetrics` exports through, so the store knows
+ * `services.users.UserStateIndexMetrics` exports through, so the store knows
  * nothing about Prometheus.
  *
  * Reported once per boot, when the store first reaches its collection. Without
