@@ -2,13 +2,12 @@ package services.movies
 
 import services.titles.TitleNormalizer
 
-import tools.KeysetScan
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, SourceData}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
-import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.model.{Aggregates, Filters, Sorts}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
 import play.api.Logging
 
@@ -133,6 +132,8 @@ class MongoMovieRepository(
 
   // How a stored row is made whole again from `movie_slots` and `screenings`.
   private val stitch = new MovieSideStitch(screenings, slots, normalizer, logger)
+  // How every corpus scan pages the `movies` collection by `_id`.
+  private val pages = new MoviesKeysetPages(findAllBatchSize, foreachRecordBatchAttempts, foreachRecordBatchBackoff, decodeFailures)
 
   /** The film's slots at `cinemas`, read from those venues alone — see [[MovieSideStitch.readVenues]]. */
   private[movies] def readVenues(filmId: String, cinemas: Set[models.Cinema]): Option[VenueSlots] = stitch.readVenues(filmId, cinemas)
@@ -287,52 +288,9 @@ class MongoMovieRepository(
     }
   }
 
-  /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
-   *  and [[foreachRecord]]. Reads one `findAllBatchSize`-row page at a time — each a
-   *  fresh, bounded `find(_id > lastSeen).sort(_id).limit(n)` — and hands every decoded
-   *  batch to `onBatch`. Two guarantees both callers rely on:
-   *
-   *   - Exactly-once: `_id` is unique and immutable and the `gt`/sort run server-side,
-   *     so a concurrent write (the worker re-keys years, …) can
-   *     neither resurface a visited row nor hide one — no duplicate at a page boundary,
-   *     no skip. (The prior single `_id`-sorted cursor gave the same guarantee.)
-   *   - Bounded: no single cursor buffers the entire corpus, so the async driver's
-   *     synchronous read-completion chain can't recurse into a `StackOverflowError`
-   *     (see [[findAll]]).
-   *
-   *  Each BATCH read is retried independently (keyset pagination makes every batch a
-   *  fresh, idempotent `find`) before the scan is declared incomplete — complete only when
-   *  the scan reached the last page. Rows delivered before a batch that still failed after
-   *  its retries reached `onBatch`, so a PRUNING caller must treat an incomplete scan as
-   *  "not the complete corpus" and skip its destructive step. */
-  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome = coll match {
-    case Some(c) =>
-      keysetScan[StoredMovieDto]("keyset", _._id, countIfUndecodable) { (afterId, limit) =>
-        val page = afterId.fold(filter)(id => Filters.and(filter, Filters.gt("_id", id)))
-        Await.result(
-          c.find(page).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Films).toFuture(), 60.seconds)
-      }(onBatch)
-    case None => tools.ScanOutcome.Incomplete(new tools.IncompleteScanException("no movies collection"))
-  }
-
-  /** The keyset scan both corpus reads share — the documents and the bare `_id`s — with this
-   *  store's page size and per-batch retry budget. A scan still failing after its retries is
-   *  logged, then handed to `onFailure`. */
-  private def keysetScan[A](what: String, keyOf: A => String, onFailure: Throwable => Unit = _ => ())(
-      fetchPage: (Option[String], Int) => Seq[A])(onBatch: Seq[A] => Unit): tools.ScanOutcome =
-    KeysetScan.scan[A](
-      label          = s"MovieRepository $what batch",
-      batchSize      = findAllBatchSize,
-      maxAttempts    = foreachRecordBatchAttempts,
-      initialBackoff = foreachRecordBatchBackoff,
-      keyOf          = keyOf,
-      fetchPage      = fetchPage,
-      onIncomplete   = exception => {
-        logger.warn(s"MovieRepository $what scan failed after retries: " +
-          s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
-        onFailure(exception)
-      }
-    )(onBatch)
+  /** The `movies` documents matching `filter`, keyset-paged by `_id` ([[MoviesKeysetPages]]). */
+  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome =
+    pages.documents(coll, filter)(onBatch)
 
   /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
    *  fetches one row's per-source breakdown when its table row is expanded.
@@ -352,12 +310,6 @@ class MongoMovieRepository(
   override def findByKeyChecked(key: CacheKey): tools.ReadOutcome[StoredMovieRecord] =
     findOneChecked(Filters.eq("key", StoredMovieRecord.keyFor(key)), s"findByKey(${StoredMovieRecord.keyFor(key)})")
 
-  /** A read that failed on a document the codec refused: counted, since it fails every read that
-   *  meets it (one such document leaves the whole corpus scan incomplete) and is otherwise a WARN. */
-  private def countIfUndecodable(failure: Throwable): Unit =
-    if (services.movies.DecodeFailureMetrics.isDecodeFailure(failure))
-      decodeFailures.recordDecodeFailure(services.movies.DecodeFailureMetrics.SourceMoviesCollection)
-
   private def findOneChecked(filter: Bson, what: String, withShowtimes: Boolean = true): tools.ReadOutcome[StoredMovieRecord] = coll match {
     case Some(c) =>
       tools.MongoRead.one(what, 10.seconds)(c.find(filter).headOption()) match {
@@ -368,7 +320,7 @@ class MongoMovieRepository(
         case absent: tools.ReadOutcome.Absent => absent
         case failed @ tools.ReadOutcome.Failed(cause) =>
           logger.warn(s"MovieRepository.$what failed: ${cause.explain}")
-          countIfUndecodable(cause.exception)
+          pages.countIfUndecodable(cause.exception)
           failed
       }
     case None => tools.ReadOutcome.none(what)
@@ -417,7 +369,7 @@ class MongoMovieRepository(
    *  [[scanByKeyset]]), so the caller (the read-model reconcile) never holds more than
    *  one batch — `findAllBatchSize` rows — of `movies` at once. The side collections
    *  `scanStitched` preloads are NOT bounded that way; see the trait doc. See
-   *  [[scanByKeyset]] for the exactly-once + bounded guarantees and the per-batch retry
+   *  [[MoviesKeysetPages]] for the exactly-once + bounded guarantees and the per-batch retry
    *  (the 2026-06-29 served-films flap, where a batch blew its 60s budget under worker
    *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
    *  a batch still fails after its retries — so a PRUNING caller
@@ -467,16 +419,7 @@ class MongoMovieRepository(
   override def deleteStrandedSideRows(): StrandedSideRows =
     StrandedSideRows.sweep(screenings, slots, liveIds = () => liveIdsChecked())
 
-  private def liveIdsChecked(): Option[Set[String]] = coll.flatMap { c =>
-    val ids = Set.newBuilder[String]
-    val complete = keysetScan[String]("id keyset", identity) { (afterId, limit) =>
-      val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-      Await.result(c.find[Document](filter).projection(Projections.include("_id"))
-        .sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-        .map(_("_id").asString.getValue)
-    }(ids ++= _)
-    Option.when(complete.isComplete)(ids.result())
-  }
+  private def liveIdsChecked(): Option[Set[String]] = coll.flatMap(pages.ids)
 
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     val id    = film.value
