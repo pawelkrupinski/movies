@@ -168,6 +168,9 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("member\tmodels.Cinema\tscrape\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract-size\tscrape\t12\to\tw")) // no such contract
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw",
+      "member\tmodels.Cinema\tscrape\to\tw", "contract-size\tscrape\texempt\to\tw"))
   }
 
   "the checked-in exemption table" should "parse, exempt the roots, registries, config root and foundations, and declare the scrape contract" in {
@@ -184,6 +187,22 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included" in {
     Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2", "services.identity.Film\t3", "models.Showtime\t0")
     Coupling.fanOutRows(contracted, exemptions).size shouldBe contracted.types.size
+  }
+
+  "the served schedule contract" should "be one dependency of the web tier's controllers, and its members one by one for worker code" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    val members = Seq("controllers.FilmSchedule", "controllers.CinemaShowtimes", "models.ResolvedMovie", "models.Movie", "models.Cinema",
+      "models.Showtime")
+    table.contracts.find(_._1 == "served").map(_._3.toSet) shouldBe Some(members.toSet)
+    val renderer = "controllers.ShowingsMarkup"
+    val projector = "services.readmodel.ReadModelProjector" // worker code reading the same types
+    val graph = Graph((renderer +: projector +: "tools.Slugify" +: members).map(t(_)),
+      (members :+ "tools.Slugify").flatMap(m => Seq(renderer -> m, projector -> m)).toSet)
+    val held = Coupling.heldFanOut(graph, table)
+    held(renderer) shouldBe 2 // the contract, tools.Slugify
+    held(projector) shouldBe 7 // no discount: six members and tools.Slugify
+    table.contractsOf("services.readmodel.ReadModelProjector") shouldBe empty
+    table.contractsOf("services.sharecards.ShareCardService") shouldBe empty
   }
 
   "the edge rows" should "give every class reference with its package edge, a package's own included" in {

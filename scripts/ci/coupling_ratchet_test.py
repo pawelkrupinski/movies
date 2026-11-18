@@ -6,7 +6,8 @@ row admits one, never --update), a frozen fan-out or distance row rising, any pa
 layer, a higher rank (naming the direction allowed), and a package without its layer or rank; a baseline grown in a
 range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table loosened in a range (an
 `allow` row added, a package given another layer or rank) and an exemption table loosened (a row added, a limit
-changed); falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
+changed, a contract's member added or dropped); a contract past 8 members (or its grandfathered `contract-size`) fails;
+falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
 code, each below X's row, the sum with X's remainder no more than it) freezes its pieces, and nothing else does.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
@@ -248,6 +249,54 @@ class CouplingRatchetTest(RatchetHarness):
     def test_an_exemption_row_dropped_needs_no_trailer(self):
         head = self.commit({EXEMPTIONS: "# empty\n"}, "no roots exempt")
         self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def contract(self, name, members, users="controllers.*"):
+        return (f"contract\t{users}\t{name}\tweb\tthe users\n"
+                + "".join(f"member\tmodels.M{i}\t{name}\tweb\tmember {i}\n" for i in range(members)))
+
+    def test_a_contract_member_added_without_a_trailer_fails(self):
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 4)}, "one more")
+        self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED", "member:served models.M3 (served) added", rng=f"{first}..{head}")
+
+    def test_a_contract_member_added_with_a_trailer_passes(self):
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 4)}, "one more\n\nCoupling: read with the rest")
+        self.assert_passes(ROWS, rng=f"{first}..{head}")
+
+    def test_a_contract_member_dropped_without_a_trailer_fails(self):
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 2)}, "one fewer")
+        self.assert_fails(ROWS, "member:served models.M2 (served) dropped", rng=f"{first}..{head}")
+
+    def test_a_type_joining_a_second_contract_without_a_trailer_fails(self):
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 2, "services.cinemas.*") + self.contract("served", 1)},
+                            "declare them\n\nCoupling: read together")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 2, "services.cinemas.*") + self.contract("served", 2)},
+                           "M1 serves too")
+        self.assert_fails(ROWS, "member:served models.M1 (served) added", rng=f"{first}..{head}")
+
+    def test_a_contract_of_8_members_passes(self):
+        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 8)}, "declare it")
+        self.assert_passes(ROWS)
+
+    def test_a_9th_contract_member_fails_whatever_the_trailer(self):
+        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 9)}, "declare it\n\nCoupling: all of it")
+        self.assert_fails(ROWS, "A DECLARED CONTRACT IS TOO LARGE", "contract served has 9 members, past the cap 8")
+
+    def test_a_grandfathered_contract_holds_at_its_size(self):
+        size = "contract-size\tscrape\t12\tscrapers\tdeclared before the cap\n"
+        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size}, "grandfather it")
+        self.assert_passes(ROWS)
+        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 13, "services.cinemas.*") + size}, "grow it")
+        self.assert_fails(ROWS, "contract scrape has 13 members, past its grandfathered size 12")
+
+    def test_a_grandfathered_size_raised_without_a_trailer_fails(self):
+        size = "contract-size\tscrape\t{}\tscrapers\tdeclared before the cap\n"
+        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size.format(12)},
+                            "grandfather it\n\nCoupling: declared before the cap")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size.format(13)}, "room")
+        self.assert_fails(ROWS, "contract-size scrape changed 12 -> 13", rng=f"{first}..{head}")
 
     def test_an_upward_layer_edge_fails_whatever_the_baseline_says(self):
         violation = "layer-violation\tmodels->services.movies\t2"

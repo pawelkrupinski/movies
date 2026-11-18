@@ -15,7 +15,10 @@
 #   config      fan-out: the typed-config root, which resolves every setting into its typed value in one place
 #   contract    (column 3: the contract's name) the classes matching `pattern` are its USERS: their fan-out counts every
 #               member of that contract they use as one dependency
-#   member      (column 3: the contract's name) `pattern` is one of the contract's member types
+#   member      (column 3: the contract's name) `pattern` is one of the contract's member types -- at most 8 a contract
+#               (scripts/ci/coupling_ratchet.py), and adding or dropping one carries `Coupling: <why>` like any loosening
+#   contract-size  (pattern: a contract's name; column 3: a number) a contract declared before the 8-member cap,
+#               grandfathered at that size: it may not grow, and raising the row is a loosening
 # column 3, for the exempting kinds: `exempt`, or a number -- a limit of the class's own, above the shared one.
 root	modules.*	exempt	coupling	the composition roots (AppLoader, WorkerMain, AppComponents and the modules.wiring / modules.webwiring traits): every collaboration is wired here (DIP), so their fan-out is the application's size, and their D is a top layer's
 root	diagnostics.*	exempt	coupling	command-line programs built from the whole stack like a composition root (FilmwebDiff, RosterAudit)
@@ -46,3 +49,11 @@ member	services.tasks.TaskHandler	task-handler	tasks	the contract's entry point:
 member	services.tasks.Task	task-handler	tasks	the claimed task a handler is handed
 member	services.tasks.HandlerOutcome	task-handler	tasks	what a handler answers
 member	services.tasktypes.TaskType	task-handler	tasks	the type a handler is registered for
+contract-size	scrape	12	scrapers	grandfathered: declared (2026-11) before the 8-member cap -- what a scraper is written against really is these twelve types (the scraper's entry point and parse helpers, the films and screenings it returns, the fetch it is handed); split it only along a line a scraper does not cross
+contract	controllers.*	served	web	the web tier's side of the served schedule (the controllers, their view models and markup builders, MovieControllerService): the schedule it renders is one model read together, one dependency, not six. Worker code using these types (the read-model projector, share cards) counts them one by one
+member	controllers.FilmSchedule	served	web	one film's schedule in a city, the unit the pages render
+member	controllers.CinemaShowtimes	served	web	one venue's screenings of it
+member	models.ResolvedMovie	served	web	the read model's film: its identity, ratings and metadata
+member	models.Movie	served	web	a film's own fields within it
+member	models.Cinema	served	web	the venue a screening is at
+member	models.Showtime	served	web	one screening

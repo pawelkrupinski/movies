@@ -294,6 +294,9 @@ object Coupling {
     val FanOutKinds: Set[String] = Set("root", "registry", "config")
     val DistanceKinds: Set[String] = Set("root", "foundation")
     val ContractKinds: Set[String] = Set("contract", "member")
+    /** `contract-size`: a contract declared before the member cap (scripts/ci/coupling_ratchet.py's CONTRACT_MAX_MEMBERS,
+     *  which holds it), grandfathered at its size -- `pattern` the contract, `value` its members at most. */
+    val ContractSizeKind = "contract-size"
     val empty: Exemptions = Exemptions(Nil)
 
     def matches(pattern: String, name: String): Boolean =
@@ -312,11 +315,12 @@ object Coupling {
           val cols: Array[String] = line.split("\t", -1)
           if (cols.length != 5) bad("not `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why`")
           val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4))
-          if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds)(row.kind)) bad(s"unknown kind `${row.kind}`")
+          if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds + ContractSizeKind)(row.kind)) bad(s"unknown kind `${row.kind}`")
           if (row.pattern.isEmpty) bad("no pattern")
           if (!ContractKinds(row.kind) && row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))
             bad(s"`${row.value}` is neither `exempt` nor a limit")
           if (ContractKinds(row.kind) && row.value.trim.isEmpty) bad("a contract row names its contract")
+          if (row.kind == ContractSizeKind && !(row.value.nonEmpty && row.value.forall(_.isDigit))) bad("a `contract-size` row is a number")
           if (row.owner.trim.isEmpty || row.why.trim.isEmpty) bad(s"${row.pattern} has no owner or no why")
           Some(row)
         }
@@ -326,6 +330,9 @@ object Coupling {
       (users ++ members).foreach { c =>
         if (!users(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has members but no `contract` row naming its users")
         if (!members(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has users but no `member` rows")
+      }
+      rows.filter(_.kind == ContractSizeKind).map(_.pattern).filterNot(users).foreach { c =>
+        throw new IllegalArgumentException(s"coupling-exemptions.tsv: a `contract-size` row for $c, which is no declared contract")
       }
       Exemptions(rows)
     }

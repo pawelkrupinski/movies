@@ -51,6 +51,13 @@ mutants=(
             out.append(f"{key[0]} {key[1]} ({value}) added") @@         if False:
             out.append(f"{key[0]} {key[1]} ({value}) added")'
   'a changed exemption limit is no loosening @@ elif old[key] != value: @@ elif False:'
+  'a contract member dropped is no change @@ if key not in new and key[0].startswith("member:"): @@ if False:'
+  'a type in two contracts is keyed once @@ kind = f"{cols[0]}:{cols[2]}" if cols[0] in CONTRACT_KINDS else cols[0] @@ kind = cols[0]'
+  'a contract past the member cap passes @@ if size > cap: @@ if False:'
+  'a grandfathered contract size is not read @@ cap = allowed.get(contract, CONTRACT_MAX_MEMBERS) @@ cap = CONTRACT_MAX_MEMBERS'
+  'an oversized contract never fails @@         if oversized:
+            failed = True @@         if oversized:
+            failed = False'
   'a loosened exemption table never fails @@ if loose and not justified(rng, EXEMPTIONS_PATH): @@ if False:'
   'the trailer is not read @@ return any(entry.strip() for entry in log.split("\x00")) @@ return True'
   'growth never fails @@ if grown and not justified(rng): @@ if False:'

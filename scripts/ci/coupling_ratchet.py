@@ -17,10 +17,11 @@
 # (`limit distance` in hundredths, packages of `limit distance-min-types` types or more) are FROZEN where they were past
 # the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
 # limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
-# and the exemption table may grow or loosen only in a commit changing it carrying `Coupling: <why>`. A frozen class that
-# moves keeps its row under its new name (the same simple name, at or below the old value, the old name gone). A
-# measurement fix (`limit fanout-measure` raised: a count that missed real uses) re-takes the rows at their true
-# values, as a changed limit does, under its `Coupling:` trailer.
+# and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
+# carrying `Coupling: <why>`. A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
+# A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
+# name gone). A measurement fix (`limit fanout-measure` raised: a count that missed real uses) re-takes the rows at their
+# true values, as a changed limit does, under its `Coupling:` trailer.
 #
 # A SPLIT (the owner, 2026-11-18): a frozen class X cut into pieces may freeze the pieces past the limit at their new
 # values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>` names the pieces; without it
@@ -377,26 +378,53 @@ def loosening(old: Layers, new: Layers) -> List[str]:
     return out
 
 
+CONTRACT_KINDS = ("contract", "member")
+CONTRACT_MAX_MEMBERS = 8  # a contract's members, past which it is no longer one thing read together (`contract-size` grandfathers one)
+
+
 def parse_exemptions(text: str) -> Dict[Tuple[str, str], str]:
     """The exemption table's rows, (kind, pattern) -> its value (project/Coupling.scala's Exemptions.parse judges the
-    table's shape; this reads only what loosening compares)."""
+    table's shape; this reads what loosening compares and the contract sizes). A contract's row is keyed by its
+    contract too (`member:scrape`): one type may be a member of two contracts."""
     rows: Dict[Tuple[str, str], str] = {}
     for line in text.splitlines():
         cols = line.split("\t")
         if line.strip() and not line.startswith("#") and len(cols) >= 3:
-            rows[(cols[0], cols[1])] = cols[2]
+            kind = f"{cols[0]}:{cols[2]}" if cols[0] in CONTRACT_KINDS else cols[0]
+            rows[(kind, cols[1])] = cols[2]
     return rows
 
 
 def exemption_loosening(old: Dict[Tuple[str, str], str], new: Dict[Tuple[str, str], str]) -> List[str]:
     """How the exemption table loosened from `old` to `new`: a row added (a class or package let past a limit, or a type
-    folded into a contract), or a row's limit or contract changed. A row dropped tightens."""
+    folded into a contract), or a row's limit or contract changed. A row dropped tightens -- except a contract's member:
+    any change to a contract's members reshapes what its users count as one, and carries its why."""
     out = []
     for key, value in sorted(new.items()):
         if key not in old:
             out.append(f"{key[0]} {key[1]} ({value}) added")
         elif old[key] != value:
             out.append(f"{key[0]} {key[1]} changed {old[key]} -> {value}")
+    for key, value in sorted(old.items()):
+        if key not in new and key[0].startswith("member:"):
+            out.append(f"{key[0]} {key[1]} ({value}) dropped")
+    return out
+
+
+def oversized_contracts(rows: Dict[Tuple[str, str], str]) -> List[str]:
+    """The declared contracts past CONTRACT_MAX_MEMBERS members, or past their own `contract-size` row (a contract
+    declared before the cap, grandfathered at its size with its why), one sentence each."""
+    sizes: Dict[str, int] = {}
+    for (kind, _), contract in rows.items():
+        if kind.startswith("member:"):
+            sizes[contract] = sizes.get(contract, 0) + 1
+    allowed = {pattern: int(value) for (kind, pattern), value in rows.items() if kind == "contract-size" and value.isdigit()}
+    out = []
+    for contract, size in sorted(sizes.items()):
+        cap = allowed.get(contract, CONTRACT_MAX_MEMBERS)
+        if size > cap:
+            out.append(f"contract {contract} has {size} members, past {'its grandfathered size' if contract in allowed else 'the cap'} {cap}"
+                       " -- a contract is a few types read together: split it, or count the rest one by one")
     return out
 
 
@@ -489,6 +517,14 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                       " changing it:")
                 for item in loosened:
                     print(f"  - {item}")
+    if os.path.exists(exemptions_path):
+        with open(exemptions_path) as f:
+            oversized = oversized_contracts(parse_exemptions(f.read()))
+        if oversized:
+            failed = True
+            print(f"A DECLARED CONTRACT IS TOO LARGE ({exemptions_path}):")
+            for item in oversized:
+                print(f"  - {item}")
     for rng in ranges:
         base = rng.split("..")[0]
         if os.path.exists(exemptions_path):
