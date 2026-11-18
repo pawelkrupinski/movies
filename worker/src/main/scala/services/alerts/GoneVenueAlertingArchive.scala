@@ -5,7 +5,7 @@ import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, S
 
 /**
  * The scrape archive, plus one page when a venue with no fallback has answered
- * "page gone" (404/410, [[GoneUpstream.saysPageIsGone]]) on [[GoneVenueAlertingArchive.FailedRuns]]
+ * "page gone" (404/410, [[GoneUpstream.saysPageIsGone]]) on [[GoneUpstream.PagedAfterRuns]]
  * separate scrape runs in a row. Every read and every archiving rule is the wrapped
  * archive's; the run count is its `BarrenAttempt.failedRuns`, so it survives the
  * worker restarts that a 10-hourly venue sees between runs.
@@ -39,7 +39,7 @@ final class GoneVenueAlertingArchive(
     // or is the first in season to find it there — pages: the retries of that run would page again.
     val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren) else None
     val alreadyPaged = before.exists(previous =>
-      previous.failedRuns.exists(_ >= FailedRuns) && !cinema.opening.offSeasonAt(previous.at))
+      previous.failedRuns.exists(_ >= GoneUpstream.PagedAfterRuns) && !cinema.opening.offSeasonAt(previous.at))
     // Filed as every forwarding archive files it, so the source's word that it lists no schedule reaches the store.
     super.storeBarren(cinema, city, attempt)
     if (watched && !alreadyPaged)
@@ -51,11 +51,8 @@ final class GoneVenueAlertingArchive(
 }
 
 object GoneVenueAlertingArchive {
-  /** Several runs, not one: a single 404 can be an aggregator redeploying badly. */
-  val FailedRuns: Int = 3
-
   private[alerts] def messageFor(cinema: Cinema, barren: BarrenAttempt): Option[String] =
-    barren.failedRuns.filter(runs => runs >= FailedRuns && GoneUpstream.saysPageIsGone(barren.error)).map(runs =>
+    barren.failedRuns.filter(_ => GoneUpstream.pagedAsGone(barren)).map(runs =>
       s"🚨 ${cinema.displayName} — its page has answered gone on $runs scrape runs in a row " +
       s"(failing since ${barren.runStartedAt}), and no fallback covers it.\n" +
       s"Reason: ${barren.error.getOrElse("")}\n" +

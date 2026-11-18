@@ -69,6 +69,16 @@ object GoneUpstream {
 
   def saysPageIsGone(error: Option[String]): Boolean = error.exists(saysPageIsGone)
 
+  /** How many separate scrape runs in a row a "page gone" answer must stand before the worker pages it
+   *  (`GoneVenueAlertingArchive`). Several, not one: a single 404 can be an aggregator redeploying badly. */
+  val PagedAfterRuns: Int = 3
+
+  /** Whether `barren` is a gone spell the gone-venue alert has paged: a page-gone failure that has stood
+   *  for [[PagedAfterRuns]] runs. The one rule both that alert and the closure sweep read, so the sweep
+   *  can leave the same 404 unpaged instead of paging it a second time as a coverage gap. */
+  def pagedAsGone(barren: BarrenAttempt): Boolean =
+    barren.failedRuns.exists(_ >= PagedAfterRuns) && saysPageIsGone(barren.error)
+
   /** Has this cinema's page been answering gone, unbroken, for at least [[MinimumAge]]?
    *  Reads only the barren marker: any successful scrape clears it, so a row
    *  with content newer than the run cannot be gone. */

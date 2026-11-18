@@ -269,12 +269,17 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  a fallback (`SourceFallbackScraper` pages UNCOVERED) and the Filmweb-only ones
    *  (`FilmwebDropAlerter`). [[GoneVenueAlertingArchive]] pages for the rest. */
   lazy val venuesPagedElsewhere: Set[String] =
-    closureCandidates.filter(_.hasFallback).map(_.cinema.displayName).toSet ++ filmwebOnlyCinemas
+    closureCandidates.filterNot(_.pagedWhenGone).map(_.cinema.displayName).toSet ++ filmwebOnlyCinemas
 
   /** Every scraped venue, with whether [[fallbackFor]] gives it a fallback feed — what
-   *  [[services.closure.ClosureSweep]] needs to judge it closed. */
+   *  [[services.closure.ClosureSweep]] needs to judge it closed — and whether
+   *  [[GoneVenueAlertingArchive]] pages its gone page, so the sweep does not page that again. */
   lazy val closureCandidates: Seq[services.closure.ClosureCandidate] =
-    countryScrapers.map(s => services.closure.ClosureCandidate(s.cinema, fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined, s.sourceUrl))
+    countryScrapers.map { s =>
+      val hasFallback = fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined
+      services.closure.ClosureCandidate(s.cinema, hasFallback, s.sourceUrl,
+        pagedWhenGone = !hasFallback && !filmwebOnlyCinemas(s.cinema.displayName))
+    }
 
   /** Rolling per-host and per-venue scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards

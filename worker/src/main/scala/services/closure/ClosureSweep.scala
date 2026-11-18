@@ -4,15 +4,18 @@ import models.Cinema
 import play.api.Logging
 import services.fallback.FallbackStore
 import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal, Verdict}
-import services.scrapes.{ArchivedScrape, ScrapeArchiveReader, VenueClosure}
+import services.scrapes.{ArchivedScrape, GoneUpstream, ScrapeArchiveReader, VenueClosure}
 
 import java.time.{Clock, Instant, LocalDate, ZoneOffset}
 import scala.util.control.NonFatal
 
 /** A rostered venue the sweep judges, whether it has a fallback feed to corroborate it, and
  *  the page its primary scrapes (`CinemaScraper.sourceUrl`) — the page whose 404 is the
- *  source-drop evidence, so the one the retirement workflow re-checks. */
-final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Option[String] = None)
+ *  source-drop evidence, so the one the retirement workflow re-checks. `pagedWhenGone`: the
+ *  gone-venue alert (`GoneVenueAlertingArchive`) owns this venue's page-gone spells — no
+ *  fallback's UNCOVERED or Filmweb-drop alert pages them instead. */
+final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Option[String] = None,
+                                  pagedWhenGone: Boolean = false)
 
 /**
  * Runs every rostered venue through [[VenueClosure]] once a day.
@@ -23,7 +26,9 @@ final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Op
  *    roster [[ClosureSweep.RetirementOverdue]] after that is paged and handed over again.
  *  - A venue newly SOURCE-DROPPED — its sources dropped it but nothing shows the venue
  *    closed — is paged ONCE as a coverage gap that needs a new source, and kept on the
- *    ledger, which /uptime lists. It is never retired.
+ *    ledger, which /uptime lists. It is never retired. When the gone-venue alert has already
+ *    paged that same page-gone spell ([[ClosureCandidate.pagedWhenGone]],
+ *    [[GoneUpstream.pagedAsGone]]), the gap is recorded but not paged: one cause, one page.
  *  - A raised venue that shows life again is withdrawn and paged; one that has left the
  *    roster (the PR merged) is forgotten quietly.
  *
@@ -43,15 +48,20 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
     val now     = clock.instant()
     val byName  = candidates().map(c => c.cinema.displayName -> c).toMap
     val drops   = collection.mutable.Map.empty[String, Either[String, SourceDrop]]
+    val pagedGone = collection.mutable.Set.empty[String]
     val complete = archive.scan(_.foreach { (row: ArchivedScrape) =>
-      byName.get(row.cinema.displayName).foreach(c =>
-        drops(c.cinema.displayName) = VenueClosure.sourceDropped(row, fallbacks.get(c.cinema.displayName), c.hasFallback, c.cinema.opening, now))
+      byName.get(row.cinema.displayName).foreach { c =>
+        drops(c.cinema.displayName) = VenueClosure.sourceDropped(row, fallbacks.get(c.cinema.displayName), c.hasFallback, c.cinema.opening, now)
+        if (c.pagedWhenGone && row.lastBarren.exists(GoneUpstream.pagedAsGone)) pagedGone += c.cinema.displayName
+      }
     })
     if (!complete.isComplete) { logger.warn("Closure sweep skipped: the scrape archive could not be read in full."); tools.TickRun.Incomplete }
-    else { settle(byName, drops.toMap, now); tools.TickRun.Completed }
+    else { settle(byName, drops.toMap, pagedGone.toSet, now); tools.TickRun.Completed }
   }
 
-  private def settle(byName: Map[String, ClosureCandidate], drops: Map[String, Either[String, SourceDrop]], now: Instant): Unit = {
+  /** `pagedGone`: the venues whose current page-gone spell the gone-venue alert has already paged. */
+  private def settle(byName: Map[String, ClosureCandidate], drops: Map[String, Either[String, SourceDrop]], pagedGone: Set[String],
+                     now: Instant): Unit = {
     val raised = ledger.entries()
     (raised.keySet -- byName.keySet).foreach(ledger.withdraw)
     // Still a candidate, so still on the roster, this long after its retirement was asked for.
@@ -77,10 +87,13 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
         case (Verdict.SourceDropped(drop, signals), previous) if !previous.contains(LedgerKind.SourceDropped) =>
           val line = ClosureSweep.evidenceLine(drop, signals)
           ledger.record(name, LedgerEntry(LedgerKind.SourceDropped, now, line))
-          val opening =
-            if (previous.contains(LedgerKind.Closed)) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
-            else s"📡 $name"
-          sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
+          // The gone-venue alert already paged this 404; a withdrawn closure is news it never said.
+          if (previous.contains(LedgerKind.Closed) || !pagedGone(name)) {
+            val opening =
+              if (previous.contains(LedgerKind.Closed)) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
+              else s"📡 $name"
+            sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
+          }
         case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) || overdue(name) =>
           newlyClosed += ((byName(name).cinema, drop, signals))
         case _ => ()

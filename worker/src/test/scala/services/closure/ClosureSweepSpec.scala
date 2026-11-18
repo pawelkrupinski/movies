@@ -56,6 +56,13 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
       archive.record(ScrapeAttempt(cinema, None, since, listingComplete = true, Nil, Some(NotFound)))
       archive.record(ScrapeAttempt(cinema, None, clock, listingComplete = true, Nil, Some(NotFound)))
     }
+    /** One gone scrape run a day for `days` days, up to now, through the gone-venue alert the worker
+     *  wraps the archive in — paging into the same [[pages]] the sweep pages into. */
+    def goneDaily(cinema: Cinema, days: Int, pagedElsewhere: Boolean = false): Unit = {
+      val alerting = new services.alerts.GoneVenueAlertingArchive(archive,
+        if (pagedElsewhere) Set(cinema.displayName) else Set.empty, pages += _)
+      (days to 0 by -1).foreach(day => alerting.record(ScrapeAttempt(cinema, None, daysAgo(day), listingComplete = true, Nil, Some(NotFound))))
+    }
     def emptyFallback(cinema: Cinema, since: Instant): Unit =
       fallbacks.put(fallbackState(cinema).copy(emptyFallback = Some(FallbackState.EmptySpell(since, clock))))
     def droppedFallback(cinema: Cinema, since: Instant, error: String): Unit =
@@ -147,7 +154,36 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     h.pages should have size 1
   }
 
-  it should "raise a dropped venue with nothing known about the venue itself as a coverage gap, never a closure" in {
+  // Cine Delicias, Cine Horadada, Cine La Fábrica (2026-11): no fallback, SensaCine 404 since 09-02 — each paged
+  // once by the gone-venue alert after three runs and again, for the same 404, as the sweep's coverage gap.
+  "A venue the gone-venue alert pages and the sweep drops" should "be paged once between them, and still listed on /uptime" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = false, pagedWhenGone = true)))
+    h.goneDaily(hochland, days = 30)
+    h.pages.loneElement should include ("answered gone on 3 scrape runs")
+    h.sweep.sweep()
+    h.pages should have size 1
+    h.ledger.entries()(hochland.displayName).kind shouldBe LedgerKind.SourceDropped
+  }
+
+  it should "still page the sweep's coverage gap when the gone-venue alert leaves the venue to another alert" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = false)))
+    h.goneDaily(hochland, days = 30, pagedElsewhere = true)
+    h.pages shouldBe empty
+    h.sweep.sweep()
+    h.pages.loneElement should include ("coverage gap")
+  }
+
+  // A closure is a second cause: the venue itself shows it has gone, and asks for a retirement.
+  it should "still page a closure, which the gone-venue alert never said" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = false, pagedWhenGone = true)))
+    h.goneDaily(hochland, days = 30)
+    h.site(hochland, hochlandSite, Left(new HttpStatusException(404, "GET", hochlandSite, None)))
+    h.sweep.sweep()
+    h.pages should have size 2
+    h.pages.last should (include ("looks closed") and include ("retirement PR requested"))
+  }
+
+  "ClosureSweep" should "raise a dropped venue with nothing known about the venue itself as a coverage gap, never a closure" in {
     val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
     h.gone(hochland, daysAgo(20)); h.emptyFallback(hochland, daysAgo(15))
     h.sweep.sweep()
