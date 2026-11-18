@@ -35,9 +35,12 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
-    val accountDeletion = new AccountDeletion(userRepository, stateRepository)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, userRepository, specClock), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, changeTimeCache, userRepository, specClock), stateRepository, userRepository)
   }
+
+  /** `DELETE /api/me` over the same stores. */
+  private def accountController(states: InMemoryUserStateRepository, users: InMemoryUserRepository): AccountController =
+    new AccountController(Helpers.stubControllerComponents(), new AccountDeletion(users, states), users)
 
   /** Counts `find` calls so a fast-path test can prove storage was never
    *  touched, not just that the response happened to be correct. */
@@ -170,7 +173,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // The session's user row could not be READ: not "signed out" (a 401 the apps act on), and
   // not the framework's bare 500 without the per-user Cache-Control — a 503 to retry.
   "every /api/me state endpoint" should "503, marked per-user, when the signed-in user cannot be looked up" in {
-    val (ctl, _, _) = fixture(userRepository = new services.users.FailingReadUserRepository)
+    val (ctl, states, users) = fixture(userRepository = new services.users.FailingReadUserRepository)
     def signedIn(method: String, path: String) = FakeRequest(method, path).withSession("userId" -> "u1")
     Seq(
       "get"          -> ctl.get()(signedIn("GET", "/api/me/state")),
@@ -179,7 +182,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       "unhideFilm"   -> ctl.unhideFilm("pl", "Diuna")(signedIn("DELETE", "/api/me/pl/hidden-films/Diuna")),
       "clear"        -> ctl.clearHiddenFilms("pl")(signedIn("DELETE", "/api/me/pl/hidden-films")),
       "put"          -> ctl.put()(signedIn("PUT", "/api/me/state").withBody(Json.obj("language" -> "pl"))),
-      "deleteAccount"-> ctl.deleteAccount()(signedIn("DELETE", "/api/me"))
+      "deleteAccount"-> accountController(states, users).deleteAccount()(signedIn("DELETE", "/api/me"))
     ).foreach { case (action, result) =>
       withClue(s"$action: ") {
         status(result) shouldBe SERVICE_UNAVAILABLE
@@ -626,18 +629,18 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // ── DELETE /api/me ──────────────────────────────────────────────────────
 
   "DELETE /api/me" should "401 anonymous requests" in {
-    val (ctl, _, _) = fixture()
-    status(ctl.deleteAccount()(FakeRequest("DELETE", "/api/me"))) shouldBe UNAUTHORIZED
+    val (_, states, users) = fixture()
+    status(accountController(states, users).deleteAccount()(FakeRequest("DELETE", "/api/me"))) shouldBe UNAUTHORIZED
   }
 
   it should "remove the user + state rows AND clear the session" in {
     val initialState = UserState("u1", Set("Conclave"), Set.empty, specClock.instant())
     // `fixture` already seeds "u1" (needed for the request itself to pass
     // `SignedInUser`) — this just confirms deletion actually removes it.
-    val (ctl, stateRepository, userRepository) = fixture(Some(initialState))
+    val (_, stateRepository, userRepository) = fixture(Some(initialState))
 
     val request = FakeRequest("DELETE", "/api/me").withSession("userId" -> "u1", "extra" -> "leftover")
-    val result  = ctl.deleteAccount()(request)
+    val result  = accountController(stateRepository, userRepository).deleteAccount()(request)
 
     status(result)               shouldBe NO_CONTENT
     stateRepository.find("u1")         shouldBe empty

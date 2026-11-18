@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
+import services.users.{InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
 
 import java.time.Instant
 
@@ -23,7 +23,7 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
     val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
-    (new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states),
+    (new UserStateController(Helpers.stubControllerComponents(), states,
       NoUserChangeTimeCache, users, clock), states)
   }
 

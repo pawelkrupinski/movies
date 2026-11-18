@@ -146,8 +146,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
     val auth        = new AuthController(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val sso         = new SsoController(cc, users, codes, models.Country.Poland)
-    val userState   = new UserStateController(cc, null, null, null,
+    val userState   = new UserStateController(cc, null, null,
       users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
+    val account     = new AccountController(cc, null, users)
     val uptime      = new UptimeController(cc, adminAction, null, null, null, null, models.Country.Poland)
     val uptimeFeed  = new UptimeStreamController(cc, adminAction, null, null)(using Components.materializer)
     val imageEvents = new ImageEventController(cc, null)
@@ -156,7 +157,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
     // By type, so reordering the routes file leaves this alone; every controller not listed is null.
-    _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, rehydrate, sso, auth, userState, uptime, uptimeFeed, imageEvents, taskRuns,
+    _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, rehydrate, sso, auth, userState, account, uptime, uptimeFeed, imageEvents, taskRuns,
       facebook, envConfig, review)
   }
 

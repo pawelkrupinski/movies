@@ -7,7 +7,7 @@ import play.api.mvc.Session
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.auth.{AuthExchangeCodes, InMemoryAuthExchangeCodeStore}
-import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
+import services.users.{InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
 
 import java.time.Instant
 
@@ -43,8 +43,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
     states.upsert(models.UserState("alice@example.com", Set.empty, Set.empty, Now.minusSeconds(60)))
 
     def statePod(): UserStateController = {
-      new UserStateController(Helpers.stubControllerComponents(), states,
-        new AccountDeletion(users, states), NoUserChangeTimeCache,
+      new UserStateController(Helpers.stubControllerComponents(), states, NoUserChangeTimeCache,
         users, clock)
     }
 

@@ -156,7 +156,7 @@ DELETE  /api/me/:country/hidden-films/:title controllers.UserStateController.unh
 + nocsrf
 DELETE  /api/me/:country/hidden-films controllers.UserStateController.clearHiddenFilms(country: String)
 + nocsrf
-DELETE  /api/me                     controllers.UserStateController.deleteAccount()
+DELETE  /api/me                     controllers.AccountController.deleteAccount()
 
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check

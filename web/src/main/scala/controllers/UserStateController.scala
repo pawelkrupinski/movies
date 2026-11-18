@@ -4,7 +4,7 @@ import models.UserState
 import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
-import services.users.{AccountDeletion, HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
+import services.users.{HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -32,7 +32,6 @@ import java.time.format.DateTimeFormatter
 class UserStateController(
   cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
-  accountDeletion:      AccountDeletion,
   userChangeTimeCache:  UserChangeTimeCache,
   userRepository:       UserRepository,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
@@ -52,7 +51,7 @@ class UserStateController(
   // A user row that could not be READ is neither: `SignedInUser` throws, and
   // every action answers through `SignedInUser.answering`, a per-user 503.
   private def signedInUserId(request: RequestHeader): Option[String] =
-    SignedInUser(request, userRepository).map(_.id)
+    SignedInUser.idOf(request, userRepository)
 
   /** `onRead` over this user's stored state — an empty one when they have none yet — or
    *  a 503 when it could not be READ. The empty state is a real answer ("nothing hidden"),
@@ -236,25 +235,6 @@ class UserStateController(
             userStateRepository.setLanguage(userId, language, clock.instant())
               .fold(ServiceUnavailable(Json.obj("error" -> "state could not be saved — retry")))(state => Ok(toJson(state)))
         }
-    })
-  }
-
-  /** Hard-delete the user's row + state row, drop their session.
-   *  GDPR-aligned: after this call we hold no row keyed by this user's
-   *  id. The browser's localStorage is left alone — it's per-device, the
-   *  user can clear it themselves; we don't have a server-side handle to
-   *  do it.
-   *
-   *  Anonymous → 401. Authenticated → delete both rows (via the shared
-   *  `AccountDeletion`, same path Facebook's callback uses) + return 204
-   *  with the session cleared. The response carries no body so a fetch
-   *  call doesn't need a parser. */
-  def deleteAccount(): Action[AnyContent] = Action { request =>
-    SignedInUser.answering(signedInUserId(request) match {
-      case None         => Unauthorized(Json.obj("error" -> "not logged in"))
-      case Some(userId) =>
-        accountDeletion.delete(userId)
-        NoContent.withNewSession
     })
   }
 }

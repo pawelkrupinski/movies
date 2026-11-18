@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AuthController, FacebookDataDeletionController, SsoController, UserStateController}
+import controllers.{AccountController, AuthController, FacebookDataDeletionController, SsoController, UserStateController}
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
@@ -93,7 +93,8 @@ trait UsersWiring { self: Wiring =>
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, country, googleTokenValidator, facebookTokenValidator, appleTokenValidator, clock)
   lazy val ssoController    = new SsoController(controllerComponents, userRepository, authExchangeCodes, country)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, userRepository, clock)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, userChangeTimeCache, userRepository, clock)
+  lazy val accountController = new AccountController(controllerComponents, accountDeletion, userRepository)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, country, processConfiguration.facebookAppSecret, userRepository, accountDeletion)
 }

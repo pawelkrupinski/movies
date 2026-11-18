@@ -53,6 +53,9 @@ object SignedInUser extends Logging {
         catch { case NonFatal(e) => throw LookupFailed(e) })
       .filter(_.sessionVersion == sessionVersionOf(request.session))
 
+  /** The signed-in user's id — [[apply]]'s user, by id. */
+  def idOf(request: RequestHeader, users: UserRepository): Option[String] = apply(request, users).map(_.id)
+
   /** The session's user row could not be read — see [[apply]]. */
   final case class LookupFailed(cause: Throwable) extends RuntimeException(cause)
 

@@ -61,7 +61,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
       avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
     val controller = new UserStateController(Helpers.stubControllerComponents(), store,
-      new AccountDeletion(users, store), NoUserChangeTimeCache, users, clock)
+      NoUserChangeTimeCache, users, clock)
 
     val result = controller.hideFilm("pl", "Film")(FakeRequest("PUT", "/api/me/pl/hidden-films/Film").withSession("userId" -> "u"))
 

@@ -51,7 +51,7 @@ object UserStatePod {
   /** The controller over `states`, with the metrics and clock a spec pins. Shared with
    *  `HiddenFilmsConcurrentWritesIntegrationSpec`, which drives one pod's controller. */
   def controller(states: UserStateRepository, users: UserRepository, changeTimes: UserChangeTimeCache, clock: Clock): UserStateController =
-    new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states), changeTimes,
+    new UserStateController(Helpers.stubControllerComponents(), states, changeTimes,
       users, clock)
 
   /** A user row for `id`, so `SignedInUser` accepts a session naming it. Returns `id`. */
