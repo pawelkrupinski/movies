@@ -30,6 +30,7 @@ in
     ../../modules/roles/victoria-logs.nix
     ../../modules/roles/identity-regressions.nix
     ../../modules/roles/mongodb-offbox-backup.nix
+    ../../modules/roles/prometheus-block-export.nix
     ../../modules/roles/scheduled-dispatch.nix
 
     # THE SHIPPER, IMPORTED PER HOST -- WHICH IS THE WRONG PLACE FOR IT, AND IS SAID OUT LOUD HERE
@@ -410,6 +411,11 @@ in
       hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINA6nssJex22eGm9mGOdSdpnpMq48njYXK/6yUGKZap5";
     };
   };
+
+  # PROMETHEUS'S PERSISTED BLOCKS, READ-ONLY, FOR ci-runner'S NIGHTLY ALERT BACKTEST (infra/bin/
+  # backtest-alerts --source snapshot), so the backtest no longer queries this Prometheus at all.
+  # Why a block copy and not the snapshot API: roles/prometheus-block-export.nix's header.
+  fleet.prometheusBlockExport.enable = true;
 
   # AND IT SHIPS ITS OWN JOURNAL TO ITSELF. Not redundant: without this, the one host whose logs
   # would explain a monitoring outage is the one host missing from the store, and every query that
