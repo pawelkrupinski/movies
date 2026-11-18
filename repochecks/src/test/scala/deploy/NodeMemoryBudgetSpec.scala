@@ -69,19 +69,33 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   /** `allocatable.memory` as the kubelet computes it: capacity less its reserves. */
   private lazy val NodeAllocatableMib = NodeCapacityMib - KubeletReserveMib
 
-  /** Left for everything on the node that is NOT a kinowo pod. The node's own
-   *  ledger shows 12864Mi requested against the 12800Mi these overlays declare,
-   *  so kube-system's share is ~64Mi (most of it runs on the control-plane node).
-   *  This is deliberately several times that — a floor under the arithmetic, not
-   *  a tight fit, and the kubelet needs slack it does not request.
-   *  576 since 2026-11-17: Flux's notification-controller (the GitHub push Receiver that took the
-   *  5-minute poll off every deploy) requests 64Mi, out of the kinowo ledger's 192Mi of spare.
-   *  Measured that day, not assumed: it ran at 45Mi RSS, and Flux's other four controllers'
-   *  7-day max RSS (Prometheus `process_resident_memory_bytes`) was 87 (source), 144 (kustomize),
-   *  71 (image-reflector) and 63Mi (image-automation) -- ~410Mi in use against 320Mi requested, so
-   *  the requests are not padding to trim, and they are `flux install --export` output that a
-   *  regeneration would put back anyway. */
-  private val SystemReserveMib = 576
+  /** The k3s packaged add-ons, by the name `services.k3s.disable` takes, and what each one ENABLED
+   *  schedules -- requests read from the manifests k3s writes to /var/lib/rancher/k3s/server/manifests
+   *  (v1.35.8+k3s1, checked against `kubectl describe node k3s-worker-1` on 2026-11-18). Every name
+   *  k3s can deploy is a row, so turning one back on (`k3s-server.nix`'s `disable` list) counts its
+   *  pods here instead of nowhere. `None` is an add-on whose pods' requests nobody has read yet: on,
+   *  it fails the ledger until someone does. The pods carry no node affinity and the control plane
+   *  is tainted, so they land on k3s-worker-1 -- coredns does today.
+   *
+   *  UNTIL 2026-11-18 THIS LIST DID NOT EXIST. A hand-set 576Mi reserve covered the manifests named
+   *  below, never coredns's 70Mi, so the ledger said 128Mi of margin over web-us's surge while the
+   *  node had 58. */
+  private val K3sAddOnRequestsMib: Map[String, Option[Int]] = Map(
+    "coredns"        -> Some(70),   // coredns.yaml: requests memory 70Mi (limit 170Mi)
+    "local-storage"  -> Some(0),    // local-path-provisioner: no requests at all
+    "runtimes"       -> Some(0),    // RuntimeClass objects only, no pod
+    "metrics-server" -> Some(70),   // metrics-server.yaml: requests memory 70Mi
+    "traefik"        -> None,       // a HelmChart (traefik + a svclb DaemonSet); read it before enabling
+    "servicelb"      -> None,       // one svclb DaemonSet pod per LoadBalancer Service
+  )
+
+  /** The add-ons k3s-server.nix turns off. */
+  private lazy val K3sDisabled: Set[String] = {
+    val nix = RepoFile.read("infra/nix/modules/roles/k3s-server.nix")
+    val list = """(?m)^\s*disable\s*=\s*\[([^\]]*)\]""".r.findFirstMatchIn(nix).map(_.group(1))
+    withClue("infra/nix/modules/roles/k3s-server.nix sets no `disable = [ ... ];` for services.k3s: ")(list should not be empty)
+    """"([^"]+)"""".r.findAllMatchIn(list.get).map(_.group(1)).toSet
+  }
 
   private val Tiers     = Seq("worker", "web")
   private val Countries = Seq("pl", "de", "uk", "us", "es")
@@ -120,47 +134,48 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
   "the node's memory request budget" should "leave room for the extra pod a rolling update surges" in {
     val others  = ManifestRequests.OtherWorkloads.map(requestedMibAt).sum
-    val total   = requests.map(_._2).sum + others
+    val system  = systemPods.map(_._2).sum
+    val total   = requests.map(_._2).sum + others + system
     val surge   = requests.filter(_._1._1 == "web").map(_._2).max   // maxSurge: 1 on the web tier
-    val ceiling = NodeAllocatableMib - SystemReserveMib
+    val margin  = NodeAllocatableMib - total - surge
+    val floor   = SurgeMarginFloorMib
 
     withClue(
-      s"kinowo + other workloads (${others}Mi) request ${total}Mi + a ${surge}Mi surge pod = ${total + surge}Mi against a ${ceiling}Mi " +
-      s"ceiling (${NodeCapacityMib}Mi capacity - ${KubeletReserveMib}Mi kubelet reserves = ${NodeAllocatableMib}Mi " +
-      s"allocatable, - ${SystemReserveMib}Mi for system pods). " +
-      "Over it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
-      "Giving a country a bigger heap means taking the memory from another pod or adding a node: ") {
-      (total + surge) should be <= ceiling
+      s"kinowo ${requests.map(_._2).sum}Mi + other workloads ${others}Mi + system pods ${system}Mi " +
+      s"(${systemPods.map { case (n, m) => s"$n ${m}Mi" }.mkString(", ")}) = ${total}Mi, + a ${surge}Mi surge pod = " +
+      s"${total + surge}Mi of ${NodeAllocatableMib}Mi allocatable (${NodeCapacityMib}Mi capacity - ${KubeletReserveMib}Mi " +
+      s"kubelet reserves): ${margin}Mi margin, under the ${floor}Mi floor (the largest system pod, which can roll at the same " +
+      "time). Under it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
+      "Giving a pod more memory means taking it from another pod's over-ask, not from this margin: ") {
+      margin should be >= floor
     }
 
-    info(f"requests ${total}Mi + surge ${surge}Mi = ${total + surge}Mi of ${ceiling}Mi " +
-         f"(${100.0 * (total + surge) / ceiling}%.1f%%, ${ceiling - total - surge}Mi spare)")
+    info(f"requests ${total}Mi + surge ${surge}Mi = ${total + surge}Mi of ${NodeAllocatableMib}Mi " +
+         f"(${100.0 * (total + surge) / NodeAllocatableMib}%.1f%%, ${margin}Mi margin, floor ${floor}Mi)")
   }
 
-  /** What each deployment's RSS actually PEAKED at, in mebibytes, over the seven days to
-   *  2026-09-07 — the measurement every request in these overlays is now derived from.
+  /** What each deployment's RSS actually PEAKED at, in mebibytes — first over the seven days to
+   *  2026-09-07, the measurement every request in these overlays is derived from; since 2026-11-18
+   *  over 14 days.
    *
-   *  `max_over_time(process_resident_memory_bytes[7d])` per pod, off the fleet Prometheus.
+   *  `max by (instance) (max_over_time(process_resident_memory_bytes{job=~"kinowo-.*"}[14d]))`, off the fleet Prometheus.
    *  PROCESS RSS RATHER THAN THE CGROUP WORKING SET, because this cluster scrapes no cAdvisor:
    *  there is no `container_memory_*` series to ask, and the JVM exporter is the only per-pod
    *  memory signal that exists. It is a fair proxy and a conservative one — the kubelet's own
    *  `stats/summary` put working set 5-30Mi ABOVE RSS on every pod the day this was taken, so a
    *  request sized off these numbers errs high, not low.
    *
-   *  The `instance` labels (`kinowo-web-<cc>`) survive rollouts, so a 7d window spans the ~15
+   *  The `instance` labels (`kinowo-web-<cc>`) survive rollouts, so the window spans the ~15
    *  deploys a day this fleet does rather than one pod's lifetime. */
   private val MeasuredPeakMib = Map(
-    // worker-pl DERIVED 2026-11-15: its 7d RSS peak was 1006 MiB on -Xmx512m, plus the 80 MiB the heap grew (-Xmx592m).
-    ("web", "pl") ->  881, ("worker", "pl") -> 1086,
-    ("web", "de") ->  813, ("worker", "de") -> 1058,   // worker re-measured 2026-10-12 on its 640m heap, before -Xmx832m
-    ("web", "uk") ->  816, ("worker", "uk") -> 1205,   // worker DERIVED 2026-11-15: 7d RSS peak 1109 MiB on -Xmx640m, plus the 96 MiB the heap grew
-    ("web", "es") ->  762, ("worker", "es") ->  757,
-    // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
-    // 256 MiB its heap then gave back (-Xmx768m). Replace with a measured 7d peak after 2026-10-10.
-    // worker-us re-measured 2026-10-04 on -Xmx1152m: 1528 MiB over six boots in 4h (1570-1620 on 1280m).
-    // DERIVED since 2026-10-24's -Xmx1280m stopgap (the nightly identity drift check's whole resolve filled its old gen):
-    // 1528 + the 128 MiB the heap grew. Replace with a measured 7d peak after 2026-10-31.
-    ("web", "us") -> 1268, ("worker", "us") -> 1656,
+    // Re-measured 2026-11-18 over the 14 days to that day (the same query, [14d]): every one had been
+    // measured or DERIVED once, 2026-09..11-15, and worker-de had grown 1058 -> 1322, worker-us 1656 -> 1761
+    // with nobody re-reading them. web-us's is its first measurement since its heap went to 768m (1268 was derived).
+    ("web", "pl") ->  839, ("worker", "pl") -> 1072,
+    ("web", "de") ->  824, ("worker", "de") -> 1322,
+    ("web", "uk") ->  828, ("worker", "uk") -> 1206,
+    ("web", "es") ->  795, ("worker", "es") ->  865,
+    ("web", "us") -> 1251, ("worker", "us") -> 1761,
   )
 
   /** How far above its measured peak a request may sit. `-Xms` equals `-Xmx` on every deployment
@@ -434,57 +449,94 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The memory requests of everything on k3s-worker-1 that is NOT a kinowo tier — the pods the
-   *  576Mi `SystemReserveMib` is set aside for. Read from the manifests, so this is what WILL be
+  /** Every `requests: memory:` in one manifest. A file with several Deployments — Flux ships two
+   *  controllers in one — contributes all of them, or the ledger is under-counted by whatever the
+   *  first block happens to be. */
+  private def requestsIn(path: String): Seq[Int] = {
+    val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
+    lines.sliding(6).collect {
+      case window if window.head == "requests:" =>
+        window.tail.takeWhile(l => !l.startsWith("limits:")).collectFirst {
+          case l if l.startsWith("memory:") => parseMib(l.stripPrefix("memory:").trim.replace("\"", ""))
+        }.getOrElse(0)
+    }.toSeq
+  }
+
+  /** The non-kinowo manifests that schedule pods on k3s-worker-1, besides `OtherWorkloads`. */
+  private val SystemManifests = Seq(
+    "kube-state-metrics" -> "infra/kubernetes/kube-state-metrics/deployment.yaml",
+    "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
+    // Flux's controllers (source, kustomize, notification, image-reflector, image-automation),
+    // vendored from `flux install --export`.
+    "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
+    "reloader"           -> "infra/kubernetes/reloader/deployment.yaml",
+  )
+
+  /** Everything on k3s-worker-1 that is neither a kinowo tier nor `OtherWorkloads`: the GitOps
+   *  manifests above and the k3s add-ons left on. Read from the manifests, so this is what WILL be
    *  requested, not what happens to be scheduled today. */
-  private def reserveTenants: Seq[(String, Int)] = {
-    /** Every `requests: memory:` in one manifest. A file with several Deployments — Flux ships two
-     *  controllers in one — contributes all of them, or the reserve is under-counted by whatever
-     *  the first block happens to be. */
-    def requestsIn(path: String): Int = {
-      val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
-      lines.sliding(6).collect {
-        case window if window.head == "requests:" =>
-          window.tail.takeWhile(l => !l.startsWith("limits:")).collectFirst {
-            case l if l.startsWith("memory:") => parseMib(l.stripPrefix("memory:").trim.replace("\"", ""))
-          }.getOrElse(0)
-      }.sum
+  private lazy val systemPods: Seq[(String, Int)] = systemPodRequests.map { case (name, pods) => name -> pods.sum }
+
+  /** [[systemPods]], one entry per container's request. */
+  private lazy val systemPodRequests: Seq[(String, Seq[Int])] = {
+    val fromManifests = SystemManifests.map { case (name, path) =>
+      val pods = requestsIn(path)
+      withClue(s"$name declares no memory request in $path: ")(pods.sum should be > 0)
+      name -> pods
     }
-    val tenants = Seq(
-      "kube-state-metrics" -> "infra/kubernetes/kube-state-metrics/deployment.yaml",
-      "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
-      // Flux's controllers (source, kustomize, notification, image-reflector, image-automation),
-      // vendored from `flux install --export`.
-      "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
-      "reloader"           -> "infra/kubernetes/reloader/deployment.yaml",
-    )
-    tenants.map { case (name, path) =>
-      val mib = requestsIn(path)
-      withClue(s"$name declares no memory request in $path: ")(mib should be > 0)
-      name -> mib
+    val addOns = K3sAddOnRequestsMib.toSeq.sortBy(_._1).collect {
+      case (name, requests) if !K3sDisabled(name) =>
+        withClue(s"k3s add-on $name is enabled (not in k3s-server.nix's disable list) but nobody has read what its pods request: ") {
+          requests should not be empty
+        }
+        s"k3s $name" -> requests.toSeq
+    }
+    fromManifests ++ addOns
+  }
+
+  /** The margin the surge must leave: the largest single system pod. The web tier is not the only
+   *  thing that rolls -- Flux's, coredns's and kube-state-metrics' Deployments surge one pod too --
+   *  and an image bump landing beside a Flux upgrade surges both at once. */
+  private lazy val SurgeMarginFloorMib: Int = systemPodRequests.flatMap(_._2).max
+
+  /** Every manifest under the GitOps checkout that declares a pod-scheduling kind. */
+  private lazy val workloadManifests: Set[String] = {
+    val workload = """(?m)^kind:\s*(Deployment|StatefulSet|DaemonSet|ReplicaSet|Job|CronJob|Pod)\s*$""".r
+    def walk(dir: java.io.File): Seq[java.io.File] =
+      Option(dir.listFiles).toSeq.flatten.flatMap(f => if (f.isDirectory) walk(f) else Seq(f))
+    walk(new java.io.File("infra/kubernetes"))
+      .map(_.getPath)
+      .filter(p => p.endsWith(".yaml") || p.endsWith(".yml"))
+      .filter(p => workload.findFirstIn(RepoFile.read(p)).isDefined)
+      .toSet
+  }
+
+  // THE LEDGER IS ONLY AS GOOD AS ITS LIST. It used to subtract a hand-set 576Mi "system reserve"
+  // and check four named manifests against it. Nothing asked whether the four were ALL of them:
+  // coredns -- a k3s add-on, in no manifest of ours -- was simply never counted, and a fifth
+  // manifest would have been missed the same way. So every manifest that schedules a pod must be
+  // one the ledger reads (a kinowo tier, `OtherWorkloads`, or `SystemManifests`), and every k3s
+  // add-on must be either disabled or have its requests read.
+  "the node's memory ledger" should "count every manifest under infra/kubernetes that schedules a pod" in {
+    val counted =
+      (for (tier <- Tiers; cc <- Countries) yield s"infra/kubernetes/$tier/overlays/$cc/patch.yaml").toSet ++
+        Tiers.map(t => s"infra/kubernetes/$t/base/all.yaml") ++
+        ManifestRequests.OtherWorkloads ++ SystemManifests.map(_._2)
+    withClue("these manifests schedule pods on the node and are in no row of the memory ledger -- add them to " +
+             "SystemManifests (or OtherWorkloads) so their requests count against the surge: ") {
+      (workloadManifests -- counted) shouldBe empty
+    }
+    withClue("the ledger names manifests that schedule no pod (renamed or removed?): ") {
+      (counted -- workloadManifests) shouldBe empty
     }
   }
 
-  // THE RESERVE IS A BUDGET NOBODY WAS SPENDING AGAINST. `SystemReserveMib` is subtracted from the
-  // node's allocatable before the kinowo ledger is checked, so every mebibyte a non-kinowo pod
-  // takes is one the web tier's surge was promised — but nothing compared the two, and the reserve
-  // was invisible: a second exporter or a UI could be added indefinitely and only the SCHEDULER
-  // would eventually object, by leaving a web rollout Pending with `maxUnavailable: 0`.
-  //
-  // Measured 2026-09-03 when Headlamp was added: 64Mi (kube-state-metrics) + 128Mi (headlamp) =
-  // 192Mi of 512Mi. There is room for more; the point is that the next thing added has to fit,
-  // and now says so here rather than in an incident. 2026-11-17: Flux's notification-controller
-  // took the total to 576Mi, and the reserve was raised to match from the kinowo ledger's spare.
-  "the system reserve" should "cover everything scheduled outside the kinowo tiers" in {
-    val tenants = reserveTenants
-    val total   = tenants.map(_._2).sum
-    withClue(
-      s"${tenants.map { case (n, m) => s"$n ${m}Mi" }.mkString(" + ")} = ${total}Mi against a " +
-      s"${SystemReserveMib}Mi reserve. Over it, the node is oversubscribed by exactly the amount " +
-      "the web tier's rolling surge was promised, and a deploy hangs Pending rather than failing: ") {
-      total should be <= SystemReserveMib
+  it should "count every k3s add-on that is left on" in {
+    withClue("k3s-server.nix disables an add-on this ledger does not know (a typo, or a new k3s add-on to add a row for): ") {
+      (K3sDisabled -- K3sAddOnRequestsMib.keySet) shouldBe empty
     }
-    info(s"reserve: ${total}Mi of ${SystemReserveMib}Mi used, ${SystemReserveMib - total}Mi spare")
+    systemPods.map(_._1) should contain("k3s coredns")
+    info(s"system pods: ${systemPods.map { case (n, m) => s"$n ${m}Mi" }.mkString(", ")} = ${systemPods.map(_._2).sum}Mi")
   }
 
   // A ConfigMap patch REPLACES the whole key, so an overlay that names JAVA_OPTS at all owns
