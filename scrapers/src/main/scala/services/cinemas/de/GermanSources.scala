@@ -8,6 +8,9 @@ sealed trait GermanFeed {
   def label: String
   /** The venue's handle in the source, for the fallback status page's link. */
   def ref: String
+  /** A listing of many venues' programmes (Filmstarts, Cineamo, kinoheld, kinoprogramm.com), not
+   *  the venue's own site: one of them listing no day the others list is a gap between peers. */
+  def aggregator: Boolean = true
 }
 
 object GermanFeed {
@@ -27,14 +30,17 @@ object GermanFeed {
    *  its evenings told from a partner's on the same list by their postcode. */
   final case class WixEvents(page: String, postcode: String) extends GermanFeed {
     def label = "Wix Events"; def ref = page
+    override def aggregator = false
   }
   /** Rex Kino-Center Schifferstadt's own programme page ([[RexSchifferstadtClient]]). */
   final case class RexSchifferstadt(page: String) extends GermanFeed {
     def label = "rex-schifferstadt.de"; def ref = page
+    override def aggregator = false
   }
   /** Arsenal Berlin's own calendar ([[ArsenalBerlinClient]]). */
   case object ArsenalBerlin extends GermanFeed {
     def label = "arsenal-berlin.de"; def ref = ArsenalBerlinClient.CalendarPage
+    override def aggregator = false
   }
 }
 

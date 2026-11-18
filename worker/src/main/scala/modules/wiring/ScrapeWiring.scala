@@ -135,10 +135,11 @@ trait ScrapeWiring { self: WorkerWiring =>
   // Telegram is configured, and (re)writes the cinema's /uptime tags so the FtFW chip appears
   // on ENTER and clears on RECOVER. `state.active` is the post-transition truth
   // (put() runs before onEvent), so no store round-trip is needed.
-  protected def filmwebFallbackOnEvent: (FallbackState, FallbackEvent) => Unit =
+  // A peer listing's empty spell is not paged (FallbackAlert): `primaryIsPeerListing` comes from the venue's FallbackPlan.
+  private def fallbackOnEvent(primaryIsPeerListing: Boolean): (FallbackState, FallbackEvent) => Unit =
     (state, event) => {
       val opening = models.Cinema.byDisplayName.get(state.cinema).fold[models.Opening](models.Opening.YearRound)(_.opening)
-      FallbackAlert.messageFor(state, event, opening).foreach(fallbackPager(FallbackAlert.kindOf(event)))
+      FallbackAlert.messageFor(state, event, opening, primaryIsPeerListing).foreach(fallbackPager(FallbackAlert.kindOf(event)))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 
@@ -184,6 +185,10 @@ trait ScrapeWiring { self: WorkerWiring =>
   protected def germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
     cinemaScraperCatalog.germanFallbackFeeds
 
+  /** The German venues whose primary is an aggregator, a peer of its fallback chain. */
+  protected def germanAggregatorPrimaries: Set[Cinema] =
+    cinemaScraperCatalog.germanAggregatorPrimaries
+
   /** Cinema → the SensaCine theaterId its fallback reads, for Spanish venues whose primary
    *  is taquilla.com or Artesiete's own page. */
   protected def spanishSensacineFallback: Map[Cinema, String] =
@@ -194,7 +199,8 @@ trait ScrapeWiring { self: WorkerWiring =>
     name:   String,                        // "Flicks", "Kinoprogramm", "Filmweb" — the /uptime label + Telegram text
     ref:    () => Option[String],          // the feed's per-venue handle, for the status page's link
     client: () => Option[CinemaScraper],
-    after:  FallbackAfter
+    after:  FallbackAfter,
+    primaryIsPeerListing: Boolean = false  // the primary is an aggregator like the fallback: its empty spells don't page
   )
 
   /** Which fallback a venue gets, if any — the ONE decision both [[recordingScraper]]
@@ -226,7 +232,7 @@ trait ScrapeWiring { self: WorkerWiring =>
           case Seq(only) => only
           case chain     => new FirstAnsweringScraper(chain)
         }),
-        FallbackAfter.FailedRuns(GermanFailedRuns))
+        FallbackAfter.FailedRuns(GermanFailedRuns), primaryIsPeerListing = germanAggregatorPrimaries(cinema))
     }).orElse(spanishSensacineFallback.get(cinema).map { theaterId =>
       FallbackPlan("SensaCine", () => Some(theaterId),
         () => Some(cinemaScraperCatalog.sensacineScraper(theaterId, cinema)), FallbackAfter.FailedRuns(SpanishFailedRuns))
@@ -255,7 +261,7 @@ trait ScrapeWiring { self: WorkerWiring =>
       new SourceFallbackScraper(inner,
         fallback = () => plan.client().map(boundedFallback), fallbackName = plan.name, fallbackRef = plan.ref,
         uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(),
-        fallbackAfter = plan.after, onEvent = filmwebFallbackOnEvent))
+        fallbackAfter = plan.after, onEvent = fallbackOnEvent(plan.primaryIsPeerListing)))
 
   /** The venues another alert already pages for when their page is gone: those with
    *  a fallback (`SourceFallbackScraper` pages UNCOVERED) and the Filmweb-only ones

@@ -4,6 +4,7 @@ import models.{Opening, SeasonWindow}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.SourceFallbackScraper
 import services.fallback.{FallbackEvent, FallbackState}
 
 import java.time.Instant
@@ -63,5 +64,35 @@ class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
     FallbackAlert.messageFor(stateWith(january), january, Opening.YearRound).value should include ("nothing is covering it")
     FallbackAlert.messageFor(stateWith(january), january, driveIn) shouldBe None
     FallbackAlert.messageFor(stateWith(july), july, driveIn).value should include ("nothing is covering it")
+  }
+
+  // A German venue's primary is one aggregator and its fallback the others (Filmstarts, then Cineamo →
+  // kinoheld): Filmstarts listing no day for a small venue the others list is a gap between listings,
+  // which the fallback is covering, and nothing anyone can act on. 30 such spells paged in the 30 days to
+  // 2026-11-18 (35 day-long pages, 31 recoveries), every one with nothing to do.
+  it should "not page a day-long spell an empty peer listing began, nor its recovery, when the primary is an aggregator" in {
+    val empty   = SourceFallbackScraper.EmptyReason
+    val enter   = event(FallbackEvent.Enter, reason = empty)
+    val probe24 = event(FallbackEvent.ProbeFailed, 24, empty)
+    def peer(history: FallbackEvent*) = FallbackAlert.messageFor(stateWith(history*), history.head, Opening.YearRound, primaryIsPeerListing = true)
+    peer(probe24, enter) shouldBe None
+    peer(event(FallbackEvent.Recovered, 30), probe24, enter) shouldBe None
+    // The same spell at a venue whose primary is its own site still pages, and so does its recovery.
+    page(probe24, enter).value should include ("primary returned no screenings")
+    page(event(FallbackEvent.Recovered, 30), probe24, enter).value should include ("recovered")
+  }
+
+  it should "still page an aggregator primary whose page has gone, and that spell's recovery" in {
+    // A 404 is a retired upstream id: the primary needs re-pointing, whatever the fallback serves.
+    val probe24 = event(FallbackEvent.ProbeFailed, 24, "HttpStatusException: HTTP 404")
+    def peer(history: FallbackEvent*) = FallbackAlert.messageFor(stateWith(history*), history.head, Opening.YearRound, primaryIsPeerListing = true)
+    val enterEmpty = event(FallbackEvent.Enter, reason = SourceFallbackScraper.EmptyReason)
+    peer(probe24, enterEmpty).value should include ("HTTP 404")
+    peer(event(FallbackEvent.Recovered, 30), probe24, enterEmpty).value should include ("recovered")
+    // Gone only after the quiet day-long mark: the first real failure past it pages, once.
+    val quiet24 = event(FallbackEvent.ProbeFailed, 24, SourceFallbackScraper.EmptyReason)
+    val gone26  = event(FallbackEvent.ProbeFailed, 26, "HttpStatusException: HTTP 404")
+    peer(gone26, quiet24, enterEmpty).value should include ("HTTP 404")
+    peer(event(FallbackEvent.ProbeFailed, 27, "HttpStatusException: HTTP 404"), gone26, quiet24, enterEmpty) shouldBe None
   }
 }

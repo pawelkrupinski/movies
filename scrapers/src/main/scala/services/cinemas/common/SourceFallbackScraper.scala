@@ -422,7 +422,8 @@ object SourceFallbackScraper {
    *  so a brief blip never flickers a block of films out of the corpus. */
   val DefaultFallbackAfter: FiniteDuration = 6.hours
 
-  private val EmptyReason = "primary returned no screenings"
+  /** The reason a spell records when the primary answered but listed nothing the fallback could cover. */
+  val EmptyReason = "primary returned no screenings"
 
   private def showtimeCount(movies: Seq[CinemaMovie]): Int = movies.iterator.map(_.showtimes.size).sum
 

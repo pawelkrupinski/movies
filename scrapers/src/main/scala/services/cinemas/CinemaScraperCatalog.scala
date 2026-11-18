@@ -301,6 +301,11 @@ class CinemaScraperCatalog(
   val germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
     models.Country.Germany.cities.flatMap(_.cinemas).map(c => c -> germanFeeds(c).tail).filter(_._2.nonEmpty).toMap
 
+  /** The German venues whose primary is an aggregator ([[GermanFeed.aggregator]]) and so a peer of its
+   *  fallback chain: its listing no day the chain lists is a gap the fallback covers, not a page. */
+  val germanAggregatorPrimaries: Set[Cinema] =
+    germanFallbackFeeds.keySet.filter(c => germanFeeds(c).headOption.exists(_.aggregator))
+
   /** Each SensaCine-listed Spanish venue read off another source — taquilla.com or
    *  Artesiete's own page ([[SpanishOwnSourcesData]]) — by the SensaCine theaterId its
    *  FALLBACK reads ([[sensacineScraper]]): where it was scraped before, and what the
