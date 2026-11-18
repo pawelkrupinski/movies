@@ -1,6 +1,9 @@
 ---
 # THE MONITORING STACK WATCHING ITSELF.
 #
+# AN EDIT TO THIS FILE (or any rule file) RELOADS Prometheus, it does not restart it: see
+# `reloadTriggers` in roles/prometheus.nix.
+#
 # THE PROBLEM THIS FILE ADDRESSES is that every other rule in this directory assumes Prometheus is
 # scraping, Alertmanager is delivering and Grafana is evaluating. When one of those is untrue, the
 # fleet's alerts do not become wrong -- they become ABSENT, which is exactly what a healthy fleet
