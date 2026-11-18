@@ -4,7 +4,7 @@ import testsupport.SourceTrees
 import models.Country
 import services.identity._
 import services.identity.ListingShape
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.{TitleContainment, TitleNormalizer}
 import services.titles.rules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
 import tools.{CommandLine, UnmatchedClusters}

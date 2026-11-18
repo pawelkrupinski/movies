@@ -3,7 +3,7 @@ package services.identity
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 import settings.CommitSha
 
 /** A take change's line names why it moved — the rules, the runner-up, what blocked a listing no rule took — and a

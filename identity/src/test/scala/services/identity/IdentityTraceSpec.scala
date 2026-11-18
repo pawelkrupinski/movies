@@ -1,10 +1,9 @@
 package services.identity
 
-import models.{KinoApollo, Multikino, Rialto}
+import models.{KinoApollo, Multikino, Rialto, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 import scala.collection.mutable
 
 /** The identity trace: which rules decided each listing — recorded on the decision, filed per listing by the

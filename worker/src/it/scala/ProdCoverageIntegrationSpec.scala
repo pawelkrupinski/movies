@@ -4,13 +4,13 @@ import tools.SpecTimeouts
 
 import services.movies.ListedShowtimes
 
-import models.{CinemaShowing, KinoPionier, MovieRecord, Showtime, Source, SourceData}
+import models.{CinemaShowing, KinoPionier, MovieRecord, Showtime, Source, SourceData, ListingKey}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{ListingKey, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import tools.ProdCoverage
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}

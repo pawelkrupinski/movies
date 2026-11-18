@@ -2,11 +2,10 @@ package services.identity
 
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Country, Filmweb, Helios, Imdb, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb}
+import models.{Cinema, CinemaMovie, CinemaShowing, Country, Filmweb, Helios, Imdb, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
-
+import services.movies.{CinemaSlotBuilder, FilmId, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
 import java.time.{Instant, LocalDateTime}
 
 /**
@@ -467,7 +466,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     ProjectedListing.rowDigest(cm(one)) shouldBe ProjectedListing.rowDigest(cm(other))
     val key = VenueSlotMemo.Key(one.displayName, 1, 2, 3, 1)
     def lean(cinema: Cinema) = Seq((CinemaShowing(cinema, "dune"): models.Source) ->
-      services.movies.ShowtimesDigest.stripSlot(SourceData(title = Some("Dune"), showtimes = cm(cinema).showtimes)))
+      models.ShowtimesDigest.stripSlot(SourceData(title = Some("Dune"), showtimes = cm(cinema).showtimes)))
     VenueSlotMemo.fingerprint(7L, key, lean(one)) shouldBe VenueSlotMemo.fingerprint(7L, key, lean(other))
     VenueSlotMemo.fingerprint(7L, key, lean(one)) should not be VenueSlotMemo.fingerprint(8L, key, lean(one))
     VenueSlotMemo.fingerprint(7L, key.copy(rows = 9), lean(one)) should not be VenueSlotMemo.fingerprint(7L, key, lean(one))
@@ -479,7 +478,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   "A memo seeded by a run under another environment" should "not read a venue's stored slots, and one seeded under its own should" in {
     val key  = VenueSlotMemo.Key("Kino Muza", 1, 2, 3, 1)
     val lean = Seq((CinemaShowing(KinoMuza, "lalka"): models.Source) ->
-      services.movies.ShowtimesDigest.stripSlot(SourceData(title = Some("Lalka"), showtimes = Seq(Showtime(start, None)))))
+      models.ShowtimesDigest.stripSlot(SourceData(title = Some("Lalka"), showtimes = Seq(Showtime(start, None)))))
     val before = new VenueSlotMemo(7L)
     before.lookup(key) shouldBe None
     before.store(key, lean, keep = true)

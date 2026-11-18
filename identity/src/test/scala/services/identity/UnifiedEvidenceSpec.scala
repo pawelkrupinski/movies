@@ -270,7 +270,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // bare "CAMOUFLAGE": Gibalenko's 2026 "Камуфляж", billed widely, is named only by its English title there
     val billed = Seq("Acud Kino" -> "BARWY OCHRONNE / CAMOUFLAGE", "Harsefelder Lichtspiele" -> "CAMOUFLAGE", "IL KINO" -> "Camouflage",
       "Kino A" -> "Camouflage", "Kino B" -> "Camouflage").map { case (venue, title) =>
-      listing(KinoMuza, title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil)) }
+      listing(KinoMuza, title).copy(key = models.ListingKey.Published(venue, title, None, Nil)) }
     val gibalenko = IdentityMeasures.Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), Some(102), Some(Seq("Mykyta Gibalenko")))
     val zanussi   = IdentityMeasures.Film("Barwy ochronne", Some("Barwy ochronne"), Seq("Camouflage"), Some(1977), Some(96), Some(Seq("Krzysztof Zanussi")))
     def found(listings: Seq[Listing]) = {
@@ -290,7 +290,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // 5-minute short kinoheld's copy at Lichtblick names. Three venues filled it there, two nothing; a venue denying the
     // film is no venue of its release.
     val short = IdentityMeasures.Film("Buddies", Some("Buddies"), Nil, Some(2026), Some(5), Some(Seq("Rahul Hansraj")))
-    def billing(venue: String) = listing(KinoMuza, "Buddies").copy(key = services.movies.ListingKey.Published(venue, "Buddies", None, Nil))
+    def billing(venue: String) = listing(KinoMuza, "Buddies").copy(key = models.ListingKey.Published(venue, "Buddies", None, Nil))
     def found(billings: Seq[(Listing, Boolean)]) = {
       val listings = billings.map(_._1)
       val decision = ResolverDecision(listings.map(_.key), None, 0.03, ResolverDecision.Basis.Vetoed, Nil)()
@@ -311,7 +311,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // venue dropping the articles
     val title    = "Herr der Ringe - Rückkehr des Königs (ext.)"
     val listings = Seq("CineStar Augsburg", "CineStar Berlin", "CineStar Kiel", "CineStar Erfurt").map(venue =>
-      listing(KinoMuza, title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil)))
+      listing(KinoMuza, title).copy(key = models.ListingKey.Published(venue, title, None, Nil)))
     val short    = IdentityMeasures.Film("Herr der Ringe", Some("Herr der Ringe"), Nil, Some(2025), Some(14))
     val king     = IdentityMeasures.Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), Nil,
       Some(2003), Some(201), Some(Seq("Peter Jackson")), imdbNumber = 167260)

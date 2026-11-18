@@ -5,7 +5,7 @@ import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.Instant
 

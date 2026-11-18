@@ -4,7 +4,7 @@ import services.titles.TitleNormalizer
 
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaMovie, Country}
+import models.{Cinema, CinemaMovie, Country, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.CorpusFixture

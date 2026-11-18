@@ -219,7 +219,7 @@ object SlotsRepository {
     // rewritten with what it already holds. A slot the cache holds stripped had showtimes when its stamped starts say so
     // (`slotShowtimeCount`): read off its empty list, every venue whose showtimes merely moved rewrote its unchanged row.
     val gaining = after.iterator.collect {
-      case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(ShowtimesDigest.slotShowtimeCount(_) == 0) =>
+      case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(models.ShowtimesDigest.slotShowtimeCount(_) == 0) =>
         source.displayName
     }.toSet
     (b.keySet ++ a.keySet).iterator.flatMap(k => slotOp(b.get(k), a.get(k), gaining(k)).map(k -> _)).toMap
@@ -261,7 +261,7 @@ object StoredSlotDto {
 
   /** The `listingKey` a slot row is stamped with: [[ListingKey.serialised]] of [[ListingKey.ofSlotRow]]. */
   def listingKeyOf(slotKey: String, slot: SourceData): Option[String] =
-    ListingKey.ofSlotRow(slotKey, slot).map(ListingKey.serialised)
+    models.ListingKey.ofSlotRow(slotKey, slot).map(models.ListingKey.serialised)
 }
 
 /**

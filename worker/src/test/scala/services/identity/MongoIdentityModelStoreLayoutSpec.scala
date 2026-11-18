@@ -3,7 +3,7 @@ package services.identity
 import org.bson.{BsonArray, BsonDocument, BsonValue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.jdk.CollectionConverters._
 

@@ -223,12 +223,12 @@ object ServedCorpusInvariants {
               (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
                s"(${film.releaseYear.getOrElse("—")}, ${film.director.mkString("/")}) at " +
                s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${sd.title.getOrElse("—")}' " +
-               s"${sd.releaseYear.orElse(services.movies.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, services.movies.LatestTitleYear.current)).getOrElse("—")}, " +
+               s"${sd.releaseYear.orElse(models.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, services.movies.LatestTitleYear.current)).getOrElse("—")}, " +
                sd.director.mkString("/"))
         }
       }
     }
 
   private def holdsShowtimes(r: StoredMovieRecord): Boolean =
-    r.record.cinemaSlots.exists { case (_, sd) => services.movies.ShowtimesDigest.slotShowtimeCount(sd) > 0 }
+    r.record.cinemaSlots.exists { case (_, sd) => models.ShowtimesDigest.slotShowtimeCount(sd) > 0 }
 }

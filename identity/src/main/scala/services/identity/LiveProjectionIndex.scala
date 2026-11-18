@@ -1,7 +1,7 @@
 package services.identity
 
-import models.{Source, SourceData}
-import services.movies.{LatestTitleYear, LeanRecords, ListingKey, StoredMovieRecord}
+import models.{Source, SourceData, ListingKey}
+import services.movies.{LatestTitleYear, LeanRecords, StoredMovieRecord}
 import services.titles.TitleNormalizer
 
 import scala.collection.mutable

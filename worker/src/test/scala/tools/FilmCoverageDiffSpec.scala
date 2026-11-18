@@ -138,7 +138,7 @@ class FilmCoverageDiffSpec extends AnyFlatSpec with Matchers {
 
   "a take a hand judgement withdrew" should "be told apart from the correction stage's withdrawal" in {
     import services.identity.{ResolverDecision, Resolution, TakeJudgements}
-    val sława    = services.movies.ListingKey.Published("Kino Sława", "Przemytnicy", None, Nil)
+    val sława    = models.ListingKey.Published("Kino Sława", "Przemytnicy", None, Nil)
     val taken    = ResolverDecision(Seq(sława), Some(581674), 0.99, ResolverDecision.Basis.OwnMatch, Nil)()
     val resolved = Resolution(Seq(taken), 1, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val judged   = new TakeJudgements.Index(Seq(TakeJudgements.Judgement("pl", "*", "Przemytnicy", "tmdb:581674", right = false)))

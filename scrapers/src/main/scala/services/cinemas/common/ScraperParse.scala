@@ -431,8 +431,8 @@ private[cinemas] object ScraperParse {
     * scraper grabs a trailer URL off its own page shape, then funnels it
     * through this single canonicaliser. */
   def canonicalTrailer(url: String): Option[String] =
-    services.movies.TrailerEmbed.youTubeId(url).map(id => s"https://www.youtube.com/watch?v=$id")
-      .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
+    models.TrailerEmbed.youTubeId(url).map(id => s"https://www.youtube.com/watch?v=$id")
+      .orElse(models.TrailerEmbed.vimeoId(url).map(_ => url))
 
   private val BareUrl = """(?i)\b(?:https?://|www\.)\S+""".r
 

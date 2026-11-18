@@ -2,11 +2,10 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
-import models.{Helios, KinoMuza, Rialto}
+import models.{Helios, KinoMuza, Rialto, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 /** How often each rule fires on the live listings: the title rules a listing's title took, the model's rules for it and
  *  a later stage's rule — each listing once per rule — over every listing a written whole-corpus projection decided. */
 class RuleFiringCountSpec extends AnyFlatSpec with Matchers {

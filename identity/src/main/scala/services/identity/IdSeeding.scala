@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * The migration's first id assignment (docs/design/identity-resolver.md §8, phase 4 "ID seeding"):

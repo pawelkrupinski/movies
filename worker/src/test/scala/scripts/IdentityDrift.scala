@@ -6,7 +6,7 @@ import org.bson.BsonDocument
 import services.identity._
 
 import services.identity.agreement.{AgreementStage, VoterFamily}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets

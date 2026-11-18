@@ -4,7 +4,7 @@ import models.UkRoster
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{CatalogueId, Listing, ResolverDecision}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{HostPacing, HttpFetch, HttpStatusException}
 
 import java.nio.file.Files

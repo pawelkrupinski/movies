@@ -48,7 +48,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
 
   /** A German cluster one member of which an aggregator's feed (Webedia) fills from its catalogue. */
   private val german = {
-    import services.movies.ListingKey
+    import models.ListingKey
     val fed = ListingKey.Published("Planken Lichtspiele Mannheim", "Queen", None, Nil)
     val own = ListingKey.Native("Atlantis Kino", "https://atlantis/queen", "Queen")
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Germany -> new InMemoryReviewSource(
@@ -63,7 +63,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
 
   /** A cluster whose venue lists a long cast, its feed's catalogue a short one, and whose candidate's stored TMDB record a cast too. */
   private val cast = {
-    import services.movies.ListingKey
+    import models.ListingKey
     val fed = ListingKey.Published("Planken Lichtspiele Mannheim", ReviewFixtures.Held.rawTitle, None, Nil)
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(ReviewFixtures.heldDecision.copy(members = Seq(ReviewFixtures.Held, fed))(ReviewFixtures.heldDecision.trace)),
@@ -78,7 +78,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   /** A listing whose poster only its venue's last scrape (`identity_listings`) carries: no slot row, no venue page. */
   private val listedPoster = "https://biletyna.pl/file/get/id/414402"
   private val listed = {
-    val key = services.movies.ListingKey.Native("Bielański Ośrodek Kultury", "https://biletyna.pl/dla-dzieci/Podrozniczek?eid=701872", "Podróżniczek")
+    val key = models.ListingKey.Native("Bielański Ośrodek Kultury", "https://biletyna.pl/dla-dzieci/Podrozniczek?eid=701872", "Podróżniczek")
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(Seq(key), None, 0.9, services.identity.ResolverDecision.Basis.NoCandidate, Nil)()),
       feedsHeld = Map((key.venue, key.rawTitle) -> ListingFeed(Nil, 1, None, None, Some(listedPoster))))),
@@ -95,8 +95,8 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have, and 4 with a film page
    *  of their own that credit nobody. */
   private val crowded = {
-    val keys = (1 to 46).map(i => services.movies.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones"))) ++
-      (47 to 50).map(i => services.movies.ListingKey.Native(s"Cinema $i", s"https://cinema$i.example/kandydaci", "Kandydaci śmierci"))
+    val keys = (1 to 46).map(i => models.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones"))) ++
+      (47 to 50).map(i => models.ListingKey.Native(s"Cinema $i", s"https://cinema$i.example/kandydaci", "Kandydaci śmierci"))
     val film = FilmCard(1703629, None, Some("Kandydaci"), None, Some(2026), Seq("Maciej Kozłowski"), None, None, None)
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(keys, None, 0.3, services.identity.ResolverDecision.Basis.BelowThreshold,

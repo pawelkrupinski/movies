@@ -4,12 +4,10 @@ import tools.SpecPool
 import services.identityadapters.IdentityProjection
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe,
-  Movie, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe, Movie, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CacheKey, CinemaSlotBuilder, InMemoryMovieRepository, ListingKey, StringPool, VenuePageFacts}
-
+import services.movies.{CacheKey, CinemaSlotBuilder, InMemoryMovieRepository, StringPool, VenuePageFacts}
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.util.Random
 
@@ -161,7 +159,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     withClue("the kept index's stored films: ")(kept.storedById.keySet shouldBe built.storedById.keySet)
     kept.storedById.foreach { case (id, r) =>
       val b = built.storedById(id)
-      withClue(s"the kept index's stored film $id: ")((r.key(normalizer), services.movies.ShowtimesDigest.leanEqual(r.record, b.record)) shouldBe
+      withClue(s"the kept index's stored film $id: ")((r.key(normalizer), models.ShowtimesDigest.leanEqual(r.record, b.record)) shouldBe
         ((b.key(normalizer), true)))
     }
     withClue("the kept index's previous films: ")(kept.previousOf shouldBe built.previousOf)
@@ -326,7 +324,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       // a film a projection writes is one it moves: its key, or its record as written
       Seq("scoped" -> (a, scopedHeld), "whole" -> (b, wholeHeld)).foreach { case (name, (projected, before)) =>
         withClue(s"seed $seed, tick $t: the $name world wrote films as they were: ")(projected.changed.filter(f => before.get(f.id).exists {
-          case (key, record) => key == f.key && services.movies.ShowtimesDigest.leanEqual(record, f.record) }).map(_.id) shouldBe empty)
+          case (key, record) => key == f.key && models.ShowtimesDigest.leanEqual(record, f.record) }).map(_.id) shouldBe empty)
       }
       if (a.declined > 0 || b.declined > 0) declined += 1
       def storesAlike(): Unit = {

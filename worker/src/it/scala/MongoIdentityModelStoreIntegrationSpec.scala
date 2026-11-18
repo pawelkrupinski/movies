@@ -7,7 +7,7 @@ import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._

@@ -1,7 +1,6 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, Source, SourceData}
-
 /**
  * Pure merge primitive — combines a `victim` row's per-source data onto a
  * `canonical` row. Used by:

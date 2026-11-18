@@ -2,7 +2,7 @@ package services.identity
 
 import services.identity.FamilyClosure.Edge
 import services.movies.ListingConstraints.{CannotLink, MustLink}
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * The pin set as the resolver reads it — HARD constraints, stronger than every derived rule

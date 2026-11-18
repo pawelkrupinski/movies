@@ -1,6 +1,6 @@
 package services.review
 
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest

@@ -7,7 +7,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
 import services.identity._
 import services.identity.agreement.{AgreementStage, MongoAgreementVerdicts, StoredVerdict}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.annotation.nowarn
 import scala.concurrent.Await

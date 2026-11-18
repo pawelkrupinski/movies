@@ -1,14 +1,13 @@
 package scripts
 
 import tools.CommandLine
-import models.{Country, SourceData}
+import models.{Country, SourceData, ListingKey}
 import org.bson.codecs.DecoderContext
 import org.bson.{BsonDocument, BsonDocumentReader}
 import org.mongodb.scala.model.{BulkWriteOptions, Filters, Projections, Sorts, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.libs.json.{JsArray, JsObject, JsString, Json}
-import services.movies.{ListingKey, MovieCodecs, ScreeningsRepository, SlotsRepository}
-
+import services.movies.{MovieCodecs, ScreeningsRepository, SlotsRepository}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.concurrent.Await

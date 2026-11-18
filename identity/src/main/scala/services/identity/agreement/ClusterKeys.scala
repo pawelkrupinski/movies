@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Resolution, ResolverDecision, StableNames, StoredFamily}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.collection.mutable
 

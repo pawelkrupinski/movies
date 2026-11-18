@@ -1,7 +1,6 @@
 package services.movies
 
-import models.{Cinema, SourceData}
-
+import models.{Cinema, SourceData, ListingKey}
 /**
  * What a venue's own page for a listing states about its film, as `venue_pages` last read it — landed as a cinema slot
  * holds a page's fields — or `None` when the page is not read yet, is gone, or is no page whose detail lands on the

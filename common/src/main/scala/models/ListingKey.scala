@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{Cinema, CinemaMovie, Source, SourceData}
 
 /**
  * A venue's LISTING, identified by what the venue itself published — never by a title the

@@ -4,7 +4,7 @@ import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{FilmTable, Listing, Resolution, ResolverDecision, StoredFamily}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.collection.mutable
 

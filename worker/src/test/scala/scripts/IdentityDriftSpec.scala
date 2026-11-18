@@ -32,7 +32,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // Step 6's price (the owner, 2026-10-31): a Pending take is served as decided on the inputs as they stand; the replay
   // counts, by the kind of input it awaited, how often that provisional take differs from the whole resolve's final one.
   "the pending tally" should "count each provisional take under every kind it awaited, and those differing from the final" in {
-    import services.movies.ListingKey
+    import models.ListingKey
     val rose: ListingKey = ListingKey.Published("QFT", "Rose (2023)", None, Nil)
     val ties: ListingKey = ListingKey.Published("Chichester", "The Ties That Bind Us", None, Nil)
     val reference = Map(rose -> IdentityDrift.Take("tmdb:901251", "OwnMatch", ""), ties -> IdentityDrift.Take("tmdb:1460982", "OwnMatch", ""))
@@ -89,7 +89,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
 
   // ...and what it costs: how many listings each projection serves Pending, and for how long each stays so.
   "the pending spans" should "count the listings Pending at each projection and time each stretch, decided or still open" in {
-    import services.movies.ListingKey
+    import models.ListingKey
     val (a, b) = (ListingKey.Published("QFT", "Rose (2023)", None, Nil), ListingKey.Published("Chichester", "Hamlet", None, Nil))
     val start  = Instant.parse("2026-10-31T12:00:00Z")
     val spans  = new IdentityDrift.PendingSpans
@@ -240,7 +240,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // its listing flipping is fixed; an empty baseline fails every flip, the strict gate.
   private def flip(venue: String, title: String) = {
     def taken(step: String, film: String) = TakeFlips.Taken(step, TakeFlips.Served(film, "OwnMatch"), moved = true)
-    TakeFlips.Flip(services.movies.ListingKey.Published(venue, title, None, Nil),
+    TakeFlips.Flip(models.ListingKey.Published(venue, title, None, Nil),
       Vector(taken("1 boot", "tmdb:1"), taken("6 gone", "tmdb:2"), taken("10 scrape", "tmdb:1")))
   }
   private def known(venue: String, title: String, seed: Int) =
@@ -482,7 +482,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   it should "not be closed while the slice alone lacks a request, or finds a divergence or flip the recording's replay does not" in {
     val none  = IdentityDrift.Findings(Nil, Nil)
     val take  = IdentityDrift.Take("tmdb:1702782", "Broadcast", "")
-    val key   = services.movies.ListingKey.parse("N\u0000Empire Theatre Halstead\u0000https://empire-theatre.co.uk/f=545975\u0000Swan Lake").get
+    val key   = models.ListingKey.parse("N\u0000Empire Theatre Halstead\u0000https://empire-theatre.co.uk/f=545975\u0000Swan Lake").get
     val red   = IdentityDrift.Findings(Seq(IdentityDrift.Divergence("uk", 3, "settled", key, take, IdentityDrift.Take("none", "absent", ""))), Nil)
     IdentityDrift.Cut(1, none, none, Nil).closed shouldBe true
     IdentityDrift.Cut(1, none, none, Seq("GET https://v3.sg.media-imdb.com/suggestion/m/Manon.json")).closed shouldBe false
@@ -578,7 +578,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     Cause.of(faithful = true, answered = true, listings = true) shouldBe "answer+population"
     Cause.of(faithful = true, answered = false, listings = false) shouldBe "lag"     // nothing moved, yet the take did
     Cause.of(faithful = false, answered = true, listings = true) shouldBe "lag"      // the model took otherwise than a whole resolve
-    val key  = services.movies.ListingKey.Published("Kino", "Titans", None, Nil)
+    val key  = models.ListingKey.Published("Kino", "Titans", None, Nil)
     def at(step: String, film: String) = services.identity.TakeFlips.Taken(step, services.identity.TakeFlips.Served(film, ""), moved = true)
     val flip = services.identity.TakeFlips.Flip(key, Vector(at("1 boot", "tmdb:1"), at("4 scrape", "none"), at("9 fill", "tmdb:1")))
     Cause.ofFlip(flip, Map((key, "4 scrape") -> "population", (key, "9 fill") -> "answer")) shouldBe "population,answer"

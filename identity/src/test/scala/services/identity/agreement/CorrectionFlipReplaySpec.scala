@@ -3,7 +3,7 @@ package services.identity.agreement
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.TakeFlips
-import services.movies.ListingKey
+import models.ListingKey
 
 /** THE SEEDED FLIP the convergence leg's flip check must catch (scripts.IdentityDrift, [[TakeFlips]]): "own match first,
  *  correction later", replayed step by step as the leg replays a corpus — a boot, a listing joining a take the evidence

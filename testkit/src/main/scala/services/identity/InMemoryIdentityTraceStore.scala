@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /** Traces held in memory, each written as `identity_traces` stores it to BSON and read back — for tests. */
 final class InMemoryIdentityTraceStore extends IdentityTraceStore {

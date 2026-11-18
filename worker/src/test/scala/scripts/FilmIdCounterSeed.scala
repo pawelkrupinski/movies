@@ -1,9 +1,8 @@
 package scripts
 
-import models.Country
+import models.{Country, ListingKey}
 import services.identity.{FilmIdMapping, IdSeeding, MongoFilmIdCounterStore}
-import services.movies.{ListingKey, MovieRepository}
-
+import services.movies.MovieRepository
 /**
  * Seeds the persisted FilmId map (`identity_film_ids`, docs/design/identity-resolver.md §16) from
  * today's films: every film id in `movies` or `movie_slots` gets the `Long` counter `IdAssigner`

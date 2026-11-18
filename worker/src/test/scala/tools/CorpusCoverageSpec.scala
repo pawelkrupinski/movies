@@ -1,7 +1,7 @@
 package tools
 
 import models._
-import services.movies.ShowtimesDigest
+import models.ShowtimesDigest
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

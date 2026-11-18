@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.util.Random
 

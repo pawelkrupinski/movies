@@ -1,5 +1,7 @@
 package services.movies
 
+
+import models.EmbeddedYear
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

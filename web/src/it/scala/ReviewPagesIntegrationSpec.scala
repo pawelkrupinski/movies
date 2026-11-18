@@ -13,7 +13,7 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.identity.{MongoIdentityModelStore, ResolverDecisionBson}
-import services.movies.ListingKey
+import models.ListingKey
 import services.review._
 import tools.IsolatedMongoDatabase
 import services.{DebugMirror => DebugMirrorCollections}

@@ -4,7 +4,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{MongoPinStore, Pin, PinClaim}
-import services.movies.ListingKey
+import models.ListingKey
 import org.mongodb.scala.SingleObservableFuture
 import tools.IsolatedMongoDatabase
 

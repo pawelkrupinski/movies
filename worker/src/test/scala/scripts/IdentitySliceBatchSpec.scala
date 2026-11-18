@@ -4,7 +4,7 @@ import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentitySlicing
-import services.movies.ListingKey
+import models.ListingKey
 
 /** identity-slice --batch: selectors whose seeds cut the same cluster are ONE slice ([[IdentitySlice.sameCluster]]) — the
  *  UK session stats re-sliced CBeebies' 219-listing cluster once for each of its 210 venues. */

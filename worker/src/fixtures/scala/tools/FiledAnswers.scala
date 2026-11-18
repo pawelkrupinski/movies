@@ -73,7 +73,7 @@ object FiledAnswers {
       case Answer.Unknown => held.fold[Answer[A]](Answer.Unknown) { a => note(a); Answer.Known(a) }
       case known          => known
     }
-    private val key = (l: Listing) => services.movies.ListingKey.serialised(l.key)
+    private val key = (l: Listing) => models.ListingKey.serialised(l.key)
     override def hasDetail(listing: Listing): Boolean = recorded.hasDetail(listing) || filed.capture.withDetail(key(listing))
     override def detail(listing: Listing): Answer[Option[DetailFacts]] =
       orFiled(recorded.detail(listing), filed.capture.details.get(key(listing)), (d: Option[DetailFacts]) => details.put(key(listing), d))

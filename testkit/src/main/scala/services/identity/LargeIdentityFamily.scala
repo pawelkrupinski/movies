@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /** A family the size of a US wide release's: one film listed by ~3,000 venues under one page and title, one decision
  *  naming them all, a handful of node texts between them — the shape of the largest `identity_model_families`

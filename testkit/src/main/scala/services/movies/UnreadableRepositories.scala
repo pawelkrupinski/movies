@@ -2,7 +2,7 @@ package services.movies
 
 import services.titles.TitleNormalizer
 
-import models.{MovieRecord, Showtime, SourceData}
+import models.{MovieRecord, Showtime, SourceData, ListingKey}
 import tools.contracts.FailsOnPurpose
 
 /**

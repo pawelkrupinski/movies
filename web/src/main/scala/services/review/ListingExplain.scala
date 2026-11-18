@@ -2,7 +2,7 @@ package services.review
 
 import models.Country
 import services.identity.{ListingTrace, ResolverDecision}
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets

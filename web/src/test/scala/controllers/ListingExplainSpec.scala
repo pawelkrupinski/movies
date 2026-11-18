@@ -8,7 +8,7 @@ import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import play.twirl.api.HtmlFormat
 import services.identity.ResolverDecision
-import services.movies.ListingKey
+import models.ListingKey
 import services.review._
 
 import java.nio.charset.StandardCharsets

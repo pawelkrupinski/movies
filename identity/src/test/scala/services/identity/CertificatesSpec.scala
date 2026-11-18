@@ -17,7 +17,7 @@ class CertificatesSpec extends AnyFlatSpec with Matchers {
   private def venueIn(country: Country) = Cinema.all.find(c => City.forCinema(c).exists(_.country == country)).get
   private def listing(country: Country, certificate: Option[String]) = {
     val cinema = venueIn(country)
-    Listing(cinema, services.movies.ListingKey.Published(cinema.displayName, "Obsession", None, Nil), "Obsession", "Obsession", "Obsession",
+    Listing(cinema, models.ListingKey.Published(cinema.displayName, "Obsession", None, Nil), "Obsession", "Obsession", "Obsession",
       None, Nil, Some(96), None, None, certificate = certificate)
   }
 

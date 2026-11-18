@@ -4,7 +4,7 @@ import tools.SpecPool
 import models.Country
 import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes}
 import services.identityadapters.TmdbIdentityLookups
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.{Capture, Label, Take}
 

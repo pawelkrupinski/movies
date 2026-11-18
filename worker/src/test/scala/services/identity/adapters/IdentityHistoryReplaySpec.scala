@@ -5,7 +5,7 @@ import services.identityadapters.*
 import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{HttpStatusException, ManualScheduler, MutableClock, TestWiring}
 
 import scala.util.{Failure, Success}

@@ -6,7 +6,7 @@ import services.titles.TitleNormalizer
 import java.util.Locale
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{MovieRecord, Source, SourceData}
+import models.{MovieRecord, Source, SourceData, ShowtimesDigest}
 import play.api.Logging
 import tools.Stoppable
 import tools.TickRun

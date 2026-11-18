@@ -38,7 +38,7 @@ final class FillingLookups(inner: IdentityLookups, rnd: Random) extends Identity
 /** One event the identity model takes: listings a scrape saw, listings it no longer sees, answers filed. */
 enum IdentityEvent {
   case Seen(listings: Seq[Listing])
-  case Gone(keys: Seq[services.movies.ListingKey])
+  case Gone(keys: Seq[models.ListingKey])
   case Answered(changed: AnswersChanged)
 
   def label: String = this match {
@@ -53,7 +53,7 @@ enum IdentityEvent {
 final class RandomIdentityEvents(listings: Seq[Listing], lookups: FillingLookups, seed: Long, steps: Int = 40) {
   private val rnd     = new Random(seed)
   private val pending = mutable.Queue.from(rnd.shuffle(listings))
-  val held = mutable.LinkedHashMap.empty[services.movies.ListingKey, Listing]
+  val held = mutable.LinkedHashMap.empty[models.ListingKey, Listing]
 
   def events: Iterator[IdentityEvent] = Iterator.range(0, steps).map { _ =>
     rnd.nextInt(10) match {

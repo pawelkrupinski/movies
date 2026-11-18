@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, CineworldChain, Filmweb, Imdb, KinoMuranow, Multikino, SourceData, Tmdb}
+import models.{CinemaShowing, CineworldChain, Filmweb, Imdb, KinoMuranow, Multikino, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

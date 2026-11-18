@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 /** A4: the projection's film ids are [[StableNames]]' (whose spec carries the rules), over its clusters as sets: each
  *  cluster named once, empty ones dropped, the assignment in id order. */

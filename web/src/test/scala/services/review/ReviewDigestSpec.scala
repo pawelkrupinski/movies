@@ -141,7 +141,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
 
   it should "put each item on a card of its own listing, the film judged put forward and the film the model took among its candidates" in {
     import services.identity.ResolverDecision
-    import services.movies.ListingKey
+    import models.ListingKey
     val hall    = ListingKey.Published("KiKuBi", "Rose", None, Nil)
     val sibling = ListingKey.Published("Other Kino", "Rose", None, Nil)
     val decision = ResolverDecision(Seq(hall, sibling), Some(1176962), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1176962 at 90.0%"))()

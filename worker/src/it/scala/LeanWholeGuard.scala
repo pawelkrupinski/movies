@@ -2,7 +2,7 @@ package integration
 
 import services.identity._
 import services.identityadapters.TmdbIdentityLookups
-import services.movies.ListingKey
+import models.ListingKey
 import tools._
 
 import java.nio.file.{Files, Path}

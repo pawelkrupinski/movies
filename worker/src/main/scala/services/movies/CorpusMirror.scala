@@ -3,7 +3,7 @@ package services.movies
 import services.titles.TitleNormalizer
 
 
-import models.MovieRecord
+import models.{MovieRecord, ShowtimesDigest}
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 

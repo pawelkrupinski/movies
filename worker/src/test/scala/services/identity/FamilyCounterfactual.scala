@@ -2,7 +2,7 @@ package services.identity
 
 import models.Country
 import org.mongodb.scala.MongoClient
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import java.time.Instant

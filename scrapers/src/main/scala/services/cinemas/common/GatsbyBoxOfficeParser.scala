@@ -5,7 +5,7 @@ import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
-import services.movies.TrailerEmbed
+import models.TrailerEmbed
 
 import java.time.LocalDateTime
 import scala.util.Try

@@ -515,7 +515,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       override lazy val enrichmentFetch: HttpFetch = counting
     }
     val venues   = Seq(models.KinoMuza, models.Multikino, models.KinoPalacowe)
-    val listings = venues.map(venue => services.identity.Listing(venue, services.movies.ListingKey.Published(venue.displayName, "Dolly", None, Nil),
+    val listings = venues.map(venue => services.identity.Listing(venue, models.ListingKey.Published(venue.displayName, "Dolly", None, Nil),
       "Dolly", "Dolly", "Dolly", None, Nil, None, None, None))
     val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
       services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)

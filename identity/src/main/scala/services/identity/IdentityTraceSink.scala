@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /** Where the resolver hands each family it settled, for the rules behind its decisions to be kept
  *  ([[IdentityTraceStore]] builds and writes them). The resolver reaches only this file — not what a trace record

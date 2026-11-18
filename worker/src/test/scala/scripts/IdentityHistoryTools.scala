@@ -6,7 +6,7 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
 import services.identity._
 
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, Instant}

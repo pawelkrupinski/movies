@@ -1,10 +1,11 @@
 package services.identity
 
+
+import models.ListingKey
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.LoneElement
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 
 import scala.collection.mutable

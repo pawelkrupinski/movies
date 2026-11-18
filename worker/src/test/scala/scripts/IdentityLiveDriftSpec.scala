@@ -4,7 +4,7 @@ import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{ResolverDecision, TakeChange}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.ProdFilm
 
 /** The off-worker drift check joins each recorded listing to the film prod screened it as and names every one whose TMDB

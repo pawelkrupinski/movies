@@ -5,7 +5,7 @@ import models.Country
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 import tools.UnmatchedClusters.Label
 
 import java.nio.file.Files

@@ -2,7 +2,7 @@ package services.identity.agreement
 
 import services.identity.{Answer, Dependency, Evidence,
   IdentityMeasures, Listing, ListingShape, PosterEvidence, Question, ResolverDecision}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.collection.mutable
 

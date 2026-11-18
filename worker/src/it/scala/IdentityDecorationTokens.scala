@@ -4,7 +4,7 @@ import services.identity.MultiFilmBill
 import play.api.libs.json.Json
 import services.identity.{DecorationSegments, DecorationTokens, IdentityMeasures, TitleDecorations}
 import services.identity.ListingShape
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage}
 

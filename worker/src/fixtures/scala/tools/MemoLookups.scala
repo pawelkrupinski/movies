@@ -24,7 +24,7 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   // assumes ONE caller at a time and none beside a prefetch -- true while no resolver calls it (only TrackedLookups, after
   // its own prefetch, and SuspectTakeCount do) and no memo is shared by two TrackedLookups on parallel threads
   override def prefetchAnswered(): Unit                                 = inner.prefetchAnswered()
-  override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit =
+  override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[models.ListingKey]): Unit =
     inner.released(qs, ids, pages)
   // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
   // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another, and a recorded corpus's detail

@@ -225,7 +225,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   }
 
   "a card" should "show the cast the venue, its feed's catalogue and each candidate film state, cut short past five names" in {
-    val fed     = services.movies.ListingKey.Published("Planken Lichtspiele Mannheim", "FRANZ KAFKA", None, Nil)
+    val fed     = models.ListingKey.Published("Planken Lichtspiele Mannheim", "FRANZ KAFKA", None, Nil)
     val venue   = (1 to 7).map(i => s"Venue Actor $i") :+ "<b>Bold</b> & Co"
     val catalog = Seq("Catalogue Actor 1", "Catalogue Actor 2")
     val tmdb    = (1 to 6).map(i => s"TMDB Actor $i")
@@ -299,9 +299,9 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   }
 
   "the queue" should "rank by the listings an answer settles, and say on each card how many and why the resolver is unsure" in {
-    val crowded = services.identity.ResolverDecision((1 to 6).map(i => services.movies.ListingKey.Published(s"Kino $i", "Kandydaci śmierci", None, Nil)),
+    val crowded = services.identity.ResolverDecision((1 to 6).map(i => models.ListingKey.Published(s"Kino $i", "Kandydaci śmierci", None, Nil)),
       None, 0.48, services.identity.ResolverDecision.Basis.BelowThreshold, Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()
-    val pooled  = services.identity.ResolverDecision(Seq(services.movies.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
+    val pooled  = services.identity.ResolverDecision(Seq(models.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
       services.identity.ResolverDecision.Basis.PooledMatch, Nil)()
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision, crowded, matchedDecision, pooled))),

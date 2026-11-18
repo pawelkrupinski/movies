@@ -262,7 +262,7 @@ object CinemaCityClient {
         .filter(_.nonEmpty))
     }
     val trailerUrl = videoLink.orElse(mediaVideo)
-      .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+      .flatMap(u => models.TrailerEmbed.youTubeId(u)
         .map(id => s"https://www.youtube.com/watch?v=$id"))
     // Polish age rating from `filmDetails.ageRestrictionName`: "na" means no
     // restriction (drop it — an unrated film stays unbadged), while "12-plus"

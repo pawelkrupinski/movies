@@ -1,11 +1,11 @@
 package scripts
 
 import clients.tools.RecordingHttpFetch
-import models.{Cinema, CinemaMovie, Country}
+import models.{Cinema, CinemaMovie, Country, ListingKey}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import services.identity.{IdentityMeasures, TitleDecorations, TmdbFilmRecord}
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Number}
-import services.movies.{ListingKey, ScrapeListing}
+import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
 import tools.CorpusFixture
 

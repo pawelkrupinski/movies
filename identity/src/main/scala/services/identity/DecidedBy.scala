@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * Which stage decided a listing's take, and by which rule — each as ONE short id, what a take-change line

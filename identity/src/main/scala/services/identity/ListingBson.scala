@@ -2,7 +2,7 @@ package services.identity
 
 import models.Source
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString, BsonValue}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.jdk.CollectionConverters._
 

@@ -1,8 +1,7 @@
 package services.identity
 
-import models.Source
-import services.movies.{ShowtimesDigest, StoredMovieRecord}
-
+import models.{Source, ShowtimesDigest}
+import services.movies.StoredMovieRecord
 import java.time.LocalDateTime
 
 /**

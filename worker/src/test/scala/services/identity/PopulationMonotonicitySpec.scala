@@ -8,7 +8,7 @@ import scripts.{IdentityDrift, IdentityDriftSlicesSpec, IdentitySlice}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.time.{Clock, ZoneOffset}
-import services.movies.ListingKey
+import models.ListingKey
 import scala.util.hashing.MurmurHash3
 import scala.jdk.CollectionConverters._
 import scala.util.Try

@@ -1,7 +1,7 @@
 package services.identity
 
 import models._
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import scala.util.Random

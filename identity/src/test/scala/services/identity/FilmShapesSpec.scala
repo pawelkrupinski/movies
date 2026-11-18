@@ -1,10 +1,9 @@
 package services.identity
 
-import models.{Helios, KinoMuza, Multikino, MovieRecord, SourceData}
+import models.{Helios, KinoMuza, Multikino, MovieRecord, SourceData, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 /**
  * What the projection keeps of each film from one projection to the next is the object it held when nothing about it
  * moved: kept until the next projection, minutes on worker-us, every copy made anew is promoted to the old generation

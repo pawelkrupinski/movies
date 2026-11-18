@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 import java.util.Locale
 

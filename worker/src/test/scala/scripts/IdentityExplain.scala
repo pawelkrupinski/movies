@@ -2,7 +2,7 @@ package scripts
 
 import models.Country
 import services.identity.{IdentityResolver, Listing, OlderRefs, ResolverDecision}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{IdentityJudgements, UnmatchedClusters}
 

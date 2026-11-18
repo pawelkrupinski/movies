@@ -3,7 +3,7 @@ package services.identity
 import java.util.Locale
 
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Missing, MissingFilm, MissingListing, Number}
-import services.movies.EmbeddedYear
+import models.EmbeddedYear
 import services.titles.TitleContainment
 import services.titles.SearchTitles
 

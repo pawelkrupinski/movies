@@ -1,7 +1,7 @@
 package services.review
 
 import services.identity.ResolverDecision
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * What one answer on a cluster is worth: how many listings it settles, and how unsure the resolver is of them. The

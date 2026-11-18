@@ -7,7 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.*
-import services.movies.ListingKey
+import models.ListingKey
 import tools.IsolatedMongoDatabase
 import tools.contracts.Implementations
 

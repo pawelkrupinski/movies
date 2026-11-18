@@ -3,7 +3,7 @@ package services.identityadapters
 import services.identity.*
 import org.bson.{BsonArray, BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonString, BsonValue}
 import services.identity.agreement.VoterFamily
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.jdk.CollectionConverters._
 

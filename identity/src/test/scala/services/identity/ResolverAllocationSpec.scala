@@ -91,7 +91,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   }
 
   "each listing's film id" should "be one hash table built to size, the same ids, with nothing copied as it grows" in {
-    import services.movies.ListingKey
+    import models.ListingKey
     val ids = (1L to 500L).map(id => id -> (1 to 40).map(i => ListingKey.Native(s"Venue $i", s"https://v/$id/$i", s"Film $id"): ListingKey).toSet)
     val reference = ids.flatMap { case (id, ls) => ls.map(_ -> id) }.toMap
     val built     = IdAssigner.Assignment(ids, 501L).idOfListing

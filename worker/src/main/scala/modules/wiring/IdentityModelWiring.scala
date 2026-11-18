@@ -53,8 +53,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
     }
   /** The take history's last film change of each listing within the reversal count's horizon, as the count holds them
    *  (`TakeHistory.reversalsHeld`): none without a database, or when the read fails (logged). */
-  protected def identityReversalsHeld(): Seq[(services.movies.ListingKey, services.identity.TakeReversals.Held)] =
-    mongoConnection.database.fold(Seq.empty[(services.movies.ListingKey, services.identity.TakeReversals.Held)]) { db =>
+  protected def identityReversalsHeld(): Seq[(models.ListingKey, services.identity.TakeReversals.Held)] =
+    mongoConnection.database.fold(Seq.empty[(models.ListingKey, services.identity.TakeReversals.Held)]) { db =>
       val reader = new services.identityadapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
       scala.util.Try(services.identityadapters.TakeHistory.reversalsHeld(reader, clock.millis()))
         .recover { case scala.util.control.NonFatal(e) => logger.warn(s"take reversals: the take history not read, counting from none: $e"); Nil }.get

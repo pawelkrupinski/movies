@@ -1,8 +1,8 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.{Filmweb, MovieRecord, Source, SourceData}
-import services.movies.{CacheKey, EmbeddedYear, LatestTitleYear, MovieCache}
+import models.{Filmweb, MovieRecord, Source, SourceData, EmbeddedYear}
+import services.movies.{CacheKey, LatestTitleYear, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 

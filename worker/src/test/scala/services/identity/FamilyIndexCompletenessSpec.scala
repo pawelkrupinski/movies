@@ -4,7 +4,7 @@ import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.FamilyFinalReads
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._

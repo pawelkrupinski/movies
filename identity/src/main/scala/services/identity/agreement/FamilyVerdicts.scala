@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, DetailFacts, ForwardingIdentityLookups, IdentityCalibration, IdentityLookups, Listing}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import scala.collection.mutable

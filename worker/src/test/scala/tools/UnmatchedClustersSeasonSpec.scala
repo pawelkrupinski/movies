@@ -4,7 +4,7 @@ import models.{Country, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Listing, ScreeningDays}
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.LocalDate
 

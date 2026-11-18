@@ -8,8 +8,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.LoneElement
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import scala.concurrent.duration._

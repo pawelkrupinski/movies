@@ -24,7 +24,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   private val listing = FilmTable.listing(Multikino, "Lalka").copy(poster = Some(venuePoster), screenings = ScreeningDays.of(Seq(day)))
   private val model   = Resolution(Seq(ResolverDecision(Seq(listing.key), Some(1001), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1001"))()),
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-  private def listingOf: services.movies.ListingKey => Option[Listing] = Map(listing.key -> listing).get
+  private def listingOf: models.ListingKey => Option[Listing] = Map(listing.key -> listing).get
 
   private val has = SourceRecord(IdentityMeasures.Film("Lalka", None, Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
   private def silent = VoterFamily.values.map(family => family -> new HeldFamilyAnswers(family, Map.empty)).toMap[VoterFamily, FamilyAnswers]

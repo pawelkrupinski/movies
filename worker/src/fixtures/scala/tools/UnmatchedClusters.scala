@@ -7,7 +7,7 @@ import org.bson.json.{JsonMode, JsonWriterSettings}
 import services.identity._
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts, VoterFamily}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import java.nio.charset.StandardCharsets

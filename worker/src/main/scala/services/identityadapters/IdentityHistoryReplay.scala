@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import org.bson.BsonDocument
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.util.concurrent.ConcurrentHashMap
 

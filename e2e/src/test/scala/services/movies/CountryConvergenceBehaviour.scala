@@ -7,7 +7,7 @@ import tools.SpecClock.given
 import tools.SpecTimeouts
 
 import controllers.MovieControllerService
-import models.{Cinema, CinemaMovie, City, Country, MovieRecord, ScrapeAttempt}
+import models.{Cinema, CinemaMovie, City, Country, MovieRecord, ScrapeAttempt, ListingKey, ShowtimesDigest}
 import org.mongodb.scala.MongoClient
 import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
@@ -1810,11 +1810,11 @@ abstract class CountryConvergenceBehaviour(
       // compete — so a film is untouched only when no listing in its family changed: a sibling
       // that leaves can settle what it had kept open. Run 36777365475: 'DKF Zamek: Lawa' (Wajda,
       // 1989) ending let a bare 'Lawa' join 'Konwicki. Lawa' (2023), its own listing unchanged.
-      val familyOf: Map[services.movies.ListingKey, Int] =
+      val familyOf: Map[models.ListingKey, Int] =
         w.identityModel.familyOf(scala.concurrent.duration.Duration(5, "minutes"))
           .getOrElse(fail("the identity model could not be read for the next day's families"))
       def familiesOf(r: StoredMovieRecord): Set[Int] =
-        r.record.data.toSeq.flatMap { case (source, slot) => services.movies.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
+        r.record.data.toSeq.flatMap { case (source, slot) => models.ListingKey.ofSource(source, slot) }.flatMap(familyOf.get).toSet
       // By id, not `ownUnchanged.contains`: that compared every record against every other —
       // quadratic in the corpus, on a US-sized one.
       val ownUnchangedIds = ownUnchanged.iterator.map(_.id).toSet

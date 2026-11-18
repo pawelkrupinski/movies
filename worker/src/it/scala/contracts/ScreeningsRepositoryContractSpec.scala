@@ -2,12 +2,12 @@ package services.contracts
 
 import tools.SpecTimeouts
 
-import models.Showtime
+import models.{Showtime, ListingKey}
 import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, ListedShowtimes, ListingKey, ScreeningsRepository, SlotKeyed}
+import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, ListedShowtimes, ScreeningsRepository, SlotKeyed}
 import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
 

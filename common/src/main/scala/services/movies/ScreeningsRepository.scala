@@ -3,7 +3,7 @@ package services.movies
 import tools.KeysetScan
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
-import models.Showtime
+import models.{Showtime, ListingKey}
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}

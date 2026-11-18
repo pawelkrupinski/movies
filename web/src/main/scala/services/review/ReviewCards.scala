@@ -1,7 +1,7 @@
 package services.review
 
 import play.api.libs.json.{JsObject, Json}
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.Instant
 import scala.concurrent.duration.Duration

@@ -5,7 +5,7 @@ import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{StoredCorrection, StoredFill, StoredVerdict}
-import services.movies.ListingKey
+import models.ListingKey
 
 /** Prod's state as the local mirror holds it ([[ProdMirror]]): its filed family answers preferred over a capture's, and
  *  one listing's prod side — the model's stored decision, the agreement's stored verdict — read as the take prod serves. */

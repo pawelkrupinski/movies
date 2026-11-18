@@ -49,7 +49,7 @@ object TakeExplanation {
       val named    = answers.flatMap(e => e.before.toSeq ++ e.after).flatMap(d => Option(d.get("ids")).toSeq)
         .flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue.toString)).distinct.filterNot(films.contains)
       val listings = reader.of(HistoryEntry.Listing, (now ++ before).distinct)
-      val titles   = (now ++ before).flatMap(k => services.movies.ListingKey.parse(k).map(_.rawTitle)).distinct
+      val titles   = (now ++ before).flatMap(k => models.ListingKey.parse(k).map(_.rawTitle)).distinct
       val failures = reader.since(Seq(HistoryEntry.Failure), from).filter(e => (films ++ named).exists(id => e.id.contains(s"/movie/$id")) ||
         titles.exists(t => e.id.contains(java.net.URLEncoder.encode(t, "UTF-8"))))
       val inputs   = (answers ++ reader.of(HistoryEntry.answer(TmdbKind.Film), named) ++ listings ++ failures)
@@ -68,7 +68,7 @@ object TakeExplanation {
       case n                      => n.longValue.toString
     } else v.toString
   /** A serialised listing key as `venue | billed title`. */
-  def named(key: String): String = services.movies.ListingKey.parse(key).fold(key)(k => s"${k.venue} | ${k.rawTitle}")
+  def named(key: String): String = models.ListingKey.parse(key).fold(key)(k => s"${k.venue} | ${k.rawTitle}")
 
   private def membersOf(take: HistoryEntry): Seq[String] =
     take.after.flatMap(d => Option(d.get("members"))).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asString.getValue))

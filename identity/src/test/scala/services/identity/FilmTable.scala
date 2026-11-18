@@ -1,7 +1,7 @@
 package services.identity
 
 import models.Cinema
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 /** A film database of `films`: search by all-words containment of a title or an alternative title,

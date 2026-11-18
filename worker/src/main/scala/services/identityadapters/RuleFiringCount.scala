@@ -58,7 +58,7 @@ object RuleFiringCount {
 
   /** The rule ids `key` fired under `decision`: the trace's ([[DecisionTrace.rulesOf]]) and, for a take of a stage after
    *  the model, that stage's rule (`stage:<rule>`, [[DecidedBy.of]]). */
-  def idsOf(decision: ResolverDecision, key: services.movies.ListingKey): Seq[String] =
+  def idsOf(decision: ResolverDecision, key: models.ListingKey): Seq[String] =
     decision.trace.rulesOf(key) ++
       Option.unless(ModelStages(DecidedBy.stage(decision, key)))("stage:" + DecidedBy.of(decision, key))
 

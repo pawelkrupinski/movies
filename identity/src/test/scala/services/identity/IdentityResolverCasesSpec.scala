@@ -2,11 +2,10 @@ package services.identity
 
 import services.titles.billing.BillingParse
 
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica, UkRoster}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica, UkRoster, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 /**
  * The resolver on hand-built families shaped like historical incidents. The film database is a
  * small table; each case asserts only what the evidence decides. The cases are TEST LABELS: no

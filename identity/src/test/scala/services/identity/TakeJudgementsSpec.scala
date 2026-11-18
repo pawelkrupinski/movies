@@ -31,7 +31,7 @@ class TakeJudgementsSpec extends AnyFlatSpec with Matchers {
   }
 
   "a take judged wrong" should "be withdrawn from its own listing alone, the rest of its decision taking the film still" in {
-    def key(venue: String, title: String) = services.movies.ListingKey.Published(venue, title, None, Nil)
+    def key(venue: String, title: String) = models.ListingKey.Published(venue, title, None, Nil)
     val (tywyn, ilkley, other) = (key("Magic Lantern Tywyn", "Fallen Angels"), key("Ilkley Cinema", "Fallen Angels"), key("Kino Muza", "Lalka"))
     val pooled = ResolverDecision(Seq(tywyn, ilkley), Some(11220), 0.9, ResolverDecision.Basis.PooledMatch, Nil)()
     val lalka  = ResolverDecision(Seq(other), Some(2), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()
@@ -48,7 +48,7 @@ class TakeJudgementsSpec extends AnyFlatSpec with Matchers {
     // Verify scrape recording #17 (run 42442828541): sixteen Multikinos' "Balet z Opery Paryskiej 2026-2027: Jezioro
     // łabędzie", one decision taking a film judged wrong for the billing at every venue, came out as SIXTEEN films where
     // production served one -- the withdrawal had regrouped them, which no judgement says.
-    def key(venue: String) = services.movies.ListingKey.Published(venue, "Jezioro łabędzie", None, Nil)
+    def key(venue: String) = models.ListingKey.Published(venue, "Jezioro łabędzie", None, Nil)
     val (a, b, c) = (key("Multikino Arkadia"), key("Multikino Złote Tarasy"), key("Multikino Ursynów"))
     val taken      = ResolverDecision(Seq(a, b, c), Some(1702782), 0.4, ResolverDecision.Basis.OwnMatch, Nil)()
     val resolution = Resolution(Seq(taken), 1, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)

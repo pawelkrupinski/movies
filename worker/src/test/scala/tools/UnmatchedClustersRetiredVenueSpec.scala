@@ -5,7 +5,7 @@ import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.Listing
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}

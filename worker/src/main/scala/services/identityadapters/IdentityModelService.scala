@@ -172,7 +172,7 @@ final class IdentityModelService(
 
   /** Each listing's family, the model brought up to now as [[current]] brings it — which a snapshot's resolution does
    *  not carry. `None` as [[current]]'s. */
-  def familyOf(timeout: FiniteDuration): Option[Map[services.movies.ListingKey, Int]] = onModel(timeout) {
+  def familyOf(timeout: FiniteDuration): Option[Map[models.ListingKey, Int]] = onModel(timeout) {
     catchUp()
     model.map(_.familyOf)
   }
@@ -295,10 +295,10 @@ final class IdentityModelService(
 
   /** Every listing that left, with its last-seen facts and when it left ([[ListingRetention.Departed]]): an INPUT,
    *  persisted in `retainedStore` as it moves, and read back by a take-up ([[resumed]]). */
-  private val departed = new ConcurrentHashMap[services.movies.ListingKey, ListingRetention.Departed]()
+  private val departed = new ConcurrentHashMap[models.ListingKey, ListingRetention.Departed]()
   /** The departed listings the model holds as kept now: a cache of [[ListingRetention.retainedAt]] of the inputs, never
    *  a decision of its own -- each drain recomputes it whole and moves the model by the difference. */
-  private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[services.movies.ListingKey]()
+  private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[models.ListingKey]()
   /** Each held listing's title as [[ListingRetention]] reads it -- by the one title relation ([[TitleRelation]]) -- by the
    *  listing object it was read off. */
   private val titles = new java.util.WeakHashMap[Listing, TitleRelation.Forms]()
@@ -312,7 +312,7 @@ final class IdentityModelService(
    *  the listings kept are recomputed WHOLE from the departed and the billed ones, whatever order they came in -- one a
    *  related arrival bills again is kept again -- and the model moves by the difference from what it held as kept. */
   private def retaining(engine: IncrementalResolver, seen: Seq[Listing],
-                        leaving: Iterable[services.movies.ListingKey]): (Seq[Listing], Seq[services.movies.ListingKey]) = {
+                        leaving: Iterable[models.ListingKey]): (Seq[Listing], Seq[models.ListingKey]) = {
     val now      = clock.millis()
     val seenKeys = seen.iterator.map(_.key).toSet
     val back     = seenKeys.filter(departed.containsKey)
@@ -323,7 +323,7 @@ final class IdentityModelService(
     // a departed listing its own venue bills again under another key (a lent page and year, another case) is back, not
     // departed: one that leaves as its twin arrives is never written, one already stored is deleted -- that one alone, so
     // the delete never reaches the archive's expired row of an earlier departure under a key leaving now
-    val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[services.movies.ListingKey]
+    val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[models.ListingKey]
                    else ListingRetention.returnedUnderAnotherKey((departed.values.asScala ++ leftAll.values).map(_.listing).toSeq, seen)
                      .iterator.map(_.key).toSet
     val left     = leftAll -- twins
@@ -339,7 +339,7 @@ final class IdentityModelService(
       (seen, going.toSeq)
     } else {
       val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)).toSeq ++ seen
-      val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => services.movies.ListingKey.serialised(d.listing.key)),
+      val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => models.ListingKey.serialised(d.listing.key)),
         present, now, normalizer, formsOf, retentionWindow)
       val keptKeys = kept.iterator.map(_.key).toSet
       val newly    = kept.filterNot(l => retained.contains(l.key))
@@ -381,7 +381,7 @@ final class IdentityModelService(
 
   /** `twins` (departed listings billed again under another key) deleted from the store, logged and counted: duplicates, so
    *  deleted, never expired. A delete that fails is logged; the next take-up or drain finds them again. */
-  private def deleteTwins(twins: Set[services.movies.ListingKey], atBoot: Boolean): Unit = {
+  private def deleteTwins(twins: Set[models.ListingKey], atBoot: Boolean): Unit = {
     persist(retainedStore.delete(twins))
     metrics.twinsDeleted(twins.size, atBoot)
     logger.info(s"identity model: ${twins.size} departed listing(s) deleted as twins of a listing billed again under another key" +
@@ -395,10 +395,10 @@ final class IdentityModelService(
   /** `seen` and `gone`, as they move what `engine` holds, into the history: a listing new to it, held otherwise — the
    *  model's fields or its poster — or let go. Its screening days alone moving is no entry: a scrape adds days daily,
    *  and the model reads only their season. */
-  private def kept(engine: IncrementalResolver, seen: Seq[Listing], gone: Seq[services.movies.ListingKey]): Unit =
+  private def kept(engine: IncrementalResolver, seen: Seq[Listing], gone: Seq[models.ListingKey]): Unit =
     if (history ne IdentityHistory.Discard) {
       val at = clock.millis()
-      def key(k: services.movies.ListingKey) = services.movies.ListingKey.serialised(k)
+      def key(k: models.ListingKey) = models.ListingKey.serialised(k)
       val moved = seen.flatMap { listing =>
         val was = engine.held(listing.key)
         Option.when(!was.contains(listing) || was.exists(_.poster != listing.poster))(

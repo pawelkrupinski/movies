@@ -53,7 +53,7 @@ object StagedEvidence {
 
   /** A decision's trace of `key`, its films titled by `titleOf`: the rule that decided it (`decidedBy`) and the stage
    *  (`stage`) when known, then the node's own. */
-  def node(key: services.movies.ListingKey, n: DecisionTrace.Node, titleOf: Int => Option[String],
+  def node(key: models.ListingKey, n: DecisionTrace.Node, titleOf: Int => Option[String],
            decidedBy: Option[String] = None, stage: Option[String] = None): StagedNode = {
     def film(id: Int) = s"tmdb $id${titleOf(id).fold("")(" " + _)}"
     StagedNode(key.venue, key.rawTitle, facts(

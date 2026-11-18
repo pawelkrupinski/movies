@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * One thing a decision depends on, as its RECEIPT names it: every external read is a [[Question]], read in one of the

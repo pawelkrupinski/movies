@@ -22,7 +22,7 @@ class DependencyIndexSpec extends AnyFlatSpec with Matchers {
     Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Cast, Question.FilmRecord(7)),
     Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(CandidateQuery.Title("lalka"))),
     Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Answer,
-      Question.VenuePage(services.movies.ListingKey.Published("Kino Muza", "Lalka", Some(2025), Nil))),
+      Question.VenuePage(models.ListingKey.Published("Kino Muza", "Lalka", Some(2025), Nil))),
     Dependency.Year)
 
   private final case class Entry(reads: Map[Dependency, Long])

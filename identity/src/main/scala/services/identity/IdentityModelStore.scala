@@ -5,7 +5,7 @@ import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, Bs
 import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.model.{Filters, ReplaceOptions, UpdateOneModel, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

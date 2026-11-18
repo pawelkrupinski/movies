@@ -37,8 +37,8 @@ object IdentityRulesSources {
     "common/src/main/scala/services/movies/ScrapeListing.scala",
     "common/src/main/scala/services/movies/MixedFilmDetector.scala",
     "common/src/main/scala/services/movies/MovieRecordMerge.scala",
-    "common/src/main/scala/services/movies/ShowtimesDigest.scala",
-    "common/src/main/scala/services/movies/ListingKey.scala",
+    "common/src/main/scala/models/ShowtimesDigest.scala",
+    "common/src/main/scala/models/ListingKey.scala",
     "common/src/main/scala/services/movies/ScreeningTokens.scala",
     "common/src/main/scala/services/movies/VenuePageFacts.scala")
 

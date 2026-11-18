@@ -63,7 +63,7 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
   it should "be a live show when it bills a performer live, at the venue, or a theatre company's staging" in {
     // DE, recording 38355584482: each took the film one piece of its title names — a 1999 short "Ausverkauft!" by the
     // sold-out tag, the 1951 "Follow the Sun" by the show's name, the 2019 film of the play the company stages
-    def at(venue: String, title: String) = titled(title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil))
+    def at(venue: String, title: String) = titled(title).copy(key = models.ListingKey.Published(venue, title, None, Nil))
     NonFilmEvents.of(at("Apollo Hannover", "Jan Logemann LIVE: Herr Logemann hebt ab! -AUSVERKAUFT!-")) shouldBe Some("live show")
     NonFilmEvents.of(at("Apollo Hannover", "Jan Preuß LIVE")) shouldBe Some("live show")
     NonFilmEvents.of(at("Beluga Kino", "HELMUT ZIERL - live im Beluga Kino - FOLLOW THE SUN - Der Sommer meines Lebens")) shouldBe Some("live show")

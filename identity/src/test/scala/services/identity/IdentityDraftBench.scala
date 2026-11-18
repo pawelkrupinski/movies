@@ -2,9 +2,8 @@ package services.identity
 
 import tools.SpecClock.given
 
-import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema}
-import services.movies.{CinemaSlotBuilder, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
-
+import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema, ListingKey}
+import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
 import java.time.LocalDateTime
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
@@ -163,7 +162,7 @@ object IdentityDraftBench {
         val plan = IdentityProjectionPlan.finish(draft, normalizer, stored.contains)
         // As IdentityProjection.write: only the films that differ from the stored (lean) records are completed.
         val changed = draft.complete(plan.films.filter(f => stored.get(f.id).forall(s =>
-          s.key(normalizer) != f.key || !services.movies.ShowtimesDigest.leanEqual(f.record, s.record))), id => stored.get(id).map(_.record))
+          s.key(normalizer) != f.key || !models.ShowtimesDigest.leanEqual(f.record, s.record))), id => stored.get(id).map(_.record))
         (plan, changed)
       }
       val size = if (scope.whole) "whole" else s"${scope.films.size} films/${scope.listings.size} listings"
@@ -175,7 +174,7 @@ object IdentityDraftBench {
       stored   = stored -- plan.retired ++ changed.map { f =>
         val held = stored.get(f.id).fold(Map.empty[models.Source, models.SourceData])(_.record.data)
         val data = f.record.data.foldLeft(f.record.data) { case (data, (source, slot)) =>
-          if (held.get(source).exists(_ eq slot)) data else data.updated(source, services.movies.ShowtimesDigest.stripSlot(slot)) }
+          if (held.get(source).exists(_ eq slot)) data else data.updated(source, models.ShowtimesDigest.stripSlot(slot)) }
         f.id -> StoredMovieRecord(f.title, f.year, f.record.copy(data = data), f.id, Some(f.key))
       }
       counters = counters.appended(plan.counterAdditions).toOption.get

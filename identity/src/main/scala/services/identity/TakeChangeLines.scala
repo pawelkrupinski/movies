@@ -116,7 +116,7 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
 
   /** The command that replays `key` — its venue and billed title, exactly — under the code of the build that took it:
    *  `scripts/identity-slice`, which decides a matched listing as well as an unmatched one, model and agreement. */
-  private def reproOf(key: services.movies.ListingKey): String =
+  private def reproOf(key: models.ListingKey): String =
     s"scripts/identity-slice ${country.code} --key ${quoted(s"${key.venue}|${key.rawTitle}")}" +
       Option.when(build.value != "unknown")(s" --ref ${build.value}").getOrElse("")
 }

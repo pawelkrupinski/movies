@@ -92,7 +92,7 @@ object ReadSetClosureSpec {
   }
 
   /** `inner` with the venue pages of `arriving` unread: listings that just arrived, their pages not read yet. */
-  private final class Unread(inner: IdentityLookups, arriving: Set[services.movies.ListingKey]) extends ForwardingIdentityLookups(inner) {
+  private final class Unread(inner: IdentityLookups, arriving: Set[models.ListingKey]) extends ForwardingIdentityLookups(inner) {
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = if (arriving(listing.key)) Answer.Unknown else inner.detail(listing)
   }
 

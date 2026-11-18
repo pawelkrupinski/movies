@@ -63,7 +63,7 @@ class OlderRefsSpec extends AnyFlatSpec with Matchers {
   }
 
   "the resolve's inputs, read by name" should "be the ones the worker's builder makes, its pins among them" in {
-    val pin = Pin(Seq(services.movies.ListingKey.Published("Kino Muza", "Lalka", None, Nil)), PinClaim.IsFilm(1081010), "pawel", "a spec",
+    val pin = Pin(Seq(models.ListingKey.Published("Kino Muza", "Lalka", None, Nil)), PinClaim.IsFilm(1081010), "pawel", "a spec",
       java.time.Instant.EPOCH)
     val built = ResolveInputs.of(Seq(pin))
     OlderRefs.resolveInputs(Seq(pin)) shouldBe ((built.calibration, built.pins, built.decorations))

@@ -57,8 +57,8 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
   // and split its family (BTS Jakarta at Olympia Schwarzenberg, Verify scrape recording #14).
   private def at(n: Int, raw: String, year: Option[Int], page: Option[String], venue: models.Cinema = base(0).cinema): Listing = {
     val l = listing(n, raw).copy(cinema = venue, year = year, page = page)
-    l.copy(key = page.fold[services.movies.ListingKey](services.movies.ListingKey.Published(venue.displayName, raw, year, Nil))(
-      url => services.movies.ListingKey.Native(venue.displayName, url, raw)))
+    l.copy(key = page.fold[models.ListingKey](models.ListingKey.Published(venue.displayName, raw, year, Nil))(
+      url => models.ListingKey.Native(venue.displayName, url, raw)))
   }
 
   "a listing that left" should "go when its own venue bills it again under another key: a lent page and year, or another case" in {

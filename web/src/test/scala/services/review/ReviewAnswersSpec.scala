@@ -110,7 +110,7 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
   }
 
   "a card's payload" should "name a listing the venues share once, with its venues, and read back as every member" in {
-    import services.movies.ListingKey
+    import models.ListingKey
     val page    = "https://www.flicks.us/movie/bts-world-tour/"
     val members = (1 to 300).map(i => ListingKey.Native(s"Cinema $i", page, "BTS WORLD TOUR")) :+
       ListingKey.Published("Kino Muza", "Macbeth", Some(1971), Seq("Roman Polański"))

@@ -1,5 +1,7 @@
 package services.movies
 
+
+import models.TrailerEmbed
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import models.{Cinema, Helios, Multikino}
-import services.movies.ListingKey
+import models.ListingKey
 
 /** What an identity slice cuts out of a whole corpus ([[IdentitySlicing.select]]): the seeds' whole families as the
  *  core, and as context every other listing a core node shares a corpus-context key with. */

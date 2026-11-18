@@ -153,8 +153,8 @@ object IdentityRefit {
         val said  = node.keys.flatMap(judged.get).flatten.distinct
         val right = said.filter(_.right).map(_.film).distinct
         val wrong = said.filterNot(_.right).map(_.film).toSet
-        val group = right.sorted.headOption.getOrElse(s"$code:${node.keys.map(services.movies.ListingKey.serialised).min}")
-        val name  = node.keys.map(services.movies.ListingKey.serialised).min
+        val group = right.sorted.headOption.getOrElse(s"$code:${node.keys.map(models.ListingKey.serialised).min}")
+        val name  = node.keys.map(models.ListingKey.serialised).min
         if (right.size > 1) Nil // a node the labels give two films is no unit of either
         else node.candidates.flatMap { c =>
           val film = s"tmdb:${c.tmdbId}"

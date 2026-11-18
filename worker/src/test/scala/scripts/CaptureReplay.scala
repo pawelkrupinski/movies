@@ -2,7 +2,7 @@ package scripts
 
 import services.identity._
 import services.identityadapters.TmdbIdentityLookups
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.UnmatchedClusters
 

@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import play.api.Logging
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable

@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{KinoMuranow, Kinoteka, Showtime, SourceData, Tmdb}
+import models.{KinoMuranow, Kinoteka, Showtime, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

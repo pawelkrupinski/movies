@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identityadapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
-import services.movies.ListingKey
+import models.ListingKey
 import services.tasktypes.TaskType
 import tools.HttpPath
 

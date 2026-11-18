@@ -1,12 +1,11 @@
 package services.identity.agreement
 
-import models.KinoMuza
+import models.{KinoMuza, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups,
   IdentityMeasures, Listing, ProseWords, Question}
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 import scala.collection.mutable
 
 /** One digest, one reader (docs/design/identity-no-drift.md, "One dependency index"): every kind of dependency a receipt

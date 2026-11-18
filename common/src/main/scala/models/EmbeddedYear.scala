@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 /** A release year written into a title as a DELIMITED annotation: parenthesised
  *  or bracketed `(YYYY)` / `[YYYY]` / `{YYYY}` / `<YYYY>` anywhere in the string,

@@ -1,7 +1,7 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, SlotFields}
+import models.{Cinema, CinemaMovie, ListingKey}
+import services.movies.{ScrapeListing, SlotFields}
 import services.titles.{TitleNormalizer, TitleSeason}
 
 import scala.annotation.unused
@@ -692,7 +692,7 @@ trait IdentityLookups {
   /** The asks a [[prefetch]] was for have been asked: what it fetched to answer them may go. */
   def prefetchAnswered(): Unit = ()
   /** Questions no listing held asks any more — a source tracking what each question read may forget them. */
-  def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit = ()
+  def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[models.ListingKey]): Unit = ()
   /** The venue's own detail page for the listing. */
   def detail(listing: Listing): Answer[Option[DetailFacts]]
   /** Every film a query names. */

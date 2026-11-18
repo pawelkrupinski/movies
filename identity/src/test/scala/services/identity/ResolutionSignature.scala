@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /** What two models must agree on to decide alike: every decision (its listings, film, confidence
  *  and basis) and the partition into families. */

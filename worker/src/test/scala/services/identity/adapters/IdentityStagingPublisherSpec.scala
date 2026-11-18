@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.VoterFamily
 import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact, StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.MutableClock
 
 import java.time.Instant

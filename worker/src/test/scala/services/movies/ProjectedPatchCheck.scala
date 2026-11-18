@@ -1,7 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, Helios, KinoMuranow, KinoMuza, MovieRecord, Multikino, Showtime, Source, SourceData}
-
+import models.{CinemaShowing, Helios, KinoMuranow, KinoMuza, MovieRecord, Multikino, Showtime, Source, SourceData, ShowtimesDigest}
 import java.time.LocalDateTime
 
 /**

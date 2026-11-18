@@ -1,11 +1,10 @@
 package scripts
 
-import models.{CinemaShowing, KinoMuranow, SourceData, Tmdb}
+import models.{CinemaShowing, KinoMuranow, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.ListingKeyBackfill.SlotRow
-import services.movies.{ListingKey, SlotKeyed}
-
+import services.movies.SlotKeyed
 /** Which films the FilmId map is seeded with, and the listings each is ranked by. */
 class FilmIdCounterSeedSpec extends AnyFlatSpec with Matchers {
 

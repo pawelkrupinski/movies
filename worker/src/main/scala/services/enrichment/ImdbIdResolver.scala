@@ -177,7 +177,7 @@ class ImdbIdResolver(
     // it the search is yearless, and the lone IMDb film of the bare name binds (It, 2017).
     val reported = record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year
     val years = (if (reported.nonEmpty) reported
-                 else services.movies.EmbeddedYear.ofAll(searchTitle +: record.evidence.titles.toSeq, services.movies.LatestTitleYear.current).toSet).toSeq.sorted
+                 else models.EmbeddedYear.ofAll(searchTitle +: record.evidence.titles.toSeq, services.movies.LatestTitleYear.current).toSet).toSeq.sorted
     val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
     // Each rung is asked in turn and the first id wins; a rung whose source FAILED does not
     // stop the ones after it, but if none answers the failure is thrown, not booked as

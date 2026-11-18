@@ -2,7 +2,7 @@ package integration
 
 import play.api.libs.json.Json
 import services.identity._
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 

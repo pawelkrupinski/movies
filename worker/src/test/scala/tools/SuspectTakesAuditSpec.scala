@@ -12,7 +12,7 @@ import services.identity.SuspectTakes.Take
 class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
 
   private def listing(title: String, venue: models.Cinema) =
-    Listing(venue, services.movies.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
+    Listing(venue, models.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
   private def take(title: String, film: String, year: Int, tmdb: Int, venue: models.Cinema = KinoMuza) =
     Take(listing(title, venue), s"tmdb:$tmdb", Some(tmdb), IdentityMeasures.Film(film, year = Some(year)),
       ResolverDecision(Seq(listing(title, venue).key), Some(tmdb), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())

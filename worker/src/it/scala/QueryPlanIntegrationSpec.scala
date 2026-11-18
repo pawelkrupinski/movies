@@ -175,7 +175,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the identity trace store" should "write by family and id" in {
     import services.identity.{FamilyTraces, ListingTrace, MongoIdentityTraceStore}
-    import services.movies.ListingKey
+    import models.ListingKey
     assertIndexed(plansOf("traces") { db =>
       def key(n: Int) = ListingKey.Published(s"Venue $n", s"Film $n", None, Nil)
       def trace(n: Int, family: String) = ListingTrace(key(n), family, Some(100 + n % 3), "OwnMatch", Seq(s"accept:rule-${n % 2}"), None, Nil,

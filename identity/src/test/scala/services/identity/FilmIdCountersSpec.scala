@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
 import services.identity.IdSeeding.Film
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * The persisted FilmId map's rules, as a value: injective both ways, append-only, and new films

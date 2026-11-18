@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 import tools.UnmatchedClusters.Label
 
 /** What a pinned slice's listing is held to ([[IdentitySlice.Expected]]): its right film, or — set by hand in the case's

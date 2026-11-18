@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * The resolver's verdict on one CLUSTER (`IdentityResolver`): which listings are one film, which

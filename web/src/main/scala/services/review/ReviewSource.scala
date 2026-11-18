@@ -65,7 +65,7 @@ final case class FilmCard(tmdb: Int, imdb: Option[String], title: Option[String]
 trait ReviewSource {
   /** The model's decisions — only those of families holding an unmatched one when `unmatchedOnly`. */
   def decisions(unmatchedOnly: Boolean): Seq[ResolverDecision]
-  /** The slot rows of these listings (by [[services.movies.ListingKey.serialised]]). */
+  /** The slot rows of these listings (by [[models.ListingKey.serialised]]). */
   def slots(listingKeys: Seq[String]): Map[String, SlotFacts]
   /** When each listing slot row written since `since` was written, by its serialised listing key. */
   def updatedSince(since: Instant): Map[String, Instant]
@@ -81,9 +81,9 @@ trait ReviewSource {
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** For each corpus record naming one of `refs` (by its TMDB, IMDb, Filmweb, RT or Metacritic id), every ref it names. */
   def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]]
-  /** The resolver's trace of each of these listings (`identity_traces`, by [[services.movies.ListingKey.serialised]]). */
+  /** The resolver's trace of each of these listings (`identity_traces`, by [[models.ListingKey.serialised]]). */
   def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace]
-  /** What prod serves each listing as, by [[services.movies.ListingKey.serialised]]: the TMDB film of its screening row's
+  /** What prod serves each listing as, by [[models.ListingKey.serialised]]: the TMDB film of its screening row's
    *  film (`screenings.filmId` → `movies.tmdbId`), `None` for a listing served with no TMDB film. A listing with no
    *  screening row is absent. The model's decision passes through the agreement stage and the projection on its way
    *  here, so a listing served otherwise than its cluster was decided is one the two stages disagree on. Read whole. */

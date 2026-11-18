@@ -3,7 +3,7 @@ package services.readmodel
 import services.movies.LatestTitleYear
 
 import models._
-import services.movies.{ListingKey, StoredMovieRecord, TrailerEmbed}
+import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
 /**

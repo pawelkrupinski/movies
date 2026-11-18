@@ -8,9 +8,7 @@ import services.movies.ListedShowtimes
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{CharlieMonroe, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia,
-  Helios, HeliosOstrowWlkp, KinoApollo, KinoBulgarska, KinoMuranow, KinoMuza, KinoPalacowe, MovieRecord, Multikino,
-  Rialto, Showtime, Source, SourceData, Tmdb}
+import models.{CharlieMonroe, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosOstrowWlkp, KinoApollo, KinoBulgarska, KinoMuranow, KinoMuza, KinoPalacowe, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb, ShowtimesDigest}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -2307,8 +2305,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // on 2026-07-27: 13,201 cinema slots, only 2,609 with a screenings doc, zero the other way,
   // film count flat and every city still present while ~80% of upcoming showtimes vanished.
   it should "keep a film's showtimes when the screenings read fails under a whole-record write" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest,
-      StoredMovieRecord, UnreadableScreeningsRepository}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, UnreadableScreeningsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2348,7 +2345,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // failure was only a WARN: on 2026-09-23 the UK + US convergence legs lost the merged
   // "RBO Cinema Season 2026-27: Tosca" row this way and re-keyed it on the next settle.
   it should "persist a cache-stripped record through upsert, slots included" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)

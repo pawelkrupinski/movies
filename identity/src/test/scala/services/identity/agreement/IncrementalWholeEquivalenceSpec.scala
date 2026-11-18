@@ -1,12 +1,12 @@
 package services.identity.agreement
 
-import models.{KinoMuza, KinoPalacowe, Multikino}
+import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{AnswersChanged, Answer, CandidateQuery, DetailFacts, FilmTable, GeneratedIdentityCorpus, Hit, IdentityCalibration,
   IdentityLookups, IdentityMeasures, IdentityResolver, IncrementalResolver, InMemoryIdentityModelStore, Listing, PosterAnswers, PosterHash, Question,
   Resolution, ResolverDecision, ScreeningDays, TakeFlips, TitleDecorations, UnifiedEvidence, UnifiedRules}
-import services.movies.{ListingKey, SingleCountryNormalizer}
+import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 
 import scala.collection.mutable
@@ -374,7 +374,7 @@ object IncrementalWholeEquivalenceSpec {
     /** `seen` and `gone` handed the model with the kept listings read afresh from the inputs. */
     private def retaining(seen: Seq[Listing], gone: Seq[ListingKey]): Unit = {
       val present = held.values.filterNot(l => retained(l.key)).toSeq
-      val kept    = services.identity.ListingRetention.retained(departed.values.toSeq.sortBy(l => services.movies.ListingKey.serialised(l.key)),
+      val kept    = services.identity.ListingRetention.retained(departed.values.toSeq.sortBy(l => models.ListingKey.serialised(l.key)),
         present, normalizer)
       val keys    = kept.iterator.map(_.key).toSet
       val newly   = kept.filterNot(l => retained(l.key))

@@ -101,7 +101,7 @@ object ListingRetention {
       !(isNative(listing) && isNative(present)) && (present.year.isEmpty || listing.year.isEmpty || present.year == listing.year) &&
         (present.directors.isEmpty || listing.directors.isEmpty || present.directors.exists(listing.directors.contains))
     })
-  private def isNative(listing: Listing): Boolean = listing.key match { case _: services.movies.ListingKey.Native => true; case _ => false }
+  private def isNative(listing: Listing): Boolean = listing.key match { case _: models.ListingKey.Native => true; case _ => false }
 
   /** Of `departed`, those `present` bills again under another key ([[returned]]): the same listings back, never kept --
    *  and, as their twins are billed, no input left to hold: the worker deletes them from its store. */

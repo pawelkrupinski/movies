@@ -10,7 +10,7 @@ trait ForwardingIdentityLookups(inner: IdentityLookups) extends IdentityLookups 
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
     inner.prefetch(queries, films, details)
   override def prefetchAnswered(): Unit = inner.prefetchAnswered()
-  override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit =
+  override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[models.ListingKey]): Unit =
     inner.released(queries, films, details)
   def detail(listing: Listing): Answer[Option[DetailFacts]]          = inner.detail(listing)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]            = inner.candidates(query)

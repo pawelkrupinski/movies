@@ -1,7 +1,7 @@
 package services.identity
 
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.jdk.CollectionConverters._
 

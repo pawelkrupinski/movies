@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.Clock
 import scala.concurrent.duration.*

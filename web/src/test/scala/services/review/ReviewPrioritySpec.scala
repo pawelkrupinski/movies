@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.DecisionTrace
 import services.identity.ResolverDecision
 import services.identity.ResolverDecision.Basis
-import services.movies.ListingKey
+import models.ListingKey
 
 class ReviewPrioritySpec extends AnyFlatSpec with Matchers {
   import ReviewFixtures._

@@ -12,7 +12,7 @@ import services.identity.SuspectTakes.Signal
 class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
 
   private def listing(title: String, venue: models.Cinema = KinoMuza) =
-    Listing(venue, services.movies.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
+    Listing(venue, models.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
   private def decision(l: Seq[Listing], film: Int, basis: ResolverDecision.Basis = ResolverDecision.Basis.OwnMatch) =
     ResolverDecision(l.map(_.key), Some(film), 0.9, basis, Nil)()
 

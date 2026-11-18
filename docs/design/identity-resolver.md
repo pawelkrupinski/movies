@@ -213,7 +213,7 @@ production file that asks a `MixedFilmDetector` veto directly.
 ## 4. Listing identity
 
 A **listing** is one row of one venue's scrape. Its key is `ListingKey`
-(`common/src/main/scala/services/movies/ListingKey.scala`, prerequisite a):
+(`common/src/main/scala/models/ListingKey.scala`, prerequisite a):
 
 - `Native(venue, page, rawTitle)` when the venue publishes a page (`filmUrl`). The page alone is
   not unique: KinoPort, Kino Studio Opole and DK Łapy link a whole month's films to one programme

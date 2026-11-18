@@ -1,10 +1,11 @@
 package services.identity.agreement
 
+
+import models.ListingKey
 import services.identity.{AnswersChanged, Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, Hit,
   IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, IncrementalResolver, InMemoryIdentityModelStore, Listing, Pin,
   PinConstraints, PosterAnswers, PosterHash, ProseWords, Question, Resolution, TitleDecorations, UnifiedRules}
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 import scala.collection.mutable
 
 /**

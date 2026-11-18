@@ -4,7 +4,7 @@ import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.CatalogueId
-import services.movies.ListingKey
+import models.ListingKey
 
 /** Catalogue ids in every shape a document has carried them, and a feed catalogue's facts kept apart from the venue's. */
 class CatalogueProvenanceSpec extends AnyFlatSpec with Matchers {

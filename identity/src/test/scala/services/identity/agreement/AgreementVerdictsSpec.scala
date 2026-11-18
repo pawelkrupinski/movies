@@ -79,7 +79,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
   }
 
   "a receipt" should "name every dependency by the one codec, and read each back as it was" in {
-    val key = services.movies.ListingKey.Published("Kino Muza", "Lalka | x", Some(2025), Seq("Maciej Kawalski"))
+    val key = models.ListingKey.Published("Kino Muza", "Lalka | x", Some(2025), Seq("Maciej Kawalski"))
     val every = Seq[Dependency](
       Dependency.Answer(Question.Family(VoterFamily.Filmweb, "title|Lalka")),
       Dependency.Answer(Question.Family(VoterFamily.RottenTomatoes, "record|lalka|x")),

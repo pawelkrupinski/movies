@@ -202,7 +202,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   def parseTrailer(html: String): Option[String] =
     YouTubeUrlPat.findFirstMatchIn(html)
       .map(_.group(1).replace("\\/", "/"))
-      .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+      .flatMap(u => models.TrailerEmbed.youTubeId(u)
         .map(id => s"https://www.youtube.com/watch?v=$id"))
 
   // Producent: in the page header (a sibling heading widget — not inside the

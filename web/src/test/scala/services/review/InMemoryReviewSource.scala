@@ -1,7 +1,7 @@
 package services.review
 
 import services.identity.ResolverDecision
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.Instant
 

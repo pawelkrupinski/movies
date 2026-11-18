@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.ResolverDecision.Basis
-import services.movies.ListingKey
+import models.ListingKey
 import tools.MutableClock
 
 import java.time.Instant

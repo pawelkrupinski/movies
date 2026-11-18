@@ -6,7 +6,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, ReplaceOneModel, ReplaceOptions, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

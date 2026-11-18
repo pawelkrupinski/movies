@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 import IdentityResolver.{FamilyCrossing, Mutation, Stages}
 

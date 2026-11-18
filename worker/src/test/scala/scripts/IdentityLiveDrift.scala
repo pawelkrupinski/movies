@@ -1,9 +1,9 @@
 package scripts
 
-import models.Country
+import models.{Country, ListingKey}
 import play.api.libs.json.{JsObject, JsString, Json}
 import services.identity._
-import services.movies.{ListingKey, ScrapeListing}
+import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
 import services.identityadapters.TmdbStore
 import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, ProdRetained}

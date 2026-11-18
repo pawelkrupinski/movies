@@ -4,7 +4,7 @@ import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, Post
 import services.identity._
 
 import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, VoterFamily}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets

@@ -3,7 +3,7 @@ package services.identity
 import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import java.nio.charset.StandardCharsets

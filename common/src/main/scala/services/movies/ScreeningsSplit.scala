@@ -1,7 +1,6 @@
 package services.movies
 
-import models.{Showtime, Source, SourceData}
-
+import models.{Showtime, Source, SourceData, ListingKey, ShowtimesDigest}
 /**
  * The showtimes half of the read-split: the rules for taking a film's showtimes OUT of its
  * `movies` document (`stripShowtimes`, `showtimesOf`), putting them BACK from `screenings`

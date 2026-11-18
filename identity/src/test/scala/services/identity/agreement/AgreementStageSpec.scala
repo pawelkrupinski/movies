@@ -1,11 +1,10 @@
 package services.identity.agreement
 
-import models.KinoMuza
+import models.{KinoMuza, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Resolution, ResolverDecision}
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 /** The model's no-matches, on their way to the projection: one ≥3 families agree on takes that film — TMDB's when its
  *  IMDb id finds one there — and one a family has not answered for yet stays as the model left it, its question named. */
 class AgreementStageSpec extends AnyFlatSpec with Matchers {

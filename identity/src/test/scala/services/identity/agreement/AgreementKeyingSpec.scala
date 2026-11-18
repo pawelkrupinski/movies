@@ -1,12 +1,11 @@
 package services.identity.agreement
 
-import models.{KinoMuza, KinoPalacowe, Multikino}
+import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, Resolution, ResolverDecision, StoredFamily}
 import services.identity.staging.StagingEvent
-import services.movies.{ListingKey, SingleCountryNormalizer}
-
+import services.movies.SingleCountryNormalizer
 /** A cluster's key NAMES it (docs/design/identity-cluster-identity.md, docs/design/identity-no-drift.md): a listing
  *  sorting first, a merge or a split keeps a key on the cluster overlapping it, a restart re-attaches each key by its
  *  first listing — and none of it moves a take: a cluster is decided as a whole resolve of the inputs decides it, no

@@ -85,7 +85,7 @@ object ModelTakeAnswersFill {
     val byKey   = l.listings.map(x => x.key -> x).toMap
     val clusters = resolution.decisions.filter(d => d.film.isDefined && d.basis != ResolverDecision.Basis.Pinned)
       .map(_.members.flatMap(byKey.get)).filter(_.nonEmpty)
-    def name(listings: Seq[Listing]) = listings.map(x => services.movies.ListingKey.serialised(x.key)).min
+    def name(listings: Seq[Listing]) = listings.map(x => models.ListingKey.serialised(x.key)).min
     // the clusters families are asked of: those named, and a fixed random sample of the rest
     val sampled = sample.fold(Set.empty[String])(n => new scala.util.Random(code.hashCode).shuffle(clusters.map(name)).take(n).toSet)
     val asking  = if (!askFamilies) Nil else if (only.isEmpty && sample.isEmpty) clusters

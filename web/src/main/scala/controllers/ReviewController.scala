@@ -206,8 +206,8 @@ class ReviewController(cc: ControllerComponents,
       } match {
         case None             => NotFound(s"no cluster $cluster in $country")
         case Some((c, found)) =>
-          Try(sources(c).traces(found.members.map(services.movies.ListingKey.serialised))) match {
-            case Success(traces) => Ok(views.html.reviewWhy(found.members.map(k => k -> traces.get(services.movies.ListingKey.serialised(k))), Some(c)))
+          Try(sources(c).traces(found.members.map(models.ListingKey.serialised))) match {
+            case Success(traces) => Ok(views.html.reviewWhy(found.members.map(k => k -> traces.get(models.ListingKey.serialised(k))), Some(c)))
             case Failure(e)      => InternalServerError(s"could not read identity_traces: ${e.getMessage}")
           }
       }
@@ -322,7 +322,7 @@ final case class ReviewView(page: ReviewPage, country: String, cards: Seq[Review
 
 /** Everything `reviewListing.scala.html` renders: the query, each listing it names explained, or the listings near it. */
 final case class ListingExplainView(countryOf: Country, venue: Option[String], title: String, explains: Seq[ListingExplain],
-                                    near: Seq[services.movies.ListingKey], notices: Seq[String]) {
+                                    near: Seq[models.ListingKey], notices: Seq[String]) {
   def country: String = countryOf.code
 }
 

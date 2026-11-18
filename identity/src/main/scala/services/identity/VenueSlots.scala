@@ -2,8 +2,8 @@ package services.identity
 
 import services.movies.LatestTitleYear
 
-import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
-import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord, VenuePageFacts}
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey, ShowtimesDigest}
+import services.movies.{CinemaSlotBuilder, ListingConstraints, MovieRecordMerge, ScrapeListing, ScreeningTokens, StoredMovieRecord, VenuePageFacts}
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
 

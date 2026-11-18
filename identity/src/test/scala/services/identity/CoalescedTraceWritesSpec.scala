@@ -4,7 +4,7 @@ import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import scala.collection.mutable

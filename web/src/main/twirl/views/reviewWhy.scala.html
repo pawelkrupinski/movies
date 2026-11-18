@@ -1,5 +1,5 @@
 @import services.review.ListingReasons
-@(members: Seq[(services.movies.ListingKey, Option[services.identity.ListingTrace])], explainIn: Option[models.Country] = None)
+@(members: Seq[(models.ListingKey, Option[services.identity.ListingTrace])], explainIn: Option[models.Country] = None)
 @* One card's "Why" fold-out body, fetched when it is opened: each member listing's trace, whole — each linked to its
    listing's explain page when `explainIn` names the country. *@
 @for((key, trace) <- members) {

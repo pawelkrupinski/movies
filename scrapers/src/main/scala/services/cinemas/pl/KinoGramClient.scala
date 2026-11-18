@@ -5,7 +5,7 @@ import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
-import services.movies.TrailerEmbed
+import models.TrailerEmbed
 import services.cinemas.common.CinemaScraper
 
 import java.time.Instant

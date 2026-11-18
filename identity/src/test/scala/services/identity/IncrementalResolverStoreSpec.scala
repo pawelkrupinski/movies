@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
+import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 
 import scala.util.Random

@@ -4,7 +4,7 @@ import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, Post
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
 
-import services.movies.ListingKey
+import models.ListingKey
 import tools._
 
 import java.nio.file.{Files, Path}

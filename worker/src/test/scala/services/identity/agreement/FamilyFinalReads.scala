@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{ContentHash, Dependency, FamilyIndex, IdentityLookups, Listing, Question, Resolution}
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{MutableClock, UnmatchedClusters}
 
 /**

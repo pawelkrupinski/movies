@@ -2,7 +2,7 @@ package services.movies
 
 import tools.SpecClock.given
 
-import models.{CinemaShowing, Helios, Imdb, MovieRecord, Multikino, Showtime, Source, SourceData, TitleSearch, Tmdb, UkRoster}
+import models.{CinemaShowing, Helios, Imdb, MovieRecord, Multikino, Showtime, Source, SourceData, TitleSearch, Tmdb, UkRoster, ShowtimesDigest}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.scalatest.flatspec.AnyFlatSpec

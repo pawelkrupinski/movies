@@ -1,7 +1,8 @@
 package services.identity
 
-import services.movies.{ListingConstraints, ListingKey}
 
+import models.ListingKey
+import services.movies.ListingConstraints
 /** The constraint edges between nodes sharing a block key ([[of]]): must-links by tier (0 pinned,
  *  1 same accepted film, 2 same catalogue id or same sanitised title, 3 same search form — unless either title carries
  *  another listing's title beside it — or original title, 4 one's title a delimited segment of the

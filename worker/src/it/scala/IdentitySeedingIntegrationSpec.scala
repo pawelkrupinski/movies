@@ -1,5 +1,7 @@
 package integration
 
+
+import models.ListingKey
 import tools.SpecClock.given
 
 import org.scalatest.BeforeAndAfterAll
@@ -8,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import services.identity._
 import services.identityadapters.TmdbIdentityLookups
-import services.movies.{ListingKey, ScrapeListing, ScreeningTokens}
+import services.movies.{ScrapeListing, ScreeningTokens}
 import tools._
 
 import java.nio.file.Files

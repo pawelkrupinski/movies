@@ -2,7 +2,7 @@ package services.identity
 
 import services.titles.billing.DecorationWords
 import services.identity.agreement.Agreement
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.{TitleContainment, TitleWords}
 
 /**

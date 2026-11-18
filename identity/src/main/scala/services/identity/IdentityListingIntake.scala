@@ -1,7 +1,7 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, LeanListing, ScrapeAttempt, VenueClock}
-import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
+import models.{Cinema, CinemaMovie, LeanListing, ScrapeAttempt, VenueClock, ListingKey}
+import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
 import services.titles.TitleNormalizer
 import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
 

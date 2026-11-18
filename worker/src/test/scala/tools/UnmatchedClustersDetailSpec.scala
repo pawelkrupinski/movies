@@ -4,7 +4,7 @@ import models.{Country, KinoApollo}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{DetailFacts, Listing}
-import services.movies.ListingKey
+import models.ListingKey
 
 /** A capture whose venue detail a host refused wholesale — the UK capture of 2026-10-12 (run 38308006014) over recording
  *  38103789067, whose every Cineworld box-office API read had been 403'd: 384 listings marked as having detail, none of

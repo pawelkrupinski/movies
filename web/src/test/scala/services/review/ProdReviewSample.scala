@@ -38,7 +38,7 @@ object ProdReviewSample {
   def source(db: String): InMemoryReviewSource = {
     val slots = documents(db, "movie_slots").flatMap { d =>
       for {
-        key  <- Option(d.get("listingKey")).filter(_.isString).flatMap(v => services.movies.ListingKey.parse(v.asString.getValue))
+        key  <- Option(d.get("listingKey")).filter(_.isString).flatMap(v => models.ListingKey.parse(v.asString.getValue))
         slot <- Option(d.get("slot")).filter(_.isDocument).map(_.asDocument)
         at   <- Option(d.get("updatedAt")).filter(_.isDateTime).map(v => java.time.Instant.ofEpochMilli(v.asDateTime.getValue))
       } yield key -> SlotFacts(MongoReviewSource.facts(slot, poster = "posterUrl"), at)

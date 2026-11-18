@@ -2,7 +2,7 @@ package integration
 
 import tools.SpecTimeouts
 
-import models.{CinemaShowing, KinoMuranow, Kinoteka, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{CinemaShowing, KinoMuranow, Kinoteka, MovieRecord, Showtime, Source, SourceData, Tmdb, ListingKey, ShowtimesDigest}
 import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

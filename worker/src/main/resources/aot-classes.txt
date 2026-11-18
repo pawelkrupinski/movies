@@ -5873,6 +5873,7 @@ models.DabrowaGornicza$
 models.DolnoslaskieCentrumFilmowe$
 models.DomKulturyLapy$
 models.Elblag$
+models.EmbeddedYear$
 models.EnrichmentAttempt
 models.EnrichmentAttempt$
 models.Filmweb$
@@ -6327,6 +6328,12 @@ models.Konin$
 models.Koszalin$
 models.Krakow$
 models.Legnica$
+models.ListingKey
+models.ListingKey$
+models.ListingKey$Native
+models.ListingKey$Native$
+models.ListingKey$Published
+models.ListingKey$Published$
 models.Lodz$
 models.London$
 models.Lublin$
@@ -6413,6 +6420,7 @@ models.ScrapeOutcome$Ok$
 models.SeparateRuns$
 models.Showtime
 models.Showtime$
+models.ShowtimesDigest$
 models.Slupsk$
 models.SluzewskiDomKultury$
 models.Sosnowiec$
@@ -6445,6 +6453,8 @@ models.TmdbAttempt
 models.TmdbAttempt$
 models.Torun$
 models.TownRanking$
+models.TrailerEmbed$
+models.TrailerEmbed$$anon$1
 models.Trojmiasto$
 models.Tychy$
 models.Ujazdowski$
@@ -10361,7 +10371,6 @@ services.movies.CorpusIndex
 services.movies.DecodeFailureMetrics
 services.movies.DecodeFailureMetrics$
 services.movies.DirectorAliases$
-services.movies.EmbeddedYear$
 services.movies.EnrichmentRetrigger
 services.movies.FieldUpdate
 services.movies.FieldUpdate$
@@ -10396,12 +10405,6 @@ services.movies.ListingIntakeMetrics$$anon$1
 services.movies.ListingIntakeMetrics$Guard$
 services.movies.ListingIntakeMetrics$SkipReason$
 services.movies.ListingIntakeMetrics$Verdict$
-services.movies.ListingKey
-services.movies.ListingKey$
-services.movies.ListingKey$Native
-services.movies.ListingKey$Native$
-services.movies.ListingKey$Published
-services.movies.ListingKey$Published$
 services.movies.MergeRetrigger$
 services.movies.MixedFilmDetector$
 services.movies.MixedFilmDetector$Group
@@ -10509,7 +10512,6 @@ services.movies.ScreeningsSplit$ReStitched
 services.movies.ScreeningsSplit$ReStitched$
 services.movies.ScreeningsWrites
 services.movies.ScreeningsWrites$
-services.movies.ShowtimesDigest$
 services.movies.SideCollectionChangeMetrics
 services.movies.SideCollectionWatch
 services.movies.SideCollectionWatch$
@@ -10538,8 +10540,6 @@ services.movies.StrandedSideRows
 services.movies.StrandedSideRows$
 services.movies.StringPool
 services.movies.StringPool$
-services.movies.TrailerEmbed$
-services.movies.TrailerEmbed$$anon$1
 services.movies.UnscreenedCleanup
 services.movies.UnscreenedCleanup$$anon$1
 services.movies.UnscreenedCleanup$$anon$2

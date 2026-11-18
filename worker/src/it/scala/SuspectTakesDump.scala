@@ -1,7 +1,7 @@
 package integration
 
 import services.identity._
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.file.Files

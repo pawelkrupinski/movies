@@ -6,7 +6,7 @@ import clients.tools.{AnyMethodByUrlHttpFetch, ConstantHttpFetch, FailingHttpFet
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingKey, SingleCountryNormalizer}
+import services.movies.SingleCountryNormalizer
 import settings.{IdentityLookupFillInterval, IdentityLookupFillRate}
 import tools.{DaemonExecutors, HttpFetch, HttpStatusException, PacedHttpFetch, TestWiring, TickRecorder}
 

@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 /** The convergence leg's flip check: a listing's served take, recorded at every step, flips when it goes back to a film
  *  it left, changes more than once, or changes where none of its deciding inputs did — and only then. */

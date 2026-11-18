@@ -3,7 +3,7 @@ package integration
 import scripts.IdentityCalibrationData.{TmdbAnswers, languageOf}
 import services.identity._
 import services.identityadapters.TmdbIdentityLookups
-import services.movies.ListingKey
+import models.ListingKey
 import tools.{ConvergenceStorage, IntegrationMongoTarget}
 
 import java.nio.file.{Files, Paths}

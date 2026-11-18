@@ -4,7 +4,7 @@ import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, Post
 import services.identity._
 
 import services.identity.agreement.{Agreement, VenueListings}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{CommandLine, UnmatchedClusters}
 

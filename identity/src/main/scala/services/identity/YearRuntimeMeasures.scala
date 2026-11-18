@@ -3,7 +3,7 @@ package services.identity
 import services.titles.billing.DecorationWords
 import java.util.Locale
 
-import services.movies.EmbeddedYear
+import models.EmbeddedYear
 
 import services.titles.{TitleContainment, TitleSeason}
 

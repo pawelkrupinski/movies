@@ -6,9 +6,9 @@ import services.movies.LatestTitleYear
 import java.util.Locale
 import scala.util.chaining.scalaUtilChainingOps
 
-import models.{Cinema, CinemaMovie, MovieRecord}
+import models.{Cinema, CinemaMovie, MovieRecord, ListingKey}
 import play.api.Logging
-import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens, StoredMovieRecord}
+import services.movies.{CacheKey, LeanRecords, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens, StoredMovieRecord}
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
@@ -555,7 +555,7 @@ object IdentityProjection {
   private[services] def rebuilt(lean: MovieRecord, built: MovieRecord): String = {
     val slots = lean.data.toSeq.flatMap { case (source, was) =>
       built.data.get(source).filterNot(LeanRecords.slotsEqual(was, _)).map { now =>
-        val fields = differing(was, now, Set("showtimes", "showtimesDigest", "showtimeStartMinutes")) ++ Option.when(services.movies.ShowtimesDigest.slotDigest(was) != services.movies.ShowtimesDigest.slotDigest(now))("showtimes")
+        val fields = differing(was, now, Set("showtimes", "showtimesDigest", "showtimeStartMinutes")) ++ Option.when(models.ShowtimesDigest.slotDigest(was) != models.ShowtimesDigest.slotDigest(now))("showtimes")
         s"$source: ${fields.mkString(" ")}"
       }
     }.sorted

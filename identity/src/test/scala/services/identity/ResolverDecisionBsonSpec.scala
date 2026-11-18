@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 /** A decision reads back from its stored family as it was decided — its fallback film and unanswered questions too: a
  *  restart's model projects the stored decisions, and a fallback lost on the way would drop every IMDb id it gave. */

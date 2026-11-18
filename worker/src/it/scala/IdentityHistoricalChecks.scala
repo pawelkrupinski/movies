@@ -1,7 +1,7 @@
 package integration
 
 import services.identity.{Evidence, Listing}
-import services.movies.ListingKey
+import models.ListingKey
 
 /**
  * The historical identity incidents as LABELLED CHECKS (docs/design/identity-resolver.md §7a):

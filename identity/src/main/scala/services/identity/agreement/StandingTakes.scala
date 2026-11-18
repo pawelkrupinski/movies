@@ -27,7 +27,7 @@ final class StandingTakes(clock: java.time.Clock) {
   private val holds = TrieMap.empty[String, AgreementStage.Hold]
 
   /** The previous take standing for cluster `id` — one made for `members`, not past its bound. */
-  def holdOf(id: String, members: Seq[services.movies.ListingKey]): Option[AgreementStage.Hold] =
+  def holdOf(id: String, members: Seq[models.ListingKey]): Option[AgreementStage.Hold] =
     holds.get(id).filter(h => !h.expired && h.members == members)
 
   /** Has a previous take stood its bound? Then the next apply reads again, though nothing moved, and serves the take as

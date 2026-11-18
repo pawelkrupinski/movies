@@ -3,7 +3,7 @@ package services.identity
 import tools.SpecPool
 import play.api.libs.json.{Json, OFormat}
 import services.identity.agreement.FamilyFinalReads
-import services.movies.ListingKey
+import models.ListingKey
 import tools.UnmatchedClusters
 
 import java.nio.file.{Files, Path}

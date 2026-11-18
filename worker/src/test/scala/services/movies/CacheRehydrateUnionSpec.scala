@@ -5,7 +5,7 @@ import services.titles.TitleNormalizer
 import tools.SpecClock.given
 
 import scala.concurrent.duration.DurationInt
-import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
+import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData, ShowtimesDigest}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titles.rules.{RuleScope, TitleRule, TitleRuleSet}

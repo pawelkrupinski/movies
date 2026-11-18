@@ -7,7 +7,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.concurrent.Await
 

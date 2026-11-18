@@ -206,10 +206,10 @@ object RuleContract {
   /** The listings of `resolution` the model marked NAMESAKE-AMBIGUOUS. None until structural step 3
    *  (identity/namesake-ambiguous) lands: its `Resolution.namesakeAmbiguous` is read here then, and every check of the
    *  contract (the population walk's, [[namesakeBreaches]]) holds it from that commit on. */
-  def namesakeAmbiguous(@scala.annotation.unused resolution: Resolution): Set[services.movies.ListingKey] = Set.empty
+  def namesakeAmbiguous(@scala.annotation.unused resolution: Resolution): Set[models.ListingKey] = Set.empty
 
   /** The namesake-ambiguous listings of `resolution` a rule outside kinds (i) and (ii) decided: (listing, its rule). */
-  def namesakeBreaches(resolution: Resolution): Seq[(services.movies.ListingKey, String)] = {
+  def namesakeBreaches(resolution: Resolution): Seq[(models.ListingKey, String)] = {
     val ambiguous = namesakeAmbiguous(resolution)
     resolution.decisions.flatMap(d => d.members.filter(ambiguous).map(key => key -> DecidedBy.of(d, key)))
       .filterNot { case (_, rule) => mayDecideNamesakeAmbiguous(rule) }

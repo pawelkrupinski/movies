@@ -40,7 +40,7 @@ module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	45
 module-edge	worker->base	80
-module-edge	worker->common	1620
+module-edge	worker->common	1625
 module-edge	worker->http	192
 module-edge	worker->identity	447
 module-edge	worker->scrapers	143
@@ -266,8 +266,8 @@ fanout	services.tasks.ChunkScrapePlanner	27
 fanout	services.tasks.ChunkScrapeReaper	16
 fanout	services.tasks.CinemaContentCensus	13
 fanout	services.tasks.EnrichmentReaper	21
-fanout	services.tasks.InMemoryTaskQueue	13
-fanout	services.tasks.MongoTaskQueue	18
+fanout	services.tasks.InMemoryTaskQueue	12
+fanout	services.tasks.MongoTaskQueue	17
 fanout	services.tasks.QueueEnrichmentRetrigger	14
 fanout	services.tasks.RatingEnqueuer	13
 fanout	services.tasks.RatingHandler	13
@@ -292,4 +292,4 @@ fanout	tools.RealHttpFetch	16
 distance	services.facebook	28
 distance	services.identity	39
 distance	services.metrics	38
-distance	services.movies	48
+distance	services.movies	36

@@ -1,7 +1,6 @@
 package services.movies
 
-import models.{Showtime, SourceData}
-
+import models.{Showtime, SourceData, ListingKey}
 import java.util.concurrent.atomic.AtomicInteger
 
 /**

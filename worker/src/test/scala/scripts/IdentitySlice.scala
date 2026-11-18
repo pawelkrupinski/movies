@@ -6,7 +6,7 @@ import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
 import services.identity._
 import services.identity.agreement.{AgreementStage, InMemoryAgreementVerdicts, VoterFamily}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
 
@@ -257,7 +257,7 @@ object IdentitySlice {
     val (calibration, pins, decorations) = OlderRefs.resolveInputs(reads.prod.pins)
     val model = new IncrementalResolver(reads.lookups, reads.normalizer, calibration, pins, decorations)
     // the one replay world's order: each listing placed by the seed and its own key, so one more or fewer moves none other
-    val all   = tools.ReplayOrder.of(core ++ context, seed)(l => services.movies.ListingKey.serialised(l.key))
+    val all   = tools.ReplayOrder.of(core ++ context, seed)(l => models.ListingKey.serialised(l.key))
     all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
     val coreKeys = core.map(_.key).toSet
     model.decisions.filter(_.members.exists(coreKeys))

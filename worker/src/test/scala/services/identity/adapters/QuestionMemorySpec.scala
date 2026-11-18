@@ -146,7 +146,7 @@ class QuestionMemorySpec extends AnyFlatSpec with Matchers {
     memory.due(Set[Question](poster)) shouldBe empty
     clock.advance(Duration.ofMinutes(2))
     memory.due(Set[Question](poster)) shouldBe Set(poster)
-    val unremembered = Set[Question](Question.Person(7), Question.VenuePage(services.movies.ListingKey.Native("kino-muranow", "42", "Lalka")))
+    val unremembered = Set[Question](Question.Person(7), Question.VenuePage(models.ListingKey.Native("kino-muranow", "42", "Lalka")))
     memory.failed(unremembered) shouldBe empty
     memory.due(unremembered) shouldBe unremembered
   }

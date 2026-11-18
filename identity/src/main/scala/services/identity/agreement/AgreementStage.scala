@@ -4,7 +4,7 @@ import scala.util.chaining.scalaUtilChainingOps
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
   IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision,
   WaitingOn}
-import services.movies.ListingKey
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 import scala.collection.concurrent.TrieMap

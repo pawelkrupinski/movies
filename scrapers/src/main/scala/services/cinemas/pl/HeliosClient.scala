@@ -252,7 +252,7 @@ class HeliosClient(
           trailerUrl    = (js \ "trailers").asOpt[JsArray]
                             .flatMap(_.value.headOption).flatMap(_.asOpt[String])
                             .filter(_.nonEmpty)
-                            .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+                            .flatMap(u => models.TrailerEmbed.youTubeId(u)
                               .map(id => s"https://www.youtube.com/watch?v=$id")),
           ageRating     = parseAgeRating(js)
         )

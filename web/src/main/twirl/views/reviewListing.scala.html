@@ -51,12 +51,12 @@
     </section>
   }
   @for(e <- view.explains) {
-    <section class="card listing" data-listing="@services.movies.ListingKey.serialised(e.listing)">
+    <section class="card listing" data-listing="@models.ListingKey.serialised(e.listing)">
       <div>
         <h1>@e.listing.rawTitle</h1>
         <div class="s">@e.country.code · @e.listing.venue@e.listing match {
-          case services.movies.ListingKey.Native(_, page, _) => { · <a href="@page" target="_blank" rel="noopener">venue page</a>}
-          case services.movies.ListingKey.Published(_, _, year, dirs) => { · published@for(y <- year){ @y}@if(dirs.nonEmpty){ · @dirs.mkString(", ")}}
+          case models.ListingKey.Native(_, page, _) => { · <a href="@page" target="_blank" rel="noopener">venue page</a>}
+          case models.ListingKey.Published(_, _, year, dirs) => { · published@for(y <- year){ @y}@if(dirs.nonEmpty){ · @dirs.mkString(", ")}}
         }</div>
       </div>
 

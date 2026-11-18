@@ -1,7 +1,7 @@
 package tools
 
 import models.{Country, MovieRecord}
-import services.movies.ShowtimesDigest
+import models.ShowtimesDigest
 
 import java.time.{Instant, LocalDateTime, ZoneId}
 

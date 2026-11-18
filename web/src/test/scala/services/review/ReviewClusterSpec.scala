@@ -4,7 +4,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.ResolverDecision.Basis
-import services.movies.ListingKey
+import models.ListingKey
 
 import java.time.Instant
 

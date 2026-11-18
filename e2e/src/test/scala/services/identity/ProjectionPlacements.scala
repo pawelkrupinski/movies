@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingKey
+import models.ListingKey
 
 /** What the identity projection's kept index says of each published listing, for a spec outside its package: the TMDB
  *  film of the stored film it is on, and its cluster's listings. */

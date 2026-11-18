@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{MovieRecord, Showtime, SourceData}
 
 import java.time.{LocalDateTime, ZoneOffset}
 

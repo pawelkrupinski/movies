@@ -31,7 +31,7 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
   }
 
   private def listing(title: String, venue: models.Cinema) =
-    Listing(venue, services.movies.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
+    Listing(venue, models.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
   private def unmatched(l: Listing) = ResolverDecision(Seq(l.key), None, 0.0, ResolverDecision.Basis.OwnMatch, Nil)()
 
   private val oczy  = listing("Oczy Ghany", Kinoteka)

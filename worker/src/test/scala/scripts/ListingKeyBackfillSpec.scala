@@ -1,11 +1,10 @@
 package scripts
 
-import models.{CinemaShowing, KinoMuranow, Kinoteka, SourceData, Tmdb}
+import models.{CinemaShowing, KinoMuranow, Kinoteka, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.ListingKeyBackfill._
-import services.movies.{ListingKey, SlotKeyed}
-
+import services.movies.SlotKeyed
 /**
  * The backfill's plan, pinned apart from the Mongo scan around it: which rows get which
  * `listingKey`, which cannot get one, and which slots claim the same listing.

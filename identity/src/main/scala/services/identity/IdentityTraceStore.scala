@@ -4,7 +4,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.movies.ListingKey
+import models.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt

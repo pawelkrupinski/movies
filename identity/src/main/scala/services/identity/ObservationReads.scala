@@ -172,7 +172,7 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   /** Nothing to hand on: a [[prefetch]] tells `inner` its asks were answered once it has asked them itself. */
   override def prefetchAnswered(): Unit = ()
 
-  override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = {
+  override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[models.ListingKey]): Unit = {
     asked.foreach(query => reads.forget(Question.Candidate(query)))
     records.foreach(id => reads.forget(Question.FilmRecord(id)))
     pages.foreach(key => reads.forget(Question.VenuePage(key)))
@@ -209,7 +209,7 @@ object TrackedLookups {
   private final class Prefetched {
     val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
     val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
-    val details = new java.util.concurrent.ConcurrentHashMap[services.movies.ListingKey, Answer[Option[DetailFacts]]]()
+    val details = new java.util.concurrent.ConcurrentHashMap[models.ListingKey, Answer[Option[DetailFacts]]]()
   }
   /** A question being asked, by `asker`: its answer once asked. */
   private final class InFlight(val asker: Thread) {
