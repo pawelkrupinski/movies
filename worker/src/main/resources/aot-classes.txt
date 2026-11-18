@@ -9454,8 +9454,6 @@ services.cinemas.pl.MuranowClient$RawSlot$
 services.cinemas.pl.NckfClient
 services.cinemas.pl.NckfClient$
 services.cinemas.pl.NckfClient$$anon$1
-services.cinemas.pl.NonMovieEventClassifier
-services.cinemas.pl.NonMovieEventClassifier$
 services.cinemas.pl.NoveKinoClient
 services.cinemas.pl.NoveKinoClient$
 services.cinemas.pl.NoveKinoClient$Detail
@@ -10998,6 +10996,8 @@ services.tasktypes.TaskType$ScrapeCinema$
 services.tasktypes.TaskType$SettleNow$
 services.titles.FormatTags$
 services.titles.FormatTags$$anon$1
+services.titles.NonMovieEventClassifier
+services.titles.NonMovieEventClassifier$
 services.titles.SearchTitles$
 services.titles.SequelMarker$
 services.titles.SequelMarker$Entry

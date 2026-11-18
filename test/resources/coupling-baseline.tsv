@@ -21,7 +21,7 @@ module-edge	identity->base	25
 module-edge	identity->common	491
 module-edge	identity->http	6
 module-edge	scrapers->base	53
-module-edge	scrapers->common	1550
+module-edge	scrapers->common	1551
 module-edge	scrapers->geodata	3
 module-edge	scrapers->http	370
 module-edge	scrapers->identity	8
@@ -35,8 +35,6 @@ module-edge	worker->common	1620
 module-edge	worker->http	192
 module-edge	worker->identity	447
 module-edge	worker->scrapers	143
-cycle-edge	services.cinemas->services.identity	8
-cycle-edge	services.identity->services.cinemas	7
 ce	clients	3
 ce	controllers	20
 ce	diagnostics	5
@@ -58,7 +56,7 @@ ce	services.events	1
 ce	services.facebook	2
 ce	services.fallback	2
 ce	services.freshness	4
-ce	services.identity	10
+ce	services.identity	9
 ce	services.identityadapters	19
 ce	services.keyed	3
 ce	services.lookups	1

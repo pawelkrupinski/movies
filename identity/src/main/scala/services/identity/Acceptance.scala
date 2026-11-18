@@ -2,7 +2,7 @@ package services.identity
 
 import services.titles.billing.{BillingPieces, Credits}
 
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
 

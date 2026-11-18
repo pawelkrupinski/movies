@@ -1,7 +1,6 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, Country, Movie, SourceData, UsCinema}
-import services.cinemas.pl.NonMovieEventClassifier
 import services.movies.ScrapeListing
 import services.titles.{TitleNormalizer, TitleText}
 import services.titles.SearchTitles
@@ -9,6 +8,7 @@ import services.titles.rules.{TitleRule, TitleRuleKey, TitleRules}
 import tools.{CinemaSlotInvariants, SearchQueryMarkers}
 
 import java.text.Normalizer
+import scala.annotation.nowarn
 import java.util.Locale
 
 /**
@@ -22,7 +22,11 @@ import java.util.Locale
  * reports as fired ([[services.titles.rules.TitleRuleSet.firedSearch]] and its siblings), in their fold order, so the
  * trace cannot disagree with the fold. Lines carry no timing or path, so two refs' traces diff to what the code moved.
  */
+@nowarn("msg=unused import")
 object TitleTrace {
+  // NonMovieEventClassifier, in either package a ref keeps it: services.cinemas.pl before 2026-11-18, services.titles
+  // since (the title text it reads; a ref from before services.titles gets the package from identity-tools.sh).
+  import services.cinemas.pl.*, services.titles.*
 
   final case class Options(raw: String = "", country: String = "", venue: Option[String] = None, batch: Option[String] = None)
 

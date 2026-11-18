@@ -3,7 +3,7 @@ package services.cinemas.common
 import scala.util.matching.Regex
 
 import models.CinemaMovie
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 
 /** Mix into a cinema client whose feed includes non-film live events (concerts,
  *  stand-up, kabaret, recitals, theatre plays) alongside its films — small

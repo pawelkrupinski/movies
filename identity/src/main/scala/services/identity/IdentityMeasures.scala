@@ -90,12 +90,12 @@ object IdentityMeasures {
     private[identity] lazy val originalTranslatesBilled: Boolean =
       originalTitle.exists(original => titles.exists(billed => IdentityMeasures.cognateOf(original, billed)))
     /** The pieces of the event its billing bills ([[agreement.NonFilmEvents.eventBilled]]), each with its counted words
-     *  (a piece with none left out) and whether it bills a performance ([[services.cinemas.pl.NonMovieEventClassifier.isPerformance]]) — none unless the
+     *  (a piece with none left out) and whether it bills a performance ([[services.titles.NonMovieEventClassifier.isPerformance]]) — none unless the
      *  whole event bills one, as most billings bill none. Read once per listing, whichever films it is weighed against
      *  (`Acceptance.notPerformedBeside`). */
     private[identity] lazy val performancePieces: Seq[(String, Seq[String], Boolean)] =
-      agreement.NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.cinemas.pl.NonMovieEventClassifier.isPerformance(_)).toSeq
-        .flatMap(BillingPieces.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.cinemas.pl.NonMovieEventClassifier.isPerformance(piece)))
+      agreement.NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.titles.NonMovieEventClassifier.isPerformance(_)).toSeq
+        .flatMap(BillingPieces.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.titles.NonMovieEventClassifier.isPerformance(piece)))
         .filter(_._2.nonEmpty)
     /** The billing's event words and its other words ([[FilmNess]]), once per listing. */
     private[identity] lazy val eventWords: Seq[String] = FilmNess.eventWords(this)

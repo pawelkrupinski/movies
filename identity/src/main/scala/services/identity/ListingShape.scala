@@ -1,7 +1,7 @@
 package services.identity
 
 import services.titles.billing.{BillingParse, BillingPieces, Credits, DecorationWords}
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import services.identity.IdentityMeasures.withoutLeadingArticle
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 

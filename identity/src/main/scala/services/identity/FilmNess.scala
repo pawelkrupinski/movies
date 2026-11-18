@@ -27,7 +27,7 @@ private[identity] object FilmNess {
     // (kinoheld's "Tanzwut - Live Tour 2026" carries the Number_i film's 108 minutes), so a stated fact proves nothing here
     if (agreement.NonFilmEvents.eventBilled(raw).isEmpty ||
         // a relay by its broadcast's name or its stage work — never by a year alone, which a gig's "Tour 2026" bills too
-        services.cinemas.pl.NonMovieEventClassifier.isNamedBroadcast(raw) ||
+        services.titles.NonMovieEventClassifier.isNamedBroadcast(raw) ||
         StageRelays.billsStageWork(listing.ownTitles.distinct, raw)) Nil
     // V3e: an event word inside a bracketed decoration decorates a film billed before it ("ELF (Pyjama Party)")
     else IdentityMeasures.countedWords(Bracketed.replaceAllIn(raw, " ")).filter(isEventWord)

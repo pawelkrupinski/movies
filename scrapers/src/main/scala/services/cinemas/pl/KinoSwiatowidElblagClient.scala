@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.titles.NonMovieEventClassifier
 import models._
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}

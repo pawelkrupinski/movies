@@ -1,6 +1,5 @@
 package services.movies
 
-
 import models.Country
 
 /**
@@ -87,7 +86,7 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
   override protected def awaitingReRecord: Set[AllowedListing] = DroppedByTheClients.keySet
 
   "every listing awaiting a re-record" should "be one the clients now drop as no screening" in {
-    DroppedByTheClients.values.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
+    DroppedByTheClients.values.filterNot(services.titles.NonMovieEventClassifier.isNonScreening) shouldBe empty
   }
 
   "the marker matcher" should "find each screening marker the rules strip, and nothing in a plain title" in {

@@ -4,7 +4,7 @@ import services.titles.billing.DecorationWords
 import models.{Country, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import services.identity.agreement.NonFilmEvents
 import services.titles.TitleNormalizer
 

@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import models.CinemaMovie
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 
 import java.util.Locale
 

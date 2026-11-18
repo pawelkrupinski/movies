@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._

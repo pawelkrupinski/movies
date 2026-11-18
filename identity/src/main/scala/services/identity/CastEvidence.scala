@@ -145,7 +145,7 @@ object CastEvidence {
    *  several works ([[mismatch]])? */
   def castIsTheFilms(listings: Seq[Listing]): Boolean = !listings.exists { l =>
     ListingShape.stagesAWork(l) || ListingShape.relays(l, l.rawTitle.toLowerCase(java.util.Locale.ROOT)) || ListingShape.billsSeveral(l) ||
-      services.cinemas.pl.NonMovieEventClassifier.isPerformance(l.rawTitle)
+      services.titles.NonMovieEventClassifier.isPerformance(l.rawTitle)
   }
 }
 

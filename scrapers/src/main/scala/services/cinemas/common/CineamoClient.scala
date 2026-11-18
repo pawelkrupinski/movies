@@ -4,7 +4,7 @@ import models._
 import play.api.libs.json._
 import services.cinemas.common.ScraperParse.jsonText
 import services.titles.FormatTags
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}

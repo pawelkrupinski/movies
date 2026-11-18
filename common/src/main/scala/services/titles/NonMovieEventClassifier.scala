@@ -1,9 +1,8 @@
-package services.cinemas.pl
+package services.titles
 
 import java.util.Locale
 
 import models.CinemaMovie
-import services.titles.{TitleContainment, TitleWords}
 
 import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a

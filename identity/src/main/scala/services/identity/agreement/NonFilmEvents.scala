@@ -2,7 +2,7 @@ package services.identity.agreement
 
 import services.titles.billing.BillingPieces
 
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import services.identity.{Listing, ListingShape}
 import services.titles.{TitleContainment, TitleWords}
 

@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.titles.NonMovieEventClassifier
 import java.util.Locale
 import services.titles.FormatTags
 

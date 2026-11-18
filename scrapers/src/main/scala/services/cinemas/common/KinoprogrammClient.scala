@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.Logging
-import services.cinemas.pl.NonMovieEventClassifier
+import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}

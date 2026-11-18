@@ -1,12 +1,13 @@
 package services.cinemas
 
+import services.titles.NonMovieEventClassifier
 import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter}
-import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage, NonMovieEventClassifier}
+import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage}
 
 class OnlyMovieEventsFilterSpec extends AnyFlatSpec with Matchers with OptionValues {
 

@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.titles.NonMovieEventClassifier
 import services.cinemas.common.ScraperParse.jsonText
 import tools.JsonLdBlocks
 import play.api.Logging
