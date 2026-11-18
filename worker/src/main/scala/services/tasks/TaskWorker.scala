@@ -403,6 +403,16 @@ object TaskWorker {
    *  `Reschedule`/`Deferred` — so nothing that clears on its own is classed here. */
   def isDeterministic(failure: Throwable): Boolean = failure.getClass == classOf[IllegalArgumentException]
 
+  /** A failed lookup that is an ANSWER about the film, not a read that did not happen:
+   *  the source's own "not found" (`ReadOutcome.isAbsent`), a deterministic failure a retry would
+   *  replay ([[isDeterministic]]), or a missing replay fixture — which only the
+   *  fixture harness throws, and treats as permanent (see `tools.RetryingHttpFetch.recoverable`). Anything
+   *  else — an outage, a rate limit, a timeout, a 401 on a bad key — is about the source, never the
+   *  film, and must not conclude it. Read by the TMDB side's writes (`services.corpus.MovieService`) and the IMDb id
+   *  resolver's retries (`services.enrichment.ImdbIdResolver.definitive`). */
+  def failedDefinitively(failure: Throwable): Boolean =
+    tools.ReadOutcome.isAbsent(failure) || isDeterministic(failure) || failure.isInstanceOf[java.io.FileNotFoundException]
+
   /** How many worker threads the pool runs by default.
    *
    *  Named rather than inlined because the test harness's synchronous stand-in for

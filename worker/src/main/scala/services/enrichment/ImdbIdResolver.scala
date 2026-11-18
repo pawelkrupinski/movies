@@ -128,7 +128,7 @@ class ImdbIdResolver(
 
   /** The event path has no caller to hand a failure to, so it retries here: a failed lookup is not
    *  a "no match", and the film is asked again on a growing backoff until a source answers or the
-   *  failure is itself the answer (`MovieService.failedDefinitively`: a 404, a deterministic error). */
+   *  failure is itself the answer (`TaskWorker.failedDefinitively`: a 404, a deterministic error). */
   private def resolveOrRetry(title: String, year: Option[Int], searchTitle: String, attempt: Int): Unit =
     try resolve(title, year, searchTitle)
     catch {
@@ -323,5 +323,5 @@ object ImdbIdResolver {
 
   /** Whether a failed ladder is an ANSWER: every failure in it (the first and those suppressed beside it) one. */
   def definitive(failure: Throwable): Boolean =
-    (failure +: failure.getSuppressed.toSeq).forall(services.corpus.MovieService.failedDefinitively)
+    (failure +: failure.getSuppressed.toSeq).forall(services.tasks.TaskWorker.failedDefinitively)
 }

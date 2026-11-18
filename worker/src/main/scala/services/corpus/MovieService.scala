@@ -7,7 +7,7 @@ import play.api.Logging
 import services.events.{EventBus, ImdbIdMissing}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.TmdbBasis
-import services.tasks.RatingTasks
+import services.tasks.{RatingTasks, TaskWorker}
 
 import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
 import services.identity.{Hit, PinnedGateMeasures, StoredIdentityConfidence}
@@ -274,12 +274,12 @@ class MovieService(
 
   /** The resolution builder applied with `tmdbId`'s fetched details, the cross-reference ids falling
    *  back to `row`'s when TMDB answers that it has none. When TMDB does not answer at all (an outage,
-   *  a rate limit, a timeout — not [[MovieService.failedDefinitively]]) nothing is applied: details
+   *  a rate limit, a timeout — not [[services.tasks.TaskWorker.failedDefinitively]]) nothing is applied: details
    *  without the film's ids would read as a film with none, and never be asked for again. */
   private def detailsOf(tmdbId: Int, row: MovieRecord): Option[MovieRecord => MovieRecord] =
     tmdb.fullDetails(tmdbId).flatMap { details =>
       Try(tmdb.externalIds(tmdbId)) match {
-        case Failure(e) if !MovieService.failedDefinitively(e) => None
+        case Failure(e) if !TaskWorker.failedDefinitively(e) => None
         case read =>
           val ids = read.getOrElse(TmdbClient.ExternalIds(row.imdbId, row.wikidataId))
           Some(cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
@@ -299,14 +299,4 @@ object MovieService {
       .sortBy(l => (l.title, l.rawTitle.getOrElse(""), l.originalTitle.getOrElse(""), l.year.getOrElse(0), l.runtime.getOrElse(0),
                     l.directors.mkString("\u0000"), l.countries.mkString("\u0000")))
       .distinctBy(l => PinnedGateMeasures.key(l.title))
-
-  /** A failed TMDB lookup that is an ANSWER about the film, not a read that did not happen:
-   *  TMDB's own "not found" (`ReadOutcome.isAbsent`), a deterministic failure a retry would
-   *  replay (`TaskWorker.isDeterministic`), or a missing replay fixture — which only the
-   *  fixture harness throws, and treats as permanent (see `tools.RetryingHttpFetch.recoverable`). Anything
-   *  else — an outage, a rate limit, a timeout, a 401 on a bad key — is about TMDB, never the
-   *  film, and must not conclude it. */
-  def failedDefinitively(failure: Throwable): Boolean =
-    tools.ReadOutcome.isAbsent(failure) || services.tasks.TaskWorker.isDeterministic(failure) ||
-      failure.isInstanceOf[java.io.FileNotFoundException]
 }
