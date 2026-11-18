@@ -16,6 +16,11 @@ final case class LabelRow(country: String, venue: String, rawTitle: String, film
   def sameJudgement(other: LabelRow): Boolean =
     country == other.country && LabelsTsv.normalise(rawTitle) == LabelsTsv.normalise(other.rawTitle) && film == other.film &&
       (venue == other.venue || venue == "*" || other.venue == "*")
+  /** Whether this row judges the listing `listingVenue` bills as `listingTitle` in `countryCode`: its raw title (as
+   *  the file normalises it), at that venue or every venue's `*`. */
+  def judges(countryCode: String, listingVenue: String, listingTitle: String): Boolean =
+    country == countryCode && LabelsTsv.normalise(rawTitle) == LabelsTsv.normalise(listingTitle) &&
+      (venue == "*" || venue == listingVenue)
 }
 
 object LabelsTsv {

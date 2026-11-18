@@ -29,6 +29,9 @@ final case class ReviewCluster(country: Country, members: Seq[ListingKey], film:
   def title: String = members.headOption.fold("")(_.rawTitle)
   /** The best candidate the resolver weighed, vetoed or not: what the queue and the matchable page sort by. */
   def best: Option[ReviewCandidate] = candidates.headOption
+
+  /** The films the model weighed, in its order. */
+  def candidateFilms: Seq[Int] = candidates.map(_.film)
   /** The best candidate's probability, 0 when none is stated. */
   def bestProbability: Double = best.flatMap(_.probability).getOrElse(0.0)
   def unmatched: Boolean = film.isEmpty && !fallback

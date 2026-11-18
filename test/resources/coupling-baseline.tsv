@@ -251,7 +251,6 @@ fanout	services.readmodel.ReadModelProjector	46
 fanout	services.readmodel.ReadModelSweeper	36
 fanout	services.readmodel.WebReadModel	29
 fanout	services.refresh.RefreshSourceHandler	10
-fanout	services.review.ListingExplain	11
 fanout	services.review.MongoReviewSource	22
 fanout	services.review.ReviewCard	18
 fanout	services.review.ReviewCards	14

@@ -58,7 +58,7 @@ object ListingExplain {
     val decision   = source.decisions(unmatchedOnly = false).find(_.listings.contains(listing)).map(d => d -> ReviewCluster.of(country, d))
     val trace      = source.traces(Seq(serialised)).get(serialised)
     val served     = source.served().get(serialised)
-    val ids = (decision.toSeq.flatMap { case (d, c) => d.film.toSeq ++ c.candidates.map(_.film) } ++ trace.flatMap(_.film) ++
+    val ids = (decision.toSeq.flatMap { case (d, c) => d.film.toSeq ++ c.candidateFilms } ++ trace.flatMap(_.film) ++
       trace.flatMap(_.weighedFilm) ++ served.flatten).distinct
     val films = ReviewCards.withRecords(source.films(ids), source.filmRecords(ids))
     ListingExplain(country, listing, decision, trace, served, films, judgementsOf(country, listing, labels))
@@ -66,8 +66,7 @@ object ListingExplain {
 
   /** The rows judging `listing`: its country, its raw title (as the file normalises it), its venue or every venue's `*`. */
   def judgementsOf(country: Country, listing: ListingKey, labels: Seq[LabelRow]): Seq[LabelRow] =
-    labels.filter(l => l.country == country.code && LabelsTsv.normalise(l.rawTitle) == LabelsTsv.normalise(listing.rawTitle) &&
-      (l.venue == "*" || l.venue == listing.venue))
+    labels.filter(_.judges(country.code, listing.venue, listing.rawTitle))
 
   /** This page's address for `listing`. */
   def path(country: Country, listing: ListingKey): String =
