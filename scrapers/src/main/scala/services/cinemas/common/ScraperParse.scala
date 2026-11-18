@@ -372,6 +372,16 @@ private[cinemas] object ScraperParse {
   // A JSON feed's string field, trimmed; a missing, non-string or blank one as none (JsonScalars.text).
   export JsonScalars.text as jsonText
 
+  private val DigitRun  = """(\d+)""".r
+  private val FourDigits = """(\d{4})""".r
+
+  /** The first run of digits in `s` as a number: a runtime field's minutes ("120 min"). */
+  def firstNumberIn(s: String): Option[Int] = DigitRun.findFirstMatchIn(s).map(_.group(1).toInt)
+
+  /** The first four digits in a row in `s`: a production-year or premiere-date field's year, unchecked for range
+   *  ([[yearIn]] admits 19xx/20xx only). */
+  def firstFourDigitsIn(s: String): Option[Int] = FourDigits.findFirstMatchIn(s).map(_.group(1).toInt)
+
   /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */
   def yearIn(s: String): Option[Int] = FourDigitYear.findFirstIn(s).map(_.toInt)
 

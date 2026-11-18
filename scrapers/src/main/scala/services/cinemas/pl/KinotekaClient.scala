@@ -168,12 +168,12 @@ object KinotekaClient {
       // "Czas trwania filmu" is the film; the page also carries a "Czas trwania
       // reklam" (ad/trailer block) row — match the film one so we never read the
       // ad length as the runtime regardless of which row comes first.
-      runtime       = dd(document, "czas trwania filmu").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year          = dd(document, "data premiery").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      runtime       = dd(document, "czas trwania filmu").flatMap(ScraperParse.firstNumberIn),
+      year          = dd(document, "data premiery").flatMap(ScraperParse.firstFourDigitsIn),
       originalTitle = dd(document, "oryginalny tytuł").filter(_.nonEmpty),
-      countries     = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director      = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast          = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      countries     = dd(document, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems),
+      director      = dd(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
+      cast          = dd(document, "obsada").toSeq.flatMap(ScraperParse.commaItems),
       // Event pages append an agenda ("Harmonogram wydarzenia: godz. 18:00 –
       // …") plus a partner/sponsor list as trailing <p>s of the body. When such
       // an agenda heading is present, keep only the prose paragraphs before it.

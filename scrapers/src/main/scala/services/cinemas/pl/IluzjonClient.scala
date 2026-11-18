@@ -140,11 +140,11 @@ object IluzjonClient {
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = dd(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      year           = dd(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries      = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director       = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast           = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      runtimeMinutes = dd(document, "czas trwania").flatMap(ScraperParse.firstNumberIn),
+      year           = dd(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
+      countries      = dd(document, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems),
+      director       = dd(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
+      cast           = dd(document, "obsada").toSeq.flatMap(ScraperParse.commaItems),
       originalTitle  = dd(document, "tytuł oryg"),
       synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(ScraperParse.blockText(_).trim)
                          .orElse(Option(document.selectFirst("div.content p")).map(ScraperParse.blockText(_).trim)).filter(_.length > 20),
