@@ -1,5 +1,6 @@
 package services.enrichment.scraping
 
+import tools.{HtmlScripts, JsonScalars}
 import play.api.libs.json.{JsValue, Json}
 
 import scala.util.Try

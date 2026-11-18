@@ -1,5 +1,6 @@
 package services.enrichment.scraping
 
+import tools.JsonLdBlocks
 import tools.SpecTimeouts
 
 import org.jsoup.Jsoup

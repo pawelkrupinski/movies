@@ -1,4 +1,4 @@
-package services.enrichment.scraping
+package tools
 
 import org.jsoup.nodes.Element
 import play.api.libs.json.{JsValue, Json}

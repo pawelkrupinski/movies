@@ -294,7 +294,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/us/RegalParser.scala", "body",
       "Try(Json.parse(json)).getOrElse(") ->
       "not a swallow: the getOrElse THROWS (\"…not JSON\"), turning a parse failure into a named failed read",
-    ("common/src/main/scala/services/enrichment/scraping/JsonLdBlocks.scala", "asJson",
+    ("common/src/main/scala/tools/JsonLdBlocks.scala", "asJson",
       "private def asJson(raw: String): Option[JsValue] = Try(Json.parse(raw)).toOption") ->
       "one of a page's JSON-LD blocks, the page itself read and answered (biletyna, Charlie Monroe, a rating page through HttpRead); a block that is not JSON (a malformed CMS embed) is skipped, the page's other blocks stand",
     ("worker/src/main/scala/services/enrichment/scraping/RottenTomatoesScorecard.scala", "criticsScore",

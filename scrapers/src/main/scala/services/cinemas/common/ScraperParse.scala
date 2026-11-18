@@ -3,7 +3,7 @@ package services.cinemas.common
 import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
-import services.enrichment.scraping.JsonScalars
+import tools.JsonScalars
 import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}

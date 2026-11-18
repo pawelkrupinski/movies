@@ -1,4 +1,4 @@
-package services.enrichment.scraping
+package tools
 
 /**
  * A page's `<script …>…</script>` elements, each as its attribute text and its raw body, read without

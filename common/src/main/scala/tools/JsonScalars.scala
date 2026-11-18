@@ -1,4 +1,4 @@
-package services.enrichment.scraping
+package tools
 
 import play.api.libs.json.{JsNumber, JsReadable, JsString, JsValue}
 

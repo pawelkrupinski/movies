@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.enrichment.scraping.JsonLdBlocks
+import tools.JsonLdBlocks
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import play.api.libs.json.{JsArray, JsLookupResult, JsObject, JsString, Json}

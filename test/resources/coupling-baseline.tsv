@@ -35,7 +35,6 @@ module-edge	worker->common	1620
 module-edge	worker->http	192
 module-edge	worker->identity	447
 module-edge	worker->scrapers	143
-cycle-edge	services.cinemas->services.enrichment	5
 cycle-edge	services.cinemas->services.identity	8
 cycle-edge	services.enrichment->services.identity	4
 cycle-edge	services.enrichment->services.tasks	11
@@ -61,7 +60,7 @@ ce	services.alerts	6
 ce	services.attempts	4
 ce	services.auth	5
 ce	services.cadence	3
-ce	services.cinemas	10
+ce	services.cinemas	9
 ce	services.closure	6
 ce	services.config	2
 ce	services.corpus	13

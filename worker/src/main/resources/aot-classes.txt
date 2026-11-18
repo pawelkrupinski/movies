@@ -9964,7 +9964,6 @@ services.enrichment.WikidataClient
 services.enrichment.WikidataClient$
 services.enrichment.WikidataIds
 services.enrichment.scraping.JsonLdAggregateRating$
-services.enrichment.scraping.JsonScalars$
 services.enrichment.scraping.RottenTomatoesScorecard$
 services.events.DomainEvent
 services.events.EventBus
@@ -12753,6 +12752,7 @@ tools.IssuerCertificateFetching
 tools.IssuerCertificateFetching$
 tools.IssuerCertificateFetching$$anon$1
 tools.IssuerCertificateFetching$$anon$2
+tools.JsonScalars$
 tools.KeysetScan$
 tools.LogThrottle
 tools.LogThrottle$

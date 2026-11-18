@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.enrichment.scraping.JsonLdBlocks
+import tools.JsonLdBlocks
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale

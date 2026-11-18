@@ -1,5 +1,6 @@
 package services.enrichment.scraping
 
+import tools.{JsonLdBlocks, JsonScalars}
 import play.api.libs.json.JsValue
 
 /**

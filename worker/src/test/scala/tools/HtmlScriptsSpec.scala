@@ -1,5 +1,6 @@
-package services.enrichment.scraping
+package tools
 
+import services.enrichment.scraping.RottenTomatoesScorecard
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

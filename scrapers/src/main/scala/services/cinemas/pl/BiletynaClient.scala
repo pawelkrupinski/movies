@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.enrichment.scraping.JsonLdBlocks
+import tools.JsonLdBlocks
 import play.api.Logging
 import tools.{HttpFetch, HttpRead}
 import models._

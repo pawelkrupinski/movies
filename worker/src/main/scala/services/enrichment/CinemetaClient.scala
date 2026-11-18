@@ -1,6 +1,6 @@
 package services.enrichment
 
-import services.enrichment.scraping.JsonScalars
+import tools.JsonScalars
 
 import play.api.libs.json._
 import services.titles.{TitleMatch, YearWindow}
