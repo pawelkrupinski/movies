@@ -27,7 +27,7 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
       "def hydrate(c: MongoCollection[Document]): Unit = Try {") ->
       "a boot hydrate of an in-memory map: a failed read leaves it as it was (empty = the documented cold start) and is logged",
-    ("common/src/main/scala/services/movies/MongoMovieRepository.scala", "collidesWithAnother",
+    ("common/src/main/scala/services/movies/WholeRecordUpsert.scala", "collidesWithAnother",
       "Try(Await.result(c.find(Filters.and(") ->
       "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",
     ("common/src/main/scala/services/movies/ScreeningsRepository.scala", "storedRow",

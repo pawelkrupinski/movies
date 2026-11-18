@@ -25,7 +25,7 @@ limit	fanout-measure	2
 limit	new-package-ce	8
 limit	distance	20
 limit	distance-min-types	8
-module-edge	common->base	52
+module-edge	common->base	53
 module-edge	common->geodata	12
 module-edge	common->http	67
 module-edge	http->base	10
@@ -241,7 +241,7 @@ fanout	services.movies.InMemoryScreeningsRepository	12
 fanout	services.movies.InMemorySlotsRepository	10
 fanout	services.movies.KeyAddressedMovieWrites	11
 fanout	services.movies.MixedFilmDetector	10
-fanout	services.movies.MongoMovieRepository	56
+fanout	services.movies.MongoMovieRepository	55
 fanout	services.movies.MongoScreeningsRepository	26
 fanout	services.movies.MongoSlotsRepository	24
 fanout	services.movies.MovieCache	12
@@ -255,6 +255,7 @@ fanout	services.movies.ScreeningsSplit	12
 fanout	services.movies.SideCollectionWatch	11
 fanout	services.movies.SlotKeyed	10
 fanout	services.movies.UnscreenedCleanup	14
+fanout	services.movies.WholeRecordUpsert	17
 fanout	services.readmodel.BootCorpusStudy	10
 fanout	services.readmodel.MongoReadModelRepository	23
 fanout	services.readmodel.ReadModelBoot	26
@@ -308,4 +309,4 @@ fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
 distance	services.identity	39
 distance	services.metrics	38
-distance	services.movies	37
+distance	services.movies	38

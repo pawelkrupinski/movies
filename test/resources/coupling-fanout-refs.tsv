@@ -2785,7 +2785,6 @@ services.movies.MongoMovieRepository	services.movies.FilmId
 services.movies.MongoMovieRepository	services.movies.FilmWriteFence
 services.movies.MongoMovieRepository	services.movies.KeyAddressedMovieWrites
 services.movies.MongoMovieRepository	services.movies.LatestTitleYear
-services.movies.MongoMovieRepository	services.movies.ListedShowtimes
 services.movies.MongoMovieRepository	services.movies.MovieChangeFeed
 services.movies.MongoMovieRepository	services.movies.MovieChangeStream
 services.movies.MongoMovieRepository	services.movies.MovieCodecs
@@ -2795,7 +2794,6 @@ services.movies.MongoMovieRepository	services.movies.MovieRepository
 services.movies.MongoMovieRepository	services.movies.MovieSideStitch
 services.movies.MongoMovieRepository	services.movies.MovieUpdates
 services.movies.MongoMovieRepository	services.movies.MoviesKeysetPages
-services.movies.MongoMovieRepository	services.movies.MoviesUpsert
 services.movies.MongoMovieRepository	services.movies.RemovalAudit
 services.movies.MongoMovieRepository	services.movies.RepositoryWrite
 services.movies.MongoMovieRepository	services.movies.RepositoryWriteMetrics
@@ -2813,6 +2811,7 @@ services.movies.MongoMovieRepository	services.movies.StoredMovieRecord
 services.movies.MongoMovieRepository	services.movies.StrandedSideRows
 services.movies.MongoMovieRepository	services.movies.VenueSlots
 services.movies.MongoMovieRepository	services.movies.VenueVerdict
+services.movies.MongoMovieRepository	services.movies.WholeRecordUpsert
 services.movies.MongoMovieRepository	services.movies.WriteOutcome
 services.movies.MongoMovieRepository	services.titles.TitleNormalizer
 services.movies.MongoMovieRepository	tools.GuardedWrite
@@ -3038,6 +3037,23 @@ services.movies.UnscreenedCleanup	services.movies.RemovalAudit
 services.movies.UnscreenedCleanup	services.movies.StoredMovieRecord
 services.movies.UnscreenedCleanup	tools.ReadOutcome
 services.movies.UnscreenedCleanup	tools.Stoppable
+services.movies.WholeRecordUpsert	models.MovieRecord
+services.movies.WholeRecordUpsert	models.Source
+services.movies.WholeRecordUpsert	models.SourceData
+services.movies.WholeRecordUpsert	services.movies.CacheKey
+services.movies.WholeRecordUpsert	services.movies.FilmId
+services.movies.WholeRecordUpsert	services.movies.ListedShowtimes
+services.movies.WholeRecordUpsert	services.movies.MovieRepository
+services.movies.WholeRecordUpsert	services.movies.MoviesUpsert
+services.movies.WholeRecordUpsert	services.movies.RepositoryWrite
+services.movies.WholeRecordUpsert	services.movies.RepositoryWriteMetrics
+services.movies.WholeRecordUpsert	services.movies.ScreeningsRepository
+services.movies.WholeRecordUpsert	services.movies.ScreeningsSplit
+services.movies.WholeRecordUpsert	services.movies.SlotsRepository
+services.movies.WholeRecordUpsert	services.movies.StoredMovieDto
+services.movies.WholeRecordUpsert	services.movies.StoredMovieRecord
+services.movies.WholeRecordUpsert	services.movies.WriteOutcome
+services.movies.WholeRecordUpsert	tools.MonotonicStampSequence
 services.readmodel.BootCorpusStudy	models.MovieRecord
 services.readmodel.BootCorpusStudy	services.movies.BootCorpusReader
 services.readmodel.BootCorpusStudy	services.movies.BootReadEnd
