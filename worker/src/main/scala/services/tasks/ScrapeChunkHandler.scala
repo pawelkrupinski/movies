@@ -3,8 +3,7 @@ package services.tasks
 import services.tasktypes.TaskType
 
 import play.api.Logging
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, ListingReads}
-import tools.{AllBackendsFailedException, CircuitOpenException, ReadOutcome}
+import services.cinemas.common.ChunkedCinemaScraper
 
 import java.time.Clock
 
@@ -27,29 +26,10 @@ import java.time.Clock
 class ScrapeChunkHandler(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
-  clock:         Clock,
-  // A chunk page's last parse, so an identical page is not parsed again — see `sliceOf`.
-  pageMemo:      ChunkPageMemo = ChunkPageMemo.none,
-  memoMetrics:   ChunkPageMemoMetrics = ChunkPageMemoMetrics.noop
+  slices:        ChunkSlices,
+  deferrals:     HostDownDeferrals,
+  clock:         Clock
 ) extends TaskHandler with Logging {
-
-  /** Per host, until when its deferrals have been said: the first chunk a block defers says so at INFO, the
-   *  others of the same block at DEBUG — the breaker has announced the outage already, and a block deferring a
-   *  venue's every chunk each minute was 6,243 INFO lines for Ocine Gavarres alone (2026-10-29..11-12). */
-  private val deferralsSaidUntil = new java.util.concurrent.ConcurrentHashMap[String, java.time.Instant]()
-
-  private def sayDeferred(host: String, notBefore: java.time.Instant, line: String): Unit = {
-    val now  = clock.instant()
-    val said = deferralsSaidUntil.get(host)
-    if (said == null || !now.isBefore(said)) { deferralsSaidUntil.put(host, notBefore); logger.info(line) }
-    else logger.debug(line)
-  }
-
-  /** The block to wait out, when the chunk's host is down: its breaker open, bare or behind every egress route. */
-  private def hostDown(e: Exception): Option[CircuitOpenException] = e match {
-    case open: CircuitOpenException => Some(open)
-    case other                      => AllBackendsFailedException.hostDown(other)
-  }
   import HandlerOutcome._
 
   override val taskType: TaskType = TaskType.ScrapeChunk
@@ -63,65 +43,21 @@ class ScrapeChunkHandler(
     chunkScrapers.get(cinema) match {
       case None => Done // cinema dropped from the catalogue
       case Some(scraper) =>
+        val label = s"chunk '$key' for $cinema run $runId"
         try {
-          val (slice, complete) =
-            try {
-              val (slice, reads) = ListingReads.during(sliceOf(cinema, key, scraper))
-              (slice, reads.complete)
-            } catch {
-              // The upstream says this chunk does not exist (a 404/410 on a key its own
-              // plan advertised — Odeon's empty business dates, UK 2026-09-21/22). That is
-              // an answer, not a failure: a retry only replays it, holding the run open
-              // until the chunk exhausts. Land it empty so the run can complete.
-              case e: Exception if ReadOutcome.isAbsent(e) =>
-                logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
-                (CinemaMovieJson.encode(Nil), true)
-            }
-          if (!complete) logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: a page failed")
+          val (slice, complete) = slices.read(cinema, key, scraper, label)
+          if (!complete) logger.info(s"$label stored INCOMPLETE: a page failed")
           store.storeChunk(cinema, runId, key, StoredChunk(slice, complete, task.attempts), clock.instant())
           Done
         } catch {
-          // The host's breaker is open, so this chunk never reached the wire. Give
-          // the attempt back and wait out the block instead of charging a doubling
-          // backoff for work that was refused locally — otherwise a host-wide block
-          // retries the whole estate out of existence while the host is still down
-          // (see HandlerOutcome.Deferred for the 2026-07-28 Odeon numbers).
-          // A chain of egress routes (proxy -> direct) that failed on every route with one of them circuit-open
-          // is the same host-down, wrapped (`AllBackendsFailedException.hostDown`).
-          case e: Exception if hostDown(e).isDefined =>
-            val open      = hostDown(e).get
-            val notBefore = clock.instant().plusMillis(open.openForMs)
-            sayDeferred(open.host, notBefore, s"chunk '$key' for $cinema run $runId deferred: ${open.getMessage}")
-            Deferred(Some(open.getMessage), Some(notBefore))
-          // A failed fetch, or a store that failed to land the slice: retry the chunk.
-          case e: Exception =>
-            logger.warn(s"chunk '$key' for $cinema run $runId failed: ${tools.FailureText.of(e)}")
+          // The host's breaker is open, so this chunk never reached the wire ([[HostDownDeferrals]]);
+          // otherwise a failed fetch, or a store that failed to land the slice: retry the chunk.
+          case e: Exception => deferrals.deferral(e, label).getOrElse {
+            logger.warn(s"$label failed: ${tools.FailureText.of(e)}")
             Reschedule(Some(tools.FailureText.of(e)))
+          }
         }
     }
-  }
-
-  /** The chunk's slice, encoded. A page-at-a-time scraper's page is parsed only when it differs
-   *  from the page this chunk last parsed, or when the parser has changed since: most day pages are
-   *  byte-identical from one scrape to the next (75 of 80 UK and US Flicks pages two hours apart,
-   *  2026-10-01), and parsing them was 7% of the US worker's CPU (JFR, same day). */
-  private def sliceOf(cinema: String, key: String, scraper: ChunkedCinemaScraper): String = scraper.pagedChunks match {
-    case Some(paged) =>
-      val page   = paged.fetchChunkPage(key)
-      val digest = ChunkPageMemo.digest(page)
-      val known  = pageMemo.recall(cinema, key)
-      known match {
-        case Some(entry) if entry.page == digest && entry.parser == paged.pageParser =>
-          memoMetrics.recordPage(ChunkPageMemoMetrics.Hit)
-          entry.slice
-        case _ =>
-          memoMetrics.recordPage(known.fold(ChunkPageMemoMetrics.New)(e =>
-            if (e.page != digest) ChunkPageMemoMetrics.Changed else ChunkPageMemoMetrics.Parser))
-          val slice = CinemaMovieJson.encode(paged.parseChunkPage(key, page))
-          pageMemo.remember(cinema, key, ChunkPageMemo.Entry(digest, paged.pageParser, slice))
-          slice
-      }
-    case None => CinemaMovieJson.encode(scraper.fetchChunk(key))
   }
 }
 

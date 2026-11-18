@@ -95,10 +95,10 @@ class ChunkScrapeHarness private (
   private val runTimeout = ChunkScrapePlanner.RunTimeout(staleAfter)
 
   val planner = ChunkScrapePlanners(map, store, queue, publish, policy, runTimeout, clock)
-  val chunkH  = new ScrapeChunkHandler(map, store, clock)
-  val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clock)
+  val chunkH  = ChunkScrapeParts.chunkHandler(map, store, clock)
+  val reduceH = ChunkScrapeParts.reduceHandler(map, store, publish, policy)
   val coord   = new ChunkScrapeCoordinator(store, queue, _root_.tools.SpecClock.Pinned)
-  def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = runTimeout, clock = c, scheduler = tools.DaemonExecutors.scheduler("chunk-scrape-reaper"))
+  def reaper(c: Clock) = ChunkScrapeParts.reaper(store, coord, staleAfter = runTimeout, clock = c, scheduler = tools.DaemonExecutors.scheduler("chunk-scrape-reaper"))
 
   def rescraping(other: ChunkedCinemaScraper): ChunkScrapeHarness =
     new ChunkScrapeHarness(other, publish, clock, store, queue, freshness, policy, staleAfter)

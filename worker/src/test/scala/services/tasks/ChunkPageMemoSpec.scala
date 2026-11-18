@@ -34,7 +34,7 @@ class ChunkPageMemoSpec extends AnyFlatSpec with Matchers {
     val memo    = new InMemoryChunkPageMemo(java.time.Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), java.time.ZoneOffset.UTC))
     val seen    = mutable.Buffer.empty[String]
     val clock   = java.time.Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), java.time.ZoneOffset.UTC)
-    val handler = new ScrapeChunkHandler(Map(Multikino.displayName -> scraper), store, clock = clock, pageMemo = memo,
+    val handler = ChunkScrapeParts.chunkHandler(Map(Multikino.displayName -> scraper), store, clock = clock, pageMemo = memo,
       memoMetrics = (outcome: String) => { seen += outcome; () })
     /** One run over the chunk: its stored slice. */
     def scrape(): String = {

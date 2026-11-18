@@ -36,7 +36,7 @@ class ListingCompletenessSpec extends AnyFlatSpec with Matchers {
     Root.file("common/MultiListingScraper.scala").toString ->
       "complete only when every listing it composes is (forall) — it can only lower the verdict",
     Root.file("common/PreScrapedCinemaScraper.scala").toString ->
-      "how the chunk reduce hands its listing to the runner; its completeness is computed from missing chunks and incomplete-read markers (ScrapeChunkReduceHandler)",
+      "how the chunk reduce hands its listing to the runner; its completeness is computed from missing chunks and incomplete-read markers (ReducedRun, published by ChunkedListingPublisher)",
     Root.file("common/SourceFallbackScraper.scala").toString ->
       "reports the SERVING source's ListingReads verdict per tick; it reads both scopes, it does not invent one"
   )

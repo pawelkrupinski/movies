@@ -385,7 +385,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val dueScrapes: DueScrapes = new DueScrapes(cinemaScrapers, freshnessStore, scrapeDueWindow, chunkRunInFlight)
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap, dueScrapes,
-    new PlainCinemaScrape(cinemaScrapeRunner, scrapeFreshnessPolicy, venuePageHistory, scrapeCostStore, clock),
+    new PlainCinemaScrape(cinemaScrapeRunner, scrapeFreshnessPolicy, venuePageHistory, scrapeCostStore, clock, stopwatch),
     Some(chunkScrapePlanner), venuePageHistory, scrapeFreshnessPolicy, clock)
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up

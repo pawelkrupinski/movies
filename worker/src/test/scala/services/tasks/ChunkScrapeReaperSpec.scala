@@ -41,22 +41,24 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     /** A reaper as a freshly booted process builds it: nothing armed in memory. */
     val ticks     = new tools.RecordingTickRecorder
     def reaper(): ChunkScrapeReaper =
-      new ChunkScrapeReaper(store, queue, coord, staleAfter = timeout, runStore = runStore, clock = clock, scheduler = scheduler,
+      ChunkScrapeParts.reaper(store, coord, staleAfter = timeout, runStore = runStore, clock = clock, scheduler = scheduler,
         ticks = ticks)
+    /** A process's run deadlines, as a freshly booted one holds them: nothing armed. */
+    def deadlines(): ChunkRunDeadlines = new ChunkRunDeadlines(store, coord, timeout, clock, scheduler)
     def reduces: Int = queue.waitingCount(TaskType.ScrapeChunkReduce)
     def advanceTo(at: Instant): Unit = scheduler.advance(Duration.between(clock.instant(), at))
   }
 
   /** The planner + handlers over `scraper` on `rig`'s store and queue, arming each run's
    *  deadline on `armedBy`, as the wiring does. */
-  private class Flow(rig: Rig, scraper: ChunkedCinemaScraper, armedBy: ChunkScrapeReaper) {
+  private class Flow(rig: Rig, scraper: ChunkedCinemaScraper, armedBy: ChunkRunDeadlines) {
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     private val publish: CinemaScraper => Unit = s => { published += s.fetch(); () }
     private val policy  = new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = rig.clock)
     private val map     = Map(cinema -> scraper)
-    val planner = ChunkScrapePlanners(map, rig.store, rig.queue, publish, policy, timeout, rig.clock, runStarted = armedBy.armDeadline)
-    private val chunkH  = new ScrapeChunkHandler(map, rig.store, rig.clock)
-    private val reduceH = new ScrapeChunkReduceHandler(map, rig.store, publish, policy, rig.clock)
+    val planner = ChunkScrapePlanners(map, rig.store, rig.queue, publish, policy, timeout, rig.clock, runStarted = armedBy.arm)
+    private val chunkH  = ChunkScrapeParts.chunkHandler(map, rig.store, rig.clock)
+    private val reduceH = ChunkScrapeParts.reduceHandler(map, rig.store, publish, policy)
 
     /** Run every claimable task once; `announce` = whether a finished chunk reaches the
      *  coordinator (the TaskFinished event). A failing task backs off for an hour. */
@@ -88,7 +90,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "reduce a run on its last chunk's completion, with no sweep or deadline run" in {
     val rig  = new Rig()
-    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks), rig.reaper())
+    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks), rig.deadlines())
     flow.planner.plan(cinema)
     flow.drain()
     flow.published.map(_.map(_.movie.title).toSet) shouldBe Seq(Set("X", "Y"))
@@ -98,7 +100,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "partial-reduce a run whose chunks never finish at the deadline its planner armed" in {
     val rig  = new Rig()
-    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks, failAlways = Set("b")), rig.reaper())
+    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks, failAlways = Set("b")), rig.deadlines())
     flow.planner.plan(cinema)
     flow.drain() // 'a' lands; 'b' fails and backs off past the deadline
     rig.advanceTo(t0.plusSeconds(15 * 60))
@@ -112,7 +114,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "fully reduce, at its deadline, a run whose last completion was never announced" in {
     val rig  = new Rig()
-    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks), rig.reaper())
+    val flow = new Flow(rig, new FakeChunkedScraper(twoChunks), rig.deadlines())
     flow.planner.plan(cinema)
     flow.drain(announce = false) // both chunks land; their TaskFinished events are lost
     rig.reduces shouldBe 0
@@ -124,7 +126,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "do nothing at the deadline of a run already reduced" in {
     val rig  = new Rig()
-    val flow = new Flow(rig, new FakeChunkedScraper(Map("a" -> Seq(film("X")))), rig.reaper())
+    val flow = new Flow(rig, new FakeChunkedScraper(Map("a" -> Seq(film("X")))), rig.deadlines())
     flow.planner.plan(cinema)
     flow.drain()
     rig.advanceTo(t0.plusSeconds(16 * 60))

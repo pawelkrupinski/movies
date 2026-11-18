@@ -1,14 +1,12 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import play.api.Logging
 import tools.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.{ScheduledTick, TickRecorder}
 
-import java.time.{Clock, Instant}
-import java.util.concurrent.{ConcurrentHashMap, RejectedExecutionException, ScheduledExecutorService, TimeUnit}
+import java.time.Clock
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 
 /**
@@ -21,8 +19,8 @@ import scala.concurrent.duration._
  *    → a PARTIAL reduce over whatever landed, so one dead chunk degrades to a partial
  *    listing instead of losing the cinema. The next `ScrapeCinema` supersedes the run.
  *
- * Each deadline is a one-shot timer, armed by the planner as it starts the run
- * ([[armDeadline]]); at that point one run doc is read. A timer lives in this process
+ * Each deadline is a one-shot timer ([[ChunkRunDeadlines]]), armed by the planner as it starts the run
+ * ([[ChunkRunDeadlines.arm]]); at that point one run doc is read. A timer lives in this process
  * only, so a SWEEP of every run doc recovers the ones whose timer died with a process (or
  * that another replica started): once at boot, by every process, and then hourly, by the
  * replica that claims the hour. It reduces the runs already complete or past their
@@ -34,24 +32,16 @@ import scala.concurrent.duration._
  * no longer active.
  */
 class ChunkScrapeReaper(
-  store:        ChunkScrapeStore,
-  queue:        TaskProducer,
-  coordinator:  ChunkScrapeCoordinator,
+  deadlines:    ChunkRunDeadlines,
   interval:     ChunkScrapeReaper.SweepInterval = ChunkScrapeReaper.SweepInterval(1.hour),
   initialDelay: ChunkScrapeReaper.InitialDelay = ChunkScrapeReaper.InitialDelay(45.seconds),
-  staleAfter:   ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
   scheduler:    ScheduledExecutorService,
-  // Where each completed sweep is reported (`ScheduledTickStale`).
   ticks:        TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
-  /** runIds with a deadline pending in this process, so a sweep does not arm a second. */
-  private val armed = ConcurrentHashMap.newKeySet[String]()
-
   def start(): Unit = {
-    // The boot sweep is unclaimed: this process's timers are gone, whoever swept this hour.
     scheduler.schedule((() => ScheduledTick.logged("ChunkScrapeReaper boot sweep", logger)(sweep())): Runnable,
       initialDelay.value.toMillis, TimeUnit.MILLISECONDS)
     ticks.started("chunk-scrape-reaper", interval.value, initialDelay.value + interval.value)
@@ -61,53 +51,13 @@ class ChunkScrapeReaper(
       s"and then every ${interval.value.toMinutes}min.")
   }
 
-  /** Arm `run`'s deadline in this process, unless it already has one here. */
-  def armDeadline(run: ChunkRun): Unit =
-    if (armed.add(run.runId)) {
-      // `isStale` is strict, so the first stale instant is a millisecond past the deadline.
-      val delay = math.max(0L, deadlineOf(run).toEpochMilli - clock.millis() + 1)
-      try {
-        scheduler.schedule((() => ScheduledTick.logged(s"ChunkScrapeReaper deadline ${run.cinema}", logger) {
-          armed.remove(run.runId)
-          atDeadline(run.cinema, run.runId)
-        }): Runnable, delay, TimeUnit.MILLISECONDS)
-        ()
-      } catch { case _: RejectedExecutionException => armed.remove(run.runId); () } // stopping
-    }
-
-  /** The run's deadline has passed: reduce it if it is still the cinema's active run. */
-  private def atDeadline(cinema: String, runId: String): Unit =
-    store.activeRun(cinema).filter(_.runId == runId).foreach(reduceIfDue(_, clock.instant()))
-
   private[tasks] def sweepIfClaimed(): Enqueued = {
     val key = OccurrenceKey.at("chunk-scrape", clock.millis(), interval.value, 0.seconds)
     if (runStore.claim(key)) sweep() else Enqueued.Zero
   }
 
-  /** Reduce every active run that is complete or past its deadline, and arm the deadline of
-   *  every other. Returns how many reduces were enqueued, and how many enqueues failed (a
-   *  sweep with any is not a completed run). Public so tests drive it directly. */
-  def sweep(): Enqueued = {
-    val now = clock.instant()
-    val n = store.activeRuns().foldLeft(Enqueued.Zero)(_ + reduceIfDue(_, now))
-    if (n.added > 0) logger.info(s"ChunkScrapeReaper enqueued ${n.added} reduce task(s).")
-    if (n.failed > 0) logger.warn(s"ChunkScrapeReaper: ${n.failed} reduce enqueue(s) failed; the next sweep tries again.")
-    n
-  }
-
-  /** The full reduce when every chunk landed (its last completion was lost), the partial
-   *  one once past its deadline — and otherwise the deadline, armed. */
-  private def reduceIfDue(run: ChunkRun, now: Instant): Enqueued = {
-    val stored = store.storedKeys(run.cinema, run.runId)
-    if (run.expectedKeys.toSet.subsetOf(stored)) coordinator.maybeReduce(run.cinema, run.runId)
-    else if (run.isStale(now, staleAfter.value)) {
-      logger.warn(s"${run.cinema} run ${run.runId} abandoned (${stored.size}/${run.expectedKeys.size} chunks) — partial reduce")
-      Enqueued.of(queue.enqueue(TaskType.ScrapeChunkReduce, ChunkScrapeKeys.reduceDedup(run.cinema, run.runId),
-        ChunkScrapeKeys.reducePayload(run.cinema, run.runId), submittedAt = now))
-    } else { armDeadline(run); Enqueued.Zero }
-  }
-
-  private def deadlineOf(run: ChunkRun): Instant = run.createdAt.plusMillis(staleAfter.value.toMillis)
+  /** [[ChunkRunDeadlines.sweep]]. Public so tests drive it directly. */
+  def sweep(): Enqueued = deadlines.sweep()
 
   override def stop(): Unit = { scheduler.shutdown(); () }
 }

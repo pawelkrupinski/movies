@@ -69,7 +69,7 @@ object ScrapeCinemaHandlers {
     val outcome = scrapeFreshness.getOrElse(new ScrapeFreshnessPolicy(freshness, clock = clock))
     val pages   = new VenuePageHistory(scrapeArchive, clock)
     new ScrapeCinemaHandler(scrapersByKey, new DueScrapes(scrapersByKey.values.toSeq, freshness, dueWindow),
-      new PlainCinemaScrape(runner, outcome, pages, costs, clock), chunkPlanner, pages, outcome, clock)
+      new PlainCinemaScrape(runner, outcome, pages, costs, clock, tools.SpecStopwatch.Frozen), chunkPlanner, pages, outcome, clock)
   }
 }
 
@@ -90,6 +90,26 @@ object ChunkScrapePlanners {
     scrapeArchive:   ScrapeArchiveReader = ScrapeArchiveRepository.empty
   ): ChunkScrapePlanner =
     new ChunkScrapePlanner(chunkScrapers, store, new ChunkFanOut(queue, staleAfter.value, chunkSpread, costs),
-      new EmptyChunkPlan(publishScrape, scrapeFreshness),
+      new ChunkedListingPublisher(publishScrape, scrapeFreshness),
       new FailedChunkPlan(publishScrape, scrapeFreshness, new VenuePageHistory(scrapeArchive, clock)), staleAfter, clock, runStarted)
+}
+
+/** The chunked scrape's handlers and reaper assembled from their parts as the worker's wiring assembles them. */
+object ChunkScrapeParts {
+
+  def chunkHandler(chunkScrapers: Map[String, ChunkedCinemaScraper], store: ChunkScrapeStore, clock: Clock,
+                   pageMemo: ChunkPageMemo = ChunkPageMemo.none,
+                   memoMetrics: ChunkPageMemoMetrics = ChunkPageMemoMetrics.noop): ScrapeChunkHandler =
+    new ScrapeChunkHandler(chunkScrapers, store, new ChunkSlices(pageMemo, memoMetrics), new HostDownDeferrals(clock), clock)
+
+  def reduceHandler(chunkScrapers: Map[String, ChunkedCinemaScraper], store: ChunkScrapeStore,
+                    publishScrape: CinemaScraper => Unit, scrapeFreshness: ScrapeFreshnessPolicy): ScrapeChunkReduceHandler =
+    new ScrapeChunkReduceHandler(chunkScrapers, store, new ChunkedListingPublisher(publishScrape, scrapeFreshness))
+
+  def reaper(store: ChunkScrapeStore, coordinator: ChunkScrapeCoordinator,
+             staleAfter: ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
+             runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore, clock: Clock, scheduler: ScheduledExecutorService,
+             ticks: TickRecorder = TickRecorder.Unrecorded): ChunkScrapeReaper =
+    new ChunkScrapeReaper(new ChunkRunDeadlines(store, coordinator, staleAfter, clock, scheduler),
+      runStore = runStore, clock = clock, scheduler = scheduler, ticks = ticks)
 }

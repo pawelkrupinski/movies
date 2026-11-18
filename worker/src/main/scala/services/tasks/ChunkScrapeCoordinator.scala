@@ -31,4 +31,10 @@ class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskProducer, clock
       .fold(Enqueued.Zero)(_ => Enqueued.of(queue.enqueue(TaskType.ScrapeChunkReduce,
         ChunkScrapeKeys.reduceDedup(cinema, runId),
         ChunkScrapeKeys.reducePayload(cinema, runId), submittedAt = clock.instant())))
+
+  /** Enqueue `run`'s PARTIAL reduce over whatever chunks have landed: an abandoned run (a chunk that keeps
+   *  failing, a lease that never came back) degrades to a partial listing instead of losing the cinema. */
+  private[tasks] def reducePartial(run: ChunkRun, now: java.time.Instant): Enqueued =
+    Enqueued.of(queue.enqueue(TaskType.ScrapeChunkReduce, ChunkScrapeKeys.reduceDedup(run.cinema, run.runId),
+      ChunkScrapeKeys.reducePayload(run.cinema, run.runId), submittedAt = now))
 }

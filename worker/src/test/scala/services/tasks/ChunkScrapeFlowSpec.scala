@@ -200,7 +200,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val h = new Harness(new FakeChunkedScraper((1 to 30).map(i => s"c$i" -> Seq(film("X", 25))).toMap, circuitOpen = (1 to 30).map(i => s"c$i").toSet))
     val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
 
-    val infos = tools.LogCapture.thisThread(classOf[ScrapeChunkHandler].getName) {
+    val infos = tools.LogCapture.thisThread(classOf[HostDownDeferrals].getName) {
       (1 to 30).foreach(i => h.chunkH.handle(Task(s"t$i", TaskType.ScrapeChunk, s"d$i", ChunkScrapeKeys.chunkPayload(cinemaName, runId, s"c$i"), 1)) shouldBe a [Deferred])
     }.filter(_.getLevel.isGreaterOrEqual(ch.qos.logback.classic.Level.INFO)).map(_.getFormattedMessage)
 

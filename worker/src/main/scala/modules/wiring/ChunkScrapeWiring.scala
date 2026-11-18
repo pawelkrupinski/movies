@@ -3,7 +3,7 @@ package modules.wiring
 import settings.ScrapeChunkSpread
 
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
-import services.tasks.{ChunkFanOut, ChunkRun, EmptyChunkPlan, FailedChunkPlan, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
+import services.tasks.{ChunkFanOut, ChunkRun, ChunkRunDeadlines, ChunkSlices, ChunkedListingPublisher, FailedChunkPlan, HostDownDeferrals, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
 
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
@@ -39,16 +39,20 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore,
     new ChunkFanOut(taskQueue, ChunkScrapePlanner.DefaultRunTimeout, scrapeChunkSpread, scrapeCostStore),
-    new EmptyChunkPlan(publishScrape, scrapeFreshnessPolicy), new FailedChunkPlan(publishScrape, scrapeFreshnessPolicy, venuePageHistory), clock = clock,
-    runStarted = chunkScrapeReaper.armDeadline)
+    chunkedListingPublisher, new FailedChunkPlan(publishScrape, scrapeFreshnessPolicy, venuePageHistory), clock = clock,
+    runStarted = chunkRunDeadlines.arm)
   lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
+  /** Publishes a chunked venue's listing — its reduce, or an empty plan's — and stamps it. */
+  lazy val chunkedListingPublisher  = new ChunkedListingPublisher(publishScrape, scrapeFreshnessPolicy)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
-    pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)
-  lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
-    scrapeFreshnessPolicy, clock = clock)
+    new ChunkSlices(chunkPageMemo, taskMetrics), new HostDownDeferrals(clock), clock)
+  lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, chunkedListingPublisher)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue, clock)
-  lazy val chunkScrapeReaper        = managedResources.stopping(new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
-    runStore = scheduledRunStore, clock = clock, ticks = ticks, scheduler = threadPools.scheduler("chunk-scrape-reaper")))
+  private lazy val chunkScrapeScheduler = threadPools.scheduler("chunk-scrape-reaper")
+  /** Each chunked run's abandonment deadline, armed by the planner as it starts the run. */
+  lazy val chunkRunDeadlines        = new ChunkRunDeadlines(chunkScrapeStore, chunkScrapeCoordinator, clock = clock, scheduler = chunkScrapeScheduler)
+  lazy val chunkScrapeReaper        = managedResources.stopping(new ChunkScrapeReaper(chunkRunDeadlines,
+    runStore = scheduledRunStore, clock = clock, ticks = ticks, scheduler = chunkScrapeScheduler))
 
   /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
    *  Keeps the reaper from re-admitting it into a no-op — see [[ScrapeInFlight]]. */

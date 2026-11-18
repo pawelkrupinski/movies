@@ -18,13 +18,15 @@ final class PlainCinemaScrape(
   outcome: ScrapeFreshnessPolicy,
   pages:   VenuePageHistory,
   costs:   ScrapeCostStore,
-  clock:   Clock
+  clock:   Clock,
+  // Times the scrape for its failure line: the root's monotonic stopwatch.
+  stopwatch: tools.Stopwatch
 ) {
 
   /** Scrape `scraper`'s venue under the scrape key `key`. A failure is reported and recorded, never raised. */
   def run(key: String, scraper: CinemaScraper): Unit = {
     val startedAt = clock.instant()
-    val t0        = tools.Stopwatch.start()
+    val t0        = stopwatch.start()
     try {
       outcome.scraped(key, scraper.cinema, runner.run(scraper))
       costs.recordScrape(scraper.cinema, tasks = 1)

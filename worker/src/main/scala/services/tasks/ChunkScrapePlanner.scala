@@ -15,7 +15,7 @@ import scala.concurrent.duration._
  *
  * Failure handling matches a normal scrape: a nav-fetch throw — or a genuinely
  * empty repertoire — is published immediately as the scrape's outcome
- * ([[EmptyChunkPlan]], [[FailedChunkPlan]]) rather than starting an empty run. If a run is already
+ * ([[ChunkedListingPublisher.publishEmpty]], [[FailedChunkPlan]]) rather than starting an empty run. If a run is already
  * active for the cinema, planning is a no-op (one run at a time) — duplicate
  * `ScrapeCinema` tasks are harmless. The fan-out itself is [[ChunkFanOut]]'s.
  */
@@ -25,12 +25,12 @@ class ChunkScrapePlanner(
   fanOut:        ChunkFanOut,
   // A plan that never reaches the reduce (empty or failed) publishes and records its
   // outcome itself, so such a cinema still advances its due schedule.
-  emptyPlan:     EmptyChunkPlan,
+  emptyPlan:     ChunkedListingPublisher,
   failedPlan:    FailedChunkPlan,
   staleAfter:    ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   clock:         Clock,
   // Told of each run this planner starts, so its abandonment deadline is armed then
-  // ([[ChunkScrapeReaper.armDeadline]]) rather than found by polling every run.
+  // ([[ChunkRunDeadlines.arm]]) rather than found by polling every run.
   runStarted:    ChunkRun => Unit = _ => ()
 ) extends Logging {
 
@@ -67,7 +67,7 @@ class ChunkScrapePlanner(
         catch { case e: Exception => failedPlan.publish(scraper, e); return 0 }
       val keys = plan.keys
 
-      if (keys.isEmpty) { emptyPlan.publish(scraper, plan, planReads.complete); return 0 }
+      if (keys.isEmpty) { emptyPlan.publishEmpty(scraper, plan, planReads.complete); return 0 }
 
       val now = clock.instant()
       store.startRun(cinema, keys, now, staleAfter.value) match {

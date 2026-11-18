@@ -256,7 +256,6 @@ fanout	services.sharecards.RenderCityCardHandler	12
 fanout	services.sharecards.ShareCardBackfill	14
 fanout	services.sharecards.ShareCardJanitor	10
 fanout	services.sharecards.ShareCardService	20
-fanout	services.tasks.ChunkScrapeReaper	16
 fanout	services.tasks.CinemaContentCensus	13
 fanout	services.tasks.EnrichmentReaper	21
 fanout	services.tasks.InMemoryTaskQueue	12
@@ -266,8 +265,6 @@ fanout	services.tasks.RatingEnqueuer	13
 fanout	services.tasks.RatingHandler	10
 fanout	services.tasks.RatingRunCensus	12
 fanout	services.tasks.RatingSchedule	10
-fanout	services.tasks.ScrapeChunkHandler	15
-fanout	services.tasks.ScrapeChunkReduceHandler	16
 fanout	services.tasks.TaskWorker	15
 fanout	services.tasks.WorkerTaskMetrics	21
 fanout	services.titles.TitleNormalizer	11
