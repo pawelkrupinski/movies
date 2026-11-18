@@ -39,7 +39,7 @@ mutants=(
   'a raised Ce row is no growth @@         if ce > allowed:
             out.append(f"ce @@         if False:
             out.append(f"ce'
-  'a raised frozen row is admitted @@ if value > before[key]: @@ if False:'
+  'a raised frozen row is admitted @@ if value > before[key] and not tolerated: @@ if False:'
   'a new frozen row is admitted @@ elif not moved(key, value, before, after) and not (kind == "fanout" and key in split): @@ elif False:'
   'a measurement fix takes no rows again @@ LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), @@ LIMIT_KEYS = {"fanout": ("fanout",),'
   'an absent measure row re-freezes every range @@ and key not in MEASURES) @@ and True)'
@@ -75,8 +75,18 @@ mutants=(
             admitted |= set(named); continue
             refused.append'
   'a piece at the original passes @@ if v >= frozen[original]: @@ if v > frozen[original]:'
-  'the split sum is not held @@ if total > frozen[original]: @@ if False:'
-  'what the original keeps is not summed @@ total = sum(values.values()) + left @@ total = sum(values.values())'
+  'a piece adding a dependency passes @@ new = sorted(t for t in union if not covered(t, was, members)) @@ new = []'
+  'what the original keeps is not held @@ union |= targets[original] @@ pass'
+  'the pieces referencing each other add dependencies @@ union -= internal @@ pass'
+  'a contract the original used covers nothing @@ return target in refs or any( @@ return target in refs or False and any('
+  'a reference set out of step with the row is trusted @@ if len(was) != frozen[original]: @@ if False:'
+  'an unmeasured piece is trusted @@ union |= targets[piece]
+            else: @@ union |= targets.get(piece, set())
+            elif False:'
+  'a split may raise distance without bound @@ value - before[key] <= DISTANCE_SPLIT_TOLERANCE @@ True'
+  'the distance tolerance is 3 @@ DISTANCE_SPLIT_TOLERANCE = 2 @@ DISTANCE_SPLIT_TOLERANCE = 3'
+  'a refused split raises distance @@ packages |= {package_of(c) for c in internal} @@ pass'
+  'a split may raise any package distance @@ and key in split_packages and value @@ and value'
   'any piece takes over code @@ if not ok:
                 why.append @@ if False:
                 why.append'

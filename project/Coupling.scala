@@ -113,11 +113,12 @@ object Coupling {
   def edgeRows(g: Graph): Seq[String] =
     g.known.toSeq.map { case (x, y) => s"${packageOf(x)}->${packageOf(y)}\t$x->$y" }.sorted
 
-  /** Every class's held fan-out ([[heldFanOut]]), one `<class><TAB><fan-out>` line each, sorted: what a `Coupling: split
-   *  of <X>` claim sums when a piece, or what X keeps, is at or below the limit and so has no baseline row
-   *  (scripts/ci/coupling_ratchet.py's `--fanouts`). */
+  /** Every class's held fan-out ([[heldTargets]]), one `<class><TAB><fan-out><TAB><target>,<target>...` line each,
+   *  sorted: what a `Coupling: split of <X>` claim holds -- each piece's count, and the union of what the pieces and X's
+   *  remainder reference -- when a piece, or what X keeps, is at or below the limit and so has no baseline row
+   *  (scripts/ci/coupling_ratchet.py's `--fanouts`; `--update` records each frozen class's targets as its reference set). */
   def fanOutRows(g: Graph, exemptions: Exemptions): Seq[String] =
-    heldFanOut(g, exemptions).toSeq.sorted.map { case (c, n) => s"$c\t$n" }
+    heldTargets(g, exemptions).toSeq.sortBy(_._1).map { case (c, ts) => s"$c\t${ts.size}\t${ts.toSeq.sorted.mkString(",")}" }
 
   /** The strongly connected components of a directed graph with two or more nodes (Tarjan), each sorted, sorted. */
   def components(nodes: Seq[String], edges: Set[(String, String)]): Seq[Seq[String]] = {
@@ -250,13 +251,15 @@ object Coupling {
   /** Per class: its fan-out as the limit counts it -- every member of a declared contract the class is a user of
    *  ([[Exemptions]]: `contract` / `member` rows) counted as ONE dependency, every other class as one each. With no
    *  contract it is the plain fan-out of [[fans]]. */
-  def heldFanOut(g: Graph, exemptions: Exemptions): Map[String, Int] = {
+  def heldFanOut(g: Graph, exemptions: Exemptions): Map[String, Int] = heldTargets(g, exemptions).map { case (c, ts) => c -> ts.size }
+
+  /** Per class: what its held fan-out counts -- the production classes it references, a declared contract it uses
+   *  folded into one `contract:<name>`. A `Coupling: split of <X>` claim holds the pieces' union of these to X's. */
+  def heldTargets(g: Graph, exemptions: Exemptions): Map[String, Set[String]] = {
     val out = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
     g.types.map { t =>
-      val targets = out.getOrElse(t.name, Set.empty[String])
       val contracts = exemptions.contractsOf(t.name)
-      val folded = targets.map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
-      t.name -> folded.size
+      t.name -> out.getOrElse(t.name, Set.empty[String]).map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
     }.toMap
   }
 

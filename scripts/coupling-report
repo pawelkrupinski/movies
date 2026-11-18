@@ -6,7 +6,9 @@
 #                                       the class references behind every edge, top fan-in/fan-out classes, god hubs,
 #                                       split packages) to stdout, then the ratchet's verdict against the baseline
 #   scripts/coupling-report --update    the same, then the measured rows written to test/resources/coupling-baseline.tsv:
-#                                       every fall recorded; a rise must be committed with `Coupling: <why>`
+#                                       every fall recorded; a rise must be committed with `Coupling: <why>`; and
+#                                       each frozen class's reference set to test/resources/coupling-fanout-refs.tsv
+#                                       (what a later `Coupling: split of <X>` claim is held to)
 #   scripts/coupling-report --out DIR   keep rows.tsv, report.md, edges.tsv (every package edge's class references) and
 #                                       fanouts.tsv (every class's held fan-out) in DIR
 #                                       (default: a temporary directory)
@@ -35,7 +37,9 @@ rc=0
 python3 "$root/scripts/ci/coupling_ratchet.py" check --current "$out/rows.tsv" --edges "$out/edges.tsv" --fanouts "$out/fanouts.tsv" || rc=$?
 if [ -n "$update" ]; then
     cp "$out/rows.tsv" "$root/test/resources/coupling-baseline.tsv"
-    echo "coupling-report: wrote test/resources/coupling-baseline.tsv -- a rise is committed with a \`Coupling: <why>\` trailer"
+    python3 "$root/scripts/ci/coupling_ratchet.py" refs --current "$out/rows.tsv" --fanouts "$out/fanouts.tsv" \
+        > "$root/test/resources/coupling-fanout-refs.tsv"
+    echo "coupling-report: wrote test/resources/coupling-baseline.tsv and coupling-fanout-refs.tsv -- a rise is committed with a \`Coupling: <why>\` trailer"
     exit 0
 fi
 exit "$rc"

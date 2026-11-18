@@ -33,7 +33,8 @@
 #                 -- and the baseline grows, and the layer table loosens (an `allow` row, a moved layer or rank), only
 #                 in a commit carrying `Coupling: <why>` (scripts/coupling-report --update writes the baseline; falls
 #                 need no trailer; a frozen class cut into pieces freezes them at their own values under
-#                 `Coupling: split of <X>` when they take over X's code and sum to no more than X's row).
+#                 `Coupling: split of <X>` when they take over X's code and reference nothing X did not,
+#                 test/resources/coupling-fanout-refs.tsv).
 #                 PREPUSH_SKIP=coupling skips just it.
 #                 AND THE CODE-QUALITY RATCHETS (CLAUDE.md, "Code quality ratchets"), in that same run, when the push
 #                 touches a deployed module's src/main Scala, the `quality` module, a quality baseline or the ratchet
@@ -356,7 +357,7 @@ read_by_lint_specs() { # <path>
 
 # THE COUPLING RATCHET'S PATHS (the header's `sbt`; `--coupling-plan` prints them): what can move the production code's coupling or the ratchet's verdict
 coupling_paths() { # stdin: changed paths -> the ones that select the coupling step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers|exemptions)\.tsv|scripts/ci/coupling_ratchet\.py)$' || true
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers|exemptions|fanout-refs)\.tsv|scripts/ci/coupling_ratchet\.py)$' || true
 }
 
 # THE CODE-QUALITY RATCHETS' PATHS (the header's `sbt`; `--quality-plan` prints them): what can move the measured rows or
@@ -444,7 +445,7 @@ plan() {
         # The coupling baseline, the layer table and the exemption table are the ratchet's (check_sbt's coupling step): a
         # hand edit of the baseline is judged as any growth, an `allow` row or a moved layer as the table loosening, an
         # exemption row added as the exemptions loosening.
-        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv) sbt=1 ;; esac
+        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv|test/resources/coupling-fanout-refs.tsv) sbt=1 ;; esac
         # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
         case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|scripts/ci/quality_ratchet.py) sbt=1 ;; esac
         # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.

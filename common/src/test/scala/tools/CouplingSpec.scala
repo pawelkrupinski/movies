@@ -184,8 +184,11 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
-  "the fan-out rows" should "give every class's held fan-out, one at or below the limit included" in {
-    Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2", "services.identity.Film\t3", "models.Showtime\t0")
+  "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {
+    // the classes it references, folded as the count folds them (a contract it uses one `contract:<name>`): what a
+    // `Coupling: split of <X>` claim compares with X's frozen reference set
+    Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2\tcontract:scrape,tools.Slugify",
+      "services.identity.Film\t3\tmodels.Cinema,models.CinemaMovie,models.Showtime", "models.Showtime\t0\t")
     Coupling.fanOutRows(contracted, exemptions).size shouldBe contracted.types.size
   }
 

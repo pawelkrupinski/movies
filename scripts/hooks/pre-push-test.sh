@@ -142,6 +142,8 @@ check "the layer table alone runs the sbt check too: an \`allow\` row or a moved
   "$(plan test/resources/coupling-layers.tsv)"
 check "...and so does the exemption table: an exemption row added is judged by the ratchet" "sbt" \
   "$(plan test/resources/coupling-exemptions.tsv)"
+check "...and so do the frozen reference sets: a split claim is held to them" "sbt" \
+  "$(plan test/resources/coupling-fanout-refs.tsv)"
 
 printf '\033[36m▸\033[0m pre-push --compile-plan\n'
 compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }

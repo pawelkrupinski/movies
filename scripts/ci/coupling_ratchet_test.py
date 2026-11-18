@@ -8,7 +8,8 @@ range passes only when a commit changing it carries `Coupling: <why>`, and so do
 `allow` row added, a package given another layer or rank) and an exemption table loosened (a row added, a limit
 changed, a contract's member added or dropped); a contract past 8 members (or its grandfathered `contract-size`) fails;
 falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
-code, each below X's row, the sum with X's remainder no more than it) freezes its pieces, and nothing else does.
+code, each below X's row, the union of what they and X's remainder reference within X's frozen reference set) freezes
+its pieces, and lets the distance row of a package holding X or a piece rise by 0.02 at most; nothing else does.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ TOOL = os.environ.get("COUPLING_RATCHET_UNDER_TEST") or os.path.join(HERE, "coup
 BASELINE = "test/resources/coupling-baseline.tsv"
 LAYERS = "test/resources/coupling-layers.tsv"
 EXEMPTIONS = "test/resources/coupling-exemptions.tsv"
+REFS = "test/resources/coupling-fanout-refs.tsv"
 
 EXEMPTION_ROWS = """# kind\tpattern\tlimit|exempt\towner\twhy
 root\tmodules.*\texempt\tcoupling\tthe composition roots
@@ -56,6 +58,13 @@ distance\tservices.movies\t48
 def rows(*extra: str, drop: tuple = ()) -> str:
     kept = [line for line in ROWS.splitlines() if not any(line.startswith(d) for d in drop)]
     return "\n".join(kept + list(extra)) + "\n"
+
+
+def fanout_line(cls: str, value) -> str:
+    """A fanouts row: `<class><TAB><n>`, or with what it references (`value` a list of targets) `<TAB><t>,<t>...`."""
+    if isinstance(value, int):
+        return f"{cls}\t{value}\n"
+    return f"{cls}\t{len(value)}\t{','.join(sorted(value))}\n"
 
 
 class RatchetHarness(unittest.TestCase):
@@ -106,7 +115,7 @@ class RatchetHarness(unittest.TestCase):
         if fanouts is not None:
             fanouts_path = os.path.join(self.dir.name, "fanouts.tsv")
             with open(fanouts_path, "w") as f:
-                f.write("".join(f"{c}\t{n}\n" for c, n in fanouts.items()))
+                f.write("".join(fanout_line(c, n) for c, n in fanouts.items()))
             args += ["--fanouts", fanouts_path]
         done = subprocess.run(args, cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
@@ -417,13 +426,22 @@ class CouplingRatchetTest(RatchetHarness):
 
 
 # THE SPLIT (the owner, 2026-11-18): ReadModelSweeper (frozen at 36) split into SweepPlanner and SweepPass -- the
-# 2026-11-18 split the ratchet refused and that was reverted, 17 + 11
+# 2026-11-18 split the ratchet refused and that was reverted, 17 + 11. Its 36 references are Dep0..Dep35, recorded at
+# the base as its frozen reference set (test/resources/coupling-fanout-refs.tsv).
 SWEEPER_PATH = "worker/src/main/scala/services/readmodel/ReadModelSweeper.scala"
 PLANNER_PATH = "worker/src/main/scala/services/readmodel/SweepPlanner.scala"
 PASS_PATH = "worker/src/main/scala/services/readmodel/SweepPass.scala"
 SWEEPER = "services.readmodel.ReadModelSweeper"
 PLANNER = "services.readmodel.SweepPlanner"
 PASS = "services.readmodel.SweepPass"
+
+
+def deps(lo: int, hi: int) -> list:
+    """Dep<lo>..Dep<hi - 1>: references the sweeper had at the base."""
+    return [f"services.movies.Dep{i}" for i in range(lo, hi)]
+
+
+SWEEPER_REFS = "".join(f"{SWEEPER}\t{d}\n" for d in deps(0, 36))
 
 
 def member(name: str) -> str:
@@ -440,19 +458,22 @@ def scala(cls: str, names, extra: str = "") -> str:
     return f"package services.readmodel\n\nfinal class {cls}(deps: Deps) {{\n" + "".join(member(n) for n in names) + extra + "}\n"
 
 
-def split_rows(*pieces: str, sweeper: int = None) -> str:
+def split_rows(*pieces: str, sweeper: int = None, readmodel_distance: int = 30, movies_distance: int = 48) -> str:
     kept = [f"fanout\t{SWEEPER}\t{sweeper}"] if sweeper else []
-    return rows(*kept, *pieces)
+    return rows(*kept, *pieces, f"distance\tservices.readmodel\t{readmodel_distance}", f"distance\tservices.movies\t{movies_distance}",
+                drop=("distance\tservices.movies",))
 
 
 class CouplingSplitTest(RatchetHarness):
     """A frozen class split honestly: `Coupling: split of <X>`, the pieces taking over X's code, each strictly below X's
-    frozen value, their sum with X's remainder no more than it -- each piece frozen at its own value from then on."""
+    frozen value, the union of what they and X's remainder reference within X's frozen reference set at the base --
+    each piece frozen at its own value from then on, and the distance rows of the packages holding X or a piece let rise
+    by 0.02 at most in that range."""
 
     def setUp(self):
         super().setUp()
-        self.base = self.commit({BASELINE: split_rows(sweeper=36), SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)},
-                                "the sweeper, frozen at 36")
+        self.base = self.commit({BASELINE: split_rows(sweeper=36), REFS: SWEEPER_REFS,
+                                 SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)}, "the sweeper, frozen at 36")
 
     def split(self, recorded: str, message: str, pass_text: str = None, sweeper_text=None) -> str:
         return self.commit({BASELINE: recorded, SWEEPER_PATH: sweeper_text, PLANNER_PATH: scala("SweepPlanner", PLANNED),
@@ -461,8 +482,29 @@ class CouplingSplitTest(RatchetHarness):
     def test_a_valid_split_passes_and_freezes_each_piece(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
-        out = self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11})
-        self.assertIn(f"split of {SWEEPER} (36) into {PASS} 11, {PLANNER} 17: 28 <= 36", out)
+        out = self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28)})
+        self.assertIn(f"split of {SWEEPER} (36) into {PASS} 11, {PLANNER} 17: their references (28) within {SWEEPER}'s 36", out)
+
+    def test_two_pieces_sharing_the_originals_types_pass_though_their_sum_is_past_it(self):
+        # the union rule: 20 + 17 = 37 past 36, yet both use only what the sweeper used -- no dependency added
+        recorded = split_rows(f"fanout\t{PLANNER}\t20", f"fanout\t{PASS}\t17")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        out = self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 20), PASS: deps(10, 27)})
+        self.assertIn("their references (27) within", out)
+
+    def test_a_piece_adding_a_dependency_the_original_did_not_have_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "A `Coupling: split of <X>` CLAIM IS REFUSED",
+                          f"add what {SWEEPER} did not reference at", "services.web.Fresh", f"fanout {PLANNER} added at 17",
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 16) + ["services.web.Fresh"], PASS: deps(17, 28)})
+
+    def test_the_pieces_references_to_each_other_and_the_original_are_internal(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t12")
+        head = self.split(recorded, "split the sweeper\n\nCoupling: split of ReadModelSweeper into SweepPlanner, SweepPass",
+                          sweeper_text=scala("ReadModelSweeper", ("sweep",)))
+        self.assert_passes(recorded, rng=f"{self.base}..{head}",
+                           fanouts={PLANNER: deps(0, 16) + [PASS], PASS: deps(17, 28) + [PLANNER], SWEEPER: [PLANNER, PASS]})
 
     def test_a_piece_git_sees_as_a_copy_takes_over_code_though_the_original_keeps_forwarders(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17")
@@ -471,7 +513,7 @@ class CouplingSplitTest(RatchetHarness):
         head = self.commit({BASELINE: recorded, PLANNER_PATH: scala("SweepPlanner", PLANNED + PASSED),
                             SWEEPER_PATH: "package services.readmodel\n\nfinal class ReadModelSweeper(planner: SweepPlanner) {\n"
                             + forwarders + "}\n"}, f"the sweeper forwards\n\nCoupling: split of {SWEEPER} into SweepPlanner")
-        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, SWEEPER: 3})
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 17), SWEEPER: [PLANNER] + deps(0, 2)})
 
     def test_a_piece_of_two_moved_members_and_new_code_takes_over_code(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17")
@@ -479,31 +521,51 @@ class CouplingSplitTest(RatchetHarness):
         head = self.commit({BASELINE: recorded, PLANNER_PATH: scala("SweepPlanner", PLANNED[:2], fresh),
                             SWEEPER_PATH: scala("ReadModelSweeper", PLANNED[2:] + PASSED)},
                            f"two plans move\n\nCoupling: split of {SWEEPER}")
-        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, SWEEPER: 19})
+        fanouts = {PLANNER: deps(0, 17), SWEEPER: deps(17, 36)}
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=fanouts)
         head = self.commit({PLANNER_PATH: scala("SweepPlanner", PLANNED[:1], fresh),
                             SWEEPER_PATH: scala("ReadModelSweeper", PLANNED[1:] + PASSED)}, "only one moves after all")
-        self.assert_fails(recorded, f"{PLANNER} takes over none of {SWEEPER}'s code", rng=f"{self.base}..{head}",
-                          fanouts={PLANNER: 17, SWEEPER: 19})
+        self.assert_fails(recorded, f"{PLANNER} takes over none of {SWEEPER}'s code", rng=f"{self.base}..{head}", fanouts=fanouts)
 
-    def test_a_split_keeping_a_shrunk_original_counts_its_remainder(self):
+    def test_what_the_original_keeps_is_held_too(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
         head = self.split(recorded, "split the sweeper\n\nCoupling: split of ReadModelSweeper into SweepPlanner, SweepPass",
                           sweeper_text=scala("ReadModelSweeper", ("sweep",)))
-        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11, SWEEPER: 8})
-        self.assert_fails(recorded, f"{SWEEPER} 9", "37 past 36", rng=f"{self.base}..{head}",
-                          fanouts={PLANNER: 17, PASS: 11, SWEEPER: 9})
+        self.assert_passes(recorded, rng=f"{self.base}..{head}",
+                           fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28), SWEEPER: deps(28, 36)})
+        self.assert_fails(recorded, f"add what {SWEEPER} did not reference at", "services.web.Fresh", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28), SWEEPER: deps(28, 35) + ["services.web.Fresh"]})
 
-    def test_a_split_whose_sum_exceeds_the_original_fails(self):
-        recorded = split_rows(f"fanout\t{PLANNER}\t20", f"fanout\t{PASS}\t17")
+    def test_a_contract_the_original_used_covers_its_members(self):
+        # the same folding: the sweeper counted the `sweep` contract as one; a piece outside the contract's users names
+        # its members one by one, which are still what the sweeper used
+        contract = (EXEMPTION_ROWS + f"contract\t{SWEEPER}\tsweep\tworker\tthe sweep contract\n"
+                    "member\tmodels.Film\tsweep\tworker\tfilm\nmember\tmodels.Showtime\tsweep\tworker\tscreening\n")
+        refs = "".join(f"{SWEEPER}\t{d}\n" for d in deps(0, 35) + ["contract:sweep"])
+        base = self.commit({EXEMPTIONS: contract, REFS: refs}, "the sweeper uses the sweep contract\n\nCoupling: a contract")
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t12")
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
-        self.assert_fails(recorded, "ADMITS A CLASS OR PACKAGE PAST A LIMIT", "37 past 36", f"fanout {PLANNER} added at 20",
-                          rng=f"{self.base}..{head}", fanouts={PLANNER: 20, PASS: 17})
+        self.assert_passes(recorded, rng=f"{base}..{head}",
+                           fanouts={PLANNER: deps(0, 17), PASS: deps(17, 27) + ["models.Film", "models.Showtime"]})
+
+    def test_a_reference_set_out_of_step_with_the_frozen_row_refuses_the_split(self):
+        base = self.commit({REFS: "".join(f"{SWEEPER}\t{d}\n" for d in deps(0, 35))}, "a stale reference set")
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, f"{SWEEPER}'s recorded reference set at", "has 35, its row 36", rng=f"{base}..{head}",
+                          fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28)})
+
+    def test_a_piece_without_its_measured_references_refuses_the_split(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, f"{PASS}'s references are not measured", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: deps(0, 17), PASS: 11})
 
     def test_a_piece_at_or_above_the_original_fails(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t36")
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
         self.assert_fails(recorded, f"{PLANNER} 36 is not below {SWEEPER}'s 36", f"fanout {PLANNER} added at 36",
-                          rng=f"{self.base}..{head}", fanouts={PLANNER: 36, PASS: 0})
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 36), PASS: []})
 
     def test_an_unrelated_new_class_claiming_split_credit_fails(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
@@ -511,21 +573,22 @@ class CouplingSplitTest(RatchetHarness):
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}", pass_text=unrelated,
                           sweeper_text=scala("ReadModelSweeper", PASSED))
         self.assert_fails(recorded, f"{PASS} takes over none of {SWEEPER}'s code", f"fanout {PASS} added at 11",
-                          rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11, SWEEPER: 0})
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28), SWEEPER: []})
 
     def test_a_split_without_the_trailer_fails(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
         head = self.split(recorded, "split the sweeper\n\nCoupling: the sweeper was too big")
         self.assert_fails(recorded, f"fanout {PLANNER} added at 17", f"fanout {PASS} added at 11",
-                          rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11})
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28)})
 
     def test_a_piece_rising_in_a_later_commit_fails(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
         split = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
         risen = split_rows(f"fanout\t{PLANNER}\t18", f"fanout\t{PASS}\t11")
-        self.assert_fails(risen, f"class {PLANNER}: fan-out 18 past its frozen row 17", fanouts={PLANNER: 18, PASS: 11})
+        fanouts = {PLANNER: deps(0, 18), PASS: deps(17, 28)}
+        self.assert_fails(risen, f"class {PLANNER}: fan-out 18 past its frozen row 17", fanouts=fanouts)
         head = self.commit({BASELINE: risen}, f"record it\n\nCoupling: split of {SWEEPER}")
-        self.assert_fails(risen, f"fanout {PLANNER} raised 17 -> 18", rng=f"{split}..{head}", fanouts={PLANNER: 18, PASS: 11})
+        self.assert_fails(risen, f"fanout {PLANNER} raised 17 -> 18", rng=f"{split}..{head}", fanouts=fanouts)
 
     def test_a_split_of_a_class_that_was_not_frozen_fails(self):
         # no row is added, so only the claim itself can fail: a trailer claiming a split that is not one is refused
@@ -535,6 +598,54 @@ class CouplingSplitTest(RatchetHarness):
         self.assert_fails(recorded, "A `Coupling: split of <X>` CLAIM IS REFUSED",
                           "services.readmodel.Nothing has no frozen fanout row", rng=f"{self.base}..{head}",
                           fanouts={PLANNER: 7, SWEEPER: 36})
+
+    # THE DISTANCE TOLERANCE: a split moves types between packages' counts, so a package holding X or a piece may see
+    # its frozen distance rise by 0.02 at most, re-frozen there; nowhere else, and never outside a valid split.
+    VALID = {PLANNER: deps(0, 17), PASS: deps(17, 28)}
+
+    def test_a_valid_split_may_raise_its_packages_distance_by_two_hundredths(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=32)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_valid_split_raising_its_packages_distance_by_three_hundredths_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=33)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "distance services.readmodel raised 30 -> 33", rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_commit_that_is_no_split_raising_a_distance_fails(self):
+        recorded = split_rows(sweeper=36, readmodel_distance=31)
+        head = self.commit({BASELINE: recorded}, "the read model grew abstract\n\nCoupling: the sweeper was too big")
+        self.assert_fails(recorded, "distance services.readmodel raised 30 -> 31", rng=f"{self.base}..{head}",
+                          fanouts={SWEEPER: deps(0, 36)})
+
+    def test_a_split_cannot_raise_another_packages_distance(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=49)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "distance services.movies raised 48 -> 49", rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_refused_split_raises_no_distance(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=31)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "distance services.readmodel raised 30 -> 31", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: deps(0, 16) + ["services.web.Fresh"], PASS: deps(17, 28)})
+
+
+class CouplingRefsTest(unittest.TestCase):
+    """`refs`: each frozen class's reference set -- what --update records beside the baseline, and a later split's
+    claim is held to."""
+
+    def test_refs_are_the_frozen_classes_targets_one_a_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            rows_path, fanouts_path = os.path.join(d, "rows.tsv"), os.path.join(d, "fanouts.tsv")
+            with open(rows_path, "w") as f:
+                f.write(split_rows(sweeper=36))
+            with open(fanouts_path, "w") as f:
+                f.write(fanout_line(SWEEPER, deps(0, 2)) + fanout_line(PLANNER, deps(5, 7)))
+            done = subprocess.run([sys.executable, "-I", TOOL, "refs", "--current", rows_path, "--fanouts", fanouts_path],
+                                  capture_output=True, text=True)
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertEqual(f"{SWEEPER}\tservices.movies.Dep0\n{SWEEPER}\tservices.movies.Dep1\n", done.stdout)
 
 
 if __name__ == "__main__":

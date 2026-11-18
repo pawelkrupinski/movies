@@ -23,14 +23,19 @@
 # name gone). A measurement fix (`limit fanout-measure` raised: a count that missed real uses) re-takes the rows at their
 # true values, as a changed limit does, under its `Coupling:` trailer.
 #
-# A SPLIT (the owner, 2026-11-18): a frozen class X cut into pieces may freeze the pieces past the limit at their new
-# values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>` names the pieces; without it
-# they are the fanout rows the range adds) and ALL hold: X had a frozen row at the range's base; every piece takes over
-# X's code (git sees its source file as a rename or copy of X's, or it defines 2+ members X's file no longer does);
-# every piece's fan-out is strictly below X's frozen value; and the pieces' fan-outs plus X's remainder (if X still
-# exists) sum to no more than it. The pieces' rows then fall only, like any frozen row. `--fanouts` (couplingReport's
-# fourth output, every class's held fan-out) gives the exact value of a piece or remainder at or below the limit;
-# without it such a class counts at the limit.
+# A SPLIT (the owner, 2026-11-18; the union rule, 2026-11-18): a frozen class X cut into pieces may freeze the pieces
+# past the limit at their new values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>`
+# names the pieces; without it they are the fanout rows the range adds) and ALL hold: X had a frozen row at the range's
+# base; every piece takes over X's code (git sees its source file as a rename or copy of X's, or it defines 2+ members
+# X's file no longer does); every piece's fan-out is strictly below X's frozen value; and the UNION of what the pieces
+# and X's remainder (if X still exists) reference -- folded as the count folds it, their references to each other and to
+# X internal to the split -- lies within X's frozen reference set at the base (test/resources/coupling-fanout-refs.tsv,
+# which `--update` writes beside the baseline, as many entries as X's row; a contract X used covers its members): the
+# split adds no dependency, though the pieces' counts may sum past X's when they share its types. The pieces' rows then
+# fall only, like any frozen row. In that range the frozen distance row of a package holding X or a piece may rise by
+# DISTANCE_SPLIT_TOLERANCE hundredths at most (moving types shifts a package's abstractness), re-frozen at the new value;
+# outside a valid split a distance row never rises. `--fanouts` (couplingReport's fourth output, every class's held
+# fan-out and what it counts) gives each piece's and the remainder's value and references.
 #
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
 #                             [--fanouts <file>] [--range A..B ...]
@@ -38,6 +43,9 @@
 #       baseline grown or a layer table loosened between A and B with no commit in the range that changed it carrying
 #       `Coupling:` (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
 #       class reference with its package edge) names the class references behind each refused edge.
+#   coupling_ratchet.py refs --current <rows> --fanouts <file>
+#       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
+#       scripts/coupling-report --update writes to test/resources/coupling-fanout-refs.tsv.
 #
 # A row is `kind<TAB>key<TAB>value`; `#` lines are comments (project/Coupling.scala's BaselineHeader has the kinds).
 from __future__ import annotations
@@ -52,6 +60,8 @@ from typing import Dict, List, Optional, Set, Tuple
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
 EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
+REFS_PATH = "test/resources/coupling-fanout-refs.tsv"
+DISTANCE_SPLIT_TOLERANCE = 2  # hundredths a valid split may raise the distance of a package holding X or a piece
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
 VALUED = ("ce", "fanout", "distance")
 FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
@@ -209,17 +219,56 @@ def took_over(base: str, head: str, origin: str, piece: str, copies: Set[Tuple[s
     return len(taken) >= MIN_MOVED_MEMBERS, ""
 
 
-def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Dict[str, int]]) -> Tuple[Set[str], List[str], List[str]]:
-    """The fanout rows of `after` that `rng`'s `Coupling: split of <X>` trailers honestly admit, with a note for each
-    split admitted and a reason for each refused (the rule: the module docstring, A SPLIT)."""
+def package_of(cls: str) -> str:
+    """A class's package as the report groups it (Coupling.packageOf): its full package cut to the top two segments."""
+    full = cls.rpartition(".")[0]
+    return ".".join(full.split(".")[:2]) if full else "<root>"
+
+
+def recorded_refs(text: str) -> Dict[str, Set[str]]:
+    """The frozen reference sets (test/resources/coupling-fanout-refs.tsv): `<class><TAB><target>` a line."""
+    out: Dict[str, Set[str]] = {}
+    for line in text.splitlines():
+        if "\t" in line and not line.startswith("#"):
+            cls, target = line.split("\t", 1)
+            out.setdefault(cls, set()).add(target)
+    return out
+
+
+def contract_members(exemptions_text: str) -> Dict[str, List[str]]:
+    """Each declared contract's member patterns (the exemption table's `member` rows)."""
+    out: Dict[str, List[str]] = {}
+    for (kind, pattern), contract in parse_exemptions(exemptions_text).items():
+        if kind.startswith("member:"):
+            out.setdefault(contract, []).append(pattern)
+    return out
+
+
+def pattern_matches(pattern: str, name: str) -> bool:
+    """Coupling.Exemptions.matches: `a.*` names the package `a` too; `*` is any run of characters."""
+    return (pattern.endswith(".*") and name == pattern[:-2]) or re.fullmatch(".*".join(map(re.escape, pattern.split("*"))), name) is not None
+
+
+def covered(target: str, refs: Set[str], members: Dict[str, List[str]]) -> bool:
+    """Whether `target` is within the reference set `refs`: in it, or a member of a contract it counts as one."""
+    return target in refs or any(f"contract:{c}" in refs and any(pattern_matches(p, target) for p in ps)
+                                 for c, ps in members.items())
+
+
+def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]) -> Tuple[Set[str], Set[str], List[str], List[str]]:
+    """The fanout rows of `after` that `rng`'s `Coupling: split of <X>` trailers honestly admit and the packages whose
+    distance they may raise, with a note for each split admitted and a reason for each refused (the rule: the module
+    docstring, A SPLIT)."""
     base, head = rng.split("..", 1)
     head = head or "HEAD"
     frozen, now = of_kind(before, "fanout"), of_kind(after, "fanout")
     added = sorted(k for k in now if k not in frozen and not moved(k, now[k], frozen, now))
     claims = split_claims(rng)
-    limit = limits(after)["fanout"]
+    counts, targets = fanouts or ({}, {})
+    base_refs = recorded_refs(file_at(base, REFS_PATH)) if claims else {}
+    members = contract_members(file_at(base, EXEMPTIONS_PATH)) if claims else {}
     copies = None
-    admitted, notes, refused = set(), [], []
+    admitted, packages, notes, refused = set(), set(), [], []
     for name, named in claims:
         original = resolve(name, frozen)
         if original is None:
@@ -228,25 +277,20 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Dict[str
         if not named and len(claims) > 1:
             refused.append(f"split of {original}: {len(claims)} splits in {rng} -- name each one's pieces (`into <A>, <B>`)")
             continue
-        known = set(now) | set(fanouts or {})
+        known = set(now) | set(counts)
         pieces = [resolve(n, known) or n for n in named] or added
         if copies is None:
             status = git("diff", "-M", "-C", "--name-status", base, head)
             copies = {(cols[1], cols[2]) for cols in (line.split("\t") for line in status.splitlines())
                       if len(cols) == 3 and cols[0][:1] in "RC"}
 
-        def value(cls: str) -> Optional[int]:
-            if cls in now:
-                return now[cls]
-            if fanouts is not None:
-                return fanouts.get(cls)
-            return limit if source_of(head, cls) else None
-
         why = []
         origin = source_of(base, original)
         values = {}
+        union: Set[str] = set()
+        internal = set(pieces) | {original}
         for piece in pieces:
-            v = value(piece)
+            v = now.get(piece, counts.get(piece))
             if v is None:
                 why.append(f"{piece} is no class at {head}")
                 continue
@@ -256,20 +300,35 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Dict[str
             ok, because = took_over(base, head, origin, piece, copies) if origin else (False, "")
             if not ok:
                 why.append(f"{piece} takes over none of {original}'s code" + (f" ({because})" if because else ""))
-        left = value(original) or 0
-        total = sum(values.values()) + left
-        shown = ", ".join(f"{p} {v}" for p, v in values.items()) + (f", {original} {left} left" if left else "")
+            if piece in targets:
+                union |= targets[piece]
+            else:
+                why.append(f"{piece}'s references are not measured (couplingReport's fanouts, with their targets)")
+        if original in counts:
+            if original in targets:
+                union |= targets[original]
+            else:
+                why.append(f"what {original} keeps is not measured (couplingReport's fanouts, with its targets)")
+        union -= internal
+        shown = ", ".join(f"{p} {v}" for p, v in values.items())
         if not pieces:
             why.append("no pieces: name them (`into <A>, <B>`) or record their rows (scripts/coupling-report --update)")
-        if total > frozen[original]:
-            why.append(f"{total} past {frozen[original]}: the pieces and what {original} keeps may not sum past it")
+        was = base_refs.get(original, set())
+        if len(was) != frozen[original]:
+            why.append(f"{original}'s recorded reference set at {base[:12]} ({REFS_PATH}) has {len(was)}, its row "
+                       f"{frozen[original]}: record both with scripts/coupling-report --update in an earlier commit")
+        new = sorted(t for t in union if not covered(t, was, members))
+        if new:
+            why.append(f"the pieces add what {original} did not reference at {base[:12]}: {', '.join(new[:5])}"
+                       + (", ..." if len(new) > 5 else "") + " -- a split adds no dependency")
         summary = f"split of {original} ({frozen[original]}) into {shown}"
         if why:
             refused.append(f"{summary}: " + "; ".join(why))
         else:
             admitted |= set(pieces)
-            notes.append(f"{summary}: {total} <= {frozen[original]}")
-    return admitted, notes, refused
+            packages |= {package_of(c) for c in internal}
+            notes.append(f"{summary}: their references ({len(union)}) within {original}'s {frozen[original]}")
+    return admitted, packages, notes, refused
 
 
 LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types")}
@@ -284,10 +343,11 @@ def refrozen(old: Rows, new: Rows, kind: str) -> bool:
                for key in LIMIT_KEYS[kind])
 
 
-def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset()) -> List[str]:
+def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_packages: Set[str] = frozenset()) -> List[str]:
     """The frozen rows the baseline gained or raised from `old` to `new` -- never admitted, whatever the trailer, unless
-    the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer), or
-    the row is a piece of an honest split (`split`, from `split_credit`)."""
+    the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer), the
+    row is a piece of an honest split (`split`, from `split_credit`), or the distance of a package holding one
+    (`split_packages`) rose by DISTANCE_SPLIT_TOLERANCE at most."""
     out = []
     for kind, _, _ in FROZEN:
         if refrozen(old, new, kind):
@@ -295,7 +355,8 @@ def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset()) -> List[s
         before, after = of_kind(old, kind), of_kind(new, kind)
         for key, value in sorted(after.items()):
             if key in before:
-                if value > before[key]:
+                tolerated = kind == "distance" and key in split_packages and value - before[key] <= DISTANCE_SPLIT_TOLERANCE
+                if value > before[key] and not tolerated:
                     out.append(f"{kind} {key} raised {before[key]} -> {value}")
             elif not moved(key, value, before, after) and not (kind == "fanout" and key in split):
                 out.append(f"{kind} {key} added at {value}")
@@ -443,12 +504,32 @@ def justified(rng: str, path: str = BASELINE_PATH) -> bool:
     return any(entry.strip() for entry in log.split("\x00"))
 
 
-def read_fanouts(path: str) -> Optional[Dict[str, int]]:
-    """couplingReport's fanouts file: `<class><TAB><held fan-out>` a line, every class; None without one."""
+Fanouts = Tuple[Dict[str, int], Dict[str, Set[str]]]  # every class's held fan-out, and what it counts (when given)
+
+
+def read_fanouts(path: str) -> Optional[Fanouts]:
+    """couplingReport's fanouts file: `<class><TAB><held fan-out>[<TAB><target>,<target>...]` a line, every class; None
+    without one."""
     if not path:
         return None
+    counts, targets = {}, {}
     with open(path) as f:
-        return {c: int(n) for c, n in (line.split("\t") for line in f.read().splitlines() if "\t" in line)}
+        for cols in (line.split("\t") for line in f.read().splitlines() if "\t" in line):
+            counts[cols[0]] = int(cols[1])
+            if len(cols) > 2:
+                targets[cols[0]] = set(filter(None, cols[2].split(",")))
+    return counts, targets
+
+
+def refs(current_path: str, fanouts_path: str) -> int:
+    """Each frozen class's reference set, `<class><TAB><target>` a line, sorted (the module docstring's `refs`)."""
+    with open(current_path) as f:
+        frozen = of_kind(parse(f.read()), "fanout")
+    _, targets = read_fanouts(fanouts_path)
+    for cls in sorted(frozen):
+        for target in sorted(targets.get(cls, ())):
+            print(f"{cls}\t{target}")
+    return 0
 
 
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
@@ -486,16 +567,16 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
     for rng in ranges:
         base = rng.split("..")[0]
         before = parse(file_at(base, BASELINE_PATH))
-        split, notes, refused = split_credit(rng, before, baseline, fanouts)
+        split, split_packages, notes, refused = split_credit(rng, before, baseline, fanouts)
         for note in notes:
             print(f"coupling: {note} -- each piece frozen at its own value")
         if refused:
             failed = True
             print(f"A `Coupling: split of <X>` CLAIM IS REFUSED in {rng}: the pieces must take over X's code, each below X's"
-                  " frozen value, all together (with what X keeps) no more than it:")
+                  " frozen value, and reference (with what X keeps) nothing X did not:")
             for r in refused:
                 print(f"  - {r}")
-        frozen = frozen_growth(before, baseline, split)
+        frozen = frozen_growth(before, baseline, split, split_packages)
         if frozen:
             failed = True
             print(f"THE COUPLING BASELINE ADMITS A CLASS OR PACKAGE PAST A LIMIT in {rng}: a frozen row only falls, and no"
@@ -560,8 +641,13 @@ def main(argv: List[str]) -> int:
     c.add_argument("--exemptions", default=EXEMPTIONS_PATH)
     c.add_argument("--fanouts", default="")
     c.add_argument("--range", action="append", default=[])
+    r = sub.add_parser("refs")
+    r.add_argument("--current", required=True)
+    r.add_argument("--fanouts", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "refs":
+            return refs(args.current, args.fanouts)
         return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions, args.fanouts)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)
