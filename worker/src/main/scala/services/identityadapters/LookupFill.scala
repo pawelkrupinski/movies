@@ -150,8 +150,8 @@ final class LookupFill(
   renewals:    () => Seq[Question],
   memory:      QuestionMemory,
   clock:       java.time.Clock,
-  // Where each round that ran to its end is reported (`ScheduledTickStale`, tick [[LookupFill.Tick]]): the fill's
-  // [[schedule]] only hands a round to `executor`, so a round that hangs or fails every time is seen here or nowhere.
+  // Where each round that ran to its end is reported (`ScheduledTickStale`, tick [[LookupFill.Tick]]): its schedule
+  // ([[LookupFillSchedule]]) only hands a round to `executor`, so a round that hangs or fails every time is seen here or nowhere.
   ticks:       tools.TickRecorder
 ) extends Logging {
   // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
@@ -247,14 +247,6 @@ final class LookupFill(
       case _                         => ()
     })
 
-  /** The fill's own claimed schedule: [[start]] every `interval`, first after `initialDelay`, on the replica that wins
-   *  the window's claim. It records only that it started: [[round]] completes the tick, not the hand-off. */
-  def schedule(interval: => FiniteDuration, initialDelay: FiniteDuration, runStore: services.schedule.ScheduledRunStore,
-               threadPools: tools.ThreadPools)
-      : services.tasks.ClaimedPeriodicTask =
-    new services.tasks.ClaimedPeriodicTask(LookupFill.Tick, () => { start(); tools.TickRun.Completed }, interval, initialDelay, runStore, clock,
-      tools.TickRecorder.completedByTheWork(ticks), threadPools)
-
   /** Start a round in the background unless one is running. A worker's shutdown interrupts a round
    *  mid-sleep or mid-fetch: that ends it, interrupt re-asserted, rather than escaping `NonFatal` as an
    *  uncaught exception Sentry reports as FATAL on every restart. */
@@ -270,7 +262,7 @@ final class LookupFill(
 }
 
 object LookupFill {
-  /** The fill's tick: armed by its [[LookupFill.schedule]], completed by each round that ran to its end. */
+  /** The fill's tick: armed by its schedule ([[LookupFillSchedule]]), completed by each round that ran to its end. */
   val Tick = "identity-lookup-refresh"
 
   /** What one asked gap came to in a round. */

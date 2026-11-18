@@ -243,8 +243,9 @@ trait IdentityModelWiring { self: WorkerWiring =>
     configuration.identityLookupFillInterval(WorkerWiring.DefaultLookupFillInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    lookupFill.schedule(identityLookupFillInterval.value,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, threadPools = threadPools))
+    services.identityadapters.LookupFillSchedule(lookupFill, identityLookupFillInterval.value,
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks,
+      threadPools))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def lookupFillSleep: Long => Unit = Thread.sleep
