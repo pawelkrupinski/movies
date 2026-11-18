@@ -199,36 +199,22 @@ class UptimeMonitor(
     else buckets.values().asScala.toSeq.map(_.snapshot)
   }
 
-  def recentStatuses(service: String, limit: Int): Seq[String] = {
-    val buckets = bucketStore.get(service)
-    if (buckets == null) Seq.empty
-    else {
-      val out = List.newBuilder[String]
-      var taken = 0
-      val it = buckets.descendingMap().values().iterator()
-      while (taken < limit && it.hasNext) {
-        val b = it.next()
-        val status = BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status
-        if (status != "empty") { out += (if (status == "green" && b.thin.get()) "thin" else status); taken += 1 }
-      }
-      out.result().reverse   // walked newest-first; callers want oldest→newest
-    }
-  }
+  def recentStatuses(service: String, limit: Int): Seq[String] =
+    newestStated(service, limit).map { case (b, status) => if (status == "green" && b.thin.get()) "thin" else status }
+      .reverse   // walked newest-first; callers want oldest→newest
 
-  def recentErrors(service: String, limit: Int): Seq[String] = {
+  def recentErrors(service: String, limit: Int): Seq[String] =
+    newestStated(service, limit).flatMap { case (b, _) => b.errors.asScala }
+
+  /** The `limit` newest of `service`'s buckets that saw any outcome, newest first, each with its status. */
+  private def newestStated(service: String, limit: Int): List[(Bucket, String)] = {
     val buckets = bucketStore.get(service)
-    if (buckets == null) Seq.empty
-    else {
-      val out = List.newBuilder[String]
-      var taken = 0
-      val it = buckets.descendingMap().values().iterator()
-      while (taken < limit && it.hasNext) {
-        val b = it.next()
-        val status = BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status
-        if (status != "empty") { out ++= b.errors.asScala; taken += 1 }
-      }
-      out.result()
-    }
+    if (buckets == null) Nil
+    else buckets.descendingMap().values().iterator().asScala
+      .map(b => b -> BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status)
+      .filter(_._2 != "empty")
+      .take(limit)
+      .toList
   }
 
   /** Every service's counts summed over every bucket holding any moment at or after
