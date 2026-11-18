@@ -100,7 +100,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
       import corpus.{databaseName, readModel, repository}
       val country   = models.Country.Poland
       val metrics   = modules.wiring.WorkerMetrics.singleCountry(country, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
-      val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country), scheduler = services.readmodel.ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+      val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country), clock = tools.SpecClock.Pinned)
       val sweeper   = new services.readmodel.ReadModelSweeper(projector.projection)
       val id        = StoredMovieRecord.keyFor(fixpointTitle, year, titleNormalizer)
       val projecting = repository.watchUpserts(projector.onMovieUpsert)
@@ -138,10 +138,10 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
   // served 22 hours). No `watch()` below: in the worker that comes only once the cache has started.
   "the projector's boot reads" should "leave it on the cursor the cache opens, before its watch starts" in {
     ProjectedMongoCorpus.withCorpus(mongoTarget, "boot_attach") { corpus =>
-      import corpus.{projector, readModel, repository, sweeper}
+      import corpus.{boot, readModel, repository, sweeper}
       val id   = StoredMovieRecord.keyFor(bootTitle, year, titleNormalizer)
       val when = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
-      projector.prepare(sweeper)
+      boot.prepare(sweeper)
       repository.isWatchingChangeStream shouldBe false      // attached, but it opened nothing
       val cache = repository.watchChanges(_ => (), _ => ())  // the cache's watch opens the cursor
       try {
@@ -150,7 +150,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         withClue("a film the cache's cursor delivered after the projector's boot reads never reached the read model: ") {
           Eventually.poll()(readModel.findAllScreenings().exists(s => s.filmId == id && s.cinema == KinoMuranow.displayName)) shouldBe true
         }
-      } finally { cache.foreach(_.close()); projector.stop() }
+      } finally { cache.foreach(_.close()); boot.stop() }
     }
   }
 

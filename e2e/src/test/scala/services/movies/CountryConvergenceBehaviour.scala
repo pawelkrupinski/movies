@@ -1861,7 +1861,7 @@ abstract class CountryConvergenceBehaviour(
       }
       // The rename reaches production as a DEPLOY: the next worker boots over rows it did not
       // write, and seeds its projector from them.
-      if (renamed.nonEmpty) w.readModelProjector.seedFromReadModel()
+      if (renamed.nonEmpty) w.readModelBoot.seedFromReadModel()
       w.webReadModel.reload()
       val renameLost = renamed.flatMap { c =>
         val lost = servedBefore(c) -- filmsIn(c)

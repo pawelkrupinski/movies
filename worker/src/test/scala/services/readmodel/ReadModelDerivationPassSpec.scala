@@ -49,12 +49,13 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   private def booted(repository: InMemoryMovieRepository, rm: InMemoryReadModelRepository,
                      marker: ReadModelDerivationMarker,
                      metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
-                     history: Seq[Derivation] = ReadModelDerivation.History): (ReadModelProjector, ReadModelSweeper, ReadModelDerivationPass) = {
-    val projector = new ReadModelProjector(repository, rm, rm, metrics, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+                     history: Seq[Derivation] = ReadModelDerivation.History): (ReadModelBoot, ReadModelSweeper, ReadModelDerivationPass) = {
+    val projector = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
+    val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history)
     val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))
-    projector.start(sweeper)   // seeds its memo from the store, as a restart does
-    (projector, sweeper, pass)
+    projectorBoot.start(sweeper)   // seeds its memo from the store, as a restart does
+    (projectorBoot, sweeper, pass)
   }
 
   "a boot that finds another derivation recorded" should
@@ -62,7 +63,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val (projector, sweeper, pass) = booted(repository, rm, marker)
+    val (boot, sweeper, pass) = booted(repository, rm, marker)
 
     sweeper.pruneOrphans()   // the first sweep reads the marker and arms the pass
     (1 to 47).foreach(_ => pass.advance())
@@ -73,7 +74,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelDerivation.current.value)
-    projector.stop()
+    boot.stop()
   }
 
   // The pass re-projects the whole corpus with no change-stream event behind any of it, so it must
@@ -84,28 +85,28 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val metrics    = new RecordingReadModelProjectionMetrics()
-    val (projector, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")), metrics)
+    val (boot, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")), metrics)
 
     sweeper.pruneOrphans()
     (1 to 48).foreach(_ => pass.advance())
 
     metrics.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Derivation) shouldBe Films.size
     metrics.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 0
-    projector.stop()
+    boot.stop()
   }
 
   "a store with no derivation recorded" should "be re-projected whole — the first boot after the marker existed" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(None)
-    val (projector, sweeper, pass) = booted(repository, rm, marker)
+    val (boot, sweeper, pass) = booted(repository, rm, marker)
 
     sweeper.pruneOrphans()
     (1 to 48).foreach(_ => pass.advance())
 
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelDerivation.current.value)
-    projector.stop()
+    boot.stop()
   }
 
   "a boot that finds its own derivation recorded" should "leave the corpus to the rolling content check" in {
@@ -116,7 +117,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     // since — so the silent-cursor catch-up, overlap and all, has no reason to read it again.
     clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
     repository.changeStreamLiveness.delivered(services.movies.ChangeStreamLiveness.Movies)
-    val (projector, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelDerivation.current.value)))
+    val (boot, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelDerivation.current.value)))
 
     sweeper.pruneOrphans()   // repairs one slice at most
     val writesAfterSweep = rm.movieUpserts.size
@@ -124,7 +125,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
     rm.movieUpserts.size shouldBe writesAfterSweep
     staleCards(rm) should be > 0
-    projector.stop()
+    boot.stop()
   }
 
   "a row that cannot be read during the pass" should "keep the old marker, so the next sweep runs the pass again" in {
@@ -132,7 +133,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     repository.failing = false
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val (projector, sweeper, pass) = booted(repository, rm, marker)
+    val (boot, sweeper, pass) = booted(repository, rm, marker)
 
     // Each slice as its tick runs it: a slice that missed a row is not a completed run, so a pass failing every slice
     // goes stale (it completed every one, and read-model-derivation-pass could never fire).
@@ -154,7 +155,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     ticks.completedRuns.size shouldBe before + 48
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelDerivation.current.value)
-    projector.stop()
+    boot.stop()
   }
 
   "a marker that cannot be read" should "start no pass until a later sweep can read it" in {
@@ -162,7 +163,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
     marker.unreadable = true
-    val (projector, sweeper, pass) = booted(repository, rm, marker)
+    val (boot, sweeper, pass) = booted(repository, rm, marker)
 
     sweeper.pruneOrphans()
     val writesAfterSweep = rm.movieUpserts.size
@@ -176,7 +177,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     (1 to 48).foreach(_ => pass.advance())
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelDerivation.current.value)
-    projector.stop()
+    boot.stop()
   }
 
   /** Counts the two by-id reads a pass can make; the slots-only one returns the row without its
@@ -202,7 +203,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val repository = new ReadCountingMovieRepository
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val (projector, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Cards))
+    val (boot, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Cards))
     sweeper.pruneOrphans()   // arms the pass; its own content slice may repair a row or two
     val screeningsBefore = rm.findAllScreenings().toSet
     val screeningWrites  = rm.screeningUpserts.size
@@ -216,13 +217,13 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     rm.findAllScreenings().toSet shouldBe screeningsBefore
     rm.screeningUpserts.size shouldBe screeningWrites
     marker.current shouldBe Some("this-code")
-    projector.stop()
+    boot.stop()
   }
 
   "a pass owed for more than card fields" should "read every row whole" in {
     val repository = new ReadCountingMovieRepository
     val rm         = derivedByOldCode(repository)
-    val (projector, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")),
+    val (boot, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")),
                             history = history(DerivationScope.Full))
     sweeper.pruneOrphans()
     repository.resetCounts()
@@ -232,7 +233,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     repository.wholeReads shouldBe Films.size
     repository.slotsOnlyReads shouldBe 0
     staleCards(rm) shouldBe 0
-    projector.stop()
+    boot.stop()
   }
 
   // A pass takes ~8 minutes and starts ~5 after boot; on 2026-09-26 deploys ten minutes apart
@@ -242,7 +243,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"),
                                                            Some(DerivationProgress(DerivationVersion("this-code"), 30)))
-    val (projector, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    val (boot, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
     sweeper.pruneOrphans()
     repository.resetCounts()
 
@@ -253,7 +254,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     marker.current shouldBe Some("this-code")
     val laterRows = repository.findAll().count(row => ReadModelSweeper.contentSliceOf(row.id) >= 30)
     repository.wholeReads shouldBe laterRows
-    projector.stop()
+    boot.stop()
   }
 
   it should "start from the first slice when the progress was for another version" in {
@@ -261,13 +262,13 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"),
                                                            Some(DerivationProgress(DerivationVersion("an-abandoned-version"), 30)))
-    val (projector, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    val (boot, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
     sweeper.pruneOrphans()
 
     (1 to 18).foreach(_ => pass.advance())
     marker.current shouldBe Some("an-older-derivation")
     marker.currentProgress shouldBe Some(DerivationProgress(DerivationVersion("this-code"), 18))
-    projector.stop()
+    boot.stop()
   }
 
   // A pass for "this-code" stopped at slice 30; the deploy was rolled back to the older code, whose
@@ -298,7 +299,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     repository.failing = false
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val (projector, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    val (boot, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
     sweeper.pruneOrphans()
     val firstSliceWithARow = repository.findAll().map(row => ReadModelSweeper.contentSliceOf(row.id)).min
 
@@ -307,7 +308,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
     marker.currentProgress.map(_.nextSlice).getOrElse(0) should be <= firstSliceWithARow
     marker.current shouldBe Some("an-older-derivation")
-    projector.stop()
+    boot.stop()
   }
 
   // A card published by an expired hold carries `shareCardPending` until its share card lands; the
@@ -328,10 +329,11 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
       def onRetired(filmId: String): Unit                        = ()
     }
     val marker    = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val projector = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
+    val projector = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
+    val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history(DerivationScope.Cards))
     val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))
-    projector.start(sweeper)
+    projectorBoot.start(sweeper)
     sweeper.pruneOrphans()
     (1 to 48).foreach(_ => pass.advance())
 
@@ -339,6 +341,6 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     card.shareCard shouldBe Some("/cards/landed.png")
     card.shareCardPending shouldBe false
     landed.toSeq shouldBe Seq(pending)
-    projector.stop()
+    projectorBoot.stop()
   }
 }

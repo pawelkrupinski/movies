@@ -4,7 +4,7 @@ import settings.ShareCardFirstHold
 
 import services.identity.{EvidenceRatingGate, IdentityCalibration}
 import services.readmodel.RatingGate
-import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelDerivationPass, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter, ShareCardGate}
+import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelBoot, ReadModelDerivationPass, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter, ShareCardGate}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections
@@ -16,13 +16,15 @@ trait ReadModelWiring { self: WorkerWiring =>
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics, stopwatch = stopwatch)
   // The projector's thread — its learning off the boot thread — and the sweeper's paced passes; the wiring's
-  // stop() shuts it down, as does the projector's.
+  // stop() shuts it down, as does the projector's boot's.
   lazy val readModelScheduler: java.util.concurrent.ScheduledExecutorService =
     threadPools.scheduler("read-model-projector")
-  lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
-    scheduler = readModelScheduler,
+  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     shareCardGate = readModelShareCardGate, clock = clock,
-    ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
+    ratingGate = ratingGate)
+  // The projector's boot reads and its change-stream subscription, on the projector's thread; stopped with the wiring.
+  lazy val readModelBoot = managedResources.stopping(new ReadModelBoot(readModelProjector, readModelScheduler,
+    bootStudy = Some(readModelBootStudy)))
   // The first-publish gate: a brand-new card is held back waiting for its share card, at most this long,
   // then published anyway with the fallback image and `shareCardPending` set.
   lazy val readModelShareCardGate: ShareCardGate = new ShareCardGate(shareCardLedger,

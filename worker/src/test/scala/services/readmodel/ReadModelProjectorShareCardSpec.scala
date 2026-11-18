@@ -38,7 +38,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     val clock      = new tools.MutableClock(T0)
     val ledger     = new ScriptedLedger
     val readModel  = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, readModel, readModel, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(2.minutes)), scheduler = ReadModelProjectorFixtures.scheduler(), clock = clock)
+    val projector  = new ReadModelProjector(repository, readModel, readModel, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(2.minutes)), clock = clock)
     def upsert(rating: Double, screened: Boolean = true): String = {
       repository.upsert("Foo", Some(2024), record(rating, screened))
       val row = repository.findAll().head
@@ -177,7 +177,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     }
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val ledger     = new ScriptedLedger
-    val projector  = new ReadModelProjector(repository, failing, failing, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)), scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val projector  = new ReadModelProjector(repository, failing, failing, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)), clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(7.5))
     val row = repository.findAll().head
     val id  = ReadModelProjection.filmId(row)
@@ -193,7 +193,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   "With no share cards at all" should "publish at once, carrying no card" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val readModel  = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, readModel, readModel, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(7.5))
     projector.onMovieUpsert(repository.findAll().head)
     readModel.findAllMovies().map(_.shareCard) shouldBe Seq(None)

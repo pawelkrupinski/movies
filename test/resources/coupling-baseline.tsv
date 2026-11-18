@@ -252,9 +252,10 @@ fanout	services.movies.SlotKeyed	10
 fanout	services.movies.UnscreenedCleanup	14
 fanout	services.readmodel.BootCorpusStudy	10
 fanout	services.readmodel.MongoReadModelRepository	23
+fanout	services.readmodel.ReadModelBoot	26
 fanout	services.readmodel.ReadModelContentAudit	14
 fanout	services.readmodel.ReadModelProjection	22
-fanout	services.readmodel.ReadModelProjector	46
+fanout	services.readmodel.ReadModelProjector	39
 fanout	services.readmodel.ReadModelReader	10
 fanout	services.readmodel.ReadModelSweeper	32
 fanout	services.readmodel.WebReadModel	29

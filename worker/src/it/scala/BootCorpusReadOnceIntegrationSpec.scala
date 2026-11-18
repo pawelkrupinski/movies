@@ -87,12 +87,13 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val repository = repositoryOn(db)
     val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val study      = new BootCorpusStudy(titleNormalizer)
-    val projector  = new ReadModelProjector(repository, readModel, readModel, scheduler = services.readmodel.ReadModelProjectorFixtures.scheduler(), clock = _root_.tools.SpecClock.Pinned, bootStudy = Some(study))
+    val projector  = new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned)
+    val projectorBoot = new services.readmodel.ReadModelBoot(projector, services.readmodel.ReadModelProjectorFixtures.scheduler(), bootStudy = Some(study))
     val sweeper    = new ReadModelSweeper(projector.projection)
     val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned,
       mirror = new services.movies.CorpusMirror(bootReaders = readers, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking))
-    projector.prepare(sweeper)
+    projectorBoot.prepare(sweeper)
     val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
       WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned, threadPools = tools.ThreadPools.Unmanaged)
@@ -102,7 +103,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
       done() shouldBe true
     }
     val took = (System.nanoTime() - started) / 1000000
-    census.stop(); projector.stop(); cache.stop(); repository.close()
+    census.stop(); projectorBoot.stop(); cache.stop(); repository.close()
     took
   }
 
@@ -116,7 +117,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     // The last process projected the corpus: the boot's check finds nothing to heal, so every
     // `movies` document a boot reads is one of its corpus scans.
     val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
-    new ReadModelSweeper(new ReadModelProjector(repository, readModel, readModel, scheduler = services.readmodel.ReadModelProjectorFixtures.scheduler(), clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
+    new ReadModelSweeper(new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
     repository.close()
 
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it

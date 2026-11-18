@@ -42,7 +42,7 @@ trait ReadModelProjectorFixtures {
   protected def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm   = new InMemoryReadModelRepository()
-    (new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock), repository, rm)
+    (new ReadModelProjector(repository, rm, rm, clock = specClock), repository, rm)
   }
 }
 

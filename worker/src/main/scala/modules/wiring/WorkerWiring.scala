@@ -262,12 +262,12 @@ class WorkerWiring(
     // it missed every change the stream applied to the cache first (2026-09-30: four first-sweep
     // heals, and a closed Chicago venue served for 22 hours). What arrives while its reads run is
     // held and projected after them; its sweeps still start only once the cache has.
-    readModelProjector.attach()
+    readModelBoot.attach()
     val cacheStarted = new java.util.concurrent.CountDownLatch(1)
     boot.inBackground("read-model projector") {
-      try readModelProjector.prepare(readModelSweeper) finally projectorPrepared = true
+      try readModelBoot.prepare(readModelSweeper) finally projectorPrepared = true
       cacheStarted.await()
-      readModelProjector.watch()
+      readModelBoot.watch()
       if (readModelProjector.enabled) readModelSweeper.schedule(readModelScheduler, ticks)
     }
     // The cache hydrate (synchronous findAll — the first scrape tick needs a populated cache for

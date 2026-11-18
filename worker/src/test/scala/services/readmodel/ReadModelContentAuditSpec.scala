@@ -40,7 +40,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
   "a card projected from its current row" should "match, whatever share card the projector gave it" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val projector  = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     val card = cardOf(repository)
@@ -49,7 +49,6 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     // shareCard / shareCardPending are the projector's, filled from the disk: not a difference.
     rm.upsertMovie(rm.findAllMovies().head.copy(shareCard = Some("x.jpg?v=1"), shareCardPending = true))
     audit(card, repository, rm) shouldBe Some(Nil)
-    projector.stop()
   }
 
   "a card the rating gate withheld" should "match when audited with the gate the projector ran" in {
@@ -59,29 +58,28 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
       def apply(stored: services.movies.StoredMovieRecord, movie: ResolvedMovie) = services.readmodel.RatingGate.withheld(movie)
       val version = 1
     }
-    val projector  = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned, ratingGate = withholdAll)
+    val projector  = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, ratingGate = withholdAll)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     val card = cardOf(repository)
     ReadModelContentAudit.differences(card, repository, rm, withholdAll) shouldBe Some(Nil)
     audit(card, repository, rm).get should contain ("ratings")   // the ungated projection differs
-    projector.stop()
   }
 
   "a lost change event" should "leave a stale card the audit names field by field, until the content check repairs it" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
-    val first      = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val first      = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     first.onMovieUpsert(repository.findAll().head)
-    first.stop()
     // The source moves and no event is delivered; the stream then carries on with OTHER films —
     // the production shape (see ReadModelProjectorSpec), beyond the catch-up and the heal.
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(9.9, Seq(at("2026-07-20T18:00"))))
     repository.upsert("Bar", Some(2024), record(6.0, Seq(at("2026-06-14T20:00"))))
-    val checker = new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val checker = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned)
+    val checkerBoot = new ReadModelBoot(checker, ReadModelProjectorFixtures.scheduler())
     val checkerSweeper = new ReadModelSweeper(checker.projection)
-    checker.start(checkerSweeper)
+    checkerBoot.start(checkerSweeper)
 
     val card = cardOf(repository)
     val found = audit(card, repository, rm).get
@@ -90,7 +88,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
 
     (1 to 48).foreach(_ => checkerSweeper.pruneOrphans())   // the rolling content check, whole corpus
     audit(card, repository, rm) shouldBe Some(Nil)
-    checker.stop()
+    checkerBoot.stop()
   }
 
   // THE CASE ONLY A READ OF THE STORE CAN SEE. Before dfaba5ba8 a failed read-model write was
@@ -113,7 +111,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val writer     = new DroppingWriter(rm, throwing)
-    val projector  = new ReadModelProjector(repository, writer, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned)
+    val projector  = new ReadModelProjector(repository, writer, rm, clock = tools.SpecClock.Pinned)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
@@ -123,7 +121,6 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     writer.dropping = false
     (1 to 48).foreach(_ => sweeper.pruneOrphans())                                // a whole day of content checks
     val found = audit(cardOf(repository), repository, rm)
-    projector.stop()
     found
   }
 
@@ -146,7 +143,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
   "a card whose stored read failed" should "not be judged — a failed read is not an empty card" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
-    new ReadModelProjector(repository, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = tools.SpecClock.Pinned).onMovieUpsert({
+    new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned).onMovieUpsert({
       repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00")))); repository.findAll().head })
     val blind = new InMemoryReadModelRepository { override def findCard(id: String): tools.ReadOutcome[StoredCard] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new RuntimeException("down"))) }
     audit(cardOf(repository), repository, blind) shouldBe None

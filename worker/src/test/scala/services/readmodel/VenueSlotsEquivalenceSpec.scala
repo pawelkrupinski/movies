@@ -61,9 +61,12 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def stored(record: MovieRecord) = StoredMovieRecord.synthesised("Foo", Some(2024), record, titleNormalizer)
 
-  private def projector(rm: InMemoryReadModelRepository, bootStudy: Option[BootCorpusStudy] = None,
+  private def projector(rm: InMemoryReadModelRepository,
                         source: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) =
-    new ReadModelProjector(source, rm, rm, scheduler = ReadModelProjectorFixtures.scheduler(), clock = clock, bootStudy = bootStudy)
+    new ReadModelProjector(source, rm, rm, clock = clock)
+
+  private def boot(projector: ReadModelProjector, bootStudy: Option[BootCorpusStudy] = None) =
+    new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler(), bootStudy)
 
   "A change at some venues" should "write from those venues alone exactly what projecting the whole film writes" in {
     var accepted, declined = 0
@@ -93,7 +96,6 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
           venueRm.findAllScreenings().toSet shouldBe wholeRm.findAllScreenings().toSet
         }
       }
-      whole.stop(); venue.stop()
     }
     // Both paths must actually have run, or the agreement above proves nothing.
     accepted should be > 300
@@ -149,13 +151,14 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), record)
     def row = repository.findAll().head
     // the process before the restart projected it, into both read models
-    Seq(beforeRm, afterRm).foreach { rm => val p = projector(rm); p.onMovieUpsert(row); p.stop() }
+    Seq(beforeRm, afterRm).foreach (rm => projector(rm).onMovieUpsert(row))
     val whole = projector(beforeRm)                          // a projector that keeps projecting whole
     whole.onMovieUpsert(row)
     val study  = new BootCorpusStudy(titleNormalizer)
     study.bootPage(Seq(row))                                 // the restarted worker's hydrate read, before any change
     study.bootReadEnded(services.movies.BootReadEnd.Whole)
-    val booted = projector(afterRm, Some(study))             // the restarted worker's
+    val booted = projector(afterRm)                          // the restarted worker's
+    val bootedBoot = boot(booted, Some(study))
     def cinema = record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty => c }.get
     def change(at: models.Cinema): VenueSlots = {
       record = record.copy(data = record.data.map {
@@ -171,14 +174,14 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
   "The projector" should "learn a row from the boot hydrate's read, and apply its venues alone after" in {
     val world = new Restart(7)
     import world.*
-    booted.prepare(new ReadModelSweeper(booted.projection))
+    bootedBoot.prepare(new ReadModelSweeper(booted.projection))
     val venues = change(cinema)
     booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
     afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
     afterRm.findAllScreenings().toSet shouldBe beforeRm.findAllScreenings().toSet
     booted.onVenueSlots(VenueSlots(FilmId("absent|2024"), venues.atCinemas)) shouldBe
       services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
-    whole.stop(); booted.stop()
+    bootedBoot.stop()
   }
 
   it should "apply a change at one venue of a card whose other row drifted, leaving that row to the content check" in {
@@ -187,7 +190,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val drifted = afterRm.findAllScreenings().head
     val stale   = drifted.copy(showtimes = Seq(times.head))
     afterRm.upsertScreening(stale)                                                       // the read model drifted
-    booted.prepare(new ReadModelSweeper(booted.projection))
+    bootedBoot.prepare(new ReadModelSweeper(booted.projection))
     record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty && c.displayName != drifted.cinema => c }
       .foreach { at =>
         booted.onVenueSlots(change(at)) shouldBe services.movies.VenueVerdict.Applied
@@ -195,7 +198,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         afterRm.findAllScreenings().filter(_.cinema == at.displayName).toSet shouldBe
           beforeRm.findAllScreenings().filter(_.cinema == at.displayName).toSet
       }
-    whole.stop(); booted.stop()
+    bootedBoot.stop()
   }
 
   // A boot whose hydrate read was not handed over (it failed, or its derivation ran past its wait) used to leave every
@@ -213,15 +216,16 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     // Its own copy of the store as it stood at the boot, so the change below reaches it only through the venue path.
     val source = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record)), normalizer = titleNormalizer)
     source.findAll().map(_.id) shouldBe Seq(row.id)
-    val learning = projector(afterRm, Some(missing), source = source)
-    learning.prepare(new ReadModelSweeper(learning.projection))
+    val learning = projector(afterRm, source = source)
+    val learningBoot = boot(learning, Some(missing))
+    learningBoot.prepare(new ReadModelSweeper(learning.projection))
     val venues = change(cinema)
     org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(_root_.tools.SpecTimeouts.Settle)) {
       learning.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
     }
     afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
     afterRm.findAllScreenings().toSet shouldBe beforeRm.findAllScreenings().toSet
-    whole.stop(); booted.stop(); learning.stop()
+    bootedBoot.stop(); learningBoot.stop()
   }
 
   // A row no read taught it — written since, or never ready — is re-read whole on its first change, at once.
@@ -229,9 +233,10 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val world = new Restart(13)
     import world.*
     val unlearned = projector(afterRm)
-    unlearned.prepare(new ReadModelSweeper(unlearned.projection))
+    val unlearnedBoot = boot(unlearned)
+    unlearnedBoot.prepare(new ReadModelSweeper(unlearned.projection))
     unlearned.onVenueSlots(change(cinema)) shouldBe
       services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
-    whole.stop(); booted.stop(); unlearned.stop()
+    bootedBoot.stop(); unlearnedBoot.stop()
   }
 }
