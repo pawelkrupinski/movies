@@ -669,4 +669,43 @@ check "a server still serving for a serve that is gone is restarted, and the cal
 unset KINOWO_STALL_POLL_SECONDS
 cp "$scratch/sbt.orig" "$scratch/bin/sbt"
 
+# ONE CALL, ITS CORES (the owner, 2026-11-18): under the governor (a stub agentctl noting each call) the keeper's ticket
+# is the server's memory, charged no cores, and each command takes a cores ticket of its own, charged its job; a
+# whole-module test the governor would hold goes to ci-runner (a stub ci-sbt) when `gov route` says so, a testOnly never.
+cat > "$scratch/bin/agentctl" <<STUB
+#!/usr/bin/env bash
+# def cmd_gov def gov_route (what scripts/jvm-gate.sh looks for)
+echo "\$*" >> "$scratch/gov-calls"
+[ "\$1 \$2" = "gov route" ] && { echo "\${ROUTE:-local}: stub" >&2; [ "\${ROUTE:-local}" = ci ]; exit; }
+exit 0
+STUB
+printf '#!/bin/sh\necho "$*" >> "%s/ci-sbt-calls"\n' "$scratch" > "$scratch/bin/ci-sbt"
+chmod +x "$scratch/bin/agentctl" "$scratch/bin/ci-sbt"
+governed() { KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$scratch/bin/agentctl" KINOWO_JVM_GATE_OS=Darwin KINOWO_GOV_CLASS=${KINOWO_GOV_CLASS:-agent} \
+  KINOWO_CI_SBT="$scratch/bin/ci-sbt" AGENTCTL_GOV_DIR="$scratch/gov" "$@"; }
+scratch_git "$repo" worktree add -q -b governed "$scratch/governed" origin/main
+: > "$scratch/gov-calls"
+(cd "$scratch/governed" && governed "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly X" >/dev/null 2>&1)
+check "a server's keeper ticket is its memory, charged as the keeper (no cores)" "1" \
+  "$(grep -c -- '--mem 5 --label sbt-warm .*--job keeper' "$scratch/gov-calls")"
+check "...and the command a cores ticket of its own: no memory, its job's cores" "1" \
+  "$(grep -c -- '--mem 0 --label sbt-warm testOnly .*--job testOnly' "$scratch/gov-calls")"
+: > "$scratch/gov-calls"
+(cd "$scratch/governed" && KINOWO_GOV_CPU_HELD=1 governed "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly X" >/dev/null 2>&1)
+check "under a check's ticket (KINOWO_GOV_CPU_HELD) a command takes no cores ticket" "0" \
+  "$(grep -c -- '--job testOnly' "$scratch/gov-calls")"
+: > "$scratch/ci-sbt-calls"
+(cd "$scratch/governed" && ROUTE=ci governed "$REPO_ROOT/scripts/sbt-warm" "testUnit" >/dev/null 2>&1)
+check "a testUnit the governor would hold, with a free lane, runs on ci-runner" "-- testUnit" "$(cat "$scratch/ci-sbt-calls")"
+: > "$scratch/ci-sbt-calls"
+(cd "$scratch/governed" && ROUTE=ci governed "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly X" >/dev/null 2>&1)
+(cd "$scratch/governed" && ROUTE=ci governed "$REPO_ROOT/scripts/sbt-warm" --local "testUnit" >/dev/null 2>&1)
+(cd "$scratch/governed" && ROUTE=ci KINOWO_GOV_CLASS=check governed "$REPO_ROOT/scripts/sbt-warm" "testUnit" >/dev/null 2>&1)
+check "...a testOnly, --local, and a check's testUnit stay here" "" "$(cat "$scratch/ci-sbt-calls")"
+(cd "$scratch/governed" && ROUTE=local governed "$REPO_ROOT/scripts/sbt-warm" "worker/test" >/dev/null 2>&1)
+check "...as does one the governor admits now" "" "$(cat "$scratch/ci-sbt-calls")"
+: > "$scratch/ci-sbt-calls"
+(cd "$scratch/governed" && governed "$REPO_ROOT/scripts/sbt-warm" --ci "worker/testOnly X" "web/compile" >/dev/null 2>&1)
+check "--ci sends any command, as one sbt line" "-- worker/testOnly X; web/compile" "$(cat "$scratch/ci-sbt-calls")"
+
 spec_summary

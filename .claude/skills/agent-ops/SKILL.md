@@ -154,6 +154,15 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   of yours can queue another agent: `scripts/sbt-warm --stop` when you are done with a worktree
   (`identity-slice --stop-served` stops every agent's kept slice JVMs, not only yours). Never lower
   `KINOWO_JVM_SLOTS` to get ahead — wait for a slot.
+  **Cores too (2026-11-18):** with the governor (`agentctl gov`, the Mac), the keeper's ticket is the server's memory
+  only; each sbt-warm command, what-if or slice request takes a cores ticket of its own, charged its job (testUnit /
+  test / what-if 4, compile 3, testOnly / slice 2, or the job's measured p75 from `agentctl gov stats`), and waits
+  while the charged cores (or the load, whichever is higher) plus its own would pass the cores. A pre-commit check's
+  ticket carries its hook's cores (`KINOWO_GOV_CPU_HELD`). A whole-module `testUnit` / `<module>/test` of yours the
+  governor would hold goes to ci-runner's measure lane when it is free (`scripts/ci-sbt`, said in the log; its exit is
+  the CI sbt step's: 0 passed, 1 failed, 2 no verdict); `scripts/sbt-warm --local` / `--ci` (or
+  `KINOWO_SBT_WARM_ROUTE`) decide. `scripts/fail-before` routes its two runs the same way (`--ci` / `--local`,
+  `KINOWO_FAIL_BEFORE_ROUTE`). A testOnly, a compile, a check's or a red fix's run stays local.
   This is the "heavy-run" the older docs named: there is no `heavy-run` command. `identity-measure-local`,
   `identity-measure --footprint` and `identity-landing-check --local` (via sbt-warm / it-local.sh) take their slot
   themselves, so run them directly; never route around the gate.

@@ -121,6 +121,60 @@ check "a run past the deadline: exit 2, no verdict, said" "2 0 1" \
   "$rc $(printf '%s\n' "$out" | grep -c '^FAIL-BEFORE: yes') $(printf '%s\n' "$out" | grep -c 'timed out')"
 check "...and the run's own children are stopped with it" "0" "$(spec_still_running "$GRANDCHILD")"
 
+# ON CI (--ci): BEFORE is a commit of the parent with the test-side files laid over it, AFTER the commit, each run by
+# scripts/ci-sbt (a stub here: it runs the "sbt command" as a script in that commit's tree, as CI runs it in a checkout
+# of it), and a run that gives no verdict (ci-sbt's 2) is no verdict, never a "fails before".
+mkdir -p "$base/bin"
+cat > "$base/bin/ci-sbt" <<STUB
+#!/usr/bin/env bash
+c=""; while [ \$# -gt 0 ]; do case "\$1" in --commit) c=\$2; shift 2 ;; --log) l=\$2; shift 2 ;; --) shift; break ;; *) shift ;; esac; done
+echo "\$c \$*" >> "$base/ci-runs"
+[ -z "\${NO_VERDICT:-}" ] || exit 2
+t=\$(mktemp -d); git archive "\$c" | tar -x -C "\$t"; (cd "\$t" && bash \$1) > "\$l" 2>&1; rc=\$?; rm -rf "\$t"; exit "\$((rc == 0 ? 0 : 1))"
+STUB
+chmod +x "$base/bin/ci-sbt"
+export KINOWO_CI_SBT="$base/bin/ci-sbt"
+printf 'echo ciao\n' > "$repo/greet.sh"
+printf 'test "$(bash greet.sh)" = ciao\n' > "$repo/ci-test.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a fix proved on CI"
+fix=$(scratch_git "$repo" rev-parse HEAD)
+: > "$base/ci-runs"
+out="$(cd "$repo" && "$tool" --ci -- scripts/sbt-warm ci-test.sh 2>&1)"; rc=$?
+check "--ci: a fix with its failing-first test, yes/yes" "0 yes yes" \
+  "$rc $(printf '%s\n' "$out" | sed -n 's/^FAIL-BEFORE: //p') $(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER: //p')"
+check "...two CI runs, the commit one of them" "2 1" "$(wc -l < "$base/ci-runs" | tr -d ' ') $(grep -c "^$fix ci-test.sh$" "$base/ci-runs")"
+bc=$(grep -v "^$fix " "$base/ci-runs" | cut -d' ' -f1)
+check "...BEFORE: the parent's production file" "echo hallo" "$(scratch_git "$repo" show "$bc:greet.sh")"
+check "...with the commit's test-side file over it" "1" "$(scratch_git "$repo" show "$bc:ci-test.sh" | grep -c ciao)"
+check "...on the commit's parent" "$(scratch_git "$repo" rev-parse "$fix^")" "$(scratch_git "$repo" rev-parse "$bc^")"
+printf 'test -f greet.sh\n' > "$repo/ci-vacuous-test.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a vacuous test on CI"
+out="$(cd "$repo" && "$tool" --ci -- 'scripts/sbt-warm "ci-vacuous-test.sh"' 2>&1)"; rc=$?
+check "--ci: a test green at the parent is FAIL-BEFORE no, exit 1" "1 no" "$rc $(printf '%s\n' "$out" | sed -n 's/^FAIL-BEFORE: //p')"
+out="$(cd "$repo" && NO_VERDICT=1 "$tool" --ci -- scripts/sbt-warm ci-vacuous-test.sh 2>&1)"; rc=$?
+check "--ci: a run with no verdict is no verdict (exit 2), never FAIL-BEFORE yes" "2 0" \
+  "$rc $(printf '%s\n' "$out" | grep -c '^FAIL-BEFORE: yes')"
+out="$(cd "$repo" && "$tool" --ci -- 'scripts/sbt-warm a && rm -rf x' 2>&1)"; rc=$?
+check "--ci refuses a command that is not one sbt-warm call (exit 2)" "2" "$rc"
+# auto: on CI when the governor would hold it (its `gov route` says ci); here when it says local
+cat > "$base/bin/agentctl" <<STUB
+#!/usr/bin/env bash
+# def cmd_gov def gov_route (what scripts/jvm-gate.sh looks for)
+[ "\$1 \$2" = "gov route" ] && { echo "\$ROUTE: stub" >&2; [ "\$ROUTE" = ci ]; exit; }
+exit 1
+STUB
+chmod +x "$base/bin/agentctl"
+: > "$base/ci-runs"
+out="$(cd "$repo" && KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$base/bin/agentctl" KINOWO_JVM_GATE_OS=Darwin ROUTE=ci KINOWO_GOV_CLASS=agent \
+  "$tool" -- scripts/sbt-warm ci-vacuous-test.sh 2>&1)"
+check "auto: held by the governor with a free lane, it runs on CI" "2" "$(wc -l < "$base/ci-runs" | tr -d ' ')"
+: > "$base/ci-runs"
+out="$(cd "$repo" && KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$base/bin/agentctl" KINOWO_JVM_GATE_OS=Darwin ROUTE=local KINOWO_GOV_CLASS=agent \
+  "$tool" -- 'test -f ci-vacuous-test.sh' 2>&1)"
+check "auto: a command that cannot go to CI runs here" "0" "$(wc -l < "$base/ci-runs" | tr -d ' ')"
+
 check "no worktree is left in the scratch repository" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
 check "no work directory is left" "0" "$(ls -A "$base/work" | wc -l | tr -d ' ')"
 

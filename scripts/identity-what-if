@@ -209,7 +209,7 @@ served() {
         stop_kept "$(cat "${f%.tree}.pid" 2>/dev/null)" || true; rm -f "$f" "${f%.tree}.pid" "${f%.tree}.sock"
       done
       identity_log "starting a kept JVM for $tree (log $serve_dir/$key.log; stops after $idle_minutes idle minutes)"
-      jvm_slot_take identity-what-if
+      KINOWO_GOV_JOB=keeper jvm_slot_take identity-what-if   # the kept JVM's memory; each request its cores, below
       (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.WhatIfResolve --serve "$sock" \
           --idle-minutes "$idle_minutes" > "$serve_dir/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
         echo $! > "$serve_dir/$key.pid"; printf '%s\n' "$tree" > "$serve_dir/$key.tree"; })
@@ -222,7 +222,9 @@ served() {
       done
     fi
     rc=0
+    jvm_cpu_take identity-what-if what-if   # this request's cores (jvm-gate.sh): the keeper holds only the memory
     kept_jvm_call "$sock" "$cc" --out "$dir" "$@" > "$dir/run.log" 2>&1 || rc=$?
+    jvm_slot_release
     case "$rc" in
       0) return 0 ;;
       111|112) identity_log "the kept JVM went away ($rc): starting another"; rm -f "$sock" ;;

@@ -1,5 +1,5 @@
 #
-# ANY sbt COMMAND ON CI (scripts/identity-ci-run) -- a targeted testOnly or compile check at a commit, or one over a CACHED RECORDING: an IntegrationTest runMain -- a resolve dump,
+# ANY sbt COMMAND ON CI (scripts/identity-ci-run; scripts/ci-sbt's laptop test runs and fail-before --ci proofs) -- a targeted testOnly or compile check at a commit, or one over a CACHED RECORDING: an IntegrationTest runMain -- a resolve dump,
 # an ablation, a simulation, a replay sweep -- over one `Record scrape fixtures` run laid out as
 # scripts/identity-fetch-recording.sh lays it (the pair identity-measure-local and identity-slice replay), against a
 # throwaway MongoDB, off the laptop (the user's rule, 2026-10-21: heavy work runs on CI). SIDE BY SIDE, a job each
@@ -112,6 +112,10 @@ jobs:
                   if [ -n "$CC" ]; then ccs=("$CC"); else IFS=, read -r -a ccs <<< "${COUNTRIES// /}"; fi
                   scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
                   rm -rf "$RUNNER_TEMP/recording/archive"
+            # the deploy specs (repochecks/, worker/ deploy.*) read movies-gitops' manifests: a testUnit or a module's
+            # test sent here from the laptop (scripts/ci-sbt) fails them without (ci.yml checks them out the same way)
+            - name: Check out the gitops manifests (movies-gitops main, anonymously)
+              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
             - uses: ./.github/actions/free-disk
             - uses: ./.github/actions/setup-sbt-build
             - name: Start MongoDB (single-node replica set, the command's throwaway database)

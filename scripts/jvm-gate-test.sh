@@ -223,6 +223,50 @@ printf 'def cmd_gov(a):\n    pass\n' > "$work/split/lib/agentctl/gov.py"
 check "...and an agentctl split into a package, its governor in lib/agentctl/gov.py, governs" "$work/split/agentctl" \
   "$(KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/split/agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin)"
 
+# --- CORES (2026-11-18): an agentctl whose governor charges them (its gov_route) is passed each ticket's job
+mkdir -p "$work/cores"
+sed 's/^# def cmd_gov:.*/# def cmd_gov def gov_route: an agentctl charging cores/' "$work/agentctl" > "$work/cores/agentctl"
+chmod +x "$work/cores/agentctl"
+cored() { KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/cores/agentctl" KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$work/gov" "$@"; }
+: > "$GOV_CALLS"
+( unset KINOWO_GOV_CLASS KINOWO_GOV_JOB
+  cored jvm_slot_take sbt-warm; jvm_slot_release
+  cored jvm_slot_take identity-what-if; jvm_slot_release
+  cored jvm_slot_take identity-slice; jvm_slot_release
+  cored jvm_slot_take identity-measure-local; jvm_slot_release
+  cored jvm_slot_take identity; jvm_slot_release
+  KINOWO_GOV_JOB=keeper cored jvm_slot_take identity-what-if; jvm_slot_release
+  KINOWO_GOV_CORES=1.5 cored jvm_slot_take identity-slice; jvm_slot_release ) 2> /dev/null
+check "each ticket is charged its job: sbt-warm's own its keeper's, the tools theirs, KINOWO_GOV_JOB and _CORES as set" \
+  "keeper what-if slice measure compile keeper slice --cores 1.5" \
+  "$(sed -n 's/.* --job \([a-z-]*\)\( --cores [0-9.]*\)\{0,1\}.*/\1\2/p' "$GOV_CALLS" | paste -sd' ' -)"
+: > "$GOV_CALLS"
+( unset KINOWO_GOV_CLASS KINOWO_GOV_CPU_HELD
+  cored jvm_cpu_take "sbt-warm testOnly" testOnly; echo "$(spec_lock_state "$JVM_SLOT")"; jvm_slot_release
+  cored jvm_slot_take t; cored jvm_cpu_take "under its own" testOnly; jvm_slot_release
+  ( cored jvm_slot_take parent; ( cored jvm_cpu_take child testOnly ) )
+  KINOWO_GOV_CPU_HELD=1 cored jvm_cpu_take "in a check" testOnly
+  KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin jvm_cpu_take "old governor" testOnly
+  ) > "$work/got" 2> /dev/null
+check "a call's cores ticket: no memory, its job, held on descriptor 7; none under its own ticket, riding, in a check or with an older governor" \
+  "held 1 3" \
+  "$(cat "$work/got") $(grep -c -- '--mem 0 --label sbt-warm testOnly .*--job testOnly' "$GOV_CALLS") $(wc -l < "$GOV_CALLS" | tr -d ' ')"
+cat > "$work/cores/router" <<'STUB'
+#!/usr/bin/env bash
+# def cmd_gov def gov_route
+[ "$1 $2" = "gov route" ] && { printf '%s\n' "$*" >> "$GOV_CALLS"; [ "$ROUTE" = ci ]; exit; }
+exit 0
+STUB
+chmod +x "$work/cores/router"
+: > "$GOV_CALLS"
+routed() { KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/cores/router" KINOWO_JVM_GATE_OS=Darwin "$@" 2> /dev/null; }
+check "jvm_route: the governor's answer for an agent's job; local for a check's, a red fix's, under a check, or without one" \
+  "ci local local local local local" \
+  "$(unset KINOWO_GOV_CLASS; ROUTE=ci routed jvm_route testUnit) $(ROUTE=local routed jvm_route testUnit) \
+$(KINOWO_GOV_CLASS=check ROUTE=ci routed jvm_route testUnit) $(KINOWO_GOV_CLASS=red ROUTE=ci routed jvm_route testUnit) \
+$(KINOWO_GOV_CPU_HELD=1 ROUTE=ci routed jvm_route testUnit) $(KINOWO_GOVERNOR=0 ROUTE=ci jvm_route testUnit)"
+check "...asking it for that job as an agent's" "2" "$(grep -c -- '^gov route --job testUnit --class agent$' "$GOV_CALLS")"
+
 # --- a tool JVM's cores
 check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-XX:ActiveProcessorCount=4|-XX:ActiveProcessorCount=6" \
   "$(unset KINOWO_JVM_CPUS; KINOWO_JVM_GATE_OS=Darwin jvm_cpu_options)|$(KINOWO_JVM_CPUS=6 KINOWO_JVM_GATE_OS=Darwin jvm_cpu_options)"

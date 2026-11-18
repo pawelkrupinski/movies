@@ -320,7 +320,7 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       # takes a slot (the memory gate first) and hands it to a keeper beside the JVM, which holds it until the JVM has
       # gone. The JVM is its own process group (set -m): it outlives this call and the shell or tool that ran it, so it
       # starts with the lock descriptors closed (jvm-gate.sh). A call reaching a live kept JVM takes no slot.
-      jvm_slot_take identity-slice
+      KINOWO_GOV_JOB=keeper jvm_slot_take identity-slice   # the kept JVM's memory; each request its cores, below
       (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" \
           --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --index-key "$(code_key "$(ref_of "$ref")")" --families "$families" --serve "$sock" \
           --idle-minutes "$idle_minutes" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
@@ -341,7 +341,9 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       done
     fi
     rc=0
+    jvm_cpu_take identity-slice slice   # this request's cores (jvm-gate.sh): the keeper holds only the memory
     kept_jvm_call "$sock" --labels "$labels" --out "$out" "$@" || rc=$?
+    jvm_slot_release
     [ "$rc" = 111 ] || [ "$rc" = 112 ] || return "$rc"
     identity_log "the kept JVM went away ($rc): starting another"
     rm -f "$sock"

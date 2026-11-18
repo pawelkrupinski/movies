@@ -66,7 +66,23 @@
 # kernel's release when its holders end all stay. KINOWO_GOVERNOR=0, no agentctl, or Linux (CI's runner) keep the slots.
 #   governor_bin           the governor's agentctl when it governs here; 1 otherwise
 #   gov_class <label>      the class a JVM for <label> is admitted as
-#   gov_take <label> [--try]  a ticket on descriptor 7 (JVM_SLOT its lock file, KINOWO_JVM_SLOT_HELD exported): 0 admitted
+#   gov_job <label>        the job a ticket for <label> is charged CORES for (the owner, 2026-11-18: the governor admits
+#                          by CPU as well as memory, ~/bin/AGENTCTL.md "gov"): KINOWO_GOV_JOB, else by the tool --
+#                          sbt-warm's own take (and any keeper's, jvm_slot_take_if_free) is its KEEPER's (an idle server's memory, no cores: each call through it
+#                          takes a cores ticket, jvm_cpu_take), identity-what-if what-if, identity-slice slice,
+#                          identity-measure* measure, any other identity tool's classpath compile compile
+#   gov_take <label> [--try]  a ticket on descriptor 7 (JVM_SLOT its lock file, KINOWO_JVM_SLOT_HELD exported): 0 admitted.
+#                          Its memory KINOWO_GOV_MEM_GB (5), its cores its gov_job's (KINOWO_GOV_CORES: a number instead)
+#   jvm_cpu_take <label> <job>  a CORES-only ticket (no memory: the kept JVM's keeper holds that) on descriptor 7 for one
+#                          call into a kept JVM -- an sbt-warm command, a what-if or slice request -- released by
+#                          jvm_slot_release. None while riding a parent's ticket, under KINOWO_GOV_CPU_HELD (agentctl's
+#                          pre-commit check: its own ticket is charged the hook's cores), or without the governor
+#   jvm_route <job>        `ci` when the governor would hold <job> now and ci-runner's measure lane is free (`agentctl
+#                          gov route`), else `local` -- the reason on stderr. Only an agent's own work (gov_class agent):
+#                          local without the governor, riding, under KINOWO_GOV_CPU_HELD (a tool inside a check or a
+#                          tool: never routed out from under its parent), for a check or a red fix
+#   jvm_usage <job> <wall s> <cpu s>  records one call's cores in the governor's measured history (`agentctl gov usage`)
+#   jvm_cpu_seconds <pid>  the CPU seconds <pid> and its exited children have used (ps -S), 0 when it is gone
 #
 # THE LOCKS are the kernel's flock(2) locks on a file, which the OS frees the moment the holder has ended, however it
 # ended -- exit, crash, kill -9, a restart -- so a lock is never held by a holder that is gone, and nothing detects a
@@ -118,19 +134,64 @@ gov_class() { # <label>
   case "$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")" in *-wt-red-*) echo red; return 0 ;; esac
   echo agent
 }
+gov_job() { # <label>
+  if [ -n "${KINOWO_GOV_JOB:-}" ]; then echo "$KINOWO_GOV_JOB"; return 0; fi
+  case "$1" in
+    sbt-warm|keeper) echo keeper ;;
+    identity-what-if*) echo what-if ;;
+    identity-slice*) echo slice ;;
+    identity-measure*) echo measure ;;
+    identity*) echo compile ;;
+    *) echo job ;;
+  esac
+}
+# an agentctl whose governor charges cores (its `gov route`): an older one refuses --job, and the ticket would fail
+_gov_charges_cores() { grep -qs 'def gov_route' "$1" "$(dirname "$1")/lib/agentctl/gov.py"; }
 gov_take() { # <label> [--try]
-  local g label=${1:-tool} ticket
+  local g label=${1:-tool} ticket cores=()
   shift
   g=$(governor_bin) || return 1
+  if _gov_charges_cores "$g"; then
+    cores=(--job "$(gov_job "$label")")
+    [ -z "${KINOWO_GOV_CORES:-}" ] || cores+=(--cores "$KINOWO_GOV_CORES")
+  fi
   ticket="${AGENTCTL_GOV_DIR:-$HOME/.cache/agentctl/gov}/t-$$-$RANDOM$RANDOM.lock"
   mkdir -p "$(dirname "$ticket")" && exec 7>> "$ticket" || return 1
   if "$g" gov admit --fd 7 --ticket "$ticket" --class "$(gov_class "$label")" --mem "${KINOWO_GOV_MEM_GB:-5}" \
-      --label "$label" --pid $$ --cwd "$PWD" "$@"; then
+      --label "$label" --pid $$ --cwd "$PWD" ${cores[@]+"${cores[@]}"} "$@"; then
     JVM_SLOT=$ticket; export KINOWO_JVM_SLOT_HELD="$ticket"
     return 0
   fi
   exec 7>&-; rm -f "$ticket"
   return 1
+}
+
+jvm_cpu_take() { # <label> <job>
+  local g
+  g=$(governor_bin) || return 0
+  _gov_charges_cores "$g" || return 0
+  jvm_slot_riding && return 0
+  [ -z "${KINOWO_GOV_CPU_HELD:-}" ] || return 0
+  [ -z "$JVM_SLOT" ] || return 0   # this process holds a ticket already (its own JVM's): its cores are charged
+  KINOWO_GOV_MEM_GB=0 KINOWO_GOV_JOB=$2 gov_take "$1" ||
+    echo "[$1] the governor ($g gov admit) failed: running without a cores ticket" >&2
+  return 0
+}
+jvm_route() { # <job>
+  local g
+  # only an agent's own work: a check's or a red fix's runs where it was asked to (the hook judges a landing locally)
+  g=$(governor_bin) && _gov_charges_cores "$g" && ! jvm_slot_riding && [ -z "${KINOWO_GOV_CPU_HELD:-}" ] &&
+    [ "$(gov_class "$1")" = agent ] || { echo local; return 0; }
+  if "$g" gov route --job "$1" --class agent >&2; then echo ci; else echo local; fi
+}
+jvm_usage() { # <job> <wall seconds> <cpu seconds>
+  local g
+  g=$(governor_bin) && _gov_charges_cores "$g" || return 0
+  "$g" gov usage --job "$1" --wall "$2" --cpu "$3" > /dev/null 2>&1 || true
+}
+jvm_cpu_seconds() { # <pid>
+  ps -S -o time= -p "$1" 2>/dev/null | awk '{ n = split($1, p, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + p[i]
+    printf "%d\n", s; found = 1 } END { if (!found) print 0 }'
 }
 
 JVM_LOCK=""

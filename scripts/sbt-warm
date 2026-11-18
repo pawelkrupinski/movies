@@ -5,6 +5,9 @@
 #
 #   scripts/sbt-warm <sbt command>...    run the commands (each one argument, e.g. "worker/testOnly services.identity.X")
 #                                        in this checkout's server — started, and seeded, when there is none
+#   scripts/sbt-warm --ci <command>...   run the commands on ci-runner's measure lane instead (scripts/ci-sbt: this
+#                                        checkout's HEAD plus its changes, `sbt -batch`), its verdict the command's own
+#   scripts/sbt-warm --local <command>...  here, whatever the governor says (below)
 #   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server) in this
 #                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
 #   (an it/ run -- itAll, IntegrationTest/test* -- is refused without MONGODB_URI: scripts/it-local.sh runs it)
@@ -69,6 +72,17 @@
 # it EXCLUSIVELY (so a call arriving meanwhile waits for the stop, then starts a fresh server, counted); the last-used
 # mark is also kept fresh by a heartbeat while a command runs. It stops the server when the checkout is removed, too. A
 # call whose KINOWO_* settings differ from the server's restarts it only once no other call runs a command in it.
+#
+# ONE CALL, ITS CORES (the owner, 2026-11-18: the governor admits by CPU as well as memory): the keeper's ticket is the
+# server's MEMORY, idle or not, charged no cores; each command run through the server takes a cores ticket of its own
+# for its life (jvm-gate.sh jvm_cpu_take), charged its job's cores -- testUnit (a testUnit* alias), test (a whole
+# module's test), testOnly, compile (only compiles, reloads, exports), serve, else job -- so eight warm servers no
+# longer run eight testUnits at once on 18 cores. A call that passed records its cores (the server's CPU over the call,
+# exited forks included, over its wall time: jvm_usage), and the governor charges a job its measured p75.
+# A WHOLE-MODULE TEST of an agent's own (testUnit, <module>/test) the governor would hold now runs on ci-runner's measure
+# lane when that is free (jvm_route; scripts/ci-sbt), said; KINOWO_SBT_WARM_ROUTE=local|ci|auto (auto) or --local/--ci
+# decide instead (KINOWO_CI_SBT names scripts/ci-sbt: the tests' seam). A check's, a red fix's or a tool's run never
+# leaves the laptop on its own.
 #
 # EVERY STOP IS LOGGED in $State/stops.log -- when, which server or keeper, the checkout, why, and the stopping process
 # with its parents -- and a server its keeper saw end without one (a crash, the JVM reaper, a stray kill) is a "vanished"
@@ -449,6 +463,9 @@ case "${1:-}" in
     exit 0 ;;
   ""|-h|--help) usage_from_header; exit 0 ;;
 esac
+route=${KINOWO_SBT_WARM_ROUTE:-auto}
+case "$1" in --ci) route=ci; shift ;; --local) route=local; shift ;; esac
+[ $# -gt 0 ] || { log "no command to run"; exit 2; }
 # --serve runs like any command now that the server, not the command, holds the slot -- but marks the server serving
 # (ONE COMMAND AT A TIME, the header)
 serve=0
@@ -465,6 +482,28 @@ if [ -z "${MONGODB_URI:-}" ] && printf '%s\n' "$@" | grep -qE '(^|[;[:space:]/])
   log "refusing an it/ run with no MONGODB_URI: every suite would abort. Run it against a MongoDB of its own:"
   log "  scripts/it-local.sh '$(printf '%s; ' "$@" | sed 's/; $//')'"
   exit 2
+fi
+
+# sbt_job <command>... -> the job a call is charged cores for (ONE CALL, ITS CORES, the header)
+sbt_job() {
+  local words w compiles=1
+  words=" $(printf '%s ' "$@" | tr ';' ' ') "
+  case "$words" in *" testUnit"*) echo testUnit; return ;; esac
+  if printf '%s' "$words" | grep -qE '[[:space:]/]test[[:space:]]'; then echo test; return; fi
+  case "$words" in *testOnly*|*testQuick*) echo testOnly; return ;; esac
+  for w in $words; do
+    case "$w" in *compile|reload|staleTastyDrop|export|*fullClasspath|clean) ;; *) compiles=0 ;; esac
+  done
+  if [ "$compiles" = 1 ]; then echo compile; else echo job; fi
+}
+if [ "$serve" = 1 ]; then job=serve; else job=$(sbt_job "$@"); fi
+if [ "$route" = auto ] && { [ "$job" = testUnit ] || [ "$job" = test ]; } && [ "$(jvm_route "$job")" = ci ]; then
+  route=ci
+  log "the governor would hold \`$(printf '%s; ' "$@" | sed 's/; $//')\` now and ci-runner's measure lane is free: running it there (--local runs it here)"
+fi
+if [ "$route" = ci ]; then
+  [ "$serve" = 0 ] || { log "--ci cannot serve"; exit 2; }
+  exec "${KINOWO_CI_SBT:-$(dirname "$Self")/ci-sbt}" -- "$(printf '%s; ' "$@" | sed 's/; $//')"
 fi
 
 # THE GITOPS MANIFESTS the deploy specs read (repochecks/ and worker/ `deploy.*`) live in movies-gitops, fetched into
@@ -583,7 +622,7 @@ echo "$digest" > "$State/$key.build"
 if lock_busy "$KeepFile"; then
   log "server kept by keeper pid $(cat "$KeepFile" 2>/dev/null), which holds its JVM slot: this command takes none"
 else
-  jvm_slot_take sbt-warm
+  KINOWO_GOV_JOB=keeper jvm_slot_take sbt-warm
   if lock_take 5 "$KeepFile"; then
     jvm_slot_keeper_start "$root" "$State/$key.log" "$Self" --keep   # holding $KeepFile's lock too: descriptor 5
     echo "$KEEPER_PID" > "$KeepFile"
@@ -593,6 +632,11 @@ else
     jvm_slot_release   # another call's keeper started meanwhile: it holds this server's slot
   fi
 fi
+# this call's cores (ONE CALL, ITS CORES, the header): a ticket of its own while its command runs
+jvm_cpu_take "sbt-warm $job" "$job"
+call_started=$SECONDS
+call_cpu=0
+if pid=$(server_pid "$root"); then call_cpu=$(jvm_cpu_seconds "$pid"); fi
 if [ "$serve" = 1 ]; then
   # removed once the serve's command has ended; a serve KILLED leaves it, so the next call restarts the server under it
   echo "$$ ${KINOWO_SBT_WARM_SERVE_OWNER:--} $command" > "$ServingFile"
@@ -750,6 +794,9 @@ else
   fi
 fi
 client=""
+if [ "$rc" = 0 ] && [ "$serve" = 0 ] && pid=$(server_pid "$root"); then
+  jvm_usage "$job" $((SECONDS - call_started)) $(( $(jvm_cpu_seconds "$pid") - call_cpu ))
+fi
 [ "$rc" = 0 ] && [ "$serve" = 0 ] && publish_after_call
 kill "$heartbeat" 2>/dev/null
 jvm_slot_release

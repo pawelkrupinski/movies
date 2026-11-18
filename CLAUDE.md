@@ -314,6 +314,11 @@ heavy sbt command over a cached recording (a resolve dump, an ablation, a simula
 local heavy runs are a fallback only, for what the CI route cannot do yet, and they take the machine's shared JVM slots
 themselves (`scripts/jvm-gate.sh`, `KINOWO_JVM_SLOTS`, behind `agentctl gov`; there is no `heavy-run` wrapper to call --
 the name is the old one); never lower the slot count or bypass the gate, and say so in the report if you use a gate escape hatch.
+The governor admits by CPU as well as memory (2026-11-18): every sbt-warm command, what-if and slice request is charged
+its job's cores (`agentctl gov status` shows them), so a full laptop queues work instead of running it 3-5x slower. A
+whole-module `testUnit` / `<module>/test` and `scripts/fail-before` it would hold go to ci-runner's measure lane by
+themselves when that is free (`scripts/ci-sbt`; `--ci` / `--local` decide instead; the proof's verdict is each CI run's
+own sbt step, a run with none is no verdict). Narrow `testOnly` runs and compiles stay local.
 
 **Optional: `scripts/identity-landing-check`** — no longer a merge requirement (2026-10-26: the hook's `identity` area
 tests run before the merge, main's CI runs the rest after). For your own confidence on a risky identity change: ONE
