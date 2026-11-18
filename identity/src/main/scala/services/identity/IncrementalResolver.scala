@@ -201,72 +201,95 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 
   private def update(touched: Set[Int], arrived: Set[ListingKey], moved: CorpusContext.Changed, threads: Int = regionThreads): Unit = {
     val context: CorpusContext = corpus
-    // A family reading none of the keys the event moved reads what it read before; one that does
-    // is stale only if the values it reads changed.
-    val stale = if (mutation == Mutation.IgnoreContext) Set.empty[Int]
-                else clock.slices(moved.keys.flatMap(readersOf.getOrElse(_, Set.empty)).filter(id => context.slice(families(id).resolved.reads).digest != families(id).digest))
-    val replaced = mutable.HashSet.empty[Int] ++ touched ++ stale
-    val settled  = mutable.LinkedHashMap.empty[Set[ListingKey], RegionFamily]
-    // The settled families by block key: what a result looks its settled neighbours up in, not a scan
-    // of every family settled so far (a seed settles them all, so the scan was quadratic in families).
-    val settledOfKey = mutable.HashMap.empty[String, mutable.Set[Set[ListingKey]]]
-    val loose    = arrived -- (touched ++ stale).flatMap(id => families(id).resolved.listings)
+    val stale  = staleOf(moved, context)
+    val rounds = new UpdateRounds(mutable.HashSet.empty[Int] ++ touched ++ stale, context, threads)
+    val loose  = arrived -- (touched ++ stale).flatMap(id => families(id).resolved.listings)
     // What is resolved together: each family whole, and the listings no family holds a title
     // component (or a batch's worth of one) at a time.
-    var units: Seq[Set[ListingKey]] = (touched ++ stale).toSeq.sorted.map(id => families(id).resolved.listings) ++
-      clock.context(corpus.titleComponents(loose)).sortBy(_.size).flatMap(_.grouped(regionBatch)).map(_.toSet)
-    // Resolve the units, packed into batches of at most `regionBatch` listings; a family a result now
-    // shares a block key with — one left alone, or one this update already settled — is pulled in
-    // and resolved again beside it, in the next round. Every other result is final. A region is so
-    // as large as the families it holds, never as every family an event touched.
-    while (units.nonEmpty) {
+    rounds.resolve((touched ++ stale).toSeq.sorted.map(id => families(id).resolved.listings) ++
+      clock.context(corpus.titleComponents(loose)).sortBy(_.size).flatMap(_.grouped(regionBatch)).map(_.toSet))
+    settle(rounds.settled.values.toSeq, rounds.replaced, context)
+  }
+
+  /** A family reading none of the keys the event moved reads what it read before; one that does is stale only if the
+   *  values it reads changed. */
+  private def staleOf(moved: CorpusContext.Changed, context: CorpusContext): Set[Int] =
+    if (mutation == Mutation.IgnoreContext) Set.empty[Int]
+    else clock.slices(moved.keys.flatMap(readersOf.getOrElse(_, Set.empty)).filter(id => context.slice(families(id).resolved.reads).digest != families(id).digest))
+
+  /** One update's resolve: the units, packed into batches of at most `regionBatch` listings; a family a result now
+   *  shares a block key with — one left alone, or one this update already settled — is pulled in and resolved again
+   *  beside it, in the next round. Every other result is final. A region is so as large as the families it holds, never
+   *  as every family an event touched. */
+  private final class UpdateRounds(val replaced: mutable.HashSet[Int], context: CorpusContext, threads: Int) {
+    val settled = mutable.LinkedHashMap.empty[Set[ListingKey], RegionFamily]
+    // The settled families by block key: what a result looks its settled neighbours up in, not a scan
+    // of every family settled so far (a seed settles them all, so the scan was quadratic in families).
+    private val settledOfKey = mutable.HashMap.empty[String, mutable.Set[Set[ListingKey]]]
+
+    def resolve(first: Seq[Set[ListingKey]]): Unit = {
+      var units = first
+      while (units.nonEmpty) units = round(units)
+    }
+
+    /** One round: its regions, and the units the next round resolves again. A round's regions read the context, the
+     *  lookups and the listings held, none of which the round's own results move (they are folded in below, in batch
+     *  order): resolved side by side on `threads` (`regionThreads`, or a take-up's `takeUpThreads`), each region is what
+     *  it would be resolved alone, and the fold is the same. */
+    private def round(units: Seq[Set[ListingKey]]): Seq[Set[ListingKey]] = {
       val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
-      // A round's regions read the context, the lookups and the listings held, none of which the round's own results
-      // move (they are folded in below, in batch order): resolved side by side on `threads` (`regionThreads`, or a
-      // take-up's `takeUpThreads`), each region is what it would be resolved alone, and the fold is the same.
       val regions = IncrementalResolver.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
       val resolved = IncrementalResolver.inOrder(regions, threads)(listings =>
         clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context)))
       resolved.foreach { result =>
         reResolved += result.size
-        result.foreach { family =>
-          val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
-                       else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
-          val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
-                       else family.blockKeys.iterator.flatMap(settledOfKey.getOrElse(_, Nil)).distinct.flatMap(settled.get)
-                         .filter(_.blockKeys.exists(family.blockKeys)).toSeq
-          if (joined.isEmpty && back.isEmpty) {
-            settled(family.listings) = family
-            family.blockKeys.foreach(key => settledOfKey.getOrElseUpdate(key, mutable.HashSet.empty) += family.listings)
-          } else {
-            back.foreach { again =>
-              settled.remove(again.listings)
-              again.blockKeys.foreach(key => settledOfKey.get(key).foreach(_ -= again.listings))
-            }
-            replaced ++= joined
-            next += family.listings ++ joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings)
-          }
-        }
+        result.foreach(family => fold(family).foreach(next += _))
       }
-      units = next.toSeq
+      next.toSeq
     }
+
+    /** Settles `family`, or — sharing a block key with a family left alone or one settled already — the unit to resolve
+     *  again with them. */
+    private def fold(family: RegionFamily): Option[Set[ListingKey]] = {
+      val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
+                   else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
+      val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
+                   else family.blockKeys.iterator.flatMap(settledOfKey.getOrElse(_, Nil)).distinct.flatMap(settled.get)
+                     .filter(_.blockKeys.exists(family.blockKeys)).toSeq
+      if (joined.isEmpty && back.isEmpty) {
+        settled(family.listings) = family
+        family.blockKeys.foreach(key => settledOfKey.getOrElseUpdate(key, mutable.HashSet.empty) += family.listings)
+        None
+      } else {
+        back.foreach { again =>
+          settled.remove(again.listings)
+          again.blockKeys.foreach(key => settledOfKey.get(key).foreach(_ -= again.listings))
+        }
+        replaced ++= joined
+        Some(family.listings ++ joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings))
+      }
+    }
+  }
+
+  /** The families an update settled replace the ones it re-resolved. The rules behind each settled family's decisions go
+   *  to the trace store — built there, off this thread, family by family, from the family as resolved and each of its
+   *  listings' venue and title — and the model keeps the decisions with only what a stage after it reads of them
+   *  ([[DecisionTrace.kept]]). One family's hand-over holds only its own: a store may drop it unbuilt, once a later
+   *  update re-resolves the family. The canonical and search tiers are read once per cleaned title across the batch. */
+  private def settle(settled: Seq[RegionFamily], replaced: mutable.HashSet[Int], context: CorpusContext): Unit = {
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
-    // The rules behind each settled family's decisions go to the trace store — built there, off this thread, family
-    // by family, from the family as resolved and each of its listings' venue and title — and the model keeps the
-    // decisions with only what a stage after it reads of them ([[DecisionTrace.kept]]). One family's hand-over holds only its own: a store may drop it unbuilt, once a later
-    // update re-resolves the family. The canonical and search tiers are read once per cleaned title across the batch.
     val byClean = mutable.HashMap.empty[String, Seq[String]]
-    val traced = settled.values.toSeq.map { family =>
+    val traced = settled.map { family =>
       val id     = StoredFamily.idOf(family.listings)
       val titled = family.listings.iterator.flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
       SettledFamily(id, family, key =>
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
           byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration))
     }
-    clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(d => d.copy()(DecisionTrace.kept(d)))),
+    clock.slices(settled.foreach(family => remember(family.copy(decisions = family.decisions.map(d => d.copy()(DecisionTrace.kept(d)))),
       context.slice(family.reads).digest)))
-    val added   = settled.values.toSeq.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
+    val added   = settled.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
     store.replace(removed -- added.map(_.id), added)
     traces.settle(removed, traced)
