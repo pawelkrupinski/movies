@@ -37,9 +37,10 @@
 # they do answer is the one question monitoring-1 cannot: does a host that refuses the PROBE serve
 # VISITORS? A CDN gated on the egress address (Odeon's vwc.odeon.co.uk 403s Hetzner since
 # 2026-11-12, Multikino and biletyna always have) answers every probe from here 403 while browsers
-# get images, so PosterProbeFailing holds while the newest real-user evidence for that host is a
-# load that worked (`country_poster_host:browser_loads_ok:last_time` below). There is no skip list:
-# such a host is probed like any other, and pages as soon as visitors' loads fail too.
+# get images, so PosterProbeFailing holds while the newest real-user verdict for that host is that
+# its loads mostly worked (`country_poster_host:browser_loads_ok:last_time` below: a majority of the
+# last three hours' loads, never one half hour). There is no skip list: such a host is probed like
+# any other, and pages once visitors' loads mostly fail too.
 #
 # THRESHOLDS. Two comparisons are against the same hour yesterday: a country's served film count
 # moves by up to 21% day on day on its own (kinowo_web_movies_served, its biggest city, max over
@@ -68,36 +69,60 @@ groups:
         expr: >-
           sum by (country) (max by (country, poster_host) (last_over_time(kinowo_web_films_sharing_poster[10m])))
 
-      # WHEN VISITORS' BROWSERS LAST LOADED A HOST'S POSTER, AND WHEN THEY LAST ONLY FAILED TO.
+      # WHEN VISITORS' BROWSERS LAST MOSTLY LOADED A HOST'S POSTERS, AND WHEN THEY LAST MOSTLY FAILED.
       # From the beacon's primary rows (`img: <origin host>`, not ` · fallback`), the origin host
       # folded to its registrable domain exactly as `tools.PosterHost` and the probes' discovery
       # fold it (`co|com|org|net|ac|gov|edu` second levels keep three labels), so the result lines up
-      # with a probe's `poster_host`. A subquery over the raw gauge, not a recording of a recording,
-      # so it is right from its first evaluation; stepped by the gauge's own half hour, which every load
-      # stays in for 30 minutes, so no step misses one. 72 hours: the sparsest refusing host's visitors
-      # (biletyna.pl, pl) went 59 hours between loads over 11-02..11-16; Odeon's 8.5, Multikino's 7.
+      # with a probe's `poster_host`.
+      #
+      # A VERDICT OF THE LAST THREE HOURS' LOADS, NOT OF ONE HALF HOUR (2026-11-18). Each half-hour
+      # step reads the loads of the three hours before it -- the gauge summed over its six half-hour
+      # readings: it holds a load for 30-45 minutes, so each load counts once or twice, ok and
+      # failed alike -- and says "served" when more worked than failed, "failing" when at least
+      # three failed and no more worked. A window too thin for either (one stray failure at night)
+      # says nothing, and the verdict before it stands. The half-hour verdict this replaced paged
+      # twice on nothing: Odeon 11-18 00:47, one failed load after an evening of working ones and
+      # then no visitor for hours (3.4 h critical); Multikino 11-17 21:18 and 11-18 01:18, a half
+      # hour of four to six failures between half hours of dozens of successes (its loads fail ~4%
+      # on a healthy day). A real visitor-side failure still pages: once the failures outnumber the
+      # window's successes (about half the window at steady traffic), then the 20-minute hold.
+      #
+      # Subqueries over the raw gauge, not a recording of a recording, so it is right from its first
+      # evaluation (~0.8 s each; the raw `[3h]` range in place of the inner subquery took 6 s). Both
+      # gauges are exported for every service, at zero when it had no load (UptimeMonitor.
+      # recentTotals), so neither side is ever absent. 72 hours: the sparsest refusing host's
+      # visitors (biletyna.pl, pl) went 59 hours between loads over 11-02..11-16; Odeon's 8.5,
+      # Multikino's 7.
       - record: country_poster_host:browser_loads_ok:last_time
         expr: >-
           max by (country, poster_host) (max_over_time(timestamp(
-            label_replace(label_replace(
-              kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`} > 0,
+            sum by (country, poster_host) (label_replace(label_replace(
+              sum_over_time(kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
               "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
-              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`)
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
+              >
+            sum by (country, poster_host) (label_replace(label_replace(
+              sum_over_time(kinowo_uptime_recent_failures{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
           )[72h:30m]))
-      # A half hour in which a host's primary loads failed and none worked.
+      # The last three hours' loads: three or more failed, and no more worked.
       - record: country_poster_host:browser_loads_failing:last_time
         expr: >-
           max by (country, poster_host) (max_over_time(timestamp(
-            label_replace(label_replace(
-              (
-                max by (country, service) (kinowo_uptime_recent_failures{service=~`img: [^ ]+[.][^ ]+`}) > 0
-                  unless on (country, service)
-                max by (country, service) (kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`}) > 0
-              ),
+            (
+              sum by (country, poster_host) (label_replace(label_replace(
+                sum_over_time(kinowo_uptime_recent_failures{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
+                "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
+                "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
+            ) >= 3
+              >=
+            sum by (country, poster_host) (label_replace(label_replace(
+              sum_over_time(kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
               "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
-              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`)
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
           )[72h:30m]))
-      # Visitors are being served the host's posters: their newest evidence is a load that worked.
+      # Visitors are being served the host's posters: their newest verdict is that loads worked.
       - record: country_poster_host:browser_loads:served
         expr: >-
           country_poster_host:browser_loads_ok:last_time
@@ -139,8 +164,8 @@ groups:
             URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with
             and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one
             answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN.
-            The visitors' own browsers agree: their newest loads of this host's posters failed, or
-            there were none in 72 hours (`kinowo_uptime_recent_failures{service="img: <host>"}`);
+            The visitors' own browsers agree: most of their loads of this host's posters in the last
+            three hours failed, or there were none in 72 hours (`kinowo_uptime_recent_failures{service="img: <host>"}`);
             a CDN refusing only monitoring-1's datacentre address is held while visitors load it.
             A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http://
             poster a browser refuses on an https page.
