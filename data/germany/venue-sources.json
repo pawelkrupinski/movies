@@ -42125,9 +42125,18 @@
    "found": false,
    "rostered": true,
    "filmstarts": "A1604",
+   "kinoheld": {
+    "id": "1100",
+    "path": "/kino/nuernberg/rio-palast"
+   },
    "kinoprogramm": "/kino/nuernberg-mittelfranken/rio-palast-32905",
+   "matchedBy": "hand-checked",
    "shows": {
     "filmstarts": [
+     0,
+     0
+    ],
+    "kinoheld": [
      0,
      0
     ],
@@ -42138,6 +42147,7 @@
    },
    "primary": "filmstarts",
    "fallbacks": [
+    "kinoheld",
     "kinoprogramm"
    ],
    "rawWinner": "filmstarts"

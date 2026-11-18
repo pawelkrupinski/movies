@@ -3418,6 +3418,9 @@ A1603	0	cineamo	734
 A1603	1	kinoheld	748|/kino/muenchen/rio-filmpalast-muenchen
 A1603	2	kinoprogramm	/kino/muenchen/rio-filmpalast-32884
 A1603	3	filmstarts	A1603
+A1604	0	filmstarts	A1604
+A1604	1	kinoheld	1100|/kino/nuernberg/rio-palast
+A1604	2	kinoprogramm	/kino/nuernberg-mittelfranken/rio-palast-32905
 A1605	0	filmstarts	A1605
 A1605	1	kinoprogramm	/kino/ritterhude/ritterhuder-lichtspiele-32599
 A1605	2	kinoheld	1427|/kino/ritterhude/ritterhuder-lichtspiele
