@@ -377,7 +377,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
           case "/debug-slots" => slotsDebugHtml
           // The read-model dump, and one film's screenings fetched on row expand,
-          // mirroring DebugController.debugReadModelScreenings.
+          // mirroring DebugReadModelController.debugReadModelScreenings.
           case "/debug/readmodel" => readModelPage
           case p if p.startsWith("/debug/readmodel/screenings?") =>
             readModelScreenings(URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse("").takeWhile(_ != '&'), "UTF-8"))

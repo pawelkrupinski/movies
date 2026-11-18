@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The bound on an anonymous write. `UptimeController.imgEvent` takes its `host`
+ * The bound on an anonymous write. `ImageEventController.imgEvent` takes its `host`
  * from a visitor's browser and uses it as a KEY in `UptimeMonitor`, so the two
  * things asserted here are the two ways that goes wrong: a host that is not a
  * host at all, and a caller that keeps inventing new ones.
