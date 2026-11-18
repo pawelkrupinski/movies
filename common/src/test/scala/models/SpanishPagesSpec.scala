@@ -57,7 +57,7 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     val onPages = Country.Spain.cities.flatMap(_.cinemas)
     onPages.distinct should have size onPages.size
     onPages.toSet shouldBe SpanishRoster.byCity.flatMap(_._2).toSet
-    onPages should have size 598
+    onPages should have size 597
   }
 
   "Spain's picker" should "group every page by province, major cities beside their clusters" in {
@@ -105,7 +105,7 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "keep a page's fields, a venue's optional ids and an exact Double" in {
     SpanishRosterData.pages.size shouldBe 240
-    SpanishRosterData.pages.map(_._10.size).sum shouldBe 598
+    SpanishRosterData.pages.map(_._10.size).sum shouldBe 597
     SpanishRosterData.pages.head shouldBe (
       "madrid", "madrid-comunidad-de-madrid", "Madrid", "Madrid", 40.4165, -3.7026, "Europe/Madrid", false,
       Seq("Madrid"), SpanishRosterData.pages.head._10)

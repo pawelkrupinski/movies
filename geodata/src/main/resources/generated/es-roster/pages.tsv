@@ -176,7 +176,6 @@ pedrajas-de-san-esteban	pedrajas-de-san-esteban-castilla-y-leon	Pedrajas de San 
 penaranda-de-bracamonte	penaranda-de-bracamonte-castilla-y-leon	Peñaranda de Bracamonte	Salamanca	40.9011	-5.2003	Europe/Madrid	false	Peñaranda de Bracamonte
 penarroya-pueblonuevo	penarroya-pueblonuevo-andalucia	Peñarroya-Pueblonuevo	Córdoba	38.3	-5.2667	Europe/Madrid	false	Peñarroya-Pueblonuevo
 petrer	petrer-comunidad-valenciana	Petrer	Alicante	38.4913	-0.7384	Europe/Madrid	false	Petrer
-pilar-de-la-horadada	pilar-de-la-horadada-comunidad-valenciana	Pilar de la Horadada	Alicante	37.8659	-0.7926	Europe/Madrid	true	Pilar de la Horadada|Torrevieja|San Pedro del Pinatar
 plasencia	plasencia-extremadura	Plasencia	Cáceres	40.0312	-6.0884	Europe/Madrid	false	Plasencia
 ponferrada	ponferrada-castilla-y-leon	Ponferrada	León	42.5466	-6.5962	Europe/Madrid	false	Ponferrada
 pontevedra	pontevedra-galicia	Pontevedra	Pontevedra	42.431	-8.6443	Europe/Madrid	true	Pontevedra|Marín|Nigrán
@@ -195,7 +194,7 @@ sagunto	sagunto-comunidad-valenciana	Sagunto	Valencia	39.6833	-0.2667	Europe/Mad
 san-fernando	san-fernando-andalucia	San Fernando	Cádiz	36.4759	-6.1982	Europe/Madrid	true	San Fernando|Chiclana de la Frontera
 san-javier	san-javier-region-de-murcia	San Javier	Murcia	37.8063	-0.8374	Europe/Madrid	false	San Javier
 san-martin-de-valdeiglesias	san-martin-de-valdeiglesias-comunidad-de-madrid	San Martín de Valdeiglesias	Madrid	40.3618	-4.3983	Europe/Madrid	true	San Martín de Valdeiglesias|Villa del Prado|Sotillo de la Adrada|Pelayos de la Presa|Navaluenga
-san-vicente-del-raspeig	san-vicente-del-raspeig-comunidad-valenciana	San Vicente del Raspeig	Alicante	38.4343	-0.5496	Europe/Madrid	true	San Vicente del Raspeig|Santa Pola|Mutxamel|San Juan de Alicante
+san-vicente-del-raspeig	san-vicente-del-raspeig-comunidad-valenciana	San Vicente del Raspeig	Alicante	38.4343	-0.5496	Europe/Madrid	true	San Vicente del Raspeig|Mutxamel|San Juan de Alicante
 sant-boi-de-llobregat	sant-boi-de-llobregat-cataluna	Sant Boi de Llobregat	Barcelona	41.3436	2.0366	Europe/Madrid	true	Sant Boi de Llobregat|El Prat de Llobregat|Castelldefels|Gavà|Sant Feliu de Llobregat|Sant Vicenç dels Horts|Abrera
 sant-cugat-del-valles	sant-cugat-del-valles-cataluna	Sant Cugat del Vallès	Barcelona	41.4706	2.0861	Europe/Madrid	true	Sant Cugat del Vallès|Montcada i Reixac|Barberà del Vallès
 santa-maria-del-paramo	santa-maria-del-paramo-castilla-y-leon	Santa María del Páramo	León	42.3551	-5.7515	Europe/Madrid	false	Santa María del Páramo
@@ -214,6 +213,7 @@ teruel	teruel-aragon	Teruel	Teruel	40.3456	-1.1065	Europe/Madrid	false	Teruel
 toledo	toledo-castilla-la-mancha	Toledo	Toledo	39.8581	-4.0226	Europe/Madrid	true	Toledo|Torrijos|Sonseca|Olías del Rey
 tomelloso	tomelloso-castilla-la-mancha	Tomelloso	Ciudad Real	39.1576	-3.0216	Europe/Madrid	true	Tomelloso|Socuéllamos
 torrelodones	torrelodones-comunidad-de-madrid	Torrelodones	Madrid	40.5765	-3.9266	Europe/Madrid	true	Torrelodones|Collado Villalba|Guadarrama|Soto del Real
+torrevieja	torrevieja-comunidad-valenciana	Torrevieja	Alicante	37.9787	-0.6822	Europe/Madrid	true	Torrevieja|Santa Pola|San Pedro del Pinatar|Pilar de la Horadada
 totana	totana-region-de-murcia	Totana	Murcia	37.7688	-1.5023	Europe/Madrid	false	Totana
 tremp	tremp-cataluna	Tremp	Lérida	42.167	0.8949	Europe/Madrid	false	Tremp
 tudela	tudela-navarra	Tudela	Navarra	42.0617	-1.6045	Europe/Madrid	false	Tudela

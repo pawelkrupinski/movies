@@ -455,10 +455,6 @@ penaranda-de-bracamonte	Cine Calderón	E0793
 penarroya-pueblonuevo	Peñarroya Cinema	E1009	
 petrer	CinesMax 3D Petrer	E0728	
 petrer	Yelmo Cines Vinalopo	E0636	
-pilar-de-la-horadada	Cine Horadada	E0968	
-pilar-de-la-horadada	Cine Las Villas	E0971	
-pilar-de-la-horadada	Cine Imf Torrevieja	E0451	
-pilar-de-la-horadada	Cine Acapulco	E0942	
 plasencia	Multicines Alkázar	E0067	
 ponferrada	La Dehesa Ponferrada	E0458	
 pontevedra	Cine Club Pontevedra	E0875	
@@ -504,7 +500,6 @@ san-vicente-del-raspeig	Autocine El Sur	E0783
 san-vicente-del-raspeig	Cine Aana San Juan	E0009	
 san-vicente-del-raspeig	Cine La Esperanza	E0961	
 san-vicente-del-raspeig	Odeon Multicines Alicante	E0213	
-san-vicente-del-raspeig	Cines Axion de Santa Pola	E0752	
 sant-boi-de-llobregat	Cine Capri	E0230	
 sant-boi-de-llobregat	Cinebaix	E0276	
 sant-boi-de-llobregat	Cinemes Can Castellet	E0748	
@@ -552,6 +547,10 @@ torrelodones	Centro de Arte y Cine de Verano Soto del Real	E0937
 torrelodones	Sala Babel	E0818	
 torrelodones	Teatro Fernández-Baldor	E1000	
 torrelodones	Yelmo Cines Planetocio	E0630	
+torrevieja	Cine Imf Torrevieja	E0451	
+torrevieja	Cine Las Villas	E0971	
+torrevieja	Cines Axion de Santa Pola	E0752	
+torrevieja	Cine Acapulco	E0942	
 totana	Cinema Velasco Totana	E0921	
 totana	Terraza Auditorio Parque Municipal	E0922	
 tremp	Cinema La Lira	E0305	

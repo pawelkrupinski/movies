@@ -3608,29 +3608,6 @@
    "qualifiedSlug": "petrer-comunidad-valenciana"
   },
   {
-   "slug": "pilar-de-la-horadada",
-   "kind": "cluster",
-   "name": "Pilar de la Horadada",
-   "anchor": "Pilar de la Horadada",
-   "province": "Alicante",
-   "community": "Comunidad Valenciana",
-   "zoneId": "Europe/Madrid",
-   "lat": 37.8659,
-   "lon": -0.7926,
-   "towns": [
-    "Pilar de la Horadada",
-    "Torrevieja",
-    "San Pedro del Pinatar"
-   ],
-   "cinemas": [
-    "Cine Horadada",
-    "Cine Las Villas",
-    "Cine Imf Torrevieja",
-    "Cine Acapulco"
-   ],
-   "qualifiedSlug": "pilar-de-la-horadada-comunidad-valenciana"
-  },
-  {
    "slug": "plasencia",
    "kind": "town",
    "name": "Plasencia",
@@ -4003,7 +3980,6 @@
    "lon": -0.5496,
    "towns": [
     "San Vicente del Raspeig",
-    "Santa Pola",
     "Mutxamel",
     "San Juan de Alicante"
    ],
@@ -4011,8 +3987,7 @@
     "Autocine El Sur",
     "Cine Aana San Juan",
     "Cine La Esperanza",
-    "Odeon Multicines Alicante",
-    "Cines Axion de Santa Pola"
+    "Odeon Multicines Alicante"
    ],
    "qualifiedSlug": "san-vicente-del-raspeig-comunidad-valenciana"
   },
@@ -4390,6 +4365,30 @@
     "Yelmo Cines Planetocio"
    ],
    "qualifiedSlug": "torrelodones-comunidad-de-madrid"
+  },
+  {
+   "slug": "torrevieja",
+   "kind": "cluster",
+   "name": "Torrevieja",
+   "anchor": "Torrevieja",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.9787,
+   "lon": -0.6822,
+   "towns": [
+    "Torrevieja",
+    "Santa Pola",
+    "San Pedro del Pinatar",
+    "Pilar de la Horadada"
+   ],
+   "cinemas": [
+    "Cine Imf Torrevieja",
+    "Cine Las Villas",
+    "Cines Axion de Santa Pola",
+    "Cine Acapulco"
+   ],
+   "qualifiedSlug": "torrevieja-comunidad-valenciana"
   },
   {
    "slug": "totana",
@@ -4906,6 +4905,10 @@
   "navarra": {
    "page": "pamplona",
    "qualifiedSlug": "navarra-navarra"
+  },
+  "pilar-de-la-horadada": {
+   "page": "torrevieja",
+   "qualifiedSlug": "pilar-de-la-horadada-comunidad-valenciana"
   },
   "soria": {
    "page": "golmayo",
