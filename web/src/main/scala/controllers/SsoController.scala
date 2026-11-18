@@ -124,7 +124,7 @@ class SsoController(
       case Some(binding) =>
         // The Location carries a live code: nothing may keep a copy of it.
         val code = exchangeCodes.mint(user.id, Some(binding))
-        AuthController.uncacheable(Redirect(s"$target${SsoController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
+        PerUserResponse(Redirect(s"$target${SsoController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
     }
 
   /** Receive a session handed over by [[ssoStart]] on another domain.
@@ -157,7 +157,7 @@ class SsoController(
     val self    = here + request.path.stripSuffix(SsoController.SsoFinishPath)
     val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
       .flatMap(key => request.getQueryString(key).map(key -> _))
-    AuthController.uncacheable(Redirect(s"$sibling${SsoController.SsoStartPath}${AuthController.query(
+    PerUserResponse(Redirect(s"$sibling${SsoController.SsoStartPath}${AuthController.query(
       Seq("to" -> self, SsoController.BindParam -> binding) ++ onward)}")
       .withSession(request.session + (SsoController.SsoBindingKey -> binding)))
   }
@@ -173,11 +173,11 @@ class SsoController(
     code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
-        AuthController.uncacheable(home.withSession(cleared))
+        PerUserResponse(home.withSession(cleared))
       case Some(user) =>
         // Deliberately does NOT pair onwards: this IS the pairing leg, and a
         // second hop from here is the loop.
-        AuthController.uncacheable(home.withSession(SignedInUser.establish(cleared, user)))
+        PerUserResponse(home.withSession(SignedInUser.establish(cleared, user)))
     }
   }
 
@@ -210,7 +210,7 @@ class SsoController(
    *  `CrossSiteWriteFilter` sends it on to the same place WITHOUT signing out
    *  unless it came from one of our own pages. */
   def ssoLogout(): Action[AnyContent] = Action { request =>
-    AuthController.signedOut(Redirect(SsoController.ssoLogoutOnward(request.getQueryString("next"))).withNewSession)
+    PerUserResponse.signedOut(Redirect(SsoController.ssoLogoutOnward(request.getQueryString("next"))).withNewSession)
   }
 
   /** The question a refused far half of a logout asks a visitor still signed in

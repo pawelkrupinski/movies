@@ -62,7 +62,6 @@ class AuthController(
   appleTokenValidator:    Option[AppleTokenValidator] = None,
   clock:                  Clock
 ) extends AbstractController(cc) with Logging {
-  import AuthController.{signedOut, uncacheable}
 
   // OAuth state cookie expires after this — long enough that the user
   // can take a couple of minutes on the provider's consent screen,
@@ -199,10 +198,10 @@ class AuthController(
     if (request.session.get("mobileClient").contains("1")) {
       // The native apps keep their own cookie jar per host and finish
       // through the deep link, so there is no sibling to pair.
-      uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
+      PerUserResponse(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
         challenge = request.session.get(AuthController.MobileChallengeKey))}").withSession(nextSession))
     } else {
-      uncacheable(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
+      PerUserResponse(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
     }
   }
 
@@ -324,7 +323,7 @@ class AuthController(
     // Removing the keys would leave a valid session cookie behind holding
     // nothing, which is the same thing to this application and not the same
     // thing at all to a browser, a proxy, or anyone reading the response.
-    signedOut(Redirect(target).withNewSession)
+    PerUserResponse.signedOut(Redirect(target).withNewSession)
   }
 
   private def revokeEverySession(request: RequestHeader): Unit =
@@ -367,29 +366,6 @@ class AuthController(
 }
 
 object AuthController {
-
-  /** An auth transition nothing may keep a copy of.
-   *
-   *  These responses hand out or tear down a session, so a cached one is either
-   *  a stale sign-in or a logout that appears not to have happened. Cheap
-   *  insurance: they are redirects nobody benefits from re-using. */
-  private[controllers] def uncacheable(result: Result): Result = PerUserResponse(result)
-
-  /** A sign-out, plus an instruction to forget what this origin looked like
-   *  while signed in.
-   *
-   *  Clearing the cookie is not enough on its own, and the gap is exactly what a
-   *  logout that "doesn't carry" looks like: the far domain's session is gone,
-   *  but the browser still holds a page it rendered while that session was
-   *  alive, so the next visit shows an avatar for an account it no longer has.
-   *  `no-store` stops NEW signed-in pages being kept; it cannot reach the ones
-   *  already in the cache, and this is the only thing that can.
-   *
-   *  `"cache"` alone, deliberately — `"cookies"` would take the remembered city
-   *  with it, and the session cookie is already discarded precisely. Ignored by
-   *  browsers that do not implement it, which lose nothing they had before. */
-  private[controllers] def signedOut(result: Result): Result =
-    uncacheable(result).withHeaders("Clear-Site-Data" -> "\"cache\"")
 
   /** Who a signed-in response says is signed in — the one shape `/api/me`,
    *  `/auth/token` and `/auth/exchange` all answer with. */
