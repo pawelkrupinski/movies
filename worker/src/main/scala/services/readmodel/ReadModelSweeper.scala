@@ -139,7 +139,7 @@ class ReadModelSweeper(
    *
    *  A row that fails to project must not abort the prune (the prune is what removes the
    *  duplicates), so each projection is guarded individually. */
-  private def sweep(reproject: Boolean): (Seq[String], Boolean) = projection.exclusively {
+  private def sweep(reproject: Boolean): (Seq[String], Boolean, Seq[ScreeningRef]) = projection.exclusively {
     // Log-only label. The reconcile-sweep metric now tracks ONLY the prune (the live,
     // scheduled backstop); the reproject path survives as a test/backfill seed and is
     // no longer metered — the reproject retirement gate it fed has been removed.
@@ -168,7 +168,7 @@ class ReadModelSweeper(
     sweepCount += 1
     if (!reproject) catchUpUndelivered(kind)
     reportSweep(reproject, kind, tally, scanComplete)
-    (tally.healed.toSeq, scanComplete && !tally.projectionFailed && !tally.pruneFailed)
+    (tally.healed.toSeq, scanComplete && !tally.projectionFailed && !tally.pruneFailed, tally.prunedUnlisted.toSeq)
   }
 
   /** Caller holds the projection lock. The read model's cards and screenings rows as they are BEFORE a sweep.
@@ -287,7 +287,12 @@ class ReadModelSweeper(
    *  A stream misses a removal now and then; one sweep finding a great many is far likelier a
    *  comparison gone wrong — the slots-only view disagreeing with the projection about some shape
    *  of row — and pruning on it would blank the served venues of a country. So past the cap the
-   *  sweep prunes none of them and says so loudly; the content check still rewrites each row. */
+   *  sweep prunes none of them and says so loudly; the content check still rewrites each row.
+   *
+   *  Most of what it finds is no miss at all: a removal the stream still holds (the DE/UK/US debounce
+   *  keeps a film's re-read up to two minutes) or has queued behind this sweep's lock. Deleting those
+   *  is harmless, but only the ones the stream does not then apply are missed removals — the
+   *  sweep's verdict ([[reportUnlisted]]) tells them apart once the lock is let go. */
   private def pruneUnlistedVenues(kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
     val unlisted = tally.unlisted
     val cap      = ReadModelSweeper.unlistedPruneCap(baseline.screeningRefs.fold(0)(_.size))
@@ -296,11 +301,25 @@ class ReadModelSweeper(
       logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
         s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
         s"that many missed removals: ${ReadModelSweeper.idsForLog(unlisted.map(_._id))}.")
-    } else if (unlisted.nonEmpty) {
+    } else {
       unlisted.foreach(pruneScreening(_, kind, tally))
-      metrics.recordUnlistedVenues(unlisted.size, withheld = false)
-      logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
-        s"a removal the change stream did not apply: ${ReadModelSweeper.idsForLog(unlisted.map(_._id))}.")
+      tally.prunedUnlisted ++= unlisted
+    }
+  }
+
+  /** The unlisted venue rows a sweep pruned that the change stream did NOT apply itself once the
+   *  sweep let go — `applied`, the rows it did — metered and named as missed removals. The rest it
+   *  had in flight: a removal the debounce still held, or one queued behind the sweep's lock. */
+  private def reportUnlisted(kind: String, pruned: Seq[ScreeningRef], applied: String => Boolean): Unit = {
+    val (inFlight, missed) = pruned.partition(ref => applied(ref.filmId.takeWhile(_ != '~')))
+    if (inFlight.nonEmpty)
+      logger.info(s"read-model $kind sweep: pruned ${inFlight.size} venue row(s) whose film no longer lists the venue " +
+        s"and whose removal the change stream had in flight and then applied itself — not misses: " +
+        s"${ReadModelSweeper.idsForLog(inFlight.map(_._id))}.")
+    if (missed.nonEmpty) {
+      metrics.recordUnlistedVenues(missed.size, withheld = false)
+      logger.warn(s"read-model $kind sweep: pruned ${missed.size} venue row(s) whose film no longer lists the venue — " +
+        s"a removal the change stream did not apply: ${ReadModelSweeper.idsForLog(missed.map(_._id))}.")
     }
   }
 
@@ -396,9 +415,13 @@ class ReadModelSweeper(
    *  a film's re-read for up to `Debounce.Worker.cap`, so a showtime change landing in the two
    *  minutes before the check reaches its row is projected by the check first. Every such row
    *  counted as drift — petsematary|1989 at Regal Kendall Village Miami on 2026-10-07, its source
-   *  slot written 38 s before the check rewrote it, the stream applying it once the sweep let go. */
-  private def verdictOnSweep(healed: Seq[String], rewritten: Seq[RowDrift]): Unit = {
-    if (healed.nonEmpty || rewritten.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
+   *  slot written 38 s before the check rewrote it, the stream applying it once the sweep let go.
+   *
+   *  And so do its prunes of unlisted venues: 294 of the 321 rows pruned 2026-11-15..18 came within
+   *  five minutes of their venue's refresh, all in the three debounced countries, each WARNed as "a
+   *  removal the change stream did not apply" for a stream about to apply it. */
+  private def verdictOnSweep(healed: Seq[String], rewritten: Seq[RowDrift], prunedUnlisted: Seq[ScreeningRef]): Unit = {
+    if (healed.nonEmpty || rewritten.nonEmpty || prunedUnlisted.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
     val applied = projection.exclusively { val rows = appliedSinceSweep.fold(Set.empty[String])(_.toSet); appliedSinceSweep = None; rows }
     val (raced, drifted) = rewritten.partition(row => applied(row.rowId))
     if (raced.nonEmpty)
@@ -408,6 +431,7 @@ class ReadModelSweeper(
       row.causes.foreach { case (cause, documents) => metrics.recordDrift(cause, documents) }
       logger.warn(s"read-model content check: row ${row.rowId} had drifted from its source — ${row.detail}.")
     }
+    reportUnlisted(ReconcileKind.Prune, prunedUnlisted, applied)
     val (inFlight, missed) = healed.partition(applied)
     if (inFlight.nonEmpty)
       logger.info(s"read-model prune sweep: wrote ${inFlight.size} row(s) the change stream had in flight and then " +
@@ -430,18 +454,23 @@ class ReadModelSweeper(
    *  read whole, a row whose projection threw may stand half-written, and a prune that threw leaves
    *  an orphan served, so a caller seeding a read model it then asserts on owes another reconcile
    *  once Mongo recovers. */
-  def reconcile(): Boolean = sweep(reproject = true)._2
+  def reconcile(): Boolean = {
+    val (_, complete, prunedUnlisted) = sweep(reproject = true)
+    reportUnlisted("reproject", prunedUnlisted, applied = _ => false)
+    complete
+  }
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
    *  for the rows a silent change stream failed to deliver (see `sweep`). [[TickRun.Incomplete]] when the sweep's
    *  scan, a projection or the prune failed (logged by the sweep): the prune it skipped is not a completed run. */
   def pruneOrphans(): TickRun = {
     projection.exclusively { appliedSinceSweep = Some(scala.collection.mutable.Set.empty); sweepDrift.clear() }
-    val (healed, complete, rewritten) =
+    val (healed, complete, rewritten, prunedUnlisted) =
       tools.AnyThrowable.rethrownAfter {
-        val (healed, complete) = sweep(reproject = false); projection.exclusively((healed, complete, sweepDrift.toSeq))
+        val (healed, complete, prunedUnlisted) = sweep(reproject = false)
+        projection.exclusively((healed, complete, sweepDrift.toSeq, prunedUnlisted))
       }(_ => projection.exclusively { appliedSinceSweep = None })
-    verdictOnSweep(healed, rewritten)
+    verdictOnSweep(healed, rewritten, prunedUnlisted)
     TickRun.completedWhen(complete)
   }
 

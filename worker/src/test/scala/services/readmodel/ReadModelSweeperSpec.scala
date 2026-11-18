@@ -91,6 +91,44 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     projector.stop()
   }
 
+  // A REMOVAL IN FLIGHT IS NOT A MISSED ONE. The stream holds a film's re-read for up to two
+  // minutes in DE/UK/US (`Debounce.forCountry`) and every apply waits for the sweep's lock, so a
+  // venue a scrape dropped just before the sweep is found unlisted with its removal still queued.
+  // Counted, that was every "a removal the change stream did not apply" WARN of 2026-11-15..18:
+  // 294 of 321 pruned rows came within five minutes of their venue's refresh (Regal Southland
+  // Mall Miami, refreshed 10:40:37, 18 rows pruned 10:42:36), and only in the debounced countries.
+  // The prune still deletes them (idempotent); only a row the stream does not then apply is a miss.
+  it should "not count as a missed removal a venue drop the change stream applies once the sweep lets go" in {
+    val (_, repository, rm) = fixture()
+    val m = new RecordingReadModelProjectionMetrics()
+    def film(title: String, tmdbId: Int, venues: Source*) = MovieRecord(tmdbId = Some(tmdbId), data = venues.map(cinema =>
+      cinema -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00")))).toMap)
+    repository.upsert("Foo", Some(2024), film("Foo", 1, Multikino, KinoMuranow))
+    repository.upsert("Bar", Some(2024), film("Bar", 2, Multikino, KinoMuranow))
+    val queued = scala.collection.mutable.Buffer.empty[StoredMovieRecord]
+    val projector = new ReadModelProjector(repository, rm, rm, m, scheduler = ReadModelProjectorFixtures.scheduler(), clock = specClock)
+    val sweeper   = new ReadModelSweeper(projector.projection, awaitStreamApplied = _ => queued.foreach(projector.onMovieUpsert))
+    repository.findAll().foreach(projector.onMovieUpsert)
+    rm.findAllScreenings() should have size 4
+    // Foo's scrape drops Kino Muranow; its event is delivered and waits behind the sweep.
+    repository.upsert("Foo", Some(2024), film("Foo", 1, Multikino))
+    queued ++= repository.findAll().filter(_.id.value == fid)
+    // Bar's drop of Kino Muranow never reaches the stream: the real miss.
+    repository.upsert("Bar", Some(2024), film("Bar", 2, Multikino))
+
+    val lines = tools.LogCapture.thisThread(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
+      .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
+
+    rm.findAllScreenings() should have size 2
+    withClue("only the removal the stream never applied is a miss: ") {
+      m.unlistedVenues.toSeq shouldBe Seq(1 -> false)
+    }
+    lines.filter(_.startsWith("WARN")) should have size 1
+    lines.filter(_.startsWith("WARN")).head should include ("bar|2024")
+    lines.filter(_.startsWith("WARN")).head should not include (fid)
+    projector.stop()
+  }
+
   // THE BLAST-RADIUS CAP. A missed removal comes a few at a time; a sweep finding many more is
   // likelier a disagreement between the slots-only view and the projection, and pruning on it
   // would blank the served venues of a country. Up to the cap (20 here: 1% of 22 rows is less)

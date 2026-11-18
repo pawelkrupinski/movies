@@ -131,6 +131,9 @@ private[readmodel] final class SweepTally {
   val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[services.movies.FilmId]
   /** The venue rows a live card holds that its row no longer lists. */
   val unlisted    = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
+  /** The unlisted venue rows the prune deleted: misses or removals the stream had in flight, which
+   *  the sweep's verdict tells apart once the stream has applied what it held. */
+  val prunedUnlisted = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
   /** The rows a heal repaired. */
   val healed      = scala.collection.mutable.ArrayBuffer.empty[String]
   var reprojected = 0
