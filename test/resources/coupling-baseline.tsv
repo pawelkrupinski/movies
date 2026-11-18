@@ -96,9 +96,7 @@ fanout	controllers.SsoController	11
 fanout	controllers.TuneSamples	10
 fanout	controllers.UptimeController	12
 fanout	controllers.UptimeTriage	10
-fanout	models.City	64
 fanout	models.CityPickerGroups	10
-fanout	models.Country	17
 fanout	models.MovieRecord	13
 fanout	models.MovieSynopses	10
 fanout	models.SpanishRoster	11
