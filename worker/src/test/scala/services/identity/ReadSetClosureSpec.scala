@@ -60,8 +60,13 @@ class ReadSetClosurePart4Spec extends ReadSetClosureSpec(4)
 
 object ReadSetClosureSpec {
 
-  /** A slice read: its answers replayed through one memo, its listings. Every check of the slice reads this one. */
-  final case class Read(dir: Path, reads: IdentitySlice.Reads, lookups: IdentityLookups, all: Seq[Listing])
+  /** A slice read: its answers replayed through one memo, its listings. Every check of the slice reads this one, and
+   *  the WHOLE resolve -- every listing, every answer filed -- that each check reaches once: [[moved]]'s last round (it
+   *  withholds nothing), [[unreadSibling]]'s clusters, and every arrival chain's last step (the whole slice, a resolve
+   *  sorting its listings). */
+  final case class Read(dir: Path, reads: IdentitySlice.Reads, lookups: IdentityLookups, all: Seq[Listing]) {
+    lazy val whole: Resolution = IdentityResolver.resolve(all, lookups, reads.normalizer, ResolveInputs.Unpinned)
+  }
   object Read {
     def apply(dir: Path): Read = {
       val slice     = IdentitySlice.readSlice(dir)
@@ -76,7 +81,8 @@ object ReadSetClosureSpec {
   val Rounds = 4
   val Seeds: Seq[Long] = Seq(1L, 2L)
 
-  /** `inner` with each question whose bucket (of `seed`) is `round` or later unanswered: a search, a venue page, a record. */
+  /** `inner` with each question whose bucket (of `seed`) is `round` or later unanswered: a search, a venue page, a record.
+   *  Round [[Rounds]] withholds nothing: the whole resolve ([[Read.whole]]). */
   private final class Withheld(inner: IdentityLookups, seed: Long, round: Int) extends ForwardingIdentityLookups(inner) {
     private def open(what: String) = math.floorMod(MurmurHash3.stringHash(s"$seed|$what"), Rounds) >= round
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = if (open(s"q|$query")) Answer.Unknown else inner.candidates(query)
@@ -100,11 +106,13 @@ object ReadSetClosureSpec {
       val r = IdentityResolver.resolve(listings, over, reads.normalizer, ResolveInputs.Unpinned)
       listings.map(l => l.key -> r.decisionOf.get(l.key).flatMap(PopulationMonotonicity.takeOf)).toMap
     }
+    // a chain's last step is the whole slice, every page read: the whole resolve
+    lazy val wholeTakes = all.map(l => l.key -> whole.decisionOf.get(l.key).flatMap(PopulationMonotonicity.takeOf)).toMap
     PopulationMonotonicity.chains(all, MurmurHash3.stringHash(dir.getFileName.toString).toLong, ArrivalChains, ArrivalSteps).zipWithIndex.flatMap {
       case (chain, c) =>
         chain.zip(Nil +: chain).flatMap { case (now, before) =>
           val arrived = now.map(_.key).toSet -- before.map(_.key)
-          val (open, read) = (takes(now, new Unread(lookups, arrived)), takes(now, lookups))
+          val (open, read) = (takes(now, new Unread(lookups, arrived)), if (now.sizeIs == all.size) wholeTakes else takes(now, lookups))
           now.map(_.key).flatMap(key => open.get(key).flatten.filter(decided => read.get(key).flatten != Some(decided)).map(decided =>
             s"${key.venue} | ${key.rawTitle}: $decided with ${arrived.size} arrival(s)' pages unread, ${read.get(key).flatten.getOrElse("pending")} once read [chain $c, ${now.size} listings]"))
         }
@@ -119,7 +127,6 @@ object ReadSetClosureSpec {
    *  stage 4 a take awaited its cluster and its must-links' reach only, and a sibling cluster's listings stayed decided. */
   def unreadSibling(read: Read): Seq[String] = {
     import read._
-    val whole     = IdentityResolver.resolve(all, lookups, reads.normalizer, ResolveInputs.Unpinned)
     val probes    = whole.decisions.groupBy(d => whole.familyOf.get(d.members.head)).collect {
       case (Some(_), decisions) if decisions.sizeIs > 1 => decisions.map(_.members.min).sorted.take(SiblingProbes)
     }.flatten.toSeq.sorted
@@ -145,7 +152,7 @@ object ReadSetClosureSpec {
     import read._
     Seeds.flatMap { seed =>
       val outcomes = (1 to Rounds).map { round =>
-        val r = IdentityResolver.resolve(all, new Withheld(lookups, seed, round), reads.normalizer, ResolveInputs.Unpinned)
+        val r = if (round == Rounds) whole else IdentityResolver.resolve(all, new Withheld(lookups, seed, round), reads.normalizer, ResolveInputs.Unpinned)
         all.map(l => l.key -> r.decisionOf.get(l.key).flatMap(PopulationMonotonicity.takeOf)).toMap
       }
       all.map(_.key).flatMap { key =>

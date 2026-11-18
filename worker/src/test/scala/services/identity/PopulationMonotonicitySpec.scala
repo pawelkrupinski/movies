@@ -368,7 +368,13 @@ object PopulationMonotonicitySpec {
     val chainTakes = {
       // a chain's prefix of a size is one subset per chain: keyed by family, chain and size
       val keyed = chains.indices.flatMap(f => chains(f).zipWithIndex.flatMap { case (chain, c) => chain.map(prefix => (f, c, prefix.size) -> prefix) }).toMap
-      resolved(keyed.keys.toSeq.sorted) { case (f, c, n) => bothTakes(large(f), keyed((f, c, n))) }
+      // and resolved once per POPULATION, the family's listings present in whatever order a chain brought them (a resolve
+      // sorts its listings): every chain's last prefix is the whole family, one resolve for all [[Chains]] of them
+      def population(job: (Int, Int, Int)) = (job._1, keyed(job).map(_.key).toSet)
+      val jobs  = keyed.keys.toSeq.sorted
+      val takes = resolved(jobs.distinctBy(population)) { case job @ (f, _, _) => bothTakes(large(f), keyed(job)) }
+        .map { case (job, both) => population(job) -> both }
+      jobs.map(job => job -> takes(population(job))).toMap
     }
     val chained: Seq[Row] = {
       val takes = chainTakes
