@@ -114,6 +114,18 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
       "fanout\tservices.movies.MovieService\t3", "fanout\tworker.Main\t3")
   }
 
+  "the edge rows" should "give every class reference with its package edge, a package's own included" in {
+    Coupling.edgeRows(graph) shouldBe Seq(
+      "models->models\tmodels.Film->models.Codec",
+      "models->services.movies\tmodels.Codec->services.movies.MovieRepository",
+      "services.movies->models\tservices.movies.MovieService->models.Film",
+      "services.movies->services.movies\tservices.movies.MovieService->services.movies.MovieRepository",
+      "services.movies->tools\tservices.movies.MovieService->tools.Slugify",
+      "worker->models\tworker.Main->models.Film",
+      "worker->services.movies\tworker.Main->services.movies.MovieService",
+      "worker->tools\tworker.Main->tools.Slugify")
+  }
+
   "the report" should "name an edge used but not declared, and a declared one no class uses" in {
     val report = Coupling.report(graph, Map("worker" -> Set("common"), "common" -> Set("base", "geodata")))
     report should include("`worker -> base` (1 refs) is used but not declared")

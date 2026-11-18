@@ -27,12 +27,13 @@ lazy val couplingReport = inputKey[Unit]("the production code's coupling: coupli
 
 couplingReport := {
   val args = Def.spaceDelimited("<rows out> [<markdown out>]").parsed
-  require(args.size == 1 || args.size == 2, "couplingReport <rows out> [<markdown out>]")
+  require(args.size >= 1 && args.size <= 3, "couplingReport <rows out> [<markdown out> [<edges out>]]")
   val started = System.nanoTime
   val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value)
   val layers = Some(kinowo.build.Coupling.Layers.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-layers.tsv")))
   IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers))
-  if (args.size == 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers))
+  if (args.size >= 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers))
+  if (args.size == 3) IO.writeLines(file(args(2)), kinowo.build.Coupling.edgeRows(graph))
   streams.value.log.info(s"couplingReport: ${graph.types.size} classes, ${graph.known.size} dependencies, " +
     s"${(System.nanoTime - started) / 1000000} ms after the compiles, to ${args.mkString(" and ")}")
 }

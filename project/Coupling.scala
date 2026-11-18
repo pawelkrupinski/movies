@@ -87,6 +87,12 @@ object Coupling {
     g.known.toSeq.map { case e @ (from, to) => (packageOf(from), packageOf(to)) -> e }.filter { case ((a, b), _) => a != b }
       .groupBy(_._1).map { case (k, v) => k -> v.map(_._2).sorted }
 
+  /** Every class->class dependency, one `<from package>-><to package><TAB><from class>-><to class>` line each (a
+   *  package's own, `p->p`, too: what a move out of it must take along), sorted: the evidence behind the rows
+   *  (scripts/coupling-report --out keeps it as edges.tsv; the ratchet names a refused edge's references from it). */
+  def edgeRows(g: Graph): Seq[String] =
+    g.known.toSeq.map { case (x, y) => s"${packageOf(x)}->${packageOf(y)}\t$x->$y" }.sorted
+
   /** The strongly connected components of a directed graph with two or more nodes (Tarjan), each sorted, sorted. */
   def components(nodes: Seq[String], edges: Set[(String, String)]): Seq[Seq[String]] = {
     val next = edges.toSeq.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).sorted }
