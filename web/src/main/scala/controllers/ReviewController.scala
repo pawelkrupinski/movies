@@ -63,9 +63,12 @@ class ReviewController(cc: ControllerComponents,
   }
 
   /** The labels file's rows; one that cannot be read is said so on the page, never shown as "no labels". */
-  private def readLabels(): (Seq[LabelRow], Option[String]) = Try(LabelsTsv.read(labelsPath)) match {
-    case Success(rows) => (rows, None)
-    case Failure(e)    => (Nil, Some(s"could not read $labelsPath: ${e.getMessage}"))
+  private def readLabels(): (Seq[LabelRow], Option[String]) = readReported(labelsPath, Seq.empty[LabelRow])(LabelsTsv.read(labelsPath))
+
+  /** `read` of the file at `path`, or `fallback` and what went wrong, for the page to say: never shown as an empty file. */
+  private def readReported[A](path: Path, fallback: A)(read: => A): (A, Option[String]) = Try(read) match {
+    case Success(value) => (value, None)
+    case Failure(e)     => (fallback, Some(s"could not read $path: ${e.getMessage}"))
   }
 
   private def render(page: ReviewPage, country: Option[String], selected: Seq[(ReviewCluster, Option[Instant])], limit: Int,
@@ -131,15 +134,9 @@ class ReviewController(cc: ControllerComponents,
     devOnly {
       val labelsRead = readLabels()
       val candidatesPath = ReviewDigest.candidatesPath(labelsPath)
-      val (candidates, candidatesError) = Try(ReviewDigest.readCandidates(candidatesPath)) match {
-        case Success(read) => (read, None)
-        case Failure(e)    => (Nil, Some(s"could not read $candidatesPath: ${e.getMessage}"))
-      }
+      val (candidates, candidatesError) = readReported(candidatesPath, Seq.empty[DigestItem])(ReviewDigest.readCandidates(candidatesPath))
       val cardsPath = ReviewDigest.judgeCardsPath(labelsPath)
-      val (cards, cardsError) = if (!Files.exists(cardsPath)) ("", None) else Try(Files.readString(cardsPath)) match {
-        case Success(text) => (text, None)
-        case Failure(e)    => ("", Some(s"could not read $cardsPath: ${e.getMessage}"))
-      }
+      val (cards, cardsError) = if (!Files.exists(cardsPath)) ("", None) else readReported(cardsPath, "")(Files.readString(cardsPath))
       val wanted    = country.filterNot(_ == "all").flatMap(Country.byCode).map(_.code)
       val awaiting  = ReviewDigest.pending(labelsRead._1, candidates).filter(i => wanted.forall(_ == i.country))
       // what the counts count: the takes no answer stands for yet (one the labels file has not taken still hides its card),
@@ -150,22 +147,33 @@ class ReviewController(cc: ControllerComponents,
       val countryOrder = Country.all.map(_.code).zipWithIndex.toMap
       // the agent's least sure first across every country, then the countries in their order (pending's own order within)
       val items     = nameFilms(ReviewDigest.ofKind(awaiting, shownKind)).sortBy(i => (i.doubt.rank, countryOrder.getOrElse(i.country, Int.MaxValue)))
-      val byCountry = items.groupBy(_.country)
-      val read      = perCountry(byCountry.keys.toSeq.flatMap(Country.byCode)) { c =>
-        val decisions = sourceOf(c).decisions(unmatchedOnly = false)
-        byCountry(c.code).map(i => ReviewDigest.clusterOf(c, i, decisions) -> i)
-      }
-      val clusters = read.collect { case (_, Success(cs)) => cs }.flatten
-      val errors   = read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" }
-      val order    = items.map(_.id).zipWithIndex.toMap
-      val byId     = clusters.map { case (cluster, item) => cluster.id -> item }.toMap
-      val decorate = (card: ReviewCard) => byId.get(card.cluster.id).fold(card) { item =>
-        card.copy(item = Some(item), others = ReviewDigest.otherJudgements(labelsRead._1, item),
-          judgeCard = Option(ReviewDigest.judgeCard(cards, item)).filter(_.nonEmpty), films = withJudgedFilm(card.films, item))
-      }
-      render(ReviewPage.Digest, country, clusters.sortBy { case (_, i) => order(i.id) }.map { case (c, _) => c -> None }, limit, answered,
+      val (clusters, errors) = digestClusters(items)
+      render(ReviewPage.Digest, country, clusters.map { case (c, _) => c -> None }, limit, answered,
         errors ++ candidatesError ++ cardsError, ReviewView.Controls(kind = shownKind,
-          kindCounts = Some((open.count(_.agentVerdict.isDefined), open.count(_.agentVerdict.isEmpty)))), labelsRead, decorate = decorate)
+          kindCounts = Some((open.count(_.agentVerdict.isDefined), open.count(_.agentVerdict.isEmpty)))), labelsRead,
+        decorate = digestCard(clusters, labelsRead._1, cards))
+    }
+  }
+
+  /** Each item's cluster, in the items' order, each country's read on its own thread; a failed read reported rather than
+   *  shown as no clusters. */
+  private def digestClusters(items: Seq[DigestItem]): (Seq[(ReviewCluster, DigestItem)], Seq[String]) = {
+    val byCountry = items.groupBy(_.country)
+    val read      = perCountry(byCountry.keys.toSeq.flatMap(Country.byCode)) { c =>
+      val decisions = sourceOf(c).decisions(unmatchedOnly = false)
+      byCountry(c.code).map(i => ReviewDigest.clusterOf(c, i, decisions) -> i)
+    }
+    val order = items.map(_.id).zipWithIndex.toMap
+    (read.collect { case (_, Success(cs)) => cs }.flatten.sortBy { case (_, i) => order(i.id) },
+      read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
+  }
+
+  /** A digest card: the take awaiting the user, the billing's other judgements, its judge-cards evidence and its film. */
+  private def digestCard(clusters: Seq[(ReviewCluster, DigestItem)], labels: Seq[LabelRow], cards: String): ReviewCard => ReviewCard = {
+    val byId = clusters.map { case (cluster, item) => cluster.id -> item }.toMap
+    card => byId.get(card.cluster.id).fold(card) { item =>
+      card.copy(item = Some(item), others = ReviewDigest.otherJudgements(labels, item),
+        judgeCard = Option(ReviewDigest.judgeCard(cards, item)).filter(_.nonEmpty), films = withJudgedFilm(card.films, item))
     }
   }
 
