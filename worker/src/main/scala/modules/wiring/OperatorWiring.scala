@@ -34,8 +34,9 @@ trait OperatorWiring { self: WorkerWiring =>
   // The stored sources an operator can have fetched again for given keys (`RefreshSource`, enqueued by
   // scripts.EnqueueSourceRefresh): the identity model's TMDB films, and each rating source's rows by TMDB id, its
   // memoised links forgotten first as its `/tasks` button forgets them all. Filmweb only where this country enables it.
-  lazy val refreshableSources: services.refresh.RefreshableSources = {
-    import services.refresh.{RatingRefreshSource, RefreshableSources}
+  lazy val refreshableSources: services.tasks.RefreshableSources = {
+    import services.refresh.RatingRefreshSource
+    import services.tasks.RefreshableSources
     new RefreshableSources(Seq(
       identityTmdbFilmRefresh,
       new RatingRefreshSource(RefreshableSources.Imdb,       imdbRatings,           movieCache, imdbIdCache),

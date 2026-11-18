@@ -2,8 +2,7 @@ package services.identity
 package adapters
 
 import play.api.Logging
-import services.refresh.{RefreshableSource, RefreshableSources}
-import services.tasks.BulkRefreshResult
+import services.tasks.{BulkRefreshResult, RefreshableSource, RefreshableSources}
 import tools.{HttpFetch, HttpPath}
 
 /**

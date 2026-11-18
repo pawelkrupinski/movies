@@ -1,13 +1,13 @@
 package scripts
 
 import services.MongoConnection
-import services.refresh.RefreshableSources
+import services.tasks.RefreshableSources
 import services.tasks.{EnqueueResult, MongoTaskQueue, TaskType}
 import tools.CommandLine
 
 /**
  * Asks a country's worker to fetch again what one stored external source holds for given keys
- * (`services.refresh.RefreshableSource`), and to kick what moved downstream: `RefreshSource` tasks on the country's
+ * (`services.tasks.RefreshableSource`), and to kick what moved downstream: `RefreshSource` tasks on the country's
  * queue, at most `RefreshableSources.MaxKeys` keys each. Sources: `tmdb-films` (TMDB film ids: their records, then the
  * questions of the identity families they reach, which the model re-resolves), `imdb`, `metacritic`, `rt`, `filmweb`
  * (Poland only; each a rating source's rows by TMDB film id). The run's outcome is on the `/tasks` page ("lastResults",

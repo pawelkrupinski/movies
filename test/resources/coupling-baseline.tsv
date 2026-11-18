@@ -58,11 +58,10 @@ cycle-edge	services.identity->services.cinemas	22
 cycle-edge	services.identity->services.enrichment	21
 cycle-edge	services.identity->services.movies	309
 cycle-edge	services.identity->services.readmodel	1
-cycle-edge	services.identity->services.refresh	2
 cycle-edge	services.identity->services.resolution	13
 cycle-edge	services.identity->services.scrapes	9
 cycle-edge	services.identity->services.sharecards	3
-cycle-edge	services.identity->services.tasks	22
+cycle-edge	services.identity->services.tasks	24
 cycle-edge	services.identity->services.titlerules	2
 cycle-edge	services.identity->services.venuepages	9
 cycle-edge	services.metrics->services.cinemas	4
@@ -84,10 +83,6 @@ cycle-edge	services.movies->services.tasks	2
 cycle-edge	services.movies->services.titlerules	7
 cycle-edge	services.readmodel->services.movies	49
 cycle-edge	services.readmodel->services.titlerules	1
-cycle-edge	services.refresh->services.enrichment	1
-cycle-edge	services.refresh->services.movies	3
-cycle-edge	services.refresh->services.resolution	1
-cycle-edge	services.refresh->services.tasks	10
 cycle-edge	services.resolution->services.billing	1
 cycle-edge	services.resolution->services.movies	10
 cycle-edge	services.scrapes->services.movies	6
@@ -128,7 +123,7 @@ ce	services.events	1
 ce	services.facebook	2
 ce	services.fallback	2
 ce	services.freshness	4
-ce	services.identity	22
+ce	services.identity	21
 ce	services.keyed	3
 ce	services.lookups	1
 ce	services.metrics	12

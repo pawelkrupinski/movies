@@ -84,7 +84,7 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
 
   it should "be the tmdb-films source, its keys the films' ids" in {
     val w = new World
-    w.refresh.name shouldBe services.refresh.RefreshableSources.TmdbFilms
+    w.refresh.name shouldBe services.tasks.RefreshableSources.TmdbFilms
     w.refresh.refresh(Seq(ghana.toString, "not-an-id")).message should startWith("1 of 1 records fetched; 2 families reached")
   }
 }

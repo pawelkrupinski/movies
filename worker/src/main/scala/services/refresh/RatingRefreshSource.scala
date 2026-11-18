@@ -3,7 +3,7 @@ package services.refresh
 import services.enrichment.CacheRefresher
 import services.movies.MovieCache
 import services.resolution.ResolutionCache
-import services.tasks.BulkRefreshResult
+import services.tasks.{BulkRefreshResult, RefreshableSource}
 
 /**
  * A rating source's rows refreshed for given TMDB film ids: every film row the cache holds under one of them has the

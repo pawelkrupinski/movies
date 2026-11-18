@@ -33,7 +33,7 @@ object TaskType {
   // schedules, on demand from the `/tasks` page's "settle" button.
   case object SettleNow            extends TaskType { val name = "SettleNow"            }
   // Operator-triggered: one stored external source (the payload's `source`: TMDB films, a rating source) fetched again
-  // for the payload's keys, and what moved kicked downstream (`services.refresh.RefreshableSource`): an identity
+  // for the payload's keys, and what moved kicked downstream (`services.tasks.RefreshableSource`): an identity
   // re-resolve, a row's projection — now, rather than when the periodic paths reach it.
   case object RefreshSource        extends TaskType { val name = "RefreshSource"        }
 

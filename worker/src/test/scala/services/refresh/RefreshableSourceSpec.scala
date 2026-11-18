@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.enrichment.CacheRefresher
 import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, MovieCache, TitleNormalizer}
 import services.resolution.ResolutionCache
-import services.tasks.{BulkRefreshResult, HandlerOutcome, InMemoryBulkTaskResultStore, Task, TaskType}
+import services.tasks.{BulkRefreshResult, HandlerOutcome, InMemoryBulkTaskResultStore, RefreshableSource, RefreshableSources, Task, TaskType}
 
 import scala.collection.mutable
 
