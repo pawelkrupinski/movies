@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** What `FlicksClient` parses out of a day page is remembered against the page (`ChunkPageMemo`), and
- *  reused while the page stays the same and [[FlicksClient.PageParserVersion]] does too — so a change to
+ *  reused while the page stays the same and [[FlicksDayPage.PageParserVersion]] does too — so a change to
  *  the parse that does not bump the version would keep serving the old parse of every unchanged page.
  *  This pins the parse of every recorded day page to its version: change the parse, and it fails until
  *  the version is bumped and the new digest pinned. */
@@ -16,7 +16,7 @@ class FlicksPageParserVersionSpec extends AnyFlatSpec with Matchers {
   private val days = java.nio.file.Files.walk(java.nio.file.Paths.get("test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions"))
     .filter(_.toString.endsWith(".html")).toArray.map(_.toString).toSeq.sorted
 
-  "FlicksClient.PageParserVersion" should "change whenever what a day page parses to changes" in {
+  "FlicksDayPage.PageParserVersion" should "change whenever what a day page parses to changes" in {
     days should not be empty
     val noNetwork = new _root_.tools.HttpFetch {
       def get(url: String): String = fail(s"unexpected request $url")
@@ -27,16 +27,16 @@ class FlicksPageParserVersionSpec extends AnyFlatSpec with Matchers {
       val date = path.split('/').last.stripSuffix(".html")
       s"$path\n${CinemaMovieJson.encode(client.parseChunkPage(date, clients.tools.FixtureFile.read(path)))}"
     }
-    withClue(s"the parse of the recorded day pages moved — bump FlicksClient.PageParserVersion and pin its digest: ") {
-      Pinned.get(FlicksClient.PageParserVersion) shouldBe Some(_root_.tools.Digest.sha256Hex(parses.mkString("\n")))
+    withClue(s"the parse of the recorded day pages moved — bump FlicksDayPage.PageParserVersion and pin its digest: ") {
+      Pinned.get(FlicksDayPage.PageParserVersion) shouldBe Some(_root_.tools.Digest.sha256Hex(parses.mkString("\n")))
     }
   }
 
   // The recorded pages exercise only what they hold: a change to the encoder, the name helper or the models
   // they never reach kept serving remembered parses. The memo's name for the parse covers that code's bytes.
-  "FlicksClient.PageParser" should "name the hand version and the code the parse runs through beyond FlicksClient" in {
-    FlicksClient.ParseClasses should contain allOf (CinemaMovieJson.getClass, _root_.tools.PersonName.getClass, classOf[models.CinemaMovie])
-    FlicksClient.PageParser shouldBe s"${FlicksClient.PageParserVersion}:${_root_.tools.Digest.classesHex(FlicksClient.ParseClasses)}"
+  "FlicksDayPage.PageParser" should "name the hand version and the code the parse runs through beyond FlicksClient" in {
+    FlicksDayPage.ParseClasses should contain allOf (CinemaMovieJson.getClass, _root_.tools.PersonName.getClass, classOf[models.CinemaMovie])
+    FlicksDayPage.PageParser shouldBe s"${FlicksDayPage.PageParserVersion}:${_root_.tools.Digest.classesHex(FlicksDayPage.ParseClasses)}"
     _root_.tools.Digest.classesHex(Seq(classOf[models.CinemaMovie])) should not be _root_.tools.Digest.classesHex(Seq(classOf[models.Movie]))
   }
 }

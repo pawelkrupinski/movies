@@ -117,5 +117,5 @@ object FlicksFilmPage {
   private val MinutesPattern    = """^(\d+)\s*mins?$""".r
   private val IsoDuration       = """T(?:(\d+)H)?(?:(\d+)M)?""".r
   private val PosterPath        = "/images/movies/poster"
-  private val PlaceholderPoster = FlicksClient.PlaceholderPoster
+  private val PlaceholderPoster = FlicksDayPage.PlaceholderPoster
 }

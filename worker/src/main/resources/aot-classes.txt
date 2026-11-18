@@ -8718,8 +8718,13 @@ services.cinemas.common.FilmPageCard$
 services.cinemas.common.FirstAnsweringScraper
 services.cinemas.common.FlicksClient
 services.cinemas.common.FlicksClient$
-services.cinemas.common.FlicksClient$RawFlicksSlot
-services.cinemas.common.FlicksClient$RawFlicksSlot$
+services.cinemas.common.FlicksDayPage
+services.cinemas.common.FlicksDayPage$
+services.cinemas.common.FlicksDayPage$FilmCard
+services.cinemas.common.FlicksDayPage$FilmCard$
+services.cinemas.common.FlicksDayPage$KeptRanges
+services.cinemas.common.FlicksDayPage$RawFlicksSlot
+services.cinemas.common.FlicksDayPage$RawFlicksSlot$
 services.cinemas.common.FlicksFilmPage
 services.cinemas.common.FlicksFilmPage$
 services.cinemas.common.FlicksFilmPage$$anon$1
@@ -8840,8 +8845,6 @@ services.cinemas.common.VenueCategory$
 services.cinemas.common.VenueCredits
 services.cinemas.common.VenueCredits$
 services.cinemas.common.VenueCredits$$anon$1
-services.cinemas.common.VenueCredits$$anon$2
-services.cinemas.common.VenueCredits$$anon$3
 services.cinemas.common.VenueCredits$Cast$
 services.cinemas.common.VenueCredits$Countries$
 services.cinemas.common.VenueCredits$Director$
@@ -9761,6 +9764,7 @@ services.cinemas.uk.OdeonClient
 services.cinemas.uk.OdeonClient$
 services.cinemas.uk.OdeonParser
 services.cinemas.uk.OdeonParser$
+services.cinemas.uk.OdeonParser$$anon$1
 services.cinemas.uk.OdeonParser$OdeonSite
 services.cinemas.uk.OdeonParser$OdeonSite$
 services.cinemas.uk.OdeonParser$RawOdeonShowtime

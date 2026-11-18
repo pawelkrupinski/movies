@@ -6,7 +6,7 @@ import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.common.{FlicksClient, FlicksDayPage, FlicksMarket}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -29,7 +29,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     FixtureFile.read(
       "test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/odeon-cinema-norwich/2026-07-11.html")
 
-  private val slots = FlicksClient.parseDay(fixture, date, Uk)
+  private val slots = FlicksDayPage.parseDay(fixture, date, Uk)
 
   "parseDay" should "read every film on the day" in {
     slots.map(_.slug).distinct.size shouldBe 15
@@ -49,7 +49,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
    *  is uncredited — while the button's `data-eventjson` names both: "edmund goulding,sam wood".
    *  Keeping only the card's name matched the listing to Goulding's "The Old Maid" (1939) and left
    *  the right film (Sam Wood, 1935) unmatched. */
-  private val lakewoodRanch = FlicksClient.parseDay(
+  private val lakewoodRanch = FlicksDayPage.parseDay(
     FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/cinema/sessions/lakewood-ranch-cinemas-6/2026-10-12.html"),
     LocalDate.of(2026, 10, 12), FlicksMarket.UnitedStates)
 
@@ -293,7 +293,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       "test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28.html")
 
   private val dartingtonDate  = LocalDate.of(2026, 7, 28)
-  private lazy val unbookable = FlicksClient.parseDay(unbookableFixture, dartingtonDate, Uk)
+  private lazy val unbookable = FlicksDayPage.parseDay(unbookableFixture, dartingtonDate, Uk)
 
   "parseDay" should "read sessions rendered as a <span> button (no booking link)" in {
     unbookable.map(_.slug).distinct should contain theSameElementsAs Seq("the-odyssey-2026", "minions-3")

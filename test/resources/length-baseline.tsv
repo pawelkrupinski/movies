@@ -20,10 +20,6 @@ method-lines	identity/src/main/scala/services/identity/TakeChangeLines.scala:Tak
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.corrected	73
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	72
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala:AgreementStage.resolved	67
-method-lines	scrapers/src/main/scala/services/cinemas/common/FlicksClient.scala:FlicksClient.parseDocument	53
-method-lines	scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.scala:SourceFallbackScraper.fetchWithSource	53
-method-lines	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	63
-method-lines	scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala:CinemaCityClient.parseDay	55
 method-lines	scrapers/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala:FilmwebShowtimesClient.fetch	52
 method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoBulgarskaClient.scala:KinoBulgarskaClient.parseHtml	52
 method-lines	scrapers/src/main/scala/services/cinemas/pl/KinoGramClient.scala:KinoGramClient.fetch	55
