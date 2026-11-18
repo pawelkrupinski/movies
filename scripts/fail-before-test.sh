@@ -130,7 +130,7 @@ cat > "$base/bin/ci-sbt" <<STUB
 c=""; while [ \$# -gt 0 ]; do case "\$1" in --commit) c=\$2; shift 2 ;; --log) l=\$2; shift 2 ;; --) shift; break ;; *) shift ;; esac; done
 echo "\$c \$*" >> "$base/ci-runs"
 [ -z "\${NO_VERDICT:-}" ] || exit 2
-t=\$(mktemp -d); git archive "\$c" | tar -x -C "\$t"; (cd "\$t" && bash \$1) > "\$l" 2>&1; rc=\$?; rm -rf "\$t"; exit "\$((rc == 0 ? 0 : 1))"
+. "$HERE/scratch-git.sh"; t=\$(mktemp -d); scratch_git "\$PWD" archive "\$c" | tar -x -C "\$t"; (cd "\$t" && bash \$1) > "\$l" 2>&1; rc=\$?; rm -rf "\$t"; exit "\$((rc == 0 ? 0 : 1))"
 STUB
 chmod +x "$base/bin/ci-sbt"
 export KINOWO_CI_SBT="$base/bin/ci-sbt"
