@@ -93,6 +93,7 @@ is that the local toolchain is missing (e.g. no full Xcode for
   complex than its row (or a new one over a limit) fails it: split it, or `--update` and commit the baseline with its
   trailer. `--update` after a cleanup records the falls (no trailer). A measure change runs `quality/Test/test`
   (Sonar's published examples) and `scripts/run-script-tests quality` (the ratchet and its mutation test).
+  `scripts/hotspots` ranks where to clean first (churn × complexity, change-coupled pairs): a report, not a layer.
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 

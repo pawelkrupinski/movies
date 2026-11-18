@@ -1,0 +1,79 @@
+name: Quality hotspots
+
+# THE MONTHLY HOTSPOT REPORT (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's
+# last 90 days -- the production sources ranked by relative churn x cognitive complexity, and the change-coupling pairs
+# across modules or packages -- beside scripts/quality-report's measure (the methods over each limit, the longest
+# sources, every clone group). Published as assets of the rolling release `quality-hotspots` (`hotspots.md`,
+# `quality.md`, and a dated copy of each), and the run's summary. No issue, no PR: a reader opens the release.
+on:
+    schedule:
+        # 11:17 UTC on the 1st, an hour no other scheduled job holds:: outside the nightly recording's and the explorers' hours
+        - cron: '17 11 1 * *'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py): treated as the schedule.
+    repository_dispatch:
+        types: [scheduled-quality-hotspots]
+    workflow_dispatch:
+
+concurrency:
+    group: quality-hotspots
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
+jobs:
+    hotspots:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 30
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # the 90 days of history the churn and the change coupling read
+                  fetch-depth: 0
+            # the quality module compiles alone (it depends on no other module): no build cache worth restoring
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache: 'false'
+            - name: Measure the production sources
+              run: sbt "quality/runMain quality.QualityReport --root $PWD --rows $RUNNER_TEMP/rows.tsv --files $RUNNER_TEMP/files.tsv --report $RUNNER_TEMP/quality.md"
+            - name: Rank the hotspots
+              run: scripts/hotspots --files "$RUNNER_TEMP/files.tsv" > "$RUNNER_TEMP/hotspots.md"
+            - name: Publish the report
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  cat "$RUNNER_TEMP/hotspots.md" "$RUNNER_TEMP/quality.md" >> "$GITHUB_STEP_SUMMARY"
+                  rel=quality-hotspots
+                  if ! gh release view "$rel" > /dev/null; then
+                      scripts/ci/gh-release.sh create "$rel" --prerelease --title "Quality hotspots (rolling)" \
+                          --notes "The monthly hotspot report (.github/workflows/quality-hotspots.yml, scripts/hotspots). Not a version of anything."
+                  fi
+                  day="$(date -u +%F)"
+                  cp "$RUNNER_TEMP/hotspots.md" "$RUNNER_TEMP/hotspots-$day.md"
+                  cp "$RUNNER_TEMP/quality.md" "$RUNNER_TEMP/quality-$day.md"
+                  scripts/ci/gh-release.sh upload "$rel" "$RUNNER_TEMP/hotspots.md" "$RUNNER_TEMP/quality.md" \
+                      "$RUNNER_TEMP/hotspots-$day.md" "$RUNNER_TEMP/quality-$day.md" --clobber
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [hotspots]
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

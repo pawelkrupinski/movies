@@ -53,6 +53,7 @@ on:
             - Page test repeat
             - Landing check build cache
             - Pre-commit check
+            - Quality hotspots
             - Prune Actions caches
             - Record scrape fixtures
             - Renovate

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# THE HOTSPOT REPORT (CLAUDE.md, "Code quality ratchets"; a report, never a gate): the production sources ranked by
+# relative churn x cognitive complexity over the last 90 days of git history, and the change-coupling pairs (sources in
+# different modules or packages changed together in 5+ commits), as markdown on stdout (scripts/ci/hotspots.py).
+#
+#   scripts/hotspots [--files <files.tsv>] [hotspots.py options: --since "90 days ago" --top 15 --pairs 10
+#                    --min-shared 5 --max-commit-files 40]
+#
+# The per-source complexity comes from `quality/runMain quality.QualityReport --files` (scripts/sbt-warm), unless
+# --files names one already written (quality-monthly.yml's run). Needs the history: a shallow clone ranks nothing.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+files="" pass=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --files) files="$2"; shift ;;
+        -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) pass+=("$1") ;;
+    esac
+    shift
+done
+cd "$root"
+if [ -z "$files" ]; then
+    out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
+    "$root/scripts/sbt-warm" "quality/runMain quality.QualityReport --root $root --rows $out/rows.tsv --files $out/files.tsv" \
+        > "$out/sbt.log" 2>&1 \
+        || { tail -30 "$out/sbt.log" >&2; echo "hotspots: sbt quality/runMain failed" >&2; exit 2; }
+    files="$out/files.tsv"
+fi
+python3 "$root/scripts/ci/hotspots.py" --files "$files" ${pass[@]+"${pass[@]}"}

@@ -132,6 +132,15 @@
         "*-*-* 04:17:00 UTC"
       ]
     },
+    "quality-hotspots": {
+      "crons": [
+        "17 11 1 * *"
+      ],
+      "file": "quality-hotspots.yml",
+      "onCalendar": [
+        "*-*-01 11:17:00 UTC"
+      ]
+    },
     "record-scrape-fixtures": {
       "crons": [
         "31 23 * * *"
