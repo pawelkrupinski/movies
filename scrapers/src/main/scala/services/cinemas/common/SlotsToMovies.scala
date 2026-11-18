@@ -19,6 +19,16 @@ private[cinemas] final case class ScrapedSlot(
   format:     List[String]   = Nil
 )
 
+/** One screening card of a page that lists a card per screening, each card linking its film's own page by slug and
+  * none selling a ticket (the venue books by phone or a form): folded by [[SlotsToMovies.byFilmPage]]. */
+private[cinemas] final case class FilmPageCard(
+  title:     String,
+  filmSlug:  String,
+  dateTime:  LocalDateTime,
+  posterUrl: Option[String] = None,
+  year:      Option[Int]    = None
+)
+
 /** The "fold raw screening slots into [[CinemaMovie]]s" shape every cinema
   * scraper repeats: group the per-screening slots by one film's key (its cleaned
   * title, or a feed's film id / slug), turn each group's slots into
@@ -153,4 +163,22 @@ private[cinemas] object SlotsToMovies {
         showtimes = showtimes
       )
     }
+
+  /** The whole fold for a page of [[FilmPageCard]]s: one film per slug (its first card's title, year and poster, its
+    * page `filmUrlOf(slug)`), one showtime per time, no booking link. */
+  def byFilmPage(cards: Seq[FilmPageCard], cinema: Cinema, filmUrlOf: String => String): Seq[CinemaMovie] =
+    fold(cards, _.filmSlug, card => Showtime(card.dateTime, bookingUrl = None), distinctBy = _.dateTime) { (slug, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(head.title, releaseYear = head.year),
+        cinema    = cinema,
+        posterUrl = head.posterUrl,
+        filmUrl   = Some(filmUrlOf(slug)),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
 }
+

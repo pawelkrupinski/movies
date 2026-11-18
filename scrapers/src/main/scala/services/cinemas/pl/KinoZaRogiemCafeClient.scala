@@ -1,13 +1,10 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.{FilmPageCard, ListingPageScraper, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -36,32 +33,12 @@ class KinoZaRogiemCafeClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            => LocalDate
-) extends CinemaScraper {
+) extends ListingPageScraper(http, KinoZaRogiemCafeClient.RepertoireUrl, KinoZaRogiemCafeClient.BaseUrl) {
 
   import KinoZaRogiemCafeClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] = {
-    val html = HttpRead.page(http, RepertoireUrl)
-    val document  = Jsoup.parse(html)
-    val slots = parseDocument(document, today)
-
-    SlotsToMovies.fold(slots, _.filmSlug, s => Showtime(s.dateTime, bookingUrl = None), distinctBy = _.dateTime) { (_, group, showtimes) =>
-      val head = group.head
-      CinemaMovie(
-        movie     = Movie(head.title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = Some(BaseUrl + "/film/" + head.filmSlug + "/"),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
-  }
+  protected def parsePage(html: String): Seq[CinemaMovie] =
+    SlotsToMovies.byFilmPage(parseDocument(Jsoup.parse(html), today), cinema, slug => s"$BaseUrl/film/$slug/")
 }
 
 object KinoZaRogiemCafeClient {
@@ -81,13 +58,7 @@ object KinoZaRogiemCafeClient {
   private val BlueLabelPat =
     """(?s)background-color: #2e3192.*?</span></span>([^<]+)""".r
 
-  private[cinemas] case class RawSlot(
-    title:    String,
-    filmSlug: String,
-    dateTime: LocalDateTime
-  )
-
-  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[FilmPageCard] = {
     // The film-post grid is the section containing blog-classic-v6 posts of
     // type "film". Each wrapping div has class "post-wrapper … film …".
     document.select("div.post-wrapper.film").asScala.toSeq.flatMap { wrapper =>
@@ -111,7 +82,7 @@ object KinoZaRogiemCafeClient {
         dt   <- dateTime
         t    <- title
         slug <- filmSlug
-      } yield RawSlot(t, slug, dt)
+      } yield FilmPageCard(t, slug, dt)
     }
   }
 

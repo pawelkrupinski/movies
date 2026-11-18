@@ -1,13 +1,10 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.{FilmPageCard, ListingPageScraper, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -34,33 +31,12 @@ class KinoRomaClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            => LocalDate
-) extends CinemaScraper {
+) extends ListingPageScraper(http, KinoRomaClient.RepertoireUrl, KinoRomaClient.BaseUrl) {
 
   import KinoRomaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] = {
-    val html = HttpRead.page(http, RepertoireUrl)
-    val document  = Jsoup.parse(html)
-    val slots = parseDocument(document, today)
-
-    // Group by slug (one CinemaMovie per film)
-    SlotsToMovies.fold(slots, _.filmSlug, s => Showtime(s.dateTime, bookingUrl = None), distinctBy = _.dateTime) { (_, group, showtimes) =>
-      val head = group.head
-      CinemaMovie(
-        movie     = Movie(head.title, releaseYear = head.year),
-        cinema    = cinema,
-        posterUrl = head.posterUrl,
-        filmUrl   = Some(BaseUrl + "/repertuar/" + head.filmSlug),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
-  }
+  protected def parsePage(html: String): Seq[CinemaMovie] =
+    SlotsToMovies.byFilmPage(parseDocument(Jsoup.parse(html), today), cinema, slug => s"$BaseUrl/repertuar/$slug")
 }
 
 object KinoRomaClient {
@@ -71,15 +47,7 @@ object KinoRomaClient {
   private val SlugPat     = """/repertuar/([^/?]+)""".r
   private val YearPat     = """\b(?:19|20)\d{2}\b""".r
 
-  private[cinemas] case class RawSlot(
-    title:     String,
-    filmSlug:  String,
-    dateTime:  LocalDateTime,
-    posterUrl: Option[String],
-    year:      Option[Int]
-  )
-
-  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] =
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[FilmPageCard] =
     document.select("div.poster-box").asScala.toSeq.flatMap { box =>
       val dateText  = Option(box.selectFirst("div.big-date")).map(_.text.trim).getOrElse("")
       val hourText  = Option(box.selectFirst("div.hour")).map(_.text.trim).getOrElse("")
@@ -97,7 +65,7 @@ object KinoRomaClient {
         slug <- filmSlug
         date <- parseDate(dateText, today)
         time <- ScraperParse.parseHHmm(hourText)
-      } yield RawSlot(t, slug, LocalDateTime.of(date, time), posterUrl, year)
+      } yield FilmPageCard(t, slug, LocalDateTime.of(date, time), posterUrl, year)
     }
 
   /** "DD.MM" → LocalDate; if the date would be more than 60 days in the past,

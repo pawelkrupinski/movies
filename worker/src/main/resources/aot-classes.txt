@@ -8703,6 +8703,8 @@ services.cinemas.common.FallbackEligibility
 services.cinemas.common.FallbackEligibility$
 services.cinemas.common.FilmDetail
 services.cinemas.common.FilmDetail$
+services.cinemas.common.FilmPageCard
+services.cinemas.common.FilmPageCard$
 services.cinemas.common.FirstAnsweringScraper
 services.cinemas.common.FlicksClient
 services.cinemas.common.FlicksClient$
