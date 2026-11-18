@@ -13,10 +13,10 @@ import scala.collection.mutable
  * object (the model keeps an unmoved family's), a stored film another writer changed. [[update]] returns exactly what
  * it moved, as [[ProjectionScope.Changes]] — the tick's changes, with nothing diffed whole.
  *
- * The index it keeps is the one [[IdentityProjectionPlan.index]] builds from the same inputs, entry for entry; the
+ * The index it keeps is the one [[ProjectionIndexing.index]] builds from the same inputs, entry for entry; the
  * rules — one listing per key, a listing's previous film, the clusters — are that builder's own, called from here
- * ([[IdentityProjectionPlan.oneByKey]], [[IdentityProjectionPlan.ownerOf]], [[StoredFilmSlots.pick]],
- * [[IdentityProjectionPlan.clusterOf]]). `ScopedProjectionEquivalenceSpec` checks the two equal after every tick.
+ * ([[ProjectionIndexing.oneByKey]], [[ProjectionIndexing.ownerOf]], [[StoredFilmSlots.pick]],
+ * [[ProjectionIndexing.clusterOf]]). `ScopedProjectionEquivalenceSpec` checks the two equal after every tick.
  *
  * What it knows per listing key — the listing published under it, its previous film, its cluster, the decision naming
  * it, the stored films whose slot it is — is ONE [[LiveProjectionIndex.Entry]] in one map: a map per field kept a hash
@@ -26,7 +26,7 @@ import scala.collection.mutable
  * Single-threaded: the projection's tick holds it.
  */
 final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYear) {
-  import IdentityProjectionPlan.{clusterOf => clusterFor, oneByKey, ownerOf}
+  import ProjectionIndexing.{clusterOf => clusterFor, oneByKey, ownerOf}
 
   // Listings: each venue's listing as last read (the object, to tell it unmoved) — one listing per key at it is worked
   // out again only for a venue an update reads by key (a key's venue is its own, `ListingKey.venue`).
@@ -333,7 +333,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private def fileResolved(resolved: Seq[ResolverDecision], touched: mutable.HashSet[ClusterId]): Unit =
     resolved.foreach { d =>
       if (!decisions.containsKey(d)) {
-        val id = IdentityProjectionPlan.clusterIdOf(d)
+        val id = ProjectionIndexing.clusterIdOf(d)
         decisions.put(d, id)
         touched += id
         decisionsOf(id) = d :: decisionsOf.getOrElse(id, Nil)
@@ -425,7 +425,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private val afterWrites = mutable.HashSet.empty[ListingKey]
 
   /** Work out `keys`' previous films again: the film whose slot each is, else the one whose slot it folds into — the
-   *  builder's rule ([[IdentityProjectionPlan.index]]). The ones that moved. */
+   *  builder's rule ([[ProjectionIndexing.index]]). The ones that moved. */
   private def repoint(keys: Iterator[ListingKey], before: Option[mutable.HashMap[ListingKey, Option[StoredFilmRef]]] = None)
       : mutable.HashSet[ListingKey] = {
     val moved = mutable.HashSet.empty[ListingKey]
@@ -477,7 +477,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   }
 
   private def layoutOf(r: StoredMovieRecord, at: Option[Set[Source]] = None): Seq[(Option[(String, String)], Option[ListingKey])] =
-    sourcesOf(r, at).toSeq.map { case (source, sd) => val slot = IdentityProjectionPlan.slotOf(source, sd); slot.at -> slot.key }
+    sourcesOf(r, at).toSeq.map { case (source, sd) => val slot = ProjectionIndexing.slotOf(source, sd); slot.at -> slot.key }
 
   /** `r`'s slots, or only those at `at`'s sources. */
   private def sourcesOf(r: StoredMovieRecord, at: Option[Set[Source]]): Iterator[(Source, SourceData)] =
@@ -495,7 +495,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       storedById = storedById.updated(id, r)
       return
     }
-    val slots  = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
+    val slots  = r.record.data.toSeq.map { case (source, sd) => source -> ProjectionIndexing.slotOf(source, sd) }
     unstore(id, reslot)
     storedById = storedById.updated(id, r)
     val ref   = StoredFilmRef(id, r.record.tmdbId)

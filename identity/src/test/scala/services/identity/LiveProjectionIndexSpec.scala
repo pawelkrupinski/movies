@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 import scala.util.Random
 
 /**
- * [[LiveProjectionIndex]] moved step by step is, after every step, the index [[IdentityProjectionPlan.index]] builds afresh
+ * [[LiveProjectionIndex]] moved step by step is, after every step, the index [[ProjectionIndexing.index]] builds afresh
  * from the same inputs — venues joining and leaving the roster, listings re-scraped, the model taking a listing up or
  * letting it go with no decision of its moving, decisions replaced only where a family moved, stored films written,
  * changed and deleted, two films of one slot title at a venue. `ScopedProjectionEquivalenceSpec` holds the projection
@@ -85,7 +85,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
             written.record.data.keys.toSeq.flatMap(s => ListingKey.ofSource(s, written.record.data(s))))), Nil)
         }
         val kept  = live.index(counters)
-        val built = IdentityProjectionPlan.index(all.filter(l => held(l.listing.key)),
+        val built = ProjectionIndexing.index(all.filter(l => held(l.listing.key)),
           Resolution(decisions.values.toSeq, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty), stored.values.toSeq, counters, normalizer)
         withClue(s"seed $seed, step $step: ") {
           kept.byKey shouldBe built.byKey
@@ -205,7 +205,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     stored += "f2" -> rewritten
     live.written(Seq(ProjectedFilm(rewritten.id, 2, rewritten.title, rewritten.year, rewritten.key(normalizer), rewritten.record, Nil)), Nil)
     live.update(Seq(Multikino.displayName -> read), read.map(_.listing.key), decided, stored.values.toSeq)
-    val built = IdentityProjectionPlan.index(read, Resolution(decided, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty), stored.values.toSeq,
+    val built = ProjectionIndexing.index(read, Resolution(decided, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty), stored.values.toSeq,
       counters, normalizer)
     built.previousOf(read.head.listing.key).id shouldBe "f1"
     live.index(counters).previousOf shouldBe built.previousOf

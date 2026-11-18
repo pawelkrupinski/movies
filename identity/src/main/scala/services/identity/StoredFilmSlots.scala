@@ -8,7 +8,7 @@ import services.titles.TitleNormalizer
 import services.titles.YearWindow
 
 /** A stored film a listing is on before a projection — the film it inherits its id from
- *  ([[IdentityProjectionPlan.index]]): its film id and TMDB id. */
+ *  ([[ProjectionIndexing.index]]): its film id and TMDB id. */
 final case class StoredFilmRef(id: String, tmdbId: Option[Int])
 
 object StoredFilmRef {

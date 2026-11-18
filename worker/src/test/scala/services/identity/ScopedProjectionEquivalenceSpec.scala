@@ -153,7 +153,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     val listings = w.intake.projectedByVenue(venues).flatMap(_._2)
     val resolved = s.resolve(() => listings.map(_.listing)).get
     val held     = resolved.listings.toSet
-    val built    = IdentityProjectionPlan.index(listings.filter(l => held(l.listing.key)), resolved.resolution,
+    val built    = ProjectionIndexing.index(listings.filter(l => held(l.listing.key)), resolved.resolution,
       w.cache.snapshot(), counters, normalizer)
     withClue("the kept index's listings: ")(kept.byKey shouldBe built.byKey)
     withClue("the kept index's stored films: ")(kept.storedById.keySet shouldBe built.storedById.keySet)
@@ -176,7 +176,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     val listings = w.intake.projectedByVenue(venues).flatMap(_._2)
     val resolved = s.resolve(() => listings.map(_.listing)).get
     val held     = resolved.listings.toSet
-    val built    = IdentityProjectionPlan.index(listings.filter(l => held(l.listing.key)), resolved.resolution, w.cache.snapshot(), counters,
+    val built    = ProjectionIndexing.index(listings.filter(l => held(l.listing.key)), resolved.resolution, w.cache.snapshot(), counters,
       normalizer)
     (built.previousOf.map { case (k, ref) => k -> ref.tmdbId }, built.clusterOf.map { case (k, id) => k -> built.clusters(id).members })
   }

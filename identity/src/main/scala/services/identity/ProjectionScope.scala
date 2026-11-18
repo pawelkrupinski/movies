@@ -22,7 +22,7 @@ final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: 
                          provisional: Boolean = false)
 
 /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film
- *  ([[IdentityProjectionPlan.index]]): every listing by key, each listing's previous film (`previousOf` — the film whose
+ *  ([[ProjectionIndexing.index]]): every listing by key, each listing's previous film (`previousOf` — the film whose
  *  slot it is, else the one whose slot it folds into), each stored film's listings, the FilmId map extended over them,
  *  and the clusters, one per film, with each listing's. What [[ProjectionScope]] closes a tick's changes over. */
 final case class ProjectionIndex(byKey: Map[ListingKey, ProjectedListing], storedById: Map[String, StoredMovieRecord],

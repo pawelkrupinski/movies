@@ -148,7 +148,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val memo   = new VenueSlotMemo(0L)
     val shapes = FilmShapes()
     def drafted(stored: Seq[StoredMovieRecord], counters: FilmIdCounters) = {
-      val index = IdentityProjectionPlan.index(lalka ++ obcy, r, stored, counters, normalizer)
+      val index = ProjectionIndexing.index(lalka ++ obcy, r, stored, counters, normalizer)
       val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo, shapes)
       memo.endTick(); shapes.commit(whole = true); d
     }

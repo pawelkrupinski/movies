@@ -209,7 +209,7 @@ private[identity] object VenueSlots {
 
   /** Of the rows `cinema` publishes under one key, the one standing for them: the smallest by the listings' total order,
    *  then by the rest of the row ([[ProjectedListing.rowDigest]]) — two rows the listings tie, a poster or a synopsis
-   *  apart, by what they print, never by the order the venue prints them in ([[IdentityProjectionPlan.oneByKey]]). */
+   *  apart, by what they print, never by the order the venue prints them in ([[ProjectionIndexing.oneByKey]]). */
   private[identity] def first(cinema: Cinema, rows: Seq[CinemaMovie], normalizer: TitleNormalizer): CinemaMovie =
     rows.minBy(cm => (Listing.of(cinema, cm, normalizer), ProjectedListing.rowDigest(cm)))
 

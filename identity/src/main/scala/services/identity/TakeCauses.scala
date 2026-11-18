@@ -33,10 +33,10 @@ object TakeCauses {
   /** `take`'s cause, for a move ([[TakeChange.moved]]); none for a new listing's first take. */
   def of(take: TakeChange, reading: Reading): Option[TakeChange.Cause] =
     take.previousFilm.filter(_ => take.moved).map { film =>
-      val slots = reading.stored(film).toSeq.flatMap(IdentityProjectionPlan.slotsOf)
+      val slots = reading.stored(film).toSeq.flatMap(ProjectionIndexing.slotsOf)
       val left  = slots.exists {
-        case IdentityProjectionPlan.Slot(Some(at), _, key) => !reading.publishedAt(at) && key.forall(k => !reading.published(k))
-        case IdentityProjectionPlan.Slot(None, _, key)     => key.exists(k => !reading.published(k))
+        case ProjectionIndexing.Slot(Some(at), _, key) => !reading.publishedAt(at) && key.forall(k => !reading.published(k))
+        case ProjectionIndexing.Slot(None, _, key)     => key.exists(k => !reading.published(k))
       }
       val stoodOn = slots.iterator.flatMap(_.key) ++ reading.members(take.listing).iterator ++ Iterator(take.listing)
       val moved   = reading.republished.exists(again => stoodOn.exists(again))
