@@ -9337,10 +9337,13 @@ services.cinemas.pl.KinoSpojniaClient$RawSlot$
 services.cinemas.pl.KinoStudioClient
 services.cinemas.pl.KinoStudioClient$
 services.cinemas.pl.KinoStudioClient$$anon$1
+services.cinemas.pl.KinoStudioClient$$anon$2
 services.cinemas.pl.KinoStudioClient$FilmBlock
 services.cinemas.pl.KinoStudioClient$FilmBlock$
 services.cinemas.pl.KinoStudioClient$FilmMeta
 services.cinemas.pl.KinoStudioClient$FilmMeta$
+services.cinemas.pl.KinoStudioClient$MetaField
+services.cinemas.pl.KinoStudioClient$MetaField$
 services.cinemas.pl.KinoStudioClient$Scan
 services.cinemas.pl.KinoStudioClient$Scan$
 services.cinemas.pl.KinoStylowyClient
@@ -9441,6 +9444,8 @@ services.cinemas.pl.MsiScraper$FilmMeta
 services.cinemas.pl.MsiScraper$FilmMeta$
 services.cinemas.pl.MsiScraper$RawSlot
 services.cinemas.pl.MsiScraper$RawSlot$
+services.cinemas.pl.MsiScraper$Skin
+services.cinemas.pl.MsiScraper$Skin$
 services.cinemas.pl.MultikinoClient
 services.cinemas.pl.MultikinoClient$
 services.cinemas.pl.MultikinoParser
@@ -9547,6 +9552,8 @@ services.cinemas.pl.VisualSoftPortal
 services.cinemas.pl.VisualSoftPortal$
 services.cinemas.pl.VisualTicketClient
 services.cinemas.pl.VisualTicketClient$
+services.cinemas.pl.WpTheatreEvents
+services.cinemas.pl.WpTheatreEvents$
 services.cinemas.pl.venues.BialystokVenues
 services.cinemas.pl.venues.BialystokVenues$
 services.cinemas.pl.venues.BielskoBialaVenues
@@ -9690,6 +9697,7 @@ services.cinemas.roster.CopiedFeedArchive
 services.cinemas.roster.CopiedFeedDetector
 services.cinemas.roster.CopiedFeedDetector$
 services.cinemas.roster.CopiedFeedDetector$$anon$1
+services.cinemas.roster.CopiedFeedDetector$SessionHashes
 services.cinemas.roster.DistinctVenuePairs
 services.cinemas.roster.DistinctVenuePairs$
 services.cinemas.roster.PublishedVenue
