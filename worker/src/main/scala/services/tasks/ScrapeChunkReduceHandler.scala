@@ -70,7 +70,7 @@ class ScrapeChunkReduceHandler(
         } catch {
           case e: Exception =>
             logger.warn(s"reduce/publish for $cinema run $runId failed, will retry: ${e.getMessage}")
-            Reschedule(Some(e.getMessage))
+            Reschedule(Some(tools.FailureText.of(e)))
         }
     }
   }

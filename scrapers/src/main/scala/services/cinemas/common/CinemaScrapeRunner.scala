@@ -38,7 +38,7 @@ class CinemaScrapeRunner(
     // that the cinema was tried and failed.
     val CinemaScraper.Scraped(movies, viaFallback, readsComplete) =
       tools.AnyThrowable.rethrownAfter(scraper.fetchWithSource())(failure =>
-        archive(scraper, Seq.empty, listingComplete = true, Some(messageOf(failure))))
+        archive(scraper, Seq.empty, listingComplete = true, Some(tools.FailureText.of(failure))))
     // The sink decides FIRST, then the scrape is archived — in a `finally`, so a sink that throws
     // still leaves the attempt archived. The intake reads the archive for a venue with no accepted
     // listing of its own: archived first, that "last scrape" was the very scrape being judged, so the
@@ -70,9 +70,4 @@ class CinemaScrapeRunner(
       noScheduleListed = scraper.emptyListing == EmptyListing.NoScheduleListed,
       sourceKey        = scraper.sourceKey
     ))
-
-  /** Exception messages are often null (NPE, some driver errors); fall back to
-   *  the class name so a red row always says something. */
-  private def messageOf(failure: Throwable): String =
-    Option(failure.getMessage).filter(_.nonEmpty).getOrElse(failure.getClass.getName)
 }

@@ -93,8 +93,8 @@ class ScrapeChunkHandler(
             Deferred(Some(open.getMessage), Some(notBefore))
           // A failed fetch, or a store that failed to land the slice: retry the chunk.
           case e: Exception =>
-            logger.warn(s"chunk '$key' for $cinema run $runId failed: ${e.getMessage}")
-            Reschedule(Some(e.getMessage))
+            logger.warn(s"chunk '$key' for $cinema run $runId failed: ${tools.FailureText.of(e)}")
+            Reschedule(Some(tools.FailureText.of(e)))
         }
     }
   }

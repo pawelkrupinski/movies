@@ -275,9 +275,9 @@ class TaskWorker(
           PollResult.Completed
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
-          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, Some(exception.getMessage), millis)
+          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, Some(tools.FailureText.of(exception)), millis)
           else {
-            queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
+            queue.release(task.id, workerId, Some(tools.FailureText.of(exception)), Some(backoffUntil(task.attempts)))
             observer.onFinished(task, Outcome.Failed, millis)
             PollResult.Returned
           }

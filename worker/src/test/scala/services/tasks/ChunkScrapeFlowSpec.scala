@@ -442,6 +442,20 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.published should have size 1        // the failure was published through the recorder path
   }
 
+  // A failure need not say anything: a bare IOException's message is null. The planner read whether the page was gone
+  // off that null, the regex threw a NullPointerException out of the failure path, and nothing was published or recorded
+  // -- the venue only stayed due by accident (worker-uk's Westway Cinema Frome, 2026-11-12..17, Sentry KINOWO-34).
+  it should "publish and record a plan failure whose exception carries no message" in {
+    val h   = new Harness(new FakeChunkedScraper(Map.empty, planThrows = true, planFailure = () => new java.io.IOException()))
+    val key = ScrapeCinemaHandler.dedupKey(cinema)
+    h.planner.plan(cinemaName) shouldBe 0
+    h.published should have size 1
+    h.freshness.lastFetchedAt(key) shouldBe None   // failed, so due again next tick
+    h.planner.plan(cinemaName) shouldBe 0
+    h.planner.plan(cinemaName) shouldBe 0          // each failure counted: past the retry budget, parked
+    h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
   // A chunk whose first read lost a page fails to store it (a store that throws once) and the task
   // retries. The retry reads every page: nothing of the failed attempt may outlive it, or the run
   // reduces INCOMPLETE and skips the prune it owes.

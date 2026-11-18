@@ -144,12 +144,14 @@ class ChunkScrapePlanner(
     // and the closure sweep leaves such a venue alone until its season opens. And a page the
     // quarantine already holds gone (GoneUpstream) is its daily re-probe answering as expected:
     // 50 Filmstarts and 16 SensaCine pages warned once a probe for weeks (2026-10-29..11-12).
-    val gone = GoneUpstream.saysPageIsGone(e.getMessage)
+    // Read off the text the archive records the failure as: a message may be null, that text never is.
+    val said = tools.FailureText.of(e)
+    val gone = GoneUpstream.saysPageIsGone(said)
     if (gone && scraper.cinema.opening.offSeasonAt(clock.instant()))
-      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its page gone off-season: ${e.getMessage}")
+      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its page gone off-season: $said")
     else if (gone && pageKnownGone(scraper.cinema))
-      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its quarantined page still gone: ${e.getMessage}")
-    else logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
+      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its quarantined page still gone: $said")
+    else logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: $said")
     // The recording wrapper re-raises the failure — unless the venue's fallback
     // served it instead, which is the scrape succeeding, as on the plain path. Kept
     // due, it would be re-run on the next ticks and re-walk the fallback each time.

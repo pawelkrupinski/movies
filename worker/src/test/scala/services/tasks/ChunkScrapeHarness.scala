@@ -28,14 +28,16 @@ class FakeChunkedScraper(
   pageFailsIn: Set[String] = Set.empty,
   planPageFails: Boolean = false,
   // as `pageFailsIn`, on the chunk's first read only
-  pageFailsOnceIn: Set[String] = Set.empty
+  pageFailsOnceIn: Set[String] = Set.empty,
+  // what a `planThrows` plan throws
+  planFailure: () => Exception = () => new RuntimeException("nav down")
 ) extends ChunkedCinemaScraper {
   import FakeChunkedScraper.{CircuitBlockMs, Host}
   private val failed     = mutable.Set.empty[String]
   private val pageFailed = mutable.Set.empty[String]
   def scrapeHosts: Set[String] = Set(Host)
   def planChunks(): Seq[String] =
-    if (planThrows) throw new RuntimeException("nav down")
+    if (planThrows) throw planFailure()
     else {
       if (planPageFails) services.cinemas.common.ListingReads.pageFailed(new RuntimeException("a day probe failed"))
       slices.keys.toSeq.sorted
