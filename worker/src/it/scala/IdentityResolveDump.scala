@@ -1,8 +1,9 @@
 package integration
 
+import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
-import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
+
 import services.movies.ListingKey
 import tools._
 

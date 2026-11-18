@@ -22,8 +22,9 @@ object RecordedCorpus {
   /** One country's recording, opened: its archived scrapes, the replay fetch, its gap leaf and the gaps it named. */
   @nowarn("msg=unused import")
   final class Opened(val country: Country, val rows: Seq[Archived.Row], val fetch: HttpFetch, val leaf: GapLeaf, val missing: MissingFixtures) {
-    // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
-    import services.identity.*, services.identity.adapters.*
+    // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+    // 2026-11-18, services.identityadapters since).
+    import services.identity.*, services.identity.adapters.*, services.identityadapters.*
 
     /** The gaps met so far, as `TmdbIdentityLookups` tells a gap from an answer: per thread, lookups reading side by side. */
     def gaps: TmdbIdentityLookups.Gaps = new TmdbIdentityLookups.Gaps {

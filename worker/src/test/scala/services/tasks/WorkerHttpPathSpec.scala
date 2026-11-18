@@ -1,5 +1,6 @@
 package services.tasks
 
+import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, QuestionMemory, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
 import services.tasktypes.TaskType
 
 import clients.tools.ConstantHttpFetch
@@ -14,7 +15,7 @@ import services.enrichment.{ImdbClient, ImdbIdResolver}
 import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
 import services.identity.{AnswersChanged, CandidateQuery, Question, UnansweredTmdbLookups}
-import services.identity.adapters.{AgreementAskers, AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, QuestionMemory, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
+import services.identity.adapters.AgreementAskers
 import services.metrics.WorkerHttpMetrics
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.corpus.MovieService

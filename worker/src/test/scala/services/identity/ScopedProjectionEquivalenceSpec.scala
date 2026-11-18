@@ -1,8 +1,7 @@
 package services.identity
 
-
 import tools.SpecPool
-import services.identity.adapters.IdentityProjection
+import services.identityadapters.IdentityProjection
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe,

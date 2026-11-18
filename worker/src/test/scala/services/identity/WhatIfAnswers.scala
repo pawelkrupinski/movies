@@ -2,7 +2,7 @@ package services.identity
 
 import models.Country
 import org.bson.{BsonDocument, RawBsonDocument}
-import services.identity.adapters.{FamilySource, TmdbDocuments, TmdbKind, TmdbStore}
+
 import services.identity.agreement.VoterFamily
 import services.titles.TitleNormalizer
 
@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
 /**
@@ -33,7 +34,12 @@ import scala.jdk.CollectionConverters._
  *
  * A recording's answers (`--recording RUN`) are `scripts.IdentityDrift.recorded` over its FakeHttp.
  */
+@nowarn("msg=unused import")
 object WhatIfAnswers {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
+
 
   trait Source {
     /** The store both read and file into. */
@@ -69,19 +75,19 @@ object WhatIfAnswers {
     val docs: TmdbDocuments = new Layered(new OwnFreshPosters(mirror, clock), local)
     private val throttled = new Throttled(wire)
     private val bodies    = new tools.JsonBodies
-    private val normalizer = new adapters.TmdbNormalizer(new TmdbStore(docs, clock), bodies,
-      new adapters.KeptFailures(adapters.IdentityHistory.Discard, clock, "what-if"))
-    private val counted   = new adapters.LiveAsks.Counted(new adapters.NormalizingHttpFetch(throttled, normalizer))
+    private val normalizer = new TmdbNormalizer(new TmdbStore(docs, clock), bodies,
+      new KeptFailures(IdentityHistory.Discard, clock, "what-if"))
+    private val counted   = new LiveAsks.Counted(new NormalizingHttpFetch(throttled, normalizer))
     private val tmdb      = new clients.HttpTmdbClient(counted, Some(tmdbKey), country.language, bodies)
     private val imdb      = new services.enrichment.ImdbClient(counted)
-    val live: IdentityLookups = new adapters.TmdbIdentityLookups(tmdb, imdb, Nil)
+    val live: IdentityLookups = new TmdbIdentityLookups(tmdb, imdb, Nil)
     private val venueClock = new models.VenueClock(clock)
-    val stage: scripts.StageAnswers.Sources = sources(country, Seq(new adapters.ImdbFamily(new services.enrichment.ImdbClient(throttled)),
-      new adapters.WikiFamily(new services.enrichment.WikidataClient(throttled), country.language.getLanguage),
-      new adapters.FilmwebFamily(new services.enrichment.FilmwebClient(throttled),
+    val stage: scripts.StageAnswers.Sources = sources(country, Seq(new ImdbFamily(new services.enrichment.ImdbClient(throttled)),
+      new WikiFamily(new services.enrichment.WikidataClient(throttled), country.language.getLanguage),
+      new FilmwebFamily(new services.enrichment.FilmwebClient(throttled),
         services.cinemas.pl.FilmwebProgrammes.resolving(throttled, () => venueClock.todayInPoland).of),
-      new adapters.RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(throttled)),
-      new adapters.MetacriticFamily(new services.enrichment.MetacriticClient(throttled))).map(s => s.family -> s).toMap,
+      new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(throttled)),
+      new MetacriticFamily(new services.enrichment.MetacriticClient(throttled))).map(s => s.family -> s).toMap,
       throttled, id => scala.util.Try(tmdb.posters(id, also = Seq("en"))).getOrElse(Nil),
       findIn(docs, clock, imdbId => scala.util.Try(tmdb.findByImdbId(imdbId)).toOption.map(_ => ())))
     def report(): String = throttled.report()
@@ -117,13 +123,13 @@ object WhatIfAnswers {
   }
 
   /** `mirror`, less each film's posters (`poster|film|<tmdbId>`) THIS side's code calls out of date
-   *  ([[adapters.PosterAnswerStore.fresh]]: cut at a lower cap than its own, a young film's past its re-read, too old):
+   *  ([[PosterAnswerStore.fresh]]: cut at a lower cap than its own, a young film's past its re-read, too old):
    *  under [[Layered]] such a film reads the local store's document instead, and with none the stage asks again and files
    *  it there. So a change that needs answers prod has not filed (a raised poster cap) is measured on them, while a side
    *  whose code calls the mirror's document fresh (the base) reads the mirror's, never the other side's re-ask. Read only. */
   final class OwnFreshPosters(mirror: TmdbDocuments, clock: java.time.Clock) extends TmdbDocuments {
     private val FilmPrefix = "poster|film|"
-    private val own        = new adapters.PosterAnswerStore(new adapters.FamilyAnswerStore(mirror, clock), clock)
+    private val own        = new PosterAnswerStore(new FamilyAnswerStore(mirror, clock), clock)
     private def outOfDate(kind: TmdbKind, id: String): Boolean = kind == TmdbKind.Family && id.startsWith(FilmPrefix) &&
       id.substring(FilmPrefix.length).toIntOption.exists(film => !own.fresh(agreement.AgreementStage.PosterQuestion.Film(film)))
     def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =

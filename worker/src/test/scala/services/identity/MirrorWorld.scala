@@ -3,10 +3,11 @@ package services.identity
 import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.identity.adapters.{IdentityHistoryReader, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TmdbDocuments}
+
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, Instant, ZoneOffset}
+import scala.annotation.nowarn
 import scala.concurrent.Await
 
 /**
@@ -17,7 +18,12 @@ import scala.concurrent.Await
  * day it ran (the same harness bug as verify's dating of kept listings, a57790c723f2). What `MirrorRecompute`,
  * `FamilyCounterfactual` and `identity-what-if` read the mirror through.
  */
+@nowarn("msg=unused import")
 object MirrorWorld {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
+
 
   /** The mirror at `clock`'s instant: its listings (sorted, one per key), venue pages and TMDB / family documents. */
   final case class Moment(listings: Seq[Listing], pages: Seq[BsonDocument], documents: TmdbDocuments, clock: Clock)

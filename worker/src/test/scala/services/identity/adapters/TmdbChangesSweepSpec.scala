@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import clients.tools.FixtureFile
 import clients.HttpTmdbClient
 import org.bson.{BsonDocument, BsonString}

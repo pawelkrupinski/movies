@@ -1,12 +1,13 @@
 package scripts
 
+import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Answer, AnswersChanged, CandidateQuery, ForwardingIdentityLookups, Hit, IdentityLookups, IdentityMeasures,
   IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
-import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
+
 import services.identity.agreement.VoterFamily
 import tools.MutableClock
 
@@ -67,7 +68,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       def country: models.Country                            = de
       def normalizer: services.titles.TitleNormalizer        = services.titles.TitleNormalizer.forCountry(de)
       def families: Seq[VoterFamily]                         = Nil
-      def sources: Map[VoterFamily, services.identity.adapters.FamilySource] = Map.empty
+      def sources: Map[VoterFamily, services.identityadapters.FamilySource] = Map.empty
       def fetch: tools.HttpFetch                             = gap
       def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = Nil
       def find(imdb: String): services.identity.Answer[Option[Int]] = services.identity.Answer.Unknown

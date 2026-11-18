@@ -1,9 +1,10 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
+import services.identityadapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.movies.ListingKey

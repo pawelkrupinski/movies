@@ -1,7 +1,7 @@
 package services.identity
 
+import services.identityadapters.{IdentityProjection, IdentityProjectionMetrics}
 
-import services.identity.adapters.{IdentityProjection, IdentityProjectionMetrics}
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord, ScrapeAttempt}
 import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
   ScreeningTokens, SingleCountryNormalizer, StringPool}
@@ -30,7 +30,7 @@ private[identity] final class ProjectionWorld(
   pagesMoved:        () => Option[Seq[(Cinema, String)]] = () => Some(Nil),
   slotMemoOf:        Long => VenueSlotMemo = new VenueSlotMemo(_),
   /** The identity history (`identity_history`): the takes each projection moved, kept across a restart. */
-  val history:       services.identity.adapters.InMemoryIdentityHistory = new services.identity.adapters.InMemoryIdentityHistory) {
+  val history:       services.identityadapters.InMemoryIdentityHistory = new services.identityadapters.InMemoryIdentityHistory) {
   import ProjectionWorld.normalizer
 
   /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
@@ -73,15 +73,15 @@ private[identity] final class ProjectionWorld(
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
       def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
       override def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = { reversed ++= reversals; () }
-      def agreementPhase(mode: String, phase: services.identity.adapters.ProjectionPhase): Unit = ()
+      def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
     }, clock = clock, fingerprints = fingerprints, takeLines = new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
     scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
     suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () }, pagesMoved = pagesMoved,
     slotMemoOf = slotMemoOf,
     // as the worker's: each take kept as the projection moves it (AsyncIdentityHistory writes takes before it returns),
     // the reversal count seeded from them at construction
-    takeHistory = new services.identity.adapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
-    reversalsHeld = () => services.identity.adapters.TakeHistory.reversalsHeld(history, clock.millis()))
+    takeHistory = new services.identityadapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
+    reversalsHeld = () => services.identityadapters.TakeHistory.reversalsHeld(history, clock.millis()))
 
   def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
     archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))

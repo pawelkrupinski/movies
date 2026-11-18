@@ -7,7 +7,6 @@ import services.corpus.MovieService
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.tasks.SettleReaper
 
-
 /** A film's TMDB side once the identity model has named it (`MovieService`), IMDb-id recovery, the
  *  per-source resolution caches an operator's refresh forgets, and the projection's own schedule. */
 trait ResolutionWiring { self: WorkerWiring =>
@@ -83,8 +82,8 @@ trait ResolutionWiring { self: WorkerWiring =>
   def identityModelTakenUp(): Unit = identityProjectionTrigger.once(scala.concurrent.duration.Duration.Zero)(bootProjectionTick())
   lazy val settleReaper = {
     managedResources.stopping(new SettleReaper(() => settleTick(),
-    interval = SettleInterval(services.identity.adapters.IdentityProjection.ReconcileEvery),
-    initialDelay = SettleReaper.InitialDelay(services.identity.adapters.IdentityProjection.ReconcileEvery),
+    interval = SettleInterval(services.identityadapters.IdentityProjection.ReconcileEvery),
+    initialDelay = SettleReaper.InitialDelay(services.identityadapters.IdentityProjection.ReconcileEvery),
     runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools))
   }
 }

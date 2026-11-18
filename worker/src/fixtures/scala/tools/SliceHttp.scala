@@ -62,8 +62,9 @@ object SliceHttp {
    *  gap leaf counts it ([[gaps]]), anything else LACKING — or, with `widen`, read from the full recording and noted. */
   @nowarn("msg=unused import")
   final class Replaying(notes: Map[Request, Outcome], widen: Option[Noting] = None) extends HttpFetch {
-    // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
-    import services.identity.*, services.identity.adapters.*
+    // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+    // 2026-11-18, services.identityadapters since).
+    import services.identity.*, services.identity.adapters.*, services.identityadapters.*
 
     val lacking = ConcurrentHashMap.newKeySet[Request]()
     val gapsMet = ConcurrentHashMap.newKeySet[Request]()

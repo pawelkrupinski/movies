@@ -127,7 +127,7 @@ object MongoVenuePageStore {
   private[venuepages] val ReadFields = Seq("gone", "synopsis", "cast", "director", "runtimeMinutes", "releaseYear", "originalTitle",
     "countries", "genres", "posterUrl", "trailerUrl", "ageRating", "format")
 
-  private[venuepages] def documentOf(page: VenuePage): Document = {
+  private[services] def documentOf(page: VenuePage): Document = {
     val base = Document("_id" -> page.key.id, "group" -> page.key.detailGroup, "page" -> page.key.page,
       "readAt" -> new java.util.Date(page.readAt.toEpochMilli))
     page.outcome match {

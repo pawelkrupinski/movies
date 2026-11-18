@@ -1,9 +1,10 @@
 package integration
 
+import services.identityadapters.{HashedPoster, PosterAnswerStore, PosterHashing}
 import tools.TempDirectories
 import clients.{HttpTmdbClient, TmdbClient}
 import play.api.libs.json.{JsArray, Json}
-import services.identity.adapters.{HashedPoster, PosterAnswerStore, PosterHashing}
+
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{HttpPosterDownload, PosterDownload, PosterFailure}
 

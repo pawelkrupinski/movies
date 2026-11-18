@@ -1,9 +1,10 @@
 package services.identity
 
+import services.identityadapters.{HistoryEntry, InMemoryIdentityHistory, InMemoryTmdbDocuments}
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.{HistoryEntry, InMemoryIdentityHistory, InMemoryTmdbDocuments}
+
 import services.movies.ListingKey
 
 import java.time.Instant

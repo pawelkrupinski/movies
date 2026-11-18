@@ -31,8 +31,9 @@ final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String
 
 @nowarn("msg=unused import")
 object FiledAnswers {
-  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
-  import services.identity.adapters.*
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
 
   def of(country: models.Country): FiledAnswers = FiledAnswers(UnmatchedClusters.Capture(country, Nil, Nil, Map.empty, Map.empty, Map.empty, Set.empty,
     Map.empty, Map.empty), "")

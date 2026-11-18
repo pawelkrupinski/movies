@@ -41,7 +41,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   private final case class Pass(why: String)                     extends Kept
   private final case class Store(why: String)                    extends Kept
 
-  private val Roots = SourceTrees("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identity")
+  private val Roots = SourceTrees("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identityadapters")
 
   /** Key types that are content by construction: what they name cannot change under them. */
   private val ContentKeys = Set("Question", "PosterQuestion", "CandidateQuery", "Dependency", "ResolverDecision",
@@ -52,7 +52,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
 
   private val I = "identity/src/main/scala/services/identity/"
   private val A = I + "agreement/"
-  private val W = "worker/src/main/scala/services/identity/adapters/"
+  private val W = "worker/src/main/scala/services/identityadapters/"
 
   private val PerResolve = "its owner is built per resolve"
   private val PerApply   = "a field of AgreementStage.Pass, built per apply"

@@ -1,11 +1,12 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import tools.SpecPool
 import tools.SpecTimeouts
 
 import clients.HttpTmdbClient
-import services.identity.adapters.TmdbIdentityReads.*
+import services.identityadapters.TmdbIdentityReads.*
 import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

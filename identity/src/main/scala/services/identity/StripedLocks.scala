@@ -5,7 +5,7 @@ import java.util.concurrent.locks.ReentrantLock
 /** A lock per key, striped over [[StripedLocks.Stripes]] locks: work on one key is serial, work on different keys
  *  proceeds side by side (bar a stripe they happen to share). Several keys are locked in one order,
  *  so two holders never deadlock. */
-private[identity] final class StripedLocks {
+private[services] final class StripedLocks {
   import StripedLocks.Stripes
   private val locks = Array.fill(Stripes)(new ReentrantLock())
 
@@ -17,7 +17,7 @@ private[identity] final class StripedLocks {
   }
 }
 
-private[identity] object StripedLocks {
+private[services] object StripedLocks {
   /** Enough that the threads a take-up or a scrape walk runs on rarely meet on one stripe. */
   val Stripes = 1024
 }

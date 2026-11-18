@@ -78,7 +78,7 @@ check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/f
 
 # THE AREAS (the owner, 2026-10-26: no pre-merge CI; the basic tests, plus an area's own local tests when it is touched).
 check "the resolver runs the identity area's tests" "driftguards sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
-check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
+check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identityadapters/Adapter.scala)"
 check "a title rule runs them" "driftguards sbt identity|driftguards sbt identity" \
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titles/rules/Rule.scala)"
 check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \

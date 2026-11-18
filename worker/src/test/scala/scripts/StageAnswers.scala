@@ -2,11 +2,12 @@ package scripts
 
 import models.Country
 import services.identity._
-import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, FamilySource, PosterAnswerStore, PosterHashing, TmdbDocuments}
+
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
 import tools.CatalogueFill
 
 import java.util.concurrent.ConcurrentHashMap
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -18,9 +19,14 @@ import scala.util.control.NonFatal
  * (`services.identity.WhatIfAnswers`). The sources differ only at that seam: every question is asked, filed, attempted
  * and given up on here, as production's queue and memory do it.
  */
-class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: java.time.Clock,
+@nowarn("msg=unused import")
+class StageAnswers(answering: StageAnswers.Sources, docs: StageAnswers.Documents, clock: java.time.Clock,
                    /** An IMDb id's TMDB film as a store holds its find, ahead of the sources' ([[IdentityDrift.WholeLookups.found]]). */
                    found: String => Option[Option[Int]]) {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
+
   val store     = new FamilyAnswerStore(docs, clock)
   val posters   = new PosterAnswerStore(store, clock)
   val catalogue = new CatalogueFill(store, clock, answering.fetch)
@@ -102,7 +108,7 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
     if (failed.nonEmpty) { val _ = marks.incrementAndGet() }
   }
   /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
-   *  as the worker's inline asks answer them ([[services.identity.adapters.InlineFamilyAsks]]) — else a take the worker
+   *  as the worker's inline asks answer them ([[services.identityadapters.InlineFamilyAsks]]) — else a take the worker
    *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
   def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) => fileNow(questions, release)
   /** `questions`' family questions answered now -- a held filed answer released, the rest asked of the sources: an
@@ -125,7 +131,14 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
     }
 }
 
+@nowarn("msg=unused import")
 object StageAnswers {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
+
+  /** The store the family answers are filed in (a type alias: the constructor's signature sits outside both scopes). */
+  type Documents = TmdbDocuments
 
   /** Where a stage's open questions are asked: the country's families and their sites, the fetch posters and the
    *  catalogue are read through, and TMDB's finds and posters. A recording's (`IdentityDrift.recorded`) or the live
@@ -148,7 +161,7 @@ object StageAnswers {
 
   /** Which of the family questions `open` a round asks the sources: none `release` files (a held filed answer),
    *  nor one whose answer the store holds fresh — skipped, as production's asker skips it
-   *  ([[services.identity.adapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
+   *  ([[services.identityadapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
    *  held, and keeps listing them once filed; asked again, the recording's answer replaced the filed one, which no whole
    *  resolve ever reads (PL "LALKA / DOLLY", seed 2, run 3154: RT's filed "Lalka Dolly" search read again as no hits). */
   def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean,

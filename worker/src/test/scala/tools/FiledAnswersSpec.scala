@@ -5,8 +5,7 @@ import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
-import services.identity.adapters.TmdbKind
-
+import services.identityadapters.TmdbKind
 
 /** The answers a recording does not hold as an identity slice reads them ([[FiledAnswers]]): prod's family answers
  *  served first, the capture's live TMDB answers only where the recording has none, every one read noted — never one

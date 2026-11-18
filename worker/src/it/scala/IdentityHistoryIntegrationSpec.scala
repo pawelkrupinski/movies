@@ -1,10 +1,11 @@
 package integration
 
+import services.identityadapters.{HistoryEntry, IdentityHistory, InMemoryIdentityHistory, MongoIdentityHistory, TakeExplanation}
 import org.bson.{BsonDocument, BsonString}
 import org.mongodb.scala.ObservableFuture
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.{HistoryEntry, IdentityHistory, InMemoryIdentityHistory, MongoIdentityHistory, TakeExplanation}
+
 import tools.{IsolatedMongoDatabase, SpecTimeouts}
 
 import scala.concurrent.Await

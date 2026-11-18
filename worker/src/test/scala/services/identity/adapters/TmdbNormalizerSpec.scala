@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import clients.tools.ConstantHttpFetch
 import org.bson.BsonDocument
 import org.scalatest.LoneElement

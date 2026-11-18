@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import services.venuepages.EnrichDetailsTasks
 import models.{CinemaMovie, KinoApollo, Movie}
 import org.scalatest.flatspec.AnyFlatSpec

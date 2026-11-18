@@ -188,11 +188,11 @@ trait TestWiring extends WorkerWiring {
 
   /** A country's boot: every venue scraped into the listing intake through the production runner,
    *  then one identity projection and the enrichment it announces. */
-  def bootCutover(): services.identity.adapters.ProjectionTick = cutoverTick()
+  def bootCutover(): services.identityadapters.ProjectionTick = cutoverTick()
 
   /** One production tick of a CUT-OVER country — the boot is its first: every venue scraped into the
    *  listing intake through the production runner, then one identity projection and its enrichment. */
-  def cutoverTick(): services.identity.adapters.ProjectionTick = {
+  def cutoverTick(): services.identityadapters.ProjectionTick = {
     val threw = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     landCutover(cinemaScrapers) { failure =>
       scrapeFailures.add(failure); threw.add(failure.takeWhile(_ != ':')); ()
@@ -218,7 +218,7 @@ trait TestWiring extends WorkerWiring {
 
   /** One identity projection of a cut-over country (of the corpus `whole`, or of what moved), then the enrichment it kicked (venue detail pages,
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
-  def projectIdentity(whole: Boolean = false): services.identity.adapters.ProjectionTick = {
+  def projectIdentity(whole: Boolean = false): services.identityadapters.ProjectionTick = {
     val projection = identityProjection
     // Each stage timed: a cut-over replay is this one call, and its log said only
     // how long the whole of it took, not whether the projection or the enrichment after it spent it.

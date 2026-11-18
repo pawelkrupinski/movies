@@ -1,5 +1,6 @@
 package tools
 
+import services.identityadapters.{TmdbKind, TmdbStore}
 import clients.tools.ScriptedByUrlHttpFetch
 import services.movies.SingleCountryNormalizer
 
@@ -781,11 +782,11 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     def pass() = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
       fixtureTree, settings.FixtureRoot.RepositoryRelative)
     val (first, second) = (pass(), pass())
-    val question = services.identity.adapters.TmdbStore.titleSearchId("pl-PL", "Diuna")
+    val question = services.identityadapters.TmdbStore.titleSearchId("pl-PL", "Diuna")
     first.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Diuna&language=pl-PL",
       scala.util.Success("""{"results":[{"id":438631,"title":"Diuna","original_title":"Dune","release_date":"2021-09-15","popularity":50.0}]}"""))
-    first.identityTmdbStore.get(services.identity.adapters.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
-    second.identityTmdbStore.get(services.identity.adapters.TmdbKind.Query, Seq(question)) shouldBe empty
+    first.identityTmdbStore.get(services.identityadapters.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
+    second.identityTmdbStore.get(services.identityadapters.TmdbKind.Query, Seq(question)) shouldBe empty
     second.familyAnswerStore should not be theSameInstanceAs(first.familyAnswerStore)
   }
 
@@ -793,7 +794,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // Verify scrape recording 43657707448's tree ranked "Dziki Robot" first for "Dziki", prod's store the 2026 "Dziki" its
   // model took, and the replay rejected the take. The model reads the answer prod's model read, whatever the tree files.
   it should "answer its model from prod's recorded TMDB store ahead of what the tree files over it" in {
-    import services.identity.adapters.{TmdbKind, TmdbStore}
+    
     val question = TmdbStore.titleSearchId("pl-PL", "Dziki")
     val dziki    = services.identity.Hit(1536001, "Dziki", None, Some(2026), 1.0)
     val recorded = ProdLookupInputs.Captured(answers = Map(

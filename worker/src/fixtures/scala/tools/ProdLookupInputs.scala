@@ -1,13 +1,13 @@
 package tools
 
+import services.identityadapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore, VenueDetailLookups, VenuePageIndex}
 import models.{CinemaMovie, Country}
 import org.bson.BsonDocument
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity._
-import services.identity.adapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocuments, TmdbKind,
-  TmdbDocumentRetention, TmdbStore, VenueDetailLookups, VenuePageIndex}
+
 import services.titles.TitleNormalizer
 import services.venuepages.CapturedVenuePages
 

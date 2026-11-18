@@ -1,10 +1,11 @@
 package integration
 
+import services.identityadapters.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
 import tools.SpecTimeouts
 
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
-import services.identity.adapters.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
+
 import org.scalatest.BeforeAndAfterAll
 import tools.{IntegrationMongoSuite, IsolatedMongoDatabase}
 
@@ -20,7 +21,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  protected def newDocuments(): TmdbDocuments & services.identity.adapters.TmdbDocumentRetention = {
+  protected def newDocuments(): TmdbDocuments & services.identityadapters.TmdbDocumentRetention = {
     TmdbKind.values.foreach(k => Await.result(database.getCollection(k.collection).drop().toFuture(), SpecTimeouts.Io))
     new MongoTmdbDocuments(database)
   }
@@ -55,7 +56,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
       }).build())
     try {
       newDocuments()
-      val documents = new services.identity.adapters.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
+      val documents = new services.identityadapters.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
       val pool  = java.util.concurrent.Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory())
       val start = new java.util.concurrent.CountDownLatch(1)
       val filed = (0 until 64).map(i => pool.submit((() => {
@@ -85,7 +86,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
       }).build())
     try {
       newDocuments()
-      val documents = new services.identity.adapters.CoalescedTmdbDocuments(new services.identity.adapters.CachedTmdbDocuments(
+      val documents = new services.identityadapters.CoalescedTmdbDocuments(new services.identityadapters.CachedTmdbDocuments(
         new MongoTmdbDocuments(watched.getDatabase(database.name))))
       def film(n: Int) = new org.bson.BsonDocument("hit", new org.bson.BsonDocument("n", new org.bson.BsonInt32(n)))
       documents.put(TmdbKind.Film, (1 to 600).map(i => i.toString -> film(i)))

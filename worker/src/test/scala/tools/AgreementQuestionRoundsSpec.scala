@@ -1,8 +1,9 @@
 package tools
 
+import services.identityadapters.{FamilyAnswerStore, FamilySource, InMemoryTmdbDocuments}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.{FamilyAnswerStore, FamilySource, InMemoryTmdbDocuments}
+
 import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
 
 import java.nio.file.Files

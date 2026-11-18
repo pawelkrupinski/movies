@@ -1,7 +1,8 @@
 package integration
 
+import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
-import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
+
 import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, VoterFamily}
 import services.movies.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}

@@ -3,7 +3,7 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.Listing
-import services.identity.adapters.ProjectionTick
+import services.identityadapters.ProjectionTick
 import tools.{CutoverProperties, FixtureTestWiring}
 
 /**

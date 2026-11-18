@@ -1,12 +1,12 @@
 package services.metrics
 
+import services.identityadapters.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
 import tools.CacheOccupancy
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.bson.{BsonDocument, BsonInt32}
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
 
 /**
  * `kinowo_worker_cache_*` publishes what a cache holds against what it may hold —

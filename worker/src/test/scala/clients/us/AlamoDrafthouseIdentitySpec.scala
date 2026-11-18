@@ -1,5 +1,6 @@
 package clients.us
 
+import services.identityadapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
 import clients.tools.FakeHttpFetch
 import models.{CinemaMovie, UsRoster}
 import org.scalatest.OptionValues
@@ -7,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.us.AlamoDrafthouseClient
 import services.identity.{CatalogueId, Listing}
-import services.identity.adapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
+
 import services.titles.TitleNormalizer
 
 import java.time.LocalDate

@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.time.{Clock, Instant}
 import scala.concurrent.Await
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
@@ -33,7 +34,12 @@ import scala.jdk.CollectionConverters._
  *
  * Self-contained on purpose: the script drops this file (and tools/MemoLookups.scala) into a ref from before it.
  */
+@nowarn("msg=unused import")
 object WhatIfResolve {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
+
 
   /** A base family as `families.tsv` and `takes.tsv` hold it: its members' keys and the keys it blocks under. */
   final case class Family(id: String, members: Set[String], blockKeys: Set[String])
@@ -100,11 +106,11 @@ object WhatIfResolve {
    *  the mirror's store lacks answered by `answering` (the composition root's pick: [[WhatIfAnswers.offline]] refuses,
    *  [[WhatIfAnswers.live]] asks the real services and files into the local what-if store). */
   def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer,
-               answering: adapters.TmdbDocuments => WhatIfAnswers.Source): Corpus = {
+               answering: TmdbDocuments => WhatIfAnswers.Source): Corpus = {
     val world    = MirrorWorld.at(db, country, at, normalizer)
     // the mirror's store as it stood at `at`, each document read once: its family answers all read up front, in batches
     val mirror   = new WhatIfAnswers.Memoised(world.documents, Pause)
-    mirror.warm(adapters.TmdbKind.Family, WhatIfAnswers.patient(Pause)(Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
+    mirror.warm(TmdbKind.Family, WhatIfAnswers.patient(Pause)(Await.result(db.getCollection[BsonDocument](TmdbKind.Family.collection).find()
       .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
       .map(_.getString("_id").getValue))
     val answers  = answering(mirror)
@@ -171,7 +177,7 @@ object WhatIfResolve {
 
   /** Which [[WhatIfAnswers.Source]] the sides read: `--answers offline` (the default here; the mirror's store alone) or
    *  `--answers live --answers-dir DIR` (the real services asked for what it lacks, TMDB's key from `TMDB_API_KEY`). */
-  def answering(args: Seq[String], country: Country, clock: Clock): adapters.TmdbDocuments => WhatIfAnswers.Source = {
+  def answering(args: Seq[String], country: Country, clock: Clock): TmdbDocuments => WhatIfAnswers.Source = {
     def opt(name: String) = args.sliding(2).collectFirst { case Seq(`name`, value) => value }
     opt("--answers").getOrElse("offline") match {
       case "offline" => WhatIfAnswers.offline(_, country, clock)

@@ -32,7 +32,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
 
   // ── 1. collections ─────────────────────────────────────────────────────────
 
-  private val IdentityRoots = SourceTrees("identity/src/main", "worker/src/main/scala/services/identity")
+  private val IdentityRoots = SourceTrees("identity/src/main", "worker/src/main/scala/services/identityadapters")
   private val Wiring        = SourceTrees("worker/src/main/scala/modules")
 
   /** The wiring that builds the identity path: all of the identity projection's, and the identity model wiring's

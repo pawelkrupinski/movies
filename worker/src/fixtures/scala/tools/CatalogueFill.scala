@@ -13,8 +13,9 @@ import scala.util.Try
  *  For the measures and the fixture tools only. */
 @nowarn("msg=unused import")
 final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch: HttpFetch) {
-  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
-  import services.identity.adapters.*
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
 
   val answers: CatalogueAnswerStore = new CatalogueAnswerStore(families, clock, UnmatchedClusters.CataloguePages)
   private val mapping = new WikidataCatalogueMapping(new services.enrichment.WikidataClient(fetch), new services.enrichment.LetterboxdClient(fetch))
@@ -42,8 +43,9 @@ final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch:
 
 @nowarn("msg=unused import")
 object CatalogueFill {
-  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
-  import services.identity.adapters.*
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
+  // 2026-11-18, services.identityadapters since).
+  import services.identity.adapters.*, services.identityadapters.*
 
   type Families = FamilyAnswerStore
 }

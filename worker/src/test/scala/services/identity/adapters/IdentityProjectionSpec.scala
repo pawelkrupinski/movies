@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import tools.SpecTimeouts
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}

@@ -3,7 +3,7 @@ package integration
 import models.Country
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 import services.identity._
-import services.identity.adapters.TmdbIdentityLookups
+import services.identityadapters.TmdbIdentityLookups
 import tools._
 
 import java.nio.file.{Files, Path}

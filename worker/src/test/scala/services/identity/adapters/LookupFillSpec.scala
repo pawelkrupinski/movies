@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import clients.tools.{AnyMethodByUrlHttpFetch, ConstantHttpFetch, FailingHttpFetch}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec

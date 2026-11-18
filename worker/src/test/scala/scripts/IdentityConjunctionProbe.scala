@@ -1,7 +1,8 @@
 package scripts
 
+import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
-import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
+
 import services.identity.agreement.{Agreement, VenueListings}
 import services.movies.ListingKey
 import services.titles.TitleNormalizer

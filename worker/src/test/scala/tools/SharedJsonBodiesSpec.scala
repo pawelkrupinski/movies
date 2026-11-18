@@ -1,12 +1,12 @@
 package tools
 
+import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
 import clients.HttpTmdbClient
-import services.identity.adapters.TmdbIdentityReads.*
+import services.identityadapters.TmdbIdentityReads.*
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
-import services.identity.adapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
 
 import java.util.concurrent.atomic.AtomicInteger
 

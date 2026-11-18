@@ -1,12 +1,13 @@
 package scripts
 
+import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
 import clients.HttpTmdbClient
 import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.bson.BsonDocument
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsObject, Json}
-import services.identity.adapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
+
 import tools.{HttpStatusException, MutableClock, TestWiring}
 
 import java.util.concurrent.ConcurrentHashMap

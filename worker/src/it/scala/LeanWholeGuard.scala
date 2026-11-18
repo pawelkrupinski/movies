@@ -1,7 +1,7 @@
 package integration
 
 import services.identity._
-import services.identity.adapters.TmdbIdentityLookups
+import services.identityadapters.TmdbIdentityLookups
 import services.movies.ListingKey
 import tools._
 

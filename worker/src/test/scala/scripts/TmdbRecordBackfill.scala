@@ -1,11 +1,12 @@
 package scripts
 
+import services.identityadapters.{MongoTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
 import clients.HttpTmdbClient
 import models.Country
 import org.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.identity.adapters.{MongoTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
+
 import tools.{CommandLine, HttpStatusException, Stopwatch}
 
 import java.time.Clock

@@ -1,11 +1,12 @@
 package integration
 
+import services.identityadapters.{InMemoryTmdbDocuments, MongoTmdbDocuments, TmdbDocuments, TmdbKind, TmdbNormalizer, TmdbStore}
 import org.bson.BsonDocument
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.{InMemoryTmdbDocuments, MongoTmdbDocuments, TmdbDocuments, TmdbKind, TmdbNormalizer, TmdbStore}
+
 import tools.{IntegrationMongoSuite, IsolatedMongoDatabase, SliceHttp, SpecTimeouts}
 
 import java.nio.file.{Files, Path, Paths}

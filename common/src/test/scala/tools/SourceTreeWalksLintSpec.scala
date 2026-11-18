@@ -100,11 +100,11 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
           "common/src/main/scala/services/titles/rules/", "identity/src/main/scala/services/identity/agreement/")),
     "worker/src/test/scala/tools/NoDecisionKeyedByMutableIdSpec.scala" ->
       ("prefixes of the allowlist's field ids (`<path>#<field>`); the walk is the declared Roots",
-        Set("identity/src/main/scala/services/identity/", "worker/src/main/scala/services/identity/adapters/")),
+        Set("identity/src/main/scala/services/identity/", "worker/src/main/scala/services/identityadapters/")),
     "worker/src/test/scala/tools/NoSwallowedFailureSpec.scala" ->
       ("prefixes a scanned file is matched against (which code reads an upstream); the walk is ScalaSourceScan's MainRoots",
         Set("scrapers/src/main/scala/services/cinemas/", "worker/src/main/scala/services/enrichment/", "common/src/main/scala/tools/",
-          "common/src/main/scala/services/enrichment/scraping/", "scrapers/src/main/scala/tools/")),
+          "scrapers/src/main/scala/tools/")),
   )
   private val Allowed: Map[(String, String), String] =
     AllowedByFile.toSeq.flatMap { case (file, (why, literals)) => literals.map(file -> _ -> why) }.toMap

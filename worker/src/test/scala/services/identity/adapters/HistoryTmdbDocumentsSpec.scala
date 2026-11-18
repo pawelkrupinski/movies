@@ -1,11 +1,13 @@
 package services.identity
 package adapters
 
+import services.identityadapters.HistoryVenuePageStore
+import services.identityadapters.*
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.FilmDetail
-import services.venuepages.{HistoryVenuePageStore, InMemoryVenuePageStore, VenuePage, VenuePageKey}
+import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 import tools.{MutableClock, TestWiring}
 
 /** The history keeps CHANGES ([[HistoryTmdbDocuments]], [[HistoryVenuePageStore]]): an answer whose value moved, before and

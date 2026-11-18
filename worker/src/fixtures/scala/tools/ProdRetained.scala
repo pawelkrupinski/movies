@@ -1,7 +1,8 @@
 package tools
 
+import services.identityadapters.{MongoRetainedListingStore, RetainedListingStore}
 import org.bson.BsonDocument
-import services.identity.adapters.{RetainedListingStore, MongoRetainedListingStore}
+
 import services.identity.{Listing, ListingBson}
 
 import java.nio.charset.StandardCharsets
@@ -29,9 +30,9 @@ object ProdRetained {
   def read(database: org.mongodb.scala.MongoDatabase, now: Long): Seq[Listing] =
     // read only: the clock dates no write
     new MongoRetainedListingStore(database, java.time.Clock.fixed(java.time.Instant.ofEpochMilli(now), java.time.ZoneOffset.UTC)).read().map(_.map(_.listing)).getOrElse {
-      val history = new services.identity.adapters.MongoIdentityHistory(database, new tools.TtlIndexMismatches)
-      RetainedListingStore.fromHistory(history.since(Seq(services.identity.adapters.HistoryEntry.Listing),
-        now - services.identity.adapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))
+      val history = new services.identityadapters.MongoIdentityHistory(database, new tools.TtlIndexMismatches)
+      RetainedListingStore.fromHistory(history.since(Seq(services.identityadapters.HistoryEntry.Listing),
+        now - services.identityadapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))
     }
 
   /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set) a

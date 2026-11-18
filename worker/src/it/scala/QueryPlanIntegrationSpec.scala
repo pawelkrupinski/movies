@@ -1,5 +1,6 @@
 package services
 
+import services.identityadapters.{MongoTmdbDocuments, TmdbKind, TmdbStore}
 import tools.{QueryPlans, SpecTimeouts, TtlIndexMismatches}
 
 import models.{CinemaShowing, KinoMuranow, MovieRecord, Showtime, Source, SourceData, Tmdb}
@@ -160,7 +161,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   }
 
   "the TMDB store" should "read, write and sweep by id" in {
-    import services.identity.adapters.{MongoTmdbDocuments, TmdbKind, TmdbStore}
+    
     assertIndexed(plansOf("tmdb") { db =>
       val documents = new MongoTmdbDocuments(db)
       def film(n: Int) = new org.bson.BsonDocument(TmdbStore.FetchedAt, new org.bson.BsonInt64(n.toLong))

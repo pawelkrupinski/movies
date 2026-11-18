@@ -159,9 +159,9 @@ object IdentityCapture {
   val DecisionInputs: Seq[String] = Seq(
     "identity/src/main/scala/services/identity/", "identity/src/main/resources/identity-", "common/src/main/scala/services/titles/rules/",
     "common/src/main/resources/title-rules.tsv", "common/src/main/scala/services/titles/TitleNormalizer.scala",
-    "worker/src/main/scala/services/identity/adapters/TmdbIdentityLookups.scala",
+    "worker/src/main/scala/services/identityadapters/TmdbIdentityLookups.scala",
     "worker/src/main/scala/clients/TmdbClient.scala", "worker/src/main/scala/clients/HttpTmdbClient.scala",
-    "worker/src/main/scala/services/identity/adapters/TmdbIdentityReads.scala",
+    "worker/src/main/scala/services/identityadapters/TmdbIdentityReads.scala",
     "worker/src/it/scala/IdentityShadow.scala")
   val NotDecisionInputs: Seq[String] = Seq("identity/src/main/scala/services/identity/agreement/")
 

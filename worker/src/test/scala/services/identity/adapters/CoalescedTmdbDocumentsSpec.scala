@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import tools.SpecTimeouts
 
 import org.bson.{BsonDocument, BsonInt32, BsonString}

@@ -654,7 +654,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val question = Question.Family(VoterFamily.Imdb, "title|Lalka")
     // one read, asked again on the spot (RetryingHttpFetch): its tries are the host's failures in a row (a timeout is
     // the host's; a server error would count once for the page)
-    tools.RetryingHttpFetch.Attempts should be >= services.identity.adapters.QuestionMemory.MinOutageReads
+    tools.RetryingHttpFetch.Attempts should be >= services.identityadapters.QuestionMemory.MinOutageReads
     a[java.net.http.HttpTimeoutException] should be thrownBy wiring.enrichmentFetch.get(s"https://$host/lalka")
     wiring.identityQuestionMemory.failed(Seq(question), Some(host))
     wiring.identityQuestionMemory.due(Set[Question](question)) shouldBe empty

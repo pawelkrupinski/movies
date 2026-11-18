@@ -1,10 +1,11 @@
 package scripts
 
+import services.identityadapters.{HistoryEntry, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TakeExplanation}
 import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
 import services.identity._
-import services.identity.adapters.{HistoryEntry, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TakeExplanation}
+
 import services.movies.ListingKey
 import services.titles.TitleNormalizer
 

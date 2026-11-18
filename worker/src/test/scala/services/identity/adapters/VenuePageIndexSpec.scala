@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import services.identityadapters.*
 import services.venuepages.{EnrichDetailsHandler, EnrichDetailsTasks}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

@@ -6,7 +6,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{ListingRetention, ModelRead, ScreeningDays}
-import services.identity.adapters.MongoRetainedListingStore
+import services.identityadapters.MongoRetainedListingStore
 import services.movies.SingleCountryNormalizer
 import tools.{IsolatedMongoDatabase, MutableClock, SpecTimeouts}
 

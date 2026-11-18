@@ -1,11 +1,11 @@
 package modules.wiring
 
 import services.corpus.CorpusCensus
-import services.identity.adapters.IdentityAgreementMetrics
-import services.identity.adapters.IdentityLookupFillMetrics
-import services.identity.adapters.IdentityModelGauges
-import services.identity.adapters.IdentityProjectionGauges
-import services.identity.adapters.IdentityTakeMetrics
+import services.identityadapters.IdentityAgreementMetrics
+import services.identityadapters.IdentityLookupFillMetrics
+import services.identityadapters.IdentityModelGauges
+import services.identityadapters.IdentityProjectionGauges
+import services.identityadapters.IdentityTakeMetrics
 import services.tasks.CinemaContentCensus
 import services.tasks.CinemaScrapeCensus
 import services.tasks.ListingIncompleteMetrics

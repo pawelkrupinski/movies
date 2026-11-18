@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters._
  *  decoded as `BsonDocument`s first, a US take-up's families were ~400k maps and ~1M key strings, all garbage the
  *  moment the families were built from them. And the few readers of one field of a `BsonDocument` already in hand
  *  that the identity stores share. */
-private[identity] object BsonFields {
+private[services] object BsonFields {
   /** The fields of the document the reader is at: `field` reads each value by name, or skips it. */
   def document(reader: BsonReader)(field: String => Unit): Unit = {
     reader.readStartDocument()

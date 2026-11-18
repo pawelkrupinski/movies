@@ -2,7 +2,7 @@ package integration
 
 import models.{ArchivedScrape, Country}
 import services.identity._
-import services.identity.adapters.TmdbIdentityLookups
+import services.identityadapters.TmdbIdentityLookups
 import services.movies.ListingKey
 import services.titles.TitleNormalizer
 import tools._

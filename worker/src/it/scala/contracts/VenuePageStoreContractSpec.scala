@@ -7,7 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.FilmDetail
-import services.identity.adapters.InMemoryIdentityHistory
+import services.identityadapters.InMemoryIdentityHistory
 import services.venuepages.*
 import tools.IsolatedMongoDatabase
 import tools.contracts.Implementations
@@ -32,7 +32,7 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoDatabase"            => Some(isolatedDatabase.database)
       case "services.venuepages.VenuePageStore"         => Some(new InMemoryVenuePageStore)
-      case "services.identity.adapters.IdentityHistory" => Some(new InMemoryIdentityHistory)
+      case "services.identityadapters.IdentityHistory" => Some(new InMemoryIdentityHistory)
       case "java.time.Clock"                            => Some(Clock.fixed(at, ZoneOffset.UTC))
       case "java.lang.String"                           => Some("contract")
       case _                                            => None

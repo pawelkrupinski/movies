@@ -85,7 +85,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/enrichment/CacheRefresher.scala", "recheck",
       "case Failure(exception) =>") ->
       "not a failure read as data: a row whose operator re-check throws is logged and COUNTED as failed in the task's result (the /tasks page shows it), as the full-corpus walk counts one; the row keeps what it held and the other rows are still refreshed",
-    ("worker/src/main/scala/services/identity/adapters/IdentityProjection.scala", "quietly",
+    ("worker/src/main/scala/services/identityadapters/IdentityProjection.scala", "quietly",
       "catch { case NonFatal(e) =>") ->
       "not a failure read as data: a projection that throws is logged, counted as a Failed refusal and answers 'not settled', which is what makes `EventTrigger` run it again after a backoff — the stored films keep serving meanwhile",
     ("common/src/main/scala/tools/DaemonExecutors.scala", "run",
@@ -103,7 +103,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/common/SecondFeedFacts.scala", "fetch",
       "case Failure(e) => logger.warn(s\"${cinema.displayName}: its last stored listing not read, no second-feed facts kept: $e\"); Nil") ->
       "Nil is 'no facts known to keep', not 'the venue lists nothing': the second feed already failed, and with its last stored listing unread too the bare rows list as they came, exactly what every failed second-feed read did before the kept facts; the failure is logged",
-    ("worker/src/main/scala/services/identity/adapters/TmdbNormalizer.scala", "normalize",
+    ("worker/src/main/scala/services/identityadapters/TmdbNormalizer.scala", "normalize",
       "case Failure(_)                                          => None") ->
       "None is 'write nothing': a transient failure is not an answer, so the store keeps what it held and the model's question stays a gap — the opposite of turning it into data",
     ("scrapers/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "fromNationalFeed",

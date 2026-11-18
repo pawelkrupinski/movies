@@ -195,7 +195,7 @@ class HttpTmdbClient(
 
   /** The film's two answers this client asks about it — [[fullDetails]]' localized record and [[details]]' en-US
    *  one, in that order, each parsed (a film TMDB does not know read as an empty answer) — for a reader that builds its
-   *  own reading off both (the identity lookups' `services.identity.adapters.TmdbIdentityReads`), so a tree recorded
+   *  own reading off both (the identity lookups' `services.identityadapters.TmdbIdentityReads`), so a tree recorded
    *  for either serves it. `None` without a key; a failed read THROWS, so a reader can tell "no film" from "not
    *  answered". */
   def filmAnswers(tmdbId: Int): Option[Seq[JsValue]] = authHeader.map { auth =>
