@@ -8,7 +8,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
 import tools.{LogThrottle, MongoErrors, ThreadPools}
-import services.facebook.{AppUsage, FacebookFetches, FacebookSlots, FacebookUsageBrake, MongoFacebookSlots}
+import services.facebook.{AppUsage, FacebookFetches, FacebookGraph, FacebookScrape, FacebookSlots, FacebookUsageBrake, MongoFacebookSlots}
 
 import java.time.{Clock, Instant}
 import java.util.Date

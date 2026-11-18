@@ -2,7 +2,7 @@ package services.sharecards
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.facebook.InMemoryFacebookFetches
+import services.facebook.{FacebookGraph, FacebookReply, FacebookScrape, InMemoryFacebookFetches}
 import tools.MutableClock
 
 import java.time.Instant

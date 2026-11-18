@@ -62,7 +62,7 @@ ce	services.config	2
 ce	services.corpus	13
 ce	services.enrichment	12
 ce	services.events	1
-ce	services.facebook	1
+ce	services.facebook	2
 ce	services.fallback	1
 ce	services.freshness	2
 ce	services.identity	8
@@ -251,7 +251,6 @@ fanout	services.scrapes.MongoScrapeArchiveRepository	20
 fanout	services.scrapes.ScrapeArchiveCodecs	13
 fanout	services.sharecards.CityCardService	17
 fanout	services.sharecards.FacebookRescrapeDrain	16
-fanout	services.sharecards.FilmPageUrls	11
 fanout	services.sharecards.RenderCityCardHandler	12
 fanout	services.sharecards.ShareCardBackfill	14
 fanout	services.sharecards.ShareCardService	20
@@ -275,7 +274,6 @@ fanout	services.venuepages.VenuePageReader	11
 fanout	tools.FallbackHttpFetch	10
 fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	16
-distance	services.facebook	28
 distance	services.identity	39
 distance	services.metrics	38
 distance	services.movies	36

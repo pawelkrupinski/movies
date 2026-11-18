@@ -1,8 +1,8 @@
-package services.sharecards
+package services.facebook
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.facebook.AppUsage
+
 import tools.AnsweringHttpServer.answering
 
 import java.net.URI

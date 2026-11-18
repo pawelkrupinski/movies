@@ -75,7 +75,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** `MONGODB_FLEET_DB`, else `kinowo_fleet` ([[services.FleetDatabase]]). */
   lazy val fleetDatabaseName: settings.MongoDatabaseName = services.FleetDatabase.name(configuration.fleetDatabase)
 
-  private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)
+  private lazy val facebookGraph: Option[services.facebook.FacebookGraph] = services.facebook.FacebookGraph.fromConfiguration(configuration, tlsContext)
 
   /** The fleet's re-scrape queue, when there is anything to send with and anywhere to queue. */
   private lazy val facebookRescrapeStore: Option[FacebookRescrapeStore] =
