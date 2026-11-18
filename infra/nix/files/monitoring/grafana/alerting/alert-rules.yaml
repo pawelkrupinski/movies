@@ -707,6 +707,13 @@ groups:
       # excluded and the rule reads the web side as before.
       # Guarded by worker deploy.GrafanaServedSwingScopeSpec and
       # deploy.GrafanaServedSwingCorpusDiscriminantSpec.
+      #
+      # RECORDED IN PROMETHEUS (2026-11-18): the query above is the recording rule
+      # `instance_city:web_movies_served:drop_ratio_1h` in rules/runtime-invariants.rules,
+      # evaluated once a minute there instead of here -- five one-hour windows per city made a
+      # one-day backtest time out. `* 1` drops the recorded name, so the alert's instances keep
+      # the labels they had on the raw query. The equivalence suite
+      # (test/alert-rules/per-city-recordings-equivalence.yml) compares the two forms.
       - uid: kinowo-movies-served-swing
         title: Films served per city dropped suddenly
         condition: C
@@ -725,7 +732,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+              expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
               instant: true
               range: false
               intervalMs: 1000
@@ -831,6 +838,16 @@ groups:
       # its own corpus at 0 (cause 2) found de/potsdam's corpus of 109 and paged critical for ~15h
       # from 2026-11-13 03:20Z. The swing rule above had the same join and the mirror-image fault:
       # one country's corpus thinning excused another's real web crash.
+      #
+      # THE 24 HOURS ARE READ HOURLY (2026-11-18). `max_over_time(...[24h] offset 10m)` over the
+      # 30-second gauge was 2,880 samples per city every minute (9M samples, 3-4 s) and timed out
+      # over a one-day backtest. The middle of the window now comes from the hourly
+      # `instance_city:web_movies_served:max2h` (rules/runtime-invariants.rules), and the 65 minutes
+      # at each end from the raw gauge, where an hourly sample's two hours need not line up with
+      # the window: together they cover (t-24h10m, t-10m] exactly, and "the max is >= 4" is "some
+      # piece's max is >= 4". Without the recording's history (a fresh deploy not backfilled) only
+      # the two end pieces answer: quieter, never louder. The equivalence suite
+      # (test/alert-rules/per-city-recordings-equivalence.yml) compares the two forms.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -849,7 +866,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+              expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(instance_city:web_movies_served:max2h[21h55m] offset 10m) >= 4 or max_over_time(kinowo_web_movies_served{scope="all"}[65m] offset 10m) >= 4 or max_over_time(kinowo_web_movies_served{scope="all"}[65m] offset 23h5m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
               instant: true
               range: false
               intervalMs: 1000

@@ -39,7 +39,7 @@ class GrafanaServedSwingCorpusDiscriminantSpec extends AnyFlatSpec with Matchers
   private lazy val swingRule: String =
     AlertRule.withUid(SwingUid).getOrElse(fail(s"no rule with uid `$SwingUid` in ${AlertRule.File}"))
 
-  private lazy val swingQueries: Seq[String] = AlertRule.expressionsIn(swingRule)
+  private lazy val swingQueries: Seq[String] = AlertRule.expressionsIn(swingRule).map(AlertRule.withRecordingsExpanded)
 
   /** Query A of `kinowo-movies-served-swing` — the one `condition: C` thresholds on. */
   private lazy val queryA: Seq[String] =

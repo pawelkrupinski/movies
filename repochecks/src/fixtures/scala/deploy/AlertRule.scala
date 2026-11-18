@@ -65,4 +65,32 @@ object AlertRule {
       }
     }
   }
+
+  val RecordingRulesDir = "infra/nix/files/monitoring/rules"
+
+  /** {record name -> its PromQL} across every Prometheus rule file. */
+  lazy val recordings: Map[String, String] = {
+    val Record = """^\s*- record:\s*(\S+)\s*$""".r
+    RepoFile.listed(RecordingRulesDir)(_.getName.endsWith(".rules")).flatMap { file =>
+      val lines = RepoFile.read(file.getPath).linesIterator.toVector
+      lines.indices.flatMap { at =>
+        lines(at) match {
+          case Record(name) => everyExpression(lines.drop(at + 1).mkString("\n")).headOption.map(name -> _)
+          case _            => None
+        }
+      }
+    }.toMap
+  }
+
+  /** `expr` with every recorded series it reads replaced by the recording's own PromQL, however
+   *  deeply, so a guard on what a rule COMPUTES keeps holding when the computation moves into a
+   *  recording rule (kinowo-movies-served-swing's query A is one since 2026-11-18). Names only:
+   *  the text is for `include` checks, not for evaluation. */
+  def withRecordingsExpanded(expr: String): String =
+    Iterator.iterate(expr) { current =>
+      recordings.foldLeft(current) { case (text, (name, body)) =>
+        text.replaceAll("(?<![\\w:])" + java.util.regex.Pattern.quote(name) + "(?![\\w:])",
+          java.util.regex.Matcher.quoteReplacement("(" + body + ")"))
+      }
+    }.sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 }

@@ -97,12 +97,20 @@ class GrafanaCityEmptyQualifierSpec extends AnyFlatSpec with Matchers {
 
   it should "ask whether the city was active over a whole day" in {
     withClue(
-      s"`$CityEmptyUid` no longer qualifies on `max_over_time($Gauge{scope=\"all\"}[24h] offset 10m)`. " +
+      s"`$CityEmptyUid` no longer qualifies on the max of `$Gauge{scope=\"all\"}` over the whole day before the last 10 minutes. " +
         "A shorter window shortens how long a genuine blackout is reported: over 2026-09-02..09-08 " +
         "a [6h] max covered 980 dark-minutes against [24h]'s 2610, cutting zamora's 460-minute " +
         "blackout off at 320 and butte's at 290. A day is the unit a cinema programme comes in. "
     ) {
-      query should include(s"""max_over_time($Gauge{scope="all"}[24h] offset 10m)""")
+      // Read hourly since 2026-11-18: the middle of the day from the two-hour maxima recorded once
+      // an hour, the 65 minutes at each end from the raw gauge -- together (t-24h10m, t-10m]
+      // exactly. infra/test/alert-rules/per-city-recordings-equivalence.yml compares it with the
+      // single [24h] max sample for sample; this pins the pieces that make it a whole day.
+      query should include("max_over_time(instance_city:web_movies_served:max2h[21h55m] offset 10m) >= 4")
+      query should include(s"""max_over_time($Gauge{scope="all"}[65m] offset 10m) >= 4""")
+      query should include(s"""max_over_time($Gauge{scope="all"}[65m] offset 23h5m) >= 4""")
+      AlertRule.recordings.get("instance_city:web_movies_served:max2h") shouldBe
+        Some(s"""max_over_time($Gauge{scope="all"}[2h])""")
     }
   }
 

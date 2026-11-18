@@ -72,7 +72,7 @@ class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
   private lazy val swingRule: String =
     AlertRule.withUid(SwingUid).getOrElse(fail(s"no rule with uid `$SwingUid` in ${AlertRule.File}"))
 
-  private lazy val swingQueries: Seq[String] = AlertRule.expressionsIn(swingRule)
+  private lazy val swingQueries: Seq[String] = AlertRule.expressionsIn(swingRule).map(AlertRule.withRecordingsExpanded)
 
   /** Every selector the rule's PromQL puts on the gauge, as the label matcher it
    *  carries (`""` when the gauge is named bare, which selects every scope). */

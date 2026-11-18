@@ -286,7 +286,8 @@ def load_recordings(pattern=RULES_GLOB):
 def _record_reference(name):
     # The name as a whole identifier (recording names carry colons), outside a quoted string, with
     # an optional matcher block and `offset`.
-    return re.compile(r'(?<![\w:"])' + re.escape(name) + r'(?![\w:])(\s*\{[^}]*\})?(\s+offset\s+([0-9a-z]+))?')
+    return re.compile(r'(?<![\w:"])' + re.escape(name) + r'(?![\w:])(\s*\{[^}]*\})?(\[[0-9a-z]+\])?'
+                      r'(\s+offset\s+([0-9a-z]+))?')
 
 
 def _outside_strings(expr, start):
@@ -315,7 +316,8 @@ def expand_recordings(expr, records, stale):
 
     `name` becomes `(expr)`; `name offset D` -- the recording as it was D ago -- becomes
     `last_over_time((expr)[I:I] offset D)` at the recording's own interval I, the one point it
-    would have been recorded at. A matcher block on a stale recording cannot be applied to an
+    would have been recorded at; `name[R]` (with or without an offset) becomes the subquery
+    `(expr)[R:I]`, the samples it would have recorded over R. A matcher block on a stale recording cannot be applied to an
     expression and is refused."""
     for _ in range(10):
         before = expr
@@ -330,8 +332,11 @@ def expand_recordings(expr, records, stale):
                     raise ValueError("cannot inline %s: it is read with matchers %s"
                                      % (name, match.group(1).strip()))
                 if match.group(2):
+                    return "(%s)[%s:%s]%s" % (rule["expr"], match.group(2)[1:-1], rule["interval"],
+                                              match.group(3) or "")
+                if match.group(3):
                     return "last_over_time((%s)[%s:%s] offset %s)" % (
-                        rule["expr"], rule["interval"], rule["interval"], match.group(3))
+                        rule["expr"], rule["interval"], rule["interval"], match.group(4))
                 return "(%s)" % rule["expr"]
             expr = pattern.sub(substitute, expr)
         if expr == before:
@@ -599,8 +604,7 @@ def main(argv=None):
     if stale:
         print("recordings changed in this tree, evaluated as written: %s" % ", ".join(sorted(stale)))
     for name, rule in alerts.items():
-        if not rule.get("grafana"):
-            rule["expr"] = expand_recordings(rule["expr"], records, stale)
+        rule["expr"] = expand_recordings(rule["expr"], records, stale)
     allowlist = load_yaml(ALLOWLIST, {})
     defaults = allowlist.get("defaults") or {}
     allowed = allowlist.get("allow") or {}

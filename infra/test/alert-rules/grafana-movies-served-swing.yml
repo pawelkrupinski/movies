@@ -17,7 +17,8 @@
 # out a prune. Query A now excludes (`unless on (country, city)`) any city whose corpus-side gauge swung
 # down by the same >50% margin over the same window, so only a city whose corpus did NOT also
 # crater still fires — the read-model-defect shape (cause 1) this rule exists to catch.
-rule_files: []
+rule_files:
+  - ../../nix/files/monitoring/rules/runtime-invariants.rules
 
 evaluation_interval: 10m
 
@@ -43,7 +44,7 @@ tests:
       # (test_alert_rule_coverage.py checks some suite evaluates it
       # character-for-character). eval_time lands on the FIRST post-drop sample, where the 1h
       # lookback still averages mostly pre-drop 8s — the transition moment the live rule pages on.
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+      - expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
         eval_time: 3010m
         exp_samples:
           # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared (a
@@ -66,7 +67,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="dipped",country="pl"}'
         values: '8x310'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+      - expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
         eval_time: 3010m
         exp_samples: []
 
@@ -92,7 +93,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="stillhere",country="pl"}'
         values: '34x26'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+      - expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
         eval_time: 130m
         exp_samples:
           - labels: '{scope="all",city="stillhere",country="pl"}'
@@ -116,7 +117,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="calm",country="pl"}'
         values: '20x59 stale _x2 20x7'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+      - expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
         eval_time: 61m
         exp_samples:
           - labels: '{scope="all",city="broken",country="pl"}'
@@ -138,7 +139,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="boston",country="uk"}'
         values: '8x300 0x10'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+      - expr: 'instance_city:web_movies_served:drop_ratio_1h * 1'
         eval_time: 3010m
         exp_samples:
           - labels: '{scope="all",city="boston",country="us"}'

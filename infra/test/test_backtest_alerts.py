@@ -215,6 +215,13 @@ class RecordingRuleExpansion(unittest.TestCase):
         out = bt.expand_recordings("ci:x:recent offset 1d > 3", self.RECORDS, {"ci:x:recent"})
         self.assertEqual(out, "last_over_time((quantile_over_time(0.5, x[2d]))[5m:5m] offset 1d) > 3")
 
+    def test_a_range_over_a_recording_reads_what_it_would_have_recorded_through_a_subquery(self):
+        out = bt.expand_recordings("max_over_time(ci:x:recent[21h55m] offset 10m) >= 4", self.RECORDS,
+                                   {"ci:x:recent"})
+        self.assertEqual(out, "max_over_time((quantile_over_time(0.5, x[2d]))[21h55m:5m] offset 10m) >= 4")
+        out = bt.expand_recordings("min_over_time(ci:x:recent[1h])", self.RECORDS, {"ci:x:recent"})
+        self.assertEqual(out, "min_over_time((quantile_over_time(0.5, x[2d]))[1h:5m])")
+
     def test_a_name_inside_a_longer_name_or_a_string_is_left_alone(self):
         records = {"ci:x": {"expr": "up", "interval": "1m"}}
         self.assertEqual(bt.expand_recordings('ci:x:other + ci:xy{a="ci:x"}', records, {"ci:x"}),
