@@ -21,7 +21,7 @@
 #             2026-10-21: both kinoheld probes would have read weserv's `404 application/json`.
 #   coverage  PosterHostLostFromServing / PosterPlaceholderShareJumped. The web's own count of the
 #             films each country serves by whose poster their card draws (`kinowo_web_films_by_
-#             poster_host`, WebMovieMetrics.PosterCensus) -- `none` being the "no poster"
+#             poster_host`, controllers.PosterCensus) -- `none` being the "no poster"
 #             placeholder. A scraper that stops extracting a chain's posters, a projection change
 #             that drops a source, a filter that throws good posters away: no image fails, the
 #             cards just stop asking for one.
