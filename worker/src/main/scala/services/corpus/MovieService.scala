@@ -5,7 +5,7 @@ import services.movies.*
 import clients.TmdbClient
 import play.api.Logging
 import services.events.{EventBus, ImdbIdMissing}
-import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
+import services.freshness.{FreshnessKind, FreshnessStore}
 import services.resolution.TmdbBasis
 import services.tasks.{RatingTasks, TaskWorker}
 
@@ -28,9 +28,9 @@ class MovieService(
   // Where the row's TMDB-resolution TIME is stamped (FreshnessKind.TmdbResolve),
   // so `RatingHandler` can measure how long after resolution each site's first
   // rating attempt fired (the EnrichmentReaper first-pass latency metric).
-  // Production injects the SHARED store the rating handlers read; tests default
-  // to a throwaway in-memory one (the stamp is observability, not correctness).
-  freshness: FreshnessStore = new InMemoryFreshnessStore,
+  // Production injects the SHARED store the rating handlers read; a spec hands in a throwaway
+  // in-memory one (the stamp is observability, not correctness).
+  freshness: FreshnessStore,
   // Immediately enqueue a freshly-identified film's due rating tasks (see
   // `announceResolvedNewMovie`) so its ratings don't wait for the
   // `EnrichmentReaper`'s next tick. Default no-op for tests/scripts without a task

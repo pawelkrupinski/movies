@@ -144,7 +144,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
       normalizer = titleNormalizer), normalizer = titleNormalizer, clock = tools.SpecClock.Pinned)
     new ImdbIdResolver(cache, new ImdbClient(wire.fetch), stopwatch = _root_.tools.SpecStopwatch.Frozen, retries = tools.DaemonExecutors.scheduler("imdb-id-retry"), executionContext = tools.DaemonExecutors.virtualThreadEC("imdb-id-resolver"), sleep = tools.Sleep.Blocking)
       .resolveSync("Film bez IMDb", Some(2026), "Film bez IMDb")
-    scala.util.Try(new MovieService(cache, new InProcessEventBus(), wire.tmdb, clock = tools.SpecClock.Pinned)
+    scala.util.Try(new MovieService(cache, new InProcessEventBus(), wire.tmdb, freshness = new services.freshness.InMemoryFreshnessStore, clock = tools.SpecClock.Pinned)
       .withFilmDetails(MovieRecord(), 7))
     wire.paths shouldBe Set(HttpPath.Enrich)
   }

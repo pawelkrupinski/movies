@@ -35,7 +35,7 @@ module-edge	scrapers->geodata	3
 module-edge	scrapers->http	366
 module-edge	scrapers->identity	8
 module-edge	web->base	31
-module-edge	web->common	564
+module-edge	web->common	573
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	45
@@ -115,7 +115,7 @@ fanout	services.config.EnvConfigService	13
 fanout	services.corpus.CinemaCorroboration	10
 fanout	services.corpus.CorpusCensus	19
 fanout	services.corpus.CorpusCensusMetrics	20
-fanout	services.corpus.MovieService	29
+fanout	services.corpus.MovieService	28
 fanout	services.enrichment.FilmwebClient	11
 fanout	services.enrichment.FilmwebRatings	27
 fanout	services.enrichment.ImdbIdResolver	33
