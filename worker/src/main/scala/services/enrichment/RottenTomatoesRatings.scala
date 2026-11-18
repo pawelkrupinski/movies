@@ -74,15 +74,13 @@ class RottenTomatoesRatings(
   // A film TMDB has no record of: searched under its stripped cinema titles and taken only when
   // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
   private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[String] =
-    Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
-      rt.urlForAny(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), services.movies.TmdbLessEligibility.directorsOf(e))
-        .filter(url => rt.pageFor(url).exists(page => TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)))
+    TmdbLessRatingLinks.discover(key, e, cache.normalizer)(rt.urlForAny(_, None, _, _))(url =>
+      Option.when(rt.pageFor(url).exists(page => TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)))(url))
         .map { url =>
           logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered without TMDB $url")
           cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
           url
         }
-    }
 
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
     tomatometerIfThisFilm(key, url).flatMap {

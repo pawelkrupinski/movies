@@ -52,4 +52,12 @@ object TmdbLessRatingLinks {
     if (credited) MetacriticClient.directorsCompatible(ours, pageDirectors)
     else yearOf(key, row).exists(year => pageYear.contains(year))
   }
+
+  /** A rating site's link for a row TMDB never resolved: asked of the site (`ask`) under the row's titles, its
+   *  search year and its directors, and kept only as `confirm` makes it — the page it names corroborating the row.
+   *  None when the row is not checkable. */
+  def discover[A, B](key: CacheKey, row: MovieRecord, normalizer: TitleNormalizer)(ask: (Seq[String], Option[Int], Set[String]) => Option[A])(
+      confirm: A => Option[B])(using LatestTitleYear): Option[B] =
+    Option.when(checkable(key, row))(()).flatMap(_ =>
+      ask(titlesOf(key, row, normalizer), searchYear(key, row), TmdbLessEligibility.directorsOf(row))).flatMap(confirm)
 }

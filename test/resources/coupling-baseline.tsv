@@ -116,11 +116,11 @@ fanout	services.enrichment.FilmwebRatings	27
 fanout	services.enrichment.ImdbIdResolver	33
 fanout	services.enrichment.ImdbRatings	18
 fanout	services.enrichment.MetacriticClient	11
-fanout	services.enrichment.MetascoreRatings	19
+fanout	services.enrichment.MetascoreRatings	18
 fanout	services.enrichment.OMDbClient	12
 fanout	services.enrichment.OmdbBackfill	17
 fanout	services.enrichment.RottenTomatoesClient	11
-fanout	services.enrichment.RottenTomatoesRatings	20
+fanout	services.enrichment.RottenTomatoesRatings	19
 fanout	services.enrichment.TmdbLessRatingLinks	10
 fanout	services.identity.Acceptance	23
 fanout	services.identity.AcceptanceCalibratedRules	12
