@@ -1,4 +1,4 @@
-package services.metrics
+package services.tasks
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
@@ -58,7 +58,7 @@ object ListingIncompleteMetrics {
   /** Each venue's run of incomplete landings, the stuck count it implies, and the one WARN as a
    *  venue reaches the threshold. A complete landing ends the run. Every venue landed is on the
    *  roster the runner was built with, and the runs live only as long as the process that holds it. */
-  private[metrics] final class Streaks(threshold: Int, counted: ListingCompleteness => Unit, stuck: Int => Unit)
+  private[tasks] final class Streaks(threshold: Int, counted: ListingCompleteness => Unit, stuck: Int => Unit)
       extends ListingCompletenessRecorder with Logging {
     private val runs = new ConcurrentHashMap[Cinema, Integer]()
 

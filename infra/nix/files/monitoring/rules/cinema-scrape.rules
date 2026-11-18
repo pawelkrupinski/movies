@@ -9,7 +9,7 @@
 # them. That is not a threshold anybody can set. It is why `CinemaScrapeCensus` exists and why
 # these rules read its two gauges rather than any of the traffic counters.
 #
-# The gauges (worker/src/main/scala/services/metrics/CinemaScrapeCensus.scala, sampled once a
+# The gauges (worker/src/main/scala/services/tasks/CinemaScrapeCensus.scala, sampled once a
 # minute over the in-memory freshness mirror the ScrapeReaper itself schedules from, so the metric
 # and the scheduler cannot disagree):
 #

@@ -1,5 +1,6 @@
-package services.metrics
+package services.identity.adapters
 
+import services.metrics.PrometheusExposition
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

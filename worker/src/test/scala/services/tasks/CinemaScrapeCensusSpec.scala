@@ -1,12 +1,12 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.PrometheusExposition
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.StubCinemaScraper
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.tasks.{DueWindow, PhaseOffset, ScrapeCinemaHandler}
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._

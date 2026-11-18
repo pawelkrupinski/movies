@@ -1,8 +1,7 @@
-package services.metrics
+package services.tasks
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.tasks.{EnqueueResult, InMemoryTaskQueue, QueueSnapshot, TaskQueue}
 import services.tasktypes.TaskType
 
 import java.time.Instant

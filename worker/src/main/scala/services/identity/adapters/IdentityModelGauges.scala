@@ -1,8 +1,7 @@
-package services.metrics
+package services.identity.adapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
 
 /**
  * The incremental identity model (`IdentityModelService`), per country:

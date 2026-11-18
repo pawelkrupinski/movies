@@ -1,5 +1,6 @@
 package services
 
+import services.corpus.CorpusCensus
 import tools.SpecClock.given
 
 import tools.SpecTimeouts
@@ -11,7 +12,7 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusCensus, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}

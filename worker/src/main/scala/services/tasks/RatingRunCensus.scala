@@ -1,5 +1,6 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.SampledCensus
 import tools.ThreadPools
 
 import services.movies.LatestTitleYear
@@ -10,7 +11,6 @@ import models.{Country, MovieRecord}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCacheReader}
 import services.tasks.RatingSources.RatingSource
-import services.tasks.{RatingSources, RatingTasks}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._

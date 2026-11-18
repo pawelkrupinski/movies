@@ -20,7 +20,7 @@ package services.movies
  *    instead of buying its own. See [[ScreeningsMetrics]] for why that number stays
  *    useful after every write guard has done its work.
  *
- * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; the
+ * The worker wires the Prometheus-backed [[services.tasks.WorkerTaskMetrics]]; the
  * web, scripts and unit tests use [[SideCollectionChangeMetrics.noop]].
  */
 trait SideCollectionChangeMetrics {

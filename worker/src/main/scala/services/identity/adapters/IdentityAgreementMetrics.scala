@@ -1,8 +1,7 @@
-package services.metrics
+package services.identity.adapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.adapters.AgreementQuestionMetrics
 import services.identity.agreement.{AgreementStage, VoterFamily}
 
 /**

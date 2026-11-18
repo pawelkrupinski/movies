@@ -1,6 +1,12 @@
 package modules.wiring
 
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusCensus, CorpusCensusMetrics, RatingRunCensus, RetiredVenueCensus, WorkerTaskMetrics}
+import services.corpus.CorpusCensus
+import services.corpus.CorpusCensusMetrics
+import services.tasks.CinemaContentCensus
+import services.tasks.CinemaScrapeCensus
+import services.tasks.RatingRunCensus
+import services.tasks.WorkerTaskMetrics
+import services.metrics.RetiredVenueCensus
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the

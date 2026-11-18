@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.corpus.CorpusCensus
+import services.corpus.CorpusCensusMetrics
 import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer

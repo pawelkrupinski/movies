@@ -107,8 +107,16 @@ SERVING_FILES = re.compile(
     r"|AgreementHandlers|QuestionMemory|QuestionPolicies|QuestionRenewals|OutstandingQuestions|VenuePageWait"
     r"|RetainedListings|ProjectionTriggers)\.scala|identity/src/main/scala/services/identity/(ListingReadiness|PageWait)\.scala"
     r"|worker/src/main/scala/services/tasks/SettleReaper\.scala)$")
+# The series live beside what they measure (services.metrics keeps the shared plumbing): the metrics package, and each
+# package's own series classes, named here one by one.
 GAUGE_FILES = re.compile(
-    r"^(worker/src/main/scala/services/metrics/.*\.scala|infra/nix/files/monitoring/(rules/.*\.rules|grafana/.*)"
+    r"^(worker/src/main/scala/services/metrics/.*\.scala"
+    r"|worker/src/main/scala/services/tasks/(WorkerTaskMetrics|TaskPipelineSeries|MeteredTaskQueue|ParkedScrapeMetrics"
+    r"|RatingRunCensus|CinemaScrapeCensus|CinemaContentCensus|ListingIncompleteMetrics)\.scala"
+    r"|worker/src/main/scala/services/corpus/CorpusCensus\.scala"
+    r"|worker/src/main/scala/services/identity/adapters/(IdentityAgreementMetrics|IdentityLookupFillMetrics|IdentityModelGauges"
+    r"|IdentityProjectionGauges|IdentityTakeMetrics)\.scala"
+    r"|infra/nix/files/monitoring/(rules/.*\.rules|grafana/.*)"
     r"|infra/test/app-metrics-catalogue/.*)$")
 
 
@@ -517,7 +525,8 @@ def gauges_before_behaviour(c: Commit, opts: dict) -> list[str]:
     return [f"changes what the worker serves over time ({' '.join(behaviour)}) without its gauges.\n"
             + "".join(f"  {w}.\n" for w in why) +
             "  A gate, hold, settle or ask change ships the gauges, alert and dashboard that see it in the same commit\n"
-            "  (worker/src/main/scala/services/metrics/, infra/nix/files/monitoring/) or in an EARLIER push, named by\n"
+            "  (worker/src/main/scala/services/metrics/ or the series beside what they measure, GAUGE_FILES;\n"
+            "  infra/nix/files/monitoring/) or in an EARLIER push, named by\n"
             "  'Gauges-Shipped: <sha>' (review 2026-11-06 P4: the readiness gate shipped before its gauges, 4.5 h unseen).\n"
             "  The existing series already see it: 'Gauges: none -- <which series, why>'."]
 

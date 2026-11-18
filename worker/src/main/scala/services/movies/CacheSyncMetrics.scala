@@ -12,7 +12,7 @@ package services.movies
  * the rate over steady state, not the raw counter.)
  *
  * Mirrors [[services.readmodel.ReadModelProjectionMetrics]]: `noop` for web/tests, the
- * Prometheus-backed [[services.metrics.WorkerTaskMetrics]] in the worker.
+ * Prometheus-backed [[services.tasks.WorkerTaskMetrics]] in the worker.
  */
 trait CacheSyncMetrics {
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit

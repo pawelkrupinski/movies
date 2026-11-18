@@ -1,5 +1,14 @@
-package services.metrics
+package services.corpus
 
+import services.metrics.CorpusMetricsFixtures
+import services.metrics.PrometheusExposition
+import services.metrics.ReferenceCensus
+import services.metrics.WorkerCitySeasonMetrics
+import services.metrics.WorkerCorpusMetrics
+import services.metrics.WorkerCorpusScan
+import services.metrics.WorkerShowtimesMetrics
+import services.metrics.WorkerSlotFanoutMetrics
+import services.metrics.WorkerSourceFilmsMetrics
 import tools.SpecClock.given
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry

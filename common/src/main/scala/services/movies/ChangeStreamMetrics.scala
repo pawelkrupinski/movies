@@ -26,7 +26,7 @@ package services.movies
  *    burst) instead of one. `coalesced / (coalesced + readmodel_project_calls)`
  *    is the share this cursor now folds into an already-queued apply.
  *
- * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]];
+ * The worker wires the Prometheus-backed [[services.tasks.WorkerTaskMetrics]];
  * the web and unit tests use [[ChangeStreamMetrics.noop]]. Mirrors
  * [[services.readmodel.ReadModelProjectionMetrics]].
  */

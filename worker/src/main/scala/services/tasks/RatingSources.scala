@@ -14,7 +14,7 @@ import services.movies.LatestTitleYear
  *
  *   - [[RatingEnqueuer]] enqueues a `(row, source)` task only when the source is
  *     eligible; and
- *   - the metrics census ([[services.metrics.RatingRunCensus]]) counts a resolved
+ *   - the metrics census ([[services.tasks.RatingRunCensus]]) counts a resolved
  *     row as "this rating never ran" only for sources the row is eligible for.
  *
  * If the two disagreed, the census would flag a backlog the enqueuer never acts

@@ -36,10 +36,10 @@ class ForwardingTaskQueueSpec extends AnyFlatSpec with Matchers {
   }
 
   "the queue decorators" should "forward what they do not decorate, raise included" in {
-    val series = new services.metrics.WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
+    val series = new services.tasks.WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
     Seq[TaskQueue => TaskQueue](
       new CachingTaskQueue(_),
-      new services.metrics.MeteredTaskQueue(_, new services.metrics.WorkerTaskMetrics("pl", series)),
+      new services.tasks.MeteredTaskQueue(_, new services.tasks.WorkerTaskMetrics("pl", series)),
       // The fixpoint ledger's queue answered every raise `false` (TaskQueue's default), unlike production's.
       new tools.ReaskCountingTaskQueue(_, new services.freshness.InMemoryFreshnessStore, _ => None, () => t0)
     ).foreach { decorate =>

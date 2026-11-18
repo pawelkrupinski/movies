@@ -1,5 +1,6 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.SampledCensus
 import tools.ThreadPools
 
 import io.prometheus.metrics.core.metrics.Gauge

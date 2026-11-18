@@ -1,4 +1,4 @@
-package services.metrics
+package services.tasks
 
 import io.prometheus.metrics.core.metrics.{Counter, GaugeWithCallback}
 import io.prometheus.metrics.model.registry.PrometheusRegistry

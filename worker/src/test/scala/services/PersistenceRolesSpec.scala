@@ -32,7 +32,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
   "the scrape archive's readers" should "take ScrapeArchiveReader, never ScrapeArchiveRepository" in {
     Seq(
       writerTypedIn(classOf[services.closure.ClosureSweep], classOf[ScrapeArchiveRepository]),
-      writerTypedIn(classOf[services.metrics.CinemaContentCensus], classOf[ScrapeArchiveRepository]),
+      writerTypedIn(classOf[services.tasks.CinemaContentCensus], classOf[ScrapeArchiveRepository]),
       writerTypedIn(classOf[services.tasks.ScrapeCinemaHandler], classOf[ScrapeArchiveRepository]),
       writerTypedIn(module("services.tasks.ChunkScrapePlanner"), classOf[ScrapeArchiveRepository], "knownGoneIn")
     ).flatten shouldBe empty
@@ -55,6 +55,6 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
 
   "the guard" should "see a writer-typed parameter, so the checks above are not vacuous" in {
     writerTypedIn(classOf[services.corpus.StrandedSideRowsCleanup], classOf[MovieRepository]) should not be empty
-    writerTypedIn(classOf[services.metrics.MeteredTaskQueue], classOf[TaskQueue]) should not be empty
+    writerTypedIn(classOf[services.tasks.MeteredTaskQueue], classOf[TaskQueue]) should not be empty
   }
 }

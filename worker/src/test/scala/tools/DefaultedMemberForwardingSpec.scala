@@ -1,10 +1,12 @@
 package tools
 
+import services.tasks.MeteredTaskQueue
+import services.tasks.WorkerTaskMetrics
 import services.MonitoringHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoCachingDetailFetch, UptimeMonitor}
-import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
+
 import services.tasks.{CachingTaskQueue, TaskQueue}
 
 import scala.concurrent.duration._

@@ -1,9 +1,8 @@
-package services.metrics
+package services.identity.adapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.{Regroupings, ResolverDecision, SuspectTakes}
-import services.identity.adapters.IdentityProjectionMetrics
 
 /**
  * Each country's identity projection (`IdentityProjection`, docs/design/identity-resolver.md §8 phase 5), each series

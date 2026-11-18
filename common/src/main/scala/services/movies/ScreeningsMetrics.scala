@@ -37,7 +37,7 @@ package services.movies
  * [[SideCollectionChangeMetrics]], shared with the `movie_slots` cursor that rings the same
  * projector; only the write counters are this store's own.
  *
- * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; the web,
+ * The worker wires the Prometheus-backed [[services.tasks.WorkerTaskMetrics]]; the web,
  * scripts and unit tests use [[ScreeningsMetrics.noop]]. Mirrors [[ChangeStreamMetrics]]
  * and [[services.readmodel.ReadModelProjectionMetrics]].
  */

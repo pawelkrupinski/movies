@@ -1,5 +1,6 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.SampledCensus
 import tools.ThreadPools
 
 import io.prometheus.metrics.core.metrics.Gauge
@@ -7,7 +8,6 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, Country}
 import services.cinemas.common.CinemaScraper
 import services.freshness.FreshnessStore
-import services.tasks.{DueWindow, ScrapeCinemaHandler}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._

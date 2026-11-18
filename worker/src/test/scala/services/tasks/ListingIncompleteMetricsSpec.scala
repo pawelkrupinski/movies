@@ -1,5 +1,6 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.PrometheusExposition
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec

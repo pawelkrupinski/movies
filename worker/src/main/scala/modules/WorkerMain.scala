@@ -344,7 +344,7 @@ object WorkerMain extends Logging {
     val clock    = wirings.head.clock
     val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
       workerMetrics.taskSeries.scrape(
-        wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
+        wirings.map(w => services.tasks.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
           w.movieRepository.changeStreamLiveness)),
         clock.instant()), clock = clock, scheduler = tools.DaemonExecutors.scheduler("worker-metrics-refresh"))

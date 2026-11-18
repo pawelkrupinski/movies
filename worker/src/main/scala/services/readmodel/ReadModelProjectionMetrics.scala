@@ -16,7 +16,7 @@ package services.readmodel
  *    documents propagate to the web (the web joins `web_movies`+`web_screenings`
  *    over two independent change streams, so it momentarily drops the film).
  *
- * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]];
+ * The worker wires the Prometheus-backed [[services.tasks.WorkerTaskMetrics]];
  * the web and unit tests use [[ReadModelProjectionMetrics.noop]].
  */
 trait ReadModelProjectionMetrics {

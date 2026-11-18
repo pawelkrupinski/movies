@@ -1,9 +1,11 @@
 package deploy
 
+import services.corpus.CorpusCensus
+import services.corpus.CorpusCensusMetrics
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusCensus, CorpusCensusMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{PrometheusExposition, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
 import modules.wiring.WorkerMetrics
 
 /**

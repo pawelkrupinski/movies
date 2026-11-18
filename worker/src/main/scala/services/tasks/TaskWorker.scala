@@ -5,8 +5,7 @@ import services.tasktypes.TaskType
 import settings.WorkerPoolSize
 
 import tools.Stoppable
-import services.metrics.TaskObserver
-import services.metrics.WorkerTaskMetrics.Outcome
+import services.tasks.WorkerTaskMetrics.Outcome
 import tools.{ThreadPools, TickRecorder, ScheduledTick}
 import play.api.Logging
 

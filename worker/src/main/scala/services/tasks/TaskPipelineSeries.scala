@@ -1,8 +1,7 @@
-package services.metrics
+package services.tasks
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.tasks.{QueueSnapshot, Task, TaskState}
 import services.tasktypes.TaskType
 
 import java.time.Instant
@@ -35,7 +34,7 @@ final class TaskPipelineSeries(poolSize: Int, countryCodes: Seq[String], registr
     .name("kinowo_worker_task_duration_seconds")
     .help("Handler wall-clock of fully-worked (done) tasks, by country and type.")
     .labelNames("country", "task_type")
-    .classicUpperBounds(WorkerTaskMetrics.DurationBucketsSeconds*)
+    .classicUpperBounds(services.metrics.HistogramBuckets.DurationSeconds*)
     .classicOnly()
     .register(registry)
 

@@ -223,7 +223,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${W}VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
     s"${W}LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),
     s"${W}IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
-    s"${W}FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take")
+    s"${W}FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
+    s"${W}IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
   )
 
   private lazy val fields: Seq[Field] = ScalaSourceScan.scalaFiles(Roots).flatMap(StatefulFieldScan.fieldsIn)

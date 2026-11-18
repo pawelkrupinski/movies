@@ -1,11 +1,14 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.ChangeStreamSeries
+import services.metrics.CorpusWriteSeries
+import services.metrics.PrometheusExposition
+import services.metrics.ReadModelSeries
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
 import services.movies.CacheSyncMetrics
 import services.readmodel.ReadModelProjectionMetrics
-import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState}
 import services.tasktypes.TaskType
 
 import java.time.Instant
@@ -223,16 +226,7 @@ object WorkerTaskMetrics {
   object EnqueueResult { val Added = "added"; val Deduped = "deduped"; val Failed = "failed" }
   val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped, EnqueueResult.Failed)
 
-  private[metrics] val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
-
-  /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
-   *  skip up to a slow multi-minute scrape/detail fetch. */
-  val DurationBucketsSeconds: Seq[Double] = Seq(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0)
-
-  /** Upper bounds (seconds) for one pure projectAll — sub-millisecond for a
-   *  single-variant row up to the ~0.3s worst-case many-variant film (post
-   *  synopsis-memoization; pre-memoization the tail reached ~2.3s). */
-  val ProjectBucketsSeconds: Seq[Double] = Seq(0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5)
+  private[tasks] val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
 
   /** Upper bounds (seconds) for the TMDB-resolved → first-rating-attempt delay:
    *  ~one reaper tick (≤1min) in steady state, stretching to hours when a large

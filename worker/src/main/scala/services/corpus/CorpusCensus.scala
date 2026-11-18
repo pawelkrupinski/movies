@@ -1,5 +1,7 @@
-package services.metrics
+package services.corpus
 
+import services.metrics.WorkerCorpusMetrics
+import services.metrics.WorkerSourceFilmsMetrics
 import services.movies.LatestTitleYear
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
@@ -8,7 +10,6 @@ import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClo
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache, ShowtimesDigest, StoredMovieRecord}
 import services.titles.TitleNormalizer
-import services.corpus.CinemaCorroboration
 import services.readmodel.ReadModelProjection
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
@@ -91,7 +92,7 @@ final class CorpusCensus(
   /** Note the film `key` now holds (`None`: gone), for the next drain to derive. Called under the cache's lock for
    *  the key, on the writer's thread — so it only notes: deriving a film's part is linear in its slots, and a wide
    *  release at 3,300 venues was re-derived whole for each venue's landing, inside that lock. */
-  private[metrics] def held(key: CacheKey, film: Option[StoredMovieRecord]): Unit = { dirty.put(key, film); () }
+  private[corpus] def held(key: CacheKey, film: Option[StoredMovieRecord]): Unit = { dirty.put(key, film); () }
 
   /** Derive the part of every film noted since the last drain, in place of its last one. A film whose derivation
    *  throws keeps its last part and stays noted, so the next drain tries it again rather than leaving it wrong until
@@ -200,7 +201,7 @@ object CorpusCensus {
       .register(registry)
 
   /** The corpus subsets that do not move with the clock, in the order of their bits in [[FilmCensus.subsets]]. */
-  private[metrics] val StaticSubsets: IndexedSeq[(String, MovieRecord => LatestTitleYear ?=> Boolean)] = {
+  private[corpus] val StaticSubsets: IndexedSeq[(String, MovieRecord => LatestTitleYear ?=> Boolean)] = {
     import WorkerCorpusMetrics.Subset._
     IndexedSeq(
       Total         -> (_ => true),
@@ -288,9 +289,9 @@ final class FilmCensus private (val subsets: Int, val ready: Boolean, val cinema
                                 private val bySource: Map[Source, SlotCensus], val cards: Seq[Seq[SlotCensus]],
                                 val screenable: Seq[SlotCensus], private val anchor: Option[String]) {
   /** The part of the slot at `source`, if the film holds one there. */
-  private[metrics] def partAt(source: Source): Option[SlotCensus] = bySource.get(source)
+  private[corpus] def partAt(source: Source): Option[SlotCensus] = bySource.get(source)
   /** Whether this part holds `other`'s very map of slot parts. */
-  private[metrics] def sameSlots(other: FilmCensus): Boolean = bySource eq other.bySource
+  private[corpus] def sameSlots(other: FilmCensus): Boolean = bySource eq other.bySource
 }
 
 object FilmCensus {

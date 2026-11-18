@@ -4,7 +4,7 @@ import settings.{HeapDumpDirectory, LivenessStaleAfter, WorkerPoolSize}
 
 import services.events.TaskFinished
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
-import services.metrics.MeteredTaskQueue
+import services.tasks.MeteredTaskQueue
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{CachingTaskQueue, LivenessWatchdog, MongoTaskQueue, TaskQueue, TaskWorker, WorkerHeartbeat}
 

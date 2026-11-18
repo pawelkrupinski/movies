@@ -1,6 +1,5 @@
-package services.metrics
+package services.tasks
 
-import services.tasks.{EnqueueResult, ForwardingTaskQueue, TaskQueue}
 
 import services.tasktypes.TaskType
 

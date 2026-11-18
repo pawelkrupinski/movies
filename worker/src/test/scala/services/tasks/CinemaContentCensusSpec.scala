@@ -1,4 +1,4 @@
-package services.metrics
+package services.tasks
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}

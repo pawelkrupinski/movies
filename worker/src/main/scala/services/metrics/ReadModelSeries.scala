@@ -66,7 +66,7 @@ final class ReadModelSeries(countryCodes: Seq[String], registry: PrometheusRegis
     .name("kinowo_worker_readmodel_project_duration_seconds")
     .help("Wall-clock of one pure ReadModelProjection.projectAll per source row since boot, by country — the LATENCY signal (percentiles, the duration heatmap). NOT a CPU share: concurrent projections make rate(_sum) exceed one core-second per second, and steal on a throttled box inflates it further. Use kinowo_worker_readmodel_project_cpu_seconds_total for CPU attribution.")
     .labelNames("country")
-    .classicUpperBounds(WorkerTaskMetrics.ProjectBucketsSeconds*)
+    .classicUpperBounds(HistogramBuckets.ProjectSeconds*)
     .classicOnly()
     .register(registry)
 
@@ -80,7 +80,7 @@ final class ReadModelSeries(countryCodes: Seq[String], registry: PrometheusRegis
     .name("kinowo_worker_readmodel_write_burst_seconds")
     .help("Wall-clock of the WRITE half of one project() call since boot, by country — writer.upsertMovie/diffScreenings for a single source row, once its variants are computed. Separate from readmodel_project_duration_seconds, which times only the computation before any write. On 2026-09-08 a wide UK release took up to ~40 minutes to reach all 73 of its cities after its source row turned ready, with nothing distinguishing computation, writing, or change-stream delivery as the slow part — this histogram is the write-phase half of that answer; a long write burst against a short project_duration for the same call points at the write loop (city count, Mongo round-trips), not at resolve/synopsisByCity/ratings. trigger is readmodel_project_calls' trigger: a heal, a derivation pass or the backfill writes a film's venues whole, so read the incremental path's cost on trigger=stream (ReadModelProjectionWritePerCallHigh does).")
     .labelNames("country", "trigger")
-    .classicUpperBounds(WorkerTaskMetrics.DurationBucketsSeconds*)
+    .classicUpperBounds(HistogramBuckets.DurationSeconds*)
     .classicOnly()
     .register(registry)
 

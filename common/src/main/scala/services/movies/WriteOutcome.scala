@@ -52,7 +52,7 @@ object WriteOutcome {
 }
 
 /** Where a failed repository write is counted. The worker wires the Prometheus-backed
- *  [[services.metrics.WorkerTaskMetrics]]; the web, scripts and most tests use `noop`. */
+ *  [[services.tasks.WorkerTaskMetrics]]; the web, scripts and most tests use `noop`. */
 trait RepositoryWriteMetrics {
   def recordWriteFailed(collection: String, op: String, exception: String): Unit
 }

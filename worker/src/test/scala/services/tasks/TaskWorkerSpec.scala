@@ -9,7 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
 
-import services.metrics.{TaskObserver, WorkerTaskMetrics}
+
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -499,7 +499,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   }
 
   "the TaskObserver" should "report a claim, then the mapped outcome for every handler result" in {
-    import services.metrics.{TaskObserver, WorkerTaskMetrics}
+    
     import WorkerTaskMetrics.Outcome
 
     class RecordingObserver extends TaskObserver {

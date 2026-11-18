@@ -1,5 +1,6 @@
-package services.metrics
+package services.tasks
 
+import services.metrics.PrometheusExposition
 import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -10,7 +11,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CacheKey, MovieCacheReader, StoredMovieRecord}
-import services.tasks.RatingTasks
 
 import java.time.Instant
 
