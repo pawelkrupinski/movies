@@ -1,8 +1,7 @@
-package services.tasks
+package services.enrichment
 
+import services.tasks.{EnrichTaskKeys, HandlerOutcome, Task, TaskHandler}
 import services.tasktypes.TaskType
-
-import services.enrichment.ImdbIdResolver
 
 /**
  * Worker task for recovering a resolved movies row's missing IMDb id (movies

@@ -9952,6 +9952,7 @@ services.enrichment.RatingPageIdentity$
 services.enrichment.RatingSiteSlug$
 services.enrichment.RatingSiteTitles
 services.enrichment.RatingSiteTitles$
+services.enrichment.ResolveImdbIdHandler
 services.enrichment.RottenTomatoesClient
 services.enrichment.RottenTomatoesClient$
 services.enrichment.RottenTomatoesClient$Page
@@ -10920,7 +10921,6 @@ services.tasks.RecheckedAudit$RecheckDelay$
 services.tasks.RecheckedAudit$Series
 services.tasks.RecheckedAudit$Series$$anon$3
 services.tasks.RecheckedAuditHandler
-services.tasks.ResolveImdbIdHandler
 services.tasks.ScrapeCadence$
 services.tasks.ScrapeChunkHandler
 services.tasks.ScrapeChunkHandler$
