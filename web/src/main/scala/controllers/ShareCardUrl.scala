@@ -32,4 +32,7 @@ object ShareCardUrl {
   /** A film page's `og:image` in `city`: its share card, or the city's while it has none. */
   def forFilm(movie: ResolvedMovie, city: City): String =
     film(movie, Country.of(city)).getOrElse(this.city(city))
+
+  /** [[forFilm]] of the film `schedule` shows. */
+  def forFilm(schedule: FilmSchedule, city: City): String = forFilm(schedule.resolved, city)
 }

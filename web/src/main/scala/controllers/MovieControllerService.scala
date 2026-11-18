@@ -45,6 +45,16 @@ case class FilmSchedule(
   lazy val linkableCinemaFilmUrls: Seq[(Cinema, WebHref)] =
     cinemaFilmUrls.flatMap { case (cinema, url) => WebHref.of(url).map(cinema -> _) }
 
+  /** This schedule cut to the `days` days from `today` on, or `None` when none of its showings falls in them. */
+  def within(today: LocalDate, days: Int): Option[FilmSchedule] = {
+    val limit = today.plusDays(days.toLong)
+    val kept  = showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
+    if (kept.isEmpty) None else Some(copy(showings = kept))
+  }
+
+  /** Whether any of its showings falls on `date`. */
+  def showsOn(date: LocalDate): Boolean = showings.exists(_._1 == date)
+
   /** [[posterUrl]] when a page may load it ([[WebHref]]). */
   lazy val posterHref: Option[WebHref] = posterUrl.flatMap(WebHref.of)
 
@@ -83,12 +93,16 @@ class MovieControllerService(
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, nowIn(city))
 
-  /** Every OTHER city in `country` with an upcoming showing of `filmId` right
+  /** Every OTHER city of `city`'s country with an upcoming showing of `schedule`'s film right
    *  now — what a film page needs to link directly to its sibling-city
    *  near-duplicates (`/{city}/movie/{slug}`), which used to be reachable only
    *  through the sitemap and nothing else. Same [[StartedShowtimeCut]]
    *  [[schedulesFor]] applies, checked per city instead of building each
    *  city's whole schedule. */
+  def citiesShowing(schedule: FilmSchedule, city: City): Seq[City] =
+    citiesShowing(schedule.resolved._id, city, city.country, nowIn(city))
+
+  /** [[citiesShowing]] of `filmId` at `excluding`'s wall clock `now`, among `country`'s cities. */
   def citiesShowing(filmId: String, excluding: City, country: Country, now: LocalDateTime): Seq[City] = {
     val film    = Set(filmId)
     // `now` is `excluding`'s wall clock; each sibling city judges on its own (the US spans six zones).

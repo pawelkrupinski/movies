@@ -87,13 +87,8 @@ object CityJsonPayloads {
    *  the window is dropped entirely rather than emitted with an empty
    *  `showings` -- an empty film is a card the client would have to render and
    *  then hide. */
-  def withinWindow(film: FilmSchedule, today: java.time.LocalDate, window: Option[Int]): Option[FilmSchedule] = window match {
-    case None => Some(film)
-    case Some(n) =>
-      val limit = today.plusDays(n.toLong)
-      val kept  = film.showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
-      if (kept.isEmpty) None else Some(film.copy(showings = kept))
-  }
+  def withinWindow(film: FilmSchedule, today: java.time.LocalDate, window: Option[Int]): Option[FilmSchedule] =
+    window.fold(Some(film))(film.within(today, _))
 
   /** What `filmJson` keys a film's serialized object by: which
    *  payload (and day window) it belongs to, the city, the day and the schedule. */

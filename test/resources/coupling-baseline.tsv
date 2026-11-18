@@ -84,9 +84,8 @@ ce	services.venuepages	12
 ce	settings	2
 ce	tools	0
 fanout	controllers.AuthController	16
-fanout	controllers.CityJsonPayloads	13
 fanout	controllers.DebugController	22
-fanout	controllers.MovieController	25
+fanout	controllers.MovieController	23
 fanout	controllers.MovieControllerService	15
 fanout	controllers.ReviewController	32
 fanout	controllers.ShowingsMarkup	12
@@ -94,7 +93,6 @@ fanout	controllers.SsoController	11
 fanout	controllers.StructuredData	11
 fanout	controllers.TuneSamples	15
 fanout	controllers.UptimeController	12
-fanout	controllers.WebMovieMetrics	13
 fanout	models.City	18
 fanout	models.Country	16
 fanout	models.MovieRecord	13

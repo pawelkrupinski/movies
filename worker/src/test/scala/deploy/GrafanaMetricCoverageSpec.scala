@@ -76,7 +76,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  them as text and no registry can enumerate them. */
   private val WebExportedFamilies = Seq(
     "kinowo_web_movies_served",
-    // Hand-rendered beside it by `WebMovieMetrics.PosterCensus` (2026-10-21, after every kinoheld
+    // Hand-rendered beside it by `PosterCensus` (2026-10-21, after every kinoheld
     // poster rendered as "no poster" with nothing alerting): whose poster each served film draws,
     // and the films sharing one placeholder image. Drawn in the "Posters" row, read by posters.rules.
     "kinowo_web_films_by_poster_host",

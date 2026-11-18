@@ -19,7 +19,7 @@ trait MetricsWiring { self: Wiring =>
   // A web deployment serves exactly one country; tag its /metrics with that
   // country so its series line up with the worker's per-country series in Grafana.
   private def metricsCountry = country
-  lazy val webMovieMetrics = managedResources.stopping(new WebMovieMetrics(movieControllerService, country, clock, ticks = ticks, threadPools = threadPools))
+  lazy val webMovieMetrics = managedResources.stopping(new WebMovieMetrics(movieControllerService, country, ticks = ticks, threadPools = threadPools))
   lazy val webJvmMetrics = new WebJvmMetrics
   /** Where this tier's periodic loops report each completed run (`ScheduledTickStale`). */
   lazy val ticks: tools.TickRecorder =

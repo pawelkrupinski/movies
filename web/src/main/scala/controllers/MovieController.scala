@@ -42,7 +42,7 @@ class MovieController( cc: ControllerComponents,
                        filmPageServed: (Option[String], String) => Unit = (_, _) => (),
                      ) extends AbstractController(cc) {
 
-  import cityRequests.{cityCookie, conditionalResponse, deploymentMessages, servingCountry, withCity}
+  import cityRequests.{cityCookie, conditionalResponse, deploymentMessages, withCity}
 
   private implicit val fragments: FilmCardFragments = filmCards
 
@@ -212,22 +212,9 @@ class MovieController( cc: ControllerComponents,
     withCity(city, request)(c => canonicalGenreLink(c, "", request).getOrElse(renderIndex(c, request)))
   }
 
-  /** A link minted when venues printed their own spelling of a genre ("?genre=przygoda") 301s onto the
-   *  vocabulary's ("?genre=Przygodowy", [[models.GenreNames]]), query otherwise intact: the
-   *  genre filter and the browse page match the stored names exactly, so the old spelling would
-   *  narrow the listing to nothing. `None` when every genre in the query is already canonical. */
-  private def canonicalGenreLink(c: City, tail: String, request: RequestHeader): Option[Result] = {
-    val genreKeys = Set("genre", "gatunek")
-    def canonical(value: String) = models.GenreNames.canonical(value, c.country.language)
-    val changed = request.queryString.exists { case (key, values) => genreKeys(key) && values.exists(v => canonical(v) != v) }
-    Option.when(changed) {
-      def enc(s: String) = java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8)
-      val query = request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) =>
-        values.map(v => s"${enc(key)}=${enc(if (genreKeys(key)) canonical(v) else v)}")
-      }.mkString("&")
-      MovedPermanently(s"${CityPath(c)}/$tail?$query")
-    }
-  }
+  /** A link spelling a genre as a venue printed it 301s onto the vocabulary's spelling ([[GenreLinks]]). */
+  private def canonicalGenreLink(c: City, tail: String, request: RequestHeader): Option[Result] =
+    GenreLinks.canonical(c, tail, request.queryString).map(MovedPermanently(_))
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
@@ -326,7 +313,7 @@ class MovieController( cc: ControllerComponents,
     // the sitemap. See [[MovieControllerService.citiesShowing]].
     val otherCities: Seq[(City, String)] =
       movieControllerService
-        .citiesShowing(schedule.resolved._id, c, servingCountry, movieControllerService.nowIn(c))
+        .citiesShowing(schedule, c)
         .map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
     // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
     // the browser copy, bfcache works) replaces the `no-store` a signed-in render
@@ -341,7 +328,7 @@ class MovieController( cc: ControllerComponents,
 
   /** The film's share card, or the city's while it has none — see [[ShareCardUrl]]. */
   private def shareCardUrl(schedule: FilmSchedule)(implicit c: City): String =
-    ShareCardUrl.forFilm(schedule.resolved, c)
+    ShareCardUrl.forFilm(schedule, c)
 
   private def devMode: Boolean = DevMode.enabled(environment)
 }
