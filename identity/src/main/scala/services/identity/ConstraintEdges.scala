@@ -177,19 +177,22 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  node's own evidence holds up -- its link's film rated no lower than the other's: DE Neues Arena's "IN THE MOOD FOR
    *  LOVE", Cineamo-linked to a 31-minute 2015 short (646676m), is Wong Kar-wai's film beside Kino im DFF's 843m. */
   private def linkedApart(first: EvidenceNode, second: EvidenceNode): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && sanitized(first.evidence.cleanTitle) == sanitized(second.evidence.cleanTitle) && {
-      def link(node: EvidenceNode) = { val scope = families.scopeOf(node); scope.feedLinked(node).filter(_ => scope.overruled(node).isEmpty).map(_._2) }
-      // the node's own evidence rates its link's film no lower than the other's: a pick its own scoring holds up
-      def holdsUp(node: EvidenceNode, own: Int, others: Int) = {
-        val scored = families.scopeOf(node).of(node)
-        def probability(film: Int) = scored.find(_.candidate.tmdbId == film).filterNot(_.denied).map(_.probability)
-        probability(own).exists(mine => probability(others).forall(mine >= _))
-      }
-      (link(first), link(second)) match {
+    scoring.generation.numbersFilmsByTmdbId && sanitized(first.evidence.cleanTitle) == sanitized(second.evidence.cleanTitle) &&
+      ((unoverruledLink(first), unoverruledLink(second)) match {
         case (Some(one), Some(other)) => one != other && holdsUp(first, one, other) && holdsUp(second, other, one)
         case _                        => false
-      }
-    }
+      })
+  /** The film `node`'s TMDB-keyed feed links, unless the title's other sources overrule the link. */
+  private def unoverruledLink(node: EvidenceNode): Option[Int] = {
+    val scope = families.scopeOf(node)
+    scope.feedLinked(node).filter(_ => scope.overruled(node).isEmpty).map(_._2)
+  }
+  /** Does the node's own evidence rate its link's film `own` no lower than the `others`: a pick its own scoring holds up? */
+  private def holdsUp(node: EvidenceNode, own: Int, others: Int): Boolean = {
+    val scored = families.scopeOf(node).of(node)
+    def probability(film: Int) = scored.find(_.candidate.tmdbId == film).filterNot(_.denied).map(_.probability)
+    probability(own).exists(mine => probability(others).forall(mine >= _))
+  }
 
   /** Does `node`, taking no film alone, credit a director that the film `other` holds was not directed by (`director`
    *  `different`: no credit of the record's is the same person), its credit standing -- every listing's own statement
@@ -224,53 +227,72 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
     pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
-      val (firstEvidence, secondEvidence) = (first.evidence, second.evidence)
-      val (firstFilm, secondFilm) = (filmOf(first.id), filmOf(second.id))
-      val sameFilm = firstFilm.isDefined && firstFilm == secondFilm
+      val pair = ConstraintEdges.Pair(first, second, filmOf(first.id), filmOf(second.id))
       def edge(must: Boolean, tier: Int, reason: String) = ResolverEdge(first.id, second.id, must, tier, reason)
-      // One chain's one catalogue id is one film (a feed's, under one title: `catalogueKey`): the facts each venue publishes of it (a bare
-      // re-release dated by its title, "9 to 5 (2026)") never keep its listings apart, as a pin's
-      // group is never kept apart. The cluster's pooled evidence then names the film.
-      val cannots = if (sameFilm || sharesCatalogueId(first, second)) Nil else Seq(
-        Option.when(firstFilm.isDefined && secondFilm.isDefined)("different-films"),
-        Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
-        listingsApart(first, second),
-        Option.when(copiedOriginalJoinsAnotherFilm(first, second, firstFilm, secondFilm) ||
-          copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart),
-        Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
-          ConstraintEdges.ReusedPageApart),
-        Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
-        Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart),
-        Option.when(creditDeniesHeld(first, secondFilm, firstFilm) || creditDeniesHeld(second, firstFilm, secondFilm))(ConstraintEdges.CreditApart)
-      ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
-      val musts = Seq(
-        Option.when(sameFilm)((1, "same-film")),
-        // One chain lists them under one catalogue id: its one film, whatever each venue calls it (a feed's id, only
-        // where their titles agree: `catalogueKey`).
-        Option.when(sharesCatalogueId(first, second))((2, ConstraintEdges.SameCatalogueId)),
-        // The titles' must-link, by the one title relation (TitleRelation.tier: same title, same search form, original
-        // title, whole segment). One listing's whole title a delimited SEGMENT of the other's ("Oficjalna premiera:
-        // Lalka" and "Lalka") joins the decorated spelling to its plain sibling's cluster, so group voting and the venue
-        // signal reach it. Whole segments only — "Zärtlich kreist die Faust" has no delimiter before "Faust" — and the
-        // ambiguity rule leaves a spelling whose segment names two films apart, as it does one whose rest names a film of
-        // its own (`namesBeside`).
-        links.tier(first, second).filter { case (tier, _) => tier != 4 ||
-          (segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)) },
-        // One house's relay of one work in one season, however each venue spells the house beside the work: what no title
-        // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
-        Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
-          (3, ConstraintEdges.SameRelay)),
-        // One film-less event, however each venue spells it beside its name ([[oneEvent]], the same words an article and
-        // the edition aside), while neither holds a film: no record joins them, and their titles share no form
-        // (UK "CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island", "The CBeebies Panto 2026: …").
-        Option.when(firstFilm.isEmpty && secondFilm.isEmpty && oneEvent(first, second) && sameEventName(first, second))(
-          (3, ConstraintEdges.SameEvent))
-      ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
-      cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
+      val cannots = cannotLinks(pair)
+      cannots.map(edge(must = false, 0, _)) ++ mustLinks(pair).sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
+
+  /** Why a pair is kept apart. One chain's one catalogue id is one film (a feed's, under one title: `catalogueKey`): the
+   *  facts each venue publishes of it (a bare re-release dated by its title, "9 to 5 (2026)") never keep its listings
+   *  apart, as a pin's group is never kept apart. The cluster's pooled evidence then names the film. */
+  private def cannotLinks(pair: ConstraintEdges.Pair): Seq[String] = {
+    import pair.{first, second, firstFilm, secondFilm}
+    if (pair.sameFilm || sharesCatalogueId(first, second)) Nil
+    else Seq(
+      Option.when(firstFilm.isDefined && secondFilm.isDefined)("different-films"),
+      Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
+      listingsApart(first, second),
+      Option.when(pair.eitherWay(copiedOriginalJoinsAnotherFilm))(ConstraintEdges.CopiedOriginalApart),
+      Option.when(pair.eitherWay(reusedPageDeniesLink))(ConstraintEdges.ReusedPageApart),
+      Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
+      Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart),
+      Option.when(pair.eitherWay((node, _, nodeFilm, otherFilm) => creditDeniesHeld(node, otherFilm, nodeFilm)))(ConstraintEdges.CreditApart)
+    ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
+  }
+
+  /** The must-links a pair's evidence draws, by tier: the strongest is the pair's edge. */
+  private def mustLinks(pair: ConstraintEdges.Pair): Seq[(Int, String)] = {
+    import pair.{first, second, firstFilm, secondFilm}
+    Seq(
+      Option.when(pair.sameFilm)((1, "same-film")),
+      // One chain lists them under one catalogue id: its one film, whatever each venue calls it (a feed's id, only
+      // where their titles agree: `catalogueKey`).
+      Option.when(sharesCatalogueId(first, second))((2, ConstraintEdges.SameCatalogueId)),
+      titleLink(first, second),
+      // One house's relay of one work in one season, however each venue spells the house beside the work: what no title
+      // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
+      Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
+        (3, ConstraintEdges.SameRelay)),
+      // One film-less event, however each venue spells it beside its name ([[oneEvent]], the same words an article and
+      // the edition aside), while neither holds a film: no record joins them, and their titles share no form
+      // (UK "CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island", "The CBeebies Panto 2026: …").
+      Option.when(firstFilm.isEmpty && secondFilm.isEmpty && oneEvent(first, second) && sameEventName(first, second))(
+        (3, ConstraintEdges.SameEvent))
+    ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
+  }
+
+  /** The titles' must-link, by the one title relation (TitleRelation.tier: same title, same search form, original
+   *  title, whole segment). One listing's whole title a delimited SEGMENT of the other's ("Oficjalna premiera: Lalka"
+   *  and "Lalka") joins the decorated spelling to its plain sibling's cluster, so group voting and the venue signal
+   *  reach it. Whole segments only — "Zärtlich kreist die Faust" has no delimiter before "Faust" — and the ambiguity
+   *  rule leaves a spelling whose segment names two films apart, as it does one whose rest names a film of its own
+   *  (`namesBeside`). */
+  private def titleLink(first: EvidenceNode, second: EvidenceNode): Option[(Int, String)] =
+    links.tier(first, second).filter { case (tier, _) => tier != 4 ||
+      (segmentOf(first, second) && !namesBeside(second, first.evidence.cleanTitle)) ||
+      (segmentOf(second, first) && !namesBeside(first, second.evidence.cleanTitle)) }
 }
 
 private[identity] object ConstraintEdges {
+  /** Two nodes sharing a block key, with the film each holds (accepted or voted). */
+  private final case class Pair(first: EvidenceNode, second: EvidenceNode, firstFilm: Option[Int], secondFilm: Option[Int]) {
+    def sameFilm: Boolean = firstFilm.isDefined && firstFilm == secondFilm
+    /** Does `test` hold of the pair read either way round: (node, other, node's film, other's film)? */
+    def eitherWay(test: (EvidenceNode, EvidenceNode, Option[Int], Option[Int]) => Boolean): Boolean =
+      test(first, second, firstFilm, secondFilm) || test(second, first, secondFilm, firstFilm)
+  }
+
   /** The must-link reasons a title or a catalogue id gives — the ones [[Corroboration.Vouching]] lets vouch for a node. */
   val SameTitle        = "same-title"
   val SameCatalogueId  = "same-catalogue-id"
