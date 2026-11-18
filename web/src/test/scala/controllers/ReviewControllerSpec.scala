@@ -19,11 +19,20 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   private val now   = Instant.parse("2026-10-06T10:00:00Z")
   private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
+  /** A review server's pages and its writes over one answers store and labels file, as the wiring builds them. */
+  private final class ReviewServer(mode: Mode, answers: ReviewAnswers, labels: java.nio.file.Path, clock: Clock,
+                                   tmdbPosters: Option[TmdbPosterLookup] = None, labelsWritable: Boolean = true) {
+    private val sources: Map[Country, ReviewSource] = Map(Country.Poland -> ReviewFixtures.source(now))
+    val pages  = new ReviewController(Helpers.stubControllerComponents(), mode, sources, answers, labels, clock, tmdbPosters = tmdbPosters)
+    val writes = new ReviewAnswerController(Helpers.stubControllerComponents(), mode, sources, answers, labels, clock, labelsWritable)
+    export pages.{agentJudged, matchable, queue, recent, tmdbPoster}
+    export writes.{answer, exportLabels, history}
+  }
+
   private def controller(mode: Mode, answers: ReviewAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore),
                          labels: java.nio.file.Path = tempFile("labels", ".tsv"), clock: Clock = clock,
                          tmdbPosters: Option[TmdbPosterLookup] = None) =
-    new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
-      tmdbPosters = tmdbPosters)
+    new ReviewServer(mode, answers, labels, clock, tmdbPosters)
 
   "every review page" should "404 in production" in {
     val prod = controller(Mode.Prod)
@@ -36,8 +45,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   "an answer with no labels file configured" should "be kept, refused for the file with the fix named, and write nowhere" in {
     val labels  = tempDirectory("unconfigured").resolve("identity-judgements.tsv")
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
-    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
-      labelsWritable = false)
+    val c = new ReviewServer(Mode.Dev, answers, labels, clock, labelsWritable = false)
     val card = ReviewDigest.pending(Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
       "agent judged 2026-10-22 (test): x", judged = "2026-10-22")), Nil).head.payload
     val reply = contentAsJson(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right"))))
@@ -129,8 +137,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       "agent judged 2026-10-22 (test): x", judged = "2026-10-22")))
     Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
       "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
-    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> ReviewFixtures.source(now)),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), labels, clock, labelsWritable = false)
+    val c = new ReviewServer(Mode.Dev, new ReviewAnswers(new InMemoryReviewAnswerStore), labels, clock, labelsWritable = false)
     def kinds = "Agent-judged \\d+|Candidates \\d+".r.findAllIn(contentAsString(c.agentJudged(None, None, 20, false)(FakeRequest()))).toSeq
     kinds shouldBe Seq("Agent-judged 1", "Candidates 1")
     val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil).head

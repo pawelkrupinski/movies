@@ -2,7 +2,6 @@ package controllers
 
 import models.Country
 import play.api.Mode
-import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import services.identity.ResolverDecision
 import services.review._
@@ -32,9 +31,7 @@ class ReviewController(cc: ControllerComponents,
                        // Why the pages may be empty or answers not kept, for the banner (no mirror, answers in memory).
                        notices: Seq[String] = Nil,
                        // A candidate's TMDB poster asked live when no stored read gives one; none without a TMDB key.
-                       tmdbPosters: Option[TmdbPosterLookup] = None,
-                       // False when no labels file was configured (`REVIEW_LABELS_FILE`): answers are kept, never written.
-                       labelsWritable: Boolean = true) extends AbstractController(cc) {
+                       tmdbPosters: Option[TmdbPosterLookup] = None) extends AbstractController(cc) {
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -246,63 +243,10 @@ class ReviewController(cc: ControllerComponents,
       tmdbPosters.flatMap(_.poster(tmdbId, language)).fold(NotFound("no TMDB poster"))(Redirect(_))
     }
   }
-
-  /** Records one answer, and writes it into `identity-judgements.tsv` at once ([[exported]]); answers with the warnings
-   *  the venues' own facts raise against it, the film it named, and what the export did — or why it could not: the
-   *  answer is kept either way, and the next answer's export (or the export route) catches the file up. */
-  def answer(): Action[JsValue] = Action(parse.tolerantJson) { request =>
-    devOnly {
-      AnswerRequest.parse(request.body, request.session.get("userId").getOrElse("dev"), clock.instant()) match {
-        case Left(why)     => BadRequest(Json.obj("error" -> why))
-        case Right(answer) =>
-          answers.record(answer)
-          val written = exported() match {
-            case Success(summary) => Json.obj("exported" -> summary.render, "path" -> labelsPath.toString)
-            case Failure(e)       => Json.obj("exportError" -> s"not written to $labelsPath: ${e.getMessage}")
-          }
-          Ok(Json.obj("ok" -> true, "verdict" -> answer.verdict.code, "warnings" -> answer.warnings,
-            "ref" -> answer.ref.map(_.render), "url" -> answer.ref.flatMap(_.url)) ++ written)
-      }
-    }
-  }
-
-  /** Brings the checkout's `identity-judgements.tsv` up to the answers given since the last export ([[LabelsExport.exportTo]]). */
-  def exportLabels(): Action[AnyContent] = Action {
-    devOnly {
-      exported() match {
-        case Success(summary) => Ok(Json.obj("summary" -> summary.render, "added" -> summary.added, "flipped" -> summary.flipped,
-          "unchanged" -> summary.unchanged, "alreadyUsed" -> summary.alreadyUsed, "withdrawn" -> summary.withdrawn, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
-        case Failure(e)       => InternalServerError(Json.obj("error" -> s"not written to $labelsPath: ${e.getMessage}"))
-      }
-    }
-  }
-
-  // One export at a time: each reads the file, merges, and writes it back whole.
-  private val exporting = new Object
-
-  /** The labels file brought up to every answer given: what the export did. */
-  private def exported(): Try[LabelsExport.Summary] = exporting.synchronized {
-    Try {
-      if (!labelsWritable) throw new IllegalStateException(ReviewController.LabelsNotConfigured)
-      val history = answers.history()
-      LabelsExport.exportTo(labelsPath, history, FilmIdentity.linking(history, sources))
-    }
-  }
-
-  /** Every answer ever given, oldest first — the store as data. */
-  def history(): Action[AnyContent] = Action {
-    devOnly {
-      Ok(Json.toJson(answers.history().map(a => Json.obj("clusterId" -> a.clusterId, "country" -> a.country,
-        "page" -> a.page.code, "verdict" -> a.verdict.code, "ref" -> a.ref.map(_.render), "shown" -> a.shown.map(_.ref.render),
-        "title" -> a.title, "who" -> a.who, "at" -> a.at.toString, "warnings" -> a.warnings, "legacyId" -> a.legacyId))))
-    }
-  }
 }
 
 object ReviewController {
   val DefaultLimit = 20
-  val LabelsNotConfigured = "REVIEW_LABELS_FILE is not set, so no judgements file is written (start the server with scripts/review-server, " +
-    "from the review worktree); the answer is kept and the next export catches the file up"
 }
 
 /** Everything `review.scala.html` renders. */

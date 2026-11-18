@@ -1,7 +1,7 @@
 package views
 
 import com.sun.net.httpserver.HttpExchange
-import controllers.ReviewController
+import controllers.{ReviewAnswerController, ReviewController}
 import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -39,6 +39,8 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     override def instant(): Instant = now.plusMillis(ticks.incrementAndGet())
   }
   private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+    Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, ticking)
+  private val writes = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, ticking)
 
   /** The pages over the REAL prod sample ([[ProdReviewSample]]), every country at once. */
@@ -121,6 +123,8 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       "de\tKino im Druckluft\tSnake Eyes\ttmdb:1730437\tSnake Eyes (2026)\t2026-10-23\tlooks wrong: a 21′ short's record; De Palma's Snake Eyes (1998) is tmdb:8688").mkString("", "\n", "\n"))
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers, digestLabels, ticking)
   }
+  private lazy val digestWrites = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers,
+    digestLabels, ticking)
   private lazy val digestItems = ReviewDigest.pending(LabelsTsv.read(digestLabels),
     ReviewDigest.readCandidates(ReviewDigest.candidatesPath(digestLabels)))
 
@@ -129,9 +133,9 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
     val result = Option.when(exchange.getRequestMethod == "POST")(path).collect {
       case "/debug/review/answer" if (body \ "card" \ "page").asOpt[String].contains("digest") =>
-        digest.answer()(FakeRequest("POST", path).withBody(body))
-      case "/debug/review/answer" => controller.answer()(FakeRequest("POST", path).withBody(body))
-      case "/debug/review/export" => controller.exportLabels()(FakeRequest("POST", path))
+        digestWrites.answer()(FakeRequest("POST", path).withBody(body))
+      case "/debug/review/answer" => writes.answer()(FakeRequest("POST", path).withBody(body))
+      case "/debug/review/export" => writes.exportLabels()(FakeRequest("POST", path))
     }.orElse(Option.when(exchange.getRequestMethod == "GET")(path).collect {
       case poster if poster.startsWith("/debug/review/tmdb-poster/") =>
         odblask.tmdbPoster(poster.stripPrefix("/debug/review/tmdb-poster/").toInt, Some("pl"))(FakeRequest("GET", path))

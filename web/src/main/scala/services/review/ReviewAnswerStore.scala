@@ -126,6 +126,13 @@ final class ReviewAnswers(store: ReviewAnswerStore) {
     fresh.foreach(store.append)
     fresh.size
   }
+
+  /** The judgements file at `path` brought up to every answer given ([[LabelsExport.exportTo]]), each film linked across
+   *  databases by what the `sources` read ([[FilmIdentity.linking]]). */
+  def exportTo(path: java.nio.file.Path, sources: Map[models.Country, ReviewSource]): LabelsExport.Summary = {
+    val all = history()
+    LabelsExport.exportTo(path, all, FilmIdentity.linking(all, sources))
+  }
 }
 
 object ReviewAnswers {

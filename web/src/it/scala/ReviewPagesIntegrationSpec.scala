@@ -1,6 +1,6 @@
 package integration
 
-import controllers.ReviewController
+import controllers.{ReviewAnswerController, ReviewController}
 import models.Country
 import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -117,10 +117,12 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     def controller(a: ReviewAnswers) = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), a,
       tempFile("labels", ".tsv"), clock)
     val c          = controller(answers)
+    val writes     = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), answers,
+      tempFile("labels", ".tsv"), clock)
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     val card = ReviewCards.build(source, Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil, new ReviewAnswers.Index(Nil))
       .head.payload(ReviewPage.Queue)
-    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "event")))) shouldBe OK
+    status(writes.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "event")))) shouldBe OK
 
     val reread = new ReviewAnswers(new MongoReviewAnswerStore(review.database))
     reread.current().map(a => (a.title, a.verdict, a.shown.map(_.ref.render))) shouldBe Seq(("FRANZ KAFKA", ReviewVerdict.Event, Some("tmdb:1157322")))
@@ -129,7 +131,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     page should include("Macbeth")
     page should include("1 answered hidden")
 
-    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
+    status(writes.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
     reread.current() shouldBe empty
     reread.history().map(_.verdict) shouldBe Seq(ReviewVerdict.Event, ReviewVerdict.Undo)
   }

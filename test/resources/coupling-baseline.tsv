@@ -87,7 +87,7 @@ fanout	controllers.AuthController	16
 fanout	controllers.DebugController	22
 fanout	controllers.MovieController	23
 fanout	controllers.MovieControllerService	15
-fanout	controllers.ReviewController	32
+fanout	controllers.ReviewController	28
 fanout	controllers.ShowingsMarkup	12
 fanout	controllers.SsoController	11
 fanout	controllers.StructuredData	11
@@ -250,7 +250,7 @@ fanout	services.refresh.RefreshSourceHandler	10
 fanout	services.review.MongoReviewSource	22
 fanout	services.review.ReviewCard	18
 fanout	services.review.ReviewCards	14
-fanout	services.review.ReviewLabelsCli	21
+fanout	services.review.ReviewLabelsCli	20
 fanout	services.scrapes.ForwardingScrapeArchive	11
 fanout	services.scrapes.InMemoryScrapeArchiveRepository	13
 fanout	services.scrapes.MongoScrapeArchiveRepository	20

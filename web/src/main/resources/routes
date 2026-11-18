@@ -247,12 +247,12 @@ GET     /debug/review/why                controllers.ReviewController.why(countr
 GET     /debug/review/agent-judged       controllers.ReviewController.agentJudged(country: Option[String] ?= None, kind: Option[String] ?= None, limit: Int ?= 20, answered: Boolean ?= false)
 # One listing explained: its take, the LogsQL query of its take history, the latest trace, its judgements.
 GET     /debug/review/listing            controllers.ReviewController.listing(country: String, venue: Option[String] ?= None, title: String ?= "")
-GET     /debug/review/answers            controllers.ReviewController.history()
+GET     /debug/review/answers            controllers.ReviewAnswerController.history()
 GET     /debug/review/tmdb-poster/:tmdbId controllers.ReviewController.tmdbPoster(tmdbId: Int, country: Option[String] ?= None)
 + nocsrf
-POST    /debug/review/answer             controllers.ReviewController.answer()
+POST    /debug/review/answer             controllers.ReviewAnswerController.answer()
 + nocsrf
-POST    /debug/review/export             controllers.ReviewController.exportLabels()
+POST    /debug/review/export             controllers.ReviewAnswerController.exportLabels()
 
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper

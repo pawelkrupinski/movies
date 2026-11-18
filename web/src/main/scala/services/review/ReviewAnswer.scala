@@ -85,6 +85,14 @@ final case class ReviewAnswer(clusterId: String, country: String, page: ReviewPa
   }
 }
 
+object ReviewAnswer {
+  /** One answer as the answers' history lists it ([[ReviewAnswers.history]], `GET /debug/review/answers`). */
+  def historyJson(a: ReviewAnswer): play.api.libs.json.JsObject = play.api.libs.json.Json.obj(
+    "clusterId" -> a.clusterId, "country" -> a.country, "page" -> a.page.code, "verdict" -> a.verdict.code,
+    "ref" -> a.ref.map(_.render), "shown" -> a.shown.map(_.ref.render), "title" -> a.title, "who" -> a.who,
+    "at" -> a.at.toString, "warnings" -> a.warnings, "legacyId" -> a.legacyId)
+}
+
 /** A cluster's stable id: a digest of its members' identities, whatever order the model lists them in. */
 object ReviewClusterId {
   def of(members: Seq[ReviewMember]): String = {

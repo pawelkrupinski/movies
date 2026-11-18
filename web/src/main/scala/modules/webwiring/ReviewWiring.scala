@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.ReviewController
+import controllers.{ReviewAnswerController, ReviewController}
 import play.api.Mode
 import services.MongoConnection
 import java.nio.file.Paths
@@ -28,11 +28,15 @@ trait ReviewWiring { self: Wiring =>
   lazy val reviewAnswers: ReviewAnswers = new ReviewAnswers(reviewMirrorClient.fold(new InMemoryReviewAnswerStore: services.review.ReviewAnswerStore)(
     client => new MongoReviewAnswerStore(client.getDatabase(MongoReviewAnswerStore.Database))))
 
+  private lazy val reviewLabelsPath = processConfiguration.reviewLabelsFile.map(_.value).getOrElse(Paths.get("REVIEW_LABELS_FILE-not-set"))
+
   lazy val reviewController: ReviewController = new ReviewController(controllerComponents, environmentMode, reviewSources, reviewAnswers,
-    processConfiguration.reviewLabelsFile.map(_.value).getOrElse(Paths.get("REVIEW_LABELS_FILE-not-set")), clock,
+    reviewLabelsPath, clock,
     tmdbPosters = Option.when(environmentMode != Mode.Prod)(processConfiguration.tmdbApiKey.map(new TmdbPosterLookup(httpFetch, _))).flatten,
-    labelsWritable = processConfiguration.reviewLabelsFile.isDefined,
     notices = (if (reviewMirrorClient.isEmpty)
       Seq("MONGODB_MOVIES_MIRROR_URI is not set: these pages read only the local mirror (scripts/local-mirror/README.md), so they list nothing, and answers are kept in memory only.")
-    else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewController.LabelsNotConfigured.capitalize) else Nil))
+    else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewAnswerController.LabelsNotConfigured.capitalize) else Nil))
+
+  lazy val reviewAnswerController: ReviewAnswerController = new ReviewAnswerController(controllerComponents, environmentMode,
+    reviewSources, reviewAnswers, reviewLabelsPath, clock, labelsWritable = processConfiguration.reviewLabelsFile.isDefined)
 }

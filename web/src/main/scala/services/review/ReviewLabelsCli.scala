@@ -46,8 +46,7 @@ object ReviewLabelsCli {
         parsed.flatMap(a => a.warnings.map(w => s"WARNING: ${a.country} ${a.title}: $w"))).mkString("\n")
     case "export" :: rest =>
       val path = rest.headOption.map(Paths.get(_)).orElse(labelsFile).getOrElse(noLabelsFile)
-      val history = answers.history()
-      s"$path\n" + LabelsExport.exportTo(path, history, FilmIdentity.linking(history, sources)).render
+      s"$path\n" + answers.exportTo(path, sources).render
     case "queue" :: rest =>
       val top     = rest.headOption.flatMap(_.toIntOption).getOrElse(50)
       val first   = rest.drop(1).headOption.flatMap(_.toIntOption).getOrElse(170)

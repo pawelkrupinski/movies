@@ -155,7 +155,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val taskRuns    = new TaskRunController(cc, adminAction, null, clock = _root_.tools.SpecClock.Pinned)
     val facebook    = new FacebookDataDeletionController(cc, models.Country.Poland, None, users, null)
     val envConfig   = new EnvConfigController(cc, adminAction, null)
-    val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
+    val review      = new ReviewAnswerController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
     // By type, so reordering the routes file leaves this alone; every controller not listed is null.
     _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, rehydrate, sso, auth, userState, account, uptime, uptimeFeed, imageEvents, taskRuns,
       facebook, envConfig, review)
