@@ -53,7 +53,7 @@ object IdentityMeasures {
                            *  against the film's certificate in the venue's country by the weighted `certificate` measure. */
                            certificate: Option[String] = None,
                            /** The latest year its film can be from ([[services.identity.Listing.yearUpperBound]]): what
-                            *  weighs against a film released after it as a stated year would ([[yearBound]]), never for one. */
+                            *  weighs against a film released after it as a stated year would ([[ListingYearReadings.yearBound]]), never for one. */
                            yearUpperBound: Option[Int] = None,
                            /** The year of the performance a stage relay's synopsis names ([[services.identity.Listing.performanceYear]]):
                             *  what dates an encore's relay ([[RelayStage.of]]), never measured. */
@@ -574,14 +574,20 @@ object IdentityMeasures {
    *  agree (a year within one, the same director, the original title) and those that deny it. */
   def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = {
     val agree = Set.newBuilder[String]; val deny = Set.newBuilder[String]
-    // A published year agrees or denies; a year in the title only agrees — a bracket is as often
-    // a re-release's year as the film's.
-    m.get("year.distance").foreach { case Number(d) => if (d <= YearWindow.PublishedAdjacency) agree += "year" else deny += "year"; case _ => }
-    m.get("titleYear.delta").foreach { case Number(d) if FactRelations.nearDelta(d) => agree += "year"; case _ => }
-    m.get("director").foreach { case Category(c) => if (c == SamePersonMeasure.value) agree += "director" else if (c == "different") deny += "director"; case _ => }
-    m.get("originalTitle").foreach { case Category(c) => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle"; case _ => }
+    def tell(verdict: Option[(String, Boolean)]): Unit = verdict.foreach { case (name, agrees) => if (agrees) agree += name else deny += name }
+    tell(publishedYearVerdict(m)); tell(titleYearVerdict(m)); tell(directorVerdict(m)); tell(originalTitleVerdict(m))
     (agree.result(), deny.result())
   }
+  /** A published year agrees or denies; a year in the title only agrees ([[titleYearVerdict]]) — a bracket is as often a
+   *  re-release's year as the film's. Each verdict: the corroborator, and whether it agrees (else it denies). */
+  private def publishedYearVerdict(m: Map[String, Measure]): Option[(String, Boolean)] =
+    m.get("year.distance").collect { case Number(d) => "year" -> (d <= YearWindow.PublishedAdjacency) }
+  private def titleYearVerdict(m: Map[String, Measure]): Option[(String, Boolean)] =
+    m.get("titleYear.delta").collect { case Number(d) if FactRelations.nearDelta(d) => "year" -> true }
+  private def directorVerdict(m: Map[String, Measure]): Option[(String, Boolean)] =
+    m.get("director").collect { case Category(c) if c == SamePersonMeasure.value || c == "different" => "director" -> (c == SamePersonMeasure.value) }
+  private def originalTitleVerdict(m: Map[String, Measure]): Option[(String, Boolean)] =
+    m.get("originalTitle").collect { case Category(c) if c == "match" || c == "disjoint" => "originalTitle" -> (c == "match") }
 
   // ── the measurement sets ─────────────────────────────────────────────────────────────
 
@@ -637,73 +643,9 @@ object IdentityMeasures {
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
     slots(14) = certificateRelation(l, f, country, title)
-    anniversaryFilmDated(l, f, yearBound(l, f, country, corroboratingVenues, premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))))
+    ListingYearReadings.read(l, f, country, corroboratingVenues, title, new ListingFilmMeasures(slots))
   }
 
-  /** `m` with the year an anniversary the title bills dates its film ([[Listing.anniversaryFilmYear]]) read as a published
-   *  year against a film released within a year of it — and only there, where nothing else dated the listing: US "The Host:
-   *  20th Anniversary", screening in 2026, names Bong Joon-ho's 2006 film and Niccol's 2013 one alike, and the anniversary
-   *  is the one fact telling them apart. A film further off stays as a listing stating no year weighs it: a venue's
-   *  anniversary may count from another release (DE "SATURDAY NIGHT FEVER 40TH ANNIVERSARY", screening in 2026, is the
-   *  1977 film), so the hint is evidence for a film, never against one. A re-release tours into the year after its
-   *  anniversary, so a film released a year before the date is read as of it: DE Filmpalette's "LA HAINE (30TH
-   *  ANNIVERSARY)", screening in 2026, is Kassovitz's 1995 film, and a `year.delta` of 1 weighs against a film (of the
-   *  matched anniversary billings stating no year in prod, 2026-11-15, 1199 took a film of the date, 45 one a year
-   *  before it, 1 one a year after). */
-  private def anniversaryFilmDated(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    l.anniversaryFilmYear match {
-      case Some(dated) if m("year.delta") == MissingListing && f.year.exists(FactRelations.yearsNear(dated, _)) =>
-        val anniversary = if (f.year.contains(dated - 1)) dated - 1 else dated
-        m ++ Map("year.delta" -> delta(Some(anniversary), f.year), "year.distance" -> absDelta(Some(anniversary), f.year))
-      case _ => m
-    }
-
-  /** `m` with a listing's year UPPER BOUND ([[Listing.yearUpperBound]]: Cineamo's German premiere of an older film) read
-   *  as its published year against a film released more than [[YearWindow.PublishedAdjacency]] after it — and only there.
-   *  No film premieres before it is made, so the film released past the premiere weighs as the year that far before it
-   *  weighs (`year.delta` -2: -1.1; -3 and less: -6.9), the learned cannot-links reading it as they read a stated year:
-   *  Eulenspiegel's "King Kong", premiered in Germany in 1933, is no 2005 remake. A film from the bound's year or before
-   *  stays as a listing stating no year weighs it: the premiere trails a classic by any number of years (Rope 1948,
-   *  premiered there in 1963), so it is no match, only not ruled out. Only a film made the premiere's very year is read
-   *  as of the stated year: its premiere is its own (DE "Der kleine Prinz", premiered 1972, is the 1972 film, not the
-   *  1962 or the 1974 one), as Cineamo's year read it before it became a bound.
-   *  The bound is the premiere of the record the feed LINKS, a copy of the operator's pick, not the venue's own fact: it
-   *  states nothing against a film another venue's own facts back (`corroboratingVenues`: its exact year or its
-   *  director). DE Kommunales Kino im Künstlerhaus' "Close", linked to Cineamo's 148857m (premiered 2004), is Lukas
-   *  Dhont's 2022 film that Passage Kinos Leipzig dates and times from its own source. */
-  private def yearBound(l: Listing, f: Film, country: Option[String], corroboratingVenues: Int, m: Map[String, Measure]): Map[String, Measure] =
-    l.yearUpperBound.filter(_ => l.year.isEmpty && corroboratingVenues == 0) match {
-      case Some(bound) =>
-        val released = if (f.releases.isEmpty) f.year else f.closestYear(bound, country)
-        if (released.exists(_ - bound > YearWindow.PublishedAdjacency)) m ++ Map("year.delta" -> delta(Some(bound), released), "year.distance" -> absDelta(Some(bound), released))
-        else if (f.year.contains(bound)) m ++ Map("year.delta" -> delta(Some(bound), f.year), "year.distance" -> absDelta(Some(bound), f.year))
-        else m
-      case None => m
-    }
-
-  /** `m` with the published year absent when it predates the season the listing's screenings broadcast its stage work
-   *  in ([[Listing.screenedSeason]]), against the house's record of that season ([[StageRelays.screenedSeasonRecord]]): the year dates
-   *  the staging's premiere, not the broadcast. UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025], screening on 25
-   *  May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day — two years off its 2027, its title an
-   *  overlap, it was denied, and the denial withdrew the record from every relay title-linked to it. Against any other
-   *  record — the 2021/22 season's, the house's 2013 recording — the year stays the venue's fact. */
-  private def premiereYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (l.year.isDefined && StageRelays.screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
-
-  /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
-   *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
-   *  year that many years before the stated one, within a year. Any other year stays the listing's fact, and so does one
-   *  a re-release TMDB dates already agrees with (DE "Der mit dem Wolf tanzt (35-jähriges Jubiläum)" [2026], released
-   *  again in 2026). */
-  private def anniversaryYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (l.anniversary.isEmpty || l.year.isEmpty || f.year.isEmpty || !FactRelations.yearsNear(l.year.get - l.anniversary.get, f.year.get) ||
-        m("year.delta").match { case Number(d) => FactRelations.nearDelta(d); case _ => false }) m
-    else m ++ PublishedYear.map(_ -> MissingListing)
-  /** Is `a` dated by the screening of an anniversary it bills, `b` by the film's own year that many years before: two
-   *  spellings of one re-release, neither year the other's fact (DE "Der mit dem Wolf tanzt (35-jähriges Jubiläum)" dated
-   *  2026 at one venue and 1991 at another). */
-  private def anniversaryDated(a: Listing, b: Listing): Boolean =
-    a.anniversary.isDefined && a.year.isDefined && b.year.exists(FactRelations.yearsNear(a.year.get - a.anniversary.get, _))
   /** How many years an anniversary one of `titles` bills celebrates ("30th Anniversary": 30), the first that bills one. */
   private[identity] def anniversaryOf(titles: Seq[String]): Option[Int] =
     titles.iterator.flatMap(t => AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
@@ -712,26 +654,6 @@ object IdentityMeasures {
   private[identity] val AnniversaryYears =
     ("""(?iU)\b(\d{1,3})(?:st|nd|rd|th|e|ème|°)?\.?(?:\s*-\s*|\s+)(?:jährige[smn]?\s+)?""" +
       TitleWords.rawPattern(TitleWords.Concept.Anniversary) + """\b""").r
-
-  /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
-   *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year
-   *  that denies the film is the year the venue shows it (Kinoteka's 2026 on Ken Russell's 1971
-   *  "Diabły") or releases it, not another film's — in the score as in a veto. A title that is
-   *  NOT the film's leaves the year a fact: then it tells that director's films apart
-   *  (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid"), and
-   *  a title that only starts or ends with the film's (`decorated`) may bill another work beside it
-   *  (Nowe Horyzonty's 2026 double bill "Basia. Humor w paski mam + Kocia Szajka…" is not
-   *  Wasilewski's 2018 "Basia").
-   *  "Credited" is by the listing that published the year ([[Listing.creditedBesideYear]]), never
-   *  borrowed from a sibling's credit. A re-release is the same cut: a runtime that contradicts
-   *  the film ([[runtimeContradicts]]) makes the year another production's — DE's 2027 "MET Opera
-   *  Live im Kino: Manon" at 264 minutes is the Met's revival of Laurent Pelly's staging, not his
-   *  232-minute 2019 recording. */
-  private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
-    if (TitledRelations(title.value) && ownAgreement(m)._2("year") && !runtimeContradicts(m) &&
-        f.directorCredits.exists(CreditRelation.onePerson(l.creditsBesideYear, _)))
-      m ++ PublishedYear.map(_ -> MissingListing)
-    else m
 
   /** The listing's original title against the film's titles — unless it only repeats the
    *  listing's own title ([[repeatsItsTitle]]) and that title names the film ([[NamingRelations]]):
@@ -763,36 +685,44 @@ object IdentityMeasures {
    * an id in a common namespace, and whether it was the same id (`None` when there is no common
    * namespace).
    */
-  def listingListing(a: Listing, b: Listing, sameVenue: Boolean, sharedChainId: Option[Boolean]): Map[String, Measure] = {
-    // Two listings name each other the same way whichever is measured first: when one's title is a
-    // whole delimited piece of the other's ("Lalka" and "Astra Seniora - Lalka", in either order)
-    // the pair is a `segment`, as the resolver's title-segment must-link reads it — measured one
-    // way only, the plain spelling first read as a `fragment` or an `overlap` of its decorated one.
-    val title = (titleRelation(a, asFilm(b), None, Qualifiers.Unknown), titleRelation(b, asFilm(a), None, Qualifiers.Unknown)) match {
+  def listingListing(a: Listing, b: Listing, sameVenue: Boolean, sharedChainId: Option[Boolean]): Map[String, Measure] =
+    Map(
+      "title"         -> listingTitleRelation(a, b),
+      "originalTitle" -> listingOriginalTitle(a, b),
+      "year.delta"    -> (if (ListingYearReadings.anniversaryDated(a, b) || ListingYearReadings.anniversaryDated(b, a)) MissingListing else absDelta(a.year, b.year)),
+      "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
+      "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
+      "director"      -> directorRelation(a.directors, b.directors),
+      "runtime.delta" -> listingRuntimeDelta(a, b),
+      "venue"         -> Category(if (sameVenue) "same" else "different"),
+      "chainId"       -> sharedChainId.fold[Measure](Missing("no-shared-namespace"))(s => Category(if (s) "same" else "different"))
+    )
+
+  /** Two listings name each other the same way whichever is measured first: when one's title is a whole delimited piece
+   *  of the other's ("Lalka" and "Astra Seniora - Lalka", in either order) the pair is a `segment`, as the resolver's
+   *  title-segment must-link reads it — measured one way only, the plain spelling first read as a `fragment` or an
+   *  `overlap` of its decorated one. */
+  private def listingTitleRelation(a: Listing, b: Listing): Category =
+    (titleRelation(a, asFilm(b), None, Qualifiers.Unknown), titleRelation(b, asFilm(a), None, Qualifiers.Unknown)) match {
       case (Category("original") | Category("alternative"), _) => Category("exact")
       case (forward, backward) if forward != Category("exact") && backward == Category("segment") => backward
       case (forward, _)                                        => forward
     }
-    Map(
-      "title"         -> title,
-      "originalTitle" -> ((a.measuredOriginal, b.measuredOriginal) match {
-                           case (Some(oa), Some(ob)) => originalTitleRelation(Some(oa), Seq(ob))
-                           case (None, _)           => MissingListing
-                           case (_, None)           => MissingFilm
-                         }),
-      "year.delta"    -> (if (anniversaryDated(a, b) || anniversaryDated(b, a)) MissingListing else absDelta(a.year, b.year)),
-      "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
-      "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
-      "director"      -> directorRelation(a.directors, b.directors),
-      // the one billing an event beside the film running longer, past the band: the event's minutes, no fact about the
-      // film ([[runtimeDelta]])
-      "runtime.delta" -> ((a.statedRuntime, b.statedRuntime) match {
-                           case (Some(x), Some(y)) if (x - y > Corroboration.RuntimeBand && runsAnEvent(a)) ||
-                                                      (y - x > Corroboration.RuntimeBand && runsAnEvent(b)) => MissingListing
-                           case (x, y)                                                                       => absDelta(x, y)
-                         }),
-      "venue"         -> Category(if (sameVenue) "same" else "different"),
-      "chainId"       -> sharedChainId.fold[Measure](Missing("no-shared-namespace"))(s => Category(if (s) "same" else "different"))
-    )
-  }
+
+  /** One listing's original title against the other's, each as the `originalTitle` measures read it. */
+  private def listingOriginalTitle(a: Listing, b: Listing): Measure =
+    (a.measuredOriginal, b.measuredOriginal) match {
+      case (Some(oa), Some(ob)) => originalTitleRelation(Some(oa), Seq(ob))
+      case (None, _)           => MissingListing
+      case (_, None)           => MissingFilm
+    }
+
+  /** The two stated runtimes apart — absent when the one billing an event beside the film runs longer, past the band:
+   *  the event's minutes, no fact about the film ([[runtimeDelta]]). */
+  private def listingRuntimeDelta(a: Listing, b: Listing): Measure =
+    (a.statedRuntime, b.statedRuntime) match {
+      case (Some(x), Some(y)) if (x - y > Corroboration.RuntimeBand && runsAnEvent(a)) ||
+                                 (y - x > Corroboration.RuntimeBand && runsAnEvent(b)) => MissingListing
+      case (x, y)                                                                       => absDelta(x, y)
+    }
 }
