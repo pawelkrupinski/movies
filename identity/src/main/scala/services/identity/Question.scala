@@ -39,26 +39,18 @@ enum Question {
   case Catalogue(question: CatalogueQuestion)
 
   def kind: QuestionKind = this match {
-    case Candidate(CandidateQuery.Title(_))       => QuestionKind.Title
-    case Candidate(CandidateQuery.Director(_))    => QuestionKind.Director
-    case Candidate(CandidateQuery.Imdb(_))        => QuestionKind.Imdb
-    case Candidate(CandidateQuery.ImdbTitled(_))  => QuestionKind.ImdbTitled
-    case Candidate(CandidateQuery.TitleCredit(_)) => QuestionKind.TitleCredit
-    case FilmRecord(_)                            => QuestionKind.FilmRecord
-    case Person(_)                                => QuestionKind.Person
-    case VenuePage(_)                             => QuestionKind.VenuePage
-    // as the family store ages them (`FamilyAnswerStore.wanted`): by the stored id
-    case Family(family, question) =>
-      val id = s"${family.label}|$question"
-      if (id.contains("|record|")) QuestionKind.FamilyRecord
-      else if (id.contains("|showing|")) QuestionKind.FamilyShowing
-      else QuestionKind.FamilySearch
+    case Candidate(query)                        => Question.candidateKind(query)
+    case FilmRecord(_)                           => QuestionKind.FilmRecord
+    case Person(_)                               => QuestionKind.Person
+    case VenuePage(_)                            => QuestionKind.VenuePage
+    case Family(family, question)                => Question.familyKind(s"${family.label}|$question")
     case Find(_)                                 => QuestionKind.Find
     case Record(_)                               => QuestionKind.Record
     case Poster(_)                               => QuestionKind.Poster
     case Catalogue(CatalogueQuestion.Page(_))    => QuestionKind.CataloguePage
     case Catalogue(CatalogueQuestion.Id(_))      => QuestionKind.CatalogueId
   }
+
 
   /** The id an agreement question is asked under on the queue, the form its store files or names it by:
    *  `<family>|<question>` (`FamilyAnswerStore.questionId`), `find|<imdbId>` (`TmdbStore.findId`),
@@ -80,24 +72,37 @@ enum Question {
 object Question {
 
   /** The agreement question `id` names ([[Question.id]]), or None for an id no agreement question has. */
-  def parse(id: String): Option[Question] = {
-    def pair(rest: String) = rest.split("\\|", 2) match {
-      case Array(first, second) => Some(first -> second)
-      case _                    => None
-    }
+  def parse(id: String): Option[Question] =
     pair(id).flatMap {
       case ("find", imdbId)       => Some(Find(imdbId))
       case ("tmdb", rest)         => pair(rest).collect { case ("record", tmdbId) => tmdbId.toIntOption.map(Record(_)) }.flatten
-      case ("poster", rest)       => pair(rest).flatMap {
-        case ("venue", url)   => Some(Poster(PosterQuestion.Venue(url)))
-        case ("film", tmdbId) => tmdbId.toIntOption.map(film => Poster(PosterQuestion.Film(film)))
-        case _                => None
-      }
+      case ("poster", rest)       => pair(rest).flatMap(posterOf)
       case ("catalogue", rest)    => pair(rest).map { case (source, of) => Catalogue(CatalogueQuestion.Id(CatalogueId(source, of))) }
       case ("catalogue-page", url) => Some(Catalogue(CatalogueQuestion.Page(url)))
       case (label, question)      => VoterFamily.values.find(_.label == label).map(Family(_, question))
     }
+  private def pair(rest: String): Option[(String, String)] = rest.split("\\|", 2) match {
+    case Array(first, second) => Some(first -> second)
+    case _                    => None
   }
+  private def posterOf(kind: (String, String)): Option[Question] = kind match {
+    case ("venue", url)   => Some(Poster(PosterQuestion.Venue(url)))
+    case ("film", tmdbId) => tmdbId.toIntOption.map(film => Poster(PosterQuestion.Film(film)))
+    case _                => None
+  }
+  private def candidateKind(query: CandidateQuery): QuestionKind = query match {
+    case CandidateQuery.Title(_)       => QuestionKind.Title
+    case CandidateQuery.Director(_)    => QuestionKind.Director
+    case CandidateQuery.Imdb(_)        => QuestionKind.Imdb
+    case CandidateQuery.ImdbTitled(_)  => QuestionKind.ImdbTitled
+    case CandidateQuery.TitleCredit(_) => QuestionKind.TitleCredit
+  }
+  /** A family question's kind, as the family store ages them (`FamilyAnswerStore.wanted`): by the stored id. */
+  private def familyKind(id: String): QuestionKind =
+    if (id.contains("|record|")) QuestionKind.FamilyRecord
+    else if (id.contains("|showing|")) QuestionKind.FamilyShowing
+    else QuestionKind.FamilySearch
+
 
   /** The families' questions among `questions`, as the family store and its askers name them. */
   def families(questions: Iterable[Question]): Set[(VoterFamily, String)] =

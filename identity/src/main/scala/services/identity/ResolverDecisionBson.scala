@@ -83,57 +83,71 @@ object ResolverDecisionBson {
 
   /** The decision the reader is at, read field by field (see [[BsonFields]]). */
   def read(reader: org.bson.BsonReader): ResolverDecision = {
-    import org.bson.BsonType
-    var members: Seq[models.ListingKey]                = null
-    var film: Option[Int]                         = None
-    var confidence: java.lang.Double              = null
-    var basis: String                             = null
-    var explanation, contradictions: Seq[String]  = null
-    var fallback: Option[ResolverDecision.Fallback] = None
-    var leaning, candidate: Option[ResolverDecision.Leaning] = None
-    var unanswered                                = 0
-    var awaits                                    = Set.empty[Question]
-    var agreed                                    = Map.empty[String, String]
-    var trace: Option[BsonDocument]               = None
-    var filmTitled                                = Set.empty[models.ListingKey]
-    BsonFields.document(reader) {
-      case "members"        => members = {
-                                 val all = Vector.newBuilder[models.ListingKey]
-                                 if (BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader))) all.result().sorted(using models.ListingKey.ordering)
-                                 else all.result()
-                               }
-      case "film"           => film = BsonFields.when(reader, BsonType.INT32)(reader.readInt32())
-      case "confidence"     => confidence = BsonFields.number(reader, "confidence")
-      case "basis"          => basis = reader.readString()
-      case "explanation"    => explanation = BsonFields.strings(reader)
-      case "contradictions" => contradictions = BsonFields.strings(reader)
-      case "fallback"       => fallback = BsonFields.when(reader, BsonType.DOCUMENT)(readFallback(reader))
-      case "leaning"        => leaning = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
-      case "candidate"      => candidate = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
-      case "unanswered"     => unanswered = BsonFields.when(reader, BsonType.INT32)(reader.readInt32()).getOrElse(0)
-      case "awaits"         => awaits = BsonFields.when(reader, BsonType.ARRAY) {
-                                 val all = Set.newBuilder[Question]
-                                 reader.readStartArray()
-                                 while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) awaitedOf(reader.readString()).foreach(all += _)
-                                 reader.readEndArray()
-                                 all.result()
-                               }.getOrElse(Set.empty)
-      case "trace"          => trace = BsonFields.when(reader, BsonType.DOCUMENT)(
-                                 new org.bson.codecs.BsonDocumentCodec().decode(reader, org.bson.codecs.DecoderContext.builder().build()))
-      case "filmTitled"     => filmTitled = BsonFields.strings(reader).flatMap(models.ListingKey.parse).toSet
-      case "agreed"         => agreed = BsonFields.when(reader, BsonType.DOCUMENT) {
-                                 val all = Map.newBuilder[String, String]
-                                 BsonFields.document(reader)(family => all += family -> reader.readString())
-                                 all.result()
-                               }.getOrElse(Map.empty)
-      case _                => reader.skipValue()
-    }
-    ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
-      ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
-      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate, awaits, filmTitled)(
-      trace.fold(DecisionTrace.Empty)(keptTrace(_, BsonFields.required(members, "members"))))
+    val fields = new DecisionFields
+    BsonFields.document(reader)(name => FieldReaders.get(name).fold(reader.skipValue())(_(fields, reader)))
+    fields.decision
   }
 
+  /** A decision's fields as [[read]] meets them, then the decision they make. */
+  private final class DecisionFields {
+    var members: Seq[models.ListingKey]                      = null
+    var film: Option[Int]                                    = None
+    var confidence: java.lang.Double                         = null
+    var basis: String                                        = null
+    var explanation, contradictions: Seq[String]             = null
+    var fallback: Option[ResolverDecision.Fallback]          = None
+    var leaning, candidate: Option[ResolverDecision.Leaning] = None
+    var unanswered                                           = 0
+    var awaits                                               = Set.empty[Question]
+    var agreed                                               = Map.empty[String, String]
+    var trace: Option[BsonDocument]                          = None
+    var filmTitled                                           = Set.empty[models.ListingKey]
+
+    def decision: ResolverDecision =
+      ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
+        ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
+        BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate, awaits, filmTitled)(
+        trace.fold(DecisionTrace.Empty)(keptTrace(_, BsonFields.required(members, "members"))))
+  }
+
+  /** How each stored field is read into the decision's; any other is skipped. */
+  private val FieldReaders: Map[String, (DecisionFields, org.bson.BsonReader) => Unit] = {
+    import org.bson.BsonType
+    Map(
+      "members"        -> ((f, reader) => f.members = readMembers(reader)),
+      "film"           -> ((f, reader) => f.film = BsonFields.when(reader, BsonType.INT32)(reader.readInt32())),
+      "confidence"     -> ((f, reader) => f.confidence = BsonFields.number(reader, "confidence")),
+      "basis"          -> ((f, reader) => f.basis = reader.readString()),
+      "explanation"    -> ((f, reader) => f.explanation = BsonFields.strings(reader)),
+      "contradictions" -> ((f, reader) => f.contradictions = BsonFields.strings(reader)),
+      "fallback"       -> ((f, reader) => f.fallback = BsonFields.when(reader, BsonType.DOCUMENT)(readFallback(reader))),
+      "leaning"        -> ((f, reader) => f.leaning = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))),
+      "candidate"      -> ((f, reader) => f.candidate = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))),
+      "unanswered"     -> ((f, reader) => f.unanswered = BsonFields.when(reader, BsonType.INT32)(reader.readInt32()).getOrElse(0)),
+      "awaits"         -> ((f, reader) => f.awaits = BsonFields.when(reader, BsonType.ARRAY)(readAwaits(reader)).getOrElse(Set.empty)),
+      "trace"          -> ((f, reader) => f.trace = BsonFields.when(reader, BsonType.DOCUMENT)(
+                            new org.bson.codecs.BsonDocumentCodec().decode(reader, org.bson.codecs.DecoderContext.builder().build()))),
+      "filmTitled"     -> ((f, reader) => f.filmTitled = BsonFields.strings(reader).flatMap(models.ListingKey.parse).toSet),
+      "agreed"         -> ((f, reader) => f.agreed = BsonFields.when(reader, BsonType.DOCUMENT)(readAgreed(reader)).getOrElse(Map.empty)))
+  }
+
+  private def readMembers(reader: org.bson.BsonReader): Seq[models.ListingKey] = {
+    val all = Vector.newBuilder[models.ListingKey]
+    if (BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader))) all.result().sorted(using models.ListingKey.ordering)
+    else all.result()
+  }
+  private def readAwaits(reader: org.bson.BsonReader): Set[Question] = {
+    val all = Set.newBuilder[Question]
+    reader.readStartArray()
+    while (reader.readBsonType() != org.bson.BsonType.END_OF_DOCUMENT) awaitedOf(reader.readString()).foreach(all += _)
+    reader.readEndArray()
+    all.result()
+  }
+  private def readAgreed(reader: org.bson.BsonReader): Map[String, String] = {
+    val all = Map.newBuilder[String, String]
+    BsonFields.document(reader)(family => all += family -> reader.readString())
+    all.result()
+  }
   private def readFallback(reader: org.bson.BsonReader): ResolverDecision.Fallback = {
     var source, id: String           = null
     var probability: java.lang.Double = null
