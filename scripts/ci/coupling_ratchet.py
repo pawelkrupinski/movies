@@ -19,8 +19,17 @@
 # and the exemption table may grow or loosen only in a commit changing it carrying `Coupling: <why>`. A frozen class that
 # moves keeps its row under its new name (the same simple name, at or below the old value, the old name gone).
 #
+# A SPLIT (the owner, 2026-11-18): a frozen class X cut into pieces may freeze the pieces past the limit at their new
+# values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>` names the pieces; without it
+# they are the fanout rows the range adds) and ALL hold: X had a frozen row at the range's base; every piece takes over
+# X's code (git sees its source file as a rename or copy of X's, or it defines 2+ members X's file no longer does);
+# every piece's fan-out is strictly below X's frozen value; and the pieces' fan-outs plus X's remainder (if X still
+# exists) sum to no more than it. The pieces' rows then fall only, like any frozen row. `--fanouts` (couplingReport's
+# fourth output, every class's held fan-out) gives the exact value of a piece or remainder at or below the limit;
+# without it such a class counts at the limit.
+#
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
-#                             [--range A..B ...]
+#                             [--fanouts <file>] [--range A..B ...]
 #       violations: a package cycle edge and the measured rows past the baseline (exit 1), and, for each range, a
 #       baseline grown or a layer table loosened between A and B with no commit in the range that changed it carrying
 #       `Coupling:` (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
@@ -31,9 +40,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
@@ -137,6 +147,124 @@ def moved(key: str, value: int, old: Dict[str, int], new: Dict[str, int]) -> boo
     return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value for k, v in old.items())
 
 
+SPLIT_TRAILER = re.compile(r"split of\s+(\S+)(?:\s+into\s+(.+))?$")
+DECLARES = re.compile(r"\b(?:def|val|var|type|class|object|trait|enum)\s+([A-Za-z_][A-Za-z0-9_]*)")
+MIN_MOVED_MEMBERS = 2
+
+
+def split_claims(rng: str) -> List[Tuple[str, List[str]]]:
+    """The `Coupling: split of <X> [into <A>, <B>]` trailers of the commits of `rng`: (X, the pieces named)."""
+    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x1e)", rng)
+    claims = []
+    for value in (v.strip() for entry in log.split("\x00") for v in entry.split("\x1e")):
+        m = SPLIT_TRAILER.match(value)
+        if m:
+            claims.append((m.group(1), [p.strip() for p in (m.group(2) or "").split(",") if p.strip()]))
+    return claims
+
+
+def resolve(name: str, known) -> Optional[str]:
+    """`name` among `known` class names: itself, or the one class of that simple name."""
+    if name in known:
+        return name
+    same = [k for k in known if k.rsplit(".", 1)[-1] == name]
+    return same[0] if len(same) == 1 else None
+
+
+def source_of(rev: str, cls: str) -> Optional[str]:
+    """The production Scala file declaring `cls` (its package clauses its package) at `rev`, None for none."""
+    pkg, _, simple = cls.rpartition(".")
+    found = subprocess.run(["git", "grep", "-l", "-E", rf"(class|object|trait|enum)[[:space:]]+{simple}([^[:alnum:]_]|$)",
+                            rev, "--", "*/src/main/*.scala"], capture_output=True, text=True).stdout
+    for path in (line.split(":", 1)[1] for line in found.splitlines() if ":" in line):
+        if ".".join(re.findall(r"^package\s+([\w.]+)", file_at(rev, path), re.M)) == pkg:
+            return path
+    return None
+
+
+def members(text: str) -> Set[str]:
+    return set(DECLARES.findall(text))
+
+
+def took_over(base: str, head: str, origin: str, piece: str, copies: Set[Tuple[str, str]]) -> Tuple[bool, str]:
+    """Whether `piece` (at `head`) takes over code of the class whose file at `base` was `origin`: its file a rename or
+    copy of `origin` (git's detection over the range), or 2+ members `origin` declared at `base` and no longer does,
+    now declared in the piece's file and not before. With why not, when not."""
+    path = source_of(head, piece)
+    if path is None:
+        return False, "no source file declares it"
+    if path == origin:
+        return False, "it lives in the split class's own file: move it to its own, so the move is seen"
+    if (origin, path) in copies:
+        return True, ""
+    moved = members(file_at(base, origin)) - members(file_at(head, origin))
+    taken = (members(file_at(head, path)) - members(file_at(base, path))) & moved
+    return len(taken) >= MIN_MOVED_MEMBERS, ""
+
+
+def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Dict[str, int]]) -> Tuple[Set[str], List[str], List[str]]:
+    """The fanout rows of `after` that `rng`'s `Coupling: split of <X>` trailers honestly admit, with a note for each
+    split admitted and a reason for each refused (the rule: the module docstring, A SPLIT)."""
+    base, head = rng.split("..", 1)
+    head = head or "HEAD"
+    frozen, now = of_kind(before, "fanout"), of_kind(after, "fanout")
+    added = sorted(k for k in now if k not in frozen and not moved(k, now[k], frozen, now))
+    claims = split_claims(rng)
+    limit = limits(after)["fanout"]
+    copies = None
+    admitted, notes, refused = set(), [], []
+    for name, named in claims:
+        original = resolve(name, frozen)
+        if original is None:
+            refused.append(f"split of {name}: {name} has no frozen fanout row at {base[:12]}")
+            continue
+        if not named and len(claims) > 1:
+            refused.append(f"split of {original}: {len(claims)} splits in {rng} -- name each one's pieces (`into <A>, <B>`)")
+            continue
+        known = set(now) | set(fanouts or {})
+        pieces = [resolve(n, known) or n for n in named] or added
+        if copies is None:
+            status = git("diff", "-M", "-C", "--name-status", base, head)
+            copies = {(cols[1], cols[2]) for cols in (line.split("\t") for line in status.splitlines())
+                      if len(cols) == 3 and cols[0][:1] in "RC"}
+
+        def value(cls: str) -> Optional[int]:
+            if cls in now:
+                return now[cls]
+            if fanouts is not None:
+                return fanouts.get(cls)
+            return limit if source_of(head, cls) else None
+
+        why = []
+        origin = source_of(base, original)
+        values = {}
+        for piece in pieces:
+            v = value(piece)
+            if v is None:
+                why.append(f"{piece} is no class at {head}")
+                continue
+            values[piece] = v
+            if v >= frozen[original]:
+                why.append(f"{piece} {v} is not below {original}'s {frozen[original]}")
+            ok, because = took_over(base, head, origin, piece, copies) if origin else (False, "")
+            if not ok:
+                why.append(f"{piece} takes over none of {original}'s code" + (f" ({because})" if because else ""))
+        left = value(original) or 0
+        total = sum(values.values()) + left
+        shown = ", ".join(f"{p} {v}" for p, v in values.items()) + (f", {original} {left} left" if left else "")
+        if not pieces:
+            why.append("no pieces: name them (`into <A>, <B>`) or record their rows (scripts/coupling-report --update)")
+        if total > frozen[original]:
+            why.append(f"{total} past {frozen[original]}: the pieces and what {original} keeps may not sum past it")
+        summary = f"split of {original} ({frozen[original]}) into {shown}"
+        if why:
+            refused.append(f"{summary}: " + "; ".join(why))
+        else:
+            admitted |= set(pieces)
+            notes.append(f"{summary}: {total} <= {frozen[original]}")
+    return admitted, notes, refused
+
+
 LIMIT_KEYS = {"fanout": ("fanout",), "distance": ("distance", "distance-min-types")}
 
 
@@ -147,9 +275,10 @@ def refrozen(old: Rows, new: Rows, kind: str) -> bool:
     return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind])
 
 
-def frozen_growth(old: Rows, new: Rows) -> List[str]:
+def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset()) -> List[str]:
     """The frozen rows the baseline gained or raised from `old` to `new` -- never admitted, whatever the trailer, unless
-    the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer)."""
+    the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer), or
+    the row is a piece of an honest split (`split`, from `split_credit`)."""
     out = []
     for kind, _, _ in FROZEN:
         if refrozen(old, new, kind):
@@ -159,7 +288,7 @@ def frozen_growth(old: Rows, new: Rows) -> List[str]:
             if key in before:
                 if value > before[key]:
                     out.append(f"{kind} {key} raised {before[key]} -> {value}")
-            elif not moved(key, value, before, after):
+            elif not moved(key, value, before, after) and not (kind == "fanout" and key in split):
                 out.append(f"{kind} {key} added at {value}")
     return out
 
@@ -278,8 +407,16 @@ def justified(rng: str, path: str = BASELINE_PATH) -> bool:
     return any(entry.strip() for entry in log.split("\x00"))
 
 
+def read_fanouts(path: str) -> Optional[Dict[str, int]]:
+    """couplingReport's fanouts file: `<class><TAB><held fan-out>` a line, every class; None without one."""
+    if not path:
+        return None
+    with open(path) as f:
+        return {c: int(n) for c, n in (line.split("\t") for line in f.read().splitlines() if "\t" in line)}
+
+
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
-          edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH) -> int:
+          edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH, fanouts_path: str = "") -> int:
     with open(current_path) as f:
         current = parse(f.read())
     with open(baseline_path) as f:
@@ -288,6 +425,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
     if os.path.exists(layers_path):
         with open(layers_path) as f:
             ranks = parse_layers(f.read())[2]
+    fanouts = read_fanouts(fanouts_path)
     edges: Edges = {}
     if edges_path:
         with open(edges_path) as f:
@@ -312,7 +450,16 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
     for rng in ranges:
         base = rng.split("..")[0]
         before = parse(file_at(base, BASELINE_PATH))
-        frozen = frozen_growth(before, baseline)
+        split, notes, refused = split_credit(rng, before, baseline, fanouts)
+        for note in notes:
+            print(f"coupling: {note} -- each piece frozen at its own value")
+        if refused:
+            failed = True
+            print(f"A `Coupling: split of <X>` CLAIM IS REFUSED in {rng}: the pieces must take over X's code, each below X's"
+                  " frozen value, all together (with what X keeps) no more than it:")
+            for r in refused:
+                print(f"  - {r}")
+        frozen = frozen_growth(before, baseline, split)
         if frozen:
             failed = True
             print(f"THE COUPLING BASELINE ADMITS A CLASS OR PACKAGE PAST A LIMIT in {rng}: a frozen row only falls, and no"
@@ -367,10 +514,11 @@ def main(argv: List[str]) -> int:
     c.add_argument("--layers", default=LAYERS_PATH)
     c.add_argument("--edges", default="")
     c.add_argument("--exemptions", default=EXEMPTIONS_PATH)
+    c.add_argument("--fanouts", default="")
     c.add_argument("--range", action="append", default=[])
     args = parser.parse_args(argv)
     try:
-        return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions)
+        return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions, args.fanouts)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)
         return 2

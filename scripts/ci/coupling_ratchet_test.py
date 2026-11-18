@@ -6,7 +6,8 @@ row admits one, never --update), a frozen fan-out or distance row rising, any pa
 layer, a higher rank (naming the direction allowed), and a package without its layer or rank; a baseline grown in a
 range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table loosened in a range (an
 `allow` row added, a package given another layer or rank) and an exemption table loosened (a row added, a limit
-changed); falls pass and are said.
+changed); falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
+code, each below X's row, the sum with X's remainder no more than it) freezes its pieces, and nothing else does.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -56,7 +57,9 @@ def rows(*extra: str, drop: tuple = ()) -> str:
     return "\n".join(kept + list(extra)) + "\n"
 
 
-class CouplingRatchetTest(unittest.TestCase):
+class RatchetHarness(unittest.TestCase):
+    """A scratch repository with the baseline, the layer table and the exemptions committed, and the tool run in it."""
+
     def setUp(self):
         self.saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("GIT_")}
         self.dir = tempfile.TemporaryDirectory()
@@ -75,6 +78,9 @@ class CouplingRatchetTest(unittest.TestCase):
     def commit(self, files, message):
         for path, text in files.items():
             full = os.path.join(self.repo, path)
+            if text is None:
+                os.remove(full)
+                continue
             os.makedirs(os.path.dirname(full), exist_ok=True)
             with open(full, "w") as f:
                 f.write(text)
@@ -82,7 +88,7 @@ class CouplingRatchetTest(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def check(self, current, rng=None, edges=None):
+    def check(self, current, rng=None, edges=None, fanouts=None):
         path = os.path.join(self.dir.name, "current.tsv")
         with open(path, "w") as f:
             f.write(current)
@@ -96,20 +102,26 @@ class CouplingRatchetTest(unittest.TestCase):
             with open(edges_path, "w") as f:
                 f.write(edges)
             args += ["--edges", edges_path]
+        if fanouts is not None:
+            fanouts_path = os.path.join(self.dir.name, "fanouts.tsv")
+            with open(fanouts_path, "w") as f:
+                f.write("".join(f"{c}\t{n}\n" for c, n in fanouts.items()))
+            args += ["--fanouts", fanouts_path]
         done = subprocess.run(args, cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 
-    def assert_fails(self, current, *said, rng=None, edges=None):
-        rc, out = self.check(current, rng, edges)
+    def assert_fails(self, current, *said, rng=None, edges=None, fanouts=None):
+        rc, out = self.check(current, rng, edges, fanouts)
         self.assertEqual(1, rc, out)
         for s in said:
             self.assertIn(s, out)
 
-    def assert_passes(self, current, rng=None):
-        rc, out = self.check(current, rng)
+    def assert_passes(self, current, rng=None, fanouts=None):
+        rc, out = self.check(current, rng, fanouts=fanouts)
         self.assertEqual(0, rc, out)
         return out
 
+class CouplingRatchetTest(RatchetHarness):
     def test_the_baseline_itself_passes(self):
         self.assertIn("coupling: within", self.assert_passes(ROWS))
 
@@ -331,6 +343,127 @@ class CouplingRatchetTest(unittest.TestCase):
     def test_a_malformed_row_is_an_error_not_a_pass(self):
         rc, out = self.check(ROWS + "ce\tmodels\n")
         self.assertEqual(2, rc, out)
+
+
+# THE SPLIT (the owner, 2026-11-18): ReadModelSweeper (frozen at 36) split into SweepPlanner and SweepPass -- the
+# 2026-11-18 split the ratchet refused and that was reverted, 17 + 11
+SWEEPER_PATH = "worker/src/main/scala/services/readmodel/ReadModelSweeper.scala"
+PLANNER_PATH = "worker/src/main/scala/services/readmodel/SweepPlanner.scala"
+PASS_PATH = "worker/src/main/scala/services/readmodel/SweepPass.scala"
+SWEEPER = "services.readmodel.ReadModelSweeper"
+PLANNER = "services.readmodel.SweepPlanner"
+PASS = "services.readmodel.SweepPass"
+
+
+def member(name: str) -> str:
+    return (f"  def {name}(corpus: Corpus, clock: Clock): Seq[Film] = {{\n"
+            f"    val seen = corpus.films.filter(_.id.nonEmpty).map(f => f.copy(seenAt = clock.now))\n"
+            f"    seen.sortBy(_.title).take(corpus.size) // {name}\n  }}\n")
+
+
+PLANNED = ("planOrphans", "planStale", "planDuplicates", "planRetired", "planCutover", "planBudget")
+PASSED = ("passProjection", "passPrune", "passCensus")
+
+
+def scala(cls: str, names, extra: str = "") -> str:
+    return f"package services.readmodel\n\nfinal class {cls}(deps: Deps) {{\n" + "".join(member(n) for n in names) + extra + "}\n"
+
+
+def split_rows(*pieces: str, sweeper: int = None) -> str:
+    kept = [f"fanout\t{SWEEPER}\t{sweeper}"] if sweeper else []
+    return rows(*kept, *pieces)
+
+
+class CouplingSplitTest(RatchetHarness):
+    """A frozen class split honestly: `Coupling: split of <X>`, the pieces taking over X's code, each strictly below X's
+    frozen value, their sum with X's remainder no more than it -- each piece frozen at its own value from then on."""
+
+    def setUp(self):
+        super().setUp()
+        self.base = self.commit({BASELINE: split_rows(sweeper=36), SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)},
+                                "the sweeper, frozen at 36")
+
+    def split(self, recorded: str, message: str, pass_text: str = None, sweeper_text=None) -> str:
+        return self.commit({BASELINE: recorded, SWEEPER_PATH: sweeper_text, PLANNER_PATH: scala("SweepPlanner", PLANNED),
+                            PASS_PATH: pass_text or scala("SweepPass", PASSED)}, message)
+
+    def test_a_valid_split_passes_and_freezes_each_piece(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        out = self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11})
+        self.assertIn(f"split of {SWEEPER} (36) into {PASS} 11, {PLANNER} 17: 28 <= 36", out)
+
+    def test_a_piece_git_sees_as_a_copy_takes_over_code_though_the_original_keeps_forwarders(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17")
+        forwarders = "".join(f"  def {n}(corpus: Corpus, clock: Clock): Seq[Film] = planner.{n}(corpus, clock)\n"
+                             for n in PLANNED + PASSED)
+        head = self.commit({BASELINE: recorded, PLANNER_PATH: scala("SweepPlanner", PLANNED + PASSED),
+                            SWEEPER_PATH: "package services.readmodel\n\nfinal class ReadModelSweeper(planner: SweepPlanner) {\n"
+                            + forwarders + "}\n"}, f"the sweeper forwards\n\nCoupling: split of {SWEEPER} into SweepPlanner")
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, SWEEPER: 3})
+
+    def test_a_piece_of_two_moved_members_and_new_code_takes_over_code(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17")
+        fresh = "".join(f"  private def helper{i}(x: Int): Int = x * {i} + {i * i}\n" for i in range(40))
+        head = self.commit({BASELINE: recorded, PLANNER_PATH: scala("SweepPlanner", PLANNED[:2], fresh),
+                            SWEEPER_PATH: scala("ReadModelSweeper", PLANNED[2:] + PASSED)},
+                           f"two plans move\n\nCoupling: split of {SWEEPER}")
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, SWEEPER: 19})
+        head = self.commit({PLANNER_PATH: scala("SweepPlanner", PLANNED[:1], fresh),
+                            SWEEPER_PATH: scala("ReadModelSweeper", PLANNED[1:] + PASSED)}, "only one moves after all")
+        self.assert_fails(recorded, f"{PLANNER} takes over none of {SWEEPER}'s code", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: 17, SWEEPER: 19})
+
+    def test_a_split_keeping_a_shrunk_original_counts_its_remainder(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, "split the sweeper\n\nCoupling: split of ReadModelSweeper into SweepPlanner, SweepPass",
+                          sweeper_text=scala("ReadModelSweeper", ("sweep",)))
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11, SWEEPER: 8})
+        self.assert_fails(recorded, f"{SWEEPER} 9", "37 past 36", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: 17, PASS: 11, SWEEPER: 9})
+
+    def test_a_split_whose_sum_exceeds_the_original_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t20", f"fanout\t{PASS}\t17")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "ADMITS A CLASS OR PACKAGE PAST A LIMIT", "37 past 36", f"fanout {PLANNER} added at 20",
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: 20, PASS: 17})
+
+    def test_a_piece_at_or_above_the_original_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t36")
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, f"{PLANNER} 36 is not below {SWEEPER}'s 36", f"fanout {PLANNER} added at 36",
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: 36, PASS: 0})
+
+    def test_an_unrelated_new_class_claiming_split_credit_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        unrelated = scala("SweepPass", ("renderPoster", "postBeacon", "tallyVisits"))
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}", pass_text=unrelated,
+                          sweeper_text=scala("ReadModelSweeper", PASSED))
+        self.assert_fails(recorded, f"{PASS} takes over none of {SWEEPER}'s code", f"fanout {PASS} added at 11",
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11, SWEEPER: 0})
+
+    def test_a_split_without_the_trailer_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        head = self.split(recorded, "split the sweeper\n\nCoupling: the sweeper was too big")
+        self.assert_fails(recorded, f"fanout {PLANNER} added at 17", f"fanout {PASS} added at 11",
+                          rng=f"{self.base}..{head}", fanouts={PLANNER: 17, PASS: 11})
+
+    def test_a_piece_rising_in_a_later_commit_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        split = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        risen = split_rows(f"fanout\t{PLANNER}\t18", f"fanout\t{PASS}\t11")
+        self.assert_fails(risen, f"class {PLANNER}: fan-out 18 past its frozen row 17", fanouts={PLANNER: 18, PASS: 11})
+        head = self.commit({BASELINE: risen}, f"record it\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(risen, f"fanout {PLANNER} raised 17 -> 18", rng=f"{split}..{head}", fanouts={PLANNER: 18, PASS: 11})
+
+    def test_a_split_of_a_class_that_was_not_frozen_fails(self):
+        # no row is added, so only the claim itself can fail: a trailer claiming a split that is not one is refused
+        recorded = split_rows(sweeper=36)
+        head = self.commit({BASELINE: recorded + "# touched\n", PLANNER_PATH: scala("SweepPlanner", PLANNED)},
+                           "a planner\n\nCoupling: split of services.readmodel.Nothing")
+        self.assert_fails(recorded, "A `Coupling: split of <X>` CLAIM IS REFUSED",
+                          "services.readmodel.Nothing has no frozen fanout row", rng=f"{self.base}..{head}",
+                          fanouts={PLANNER: 7, SWEEPER: 36})
 
 
 if __name__ == "__main__":

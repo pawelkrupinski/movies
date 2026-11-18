@@ -32,7 +32,8 @@
 #                 an ordered layer, a higher rank, package without its layer or rank (test/resources/coupling-layers.tsv)
 #                 -- and the baseline grows, and the layer table loosens (an `allow` row, a moved layer or rank), only
 #                 in a commit carrying `Coupling: <why>` (scripts/coupling-report --update writes the baseline; falls
-#                 need no trailer).
+#                 need no trailer; a frozen class cut into pieces freezes them at their own values under
+#                 `Coupling: split of <X>` when they take over X's code and sum to no more than X's row).
 #                 PREPUSH_SKIP=coupling skips just it.
 #                 AND THE CODE-QUALITY RATCHETS (CLAUDE.md, "Code quality ratchets"), in that same run, when the push
 #                 touches a deployed module's src/main Scala, the `quality` module, a quality baseline or the ratchet
@@ -1707,8 +1708,8 @@ check_sbt() {
     local coupling=""
     if [ -n "$(printf '%s\n' "$changed" | coupling_paths)" ] && [ -f coupling.sbt ]; then
         if skipped coupling; then warn "coupling SKIPPED (PREPUSH_SKIP)"
-        else coupling=1; rm -f "$tmp/coupling.rows" "$tmp/coupling.edges"
-            tests+=("couplingReport $tmp/coupling.rows $tmp/coupling.md $tmp/coupling.edges"); fi
+        else coupling=1; rm -f "$tmp/coupling.rows" "$tmp/coupling.edges" "$tmp/coupling.fanouts"
+            tests+=("couplingReport $tmp/coupling.rows $tmp/coupling.md $tmp/coupling.edges $tmp/coupling.fanouts"); fi
     fi
     local quality=""
     if [ -n "$(printf '%s\n' "$changed" | quality_paths)" ] && [ -d quality ]; then
@@ -1731,7 +1732,7 @@ check_sbt() {
         for r in "${ranges[@]}"; do args+=(--range "$r"); done
         [ -s "$tmp/coupling.rows" ] || { warn "coupling: sbt couplingReport wrote no rows (full log: $tmp/sbt.log)"; return 1; }
         python3 scripts/ci/coupling_ratchet.py check --current "$tmp/coupling.rows" --edges "$tmp/coupling.edges" \
-            ${args[@]+"${args[@]}"} >&2 || return 1
+            --fanouts "$tmp/coupling.fanouts" ${args[@]+"${args[@]}"} >&2 || return 1
     fi
     if [ -n "$quality" ]; then
         local qargs=() r

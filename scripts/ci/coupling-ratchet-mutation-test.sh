@@ -40,7 +40,7 @@ mutants=(
             out.append(f"ce @@         if False:
             out.append(f"ce'
   'a raised frozen row is admitted @@ if value > before[key]: @@ if False:'
-  'a new frozen row is admitted @@ elif not moved(key, value, before, after): @@ elif False:'
+  'a new frozen row is admitted @@ elif not moved(key, value, before, after) and not (kind == "fanout" and key in split): @@ elif False:'
   'every change re-freezes @@ return any(("limit", key) not in old or old_lim.get(key) != new_lim.get(key) for key in LIMIT_KEYS[kind]) @@ return True'
   'admitted frozen rows never fail @@         if frozen:
             failed = True @@         if frozen:
@@ -60,6 +60,25 @@ mutants=(
   'a sub-package lifted by a new row is no loosening @@ named = [p for p in rows if pkg == p or pkg.startswith(p + ".")] @@ named = [p for p in rows if pkg == p]'
   'a loosened layer table never fails @@ if loosened and not justified(rng, LAYERS_PATH): @@ if False:'
   'any commit counts for the layer table trailer @@ rng, "--", path) @@ rng)'
+  'a split piece is never admitted @@ and not (kind == "fanout" and key in split): @@ and True:'
+  'a split claim needs no frozen original @@ if original is None:
+            refused.append @@ if original is None:
+            admitted |= set(named); continue
+            refused.append'
+  'a piece at the original passes @@ if v >= frozen[original]: @@ if v > frozen[original]:'
+  'the split sum is not held @@ if total > frozen[original]: @@ if False:'
+  'what the original keeps is not summed @@ total = sum(values.values()) + left @@ total = sum(values.values())'
+  'any piece takes over code @@ if not ok:
+                why.append @@ if False:
+                why.append'
+  'git copy detection is not read @@ if (origin, path) in copies: @@ if False:'
+  'moved members are not read @@ return len(taken) >= MIN_MOVED_MEMBERS, "" @@ return False, ""'
+  'one shared member is enough @@ MIN_MOVED_MEMBERS = 2 @@ MIN_MOVED_MEMBERS = 1'
+  'members the original keeps count as moved @@ moved = members(file_at(base, origin)) - members(file_at(head, origin)) @@ moved = members(file_at(base, origin))'
+  'a refused split never fails @@         if refused:
+            failed = True @@         if refused:
+            failed = False'
+  'any Coupling trailer claims a split @@ m = SPLIT_TRAILER.match(value) @@ m = re.match(r"(\S+)()", "services.readmodel.ReadModelSweeper") if value else None'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
 )
 

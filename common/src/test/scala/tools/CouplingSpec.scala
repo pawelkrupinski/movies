@@ -181,6 +181,11 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
+  "the fan-out rows" should "give every class's held fan-out, one at or below the limit included" in {
+    Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2", "services.identity.Film\t3", "models.Showtime\t0")
+    Coupling.fanOutRows(contracted, exemptions).size shouldBe contracted.types.size
+  }
+
   "the edge rows" should "give every class reference with its package edge, a package's own included" in {
     Coupling.edgeRows(graph) shouldBe Seq(
       "models->models\tmodels.Film->models.Codec",

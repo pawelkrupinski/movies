@@ -258,7 +258,11 @@ rosters, scraper catalogues), the typed-config root (`settings.ProcessConfigurat
 member types a scraper's fan-out counts as ONE dependency. Prefer cutting the dependency (a trait at the seam, the class
 moved to the package that owns it or one rank down); when a Ce rise is right, run `scripts/coupling-report --update` and
 commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer: `--update` records it, so the ratchet
-tightens.
+tightens. **A frozen class may be split stepwise** (the owner, 2026-11-18): a commit carrying `Coupling: split of <X>`
+(`... into <A>, <B>` when the pieces are ambiguous) with the `--update`d baseline freezes each piece at its own value
+when every piece takes over X's code (git sees its file as a rename or copy of X's, or 2+ of X's members moved into it:
+an unrelated class claims nothing), each is strictly below X's row, and the pieces plus what X keeps sum to no more than
+X's row; the pieces' rows then only fall, and a piece at 9 or less needs none.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala

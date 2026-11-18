@@ -93,6 +93,12 @@ object Coupling {
   def edgeRows(g: Graph): Seq[String] =
     g.known.toSeq.map { case (x, y) => s"${packageOf(x)}->${packageOf(y)}\t$x->$y" }.sorted
 
+  /** Every class's held fan-out ([[heldFanOut]]), one `<class><TAB><fan-out>` line each, sorted: what a `Coupling: split
+   *  of <X>` claim sums when a piece, or what X keeps, is at or below the limit and so has no baseline row
+   *  (scripts/ci/coupling_ratchet.py's `--fanouts`). */
+  def fanOutRows(g: Graph, exemptions: Exemptions): Seq[String] =
+    heldFanOut(g, exemptions).toSeq.sorted.map { case (c, n) => s"$c\t$n" }
+
   /** The strongly connected components of a directed graph with two or more nodes (Tarjan), each sorted, sorted. */
   def components(nodes: Seq[String], edges: Set[(String, String)]): Seq[Seq[String]] = {
     val next = edges.toSeq.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).sorted }
