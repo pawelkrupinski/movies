@@ -36,24 +36,30 @@ object UkFeed {
   /** The feed a generated row names: its kind, as roster.json spells it (`data/uk/scripts/uk_roster.py`'s
    *  `PRIMARY_ARGS`, plus `flicks` for a venue scraped off Flicks), and its arguments. An unknown kind, or
    *  arguments the kind does not take, fails loudly. */
-  def parse(kind: String, args: Seq[String]): UkFeed = (kind, args) match {
-    case ("flicks", Seq(slug))                 => Flicks(slug)
-    case ("cineworld", Seq(slug))              => Cineworld(slug)
-    case ("vue", Seq(id))                      => Vue(id)
-    case ("showcase", Seq(id))                 => Showcase(id)
-    case ("everyman", Seq(id))                 => Everyman(id)
-    case ("odeon", Seq(id))                    => Odeon(id)
-    case ("savoy", Seq(dllBase))               => Savoy(dllBase)
-    case ("savoyBoxOffice", Seq(dllBase))      => SavoyBoxOffice(dllBase)
-    case ("spektrix", Seq(client))             => Spektrix(client, None)
-    case ("spektrix", Seq(client, building))   => Spektrix(client, Some(building))
-    case ("ticketsolve", Seq(client))          => Ticketsolve(client)
-    case ("quadDerby", Seq())                  => QuadDerby
-    case ("bfiSouthbank", Seq())               => BfiSouthbank
-    case ("novaCinema", Seq())                 => NovaCinema
-    case ("theOldCourt", Seq())                => TheOldCourt
-    case _ => throw new IllegalArgumentException(s"no UK feed $kind(${args.mkString(", ")})")
-  }
+  def parse(kind: String, args: Seq[String]): UkFeed = (args match {
+    case Seq()                                    => NoArgument.get(kind)
+    case Seq(argument)                            => OneArgument.get(kind).map(_(argument))
+    case Seq(client, building) if kind == "spektrix" => Some(Spektrix(client, Some(building)))
+    case _                                        => None
+  }).getOrElse(throw new IllegalArgumentException(s"no UK feed $kind(${args.mkString(", ")})"))
+
+  /** [[parse]]'s kinds that take one argument: the venue's handle on that source. */
+  private val OneArgument: Map[String, String => UkFeed] = Map(
+    "flicks"         -> (Flicks(_)),
+    "cineworld"      -> (Cineworld(_)),
+    "vue"            -> (Vue(_)),
+    "showcase"       -> (Showcase(_)),
+    "everyman"       -> (Everyman(_)),
+    "odeon"          -> (Odeon(_)),
+    "savoy"          -> (Savoy(_)),
+    "savoyBoxOffice" -> (SavoyBoxOffice(_)),
+    "spektrix"       -> (Spektrix(_, None)),
+    "ticketsolve"    -> (Ticketsolve(_))
+  )
+
+  /** [[parse]]'s kinds that take none: a client built for one venue. */
+  private val NoArgument: Map[String, UkFeed] = Map(
+    "quadDerby" -> QuadDerby, "bfiSouthbank" -> BfiSouthbank, "novaCinema" -> NovaCinema, "theOldCourt" -> TheOldCourt)
 }
 
 /** One UK venue's sources: its primary, and — for an own-site primary Flicks also lists — the

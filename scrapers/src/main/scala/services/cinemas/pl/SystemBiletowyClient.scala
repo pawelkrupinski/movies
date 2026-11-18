@@ -124,11 +124,19 @@ object SystemBiletowyClient {
 
   def parse(json: String, cinema: Cinema, portal: VisualSoftPortal, titles: TitleNormalizer,
             filmGroups: Set[EventCategory] = Set.empty, institution: Option[Institution] = None): Seq[CinemaMovie] = {
-    // `repertoires` is an object keyed by screening id, or `[]` when nothing is
-    // on. A body without it is a failed read: the instance's error answer
-    // (`{"error":"<message>","code":<n>}`) named with its message, anything else as is.
+    val slots = records(json, portal)
+      .filter(r => institution.forall(venue => (r \ "location" \ "institution_name").asOpt[String].contains(venue.name)))
+      .flatMap(slotOf(_, cinema, portal, titles, filmGroups))
+      .distinctBy(s => (s.title, s.dateTime, s.booking))
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format))(movieOf(cinema))
+  }
+
+  // `repertoires` is an object keyed by screening id, or `[]` when nothing is
+  // on. A body without it is a failed read: the instance's error answer
+  // (`{"error":"<message>","code":<n>}`) named with its message, anything else as is.
+  private def records(json: String, portal: VisualSoftPortal): Seq[JsValue] = {
     val feed = Json.parse(json)
-    val records = (feed \ "repertoires").asOpt[JsValue] match {
+    (feed \ "repertoires").asOpt[JsValue] match {
       case Some(o: JsObject) => o.values.toSeq
       case Some(a: JsArray)  => a.value.toSeq
       case Some(other)       => throw new IllegalStateException(s"${portal.url}: repertoires is neither an object nor an array: $other")
@@ -138,50 +146,50 @@ object SystemBiletowyClient {
         }
         throw new UnexpectedBodyException(s"${portal.url}/service.php/repertoire/list.json", why, json)
     }
+  }
+
+  private def slotOf(r: JsValue, cinema: Cinema, portal: VisualSoftPortal, titles: TitleNormalizer,
+                     filmGroups: Set[EventCategory]): Option[RawSlot] = {
+    val group = (r \ "event" \ "category").asOpt[String].getOrElse("")
     def absolute(path: String) = if (path.startsWith("http")) path else portal.url + path
+    for {
+      rawTitle <- (r \ "title").asOpt[String]
+      if filmGroups.isEmpty || filmGroups.contains(EventCategory(group))
+      // The trailing `dubbing`/`napisy`/… tag is peeled into the showtime's
+      // format so a film's dubbed and subtitled screenings fold onto one row.
+      peeled    = FilmBoilerplate.replaceFirstIn(stripGroupPrefix(rawTitle.trim, group), "")
+      title     = titles.cinemaClean(cinema.slug, recase(FormatTags.stripFormatTags(peeled)))
+      if title.nonEmpty
+      dateTime <- (r \ "date").asOpt[String].flatMap(d => Try(OffsetDateTime.parse(d).toLocalDateTime).toOption)
+    } yield RawSlot(
+      title    = title,
+      dateTime = dateTime,
+      booking  = (r \ "url").asOpt[String].filter(_.nonEmpty).map(absolute)
+                   .orElse((r \ "id").toOption.map {
+                     case JsString(id) => id
+                     case id           => id.toString
+                   }.map(id => s"${portal.url}/index.php/repertoire.html?id=$id")),
+      format   = FormatTags.extractFormatTags(peeled)._2,
+      poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(absolute),
+      identity = identity(r \ "event", title)
+    )
+  }
 
-    val slots = records.flatMap { r =>
-      val group = (r \ "event" \ "category").asOpt[String].getOrElse("")
-      for {
-        rawTitle <- (r \ "title").asOpt[String]
-        if institution.forall(venue => (r \ "location" \ "institution_name").asOpt[String].contains(venue.name))
-        if filmGroups.isEmpty || filmGroups.contains(EventCategory(group))
-        // The trailing `dubbing`/`napisy`/… tag is peeled into the showtime's
-        // format so a film's dubbed and subtitled screenings fold onto one row.
-        peeled    = FilmBoilerplate.replaceFirstIn(stripGroupPrefix(rawTitle.trim, group), "")
-        title     = titles.cinemaClean(cinema.slug, recase(FormatTags.stripFormatTags(peeled)))
-        if title.nonEmpty
-        dateTime <- (r \ "date").asOpt[String].flatMap(d => Try(OffsetDateTime.parse(d).toLocalDateTime).toOption)
-      } yield RawSlot(
-        title    = title,
-        dateTime = dateTime,
-        booking  = (r \ "url").asOpt[String].filter(_.nonEmpty).map(absolute)
-                     .orElse((r \ "id").toOption.map {
-                       case JsString(id) => id
-                       case id           => id.toString
-                     }.map(id => s"${portal.url}/index.php/repertoire.html?id=$id")),
-        format   = FormatTags.extractFormatTags(peeled)._2,
-        poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(absolute),
-        identity = identity(r \ "event", title)
-      )
-    }.distinctBy(s => (s.title, s.dateTime, s.booking))
-
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
-      val sorted = group.sortBy(_.dateTime)
-      def first[A](field: Identity => Option[A]) = sorted.iterator.flatMap(s => field(s.identity)).nextOption()
-      def firstOf[A](field: Identity => Seq[A]) = sorted.iterator.map(s => field(s.identity)).find(_.nonEmpty).getOrElse(Seq.empty)
-      CinemaMovie(
-        movie     = Movie(title, runtimeMinutes = first(_.runtime), releaseYear = first(_.year),
-                      countries = firstOf(_.countries), originalTitle = first(_.originalTitle)),
-        cinema    = cinema,
-        posterUrl = sorted.flatMap(_.poster).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = firstOf(_.director),
-        showtimes = showtimes
-      )
-    }
+  private def movieOf(cinema: Cinema)(title: String, group: Seq[RawSlot], showtimes: Seq[Showtime]): CinemaMovie = {
+    val sorted = group.sortBy(_.dateTime)
+    def first[A](field: Identity => Option[A]) = sorted.iterator.flatMap(s => field(s.identity)).nextOption()
+    def firstOf[A](field: Identity => Seq[A]) = sorted.iterator.map(s => field(s.identity)).find(_.nonEmpty).getOrElse(Seq.empty)
+    CinemaMovie(
+      movie     = Movie(title, runtimeMinutes = first(_.runtime), releaseYear = first(_.year),
+                    countries = firstOf(_.countries), originalTitle = first(_.originalTitle)),
+      cinema    = cinema,
+      posterUrl = sorted.flatMap(_.poster).headOption,
+      filmUrl   = None,
+      synopsis  = None,
+      cast      = Seq.empty,
+      director  = firstOf(_.director),
+      showtimes = showtimes
+    )
   }
 
   /** Sentence-case a title that shouts — any word of four or more letters all in

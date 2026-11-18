@@ -125,36 +125,27 @@ object KinoZorzaClient {
   }
 
   /** Parse all film rows in one day's `div.fullrepertoire-content`. */
-  private def parseContent(contentDiv: Element, date: LocalDate): Seq[RawSlot] = {
+  private def parseContent(contentDiv: Element, date: LocalDate): Seq[RawSlot] =
     // Each direct child <div> that contains a repertoire-title is a film row.
     // The first child is fullrepertoire-desktop (the header); skip divs without
     // a repertoire-title inside.
     contentDiv.children.asScala.toSeq.flatMap { row =>
-      val titleElement = Option(row.selectFirst("div.repertoire-title a.on-repertoire"))
-      titleElement match {
-        case None => Seq.empty
-        case Some(anchor) =>
-          val title   = anchor.attr("title").trim
-          val filmUrl = anchor.attr("href").trim
-          if (title.isEmpty || filmUrl.isEmpty) Seq.empty
-          else {
-            // The non-mobile hall grid: the last div.repertoire-hall child.
-            // (The mobile version has class "repertoire-hall repertoire-mobile" and
-            // lists only room names, not times; we want the plain one.)
-            val hallDivs = row.select("div.repertoire-hall:not(.repertoire-mobile)").asScala.toSeq
-            hallDivs.flatMap { hallDiv =>
-              val columns = hallDiv.children.asScala.toSeq
-              columns.zipWithIndex.flatMap { case (col, index) =>
-                val hallName = if (index < Halls.length) Halls(index) else s"Sala ${index + 1}"
-                col.select("span.timeItem").asScala.toSeq.flatMap { span =>
-                  ScraperParse.parseHHmm(span.text.trim).map { time =>
-                    RawSlot(title, filmUrl, LocalDateTime.of(date, time), hallName)
-                  }
-                }
-              }
-            }
-          }
+      Option(row.selectFirst("div.repertoire-title a.on-repertoire"))
+        .map(anchor => (anchor.attr("title").trim, anchor.attr("href").trim))
+        .filter { case (title, filmUrl) => title.nonEmpty && filmUrl.nonEmpty }
+        .toSeq.flatMap { case (title, filmUrl) => rowSlots(row, title, filmUrl, date) }
+    }
+
+  // The non-mobile hall grid: the last div.repertoire-hall child.
+  // (The mobile version has class "repertoire-hall repertoire-mobile" and
+  // lists only room names, not times; we want the plain one.)
+  private def rowSlots(row: Element, title: String, filmUrl: String, date: LocalDate): Seq[RawSlot] =
+    row.select("div.repertoire-hall:not(.repertoire-mobile)").asScala.toSeq.flatMap { hallDiv =>
+      hallDiv.children.asScala.toSeq.zipWithIndex.flatMap { case (col, index) =>
+        val hallName = if (index < Halls.length) Halls(index) else s"Sala ${index + 1}"
+        col.select("span.timeItem").asScala.toSeq.flatMap { span =>
+          ScraperParse.parseHHmm(span.text.trim).map(time => RawSlot(title, filmUrl, LocalDateTime.of(date, time), hallName))
+        }
       }
     }
-  }
 }

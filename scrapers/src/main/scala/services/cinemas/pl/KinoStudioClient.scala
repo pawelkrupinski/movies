@@ -241,22 +241,30 @@ object KinoStudioClient {
    *  text yields a list. A field already read is kept. */
   private def metaLine(meta: FilmMeta, line: String): FilmMeta = {
     val label = line.toLowerCase(Locale.ROOT)
-    if (label.contains("gatunek") && meta.genres.isEmpty) meta.copy(genres = boldList(line))
-    else if ((label.contains("reżyseria") || label.contains("rezyseria")) && meta.director.isEmpty)
-      meta.copy(director = boldList(line))
-    else if (label.contains("obsada") && meta.cast.isEmpty) meta.copy(cast = boldList(line))
+    MetaFields.collectFirst {
+      case MetaField(labels, unread, read) if labels.exists(label.contains) && unread(meta) => read(meta, line)
+    }.getOrElse(meta)
+  }
+
+  /** A metadata line's field: the labels that name it, whether `meta` has yet to read it, and how it reads it. */
+  private final case class MetaField(labels: Seq[String], unread: FilmMeta => Boolean, read: (FilmMeta, String) => FilmMeta)
+
+  /** [[metaLine]]'s fields, in order: a line is read into the first field it names that is still unread. */
+  private val MetaFields: Seq[MetaField] = Seq(
+    MetaField(Seq("gatunek"), _.genres.isEmpty, (meta, line) => meta.copy(genres = boldList(line))),
+    MetaField(Seq("reżyseria", "rezyseria"), _.director.isEmpty, (meta, line) => meta.copy(director = boldList(line))),
+    MetaField(Seq("obsada"), _.cast.isEmpty, (meta, line) => meta.copy(cast = boldList(line))),
     // "produkcja: Izrael, Włochy 2024" — countries then the release year, the
     // strongest TMDB-identity hint this page carries.
-    else if (label.contains("produkcja") && meta.countries.isEmpty && meta.year.isEmpty) {
+    MetaField(Seq("produkcja"), meta => meta.countries.isEmpty && meta.year.isEmpty, (meta, line) => {
       val value = bold(line)
       meta.copy(
         year      = YearPat.findFirstMatchIn(value).flatMap(m => Try(m.group(1).toInt).toOption),
         countries = YearPat.replaceAllIn(value, "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
-    }
-    else if (label.contains("czas trwania") && meta.runtime.isEmpty)
-      meta.copy(runtime = RuntimePat.findFirstMatchIn(bold(line)).flatMap(m => Try(m.group(1).toInt).toOption))
-    else meta
-  }
+    }),
+    MetaField(Seq("czas trwania"), _.runtime.isEmpty,
+      (meta, line) => meta.copy(runtime = RuntimePat.findFirstMatchIn(bold(line)).flatMap(m => Try(m.group(1).toInt).toOption)))
+  )
 
   /** A line's `<strong>` text; `&nbsp;` decodes to a non-breaking space,
    *  normalised back to a plain space before the trim. */

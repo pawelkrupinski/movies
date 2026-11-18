@@ -65,12 +65,13 @@ class BiletynaNationalFeed(http: HttpFetch, halls: Set[BiletynaPlacePage], loadO
     Option.when(read.isDone)(read.join().get).flatMap(_.get(pathOf(page)))
   }
 
-  private def load(): Map[HallPath, Vector[JsValue]] = {
-    def records(feedPage: Int): Seq[JsValue] =
-      BiletynaClient.feedRecords(s"national feed page $feedPage", HttpRead.page(http, pageUrl(feedPage)))
-    def ours(page: Seq[JsValue]): Seq[(HallPath, JsValue)] =
-      page.flatMap(r => (r \ "v2_hall_seo_url").asOpt[String].map(HallPath(_)).filter(wanted).map(_ -> r))
+  private def records(feedPage: Int): Seq[JsValue] =
+    BiletynaClient.feedRecords(s"national feed page $feedPage", HttpRead.page(http, pageUrl(feedPage)))
 
+  private def ours(page: Seq[JsValue]): Seq[(HallPath, JsValue)] =
+    page.flatMap(r => (r \ "v2_hall_seo_url").asOpt[String].map(HallPath(_)).filter(wanted).map(_ -> r))
+
+  private def load(): Map[HallPath, Vector[JsValue]] = {
     // The walk ends on a page shorter than the page size. If the server served fewer per page
     // than `ipp` asked — a clamp — the FIRST page is already short, and stopping there kept a
     // slice of the country as the whole of it. So a short first page is checked against the

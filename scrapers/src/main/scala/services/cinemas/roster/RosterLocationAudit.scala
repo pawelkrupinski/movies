@@ -111,32 +111,40 @@ object RosterLocationAudit {
   private def coverageTolerance(pages: Int): Int = math.max(2, pages / 10)
 
   def findings(readings: Seq[(AuditedVenue, SourceReading)]): Seq[RosterFinding] = {
-    val located = readings.collect { case (v, l: Located) => v -> l }
-
-    val towns = located.collect {
-      case (v, Located(p, _)) if !v.expectedTowns.exists(TownName.same(_, p.town)) => TownMismatch(v, p)
-    }
-    val far = located.flatMap { case (v, Located(p, _)) =>
-      for { hub <- v.hub; at <- p.location; km = hub.kmTo(at) if km > MaxKmFromHub } yield FarFromHub(v, p, km)
-    }
-    val stale = located.collect {
-      case (v, Located(_, finalUrl)) if VenueSourcePage.forUrl(v.sourceUrl).exists(p =>
-                                          finalUrl.stripSuffix("/") != p.pageUrl(v.sourceUrl).stripSuffix("/")) => StaleUrl(v, finalUrl)
-    }
-    val shared = located
-      .flatMap { case (v, Located(p, _)) => p.street.map(s => (Slugify.stable(p.town), streetKey(s)) -> (v, p)) }
-      .groupMap(_._1)(_._2).toSeq
-      .collect { case (_, all) if all.map(_._1.cinema).distinct.size > 1 =>
-        SharedAddress(all.map(_._1), all.head._2.town, all.head._2.street.getOrElse(""))
-      }
+    val located    = readings.collect { case (v, l: Located) => v -> l }
     val gone       = readings.collect { case (v, Gone(detail)) => SourceGone(v, detail) }
     val unlocated  = readings.collect { case (v, Unlocated(_)) => NoTownOnPage(v) }
     val unchecked  = readings.collect { case (v, Unreachable(detail)) => NotChecked(v, detail) }
     val uncovered  = unlocated.size + unchecked.size
     val coverage   = Option.when(uncovered > coverageTolerance(readings.size))(LowCoverage(uncovered, located.size))
 
-    towns ++ far ++ shared ++ stale ++ gone ++ coverage ++ unlocated ++ unchecked
+    townMismatches(located) ++ farFromHub(located) ++ sharedAddresses(located) ++ staleUrls(located) ++
+      gone ++ coverage ++ unlocated ++ unchecked
   }
+
+  private def townMismatches(located: Seq[(AuditedVenue, Located)]): Seq[RosterFinding] =
+    located.collect {
+      case (v, Located(p, _)) if !v.expectedTowns.exists(TownName.same(_, p.town)) => TownMismatch(v, p)
+    }
+
+  private def farFromHub(located: Seq[(AuditedVenue, Located)]): Seq[RosterFinding] =
+    located.flatMap { case (v, Located(p, _)) =>
+      for { hub <- v.hub; at <- p.location; km = hub.kmTo(at) if km > MaxKmFromHub } yield FarFromHub(v, p, km)
+    }
+
+  private def staleUrls(located: Seq[(AuditedVenue, Located)]): Seq[RosterFinding] =
+    located.collect {
+      case (v, Located(_, finalUrl)) if VenueSourcePage.forUrl(v.sourceUrl).exists(p =>
+                                          finalUrl.stripSuffix("/") != p.pageUrl(v.sourceUrl).stripSuffix("/")) => StaleUrl(v, finalUrl)
+    }
+
+  private def sharedAddresses(located: Seq[(AuditedVenue, Located)]): Seq[RosterFinding] =
+    located
+      .flatMap { case (v, Located(p, _)) => p.street.map(s => (Slugify.stable(p.town), streetKey(s)) -> (v, p)) }
+      .groupMap(_._1)(_._2).toSeq
+      .collect { case (_, all) if all.map(_._1.cinema).distinct.size > 1 =>
+        SharedAddress(all.map(_._1), all.head._2.town, all.head._2.street.getOrElse(""))
+      }
 
   /** A street as a comparable key: folded, the `ul.`/`al.`/`pl.` prefix
    *  dropped, so bilety24's "ul. Siennieńska 54" is Filmweb's "Siennieńska 54". */

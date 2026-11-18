@@ -161,23 +161,38 @@ object CopiedFeedDetector {
    *  sessions are one only if their 64-bit hashes agree. */
   private[roster] def fingerprintsOf(films: Seq[CinemaMovie]): Array[Long] = {
     val fingerprints = Array.newBuilder[Long]
-    var hashes = new Array[Long](32)
-    films.foreach { film =>
-      var n = 0
-      film.showtimes.foreach(_.bookingUrl.foreach { url =>
-        if (n == hashes.length) hashes = java.util.Arrays.copyOf(hashes, n * 2)
-        hashes(n) = sessionHash(url)
-        n += 1
-      })
-      if (n >= MinSessions) {
-        java.util.Arrays.sort(hashes, 0, n)
-        var distinct = 1
-        var i = 1
-        while (i < n) { if (hashes(i) != hashes(i - 1)) distinct += 1; i += 1 }
-        if (distinct >= MinSessions) fingerprints += hashes(0)
-      }
-    }
+    val sessions     = new SessionHashes
+    films.foreach(film => if (sessions.read(film)) fingerprints += sessions.lowest)
     fingerprints.result().distinct
+  }
+
+  /** One film's session hashes at a time, in one buffer reused across a scrape's films. */
+  private final class SessionHashes {
+    private var hashes = new Array[Long](32)
+    private var n      = 0
+
+    /** Reads `film`'s sessions: whether they make a fingerprint, [[MinSessions]] distinct ones. */
+    def read(film: CinemaMovie): Boolean = {
+      n = 0
+      film.showtimes.foreach(_.bookingUrl.foreach(add))
+      n >= MinSessions && { java.util.Arrays.sort(hashes, 0, n); distinctSorted >= MinSessions }
+    }
+
+    /** The fingerprint [[read]] made: the lowest session hash. */
+    def lowest: Long = hashes(0)
+
+    private def add(url: String): Unit = {
+      if (n == hashes.length) hashes = java.util.Arrays.copyOf(hashes, n * 2)
+      hashes(n) = sessionHash(url)
+      n += 1
+    }
+
+    private def distinctSorted: Int = {
+      var distinct = 1
+      var i = 1
+      while (i < n) { if (hashes(i) != hashes(i - 1)) distinct += 1; i += 1 }
+      distinct
+    }
   }
 
   /** The part of a booking link naming the venue and the session: the host less the labels between
@@ -205,17 +220,27 @@ object CopiedFeedDetector {
   private def sessionParts(url: String): (Int, Int, Int) = url.indexOf("://") match {
     case -1 => (0, 0, 0)
     case i  =>
-      val host = i + 3
-      var path = host
-      while (path < url.length && url.charAt(path) != '/' && url.charAt(path) != '?') path += 1
+      val host     = i + 3
+      val path     = pathStart(url, host)
       val firstDot = url.indexOf('.', host)
-      if (firstDot < 0 || firstDot >= path) (host, host, host)
-      else {
-        var labelEnd = path
-        var dot      = url.lastIndexOf('.', labelEnd - 1)
-        while (dot > firstDot && labelEnd - dot - 1 <= 3) { labelEnd = dot; dot = url.lastIndexOf('.', labelEnd - 1) }
-        if (dot > firstDot) (host, firstDot, dot) else (host, host, host)
-      }
+      val dot      = if (firstDot < 0 || firstDot >= path) -1 else domainDot(url, firstDot, path)
+      if (dot > firstDot && firstDot >= 0) (host, firstDot, dot) else (host, host, host)
+  }
+
+  /** Where the host starting at `host` ends: its path or query, or the end of `url`. */
+  private def pathStart(url: String, host: Int): Int = {
+    var path = host
+    while (path < url.length && url.charAt(path) != '/' && url.charAt(path) != '?') path += 1
+    path
+  }
+
+  /** The dot before the host's domain, walking back from `path` over its labels of three letters or fewer (a
+   *  `.co.uk`); at or before `firstDot` when the host has no label between its first and its domain. */
+  private def domainDot(url: String, firstDot: Int, path: Int): Int = {
+    var labelEnd = path
+    var dot      = url.lastIndexOf('.', labelEnd - 1)
+    while (dot > firstDot && labelEnd - dot - 1 <= 3) { labelEnd = dot; dot = url.lastIndexOf('.', labelEnd - 1) }
+    dot
   }
 
   /** `hash64(sessionOf(url))`: two MurmurHash3 string hashes of the session, read in place. */
