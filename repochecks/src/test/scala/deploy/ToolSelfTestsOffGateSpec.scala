@@ -39,6 +39,19 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(tools, "on") should include("branches: [main]")
   }
 
+  // the owner, 2026-11-18: 165 runner-minutes in two days ran again what the landing check had run on the same tree
+  it should "skip both for a tree a landing check passed, by its tree and the run's conclusion, never a branch name" in {
+    val jobs = RepoFile.jobs(tools)
+    jobs("plan") should include("scripts/ci/landing_check_for_tree.py \"$(git rev-parse 'HEAD^{tree}')\"")
+    jobs("plan") should include("actions: read")
+    jobs("plan") should not include "github.ref"
+    for (job <- Seq("script-tests", "old-ref-compile")) {
+      jobs(job) should include("needs: [ plan ]")
+      jobs(job) should include("if: ${{ needs.plan.outputs.run == 'true' }}")
+    }
+    RepoFile.read("scripts/ci/landing_check_for_tree.py") should include("head_commit.tree_id")
+  }
+
   it should "run on a change under every root scripts/run-script-tests searches" in {
     val roots = """(?m)^Roots="([^"]*)"""".r.findFirstMatchIn(RepoFile.read("scripts/run-script-tests"))
       .getOrElse(fail("run-script-tests names no Roots")).group(1).split("\\s+").toSeq

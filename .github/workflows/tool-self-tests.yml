@@ -14,6 +14,9 @@ name: Tool self-tests
 #     (precommit-check.yml), and a failure there blocks that change;
 #   - AFTER: this workflow runs them all on every push to main touching those paths. A red here is the tooling's,
 #     listed by `agentctl ci-why` outside the gate; it closes no push.
+# NOT AGAIN FOR A TREE A LANDING CHECK PASSED (the owner, 2026-11-18: 165 runner-minutes in two days): a push whose very
+# tree a full landing check passed (scripts/ci/landing_check_for_tree.py: keyed on the tree and the run's conclusion,
+# never a branch name) had both run there by the same hook; anything that landed some other way runs them here.
 on:
     push:
         branches: [main]
@@ -55,11 +58,41 @@ env:
     LANG: C.UTF-8
 
 jobs:
+    # WHETHER THEY RUN (WorkflowPlanSpec: the one plan job): a push to main runs them unless a landing check passed its
+    # very tree; a dispatch always does. gh unable to say runs them.
+    plan:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        outputs:
+            run: ${{ steps.plan.outputs.run }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+            - name: Did a landing check pass this very tree?
+              id: plan
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  EVENT: ${{ github.event_name }}
+              run: |
+                  if [ "$EVENT" = push ] && run="$(scripts/ci/landing_check_for_tree.py "$(git rev-parse 'HEAD^{tree}')")"; then
+                      echo "landing check run $run passed this very tree: its script self-tests and old refs ran there"
+                      echo "run=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "no landing check passed this tree (or a dispatch): every tool self-test runs"
+                      echo "run=true" >> "$GITHUB_OUTPUT"
+                  fi
+
     # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
     # infra/bin), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
     # exists; one tagged `# script-test: <tag>` runs where its toolchain is. It needs no JDK, sbt or build cache.
     script-tests:
         name: script self-tests
+        needs: [ plan ]
+        if: ${{ needs.plan.outputs.run == 'true' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 40
         steps:
@@ -72,6 +105,8 @@ jobs:
     # names, of the tree kept across runs.
     old-ref-compile:
         name: identity-slice old-ref compile
+        needs: [ plan ]
+        if: ${{ needs.plan.outputs.run == 'true' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 40
         permissions:

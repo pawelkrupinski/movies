@@ -336,7 +336,9 @@ already released) and watches it for the landed sha (`watch_landed`):
 Outside the watch and the gate: **Tool self-tests** (`tool-self-tests.yml`: every script self-test and
 identity-slice's old-ref compile, on each push to main touching their paths). Their reds are the tooling's, listed by
 `ci-why` outside the gate; they close no push. The same tests run before landing, in the hook's `scripttests` and
-`oldrefs` checks, for every change touching them.
+`oldrefs` checks, for every change touching them -- so a push whose very tree a full landing check passed skips them
+(`scripts/ci/landing_check_for_tree.py`: keyed on the tree and the run's conclusion, never a branch name; the fast-only
+batch check, which runs no script tests, counts for nothing), and anything that landed some other way runs them all.
 
 **A third party's or a backlog's problem is an alert, not a red run**: the Decodo probe, security headers (an origin
 never reached), the recording's key preflight, the findings report and CI staleness run their live step through
