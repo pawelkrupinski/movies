@@ -2,7 +2,6 @@ package tools
 
 import play.api.Logging
 
-import scala.collection.mutable
 import scala.util.control.NonFatal
 
 /**
@@ -74,34 +73,45 @@ class FallbackHttpFetch(
    *  next route (Zyte) exists to get past, and returning the interstitial skipped it, failed the
    *  read anyway, and booked the proxy leg as having served. `text` is how a body is searched. */
   private def tryEach[T](verb: String, url: String, call: HttpFetch => T)(text: T => String): T = {
-    val failures        = mutable.ListBuffer.empty[String]
-    val failedLegs      = mutable.ListBuffer.empty[String]
-    var lastFailure     = Option.empty[Throwable]
-    val failuresSeen    = mutable.ListBuffer.empty[Throwable]
-    var result: Option[T] = None
-    val it              = backends.iterator
-    // Every line, key and message below names the URL MASKED (RedactedUrl): a convergence fill asks TMDB with the
-    // real key in the query (FillCredentials), and a backend's own failure message often repeats the URL it was asked.
-    val shown           = RedactedUrl(url)
-    def masked(message: String): String = Option(message).fold("null")(_.replace(url, shown))
-    val key             = s"$verb $shown"
-    // The key the "all failed" warning is told apart by, once it is known: the URL's, unless a leg found its host's
-    // breaker open (`hostWide`).
-    def incidentKey: String = if (failuresSeen.exists(_.isInstanceOf[CircuitOpenException])) hostKey(verb, url) else key
-    while (result.isEmpty && it.hasNext) {
-      val (name, backend) = it.next()
-      try {
-        val answer = call(backend)
-        ChallengePage.detect(text(answer)).foreach { vendor =>
-          throw new UnexpectedBodyException(url, s"a $vendor challenge page", text(answer))
+    val ask = new Ask(verb, url)
+    @scala.annotation.tailrec
+    def from(legs: List[(String, HttpFetch)], failed: Vector[FallbackHttpFetch.LegFailure]): T = legs match {
+      case Nil => ask.allFailed(failed)
+      case (name, backend) :: rest =>
+        ask.leg(name, call(backend), text) match {
+          case Right(answer) => ask.answered(); answer
+          case Left(failure) => from(rest, failed :+ failure)
         }
-        result = Some(answer)
+    }
+    from(backends.toList, Vector.empty)
+  }
+
+  /** One ask of the chain: `verb` of `url`. Every line, key and message it writes names the URL MASKED
+   *  (RedactedUrl): a convergence fill asks TMDB with the real key in the query (FillCredentials), and a backend's
+   *  own failure message often repeats the URL it was asked. */
+  private final class Ask(verb: String, url: String) {
+    private val shown = RedactedUrl(url)
+    private val key   = s"$verb $shown"
+
+    private def masked(message: String): String = Option(message).fold("null")(_.replace(url, shown))
+
+    /** The key the "all failed" warning is told apart by: the URL's, unless a leg found its host's breaker open
+     *  (`hostKey`). */
+    private def incidentKey(failed: Seq[FallbackHttpFetch.LegFailure]): String =
+      if (failed.exists(_.failure.isInstanceOf[CircuitOpenException])) hostKey(verb, url) else key
+
+    /** One leg's answer, or its failure -- unless the failure is the origin's own answer (`endsChain`), thrown as
+     *  it is, the rest of the chain untried. */
+    def leg[T](name: String, answer: => T, text: T => String): Either[FallbackHttpFetch.LegFailure, T] =
+      try {
+        val body = answer
+        ChallengePage.detect(text(body)).foreach { vendor =>
+          throw new UnexpectedBodyException(url, s"a $vendor challenge page", text(body))
+        }
         safeOutcome(name, None)
+        Right(body)
       } catch {
         case NonFatal(t) =>
-          lastFailure = Some(t)
-          failuresSeen += t
-          failedLegs += name
           val message = s"$name: ${t.getClass.getSimpleName}: ${masked(t.getMessage)}"
           safeOutcome(name, Some(message))
           if (endsChain(t)) {
@@ -119,15 +129,18 @@ class FallbackHttpFetch(
           // diagnosing a fall-through, and every failure is still named in the warning
           // below if the chain runs out of backends.
           logger.debug(s"FallbackHttpFetch $verb $shown — $message; trying next backend")
-          failures += message
+          Left(FallbackHttpFetch.LegFailure(name, t, message))
       }
-    }
-    if (result.isDefined) {
+
+    /** A leg answered: any failure remembered for the URL, or for its host, is over. */
+    def answered(): Unit = {
       failureLog.cleared(key, "answered")
       failureLog.cleared(hostKey(verb, url), "answered")
     }
-    result.getOrElse {
-      val detail = s"All ${backends.size} backends failed for $verb $shown:\n  " + failures.mkString("\n  ")
+
+    /** Every leg failed (`failed`, in order): throw what the caller must see. */
+    def allFailed(failed: Vector[FallbackHttpFetch.LegFailure]): Nothing = {
+      val detail = s"All ${backends.size} backends failed for $verb $shown:\n  " + failed.map(_.message).mkString("\n  ")
       // A definitive "not found" from the LAST backend is an ANSWER, and it has to
       // reach the caller as one. Wrapping it in a composite `RuntimeException` hid
       // it: the composite is not an `HttpStatusException`, so `ReadOutcome.classify`
@@ -140,31 +153,29 @@ class FallbackHttpFetch(
       // Only the LAST backend's verdict qualifies. An earlier leg missing (no
       // fixture recorded) says nothing about the resource; the leg that actually
       // reached the upstream is the one whose answer this is.
-      lastFailure.filter(ReadOutcome.isAbsent).foreach { absent =>
+      failed.lastOption.map(_.failure).filter(ReadOutcome.isAbsent).foreach { absent =>
         logger.debug(s"FallbackHttpFetch $verb $shown — every backend failed and the last says NOT FOUND; " +
                      s"propagating that rather than a composite failure")
         failureLog.cleared(key, s"answered not found (${masked(absent.getMessage)})")
         throw absent
       }
+      val composite = new AllBackendsFailedException(detail, failed.map(_.name).toList, failed.map(_.failure).toList)
+      // NOW it is a warning: nothing answered. Logged as well as thrown because
+      // callers routinely catch this to degrade gracefully, and a swallowed
+      // exception is how a chain fails silently. Once per distinct failure, though: a
+      // repeat of the identical failure is held back (RepeatedFailureLog); the exception
+      // still carries the full detail every time.
+      failureLog.failed(incidentKey(failed), s"FallbackHttpFetch $detail", sameness(detail))
       // A rate limit from ANY leg is the origin telling us to slow down, and the gate outside this
       // chain (ThrottledHttpFetch) can only pause and retry on the typed status — inside the
       // composite it saw a plain RuntimeException, so TMDB's 429s through the recording's
       // direct → proxy route were never paced and ~6,000 a minute went out (record-scrape-fixtures).
       // The leg asking for the longest wait wins; every leg's failure rides along as suppressed.
-      val limits = failuresSeen.collect { case s: HttpStatusException if HttpStatusException.isRateLimit(s) => s }
-      if (limits.nonEmpty) {
-        val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
-        failureLog.failed(incidentKey, s"FallbackHttpFetch $detail", sameness(detail))
-        limit.addSuppressed(new AllBackendsFailedException(detail, failedLegs.toList, failuresSeen.toList))
-        throw limit
-      }
-      // NOW it is a warning: nothing answered. Logged as well as thrown because
-      // callers routinely catch this to degrade gracefully, and a swallowed
-      // exception is how a chain fails silently. Once per distinct failure, though: a
-      // repeat of the identical failure is held back (RepeatedFailureLog); the exception
-      // below still carries the full detail every time.
-      failureLog.failed(incidentKey, s"FallbackHttpFetch $detail", sameness(detail))
-      throw new AllBackendsFailedException(detail, failedLegs.toList, failuresSeen.toList)
+      val limits = failed.map(_.failure).collect { case s: HttpStatusException if HttpStatusException.isRateLimit(s) => s }
+      if (limits.isEmpty) throw composite
+      val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
+      limit.addSuppressed(composite)
+      throw limit
     }
   }
 
@@ -220,6 +231,9 @@ object AllBackendsFailedException {
 }
 
 object FallbackHttpFetch {
+  /** A leg that failed: its name, its failure, and the failure as the composite's detail names it. */
+  private final case class LegFailure(name: String, failure: Throwable, message: String)
+
   val NoOutcome: (String, Option[String]) => Unit = (_, _) => ()
 
   val NeverEnds: Throwable => Boolean = _ => false

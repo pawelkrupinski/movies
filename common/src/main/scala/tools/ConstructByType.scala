@@ -30,25 +30,7 @@ object ConstructByType {
       case _              => report.errorAndAbort("ConstructByType takes its arguments listed out, not as a sequence")
     }
     val constructors = target.classSymbol.toList.flatMap(_.declarations).filter(s => s.isClassConstructor && !s.flags.is(Flags.Private))
-
-    // `Right(arguments in parameter order)` or `Left(why this constructor does not fit)`.
-    def fit(constructor: Symbol): Either[String, List[Term]] = {
-      val parameterTypes = target.memberType(constructor) match {
-        case method: MethodType => method.paramTypes
-        case _                  => Nil
-      }
-      val candidates = parameterTypes.map(p => p -> supplied.filter(_.tpe.widen <:< p))
-      val ambiguous  = candidates.collect { case (p, cs) if cs.size > 1 => s"${p.show} (${cs.map(_.tpe.widen.show).mkString(", ")})" }
-      val missing    = candidates.collect { case (p, cs) if cs.isEmpty => p.show }
-      val used       = candidates.flatMap(_._2).toSet
-      val unused     = supplied.filterNot(used).map(_.tpe.widen.show)
-      if (ambiguous.nonEmpty) Left(s"more than one argument fits ${ambiguous.mkString("; ")}")
-      else if (unused.nonEmpty) Left(s"no parameter takes ${unused.mkString(", ")}")
-      else if (missing.nonEmpty && !partial) Left(s"no argument of type ${missing.mkString(", ")}")
-      else Right(candidates.map { case (_, cs) => cs.headOption.getOrElse(Literal(NullConstant())) })
-    }
-
-    val fits = constructors.map(c => c -> fit(c)).sortBy { case (c, _) => c.paramSymss.flatten.size }
+    val fits = constructors.map(c => c -> fit(target, supplied, partial, c)).sortBy { case (c, _) => c.paramSymss.flatten.size }
     fits.collectFirst { case (constructor, Right(arguments)) => (constructor, arguments) } match {
       case Some((constructor, arguments)) =>
         New(TypeTree.of[R]).select(constructor).appliedToArgs(arguments).asExprOf[R]
@@ -56,5 +38,25 @@ object ConstructByType {
         val reasons = fits.collect { case (c, Left(why)) => s"  (${c.paramSymss.flatten.size} parameters) $why" }
         report.errorAndAbort(s"No constructor of ${target.show} fits these arguments:\n${reasons.mkString("\n")}")
     }
+  }
+
+  /** `constructor` of `target` over the `supplied` arguments: `Right(the arguments in parameter order)`, or
+   *  `Left(why it does not fit)`. */
+  private def fit(using q: Quotes)(target: q.reflect.TypeRepr, supplied: Seq[q.reflect.Term], partial: Boolean,
+                                   constructor: q.reflect.Symbol): Either[String, List[q.reflect.Term]] = {
+    import q.reflect.*
+    val parameterTypes = target.memberType(constructor) match {
+      case method: MethodType => method.paramTypes
+      case _                  => Nil
+    }
+    val candidates = parameterTypes.map(p => p -> supplied.filter(_.tpe.widen <:< p))
+    val used       = candidates.flatMap(_._2).toSet
+    val misfit     = Seq(
+      "more than one argument fits " -> candidates.collect {
+        case (p, cs) if cs.size > 1 => s"${p.show} (${cs.map(_.tpe.widen.show).mkString(", ")})" }.mkString("; "),
+      "no parameter takes " -> supplied.filterNot(used).map(_.tpe.widen.show).mkString(", "),
+      "no argument of type " -> (if (partial) "" else candidates.collect { case (p, cs) if cs.isEmpty => p.show }.mkString(", ")))
+    misfit.collectFirst { case (why, what) if what.nonEmpty => why + what }
+      .toLeft(candidates.map { case (_, cs) => cs.headOption.getOrElse(Literal(NullConstant())) })
   }
 }

@@ -181,26 +181,24 @@ object TlsTrust extends Logging {
   private def compositeTrustManager(extra: Seq[X509Certificate], pinnedExpired: Seq[X509Certificate]): X509TrustManager = {
     val primary = trustManagerFor(null)
     if (extra.isEmpty && pinnedExpired.isEmpty) primary
-    else {
-      val secondary = if (extra.nonEmpty) Some(extraTrustManager(extra)) else None
-      new X509TrustManager {
-        override def checkServerTrusted(chain: Array[X509Certificate], authType: String): Unit =
-          try primary.checkServerTrusted(chain, authType)
-          catch {
-            case primaryFailure: CertificateException =>
-              val secondaryResult = secondary match {
-                case Some(s) => Try(s.checkServerTrusted(chain, authType))
-                case None    => scala.util.Failure(primaryFailure)
-              }
-              secondaryResult.recover {
-                case _: CertificateException if matchesPinnedLeaf(chain, pinnedExpired) => ()
-              }.get
-          }
-        override def checkClientTrusted(chain: Array[X509Certificate], authType: String): Unit =
-          primary.checkClientTrusted(chain, authType)
-        override def getAcceptedIssuers: Array[X509Certificate] =
-          primary.getAcceptedIssuers ++ secondary.map(_.getAcceptedIssuers).getOrElse(Array.empty[X509Certificate])
-      }
-    }
+    else new CompositeTrustManager(primary, Option.when(extra.nonEmpty)(extraTrustManager(extra)), pinnedExpired)
+  }
+
+  /** `primary`, then `secondary` for a chain `primary` refuses, then a chain whose leaf is one of `pinnedExpired`. */
+  private final class CompositeTrustManager(primary: X509TrustManager, secondary: Option[X509TrustManager],
+                                            pinnedExpired: Seq[X509Certificate]) extends X509TrustManager {
+    override def checkServerTrusted(chain: Array[X509Certificate], authType: String): Unit =
+      try primary.checkServerTrusted(chain, authType)
+      catch { case primaryFailure: CertificateException => trustedPastPrimary(chain, authType, primaryFailure) }
+
+    private def trustedPastPrimary(chain: Array[X509Certificate], authType: String, primaryFailure: CertificateException): Unit =
+      secondary.fold[Try[Unit]](scala.util.Failure(primaryFailure))(s => Try(s.checkServerTrusted(chain, authType)))
+        .recover { case _: CertificateException if matchesPinnedLeaf(chain, pinnedExpired) => () }
+        .get
+
+    override def checkClientTrusted(chain: Array[X509Certificate], authType: String): Unit =
+      primary.checkClientTrusted(chain, authType)
+    override def getAcceptedIssuers: Array[X509Certificate] =
+      primary.getAcceptedIssuers ++ secondary.map(_.getAcceptedIssuers).getOrElse(Array.empty[X509Certificate])
   }
 }

@@ -64,13 +64,20 @@ object JsonLineEncoder {
     if (!first) line.append(',')
     quoted(line, key)
     line.append(':')
-    value match {
-      case n: (java.lang.Integer | java.lang.Long | java.lang.Short | java.lang.Byte) => line.append(n.toString)
-      case d: java.lang.Double if !d.isNaN && !d.isInfinite => line.append(d.toString)
-      case f: java.lang.Float if !f.isNaN && !f.isInfinite  => line.append(f.toString)
-      case b: java.lang.Boolean                             => line.append(b.toString)
-      case other                                            => quoted(line, String.valueOf(other))
+    literal(value) match {
+      case Some(bare) => line.append(bare)
+      case None       => quoted(line, String.valueOf(value))
     }
+  }
+
+  /** `value` as a bare JSON literal -- an integer, a finite floating-point number, a boolean -- or `None` for one
+   *  written as a string. */
+  private def literal(value: Any): Option[String] = value match {
+    case n: (java.lang.Integer | java.lang.Long | java.lang.Short | java.lang.Byte) => Some(n.toString)
+    case d: java.lang.Double if !d.isNaN && !d.isInfinite => Some(d.toString)
+    case f: java.lang.Float if !f.isNaN && !f.isInfinite  => Some(f.toString)
+    case b: java.lang.Boolean                             => Some(b.toString)
+    case _                                                => None
   }
 
   private def quoted(line: java.lang.StringBuilder, text: String): Unit = {

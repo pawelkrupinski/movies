@@ -52,8 +52,8 @@ object HttpOutcome {
 
   /** Classify a thrown failure. Order matters: [[HttpStatusException]] carries a
    *  status; `HttpConnectTimeoutException` is a subtype of `HttpTimeoutException`
-   *  (so the timeout case catches both); the connection-layer errors are all
-   *  `IOException` subtypes, checked before the generic `IOException` fallback. A call its caller abandoned
+   *  (so the timeout case catches both), and both are `IOException`s, so the timeout case comes before the
+   *  connection-layer one, which every other `IOException` falls to. A call its caller abandoned
    *  ([[CallerCancelled]]) is no outcome of the host's, so it is checked first. */
   def classify(t: Throwable): String = t match {
     case _ if CallerCancelled(t)                               => Cancelled
@@ -61,10 +61,8 @@ object HttpOutcome {
     // The provider's own status, for the paid-egress counter — see EgressProviderException.
     case e: EgressProviderException                            => byStatus(e.providerStatus)
     case _: java.net.http.HttpTimeoutException                => Timeout
-    case _: java.net.ConnectException                         => ConnectionError
-    case _: java.net.UnknownHostException                     => ConnectionError
-    case _: java.net.SocketException                          => ConnectionError
-    case _: javax.net.ssl.SSLException                        => ConnectionError
+    // refused, unknown host, reset, TLS (ConnectException, UnknownHostException, SocketException, SSLException): all
+    // IOExceptions, as is anything else the connection layer throws
     case _: java.io.IOException                               => ConnectionError
     case _                                                    => Other
   }

@@ -124,16 +124,16 @@ case class SourceData(
   // projection's CPU (JFR 2026-10-04), almost all of it comparing slots whose casts were the very same list.
   override def equals(that: Any): Boolean = that match {
     case o: SourceData if o eq this => true
-    case o: SourceData =>
-      title == o.title && rawTitle == o.rawTitle && originalTitle == o.originalTitle &&
-      englishTitle == o.englishTitle && synopsis == o.synopsis &&
-      ((cast eq o.cast) || cast == o.cast || SourceData.castSet(cast) == SourceData.castSet(o.cast)) &&
-      director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
-      countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
-      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language && ageRating == o.ageRating &&
-      titleSearches == o.titleSearches
-    case _ => false
+    case o: SourceData              => comparedFields == o.comparedFields && SourceData.sameCast(cast, o.cast)
+    case _                          => false
   }
+
+  /** Every field [[equals]] compares as it is: all but the cast (compared as names, [[SourceData.sameCast]]) and the
+   *  cache-only showtime digests. */
+  private def comparedFields =
+    (title, rawTitle, originalTitle, englishTitle, synopsis, director, runtimeMinutes, releaseYear, countries, genres,
+     posterUrl, filmUrl, trailerUrl, language, ageRating, titleSearches)
+
   override def hashCode(): Int =
     (title, rawTitle, originalTitle, englishTitle, synopsis, SourceData.castSet(cast), director,
      runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
@@ -158,6 +158,9 @@ object SourceData {
    *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
    *  stamp is absent and the text is already right — completely still. */
   val LegacyLanguageTag: String = "pl-PL"
+
+  /** Two casts are the same when they name the same people ([[castSet]]); the cheap checks first. */
+  private def sameCast(a: Seq[String], b: Seq[String]): Boolean = (a eq b) || a == b || castSet(a) == castSet(b)
 
   /** A cast as the names it holds, billing order aside: what "did this cast change" compares.
    *  Trimmed only — a respelled name is a change the page should show. */

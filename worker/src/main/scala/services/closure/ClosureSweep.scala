@@ -62,68 +62,83 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
   /** `pagedGone`: the venues whose current page-gone spell the gone-venue alert has already paged. */
   private def settle(byName: Map[String, ClosureCandidate], drops: Map[String, Either[String, SourceDrop]], pagedGone: Set[String],
                      now: Instant): Unit = {
-    val raised = ledger.entries()
-    (raised.keySet -- byName.keySet).foreach(ledger.withdraw)
-    // Still a candidate, so still on the roster, this long after its retirement was asked for.
-    def overdue(name: String): Boolean =
-      raised.get(name).exists(entry => entry.kind == LedgerKind.Closed && !now.isBefore(entry.at.plus(ClosureSweep.RetirementOverdue)))
-    def closedLead(name: String): String =
-      if (overdue(name)) s"🪦 $name still looks closed and is still on the roster, its retirement asked for on ${ClosureSweep.day(raised(name).at)}"
-      else s"🪦 $name looks closed"
-
+    val raised = ClosureSweep.Raised(ledger.entries(), now)
+    (raised.entries.keySet -- byName.keySet).foreach(ledger.withdraw)
     val verdicts = byName.map { case (name, candidate) =>
       name -> VenueClosure.judge(drops.getOrElse(name, Left("no scrape on record")), checks.signals(candidate.cinema, _))
     }
-    val newlyClosed = collection.mutable.ListBuffer.empty[(Cinema, SourceDrop, Seq[VenueSignal])]
+    val newlyClosed = verdicts.toSeq.flatMap { case (name, verdict) =>
+      ruled(name, verdict, raised, pagedGone).map { case (drop, signals) => (byName(name), drop, signals) }
+    }
+    val (inRoster, byHand) =
+      newlyClosed.partition { case (candidate, _, _) => RosterEntry.of(candidate.cinema).isDefined && dispatch.isDefined }
+    byHand.foreach { case (candidate, drop, signals) => retireByHand(candidate.cinema, drop, signals, raised) }
+    inRoster.groupBy { case (candidate, _, _) => RosterEntry.of(candidate.cinema).get.directory }.foreach {
+      case (directory, venues) => requestRetirement(directory, venues, raised)
+    }
+  }
 
-    verdicts.foreach { case (name, verdict) =>
-      (verdict, raised.get(name).map(_.kind)) match {
-        case (Verdict.Listed(why), Some(LedgerKind.Closed)) =>
-          ledger.withdraw(name)
-          sendAlert(s"↩️ $name no longer looks closed ($why): its retirement is withdrawn. Close its retirement PR if one is open.")
-        case (Verdict.Listed(why), Some(LedgerKind.SourceDropped)) =>
-          ledger.withdraw(name)
-          sendAlert(s"↩️ $name is listed again ($why): its coverage gap has closed.")
-        case (Verdict.SourceDropped(drop, signals), previous) if !previous.contains(LedgerKind.SourceDropped) =>
-          val line = ClosureSweep.evidenceLine(drop, signals)
-          ledger.record(name, LedgerEntry(LedgerKind.SourceDropped, now, line))
-          // The gone-venue alert already paged this 404; a withdrawn closure is news it never said.
-          if (previous.contains(LedgerKind.Closed) || !pagedGone(name)) {
-            val opening =
-              if (previous.contains(LedgerKind.Closed)) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
-              else s"📡 $name"
-            sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
-          }
-        case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) || overdue(name) =>
-          newlyClosed += ((byName(name).cinema, drop, signals))
-        case _ => ()
-      }
+  /** Act on one venue's verdict against what the ledger already holds for it: withdraw a closure or a coverage gap
+   *  it is listed again past, record and page a new coverage gap -- or hand back the evidence of a closure to retire
+   *  (a new one, or one whose retirement is overdue). */
+  private def ruled(name: String, verdict: Verdict, raised: ClosureSweep.Raised,
+                    pagedGone: Set[String]): Option[(SourceDrop, Seq[VenueSignal])] =
+    (verdict, raised.kind(name)) match {
+      case (Verdict.Listed(why), Some(LedgerKind.Closed)) =>
+        ledger.withdraw(name)
+        sendAlert(s"↩️ $name no longer looks closed ($why): its retirement is withdrawn. Close its retirement PR if one is open.")
+        None
+      case (Verdict.Listed(why), Some(LedgerKind.SourceDropped)) =>
+        ledger.withdraw(name)
+        sendAlert(s"↩️ $name is listed again ($why): its coverage gap has closed.")
+        None
+      case (Verdict.SourceDropped(drop, signals), previous) if !previous.contains(LedgerKind.SourceDropped) =>
+        sourceDropped(name, ClosureSweep.evidenceLine(drop, signals), wasClosed = previous.contains(LedgerKind.Closed),
+          pagedGone, raised.now)
+        None
+      case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) || raised.overdue(name) =>
+        Some((drop, signals))
+      case _ => None
     }
 
-    val (inRoster, byHand) = newlyClosed.toSeq.partition { case (cinema, _, _) => RosterEntry.of(cinema).isDefined && dispatch.isDefined }
-
-    byHand.foreach { case (cinema, drop, signals) =>
-      val line = ClosureSweep.evidenceLine(drop, signals)
-      ledger.record(cinema.displayName, LedgerEntry(LedgerKind.Closed, now, line))
-      sendAlert(s"${closedLead(cinema.displayName)} — retire by hand. $line")
+  /** Record a venue its sources dropped but nothing shows closed, and page it -- unless the gone-venue alert already
+   *  paged this 404 and there is no withdrawn closure to tell, which is news it never said. */
+  private def sourceDropped(name: String, line: String, wasClosed: Boolean, pagedGone: Set[String], now: Instant): Unit = {
+    ledger.record(name, LedgerEntry(LedgerKind.SourceDropped, now, line))
+    if (wasClosed || !pagedGone(name)) {
+      val opening =
+        if (wasClosed) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
+        else s"📡 $name"
+      sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
     }
+  }
 
-    inRoster.groupBy { case (cinema, _, _) => RosterEntry.of(cinema).get.directory }.foreach { case (directory, venues) =>
-      val requests = venues.map { case (cinema, drop, signals) =>
-        RetirementRequest(RosterEntry.of(cinema).get, cinema.displayName, ClosureSweep.evidenceLine(drop, signals), checks.live(cinema, drop),
-          byName(cinema.displayName).page)
+  /** A closed venue no retirement can be requested for (off the roster, or no dispatch wired): record it and page it. */
+  private def retireByHand(cinema: Cinema, drop: SourceDrop, signals: Seq[VenueSignal], raised: ClosureSweep.Raised): Unit = {
+    val line = ClosureSweep.evidenceLine(drop, signals)
+    ledger.record(cinema.displayName, LedgerEntry(LedgerKind.Closed, raised.now, line))
+    sendAlert(s"${raised.closedLead(cinema.displayName)} — retire by hand. $line")
+  }
+
+  /** Ask for one roster directory's closed venues to be retired, in one request: recorded and paged once asked, or
+   *  paged as failed, to be asked again on the next sweep. */
+  private def requestRetirement(directory: RosterDirectory, venues: Seq[(ClosureCandidate, SourceDrop, Seq[VenueSignal])],
+                                raised: ClosureSweep.Raised): Unit = {
+    val requests = venues.map { case (candidate, drop, signals) =>
+      RetirementRequest(RosterEntry.of(candidate.cinema).get, candidate.cinema.displayName, ClosureSweep.evidenceLine(drop, signals),
+        checks.live(candidate.cinema, drop), candidate.page)
+    }
+    try {
+      dispatch.get.request(directory, requests)
+      requests.foreach { request =>
+        ledger.record(request.name, LedgerEntry(LedgerKind.Closed, raised.now, request.evidence))
+        val requested =
+          if (raised.overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
+        sendAlert(s"${raised.closedLead(request.name)} — $requested. ${request.evidence}")
       }
-      try {
-        dispatch.get.request(directory, requests)
-        requests.foreach { request =>
-          ledger.record(request.name, LedgerEntry(LedgerKind.Closed, now, request.evidence))
-          val requested = if (overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
-          sendAlert(s"${closedLead(request.name)} — $requested. ${request.evidence}")
-        }
-      } catch {
-        case NonFatal(e) =>
-          sendAlert(s"🪦 ${venues.map(_._1.displayName).mkString(", ")} look closed, but the retirement request failed (${e.getMessage}); retrying tomorrow.")
-      }
+    } catch {
+      case NonFatal(e) =>
+        sendAlert(s"🪦 ${venues.map(_._1.cinema.displayName).mkString(", ")} look closed, but the retirement request failed (${e.getMessage}); retrying tomorrow.")
     }
   }
 }
@@ -138,6 +153,19 @@ object ClosureSweep {
   val RetirementOverdue: java.time.Duration = java.time.Duration.ofDays(14)
 
   private def day(instant: Instant): LocalDate = LocalDate.ofInstant(instant, ZoneOffset.UTC)
+
+  /** What the ledger held for each venue as the sweep began at `now`. */
+  private final case class Raised(entries: Map[String, LedgerEntry], now: Instant) {
+    def kind(name: String): Option[LedgerKind] = entries.get(name).map(_.kind)
+
+    /** Still a candidate, so still on the roster, this long after its retirement was asked for. */
+    def overdue(name: String): Boolean =
+      entries.get(name).exists(entry => entry.kind == LedgerKind.Closed && !now.isBefore(entry.at.plus(RetirementOverdue)))
+
+    def closedLead(name: String): String =
+      if (overdue(name)) s"🪦 $name still looks closed and is still on the roster, its retirement asked for on ${day(entries(name).at)}"
+      else s"🪦 $name looks closed"
+  }
 
   /** The evidence in one line, for the page, the ledger and the PR body: what the
    *  aggregators answered, then what was seen of the venue itself, each as observed. */

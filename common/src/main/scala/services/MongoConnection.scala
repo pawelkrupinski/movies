@@ -167,39 +167,51 @@ class MongoConnection(
    *  minute and stay there. Only reached when `required` — an optional connection
    *  that failed stays disabled, as before. */
   private def retryInBackground(connectionString: String): Unit =
-    startReconnect(
-      s"mongo-reconnect-${dbName.value}",
-      () => {
-        var waitSeconds = 5L
-        var givenUp     = false
-        while (!closed && !givenUp && initResult._2.isEmpty) {
-          reconnectWait(waitSeconds.seconds)
-          if (!closed)
-            connect(connectionString) match {
-              case Success((client, db)) =>
-                // Re-check under the close flag: `close()` may have landed while the
-                // probe was in flight, and publishing here would hand the owner a
-                // client it will never close. One step with `close()` — see there.
-                val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
-                if (published) logger.warn(s"MongoConnection to ${dbName.value} RECOVERED — but every repository wired at boot " +
-                  "holds no database; the process reports itself unhealthy so it is restarted onto it.")
-                else if (sharedClient.isEmpty) client.close()
-              case Failure(exception: DatabaseOwnershipConflict) =>
-                // Reachable, but refused for good — the `onConnected` claim found another
-                // country's database. Stay degraded: publishing it would let writes through.
-                // Only that: any other failure (an auth error mid role change, a command error)
-                // is retried, as before the claim existed — giving up left the process
-                // degraded until something restarted it.
-                givenUp = true
-                logger.error(s"MongoConnection to ${dbName.value} reconnected but was REFUSED (${exception.getMessage}) — " +
-                  "staying degraded, nothing will be read from or written to it.")
-              case Failure(exception) =>
-                waitSeconds = math.min(waitSeconds * 2, 60L)
-                logger.warn(s"MongoConnection to ${dbName.value} still unreachable (${exception.getMessage}) — " +
-                  s"retrying in ${waitSeconds}s.")
-            }
-        }
-      })
+    startReconnect(s"mongo-reconnect-${dbName.value}", () => reconnectFrom(connectionString, waitSeconds = 5L))
+
+  /** The reconnect loop: wait, try, and go on -- the wait doubled, up to a minute -- until a database is published,
+   *  the connection is closed, or the database is refused for good. */
+  @scala.annotation.tailrec
+  private def reconnectFrom(connectionString: String, waitSeconds: Long): Unit =
+    if (!closed && initResult._2.isEmpty) {
+      reconnectWait(waitSeconds.seconds)
+      if (!closed) reconnectAttempt(connectionString, waitSeconds) match {
+        case Some(next) => reconnectFrom(connectionString, next)
+        case None       => ()
+      }
+    }
+
+  /** One reconnect attempt after waiting `waitSeconds`: the next wait when Mongo is still unreachable, or `None`
+   *  when the attempt settled it -- published, or refused for good. */
+  private def reconnectAttempt(connectionString: String, waitSeconds: Long): Option[Long] =
+    connect(connectionString) match {
+      case Success((client, db)) =>
+        publish(client, db)
+        None
+      case Failure(exception: DatabaseOwnershipConflict) =>
+        // Reachable, but refused for good — the `onConnected` claim found another
+        // country's database. Stay degraded: publishing it would let writes through.
+        // Only that: any other failure (an auth error mid role change, a command error)
+        // is retried, as before the claim existed — giving up left the process
+        // degraded until something restarted it.
+        logger.error(s"MongoConnection to ${dbName.value} reconnected but was REFUSED (${exception.getMessage}) — " +
+          "staying degraded, nothing will be read from or written to it.")
+        None
+      case Failure(exception) =>
+        val next = math.min(waitSeconds * 2, 60L)
+        logger.warn(s"MongoConnection to ${dbName.value} still unreachable (${exception.getMessage}) — " +
+          s"retrying in ${next}s.")
+        Some(next)
+    }
+
+  /** Publish a reconnected client -- unless `close()` landed while the probe was in flight: publishing then would
+   *  hand the owner a client it will never close, so it is closed here instead. One step with `close()` — see there. */
+  private def publish(client: MongoClient, db: MongoDatabase): Unit = {
+    val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
+    if (published) logger.warn(s"MongoConnection to ${dbName.value} RECOVERED — but every repository wired at boot " +
+      "holds no database; the process reports itself unhealthy so it is restarted onto it.")
+    else if (sharedClient.isEmpty) client.close()
+  }
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
     uri.map(_.value) match {
@@ -211,39 +223,46 @@ class MongoConnection(
         (None, None)
       case Some(connectionString) =>
         connect(connectionString) match {
-          case Success((client, db)) =>
-            (Some(client), Some(db))
-          case Failure(exception) =>
-            val isLocalUri = connectionString.contains("127.0.0.1") || connectionString.contains("localhost")
-            val hint = if (isLocalUri)
-              " (local URI — for prod, launch under `scripts/with-prod-mongo.sh`, which opens the ssh tunnel to mongo-1)"
-            else ""
-            // A REACHABILITY failure must not abort boot, even when `required`. Refusing
-            // to start means Play never binds port 9000, so Fly's health check can never
-            // pass and the machine crash-loops — and every restart re-runs the boot
-            // hydrates, keeping an already-overloaded cluster too busy to recover. That
-            // is exactly how a slow Mongo became a total outage on 2026-07-18. Start
-            // degraded instead (`database` None → repos no-op, pages render film-less),
-            // let the health check pass, and reconnect in the background once the
-            // cluster answers — and, once it does, report not-alive (`restartRequired`) so the
-            // probe restarts the process: the repositories wired now keep their `None` for good
-            // (see DatabaseBinding). A MISCONFIGURATION still aborts: nothing about a bad URI
-            // or bad credentials fixes itself, so failing loudly at boot is right.
-            if (connectionRequired && !MongoConnection.isTransient(exception))
-              throw new IllegalStateException(
-                s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
-                exception)
-            if (connectionRequired)
-              logger.error(s"MongoConnection to ${dbName.value} is UNREACHABLE (${exception.getMessage}) — " +
-                s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
-            else
-              logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
-            (None, None)
+          case Success((client, db)) => (Some(client), Some(db))
+          case Failure(exception)    => unconnected(connectionString, exception)
         }
     }
+
+  /** The boot's connect attempt failed with `exception`.
+   *
+   *  A REACHABILITY failure must not abort boot, even when `required`. Refusing
+   *  to start means Play never binds port 9000, so Fly's health check can never
+   *  pass and the machine crash-loops — and every restart re-runs the boot
+   *  hydrates, keeping an already-overloaded cluster too busy to recover. That
+   *  is exactly how a slow Mongo became a total outage on 2026-07-18. Start
+   *  degraded instead (`database` None → repos no-op, pages render film-less),
+   *  let the health check pass, and reconnect in the background once the
+   *  cluster answers — and, once it does, report not-alive (`restartRequired`) so the
+   *  probe restarts the process: the repositories wired now keep their `None` for good
+   *  (see DatabaseBinding). A MISCONFIGURATION still aborts: nothing about a bad URI
+   *  or bad credentials fixes itself, so failing loudly at boot is right. */
+  private def unconnected(connectionString: String, exception: Throwable): (Option[MongoClient], Option[MongoDatabase]) = {
+    val hint = MongoConnection.localUriHint(connectionString)
+    if (connectionRequired && !MongoConnection.isTransient(exception))
+      throw new IllegalStateException(
+        s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
+        exception)
+    if (connectionRequired)
+      logger.error(s"MongoConnection to ${dbName.value} is UNREACHABLE (${exception.getMessage}) — " +
+        s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
+    else
+      logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
+    (None, None)
+  }
 }
 
 object MongoConnection extends Logging {
+  /** What a failed connect to a LOCAL URI adds to its log line: how to reach prod, which is never local. */
+  private def localUriHint(connectionString: String): String =
+    if (connectionString.contains("127.0.0.1") || connectionString.contains("localhost"))
+      " (local URI — for prod, launch under `scripts/with-prod-mongo.sh`, which opens the ssh tunnel to mongo-1)"
+    else ""
+
 
   /** How long a request waits for the driver to select a server before failing. */
   final case class ServerSelectionTimeout(value: FiniteDuration) extends AnyVal

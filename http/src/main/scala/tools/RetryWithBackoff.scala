@@ -74,34 +74,49 @@ object RetryWithBackoff extends Logging {
     describe:       Throwable => String = RetryWithBackoff.describe
   )(block: => T): T = {
     require(maxAttempts >= 1, s"maxAttempts must be ≥ 1 (got $maxAttempts)")
-    var attempt                = 1
-    var lastFailure: Throwable = null
-    while (attempt <= maxAttempts) {
+    val call = Call(label, maxAttempts, onAttempt, retryOn, describe)
+    @scala.annotation.tailrec
+    def from(attempt: Int): T = call.attempt(attempt)(block) match {
+      case Right(result) => result
+      case Left(failure) =>
+        val wait = waitBefore(attempt, failure, initialBackoff, maxRetryAfter, random)
+        logger.debug(s"$label attempt $attempt/$maxAttempts failed: ${describe(failure)}; retrying in ${wait.toMillis}ms")
+        sleep(wait.toMillis)
+        from(attempt + 1)
+    }
+    from(1)
+  }
+
+  /** One retried call's fixed parts, and what one attempt of it does: run the block, tell `onAttempt`, and either
+   *  answer (`Right`), throw the failure that ends the call (attempts exhausted, or one `retryOn` refuses), or hand
+   *  back a failure worth another attempt (`Left`). */
+  private final case class Call(label: String, maxAttempts: Int, onAttempt: AttemptOutcome => Unit,
+                                retryOn: Throwable => Boolean, describe: Throwable => String) {
+    def attempt[T](attempt: Int)(block: => T): Either[Throwable, T] = {
       val started = Stopwatch.start()
       try {
         val result = block
         onAttempt(AttemptOutcome.Success(attempt, started.millis))
         if (attempt > 1) logger.debug(s"$label succeeded on attempt $attempt/$maxAttempts")
-        return result
+        Right(result)
       } catch {
         case NonFatal(t) =>
-          val ms = started.millis
-          lastFailure = t
+          val ms      = started.millis
           val isFinal = attempt >= maxAttempts || !retryOn(t)
           onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
-          if (isFinal) {   // attempts exhausted, or a non-retryable failure
-            val attempts = if (attempt == 1) "1 attempt" else s"$attempt attempts"
-            val line     = s"$label failed after $attempts: ${describe(t)}"
-            if ((attempt > 1 || retryOn(t)) && !CallerCancelled(t)) logger.warn(line) else logger.debug(line)
-            throw t
-          }
-          val wait = waitBefore(attempt, t, initialBackoff, maxRetryAfter, random)
-          logger.debug(s"$label attempt $attempt/$maxAttempts failed: ${describe(t)}; retrying in ${wait.toMillis}ms")
-          sleep(wait.toMillis)
-          attempt += 1
+          if (isFinal) giveUp(attempt, t)
+          Left(t)
       }
     }
-    throw lastFailure
+
+    /** Log the call's outcome once -- WARN when it was retried, or could have been, and its caller still wanted it --
+     *  and throw its last failure. */
+    private def giveUp(attempt: Int, failure: Throwable): Nothing = {
+      val attempts = if (attempt == 1) "1 attempt" else s"$attempt attempts"
+      val line     = s"$label failed after $attempts: ${describe(failure)}"
+      if ((attempt > 1 || retryOn(failure)) && !CallerCancelled(failure)) logger.warn(line) else logger.debug(line)
+      throw failure
+    }
   }
 
   val DefaultMaxRetryAfter: FiniteDuration = 30.seconds

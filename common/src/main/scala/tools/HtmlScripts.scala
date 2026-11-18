@@ -33,33 +33,38 @@ object HtmlScripts {
   private val Close = "/script"
 
   /** Every script element of `html`, in page order. */
-  def all(html: String): Iterator[Script] = new Iterator[Script] {
+  def all(html: String): Iterator[Script] = new Scripts(html)
+
+  /** The scripts of `html` in order, each found as the one before it is taken. */
+  private final class Scripts(html: String) extends Iterator[Script] {
     private var from = 0
     private var upcoming: Option[Script] = advance()
     def hasNext: Boolean = upcoming.isDefined
     def next(): Script = { val script = upcoming.get; upcoming = advance(); script }
 
     private def advance(): Option[Script] = {
-      var at = html.indexOf('<', from)
-      var found: Option[Script] = None
-      while (found.isEmpty && at >= 0) {
-        val name = at + 1 + Open.length
-        if (asciiIgnoringCase(html, at + 1, Open) && !wordAt(html, name)) {
-          val end = html.indexOf('>', name)
-          // No `>` after this opening means none after any later one, and no closing after the body
-          // means none after any later body: nothing further can match.
-          if (end < 0) at = -1
-          else closing(html, end + 1) match {
-            case Some((bodyEnd, matchEnd)) =>
-              found = Some(new Script(html.substring(name, end), html, end + 1, bodyEnd))
-              from = matchEnd
-            case None => at = -1
-          }
-        } else at = html.indexOf('<', at + 1)
-      }
-      if (found.isEmpty) from = html.length
-      found
+      val found = scriptFrom(html.indexOf('<', from))
+      from = found.fold(html.length)(_._2)
+      found.map(_._1)
     }
+
+    /** The first script whose opening tag starts at or after `at` (a `<`, or -1 for none), with where its match
+     *  ends. No `>` after an opening means none after any later one, and no closing after the body means none
+     *  after any later body: nothing further can match. */
+    @scala.annotation.tailrec
+    private def scriptFrom(at: Int): Option[(Script, Int)] =
+      if (at < 0) None
+      else {
+        val name = at + 1 + Open.length
+        if (!asciiIgnoringCase(html, at + 1, Open) || wordAt(html, name)) scriptFrom(html.indexOf('<', at + 1))
+        else {
+          val end = html.indexOf('>', name)
+          if (end < 0) None
+          else closing(html, end + 1).map { case (bodyEnd, matchEnd) =>
+            (new Script(html.substring(name, end), html, end + 1, bodyEnd), matchEnd)
+          }
+        }
+      }
   }
 
   /** The first `</script\s*>` at or after `from`: where the body ends, and where the match does. */

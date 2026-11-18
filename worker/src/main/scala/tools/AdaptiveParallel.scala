@@ -32,14 +32,43 @@ object AdaptiveParallel {
   def map[A, B](items: Seq[A], workers: Int, backoff: FiniteDuration = 2.seconds, maxAttempts: Int = 4,
                 sleep: FiniteDuration => Unit)
                (isThrottle: Throwable => Boolean)(f: A => B): (Seq[(A, Try[B])], Stats) = {
-    val started  = Stopwatch.start()
-    val queue    = new ConcurrentLinkedQueue[(Int, Int)]()   // (item index, attempts so far)
+    val started = Stopwatch.start()
+    val run     = new Run(items, math.max(1, workers), backoff, maxAttempts, sleep, isThrottle, f)
+    val out     = run.complete()
+    (out, Stats(items.size, run.calls, started.elapsed, math.max(1, workers), run.allowedAtEnd))
+  }
+
+  /** One [[map]]: its queue of (item index, attempts so far), its results, and the pool of `workers` threads that
+   *  drain it, shrinking on each throttle. */
+  private final class Run[A, B](items: Seq[A], workers: Int, backoff: FiniteDuration, maxAttempts: Int,
+                                sleep: FiniteDuration => Unit, isThrottle: Throwable => Boolean, f: A => B) {
+    private val queue     = new ConcurrentLinkedQueue[(Int, Int)]()
     items.indices.foreach(i => queue.add(i -> 0))
-    val results  = new AtomicReferenceArray[Try[B]](items.size)
-    val allowed   = new AtomicInteger(math.max(1, workers))
-    val remaining = new AtomicInteger(items.size)   // items without a final result yet
-    val calls     = new AtomicInteger(0)
-    val fatal     = new AtomicReference[Throwable](null)
+    private val results   = new AtomicReferenceArray[Try[B]](items.size)
+    private val allowed   = new AtomicInteger(workers)
+    private val remaining = new AtomicInteger(items.size)   // items without a final result yet
+    private val callCount = new AtomicInteger(0)
+    private val fatal     = new AtomicReference[Throwable](null)
+
+    def calls: Int        = callCount.get
+    def allowedAtEnd: Int = allowed.get
+
+    /** Run every item to its final result on the pool, rethrowing the first fatal error a worker met. */
+    def complete(): Seq[(A, Try[B])] = {
+      val threads = (0 until workers).map { i =>
+        val t = new Thread(() => guarded(i), s"adaptive-parallel-$i")
+        t.setDaemon(true)
+        t.start()
+        t
+      }
+      threads.foreach(_.join())
+      Option(fatal.get).foreach(throw _)
+      items.indices.map(i => items(i) -> Option(results.get(i)).getOrElse(
+        Failure(new IllegalStateException("never processed"))))
+    }
+
+    private def guarded(worker: Int): Unit =
+      AnyThrowable.captured(work(worker)).left.foreach(t => fatal.compareAndSet(null, t): Unit)
 
     // Done is ONE atomic read of "items still owed a result", never the pair
     // "nothing in flight" + "queue empty": between those two reads another worker
@@ -47,41 +76,29 @@ object AdaptiveParallel {
     // and leave with the item re-queued — and every worker would already be gone.
     // Worker 0 is never retired (the pool never drops below one), so a re-queued
     // item always has a taker.
-    def work(worker: Int): Unit = {
-      var done = false
-      while (!done) {
-        if (remaining.get == 0 || worker >= allowed.get || fatal.get != null) done = true
-        else Option(queue.poll()) match {
-          case None => sleep(50.millis)   // another worker holds the rest; one may still come back
-          case Some((index, attempts)) =>
-            calls.incrementAndGet()
-            Try(f(items(index))) match {
-              case Failure(e) if isThrottle(e) && attempts + 1 < maxAttempts =>
-                allowed.updateAndGet(n => math.max(1, n / 2))
-                sleep(backoff * (attempts + 1).toLong)
-                queue.add(index -> (attempts + 1))
-              case outcome =>
-                results.set(index, outcome)
-                remaining.decrementAndGet()
-            }
+    @scala.annotation.tailrec
+    private def work(worker: Int): Unit =
+      if (remaining.get != 0 && worker < allowed.get && fatal.get == null) {
+        Option(queue.poll()) match {
+          case None                    => sleep(50.millis)   // another worker holds the rest; one may still come back
+          case Some((index, attempts)) => attempt(index, attempts)
         }
+        work(worker)
+      }
+
+    /** One call of `f` on item `index`: its final result, or -- throttled, with attempts left -- the pool halved
+     *  and the item back on the queue after a backoff. */
+    private def attempt(index: Int, attempts: Int): Unit = {
+      callCount.incrementAndGet()
+      Try(f(items(index))) match {
+        case Failure(e) if isThrottle(e) && attempts + 1 < maxAttempts =>
+          allowed.updateAndGet(n => math.max(1, n / 2))
+          sleep(backoff * (attempts + 1).toLong)
+          queue.add(index -> (attempts + 1))
+        case outcome =>
+          results.set(index, outcome)
+          remaining.decrementAndGet()
       }
     }
-
-    def guarded(worker: Int): Unit =
-      AnyThrowable.captured(work(worker)).left.foreach(t => fatal.compareAndSet(null, t): Unit)
-
-    val threads = (0 until math.max(1, workers)).map { i =>
-      val t = new Thread(() => guarded(i), s"adaptive-parallel-$i")
-      t.setDaemon(true)
-      t.start()
-      t
-    }
-    threads.foreach(_.join())
-    Option(fatal.get).foreach(throw _)
-
-    val out = items.indices.map(i => items(i) -> Option(results.get(i)).getOrElse(
-      Failure(new IllegalStateException("never processed"))))
-    (out, Stats(items.size, calls.get, started.elapsed, math.max(1, workers), allowed.get))
   }
 }

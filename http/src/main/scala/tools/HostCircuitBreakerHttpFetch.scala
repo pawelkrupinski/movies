@@ -4,7 +4,7 @@ import play.api.Logging
 
 import java.time.{Duration => JDuration, Instant}
 import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
+import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
@@ -89,7 +89,7 @@ class HostCircuitBreakerHttpFetch(
   // read once as the breaker is built, each such host starting half-open. Nowhere by default.
   remembered:       UnrecoveredHosts = UnrecoveredHosts.none
 ) extends ForwardingHttpFetch with Logging {
-  import HostCircuitBreakerHttpFetch.{Breaker, Transition}
+  import HostCircuitBreakerHttpFetch.{Breaker, Opening, Transition}
 
   private val breakers = new ConcurrentHashMap[String, Breaker]()
 
@@ -164,36 +164,49 @@ class HostCircuitBreakerHttpFetch(
    *  which of the two it was. A server error from a page already counted since the host last answered is not
    *  counted again (see the class doc), unless it is an open host's probe failing. */
   private def onFailure(host: String, url: String, cause: Throwable): Unit = {
-    val opened   = new AtomicBoolean(false)
-    val reopened = new AtomicBoolean(false)
-    val why      = Some(HostCircuitBreakerHttpFetch.describe(cause))
-    val window   = new AtomicLong(openDuration.toMillis)
-    val page     = HostCircuitBreakerHttpFetch.failingPage(url, cause)
+    val why     = Some(HostCircuitBreakerHttpFetch.describe(cause))
+    val page    = HostCircuitBreakerHttpFetch.failingPage(url, cause)
+    val opening = new AtomicReference[Option[Opening]](None)
     breakers.compute(host, (_, prev) => {
-      val wasOpen = prev != null && prev.openUntil.isDefined
-      if (!wasOpen && prev != null && page.exists(prev.failedPages.contains)) prev
-      else {
-        val failures = (if (prev == null) 0 else prev.failures) + 1
-        val known    = if (prev == null) Set.empty[String] else prev.failedPages
-        // at most `failureThreshold` pages: past it the host is open, and a probe's failure re-opens it whatever page
-        val pages    = if (known.size < failureThreshold) known ++ page else known
-        if (failures >= failureThreshold) {
-          (if (wasOpen) reopened else opened).set(true)
-          // a failed probe doubles the cooldown; the first opening starts at `openDuration`
-          val next = if (wasOpen) math.min(prev.windowMs * 2, maxOpenDuration.toMillis) else openDuration.toMillis
-          window.set(next)
-          Breaker(failures, Some(clock.instant().plusMillis(next)), why, next, pages)
-        } else Breaker(failures, None, why, failedPages = pages)
-      }
+      val (next, opened) = afterFailure(Option(prev), page, why, clock.instant())
+      opening.set(opened)
+      next
     })
-    if (opened.get() || reopened.get()) keep(_.failed(UnrecoveredHosts.Host(host, why, clock.instant())))
-    if (opened.get()) { meter.opened(); tell(host, Transition.Opened) }
-    if (opened.get())
+    opening.get().foreach(announceOpening(host, why, _))
+  }
+
+  /** A host's breaker after one more trip-worthy failure (on `page`, when it is a page's), and the opening it made,
+   *  if it made one: open (or re-open) at the threshold. A server error from a page already counted since the host
+   *  last answered leaves it as it was (see the class doc), unless it is an open host's probe failing. */
+  private def afterFailure(prev: Option[Breaker], page: Option[String], why: Option[String],
+                           now: Instant): (Breaker, Option[Opening]) = {
+    val wasOpen  = prev.exists(_.openUntil.isDefined)
+    val known    = prev.fold(Set.empty[String])(_.failedPages)
+    val failures = prev.fold(0)(_.failures) + 1
+    // at most `failureThreshold` pages: past it the host is open, and a probe's failure re-opens it whatever page
+    val pages    = if (known.size < failureThreshold) known ++ page else known
+    prev match {
+      case Some(counted) if !wasOpen && page.exists(known.contains) => (counted, None)
+      case _ if failures < failureThreshold                         => (Breaker(failures, None, why, failedPages = pages), None)
+      case _ =>
+        // a failed probe doubles the cooldown; the first opening starts at `openDuration`
+        val window = prev.filter(_ => wasOpen).fold(openDuration.toMillis)(p => math.min(p.windowMs * 2, maxOpenDuration.toMillis))
+        (Breaker(failures, Some(now.plusMillis(window)), why, window, pages), Some(Opening(reopened = wasOpen, window)))
+    }
+  }
+
+  /** Keep, count, tell and log a host's opening: the first one is news to the meter and the listener; a re-opening
+   *  (a failed probe) only says how much longer the host is skipped. */
+  private def announceOpening(host: String, why: Option[String], opening: Opening): Unit = {
+    keep(_.failed(UnrecoveredHosts.Host(host, why, clock.instant())))
+    if (opening.reopened)
+      announce(logger.warn(_), s"Circuit for $host STILL open — its half-open probe failed too " +
+        s"(last: ${why.getOrElse("unknown")}); skipping all calls to it for another ${opening.windowMs / 1000}s.")
+    else {
+      meter.opened(); tell(host, Transition.Opened)
       announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures " +
         s"(last: ${why.getOrElse("unknown")}) — skipping all calls to it for ${openDuration.toSeconds}s.")
-    else if (reopened.get())
-      announce(logger.warn(_), s"Circuit for $host STILL open — its half-open probe failed too " +
-        s"(last: ${why.getOrElse("unknown")}); skipping all calls to it for another ${window.get() / 1000}s.")
+    }
   }
 
   /** Trip-worthy = the host is failing to serve us: a timeout (request OR connect —
@@ -233,7 +246,7 @@ class HostCircuitBreakerHttpFetch(
    *  the host shut: the next cooldown admits a fresh one. */
   private def admit(host: String): (Long, Option[String]) = {
     val remaining = new AtomicLong(0L)
-    val cause     = new java.util.concurrent.atomic.AtomicReference[Option[String]](None)
+    val cause     = new AtomicReference[Option[String]](None)
     breakers.compute(host, (_, prev) =>
       if (prev == null) null // no breaker for this host — closed, nothing to claim
       else prev.openUntil match {
@@ -299,6 +312,10 @@ object HostCircuitBreakerHttpFetch {
     /** The host answered after `failures` trip-worthy failures in a row, too few to have opened it. */
     case Answered(failures: Int)
   }
+
+  /** A host's breaker opening on a failure: the first time, or again after a failed probe (`reopened`), skipping the
+   *  host for `windowMs`. */
+  private final case class Opening(reopened: Boolean, windowMs: Long)
 
   /** Per-host state: consecutive trip-worthy failures, (once tripped) the instant
    *  the breaker goes half-open, WHY it last failed, and the pages whose server error is already counted

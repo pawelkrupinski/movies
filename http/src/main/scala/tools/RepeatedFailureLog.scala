@@ -52,21 +52,9 @@ final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Sett
     val hash = (if (sameness.isEmpty) detail else sameness).hashCode
     val at   = stopwatch.nanoTime()
     val line: Option[String] = entries.synchronized {
-      Option(entries.get(key)) match {
-        case Some(e) if e.detailHash == hash && at - e.loggedAt < settings.relogEvery.toNanos =>
-          entries.put(key, e.copy(suppressed = e.suppressed + 1))
-          None
-        case Some(e) if e.detailHash == hash =>
-          entries.put(key, Entry(hash, at, 0))
-          Some(s"$detail\n  (still failing; ${e.suppressed} identical repeat(s) since last logged)")
-        case Some(e) =>
-          entries.put(key, Entry(hash, at, 0))
-          Some(if (e.suppressed > 0) s"$detail\n  (changed after ${e.suppressed} unlogged repeat(s) of the previous failure)"
-               else detail)
-        case None =>
-          entries.put(key, Entry(hash, at, 0))
-          Some(detail)
-      }
+      val (entry, warning) = RepeatedFailureLog.next(Option(entries.get(key)), hash, at, settings.relogEvery.toNanos, detail)
+      entries.put(key, entry)
+      warning
     }
     line match {
       case Some(l) => logger.warn(l)
@@ -95,4 +83,18 @@ object RepeatedFailureLog {
   }
 
   private final case class Entry(detailHash: Int, loggedAt: Long, suppressed: Int)
+
+  /** A failure hashing to `hash` at `at` over the key's `previous` entry: the entry kept, and the warning to log --
+   *  none for a repeat inside the relog window, which is counted instead. */
+  private def next(previous: Option[Entry], hash: Int, at: Long, relogNanos: Long, detail: String): (Entry, Option[String]) =
+    previous match {
+      case Some(e) if e.detailHash == hash && at - e.loggedAt < relogNanos =>
+        (e.copy(suppressed = e.suppressed + 1), None)
+      case Some(e) if e.detailHash == hash =>
+        (Entry(hash, at, 0), Some(s"$detail\n  (still failing; ${e.suppressed} identical repeat(s) since last logged)"))
+      case Some(e) if e.suppressed > 0 =>
+        (Entry(hash, at, 0), Some(s"$detail\n  (changed after ${e.suppressed} unlogged repeat(s) of the previous failure)"))
+      case _ =>
+        (Entry(hash, at, 0), Some(detail))
+    }
 }

@@ -41,22 +41,11 @@ object FallbackAlert {
   val PageAfter: Duration = Duration.ofHours(24)
 
   def messageFor(state: FallbackState, event: FallbackEvent, opening: Opening, primaryIsPeerListing: Boolean = false): Option[String] = {
-    // The spell's history before this transition (which the scraper prepends), and when it entered
-    // fallback: `since` while it is on it; once RECOVERED clears that, its ENTER -- or, when the 50
-    // kept transitions have pushed that out, the oldest one kept, which is no earlier than it.
-    val earlier = if (state.history.headOption.contains(event)) state.history.tail else state.history
-    val entered = state.since.orElse(earlier.find(_.event == FallbackEvent.Enter).orElse(earlier.lastOption).map(_.at))
-    def onFallback = entered.map(Duration.between(_, event.at)).getOrElse(Duration.ZERO)
-    // A transition worth the spell's page: one a day or more into it, and -- at a peer listing -- a real failure.
-    def paging(transition: FallbackEvent) =
-      entered.exists(since => !transition.at.isBefore(since.plus(PageAfter))) &&
-        !(primaryIsPeerListing && transition.reason == SourceFallbackScraper.EmptyReason)
-    // This spell's transitions before this one (earlier spells' are older than its ENTER).
-    def spell = earlier.filter(transition => entered.exists(since => !transition.at.isBefore(since)))
+    val spell = Spell.of(state, event, primaryIsPeerListing)
     event.event match {
-      case FallbackEvent.ProbeFailed if paging(event) && !spell.exists(paging) =>
-        Some(s"⚠️ ${state.cinema} — serving via ${state.fallbackSource} fallback for ${onFallback.toHours}h\nReason: ${event.reason}")
-      case FallbackEvent.Recovered if onFallback.compareTo(PageAfter) >= 0 && (!primaryIsPeerListing || spell.exists(paging)) =>
+      case FallbackEvent.ProbeFailed if spell.paging(event) && !spell.paged =>
+        Some(s"⚠️ ${state.cinema} — serving via ${state.fallbackSource} fallback for ${spell.onFallback(event).toHours}h\nReason: ${event.reason}")
+      case FallbackEvent.Recovered if spell.onFallback(event).compareTo(PageAfter) >= 0 && (!primaryIsPeerListing || spell.paged) =>
         Some(s"✅ ${state.cinema} — recovered, own scraper is back")
       // Worth a louder marker than a long fallback: there the listing is still being served,
       // just from a sparser feed. Here it is not being served at all, and the usual
@@ -74,6 +63,30 @@ object FallbackAlert {
   /** The `kind` a page counts under: the day-long spell's page is the spell's ENTER page, sent late. */
   def kindOf(event: FallbackEvent): TelegramAlertKind =
     TelegramAlertKind.fallback(if (event.event == FallbackEvent.ProbeFailed) FallbackEvent.Enter else event.event)
+
+  /** The fallback spell `event` is a transition of: when it entered fallback, and its transitions before `event`. */
+  private final case class Spell(entered: Option[java.time.Instant], earlier: Seq[FallbackEvent], primaryIsPeerListing: Boolean) {
+    def onFallback(event: FallbackEvent): Duration = entered.map(Duration.between(_, event.at)).getOrElse(Duration.ZERO)
+
+    /** A transition worth the spell's page: one a day or more into it, and -- at a peer listing -- a real failure. */
+    def paging(transition: FallbackEvent): Boolean =
+      entered.exists(since => !transition.at.isBefore(since.plus(PageAfter))) &&
+        !(primaryIsPeerListing && transition.reason == SourceFallbackScraper.EmptyReason)
+
+    /** Did one of this spell's transitions before this one (earlier spells' are older than its ENTER) page? */
+    def paged: Boolean = earlier.exists(transition => entered.exists(since => !transition.at.isBefore(since)) && paging(transition))
+  }
+
+  private object Spell {
+    /** The spell's history before `event` (which the scraper prepends), and when it entered fallback: `since` while
+     *  it is on it; once RECOVERED clears that, its ENTER -- or, when the 50 kept transitions have pushed that out,
+     *  the oldest one kept, which is no earlier than it. */
+    def of(state: FallbackState, event: FallbackEvent, primaryIsPeerListing: Boolean): Spell = {
+      val earlier = if (state.history.headOption.contains(event)) state.history.tail else state.history
+      val entered = state.since.orElse(earlier.find(_.event == FallbackEvent.Enter).orElse(earlier.lastOption).map(_.at))
+      Spell(entered, earlier, primaryIsPeerListing)
+    }
+  }
 
   /** How long the primary has been down, for the page. Whole hours: the grace window
    *  is 6h, so minutes carry no information a reader would act on. */

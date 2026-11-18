@@ -164,14 +164,15 @@ object MongoVenuePageStore {
     VenuePage(VenuePageKey(group, page), outcome, readAt)
   }
 
-  private[venuepages] def detailOf(d: Document): FilmDetail = {
-    def string(k: String)  = d.get(k).map(_.asString.getValue)
-    def int(k: String)     = d.get(k).map(_.asInt32.getValue)
-    def strings(k: String) = d.get(k).map(_.asArray.getValues.asScala.map(_.asString.getValue).toSeq).getOrElse(Nil)
+  private[venuepages] def detailOf(d: Document): FilmDetail =
     FilmDetail(
-      synopsis = string("synopsis"), cast = strings("cast"), director = strings("director"),
-      runtimeMinutes = int("runtimeMinutes"), releaseYear = int("releaseYear"), originalTitle = string("originalTitle"),
-      countries = strings("countries"), genres = strings("genres"), posterUrl = string("posterUrl"),
-      trailerUrl = string("trailerUrl"), ageRating = string("ageRating"), format = strings("format").toList)
-  }
+      synopsis = string(d, "synopsis"), cast = strings(d, "cast"), director = strings(d, "director"),
+      runtimeMinutes = int(d, "runtimeMinutes"), releaseYear = int(d, "releaseYear"), originalTitle = string(d, "originalTitle"),
+      countries = strings(d, "countries"), genres = strings(d, "genres"), posterUrl = string(d, "posterUrl"),
+      trailerUrl = string(d, "trailerUrl"), ageRating = string(d, "ageRating"), format = strings(d, "format").toList)
+
+  private def string(d: Document, k: String): Option[String] = d.get(k).map(_.asString.getValue)
+  private def int(d: Document, k: String): Option[Int]       = d.get(k).map(_.asInt32.getValue)
+  private def strings(d: Document, k: String): Seq[String]   =
+    d.get(k).map(_.asArray.getValues.asScala.map(_.asString.getValue).toSeq).getOrElse(Nil)
 }
