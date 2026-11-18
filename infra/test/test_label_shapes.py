@@ -102,6 +102,10 @@ EVENT_ONLY_VALUES = {
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).
     ("kinowo_worker_readmodel_write_burst_seconds_count", "trigger", ""),
     ("kinowo_worker_readmodel_write_burst_seconds_sum", "trigger", ""),
+    # HISTORY, not a value: the census recording has carried `summarised_by: min2h` since 2026-11-18, and
+    # CityDarkInBothTiers reads its label-less samples from before that (`summarised_by=""`) for the part of
+    # its six days the hourly min2h has not recorded (runtime-invariants.rules). Never in a snapshot.
+    ("country_city:worker_movies_served:films", "summarised_by", ""),
     # NOT PUBLISHED YET (2026-11-07): the exporter's collstats collector is new with 50d03f0341 and is
     # enabled for the identity_retained collections only (roles/mongodb-exporter.nix), so the fleet has no
     # `mongodb_collstats_*` series to snapshot until mongo-1 runs it (mongodb.rules' IdentityRetained*).

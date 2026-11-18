@@ -285,11 +285,23 @@ groups:
   # alert says what it said when it read the five-minute series whole (the equivalence suite,
   # test/alert-rules/per-city-recordings-equivalence.yml, compares the two forms sample for sample).
   #
-  # The last term is the RECORDING'S OWN HISTORY: a minimum over a window the hourly series has
-  # only partly recorded is a minimum over too few samples, which reads a city with a dark weekend
-  # in the unrecorded part as "films every day" -- a false page. So the alert stays silent until
-  # min2h was recording at the window's far end, eight days back (the deploy backfilled it; see the
-  # group's comment). The five-minute series itself needs eight days too, as before.
+  # THE FOURTH PIECE IS THE HISTORY THE HOURLY SERIES DOES NOT HAVE, and it reads nothing once the
+  # hourly series has eight days. A minimum over a window min2h has only partly recorded is a
+  # minimum over too few samples: a city with a dark weekend in the unrecorded part would read as
+  # "films every day", a false page. So the census recording carries `summarised_by: min2h`, added
+  # (2026-11-18) after min2h was already recording: every census sample WITHOUT the label predates
+  # it, and min2h covers every sample WITH it. The window's minimum is the minimum of the four
+  # pieces, the label-less census samples read whole among them -- exact while history builds up,
+  # per city, with no switch to flip. It is not an `or` of the raw expression `unless` min2h has
+  # history: PromQL evaluates both sides of `or`/`unless`/`and` whatever either holds (measured on
+  # monitoring-1: an `and` with an empty left side still read all 5.4M samples of the right), so
+  # the raw read would have cost what it cost before, for good. The label-less series stopped
+  # growing at the deploy; eight days on, the fourth piece's window holds none of its samples.
+  # (It also needs no backfill, which was refused.) The two `or on (country, city)` terms read the
+  # labelled series where it has a sample and the label-less one only where it does not -- the
+  # latest sample, as before -- and `max by` keeps the alert's labels {country, city}. The suite
+  # test/alert-rules/city-dark-history.yml checks no history, full history and the seam in every
+  # piece against the raw expression.
   #
   # A CITY WHOSE EVERY VENUE IS OUT OF SEASON is not here either: a town whose only screen is an
   # open-air cinema or a drive-in has films all summer, six days running, and none from the month
@@ -307,24 +319,29 @@ groups:
     rules:
       - record: country_city:worker_movies_served:films
         expr: max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
+        labels:
+          summarised_by: min2h
 
       - alert: CityDarkInBothTiers
         expr: >-
-          country_city:worker_movies_served:films == 0
+          max by (country, city) (
+              country_city:worker_movies_served:films{summarised_by="min2h"}
+            or on (country, city) country_city:worker_movies_served:films
+          ) == 0
           unless on (country, city)
             (max by (country, city) (last_over_time(kinowo_web_movies_served{scope="all"}[10m])) > 0)
           unless on (country, city)
             (max by (country, city) (last_over_time(kinowo_worker_city_off_season[10m])) == 1)
           and on (country, city)
-            (min_over_time(country_city:worker_movies_served:min2h[141h55m] offset 2d) > 0)
-          unless on (country, city)
-            (min_over_time(country_city:worker_movies_served:films[65m] offset 2d) == 0)
-          unless on (country, city)
-            (min_over_time(country_city:worker_movies_served:films[65m] offset 190h55m) == 0)
+            (min by (country, city) (
+                label_replace(min_over_time(country_city:worker_movies_served:films{summarised_by=""}[6d] offset 2d), "piece", "unsummarised", "", "")
+              or label_replace(min_over_time(country_city:worker_movies_served:films[65m] offset 190h55m), "piece", "far", "", "")
+              or label_replace(min_over_time(country_city:worker_movies_served:min2h[141h55m] offset 2d), "piece", "middle", "", "")
+              or label_replace(min_over_time(country_city:worker_movies_served:films[65m] offset 2d), "piece", "near", "", "")
+            ) > 0)
           and on (country, city)
-            (last_over_time(country_city:worker_movies_served:films[1h] offset 8d) > 0)
-          and on ()
-            (count(last_over_time(country_city:worker_movies_served:min2h[3h] offset 189h)) > 0)
+            ((last_over_time(country_city:worker_movies_served:films{summarised_by="min2h"}[1h] offset 8d)
+              or on (country, city) last_over_time(country_city:worker_movies_served:films[1h] offset 8d)) > 0)
         for: 12h
         labels:
           severity: warning
@@ -354,8 +371,7 @@ groups:
   # ~142 samples per city for the middle of their windows.
   #
   # TWO-HOUR WINDOWS, HOURLY: every raw sample is in two consecutive evaluations, so one missed
-  # evaluation, or the seam between the backfill and the live series (their hourly phases differ),
-  # leaves no hole. Overlap is harmless to a max or a min. The rules reading these cover the hour
+  # evaluation (a restart) leaves no hole. Overlap is harmless to a max or a min. The rules reading these cover the hour
   # and five minutes at each end of their windows from the raw series, because an hourly sample's
   # two hours need not line up with the rule's window.
   #
@@ -367,10 +383,12 @@ groups:
   # country's web), and keeping its labels keeps `kinowo-movies-served-city-empty`'s `and` matching
   # exactly the series it matched on the raw gauge.
   #
-  # AFTER A DEPLOY THAT ADDS ONE OF THESE, BACKFILL IT (`promtool tsdb create-blocks-from rules`,
-  # --eval-interval 1h, over the retention you want, ending at the first live sample): with no
-  # history, city-empty sees only the raw hours at the ends of its window (quieter, never louder)
-  # and CityDarkInBothTiers is silent until the recording reaches eight days back.
+  # WITHOUT HISTORY (they were deployed 2026-11-18 16:57Z and not backfilled): CityDarkInBothTiers
+  # reads the label-less census for the part min2h lacks (its comment), so it answers exactly from
+  # the start. city-empty sees only the raw hours at the ends of its window -- quieter, never
+  # louder -- until max2h reaches back 24 hours (2026-11-19 ~17:10Z); a fallback reading the raw
+  # 24 hours there would cost its 9M samples a minute for good (see CityDarkInBothTiers on why).
+  # `min by` keeps min2h one series per city across the census's change of labels.
   - name: per-city-served-history
     interval: 1h
     query_offset: 1m
@@ -379,7 +397,7 @@ groups:
         expr: max_over_time(kinowo_web_movies_served{scope="all"}[2h])
 
       - record: country_city:worker_movies_served:min2h
-        expr: min_over_time(country_city:worker_movies_served:films[2h])
+        expr: min by (country, city) (min_over_time(country_city:worker_movies_served:films[2h]))
 
   # -----------------------------------------------------------------------------------------------
   # `kinowo-movies-served-swing`'s QUERY, RECORDED.

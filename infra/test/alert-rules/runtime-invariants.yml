@@ -208,6 +208,10 @@ tests:
   # Plus a drive-in town whose season closed the instant it went dark -- Butte's shape exactly,
   # but its every venue is now off-season, so it stays quiet; Butte itself reads in season and
   # still fires.
+  # And Sheridan, Butte's shape across THE DEPLOY THAT LABELLED THE CENSUS (summarised_by): its
+  # label-less recorded history stops six hours into the hold and the rule records the labelled
+  # series from there. The hold survives the seam and the alert is one series, labelled as
+  # Butte's: no gap, no second alert (city-dark-history.yml covers the window's every piece).
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 5m
     input_series:
@@ -231,6 +235,12 @@ tests:
         values: '5x2447 0x288'
       - series: 'kinowo_web_movies_served{scope="all",country="us",city="havre",instance="web1"}'
         values: '5x2735'
+      - series: 'country_city:worker_movies_served:films{country="us",city="sheridan"}'
+        values: '4x2447 0x71'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="sheridan",instance="w1"}'
+        values: '_x2520 0x216'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="sheridan",instance="web1"}'
+        values: '4x2447 0x288'
       - series: 'kinowo_worker_movies_served{scope="all",country="us",city="kodiak",instance="w1"}'
         values: '_x1728 2x719 0x288'
       - series: 'kinowo_web_movies_served{scope="all",country="us",city="kodiak",instance="web1"}'
@@ -250,3 +260,11 @@ tests:
             exp_annotations:
               summary: "butte (us) has served no film for 12 hours, after six days that all had films"
               description: 'Neither the worker''s corpus (kinowo_worker_movies_served) nor the web (kinowo_web_movies_served) has a film for butte, although it had films in every sample from eight days ago to two days ago -- so this is not a small town''s weekly gap between programmes. The web is serving what the corpus has; the corpus lost the city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white) and `kinowo_worker_showtimes{city="butte"}` over the last three days: a steady run-down to zero with no new week landing is a venue whose scrape stopped finding its next programme -- a moved listing page, a changed upstream, a venue that closed. (A city whose every venue is a seasonal one out of its season is dark by design and never alerts.) It resolves on its own two days after the city went dark; that is not a fix.'
+          - exp_labels:
+              domain: serving
+              severity: warning
+              country: us
+              city: sheridan
+            exp_annotations:
+              summary: "sheridan (us) has served no film for 12 hours, after six days that all had films"
+              description: 'Neither the worker''s corpus (kinowo_worker_movies_served) nor the web (kinowo_web_movies_served) has a film for sheridan, although it had films in every sample from eight days ago to two days ago -- so this is not a small town''s weekly gap between programmes. The web is serving what the corpus has; the corpus lost the city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white) and `kinowo_worker_showtimes{city="sheridan"}` over the last three days: a steady run-down to zero with no new week landing is a venue whose scrape stopped finding its next programme -- a moved listing page, a changed upstream, a venue that closed. (A city whose every venue is a seasonal one out of its season is dark by design and never alerts.) It resolves on its own two days after the city went dark; that is not a fix.'

@@ -845,8 +845,10 @@ groups:
       # `instance_city:web_movies_served:max2h` (rules/runtime-invariants.rules), and the 65 minutes
       # at each end from the raw gauge, where an hourly sample's two hours need not line up with
       # the window: together they cover (t-24h10m, t-10m] exactly, and "the max is >= 4" is "some
-      # piece's max is >= 4". Without the recording's history (a fresh deploy not backfilled) only
-      # the two end pieces answer: quieter, never louder. The equivalence suite
+      # piece's max is >= 4". Without the recording's history only the two end pieces answer:
+      # quieter, never louder, until max2h reaches back 24 hours (deployed 2026-11-18 16:57Z, not
+      # backfilled: 2026-11-19 ~17:10Z). No raw fallback: PromQL reads both sides of an `or`, so
+      # one would cost the 9M samples a minute for good (CityDarkInBothTiers' comment). The equivalence suite
       # (test/alert-rules/per-city-recordings-equivalence.yml) compares the two forms.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
