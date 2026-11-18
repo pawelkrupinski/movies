@@ -48,7 +48,7 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
   /** Does a word of the billing inflect a word of the record's title ("Osobliwy świat Hieronymusa Boscha" of "The
    *  Curious World of Hieronymus Bosch"): a title in another language naming the film, though it shares no word whole. */
   private[identity] def inflects(scored: Scored): Boolean = {
-    import services.movies.TitleContainment.tokens
+    import services.titles.TitleContainment.tokens
     val billed = scored.listing.ownTitles.flatMap(tokens)
     scored.candidate.film.titles.flatMap(tokens).filter(_.length >= IdentityMeasures.StemLetters).exists(word => billed.exists(_.startsWith(word)))
   }
@@ -83,7 +83,7 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
    *  title names merely does not state. */
   private[identity] def titledCloser(closer: Scored, other: Scored): Boolean = {
     def containing(scored: Scored) = scored.category("title").exists(IdentityMeasures.ContainingRelations)
-    def words(scored: Scored) = services.movies.TitleContainment.tokens(scored.candidate.film.title).toSet
+    def words(scored: Scored) = services.titles.TitleContainment.tokens(scored.candidate.film.title).toSet
     containing(closer) && !containing(other) && !other.titleNamesIt && !(words(closer) subsetOf words(other))
   }
 
@@ -124,7 +124,7 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
    *  Emma – najlepsi przyjaciele Edukacja Młode Horyzonty" names the 2026 short "Najlepsi przyjaciele" only as part of
    *  the 2013 "Kacper i Emma: Najlepsi przyjaciele". */
   private[identity] def namedWithinAnother(best: Scored, eligible: Seq[Scored]): Boolean = eligible.sizeIs > 1 && {
-    val billed = Seq(services.movies.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title)))
+    val billed = Seq(services.titles.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title)))
     def spans(film: IdentityMeasures.Film) = agreement.Agreement.spansIn(billed, Seq(film))
     agreement.Agreement.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
   }

@@ -1,7 +1,9 @@
 package services.movies
 
+import services.titles.TitleContainment
+import services.titles.TitleNormalizer
+
 import models.{Cinema, Filmweb, Imdb, MovieRecord, Source, SourceData, Tmdb}
-import services.resolution.FilmEvidence
 
 /**
  * A record's readings built on its ONE representative slot per venue ([[cinemaData]]): the evidence a resolution

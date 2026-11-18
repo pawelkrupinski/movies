@@ -1,6 +1,8 @@
 package services.identity
 
-import services.movies.{ListingKey, StoredMovieRecord, TitleNormalizer}
+import services.movies.{ListingKey, StoredMovieRecord}
+
+import services.titles.TitleNormalizer
 
 /** A cluster across projections: the TMDB film a matched one is (the clusters of one film are one), or an unmatched
  *  decision's first listing — so a cluster that did not move is the same one next tick, whatever moved around it. */

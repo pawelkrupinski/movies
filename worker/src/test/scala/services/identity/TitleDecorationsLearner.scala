@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.TitleDecorations.{LastBillJoin, Learned, MinCandidateRemainders, Tail, TailRun}
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 import scala.collection.mutable
 

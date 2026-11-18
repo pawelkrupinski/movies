@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.titles.billing.BillingParse
 
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -456,7 +456,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "not take a film by another director than the one its title credits, whatever year a feed copied onto it" in {
     // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried kinoheld's copied year and credit of
     // Shiv Rawail's 2026 "Alpha", and took it (judged wrong: Julia Ducournau's Alpha). Intake now reads the venue's own
-    // credit into the listing's director (services.movies.TitleFacts), over the copied one: an ordinary credit, which a
+    // credit into the listing's director (services.titles.TitleFacts), over the copied one: an ordinary credit, which a
     // film by another director does not answer.
     val films  = Seq(F(1122030, "Alpha", 2026, "Shiv Rawail", 160, 8), F(1284460, "Alpha", 2025, "Julia Ducournau", 128, 6))
     val marked = listing(KinoApollo, "Alpha", Some(2026), Some("Ducournau"))
@@ -466,7 +466,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "read the credit its billing carries into the listing, from the billing a client already cleaned" in {
     // the identity model reads the row as scraped: a client that cleans its titles itself (`cinemaClean`) keeps the
     // billing in `rawTitle`, and the model reads the venue's credit off it, over the feed's copied one
-    val germany = services.movies.TitleNormalizer.forCountry(models.Country.Germany)
+    val germany = services.titles.TitleNormalizer.forCountry(models.Country.Germany)
     val raw     = "Alpha (dir. Ducournau)"
     val row = models.CinemaMovie(models.Movie(germany.cinemaClean("kinoheld", raw), rawTitle = Some(raw), releaseYear = Some(2026)),
       KinoApollo, None, None, None, Nil, Seq("Shiv Rawail"), Nil)

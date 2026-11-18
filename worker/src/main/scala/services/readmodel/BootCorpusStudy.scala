@@ -1,7 +1,8 @@
 package services.readmodel
 
 import play.api.Logging
-import services.movies.{BootCorpusReader, BootReadEnd, LatestTitleYear, StoredMovieRecord, TitleNormalizer}
+import services.movies.{BootCorpusReader, BootReadEnd, LatestTitleYear, StoredMovieRecord}
+import services.titles.TitleNormalizer
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}

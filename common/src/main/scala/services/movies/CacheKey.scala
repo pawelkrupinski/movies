@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 /**
  * Normalised `(title, year)` lookup key. Diacritics stripped, lowercased,
  * whitespace squashed — so "Drzewo Magii" and "drzewo magii" don't end up as

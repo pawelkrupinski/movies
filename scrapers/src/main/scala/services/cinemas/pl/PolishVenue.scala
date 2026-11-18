@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models.Cinema
 import services.cinemas.common.CinemaScraper
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.LocalDate

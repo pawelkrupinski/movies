@@ -1,6 +1,8 @@
 package tools
 
-import services.movies.{LatestTitleYear, TitleNormalizer}
+import services.movies.LatestTitleYear
+
+import services.titles.TitleNormalizer
 import services.scrapes.ArchivedScrape
 
 import scala.util.Random
@@ -102,7 +104,7 @@ object CorpusSample {
 
   /**
    * `keys` plus every film key that is a DECORATION of one of them, or that one of them
-   * decorates ([[services.movies.TitleContainment]], the fold's own rule) — so a drawn
+   * decorates ([[services.titles.TitleContainment]], the fold's own rule) — so a drawn
    * "DKF ŻAK: Do utraty tchu" arrives with the "Do utraty tchu" other venues list, and a
    * drawn bare title with its banners.
    *
@@ -113,7 +115,7 @@ object CorpusSample {
    * fault. One step, not a closure: the sample stays about `size` films.
    */
   private[tools] def withSpellings(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer)(using LatestTitleYear): Set[String] = {
-    import services.movies.TitleContainment.{decorates, tokens}
+    import services.titles.TitleContainment.{decorates, tokens}
     val tokensOf = rows.flatMap(_.films).map(film => keyOf(film, normalizer) -> tokens(film.movie.title))
       .filter(_._1.nonEmpty).distinct
     val drawn = tokensOf.filter((key, _) => keys.contains(key)).map(_._2)

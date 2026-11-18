@@ -4,7 +4,8 @@ import services.identity.MultiFilmBill
 import play.api.libs.json.Json
 import services.identity.{DecorationSegments, DecorationTokens, IdentityMeasures, TitleDecorations}
 import services.identity.ListingShape
-import services.movies.{ListingKey, TitleContainment}
+import services.movies.ListingKey
+import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage}
 
 import java.nio.charset.StandardCharsets

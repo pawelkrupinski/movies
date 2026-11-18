@@ -66,7 +66,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a title token run" should "be judged without an iterator per call, as startsWith and endsWith judge it" in {
-    import services.movies.TitleContainment.{isTokenRun, tokens}
+    import services.titles.TitleContainment.{isTokenRun, tokens}
     val cases = Seq("Diuna" -> "Diuna część druga", "Diuna" -> "Kino na leżakach: Diuna", "Diuna" -> "Diuna", "Obcy" -> "Ósmy pasażer Nostromo",
       "Dzień" -> "Najdłuższy dzień w roku", "Lalka" -> "Lalka 2D PL", "Lalka 2D" -> "Lalka 2D PL", "" -> "Lalka")
     for ((a, b) <- cases; (x, y) <- Seq(tokens(a) -> tokens(b), tokens(b) -> tokens(a), tokens(a).toVector -> tokens(b).toVector,
@@ -176,7 +176,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   }
 
   "two titles one typo apart" should "be told without a vector of their differing words per pair, to the same answer" in {
-    import services.movies.TitleContainment.tokens
+    import services.titles.TitleContainment.tokens
     def reference(a: Seq[String], b: Seq[String]): Boolean = a.size >= 2 && a.size == b.size && a != b && {
       val differing = a.indices.filter(i => a(i) != b(i))
       differing.sizeIs == 1 && IdentityMeasures.oneTypoApart(Seq("x", a(differing.head)), Seq("x", b(differing.head)))

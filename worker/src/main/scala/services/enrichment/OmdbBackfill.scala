@@ -53,7 +53,7 @@ class OmdbBackfill(
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
+  private val normalizer: services.titles.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "OMDb"
 

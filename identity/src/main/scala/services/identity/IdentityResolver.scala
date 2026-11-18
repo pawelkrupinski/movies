@@ -1,6 +1,8 @@
 package services.identity
 
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+
+import services.titles.TitleNormalizer
 
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the
@@ -57,13 +59,13 @@ object IdentityResolver {
    *  ("The Dark Knight" beside "The Dark Knight Trilogy") carries no banner, and stays the film. */
   private[identity] def billingUnderBanner(members: Seq[EvidenceNode], bills: Set[String], filmOf: String => Option[Int],
                                            scored: EvidenceNode => Seq[services.identity.Scored]): Set[String] = {
-    def words(listing: Listing) = services.movies.TitleContainment.tokens(listing.rawTitle).toSet
+    def words(listing: Listing) = services.titles.TitleContainment.tokens(listing.rawTitle).toSet
     val programmes = members.filter(node => bills(node.id)).flatMap(_.listings)
       .filter(listing => MultiFilmBill.marker(Seq(listing.rawTitle, listing.title)).isDefined).map(words)
     if (programmes.isEmpty) Set.empty
     else members.filterNot(node => bills(node.id)).flatMap { node =>
       filmOf(node.id).flatMap(film => scored(node).find(_.candidate.tmdbId == film)).map(_.candidate.film).filter { film =>
-        val titled = film.titles.flatMap(services.movies.TitleContainment.tokens).toSet
+        val titled = film.titles.flatMap(services.titles.TitleContainment.tokens).toSet
         node.listings.forall(listing => programmes.exists(programme => words(listing).subsetOf(programme)) && (words(listing) -- titled).nonEmpty)
       }.map(_ => node.id)
     }.toSet

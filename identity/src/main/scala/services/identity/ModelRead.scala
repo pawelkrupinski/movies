@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import services.scrapes.LeanListing
 
 /** How the identity model reads a venue's films — ONE read, wherever they come from: prod's take-up of the scrape

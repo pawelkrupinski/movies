@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
+import services.titles.FormatTags
 import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}

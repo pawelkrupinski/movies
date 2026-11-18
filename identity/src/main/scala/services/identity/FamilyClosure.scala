@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * The FAMILY an identity resolve is scoped to, and the check that the scoping is sound

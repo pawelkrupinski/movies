@@ -26,7 +26,7 @@
 #   userStates (accounts). Add filmwebFallback / filmwebFallbackMeta (per-cinema
 #   fallback prober state) to COLLECTIONS below if you want a fully-clean slate
 #   that re-derives those too. (Title rules are code, not a collection: see
-#   common/src/main/scala/services/titlerules/.)
+#   common/src/main/scala/services/titles/rules/.)
 #   scheduled_runs is kept too (worker scheduling — dropping it re-fires every
 #   sweep at once).
 #

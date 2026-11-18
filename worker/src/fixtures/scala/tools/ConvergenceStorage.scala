@@ -7,7 +7,7 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.enrichment.{MongoOmdbAttemptStore, OmdbAttemptStore}
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, TaskQueue}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Where a convergence run keeps the state it is making claims about: a real MongoDB.

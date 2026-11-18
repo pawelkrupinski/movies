@@ -4,7 +4,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.FamilyClosure.Edge
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * The family (block closure): a resolve may run family by family only while no constraint edge

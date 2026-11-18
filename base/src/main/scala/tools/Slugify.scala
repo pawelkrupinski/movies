@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 /** Fold an arbitrary human-readable string into a URL-safe `a-z0-9-` slug.
  *
  *  Two callers today, which is why it lives here rather than staying private to
- *  either: [[services.titlerules.TitleRuleKey]] keys a standalone cinema's
+ *  either: [[services.titles.rules.TitleRuleKey]] keys a standalone cinema's
  *  cleanup rules on a slug of its display name, and `controllers.FilmHref`
  *  builds the canonical `/{city}/film/{slug}` address of a film page. Both need
  *  the identical fold — the moment they drift, a rule key or a permalink

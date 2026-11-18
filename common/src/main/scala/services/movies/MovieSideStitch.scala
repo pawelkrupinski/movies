@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import models.{Showtime, Source, SourceData}
 
 /** How [[MongoMovieRepository]] makes a stored `movies` row whole again: its slots from

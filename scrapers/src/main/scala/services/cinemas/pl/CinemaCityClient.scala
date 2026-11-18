@@ -4,7 +4,7 @@ import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
 
-import services.movies.FormatTags
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import play.api.libs.json._
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -12,7 +12,7 @@ import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, titles: TitleNormalizer) {
 

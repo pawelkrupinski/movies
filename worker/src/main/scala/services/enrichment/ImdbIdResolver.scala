@@ -100,7 +100,7 @@ class ImdbIdResolver(
    * screening is its own card by design. It just needs the film's id.
    */
   private def cachedFindId(searchTitle: String, year: Option[Int]): Option[String] =
-    services.resolution.SearchTitles.candidates(searchTitle, originalTitle = None)
+    services.titles.SearchTitles.candidates(searchTitle, originalTitle = None)
       .map(cache.normalizer.apiQuery).filter(_.nonEmpty).distinct
       .iterator
       .flatMap(query => imdbIdCache.getOrResolve(ResolutionKeys.imdb(query, year, cache.normalizer))(

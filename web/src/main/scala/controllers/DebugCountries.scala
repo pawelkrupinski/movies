@@ -55,7 +55,7 @@ final class DebugStack(
 final case class DebugCorpusTable(size: Int, rows: String)
 
 object DebugCorpusTable {
-  def of(records: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer)(implicit city: models.City, latestYear: services.movies.LatestTitleYear): DebugCorpusTable =
+  def of(records: Seq[StoredMovieRecord], normalizer: services.titles.TitleNormalizer)(implicit city: models.City, latestYear: services.movies.LatestTitleYear): DebugCorpusTable =
     // Flattened to ONE string: a `fill`ed `Html` is a tree of thousands of fragments that
     // every page render walks again to rebuild the same text.
     DebugCorpusTable(records.size,

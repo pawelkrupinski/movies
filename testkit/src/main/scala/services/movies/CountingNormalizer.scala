@@ -1,10 +1,12 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import java.util.concurrent.atomic.AtomicInteger
 
 /** A [[TitleNormalizer]] over `rules` that counts its `sanitize` calls — the unit of cost the
  *  scaling specs bound. `counted` narrows it to the titles a spec cares about. */
-final class CountingNormalizer(ruleSet: services.titlerules.TitleRuleSet,
+final class CountingNormalizer(ruleSet: services.titles.rules.TitleRuleSet,
                                counted: String => Boolean = _ => true) extends TitleNormalizer(ruleSet) {
   private val n = new AtomicInteger(0)
   def calls: Int = n.get

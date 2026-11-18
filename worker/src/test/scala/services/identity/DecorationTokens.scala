@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.{FormatTags, TitleContainment}
+import services.titles.{FormatTags, TitleContainment}
 
 /**
  * Decoration stripping learned SUPERVISED, token by token: which words of a venue's title are the venue's (a programme

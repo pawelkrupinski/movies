@@ -3,7 +3,8 @@ package scripts
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.metrics.{CorpusCensus, ReferenceCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
-import services.movies.{CaffeineMovieCache, TitleNormalizer}
+import services.movies.CaffeineMovieCache
+import services.titles.TitleNormalizer
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}
 import tools.CommandLine

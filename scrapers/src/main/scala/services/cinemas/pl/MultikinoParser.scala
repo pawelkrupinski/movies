@@ -3,7 +3,8 @@ package services.cinemas.pl
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
 import services.cinemas.common.AgeRating
-import services.movies.{TitleNormalizer, TrailerEmbed}
+import services.movies.TrailerEmbed
+import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
 

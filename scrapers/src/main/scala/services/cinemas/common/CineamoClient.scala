@@ -3,7 +3,7 @@ package services.cinemas.common
 import models._
 import play.api.libs.json._
 import services.cinemas.common.ScraperParse.jsonText
-import services.movies.FormatTags
+import services.titles.FormatTags
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 

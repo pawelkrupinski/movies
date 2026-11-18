@@ -1,5 +1,5 @@
 # Every title rule, one row each: the prefixes, suffixes, banners and spellings the title pipeline takes off or unifies
-# (services.titlerules.TitleRuleTable reads it; TitleRuleSet folds it). Data, not code: a new banner is a new row.
+# (services.titles.rules.TitleRuleTable reads it; TitleRuleSet folds it). Data, not code: a new banner is a new row.
 # Inventory, firing counts and the merges behind it: docs/investigations/2026-10-22-rule-consolidation.md.
 #
 # id<TAB>kind<TAB>cinema<TAB>countries<TAB>flags<TAB>effect<TAB>season<TAB>pattern<TAB>replacement<TAB>note<TAB>examples
@@ -262,7 +262,7 @@ xtra-pp-cycle-banners	banner				banner		(?iu)^(?:(?-u:Ciekawi\s+[ŚS]wiata:\s+)|
 # resolver's `deDecorate` also tries the paren-dropped form and `EmbeddedYear`
 # reads the year for a year-scoped lookup, so each resolves UNIQUELY there —
 # 'Aferim! (2015)' as a bare query returns nothing, but 'Aferim!' + year 2015 is
-# a single hit (see services.resolution.SearchTitles.candidates / effectiveYear).
+# a single hit (see services.titles.SearchTitles.candidates / effectiveYear).
 #  - '3 Wieczory: KIEŚLOWSKI. <film[+film]>' — Kino za Rogiem's director
 #    retrospective. Some rows compile two shorts with a '+' (not a single
 #    resolvable title even stripped), but the banner itself is unambiguous
@@ -960,7 +960,7 @@ xtra-canonical-gwiezdne-wojny-ci	key				rename		(?iu)^Gwiezdne\s+wojny\s*:\s*		C
 xtra-canonical-rocznica-suffix	key				edition		(?iu)(?<=\S)\s*(?:{{SEPD}})?\b\d{1,3}\s*\.?\s*rocznica\b.*$		'<film> [-|.] N. Rocznica [premiery/urodzin …]' anniversary-rerelease suffix — CANONICAL fold onto the base film (display + merge key), not just the query: 'Terminator 2: dzień sądu - 35. Rocznica', 'Kosmiczny Mecz 30. Rocznica', 'Kosmiczny mecz. 30 rocznica', 'Salto | 100. rocznica urodzin Tadeusza Konwickiego'. Nominative only, and requires both a preceding film and a number — see the note above.	[["Crash 30. rocznica","Crash"],["Rocky 50. rocznica","Rocky"]]
 # The trailing screen-format/language rules — 2D/3D/dub/napisy/lektor in the
 # space·dash·slash·bracket shapes, plus the "(Dolby Atmos)"/"[2D]"/"(IMAX)"
-# sound-tag — moved to the shared `services.movies.FormatTags` and are applied
+# sound-tag — moved to the shared `services.titles.FormatTags` and are applied
 # centrally at ingest (`MovieCache.recordCinemaScrape`), which rewrites the
 # title AND badges the screenings for EVERY cinema. The Ukrainian-screening
 # guard moved there too. (The parenthesised "(wersja oryginalna)" row that stayed

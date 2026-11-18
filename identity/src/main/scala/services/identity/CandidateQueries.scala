@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.Credits
+import services.titles.billing.Credits
 
 /**
  * CANDIDATE GENERATION's question set (docs/design/identity-resolver.md, phase 2, stage a): what

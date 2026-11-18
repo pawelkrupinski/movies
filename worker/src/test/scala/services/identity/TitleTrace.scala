@@ -2,9 +2,10 @@ package services.identity
 
 import models.{Cinema, CinemaMovie, Country, Movie, SourceData, UsCinema}
 import services.cinemas.pl.NonMovieEventClassifier
-import services.movies.{ScrapeListing, TitleNormalizer, TitleText}
-import services.resolution.SearchTitles
-import services.titlerules.{TitleRule, TitleRuleKey, TitleRules}
+import services.movies.ScrapeListing
+import services.titles.{TitleNormalizer, TitleText}
+import services.titles.SearchTitles
+import services.titles.rules.{TitleRule, TitleRuleKey, TitleRules}
 import tools.{CinemaSlotInvariants, SearchQueryMarkers}
 
 import java.text.Normalizer
@@ -18,7 +19,7 @@ import java.util.Locale
  * [[SearchTitles]]) and the corpus-shape findings it would raise (`SearchQueryMarkersSpec`, `CinemaSlotInvariantsSpec`).
  *
  * Every step calls the production function itself; a rule's before and after are re-applied from the ids the rule set
- * reports as fired ([[services.titlerules.TitleRuleSet.firedSearch]] and its siblings), in their fold order, so the
+ * reports as fired ([[services.titles.rules.TitleRuleSet.firedSearch]] and its siblings), in their fold order, so the
  * trace cannot disagree with the fold. Lines carry no timing or path, so two refs' traces diff to what the code moved.
  */
 object TitleTrace {
@@ -93,7 +94,7 @@ object TitleTrace {
   private def q(s: String): String = s"'$s'"
   private def moved(before: String, after: String): String = if (before == after) s"${q(before)} (unchanged)" else s"${q(before)} → ${q(after)}"
   private def yesNo(b: Boolean): String = if (b) "YES" else "no"
-  /** What a title's facts fill (`services.movies.TitleFacts.Facts`), each named — empty when it bills none. Read by name
+  /** What a title's facts fill (`services.titles.TitleFacts.Facts`), each named — empty when it bills none. Read by name
    *  ([[OlderRefs]]): a ref from before TitleFacts (2026-10-18) has none, and the tracer must compile into it. */
   private def factsOf(f: Product): String = {
     val directors = OlderRefs.field(f, "directors").collect { case d: Seq[?] if d.nonEmpty => s"director ${d.mkString(", ")}" }
@@ -101,11 +102,16 @@ object TitleTrace {
     (directors ++ OlderRefs.optionalText(f, "originalTitle").map(t => s"original title ${q(t)}") ++ runtime ++
       OlderRefs.optionalText(f, "ageRating").map(r => s"age rating $r")).map(", " + _).mkString
   }
-  /** The billing's work as `services.billing.BillingParse` reads it — None on a ref from before it (2026-10-21), whose
+  /** The billing's work as `services.titles.billing.BillingParse` reads it — None on a ref from before it (2026-10-21), whose
    *  lookup query reads no work. By name ([[OlderRefs]]), so the tracer still compiles into such a ref. */
   private def billingWork(text: String): Option[String] =
-    scala.util.Try(Class.forName("services.billing.BillingParse$").getField("MODULE$").get(null)).toOption
-      .flatMap(OlderRefs.call(_, "apply", text)).flatMap(OlderRefs.call(_, "work")).collect { case work: String => work }
+    billingParseModule.flatMap(OlderRefs.call(_, "apply", text)).flatMap(OlderRefs.call(_, "work")).collect { case work: String => work }
+
+  /** `BillingParse`'s module under the name the ref gives it: `services.titles.billing` since the title text took its
+   *  own package (2026-11-18), `services.billing` before. */
+  private def billingParseModule: Option[AnyRef] =
+    Seq("services.titles.billing.BillingParse$", "services.billing.BillingParse$").iterator
+      .flatMap(name => scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption).nextOption()
   extension (s: String) private def ifEmpty(other: String): String = if (s.isEmpty) other else s
   private val baselineIds: Set[String] = TitleRules.all.map(_.id).toSet
 
@@ -232,13 +238,13 @@ object TitleTrace {
     FiledArticle.findPrefixMatchOf(after).exists(m => !before.toLowerCase(Locale.ROOT).startsWith(m.matched.toLowerCase(Locale.ROOT)))
 
   /** A billing reader by name, wherever the ref TitleTrace is dropped into keeps it (scripts/identity-slice-old-ref-test.sh):
-   *  `services.billing.BillingParse`'s field `field` since the parse took the reader over (2026-10-22), else the identity's
+   *  `services.titles.billing.BillingParse`'s field `field` since the parse took the reader over (2026-10-22), else the identity's
    *  old reader `owner.method`. Read reflectively, so this file compiles on either side of the move. */
   private def billingReader[A](field: String, owner: String, method: String)(raw: String): A = {
     def module(name: String) = { val c = Class.forName(name); (c, c.getField("MODULE$").get(null)) }
     scala.util.Try {
-      val (parser, parseModule) = module("services.billing.BillingParse$")
-      val parse = parser.getMethod("apply", classOf[String]).invoke(parseModule, raw)
+      val parseModule = billingParseModule.get
+      val parse = parseModule.getClass.getMethod("apply", classOf[String]).invoke(parseModule, raw)
       parse.getClass.getMethod(field).invoke(parse)
     }.getOrElse {
       val (reader, readerModule) = module(s"services.identity.$owner$$")

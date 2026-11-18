@@ -143,7 +143,7 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   the new queries leave `UnmatchedClustersRatchetSpec` asking answers the recording lacks (uk "Double Bill: The
   Snowman (1982) / The Snowman and the Snowdog (2012)"), so it needs `integration.UnmatchedClustersCapture`
   re-captured and `scripts/identity-measure` LANDABLE first. `IdentityMeasures.searchQueries` (identity module) calls it too.
-- [x] **Five UK BBFC value lists besides the `CERT` placeholder** (done: `services.movies.BbfcCertificate` owns them; the
+- [x] **Five UK BBFC value lists besides the `CERT` placeholder** (done: `services.titles.BbfcCertificate` owns them; the
   placeholder, Ticketsolve, Spektrix, BFI Southbank and the Gatsby parser read it; `SearchTitles` follows with the fix above): `TicketsolveClient.TitleCertificate`,
   `SpektrixClient.Bbfc`, `BfiSouthbankClient.BbfcBadge` (adds R18) and `SearchTitles`. One `BbfcCertificate` object
   should own the values and the placeholder derive from it.
@@ -170,7 +170,7 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   - [x] `c5aa11025`, searching a relay's work with its banner's year ("Tosca 2027"): landed 2026-10-18 as `0256ddd92`,
     the captures filled offline with the new queries answered live (`5b96b2673`); local measure with `--live-gaps`: 0 moves.
   - [x] `d929894c0`, landed 2026-10-18: the house table, its derived initials and what bills a house moved to
-    `services.movies.StageHouse` (common), read by the slot fold (local measure: 0 moves, snapshots unchanged).
+    `services.titles.StageHouse` (common), read by the slot fold (local measure: 0 moves, snapshots unchanged).
 - [x] **Item 8's certificate search** (done 2026-10-18, see the `SearchTitles.uncertified` entry) (branch `item8-search-fill`, dbf421550): the UK capture is filled, but the local
   measure loses Lighthouse Poole's eight "Family Cinema: <film> - Cert <X>" right takes (Paddington, WALL·E…): their new
   spellings ask family questions no recording or filed answer holds, so the same-film join to their siblings goes. Needs a

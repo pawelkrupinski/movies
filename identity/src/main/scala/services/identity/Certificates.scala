@@ -1,11 +1,11 @@
 package services.identity
 
 import play.api.libs.json.JsValue
-import services.movies.BbfcCertificate
+import services.titles.BbfcCertificate
 
 /**
  * Age certificates on one scale per country: a venue's own certificate for a listing (its `ageRating`, from its feed or
- * peeled off its title at intake, `services.movies.TitleFacts`) against the one TMDB's `release_dates` record for the
+ * peeled off its title at intake, `services.titles.TitleFacts`) against the one TMDB's `release_dates` record for the
  * film in the venue's country. A certificate is the venue's statement of WHICH cut of WHICH film it screens: UK Quad
  * Derby bills "Obsession (PG)" at 96 minutes, and Curry Barker's 2026 "Obsession", rated 18 in Britain, is no PG film.
  *
@@ -25,7 +25,7 @@ object Certificates {
   /** The scales, by the ISO-3166-1 code of the country they rate in: the deployments' countries that have one (Poland
    *  rates no film). The ONLY per-country part of the rule. */
   val Ladders: Map[String, Ladder] = Map(
-    // the BBFC's own list ([[services.movies.BbfcCertificate]]), 12A and 12 one step: the same age, with or without an adult
+    // the BBFC's own list ([[services.titles.BbfcCertificate]]), 12A and 12 one step: the same age, with or without an adult
     "GB" -> Ladder((BbfcCertificate.Public :+ BbfcCertificate.Restricted).foldLeft(Seq.empty[Set[String]]) { (steps, c) =>
       if (c == "12" && steps.lastOption.contains(Set("12A"))) steps.init :+ Set("12A", "12") else steps :+ Set(c) }),
     "DE" -> Ladder(Seq(Set("0"), Set("6"), Set("12"), Set("16"), Set("18"))),

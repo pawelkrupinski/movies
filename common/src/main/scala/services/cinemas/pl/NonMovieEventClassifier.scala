@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import models.CinemaMovie
-import services.movies.{TitleContainment, TitleWords}
+import services.titles.{TitleContainment, TitleWords}
 
 import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
@@ -44,7 +44,7 @@ object NonMovieEventClassifier {
    *  Preview" / "OV Sneak-Preview" / CineStar's "CineSneak". Not a bare "sneak": "Sneakers"
    *  and the 2025 "Sneaks" are films. Language-neutral enough to apply outside Poland, unlike
    *  the stage vocabulary below ("tribute" is a word of "Die Tribute von Panem"). The word table's sneaks
-   *  ([[services.movies.TitleWords]]), read on the title's folded words. */
+   *  ([[services.titles.TitleWords]]), read on the title's folded words. */
   private val MysteryScreeningMarkers = TitleWords.foldedPattern(TitleWords.Concept.Sneak).r
 
   /** Whether `title` is a mystery screening ([[MysteryScreeningMarkers]], or a title made of nothing but a

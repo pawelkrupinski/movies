@@ -3,7 +3,7 @@ package services.enrichment
 import services.enrichment.scraping.JsonScalars
 
 import play.api.libs.json._
-import services.resolution.{TitleMatch, YearWindow}
+import services.titles.{TitleMatch, YearWindow}
 import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder

@@ -3,8 +3,8 @@ package services.cinemas
 import clients.tools.ConstantHttpFetch
 import tools.HttpFetch
 import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
-import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
-import services.movies.TitleNormalizer
+import services.titles.rules.{ExtraTitleRules, TitleRules, TitleRuleSet}
+import services.titles.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient, VisualSoftPortal}

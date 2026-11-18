@@ -3,9 +3,9 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}

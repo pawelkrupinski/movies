@@ -1,9 +1,12 @@
 package services.movies
 
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleText.normalize
-import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
+import services.titles.TitleText.normalize
+import services.titles.rules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 
 import java.util.Locale
 
@@ -168,12 +171,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // seed's slash strip keeps the part before " / " — the banner — and drops the
   // film, so this banner must fold before it. The director tail ("… reż. Andrzej Wajda") is off by then: intake
   // reads it into the listing's director (TitleFacts).
-  private val sokolniaWajda = services.movies.TitleFacts.rulesFor(models.Country.Poland).peel("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda").title
+  private val sokolniaWajda = services.titles.TitleFacts.rulesFor(models.Country.Poland).peel("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda").title
 
   // An id names one rule: a second rule under it reads as the first wherever a rule is named (an override, a report,
   // the rule store), and two strands added a day apart each brought their own copy.
   "ExtraTitleRules" should "give every rule an id of its own" in {
-    val ids = services.titlerules.ExtraTitleRules.all.map(_.id)
+    val ids = services.titles.rules.ExtraTitleRules.all.map(_.id)
     ids.diff(ids.distinct).distinct shouldBe empty
   }
 
@@ -796,7 +799,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // BEFORE the title is keyed, so a fold check must strip first. (Spelling/prefix
   // variants carry no format tag → extractFormatTags is a no-op for them.)
   private def foldKey(rs: TitleRuleSet, t: String): String =
-    mergeKey(rs, services.movies.FormatTags.extractFormatTags(t)._1)
+    mergeKey(rs, services.titles.FormatTags.extractFormatTags(t)._1)
 
   private val canonicalFilm = "Mandalorian i Grogu"
 

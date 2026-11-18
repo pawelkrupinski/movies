@@ -32,7 +32,7 @@ trait ResolutionStore {
    *  `sanitize`d title fields, so `ResolutionKeys.belongsTo` can only match keys
    *  folded the same way. Defaulted like `MovieRepository.normalizer` so test and
    *  ABSTRACT, so a store cannot inherit a process default by omission. */
-  def normalizer: services.movies.TitleNormalizer
+  def normalizer: services.titles.TitleNormalizer
 
   /** The stored value for `hintKey`, or None if never stored or older than the TTL. */
   def get(hintKey: String): Option[String]
@@ -72,7 +72,7 @@ object ResolutionStore {
  *  [[MongoResolutionStore]] stores it, written to BSON and read back. */
 class InMemoryResolutionStore(
   clock: Clock,
-  override val normalizer: services.movies.TitleNormalizer
+  override val normalizer: services.titles.TitleNormalizer
 ) extends ResolutionStore {
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
@@ -119,7 +119,7 @@ class MongoResolutionStore(
   // collection holds. The worker passes its country's; defaults to the
   // REQUIRED here: a hint key written under one country's rules and read under
   // another's addresses a row that isn't there.
-  override val normalizer: services.movies.TitleNormalizer,
+  override val normalizer: services.titles.TitleNormalizer,
   // Where a TTL index this store could not bring into line is recorded.
   ttlMismatches: services.TtlIndexMismatches
 ) extends ResolutionStore with Logging {

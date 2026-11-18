@@ -1,7 +1,7 @@
 package services.identity
 
-import services.billing.{BillJoins, BillingParse, DecorationWords}
-import services.movies.{TitleContainment, TitleWords}
+import services.titles.billing.{BillJoins, BillingParse, DecorationWords}
+import services.titles.{TitleContainment, TitleWords}
 
 /**
  * A listing billing SEVERAL films as one programme by a word that says so — a double or triple feature, a trilogy, a
@@ -21,7 +21,7 @@ import services.movies.{TitleContainment, TitleWords}
  */
 object MultiFilmBill {
 
-  /** The marker by which one of `titles` bills several films ([[services.billing.BillingParse.marker]]): a "Triple:" or
+  /** The marker by which one of `titles` bills several films ([[services.titles.billing.BillingParse.marker]]): a "Triple:" or
    *  "Double:" banner heading any of them first, else the first one's word as its folded words read ("triple feature",
    *  "trilogy", "maraton"), when it bills one beside other words. */
   def marker(titles: Seq[String]): Option[String] =
@@ -58,13 +58,13 @@ object MultiFilmBill {
   private def folded(title: String): String = TitleContainment.tokens(title).mkString(" ")
 
 
-  /** What a double bill joins LAST with a "+" ([[services.billing.BillingParse.billPieces]]: "… + The Tiger Who Came to Tea") — a film, or a talk. */
+  /** What a double bill joins LAST with a "+" ([[services.titles.billing.BillingParse.billPieces]]: "… + The Tiger Who Came to Tea") — a film, or a talk. */
   def billedSecondTitle(l: IdentityMeasures.Listing): Option[String] = BillJoins.billPieces(l.decorations.withoutTail(l.title)).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
 
-  /** Does the listing bill two works with a "+" ([[services.billing.BillingParse.billPieces]]) — a double bill, whose facts are one of its films'? Not when
+  /** Does the listing bill two works with a "+" ([[services.titles.billing.BillingParse.billPieces]]) — a double bill, whose facts are one of its films'? Not when
    *  what it bills last is a learned event tail ([[TitleDecorations.withoutTail]]): "Punku + spotkanie z reżyserem". */
   def billsTwoWorks(l: IdentityMeasures.Listing): Boolean = l.ownTitles.exists(t => BillJoins.joinsWorks(l.decorations.withoutTail(t)))
-  /** Does the listing bill two WHOLE WORKS — two of the pieces its "+" joins ([[services.billing.BillingParse.billPieces]]) naming no event, whatever a database
+  /** Does the listing bill two WHOLE WORKS — two of the pieces its "+" joins ([[services.titles.billing.BillingParse.billPieces]]) naming no event, whatever a database
    *  holds of either? A talk, a screening note or a format joined to one film ("+ prelekcja", "+ spotkanie z reżyserem",
    *  "+ napisy EN", a bracketed "(AD + CC + PJM)") is no second work. PL Kino Pałacowe "… | Historia kina w Popielawach +
    *  Pruska kultura" bills a 1908 short TMDB does not hold: no candidate stood for it, yet the bill is neither film. */
@@ -84,7 +84,7 @@ object MultiFilmBill {
     val words = all.filter(_.length > 1)
     // an event's whole phrase counts as its words do: "Alex Cox Q&A" is a talk, whose single letters no word set holds
     (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
-      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w)) && !DecorationWords.namesAnEvent(all)
+      !words.exists(w => EventTailWords(w) || services.titles.FormatTags.FormatToken.contains(w)) && !DecorationWords.namesAnEvent(all)
   }
   /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
    *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing, an introduction, a party, a drink,

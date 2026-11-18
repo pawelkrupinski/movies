@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
 import services.identity.Listing
 import services.identity.adapters.ProjectionTick
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import tools._
 
 import scala.collection.mutable

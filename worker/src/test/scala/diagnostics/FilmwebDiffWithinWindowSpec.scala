@@ -18,7 +18,7 @@ import java.time.LocalDateTime
  * showing" — to BOTH sides identically.
  */
 class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
-  private val titles = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+  private val titles = services.titles.TitleNormalizer.forCountry(models.Country.Poland)
 
 
   private val now       = LocalDateTime.of(2026, 9, 13, 23, 33)

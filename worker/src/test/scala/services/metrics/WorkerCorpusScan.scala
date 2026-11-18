@@ -61,9 +61,9 @@ trait CorpusRowSampler {
 /** One corpus row as the scan hands it to every collector: the stored row, and its venues as the read model
  *  partitions them, derived at most once per row. `None` for a row not ready to project, or one that fails to. */
 final class CorpusRow(val stored: StoredMovieRecord) {
-  private var partitioned: Option[(services.movies.TitleNormalizer, Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]])] = None
+  private var partitioned: Option[(services.titles.TitleNormalizer, Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]])] = None
 
-  def venues(normalizer: services.movies.TitleNormalizer): Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]] =
+  def venues(normalizer: services.titles.TitleNormalizer): Option[Seq[Seq[services.readmodel.ReadModelProjection.VenueScreening]]] =
     partitioned match {
       case Some((by, cards)) if by eq normalizer => cards
       case _ =>
@@ -141,7 +141,7 @@ object ReferenceCorpusMetrics {
 /** `kinowo_worker_movies_served{city,scope}` by its definition: each ready row projected exactly as the read model
  *  does, a card counted once per city it has an upcoming showtime in (`all`) or a showtime on that city's tomorrow. */
 final class ReferenceSourceFilms(served: Gauge, countryCode: String, clock: Clock, cities: Seq[City] = City.all,
-                                 normalizer: services.movies.TitleNormalizer) extends CorpusMetricsCollector {
+                                 normalizer: services.titles.TitleNormalizer) extends CorpusMetricsCollector {
   import WorkerSourceFilmsMetrics.Scope
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val clocks = cities.map { c =>
@@ -170,7 +170,7 @@ final class ReferenceSourceFilms(served: Gauge, countryCode: String, clock: Cloc
 /** `kinowo_worker_showtimes{city}` by its definition: each ready row projected exactly as the read model does, and
  *  each venue's distinct upcoming showtimes summed into its city. */
 final class ReferenceShowtimes(showtimes: Gauge, countryCode: String, clock: Clock, cities: Seq[City] = City.all,
-                               normalizer: services.movies.TitleNormalizer) extends CorpusMetricsCollector {
+                               normalizer: services.titles.TitleNormalizer) extends CorpusMetricsCollector {
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val nowIn = { val venueClock = new models.VenueClock(clock); cities.map(c => c.slug -> venueClock.nowIn(c)).toMap }
     private val acc   = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
@@ -202,7 +202,7 @@ final class ReferenceSlotFanout(widest: Gauge, countryCode: String) extends Corp
 /** The four reference collectors over one registry's gauges, as the worker wired them. */
 object ReferenceCensus {
   def collectors(registry: io.prometheus.metrics.model.registry.PrometheusRegistry, countryCode: String, cities: Seq[City],
-                 clock: Clock, normalizer: services.movies.TitleNormalizer): Seq[CorpusMetricsCollector] = Seq(
+                 clock: Clock, normalizer: services.titles.TitleNormalizer): Seq[CorpusMetricsCollector] = Seq(
     new ReferenceCorpusMetrics(WorkerCorpusMetrics.gauge(registry), countryCode, clock),
     new ReferenceSourceFilms(WorkerSourceFilmsMetrics.gauge(registry), countryCode, clock, cities, normalizer),
     new ReferenceShowtimes(WorkerShowtimesMetrics.gauge(registry), countryCode, clock, cities, normalizer),

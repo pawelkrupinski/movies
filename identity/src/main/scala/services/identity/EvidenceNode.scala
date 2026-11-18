@@ -7,7 +7,7 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   val venue: String       = listings.head.venue
   val venues: Set[String] = listings.map(_.venue).toSet
   /** The title's words, once per node: `namesOnlyItsVenue` reads them against every candidate. */
-  lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
+  lazy val titleWords: Seq[String] = services.titles.TitleContainment.tokens(evidence.title)
   /** The country (ISO-3166-1) of its venue — what [[ReleaseVeto]] asks a namesake's releases of. */
   lazy val country: Option[String] = EvidenceNode.countryOf(listings.head.cinema)
   /** Whether what its listings' cast fields list is the film's cast ([[CastEvidence.castIsTheFilms]]), once per node: its
@@ -30,5 +30,5 @@ private[identity] object EvidenceNode {
   /** A venue's own name and its city's, as words: what a title piece naming the venue spells. */
   def placesOf(cinema: models.Cinema): Seq[Seq[String]] =
     (Seq(cinema.displayName) ++ models.City.forCinema(cinema).map(_.labels.nominative))
-      .map(services.movies.TitleContainment.tokens).filter(_.nonEmpty)
+      .map(services.titles.TitleContainment.tokens).filter(_.nonEmpty)
 }

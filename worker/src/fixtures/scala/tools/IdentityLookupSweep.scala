@@ -2,7 +2,7 @@ package tools
 
 import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ModelRead, ObservationReads, ResolveInputs, TrackedLookups}
 import services.identity.adapters.TmdbIdentityLookups
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * The identity resolver's QUERY SET over one corpus, issued once, so a recording pass captures

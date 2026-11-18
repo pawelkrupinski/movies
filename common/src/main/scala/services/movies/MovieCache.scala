@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 
 /**

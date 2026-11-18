@@ -7,7 +7,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{StoredMovieRecord, TitleNormalizer}
+import services.movies.StoredMovieRecord
+import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
 

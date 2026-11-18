@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import tools.Whitespace.collapsedSpaces
 
 // `today` is injected so tests can pin it: the REST `/screening` + `/event`

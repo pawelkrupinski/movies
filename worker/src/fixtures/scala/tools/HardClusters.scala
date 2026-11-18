@@ -1,7 +1,8 @@
 package tools
 
 import models.{CinemaMovie, Country}
-import services.movies.{LatestTitleYear, SequelMarker, TitleContainment, TitleNormalizer}
+import services.movies.LatestTitleYear
+import services.titles.{SequelMarker, TitleContainment, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 
 import java.nio.charset.StandardCharsets

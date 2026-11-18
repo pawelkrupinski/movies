@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.DecorationDiscovery._
 import services.identity.TitleDecorations
-import services.titlerules.TitleRuleTable
+import services.titles.rules.TitleRuleTable
 
 /** The decoration discovery's own decisions on venue titles from the unmatched clusters' fixture: what it mines, the
  *  rule it writes, what it refuses to strip, how it judges a moved take, and what it writes into the rules. */
@@ -87,7 +87,7 @@ class DecorationDiscoverySpec extends AnyFlatSpec with Matchers {
     val source = s"# the lookup tier\n$Marker\n\n# the merge-key tier\n"
     val out = splice(source, Seq(p))
     val row = TitleRuleTable.parse(out.linesIterator).find(_.rule.id == "xtra-discovered-prefix-kino-konesera").get
-    row.rule.scope shouldBe services.titlerules.RuleScope.GlobalStructural
+    row.rule.scope shouldBe services.titles.rules.RuleScope.GlobalStructural
     row.examples shouldBe Seq("Kino Konesera: Róża" -> "Róża")
     out.indexOf("xtra-discovered") should be < out.indexOf(Marker)
     report(Seq(Evaluation(p, 1, Seq(Change("pl", "Kino", "Kino Konesera: Róża", "", "tmdb:1 Róża (2026)", Right)), 0)), "fixture") should

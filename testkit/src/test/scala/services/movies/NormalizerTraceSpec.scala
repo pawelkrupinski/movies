@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import tools.ScratchDirectories
 import models.{Country, Helios}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -84,7 +86,7 @@ class NormalizerTraceSpec extends AnyFlatSpec with Matchers with ScratchDirector
   }
 
   it should "prove nothing of a reading it cannot make again: a normaliser no country built, or an unstable one" in {
-    val trace = traced(new TitleNormalizer(services.titlerules.TitleRuleSet.forCountry(Country.Poland)).sanitize("Lalka"))
+    val trace = traced(new TitleNormalizer(services.titles.rules.TitleRuleSet.forCountry(Country.Poland)).sanitize("Lalka"))
     check(trace).unreplayable shouldBe 1
     val unstable = rewritten(traced(TitleNormalizer.forCountry(Country.Poland).sanitize("Lalka")))(_.replace("}", ",\"unstable\":true}"))
     check(unstable).unreplayable shouldBe 1

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import scala.collection.mutable
 

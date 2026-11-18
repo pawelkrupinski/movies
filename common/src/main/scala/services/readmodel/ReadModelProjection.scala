@@ -3,7 +3,8 @@ package services.readmodel
 import services.movies.LatestTitleYear
 
 import models._
-import services.movies.{ListingKey, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
+import services.movies.{ListingKey, StoredMovieRecord, TrailerEmbed}
+import services.titles.TitleNormalizer
 
 /**
  * Pure projection from a stored `MovieRecord` row to the denormalised read

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.resolution.YearWindow
+import services.titles.YearWindow
 
 /** The acceptance rules that take a film by the listing's facts: a sole work, a director's work or title, a dated title —
  *  and the fallback a no-match may fall back to, unless its facts contradict it.
@@ -62,7 +62,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
     } yield atOwn(work)
   }
 
-  /** Does the listing bill a NAME alone ([[services.billing.Credits.billsOnlyAName]]) that the record's longer title merely
+  /** Does the listing bill a NAME alone ([[services.titles.billing.Credits.billsOnlyAName]]) that the record's longer title merely
    *  leads, with no fact the venue states agreeing — its year, its running time, its director, an original title naming
    *  the record whole? A performer billed bare is the performer's evening, not a recording of one programme: DE Filmforum
    *  Landsberg's "Helmut Schleich" (the Kabarettist live) is not "Helmut Schleich: Kauf, du Sau" (2018), UK Pavilions
@@ -73,7 +73,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
   private[identity] def aNameAlone(scored: Scored): Boolean = {
     val listing = scored.listing
     val billed  = listing.rawTitle.getOrElse(listing.title)
-    scored.category("title").contains("fragment") && services.billing.Credits.billsOnlyAName(billed) &&
+    scored.category("title").contains("fragment") && services.titles.billing.Credits.billsOnlyAName(billed) &&
       titledAsAProgramme(billed, scored.candidate.film) &&
       !scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency) &&
       !IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime) &&
@@ -156,7 +156,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
   private def billedAsAPiece(candidate: Scored): Boolean = {
     val listing = candidate.listing
     val whole   = listing.ownTitles.map(IdentityMeasures.key).toSet
-    val pieces  = listing.ownTitles.flatMap(services.resolution.SearchTitles.candidates(_, None)).map(IdentityMeasures.key)
+    val pieces  = listing.ownTitles.flatMap(services.titles.SearchTitles.candidates(_, None)).map(IdentityMeasures.key)
       .filter(key => key.nonEmpty && !whole(key)).toSet
     candidate.candidate.film.ownTitles.exists(title => pieces(IdentityMeasures.key(title)))
   }
@@ -186,7 +186,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
     // ("Fanciulla Encore (2027)" is no "Encore").
     lazy val pieces = candidate.listing.billedWorks   // the shapes' yearless tokens; a one-word title is never empty
     candidate.listing.billedTitles.exists(own => own.nonEmpty &&
-      titles.exists(title => title == own || (title.sizeIs >= 2 && services.movies.TitleContainment.isTokenRun(title, own)) ||
+      titles.exists(title => title == own || (title.sizeIs >= 2 && services.titles.TitleContainment.isTokenRun(title, own)) ||
         (title.sizeIs == 1 && pieces(title))))
   }
 }

@@ -15,7 +15,7 @@ import java.time.{Instant, LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Cinemas run by Białołęcki Ośrodek Kultury — Kino na Boku and Kino Głębocka 66

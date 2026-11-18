@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import models.{Cinema, Country, SourceData}
 import tools.{CorpusFixture, FixtureTestWiring}
 

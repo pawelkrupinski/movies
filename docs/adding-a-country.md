@@ -556,7 +556,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
   (≤30), `short-description.txt` (≤80), `full-description.txt` (≤4000). Publish with
   `./gradlew :app:bootstrapReleaseListing` then `:app:publishReleaseListing` (see
   `android/PLAY_PUBLISHING.md`).
-- **Title rules** (`common/src/main/scala/services/titlerules/`): audit the seed for
+- **Title rules** (`common/src/main/scala/services/titles/rules/`): audit the seed for
   rules that rewrite WORDS rather than punctuation/format, and tag each with the
   countries it belongs to (`countries = Some(Set(Country.Poland))` — the sealed
   `Country` itself, never a string code). A rule with

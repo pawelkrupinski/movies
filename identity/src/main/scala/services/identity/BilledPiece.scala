@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingPieces
+import services.titles.billing.BillingPieces
 
 import services.identity.IdentityMeasures.Measure
 
@@ -58,7 +58,7 @@ private[identity] object BilledPiece {
     // year off: only its film's exact year is a fact of the film's (UK "CBeebies Panto 2026: Treasure Island", Hyde Park
     // Picture House publishing 2026, is not Ridley Scott's 2027 "Treasure Island")
     def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(IdentityMeasures.Number(0)))
-    def show      = services.movies.TitleContainment.tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
+    def show      = services.titles.TitleContainment.tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
     def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
     def stated    = agreed.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
@@ -79,9 +79,9 @@ private[identity] object BilledPiece {
     def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
       !film.countries.exists(_.exists(filmCountry => country.exists(venue => IdentityMeasures.sharesLanguage(venue, filmCountry)))) &&
       !country.flatMap(IdentityMeasures.languageOf).exists(tools.TextLanguage.readsAs(film.title, _)) &&
-      (services.movies.TitleContainment.tokens(evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
+      (services.titles.TitleContainment.tokens(evidence.rawTitle).startsWith(services.titles.TitleContainment.tokens(film.title)) ||
         ListingShape.titledAfterPiece(evidence.rawTitle, film))
-    import services.movies.TitleContainment.tokens
+    import services.titles.TitleContainment.tokens
     // a word of every listing's venue's name or city (`places`), inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
     def placed(word: String, places: models.Cinema => Seq[Seq[String]]) = word.length >= IdentityMeasures.StemLetters &&
       listings.forall(listing => places(listing.cinema).flatten

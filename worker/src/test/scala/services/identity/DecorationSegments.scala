@@ -1,8 +1,8 @@
 package services.identity
 
 import services.identity.DecorationTokens.{allCaps, flag, withoutDecoratedEdges}
-import services.billing.DecorationWords.{EditionWords, EventWords}
-import services.movies.{FormatTags, TitleContainment}
+import services.titles.billing.DecorationWords.{EditionWords, EventWords}
+import services.titles.{FormatTags, TitleContainment}
 
 /**
  * Decoration stripping learned SUPERVISED by STRUCTURE: a venue's title split at its delimiters (":", " - ", "|", "/",

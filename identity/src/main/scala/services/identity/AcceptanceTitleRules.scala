@@ -139,8 +139,8 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
     def letters(word: String) = word.forall(_.isLetter) && !IdentityMeasures.numbersAnInstalment(word)
     def slip(a: String, b: String) = letters(a) && letters(b) &&
       tools.EditDistance.within(a, b, math.max(1, math.min(a.length, b.length) / 4))
-    val billed = (listing.ownTitles ++ listing.searchTitles).map(services.movies.TitleContainment.tokens).distinct
-    val titles = (film.title +: film.originalTitle.toSeq).map(services.movies.TitleContainment.tokens).distinct
+    val billed = (listing.ownTitles ++ listing.searchTitles).map(services.titles.TitleContainment.tokens).distinct
+    val titles = (film.title +: film.originalTitle.toSeq).map(services.titles.TitleContainment.tokens).distinct
     billed.exists(own => own.sizeIs >= 4 && titles.exists { title =>
       title.sizeIs == own.size && {
         val slipped = own.zip(title).filter { case (a, b) => a != b }

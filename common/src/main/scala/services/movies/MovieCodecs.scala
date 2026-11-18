@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import models.{MovieRecord, Showtime, Source, SourceData, TitleSearch}
 import models.TmdbAttempt
 import org.bson.{BsonReader, BsonType, BsonWriter}

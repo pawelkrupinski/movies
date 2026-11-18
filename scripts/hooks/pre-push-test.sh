@@ -80,9 +80,9 @@ check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/f
 check "the resolver runs the identity area's tests" "driftguards sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
 check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
 check "a title rule runs them" "driftguards sbt identity|driftguards sbt identity" \
-  "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
+  "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titles/rules/Rule.scala)"
 check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \
-  "driftguards sbt identity" "$(plan common/src/main/scala/services/movies/TitleNormalizer.scala)"
+  "driftguards sbt identity" "$(plan common/src/main/scala/services/titles/TitleNormalizer.scala)"
 # Main #2515: a drift slice is what PopulationMonotonicitySpec and IdentityDriftSlicesSpec walk -- 97d260d67's slice would
 # have walked only because its backlog row rode along
 check "a drift slice runs the flip backlog check (the population walk over it)" "flipbacklog" \

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 import IdentityMeasures.*
 
@@ -10,9 +10,9 @@ private[identity] object NumeralMeasures {
   /** A Roman numeral of the size a series numbers its instalments by (I to XXXIX), by its grammar,
    *  never a list of values: tens, then units. The larger letters (L, C, D, M) spell words far more
    *  often than instalments ("M", "Mix", "DC"). */
-  private[identity] val RomanNumeral = services.billing.NumberedTitles.RomanNumeral
+  private[identity] val RomanNumeral = services.titles.billing.NumberedTitles.RomanNumeral
   /** A title word that is a Roman numeral ([[RomanNumeral]]) of two letters or more — "i" is the Polish "and". */
-  private[identity] def numbersAnInstalment(word: String): Boolean = services.billing.NumberedTitles.numbersAnInstalment(word)
+  private[identity] def numbersAnInstalment(word: String): Boolean = services.titles.billing.NumberedTitles.numbersAnInstalment(word)
   /** A title word that is a year of the last two centuries ("2024" of "Miłość 2024"). */
   private[identity] val TitleYear = "(?:19|20)\\d\\d".r
 
@@ -43,10 +43,10 @@ private[identity] object NumeralMeasures {
       tokens.lift(at + 1).contains("mm") && tokens(at).nonEmpty && tokens(at).forall(_.isDigit)).map(tokens)
   private[identity] def numbered(title: String): Numbered = {
     val pieces = NumberedPieceBreak.split(withoutYears(title))
-      .map(p => withoutGauges(services.billing.NumberedTitles.spelledPartNumbers(TitleContainment.tokens(p).flatMap(unglued)))).filter(_.nonEmpty).toSeq
+      .map(p => withoutGauges(services.titles.billing.NumberedTitles.spelledPartNumbers(TitleContainment.tokens(p).flatMap(unglued)))).filter(_.nonEmpty).toSeq
     val arabic = (t: String) => t.lengthIs <= 3 && t.forall(c => c >= '0' && c <= '9')
-    val numbers = pieces.flatMap(p => p.filter(arabic).map(_.toInt) ++ services.billing.NumberedTitles.romanValue(p.last)).toSet
-    val words = pieces.flatMap(p => p.zipWithIndex.filterNot { case (t, i) => arabic(t) || (i == p.size - 1 && services.billing.NumberedTitles.romanValue(t).isDefined) }.map(_._1))
+    val numbers = pieces.flatMap(p => p.filter(arabic).map(_.toInt) ++ services.titles.billing.NumberedTitles.romanValue(p.last)).toSet
+    val words = pieces.flatMap(p => p.zipWithIndex.filterNot { case (t, i) => arabic(t) || (i == p.size - 1 && services.titles.billing.NumberedTitles.romanValue(t).isDefined) }.map(_._1))
     Numbered(words, numbers)
   }
 

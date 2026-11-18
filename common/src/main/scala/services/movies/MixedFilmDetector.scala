@@ -1,7 +1,10 @@
 package services.movies
 
+import services.titles.SequelMarker
+import services.titles.TitleNormalizer
+
 import models.{MovieRecord, Source, SourceData}
-import services.resolution.YearWindow
+import services.titles.YearWindow
 
 /**
  * Decides whether the cinemas of two `movies` rows — or an incoming listing and a row's
@@ -245,7 +248,7 @@ object MixedFilmDetector {
   def deniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer)(using LatestTitleYear): Boolean = {
     val slotYear = slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title, LatestTitleYear.current))
     slotYear.isDefined && latin(slot.director) && latin(film.director) &&
-      services.resolution.YearWindow.contradicts(slotYear, film.releaseYear, services.resolution.YearWindow.SlotYearImplausibility) &&
+      services.titles.YearWindow.contradicts(slotYear, film.releaseYear, services.titles.YearWindow.SlotYearImplausibility) &&
       !creditSamePerson(slot.director, film.director, normalizer)
   }
 

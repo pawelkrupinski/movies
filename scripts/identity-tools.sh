@@ -245,9 +245,46 @@ identity_tree_claimed() {
   echo "$dir"
 }
 
+# identity_tree_older_titles <dir> -> in a ref from before the title text took its own package (services.titles,
+# 2026-11-18), a file giving the moved classes their new names, so a tool file importing them compiles there too: each
+# top-level class of services.movies / services.resolution that moved, services.titlerules as services.titles.rules and
+# services.billing as services.titles.billing, exported under the new name (only those the ref has). A ref after the move
+# has the real ones, and gets none.
+identity_tree_older_titles() {
+  local dir=$1 main=$1/common/src/main/scala/services out f name pkg from to
+  [ -f "$main/movies/TitleNormalizer.scala" ] && [ ! -f "$main/titles/TitleNormalizer.scala" ] || return 0
+  out=$(
+    exports() { # <package> <dir> <name>...: the export clauses of a package's names its <dir> declares
+      local from=$1 d=$2 n; shift 2
+      for n in "$@"; do
+        [ -f "$d/$n.scala" ] && grep -qE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|object|trait) $n\b" "$d/$n.scala" \
+          && echo "export $from.$n"
+      done
+      return 0
+    }
+    printf 'package services.titles\n\n// identity-tools.sh (identity_tree_older_titles): this ref predates services.titles\n'
+    exports services.movies "$main/movies" TitleNormalizer TitleWords FormatTags SequelMarker RelayBanner TitleText \
+      TitleContainment BbfcCertificate TitleSeason TitleFacts StageHouse
+    exports services.resolution "$main/resolution" TitleMatch YearWindow SearchTitles
+    for pkg in titlerules:rules billing:billing; do
+      from=${pkg%%:*} to=${pkg##*:}
+      [ -d "$main/$from" ] || continue
+      printf '\npackage %s {\n' "$to"
+      for f in "$main/$from"/*.scala; do
+        name=$(basename "$f" .scala)
+        exports "services.$from" "$main/$from" "$name" | sed 's/^/  /'
+      done
+      printf '}\n'
+    done
+  )
+  mkdir -p "$main/titles"
+  printf '%s\n' "$out" | cmp -s - "$main/titles/OlderRefTitles.scala" 2>/dev/null || printf '%s\n' "$out" > "$main/titles/OlderRefTitles.scala"
+}
+
 # identity_tree_tools <dir> <file>... -> each named file dropped into the laid-out tree from this checkout, whole or not at all
 identity_tree_tools() {
   local dir=$1 t seed=$1/target/identity-tools/seed; shift
+  identity_tree_older_titles "$dir"
   # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
   for t in "$@"; do
     mkdir -p "$(dirname "$dir/$t")"

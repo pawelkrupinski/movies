@@ -1,8 +1,8 @@
 package services.identity
 
-import services.billing.{BillingParse, DecorationWords, NumberedTitles}
-import services.movies.TitleContainment
-import services.resolution.SearchTitles
+import services.titles.billing.{BillingParse, DecorationWords, NumberedTitles}
+import services.titles.TitleContainment
+import services.titles.SearchTitles
 
 import IdentityMeasures.*
 
@@ -108,7 +108,7 @@ private[identity] object TitleShapeMeasures {
     if (!l.ownTitles.exists(_.indexOf('+') >= 0)) Set.empty
     else {
       val own = l.ownTitles.map(_.trim).toSet
-      l.ownTitles.flatMap(t => services.billing.BillJoins.billPieces(t).drop(1).map(_.trim)).filter(p => !own(p) && namesOnlyAnEvent(p)).toSet
+      l.ownTitles.flatMap(t => services.titles.billing.BillJoins.billPieces(t).drop(1).map(_.trim)).filter(p => !own(p) && namesOnlyAnEvent(p)).toSet
     }
 
   /** Does the listing name `f` ONLY by a piece its billing joins as an event ([[joinedEvents]]) — "Q & A" (1990) of UK
@@ -139,7 +139,7 @@ private[identity] object TitleShapeMeasures {
    *  interval, a reception: the word table's side events)? */
   private[identity] def namesAnEvent(words: Seq[String]): Boolean =
     DecorationWords.namesAnEvent(words) || words.exists(SideEventWords)
-  private val SideEventWords: Set[String] = services.movies.TitleWords.tokens(services.movies.TitleWords.Concept.SideEvent)
+  private val SideEventWords: Set[String] = services.titles.TitleWords.tokens(services.titles.TitleWords.Concept.SideEvent)
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
    *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"; "(4DX Rewind) Shrek"
@@ -151,7 +151,7 @@ private[identity] object TitleShapeMeasures {
     // pieces are all held already — in the order a round over every shape would add them (by splitter, then shape).
     val held     = scala.collection.mutable.LinkedHashSet.empty[String]
     // a box office's certificate is no part of any shape: searched whole, "Obsession (18)" finds "80 Day Obsession: Day 18"
-    var frontier = titles.map(services.billing.BillingParse(_).uncertified).filter(_.nonEmpty).distinct
+    var frontier = titles.map(services.titles.billing.BillingParse(_).uncertified).filter(_.nonEmpty).distinct
     // a title quoting two works bills both: none of its spellings is cut to one quoted title
     val quotesOne = !frontier.exists(title => Quoted.findAllMatchIn(title).size >= 2)
     held ++= frontier
@@ -205,9 +205,9 @@ private[identity] object TitleShapeMeasures {
     } => title.substring(0, at) }.toSeq
   }
   /** The words of an edition a billing names after its film: the word table's editions and anniversaries
-   *  ([[services.billing.DecorationWords.EditionWords]]: cut, restored, remastered, 4K, re-release, anniversary…) and the
+   *  ([[services.titles.billing.DecorationWords.EditionWords]]: cut, restored, remastered, 4K, re-release, anniversary…) and the
    *  words they come with ("Director's Cut", "The Final Cut", "Reissue", "Extended Edition"). */
-  private val EditionTail: Set[String] = services.billing.DecorationWords.EditionWords ++
+  private val EditionTail: Set[String] = services.titles.billing.DecorationWords.EditionWords ++
     Set("director", "directors", "final", "reissue", "extended", "uncut", "theatrical", "ultimate", "special", "edition")
 
   /** The two halves of a mixed-case billing at a CASE CHANGE: a run of two or more words in capitals heading or closing a
@@ -250,11 +250,11 @@ private[identity] object TitleShapeMeasures {
    *  NIEZNOŚNY CIĘŻAR ŻYCIA", whose pieces the searches would read alone ("TERRA" took Terra, 2007)? No case change
    *  splits such a billing. */
   private def partsInCapitals(half: String): Boolean = Seq(" - ", " – ", " — ", ": ").exists(half.contains)
-  /** Is every word of a half one a venue bills around a film ([[services.billing.DecorationWords.billedAround]])? DE Café
+  /** Is every word of a half one a venue bills around a film ([[services.titles.billing.DecorationWords.billedAround]])? DE Café
    *  Trauma's "FREI~QUENZ Anniversary" is a party's anniversary, never Komasa's "Anniversary". */
   private def onlyBilledAround(half: String): Boolean = {
     val words = TitleContainment.tokens(half).filter(_.length > 1)
-    words.nonEmpty && words.forall(services.billing.DecorationWords.billedAround)
+    words.nonEmpty && words.forall(services.titles.billing.DecorationWords.billedAround)
   }
   private val CaseWord = """[\p{L}\p{N}][\p{L}\p{N}'’]*""".r
   /** A Roman numeral of two letters or more ("II", "XIV"), a film's number in [[caseSplit]]'s reading. */
@@ -271,7 +271,7 @@ private[identity] object TitleShapeMeasures {
     if (title.indexOf('(') < 0 && !title.toLowerCase(java.util.Locale.ROOT).contains("cert")) Nil
     else CertificateWithin.findFirstMatchIn(title).filter(m => m.end < title.length && title.substring(m.end).trim.nonEmpty &&
       title.substring(0, m.start).exists(_.isLetter)).map(m => title.substring(0, m.start)).toSeq
-  private val CertificateWithin = (s"""(?i)(?<=\\S)\\s*${services.titlerules.TitleRulePlaceholders.all("CERT_NOTE")}(?=\\s)""").r
+  private val CertificateWithin = (s"""(?i)(?<=\\S)\\s*${services.titles.rules.TitleRulePlaceholders.all("CERT_NOTE")}(?=\\s)""").r
 
   /** The one title a long billing quotes within its prose — PL DKF's "DKF ZAPRASZA 13 LISTOPADA O GODZ. 18:00 NA FILM
    *  „NASZA REWOLUCJA” – HISTORIĘ MIŁOŚCI …", 14 words around the quote — of [[AnnouncementWords]] words or more: a short

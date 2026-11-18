@@ -1,7 +1,7 @@
 package services.identity
 
 import IdentityMeasures.*
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 /** How a listing's director credits relate to a film's: the director relation, and a credit read by search or by title.
  *  Part of [[IdentityMeasures]], which exports it. */

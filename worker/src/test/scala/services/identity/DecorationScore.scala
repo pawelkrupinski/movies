@@ -24,7 +24,7 @@ object DecorationScore {
    *  @param venues        venues billing it
    *  @param prefix        whether it leads the title (else it trails)
    *  @param tokens        its words
-   *  @param formatShare   the share of its words that are format or version words ([[services.movies.FormatTags.FormatToken]])
+   *  @param formatShare   the share of its words that are format or version words ([[services.titles.FormatTags.FormatToken]])
    *  @param innerResolved the share of its inner titles some listing billing that title alone is matched as
    *  @param matchedShare  the share of the listings carrying it the model already matches */
   final case class Features(aligned: Int, recurring: Int, venues: Int, prefix: Boolean, tokens: Int, formatShare: Double,

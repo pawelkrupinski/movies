@@ -3,7 +3,8 @@ package services.identity
 import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
-import services.movies.{CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens, ShowtimesDigest, TitleNormalizer}
+import services.movies.{CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens, ShowtimesDigest}
+import services.titles.TitleNormalizer
 
 import IdentityProjectionPlan.{RowBatch, ResolverAttempt, VenueGroup}
 

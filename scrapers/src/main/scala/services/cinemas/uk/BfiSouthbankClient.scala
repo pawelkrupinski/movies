@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
-import services.movies.BbfcCertificate
+import services.titles.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 

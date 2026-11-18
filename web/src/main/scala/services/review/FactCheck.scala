@@ -1,6 +1,6 @@
 package services.review
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import services.identity.{FactRelations, IdentityMeasures, ListingShape}
 
 /** One thing some venues state about a listing that the film contradicts — every venue stating it, once. */

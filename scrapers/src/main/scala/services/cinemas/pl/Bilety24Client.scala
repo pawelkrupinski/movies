@@ -3,8 +3,8 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
-import services.movies.TitleNormalizer
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup

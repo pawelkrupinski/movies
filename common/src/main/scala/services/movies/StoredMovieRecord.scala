@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import models.MovieRecord
 
 /** One persisted film row: its display `title` and `year` (together, its lookup

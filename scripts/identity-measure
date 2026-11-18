@@ -73,7 +73,7 @@
 # (outside the footprint)" and leaves the verdict to the countries measured (identity_measure.py's UNMEASURED).
 #
 # THE FOOTPRINT MEASURE (--footprint, 2026-10-22). A change to the title rules alone -- title-rules.tsv, the
-# services/titlerules/ code (not TitleRulePlaceholders.scala, which FormatTags reads directly) and TitleNormalizer.scala:
+# services/titles/rules/ code (not TitleRulePlaceholders.scala, which FormatTags reads directly) and TitleNormalizer.scala:
 # the code the resolver reads titles through and nothing else does -- changes what the resolve READS, never how it
 # decides. Every takes check stores, beside the base it resolved and each main head, every title reading its resolve and
 # its ratchet made (scripts/ci/identity-takes-check.sh's THE NORMALIZER TRACE: `takes-trace-<cc>-<identity code>-<p|n><run>`
@@ -699,9 +699,9 @@ fi
 # footprint_rule_path <path>: whether the resolve reads a change there only through the title normaliser's readings
 footprint_rule_path() {
   case $1 in
-    common/src/main/scala/services/titlerules/TitleRulePlaceholders.scala) return 1 ;; # FormatTags reads it directly
-    common/src/main/resources/title-rules.tsv|common/src/main/scala/services/titlerules/*.scala) return 0 ;;
-    common/src/main/scala/services/movies/TitleNormalizer.scala) return 0 ;;
+    common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala) return 1 ;; # FormatTags reads it directly
+    common/src/main/resources/title-rules.tsv|common/src/main/scala/services/titles/rules/*.scala) return 0 ;;
+    common/src/main/scala/services/titles/TitleNormalizer.scala) return 0 ;;
   esac
   return 1
 }

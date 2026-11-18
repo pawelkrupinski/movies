@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  *  Filmweb, so language/format variants and truncation stop double-counting a
  *  film as both `ours-only` and `fw-only`. */
 class FilmwebDiffTitleNormalizerSpec extends AnyFlatSpec with Matchers {
-  private val titles = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+  private val titles = services.titles.TitleNormalizer.forCountry(models.Country.Poland)
   private def normalize(raw: String): String = FilmwebDiffTitleNormalizer.normalize(raw, titles)
 
   "normalize" should "strip trailing language tags so language variants key alike" in {

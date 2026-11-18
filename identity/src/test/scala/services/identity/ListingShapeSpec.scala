@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.titles.billing.BillingParse
 
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec

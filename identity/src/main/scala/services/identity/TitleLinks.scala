@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import scala.collection.mutable
 
@@ -55,13 +55,13 @@ private[identity] final class TitleLinks(normalizer: TitleNormalizer, pins: PinC
    *  Tabby McTat + Room on the Broom" searches as "Tabby McTat", and joined to the bare "Tabby McTat"
    *  its "Various Directors" vetoed that film; "Wajda. Bez znieczulenia + prelekcja" bills a talk. */
   def titlesBeside(node: EvidenceNode, form: String): Boolean = {
-    val words = services.movies.TitleContainment.tokens(form).toSet
+    val words = services.titles.TitleContainment.tokens(form).toSet
     // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
     // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
     val formKey = sanitized(form)
     val billed = MultiFilmBill.billedSecondTitle(node.evidence.published).map(sanitized).filter(_.nonEmpty)
     (segmentsOf(node) ++ billed).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
-      (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
+      (services.titles.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
   }
 }
 

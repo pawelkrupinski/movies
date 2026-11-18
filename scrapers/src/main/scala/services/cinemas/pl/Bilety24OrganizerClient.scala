@@ -1,12 +1,12 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
+import services.titles.FormatTags
 import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Document
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies, VenueCredits}
 
 import scala.jdk.CollectionConverters._

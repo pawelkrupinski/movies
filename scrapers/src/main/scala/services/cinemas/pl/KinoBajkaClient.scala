@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
 import tools.HttpFetch
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 

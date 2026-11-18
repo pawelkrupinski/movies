@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaMovie, Country}
@@ -121,7 +123,7 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
    *  `ListingKey.Published` keys a page-less listing by, never a year or film the pipeline derived. */
   private def publishedAsDifferentFilms(a: CinemaMovie, b: CinemaMovie): Boolean = {
     val (ya, yb) = (ScrapeListing.yearOf(a), ScrapeListing.yearOf(b))
-    ya.zip(yb).exists { case (x, y) => (x - y).abs > services.resolution.YearWindow.ProductionToRelease } ||
+    ya.zip(yb).exists { case (x, y) => (x - y).abs > services.titles.YearWindow.ProductionToRelease } ||
       (directors(a).nonEmpty && directors(b).nonEmpty && (directors(a) & directors(b)).isEmpty)
   }
 

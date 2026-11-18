@@ -1,5 +1,8 @@
 package services.movies
 
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+
 import tools.SpecClock.given
 
 import models.{CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
@@ -88,7 +91,7 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     prepared.foreach(p => p.movies.map(p.cleaned).sorted shouldBe Seq("Diuna", "Ojczyzna"))
     venues.foreach(venue => titles.foreach { title =>
       ScrapeListing.cleanTitle(venue, title, normalizer) shouldBe
-        FormatTags.extractFormatTags(normalizer.cinemaClean(services.titlerules.TitleRuleKey.of(venue), title))
+        FormatTags.extractFormatTags(normalizer.cinemaClean(services.titles.rules.TitleRuleKey.of(venue), title))
     })
     normalizer.listingTitlesCached shouldBe 2
   }

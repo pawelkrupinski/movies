@@ -37,7 +37,7 @@ object ProdRetained {
   /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set) a
    *  billed listing still bills the title of ([[services.identity.ListingRetention.retained]]) -- what the recorder
    *  captures prod's lookups for (ProdLookupInputs.read) and what the live drift check resolves (IdentityLiveDrift). */
-  def modelInput(billed: Seq[Listing], recorded: Seq[Listing], normalizer: services.movies.TitleNormalizer): Seq[Listing] =
+  def modelInput(billed: Seq[Listing], recorded: Seq[Listing], normalizer: services.titles.TitleNormalizer): Seq[Listing] =
     billed ++ services.identity.ListingRetention.retained(recorded, billed, normalizer)
 
   def write(root: Path, code: String, listings: Seq[Listing]): Path = {

@@ -1,7 +1,7 @@
 package services.readmodel
 
 import models.ResolvedMovie
-import services.movies.TitleText
+import services.titles.TitleText
 
 /** The legacy `/{city}/movie?title=…` addressing rule, for the whole corpus at
  *  once.

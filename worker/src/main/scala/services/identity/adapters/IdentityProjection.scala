@@ -8,8 +8,8 @@ import scala.util.chaining.scalaUtilChainingOps
 
 import models.{Cinema, CinemaMovie, MovieRecord}
 import play.api.Logging
-import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens,
-  StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens, StoredMovieRecord}
+import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration.FiniteDuration

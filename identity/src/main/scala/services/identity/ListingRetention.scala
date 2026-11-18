@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details

@@ -69,7 +69,7 @@ object TitleRelationSpec {
   /** How many of a slice's pairs its resolve joins by a title must-link, and how many its backing reads. */
   final case class Related(linked: Int, backed: Int)
 
-  private final case class Read(all: Seq[Listing], normalizer: services.movies.TitleNormalizer, resolution: Resolution)
+  private final case class Read(all: Seq[Listing], normalizer: services.titles.TitleNormalizer, resolution: Resolution)
 
   private def read(dir: Path): Read = {
     val slice     = IdentitySlice.readSlice(dir)

@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /** The scripts that open their store from the configuration (EnrichmentBackfill, DuplicateAudit)
  *  key its rows by the CONFIGURED country's rules: a German corpus's `_id`s were sanitized by

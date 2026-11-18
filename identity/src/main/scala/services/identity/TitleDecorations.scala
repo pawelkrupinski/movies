@@ -1,7 +1,7 @@
 package services.identity
 
 import play.api.libs.json.{Json, OFormat}
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 /**
  * The VENUE DECORATIONS the identity resolver reads around a film's title — "Unlimited Screening",

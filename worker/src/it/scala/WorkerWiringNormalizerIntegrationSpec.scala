@@ -6,7 +6,7 @@ import models.Country
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
-import services.titlerules.TitleRuleSet
+import services.titles.rules.TitleRuleSet
 
 import scala.concurrent.Await
 

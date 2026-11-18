@@ -39,7 +39,7 @@ class InMemoryMovieRepository(
   // The country whose rules derive a row's `_id`, mirroring `MongoMovieRepository`.
   // Required, and passed by name: a single-country spec hands it
   // `SingleCountryNormalizer.titleNormalizer`, a spec ABOUT country scoping its own instance.
-  override val normalizer: services.movies.TitleNormalizer,
+  override val normalizer: services.titles.TitleNormalizer,
   // Stamps a write's `updatedAt` and a delivery's instant, as production stamps them from the
   // wiring's clock — injected so a spec about AGES can move time by hand. Pinned by default, so a
   // spec that does not care which instant it reads never reads the wall clock.

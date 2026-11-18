@@ -91,7 +91,7 @@ RULE_FILES = re.compile(
     r"|IdentityCalibration|VenueBacking|SourceReliability|FilmNess|MultiFilmBill|CatalogueLinks|TitleLinks|TitleCredit"
     rf"|CreditRelation|FactRelations)\.scala|{_ID}/agreement/(Agreement|AgreementCandidates|Broadcast|Catalogue|Correction"
     r"|FamilyVerdicts|NonFilmEvents|SynopsisEvidence)\.scala|common/src/main/resources/title-(rules|words)\.tsv"
-    r"|common/src/main/scala/services/titlerules/.*)$")
+    r"|common/src/main/scala/services/titles/rules/.*)$")
 HARNESS_FILES = re.compile(
     r"^(worker/src/test/scala/scripts/IdentityDrift\.scala|worker/src/test/scala/scripts/IdentityLiveDrift\.scala"
     rf"|{_ID}/TakeFlips\.scala|scripts/ci/identity-drift-check\.sh)$")

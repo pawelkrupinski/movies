@@ -2,7 +2,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import services.resolution.TitleMatch
+import services.titles.TitleMatch
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.net.URLEncoder

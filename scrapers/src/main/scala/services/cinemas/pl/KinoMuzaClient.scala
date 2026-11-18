@@ -10,7 +10,7 @@ import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnri
 import java.time.{LocalDate, Period}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
                      titles: TitleNormalizer)

@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, PosterAnswers, Question}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * THE ONE WAY AN AGREEMENT STAGE IS BUILT: the worker's (`IdentityProjectionWiring.newAgreementStage`) and every harness's

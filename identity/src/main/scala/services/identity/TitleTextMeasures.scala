@@ -2,7 +2,7 @@ package services.identity
 
 import java.util.Locale
 
-import services.movies.{TitleContainment, TitleSeason}
+import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*
 
@@ -124,17 +124,17 @@ private[identity] object TitleTextMeasures {
   /** The fewest letters a word needs to name something by itself, whole or as an inflected stem: "Kadr" of "Kino w
    *  Kadrze" (the venue's name), a director's surname a billing names ([[Film.directorSurnames]]: "Lang" of "Fritz Lang:
    *  M"), a word of a title billed in another language. */
-  val StemLetters = services.billing.NumberedTitles.StemLetters
+  val StemLetters = services.titles.billing.NumberedTitles.StemLetters
 
-  /** Where a title's own delimiters cut it into pieces ([[services.billing.BillingPieces.Delimiter]]). */
-  private[identity] val PieceBreak = services.billing.BillingPieces.Delimiter
-  /** A title's delimited pieces, its seasons and bracketed years out ([[services.billing.BillingParse.pieces]]). */
-  private[identity] def pieces(title: String): Seq[String] = services.billing.BillingPieces.pieces(title)
+  /** Where a title's own delimiters cut it into pieces ([[services.titles.billing.BillingPieces.Delimiter]]). */
+  private[identity] val PieceBreak = services.titles.billing.BillingPieces.Delimiter
+  /** A title's delimited pieces, its seasons and bracketed years out ([[services.titles.billing.BillingParse.pieces]]). */
+  private[identity] def pieces(title: String): Seq[String] = services.titles.billing.BillingPieces.pieces(title)
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
-  private[identity] val BracketedYear = services.billing.NumberedTitles.BracketedYear
+  private[identity] val BracketedYear = services.titles.billing.NumberedTitles.BracketedYear
   /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
-  def withoutYears(t: String): String = services.billing.BillingParse(t).yearless
+  def withoutYears(t: String): String = services.titles.billing.BillingParse(t).yearless
   private[identity] def yearlessTokens(t: String): Seq[String] = TitleContainment.tokens(withoutYears(t))
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
@@ -206,10 +206,10 @@ private[identity] object TitleTextMeasures {
     lazy val spellingKey: String    = TitleTextMeasures.spellingKey(text)
     lazy val sharpSKey: String      = TitleTextMeasures.sharpSKey(text)
     /** Its words with the numbers a part word spells out in digits, run together — "diunaczesc3" of "Diuna: Część
-     *  trzecia", as "Diuna: część 3" bills it ([[services.billing.NumberedTitles.spelledPartNumbers]]); empty for a title
+     *  trzecia", as "Diuna: część 3" bills it ([[services.titles.billing.NumberedTitles.spelledPartNumbers]]); empty for a title
      *  numbering no part, whose [[key]] says all. */
     lazy val partKey: String        =
-      if (!words.exists(services.billing.NumberedTitles.PartWordTokens)) "" else services.billing.NumberedTitles.spelledPartNumbers(words).mkString
+      if (!words.exists(services.titles.billing.NumberedTitles.PartWordTokens)) "" else services.titles.billing.NumberedTitles.spelledPartNumbers(words).mkString
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
@@ -221,7 +221,7 @@ private[identity] object TitleTextMeasures {
    *  Verlorenen" bills TMDB's "Das Camp der Verlorenen". ONE list for every rule that reads a title without its article:
    *  the measures' article-less exact title ([[TitleForm.afterArticle]]) and the agreement's naming
    *  ([[services.identity.agreement.Agreement]]). */
-  val LeadingArticles: Set[String] = services.movies.TitleText.Articles
+  val LeadingArticles: Set[String] = services.titles.TitleText.Articles
   /** A title's words without the article it leads with ([[LeadingArticles]]) — when a word is left beside it. */
   def withoutLeadingArticle(words: Seq[String]): Seq[String] =
     if (words.sizeIs >= 2 && LeadingArticles(words.head)) words.tail else words

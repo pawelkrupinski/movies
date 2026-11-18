@@ -40,7 +40,7 @@ services.identity.IncrementalResolverStoreSpec	15
 scripts.IdentityDriftSpec	14
 services.identity.RelayOwnFactsSpec	13
 services.identity.IncrementalWholeDivergenceSpec	13
-services.titlerules.TitleRulesGoldenSpec	11
+services.titles.rules.TitleRulesGoldenSpec	11
 services.identity.adapters.TmdbChangesSweepSpec	9
 services.identity.adapters.IdentityStagingPublisherSpec	8
 services.identity.IdentityResolverCasesSpec	8

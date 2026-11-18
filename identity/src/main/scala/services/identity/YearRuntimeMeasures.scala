@@ -1,9 +1,11 @@
 package services.identity
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import java.util.Locale
 
-import services.movies.{EmbeddedYear, TitleContainment, TitleSeason}
+import services.movies.EmbeddedYear
+
+import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*
 
@@ -102,7 +104,7 @@ private[identity] object YearRuntimeMeasures {
 
   /** Does the listing bill the record's own RELAY: a stage house's relay of the record's work under the record's own house
    *  ([[StageRelays.billsItsHouse]], no other work named: [[StageRelays.namesAnotherWork]]), or, its `title` naming the
-   *  record ([[NamingRelations]]), a relay's banner ([[services.movies.RelayBanner]]: "NT Live", "Exhibition on Screen")
+   *  record ([[NamingRelations]]), a relay's banner ([[services.titles.RelayBanner]]: "NT Live", "Exhibition on Screen")
    *  that the record's title bills too? The
    *  venue bills the performance with its interval and introduction, which TMDB's record of the relay leaves out, or
    *  states only as a placeholder: UK Cineworld's, Everyman's and Showcase's "National Theatre Live: Hay Fever" [160′]
@@ -112,7 +114,7 @@ private[identity] object YearRuntimeMeasures {
   private[identity] def relaysTheRecord(l: Listing, f: Film, title: Category): Boolean =
     recordsTheScreenedSeason(l, f) && (
       (l.billsAStageHouse && StageRelays.billsItsHouse(l, f) && !StageRelays.namesAnotherWork(l, f)) ||
-        (NamingRelations(title.value) && services.movies.RelayBanner.billed(l.ownTitles) && services.movies.RelayBanner.billed(f.titles)))
+        (NamingRelations(title.value) && services.titles.RelayBanner.billed(l.ownTitles) && services.titles.RelayBanner.billed(f.titles)))
 
   /** Is the record dated in the performing season the listing's screenings fall in, or the year it closes in: the
    *  season's own relay, not the house's earlier recording of the work, whose shorter running time still tells it apart
@@ -150,7 +152,7 @@ private[identity] object YearRuntimeMeasures {
     else LabelledYear.findAllMatchIn(title).filterNot(m => TitleContainment.tokens(m.group(1)).exists(datesAScreening))
       .map(m => s"(${m.group(2)})")
   private[identity] def datesAScreening(word: String): Boolean =
-    DecorationWords.EditionWords(word) || DecorationWords.EventWords(word) || services.movies.FormatTags.FormatToken.contains(word) ||
+    DecorationWords.EditionWords(word) || DecorationWords.EventWords(word) || services.titles.FormatTags.FormatToken.contains(word) ||
       MonthNames(word) || DecorationWords.EventWords.exists(event => event.length >= 5 && word.length > event.length && word.contains(event))
   /** Every locale's month names, as title words. */
   private lazy val MonthNames: Set[String] =

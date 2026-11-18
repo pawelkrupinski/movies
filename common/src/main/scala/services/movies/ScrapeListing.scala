@@ -1,5 +1,10 @@
 package services.movies
 
+import services.titles.StageHouse
+import services.titles.TitleFacts
+import services.titles.TitleNormalizer
+import services.titles.TitleSeason
+
 import models.{Cinema, CinemaMovie, SourceData}
 
 /**
@@ -134,7 +139,7 @@ object ScrapeListing {
     val years = group.flatMap(yearOf).distinct
     val byYear =
       // Years a production-vs-release gap apart are one film printed two ways.
-      if (years.sizeIs < 2 || years.max - years.min <= services.resolution.YearWindow.ProductionToRelease) Seq(group)
+      if (years.sizeIs < 2 || years.max - years.min <= services.titles.YearWindow.ProductionToRelease) Seq(group)
       else group.groupBy(yearOf).toSeq.sortBy(_._1.getOrElse(0)).map { case (year, films) =>
         films.map(cm => cm.copy(movie = cm.movie.copy(releaseYear = cm.movie.releaseYear.orElse(year))))
       }

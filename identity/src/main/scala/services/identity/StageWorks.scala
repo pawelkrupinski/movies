@@ -45,7 +45,7 @@ object StageWorks {
       rows.groupMapReduce(_._1)(_._3)(_ ++ _).view.mapValues(_.map(_.trim).filter(_.nonEmpty).distinct.sorted).toMap)
   }
 
-  private def words(name: String): Set[String] = services.movies.TitleContainment.tokens(name).filter(_.length >= 4).toSet
+  private def words(name: String): Set[String] = services.titles.TitleContainment.tokens(name).filter(_.length >= 4).toSet
 
   /** Is every letter of `name` a Latin one: a name a Latin-script title search can find? */
   private def latin(name: String): Boolean =

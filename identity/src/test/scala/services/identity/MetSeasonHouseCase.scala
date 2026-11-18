@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Helios, KinoMuza}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import FilmTable.{F, listing}
 
 /** PL Kino 1410's Met broadcasts, as the recorded TMDB answered them (recording 36664654811 on):

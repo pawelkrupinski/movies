@@ -4,7 +4,7 @@ import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity.adapters.{IdentityHistoryReader, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TmdbDocuments}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.Await

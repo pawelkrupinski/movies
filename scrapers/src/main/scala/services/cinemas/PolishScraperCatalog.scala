@@ -5,7 +5,7 @@ import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.pl.PolishVenue.Route
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.LocalDate
 import scala.concurrent.duration._

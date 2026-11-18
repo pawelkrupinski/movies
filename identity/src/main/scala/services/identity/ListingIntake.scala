@@ -1,7 +1,8 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ListingIntakeMetrics, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ListingIntakeMetrics, ScrapeListing}
+import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
 

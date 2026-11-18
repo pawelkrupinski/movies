@@ -19,7 +19,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
   "the rules version" should "digest the resolver, what it reaches and the data it reads" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityModelStore.scala",
-      "identity/src/main/scala/services/identity/IdentityMeasures.scala", "common/src/main/scala/services/movies/TitleNormalizer.scala", "common/src/main/scala/models/MovieRecord.scala",
+      "identity/src/main/scala/services/identity/IdentityMeasures.scala", "common/src/main/scala/services/titles/TitleNormalizer.scala", "common/src/main/scala/models/MovieRecord.scala",
       "identity/src/main/resources/identity-weights.json", "identity/src/main/resources/identity-decorations.json", "identity/src/main/resources/identity-stage-works.tsv")
   }
 

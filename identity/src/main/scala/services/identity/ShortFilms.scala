@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.{TitleContainment, TitleWords}
+import services.titles.{TitleContainment, TitleWords}
 
 /** A SHORT film — one TMDB states runs [[MaxMinutes]] or less in every language and cut it holds ([[FilmCuts]]), the
  *  Academy's line — and the screenings that may show one alone.

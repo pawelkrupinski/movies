@@ -7,7 +7,7 @@
 # so the two cannot disagree. The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
 identity/src/main/**
 worker/src/main/**
-common/src/main/scala/services/titlerules/**
+common/src/main/scala/services/titles/rules/**
 common/src/main/resources/title-rules.tsv
 common/src/main/resources/title-words.tsv
 worker/src/test/scala/scripts/IdentityDrift.scala

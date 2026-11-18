@@ -4,7 +4,8 @@ import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ParallelReplays, TitleNormalizer}
+import services.movies.ParallelReplays
+import services.titles.TitleNormalizer
 import services.scrapes.ArchivedScrape
 import tools._
 

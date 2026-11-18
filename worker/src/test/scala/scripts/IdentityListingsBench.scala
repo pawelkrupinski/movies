@@ -2,7 +2,8 @@ package scripts
 
 import models.{Cinema, Country}
 import services.identity.IdentityListingIntake
-import services.movies.{InMemoryScrapeGuardLedger, TitleNormalizer}
+import services.movies.InMemoryScrapeGuardLedger
+import services.titles.TitleNormalizer
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}

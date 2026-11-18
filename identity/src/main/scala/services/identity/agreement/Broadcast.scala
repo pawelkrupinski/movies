@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.billing.{BillingPieces, DecorationWords}
+import services.titles.billing.{BillingPieces, DecorationWords}
 import services.identity.StageRelays
 import services.identity.{Answer, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
 import services.identity.IdentityMeasures.Film
@@ -197,7 +197,7 @@ object Broadcast {
     def bannerOf(titles: Seq[String], billsWork: String => Boolean): Set[String] =
       titles.flatMap(BillingPieces.pieces)
         .filterNot(piece => billsWork(piece) || services.identity.StageWorks.resolver.named(IdentityMeasures.key(piece)).nonEmpty)
-        .flatMap(piece => services.movies.TitleContainment.tokens(CamelCase.replaceAllIn(piece, " ")))
+        .flatMap(piece => services.titles.TitleContainment.tokens(CamelCase.replaceAllIn(piece, " ")))
         .filter(word => word.length >= 4 && !word.forall(_.isDigit) && !DecorationWords.EventWords(word)).toSet
 
     /** Does a listing's banner spell the record's house: every word of it the house's (an abbreviation: "Opera" of "The

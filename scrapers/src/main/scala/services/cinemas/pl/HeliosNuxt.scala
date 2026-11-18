@@ -7,7 +7,7 @@ import play.api.libs.json._
 
 import java.time.LocalDateTime
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /** Per-cinema Helios configuration: which `Cinema` the scrape feeds, the page
  *  URL slug (`<citySlug>/<cinemaSlug>`) whose `/repertuar` carries the NUXT

@@ -2,8 +2,9 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.movies.{CacheKey, TitleNormalizer}
-import services.resolution.TitleMatch
+import services.movies.CacheKey
+import services.titles.TitleNormalizer
+import services.titles.TitleMatch
 
 /**
  * The titles a rating site (Metacritic, Rotten Tomatoes) is asked for one film

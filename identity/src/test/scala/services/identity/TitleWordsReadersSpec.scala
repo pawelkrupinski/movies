@@ -1,14 +1,14 @@
 package services.identity
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import models.{Country, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.agreement.NonFilmEvents
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
-/** Each reader of the one word table ([[services.movies.TitleWords]]) reads a concept in every language a country bills
+/** Each reader of the one word table ([[services.titles.TitleWords]]) reads a concept in every language a country bills
  *  in — the words each rule's own list lacked before the table: a German anniversary, a German ballet house, a German
  *  surprise film, a Spanish sneak, a Spanish audience note. */
 class TitleWordsReadersSpec extends AnyFlatSpec with Matchers {

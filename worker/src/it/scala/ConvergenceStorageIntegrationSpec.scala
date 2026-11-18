@@ -34,13 +34,13 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers with t
   it should "key through the country it was built for, not the single-country default" in {
     val de = ConvergenceStorage.mongo(
       mongoTarget, "normalizer-scope-spec",
-      services.movies.TitleNormalizer.forCountry(models.Country.Germany))
+      services.titles.TitleNormalizer.forCountry(models.Country.Germany))
     try {
       withClue("a German leg must not fold ' & ' to the Polish ' i ': ") {
         de.movies.normalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
       }
       // …and Poland's really does differ, so the assertion above is not vacuous.
-      services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+      services.titles.TitleNormalizer.forCountry(models.Country.Poland)
         .sanitize("Minions & Monster") shouldBe "minionsimonster"
     } finally de.close()
   }

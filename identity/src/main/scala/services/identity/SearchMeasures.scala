@@ -1,7 +1,7 @@
 package services.identity
 
-import services.billing.Credits
-import services.movies.TitleContainment
+import services.titles.billing.Credits
+import services.titles.TitleContainment
 
 import IdentityMeasures.*
 

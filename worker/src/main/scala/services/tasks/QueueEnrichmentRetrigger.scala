@@ -7,7 +7,7 @@ import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey
 import services.movies.{EnrichmentRetrigger, RetriggerKind}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Turns the cache's per-case merge retriggers into worker TASKS. When a merge

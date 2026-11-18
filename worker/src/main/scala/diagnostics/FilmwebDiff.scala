@@ -138,7 +138,7 @@ object FilmwebDiff {
   /** One run's window — `[today, windowEnd]` (no end: everything upcoming), Poland's `now` — and what it reads both
    *  sides with. */
   private final case class Run(options: Options, clock: java.time.Clock, now: LocalDateTime, http: HttpFetch,
-                               titles: services.movies.TitleNormalizer, catalog: CinemaScraperCatalog,
+                               titles: services.titles.TitleNormalizer, catalog: CinemaScraperCatalog,
                                commit: String, report: Report) {
     def today: LocalDate     = now.toLocalDate
     def windowEnd: Option[LocalDate] = options.daysAhead.map(days => today.plusDays(days.toLong))
@@ -190,7 +190,7 @@ object FilmwebDiff {
     val now     = new models.VenueClock(clock).now(models.TimeZones.Poland)
     val http    = new RealHttpFetch()
     // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.
-    val titles  = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+    val titles  = services.titles.TitleNormalizer.forCountry(models.Country.Poland)
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy, as the worker reaches Multikino and biletyna, when the Decodo credentials are set.
     val shards  = ResidentialShards.fromCredentials(process.proxyUser, process.proxyPassword, TlsTrust.newContext())
@@ -362,7 +362,7 @@ object FilmwebDiff {
    *  midnight (confirmed: a 2026-09-13 23:33 manual run over-reported ~10 such
    *  gaps at Kino Mikro alone that the routine 06:00 run never sees). */
   private[diagnostics] def withinWindow(
-    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: Option[LocalDate], titles: services.movies.TitleNormalizer
+    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: Option[LocalDate], titles: services.titles.TitleNormalizer
   ): Map[String, Seq[LocalDateTime]] = {
     val endOfDay = windowEnd.map(_.plusDays(1).atStartOfDay()) // exclusive: whole windowEnd day
     movies
@@ -381,7 +381,7 @@ object FilmwebDiff {
     fwTry:     Try[Seq[CinemaMovie]],
     now:       LocalDateTime,
     windowEnd: Option[LocalDate],
-    titles:    services.movies.TitleNormalizer
+    titles:    services.titles.TitleNormalizer
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, OUR_FETCH_FAILED,

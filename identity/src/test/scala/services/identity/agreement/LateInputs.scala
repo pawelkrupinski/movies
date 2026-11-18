@@ -25,7 +25,7 @@ import scala.collection.mutable
  * leaves through the model's batch, as a scrape does.
  */
 object LateInputs {
-  val normalizer: services.movies.TitleNormalizer = SingleCountryNormalizer.titleNormalizer
+  val normalizer: services.titles.TitleNormalizer = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
 
   /** The kinds of input the identity system reads. */

@@ -12,7 +12,7 @@ import java.util.Locale
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Ursynowskie Centrum Kultury „Alternatywy" (Warszawa). Filmweb carries no

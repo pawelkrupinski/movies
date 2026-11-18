@@ -1,13 +1,13 @@
 package services.identity.agreement
 
-import services.billing.BillingPieces
+import services.titles.billing.BillingPieces
 
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ListingShape, PosterEvidence, Question}
 import services.identity.toAnswer
 import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
-import services.movies.{TitleContainment, TitleNormalizer}
+import services.titles.{TitleContainment, TitleNormalizer}
 
 import scala.annotation.unused
 import scala.collection.mutable

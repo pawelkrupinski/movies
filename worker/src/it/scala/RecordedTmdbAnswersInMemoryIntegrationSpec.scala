@@ -71,7 +71,7 @@ class RecordedTmdbAnswersInMemoryIntegrationSpec extends AnyFlatSpec with Matche
 
   "a convergence replay over a real database" should "keep its TMDB answers in memory, none in the run's Mongo" in {
     val country = models.Country.Germany
-    val storage = tools.ConvergenceStorage.mongo(mongoTarget, "tmdbmem-wiring", services.movies.TitleNormalizer.forCountry(country),
+    val storage = tools.ConvergenceStorage.mongo(mongoTarget, "tmdbmem-wiring", services.titles.TitleNormalizer.forCountry(country),
       services.movies.MovieChangeStream.Debounce.forCountry(country))
     try {
       val wiring = new tools.ArchiveReplayWiring(country, storage.archive, None, storage, s"enrichment-${country.code}",

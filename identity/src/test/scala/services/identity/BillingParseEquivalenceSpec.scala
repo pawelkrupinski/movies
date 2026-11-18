@@ -37,7 +37,7 @@ object BillingParseEquivalenceSpec {
   /** What the billing readers make of `text`: a field is left out where it says nothing (equal to the text, empty or
    *  none), so the golden file stays small and a row reads as what the parse found. */
   def reading(text: String): JsObject = {
-    val parse  = services.billing.BillingParse(text)
+    val parse  = services.titles.billing.BillingParse(text)
     val peeled = parse.peeled
     val fields = Seq(
       "formatless"  -> Option.when(peeled.title != text)(JsString(peeled.title)),
@@ -59,7 +59,7 @@ object BillingParseEquivalenceSpec {
       "formatWords"  -> Some(parse.formatWords).filter(_.nonEmpty).map(Json.toJson(_)),
       // banners and strands: the delimited pieces, the segments a bracket pipes, the banner's slot, a programme's slot
       "pieces"       -> Some(parse.pieces).filter(_.sizeIs > 1).map(Json.toJson(_)),
-      "segments"     -> Some(services.billing.BillingParse(parse.uncertified).segments).filter(_.parts.sizeIs > 1).map(segments =>
+      "segments"     -> Some(services.titles.billing.BillingParse(parse.uncertified).segments).filter(_.parts.sizeIs > 1).map(segments =>
         Json.obj("parts" -> segments.parts, "breaks" -> segments.breaks)),
       "banner"       -> parse.banner.map(JsString(_)),
       "slot"         -> parse.programmeSlot.map(JsString(_)),

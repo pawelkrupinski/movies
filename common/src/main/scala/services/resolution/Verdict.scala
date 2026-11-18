@@ -1,5 +1,7 @@
 package services.resolution
 
+import services.movies.FilmEvidence
+
 import models.SourceData
 import services.movies.{RuntimeCorroboration, SamePerson}
 

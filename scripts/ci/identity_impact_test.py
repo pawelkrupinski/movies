@@ -261,7 +261,7 @@ class LocalTestsTest(unittest.TestCase):
     def test_a_title_rule_change_runs_the_scraper_specs_it_reaches(self):
         # Main #2266: helios-suffix-9 dropped, and only HeliosClientFullRepertoireSpec (Helios's scraper cleans its
         # titles with its venue rows) saw "... - seanse z konkursami HDD" stop folding; the identity set ran no scraper spec
-        tests = {"scrapers": {"clients.helios.HeliosClientFullRepertoireSpec"}, "worker": {"services.titlerules.X"}}
+        tests = {"scrapers": {"clients.helios.HeliosClientFullRepertoireSpec"}, "worker": {"services.titles.rules.X"}}
         plan = ii.plan(local_identity_lines(), [], tests, ["pl"])
         self.assertIn("scrapers/testOnly clients.helios.HeliosClientFullRepertoireSpec -- -Didentity.countries=pl", plan)
 

@@ -2,7 +2,8 @@ package scripts
 
 import org.mongodb.scala.MongoDatabase
 import services.MongoConnection
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, TitleNormalizer}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.titles.TitleNormalizer
 
 /** The movies store of the database the script's resolved configuration names (`MONGODB_URI`,
  *  with `MONGODB_DB` / `KINOWO_COUNTRY` picking the database), for the read-and-patch scripts.

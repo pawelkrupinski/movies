@@ -21,7 +21,7 @@ listing and the film shared a retention key.
 A listing billing an event-cinema relay's banner and a listing of the same title billing none are two works: they never
 share a take, whatever listings are present and in whatever order they came.
 
-- **What bills a relay** (`services.movies.RelayBanner`): what the codebase already read as one. An opera or ballet house
+- **What bills a relay** (`services.titles.RelayBanner`): what the codebase already read as one. An opera or ballet house
   (`StageHouse.billed`: "Tosca (ROH)", "Bolshoi Ballet: ...") and the title rules whose `effect` is `relay`
   (title-rules.tsv: NT Live prefixed and suffixed, the Met, RBO, a house's "... 2026/27:" season banner, Exhibition On
   Screen, an "... encore", BTS's tour). Those rows still strip or rename the banner for the LOOKUP (TMDB is searched by
@@ -89,7 +89,7 @@ B is not landed. In its place, one direction only: a PLAIN listing is denied a r
 contradict that record (`RelayRecords.contradictedByOwnText`, a node denial in `FamilyScope`). No cannot-link, no split by
 listing kind, no retention marking.
 
-- The record is a relay's: one of its titles bills a relay banner (`services.movies.RelayBanner`: stage houses, the title
+- The record is a relay's: one of its titles bills a relay banner (`services.titles.RelayBanner`: stage houses, the title
   rules of effect `relay`, a broadcaster's name anywhere in the title).
 - The listing bills none, and its own text (`Listing.names`: synopsis and cast field, never a feed's copy) names whole
   the director of another record its OWN searches reached (no relay's), and none of the relay record's directors.

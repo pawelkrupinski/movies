@@ -114,7 +114,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  carries "Lalka" whole, but its "Dolly" names Blackhurst's film: it is not merely a decorated
    *  "Lalka", and the segment must not decide between the two for it. */
   private def namesBeside(decorated: EvidenceNode, whole: String): Boolean = {
-    val words = services.movies.TitleContainment.tokens(whole).toSet
+    val words = services.titles.TitleContainment.tokens(whole).toSet
     families.scopeOf(decorated).of(decorated).exists { scored =>
       val pieces = scoring.namingPieces(decorated, scored.candidate)
       !scored.denied && pieces.nonEmpty && pieces.forall(piece => (piece.toSet intersect words).isEmpty)

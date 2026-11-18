@@ -7,7 +7,8 @@ import models.ResolvedMovie
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.bson.{BsonArray, BsonDocument, BsonDocumentReader, BsonDocumentWriter, BsonValue}
-import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
+import services.titles.TitleNormalizer
 import services.readmodel.{Derivation, DerivationScope, DerivationVersion, ReadModelProjection}
 
 import java.nio.charset.StandardCharsets.UTF_8

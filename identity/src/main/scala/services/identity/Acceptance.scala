@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.{BillingPieces, Credits}
+import services.titles.billing.{BillingPieces, Credits}
 
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.IdentityMeasures.ListingFilm
@@ -284,7 +284,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.number("venues.corroborating").exists(_ > 0) &&
       other.probability >= taken.probability)
 
-  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[services.billing.BillingParse.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
+  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[services.titles.billing.BillingParse.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
    *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
    *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
@@ -325,7 +325,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] val SlashBreak = """\s+/\s+""".r
   /** A title's words, a leading article aside: what a piece of a bill is matched to a film's whole title by. */
   private def pieceKey(text: String): Seq[String] = {
-    val words = services.movies.TitleContainment.tokens(text)
+    val words = services.titles.TitleContainment.tokens(text)
     if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
   }
 

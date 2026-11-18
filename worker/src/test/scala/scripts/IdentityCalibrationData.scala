@@ -5,7 +5,8 @@ import models.{Cinema, CinemaMovie, Country}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import services.identity.{IdentityMeasures, TitleDecorations, TmdbFilmRecord}
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Number}
-import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeListing}
+import services.titles.TitleNormalizer
 import tools.CorpusFixture
 
 import java.net.URLEncoder

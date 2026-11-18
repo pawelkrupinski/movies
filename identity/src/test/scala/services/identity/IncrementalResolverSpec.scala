@@ -315,7 +315,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     // and one film took them all — Metropol and KiKuBi on Schleinzer's film — and the next fill moved them back.
     import FilmTable.F
     import models.{Cinema, CinemaMovie, Movie, Showtime}
-    val germany = services.movies.TitleNormalizer.forCountry(models.Country.Germany)
+    val germany = services.titles.TitleNormalizer.forCountry(models.Country.Germany)
     val venues  = Cinema.all.filter(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).take(7)
     def billed(cinema: Cinema, year: Option[Int], directors: Seq[String], page: Option[String] = None, ids: Map[String, String] = Map.empty) =
       Listing.of(cinema, CinemaMovie(Movie("Rose", releaseYear = year), cinema, None, page, None, Nil, directors,

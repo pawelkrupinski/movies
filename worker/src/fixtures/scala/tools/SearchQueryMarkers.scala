@@ -2,7 +2,7 @@ package tools
 
 import models.Country
 import services.identity.MultiFilmBill
-import services.movies.FormatTags
+import services.titles.FormatTags
 
 import java.util.regex.Pattern
 import scala.util.matching.Regex

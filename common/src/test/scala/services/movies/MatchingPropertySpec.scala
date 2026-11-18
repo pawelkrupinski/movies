@@ -1,11 +1,14 @@
 package services.movies
 
+import services.titles.SequelMarker
+import services.titles.TitleContainment
+
 import tools.SpecClock.given
 
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators.{genFilmEvidence, genCandidate}
-import services.resolution.{FilmEvidence, Verdict}
+import services.resolution.Verdict
 
 /**
  * The matching rules as METAMORPHIC properties: transform a title or a piece of

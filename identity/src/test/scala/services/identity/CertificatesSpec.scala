@@ -65,6 +65,6 @@ class CertificatesSpec extends AnyFlatSpec with Matchers {
   "A listing" should "carry the certificate its venue bills it with" in {
     val cinema = venueIn(Country.UnitedKingdom)
     val scraped = CinemaMovie(Movie("Obsession"), cinema, None, None, None, Nil, Nil, Nil, ageRating = Some("PG"))
-    Listing.of(cinema, scraped, services.movies.TitleNormalizer.forCountry(Country.UnitedKingdom)).certificate shouldBe Some("PG")
+    Listing.of(cinema, scraped, services.titles.TitleNormalizer.forCountry(Country.UnitedKingdom)).certificate shouldBe Some("PG")
   }
 }

@@ -43,7 +43,7 @@ class ShardsTest(unittest.TestCase):
         self.assertEqual(t.shard(self.PLAN, 0, 1), self.PLAN)
 
     def test_a_line_naming_no_class_outright_goes_whole_to_one_shard(self):
-        lines = ["identity/test", "testOnly services.identity.* services.titlerules.* scripts.* tools.HardClusterRatchetSpec",
+        lines = ["identity/test", "testOnly services.identity.* services.titles.rules.* scripts.* tools.HardClusterRatchetSpec",
                  "worker/testOnly deploy.* -deploy.AotCacheOptionsSpec", "Test/compile"] + self.PLAN
         for n in (2, 3, 4):
             shards = [t.shard(lines, k, n) for k in range(n)]

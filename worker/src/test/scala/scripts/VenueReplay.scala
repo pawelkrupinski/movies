@@ -3,7 +3,8 @@ package scripts
 import models.{Cinema, CinemaMovie, Country, SourceData, VenueClock}
 import services.cinemas.CinemaScraperCatalog
 import services.cinemas.common.{CinemaScraper, DetailEnricher}
-import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, StringPool, TitleNormalizer}
+import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, StringPool}
+import services.titles.TitleNormalizer
 import services.scrapes.ArchivedScrape
 import tools.{CinemaSlotInvariants, CorpusFixture, FallbackHttpFetch, HttpFetch, RecordedCorpus, SearchQueryMarkers}
 

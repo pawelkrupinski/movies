@@ -1,0 +1,148 @@
+package services.titles.billing
+
+import services.titles.{TitleContainment, TitleSeason, TitleWords}
+
+/** The grammar of the dates and numbers a billing carries: the seasons and bracketed years it dates a work by, the
+ *  instalment its title numbers, the subtitle it gives that instalment and the parts it titles. Read through
+ *  [[BillingParse]] ([[BillingParse.yearless]], [[BillingParse.instalment]], [[BillingParse.subtitle]],
+ *  [[BillingParse.titledParts]]); the identity measures compare what it finds against a film's titles. */
+object NumberedTitles {
+
+  /** The fewest letters a word needs to name something by itself, whole or as an inflected stem. */
+  val StemLetters = 4
+
+  /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
+  val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
+  /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
+  private[billing] def withoutYears(t: String): String =
+    if (!TitleSeason.hasAsciiDigit(t)) t else BracketedYear.replaceAllIn(TitleSeason.without(t), " ")
+
+  /** A Roman numeral of the size a series numbers its instalments by (I to XXXIX), by its grammar, never a list of
+   *  values: tens, then units. The larger letters (L, C, D, M) spell words far more often than instalments ("M", "Mix",
+   *  "DC"). */
+  val RomanNumeral = "(?=[xvi])(x{0,3})(ix|iv|v?i{0,3})".r
+  private val RomanDigit = Map('i' -> 1, 'v' -> 5, 'x' -> 10)
+  /** The value of a folded Roman numeral ([[RomanNumeral]]), if `t` is one. */
+  def romanValue(t: String): Option[Int] =
+    Option.when(RomanNumeral.matches(t))(t.map(RomanDigit).foldRight((0, 0)) { case (v, (sum, max)) =>
+      if (v < max) (sum - v, max) else (sum + v, v) }._1)
+  /** A title word that is a Roman numeral ([[RomanNumeral]]) of two letters or more — "i" is the Polish "and". */
+  def numbersAnInstalment(word: String): Boolean = word.length > 1 && RomanNumeral.pattern.matcher(word).matches()
+
+  /** The numbers a title spells out where it numbers a part ("Part Two", "Część trzecia", "Teil zwei", "Parte tres"), in
+   *  every language a country bills in, folded as [[TitleContainment.tokens]] hands them over: each one's value. A number
+   *  only after a [[PartWordTokens]] word ([[spelledPartNumbers]]): "The Three Musketeers" numbers nothing. */
+  val SpelledInstalments: Map[String, Int] = Map(
+    "one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5, "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9,
+    "ten" -> 10, "first" -> 1, "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
+    "pierwsza" -> 1, "pierwszy" -> 1, "druga" -> 2, "drugi" -> 2, "trzecia" -> 3, "trzeci" -> 3, "czwarta" -> 4,
+    "czwarty" -> 4, "piata" -> 5, "piaty" -> 5,
+    "eins" -> 1, "zwei" -> 2, "drei" -> 3, "vier" -> 4, "erster" -> 1, "erste" -> 1, "zweiter" -> 2, "zweite" -> 2,
+    "dritter" -> 3, "dritte" -> 3,
+    "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "primera" -> 1, "segunda" -> 2, "tercera" -> 3, "cuarta" -> 4)
+
+  /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
+   *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
+   *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". Matched on the title
+   *  with its accents folded ([[folded]]: "Część" is "czesc", "Épisode" "episode"), as the vocabulary is spelled. */
+  private val PartWord    = """(?:teil|part|czesc|parte|partie|kapitel|chapter)"""
+  /** The number after a [[PartWord]]: digits, a Roman numeral, or a number spelled out in the shared vocabulary
+   *  ([[SpelledInstalments]]: "Part Two", "Część trzecia", "Teil vier", "Parte tres"), the longest spelling first. */
+  private val PartNumber  = SpelledInstalments.keys.toSeq.sortBy(word => (-word.length, word)).mkString("""(\d+|[ivx]+|""", "|", """)\b""")
+  private val EpisodeWord = """(?:episode|episodio|folge|odcinek)"""
+  private val TitledPart =
+    (s"""(?iU)\\b(?:$PartWord\\s*$PartNumber\\s*[,:–—-]""" +
+      s"""|$EpisodeWord\\b\\s*(?:(\\d+|[ivx]+)\\b)?\\s*[,:–—-]?)\\s*([^()\\[\\]|]+)""").r
+  /** `title` with its accents folded, as [[TitleContainment.tokens]] folds a word: what [[PartWord]] and [[PartNumber]]
+   *  are matched on. */
+  private def folded(title: String): String = tools.TextNormalization.deburr(title)
+  /** The parts `title` numbers and subtitles ([[TitledPart]]): each one's number, if it has one, and its subtitle's
+   *  words of four letters or more. */
+  private[billing] def titledParts(title: String): Seq[(Option[String], Seq[String])] =
+    TitledPart.findAllMatchIn(folded(title)).map { m =>
+      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption).map(partNumber),
+        TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
+    }.toSeq
+
+  /** A part a title numbers by name — "Dune: Part Three", "Teil 2", "Episode VII" — not a bare number beside it. */
+  private val NamedPart = s"""(?iU)\\b(?:$PartWord|$EpisodeWord)\\s*$PartNumber""".r
+  /** The numbers of the parts `title` names ([[NamedPart]]), however each is spelled ([[partNumber]]): "Diuna: Część
+   *  trzecia" names part "3". */
+  def namedPartNumbers(title: String): Iterator[String] =
+    NamedPart.findAllMatchIn(folded(title)).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(partNumber))
+
+  /** A part's number however it is spelled — "2", "II", "two", "zwei", "druga" — so "Dune: Part 2 - …" is "Dune: Part Two". */
+  def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
+  private lazy val PartNumbers: Map[String, String] =
+    Map("i" -> "1", "ii" -> "2", "iii" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9",
+      "x" -> "10") ++ SpelledInstalments.view.mapValues(_.toString)
+
+  /** The words a title numbers a part after, folded: "Part", "Teil", "Część" ("czesc", "cz"), "Parte", "Chapter". */
+  val PartWordTokens: Set[String] = Set("teil", "part", "pt", "czesc", "cz", "parte", "partie", "kapitel", "chapter", "capitulo")
+  /** `tokens` (a title's, folded) with every number a part word spells out ([[SpelledInstalments]]) written in digits:
+   *  "diuna czesc trzecia" is "diuna czesc 3", as "Diuna: część 3" bills it. */
+  def spelledPartNumbers(tokens: Seq[String]): Seq[String] =
+    if (!tokens.exists(PartWordTokens)) tokens
+    else tokens.indices.map(at => tokens(at) match {
+      case word if at > 0 && PartWordTokens(tokens(at - 1)) => SpelledInstalments.get(word).fold(word)(_.toString)
+      case word                                             => word
+    })
+
+  /** A break between a title's series and the subtitle it gives an instalment: "The Lord of the Rings: The Two Towers",
+   *  "Terminator 2 - Judgment Day", "Der Herr der Ringe – Die zwei Türme". */
+  private val SubtitleBreak = java.util.regex.Pattern.compile("""\s*(?::\s|\s[–—-]\s)\s*""")
+  /** The words of a subtitle that tag a VERSION of the film, never another instalment, wherever the closing tag the parse
+   *  reads off first ([[VersionTags.versionless]]) leaves them — the version, edition and anniversary vocabulary of every
+   *  language ([[TitleWords.Concept.VersionTag]], [[DecorationWords.EditionWords]]: "Extended", "Director's Cut",
+   *  "wersja reżyserska", "versión extendida") — a print's format, an intermission, and the words that number a part
+   *  ("… Hallows: Part 1"), which name no subtitle. */
+  private val NoSubtitleWords: Set[String] =
+    TitleWords.tokens(TitleWords.Concept.VersionTag) ++ DecorationWords.EditionWords ++ Set(
+      "version", "versions", "release", "imax", "dolby", "atmos", "screenx", "intermission", "pause",
+      "part", "teil", "episode", "chapter", "kapitel", "folge", "parte", "partie")
+  /** Numbers spelled out, in English and German: a series NAMED by its number ("The Fantastic Four", "Ocean's Eleven")
+   *  is billed "Fantastic 4", "Ocean's 11" — the number its name, not an instalment's. */
+  private val SpelledNumbers: Set[String] = Set(
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "eins", "zwei",
+    "drei", "vier", "funf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwolf")
+
+  /** The subtitle a title gives the instalment its series names ([[BillingParse.subtitle]]). */
+  final case class Subtitle(words: Seq[String], seriesSpellsNumber: Boolean)
+
+  /** The instalment a title's series and subtitle name: its subtitle's words of four letters or more that tag no
+   *  version ([[NoSubtitleWords]]), and whether its series spells a number out ([[SpelledNumbers]]). None for a title
+   *  with no subtitle. */
+  private[billing] def subtitleOf(title: String): Option[Subtitle] = {
+    val pieces = SubtitleBreak.split(withoutYears(VersionTags.versionless(title).getOrElse(title)), 2)
+    Option.when(pieces.length == 2) {
+      val words = TitleContainment.tokens(pieces(1)).filter(w => w.length >= StemLetters && w.exists(_.isLetter) && !NoSubtitleWords(w))
+      Subtitle(words, TitleContainment.tokens(pieces(0)).exists(SpelledNumbers))
+    }.filter(_.words.nonEmpty)
+  }
+
+  /** The break that closes a title's series: "Der Herr der Ringe 2 (Extended Version)", "Avatar 2 – The Way of Water". */
+  private val SeriesBreak = java.util.regex.Pattern.compile("""[:|/()\[\]–—,.;!?]|\s-\s""")
+  /** A year written with its century elided — PL "Halloween '26: Inni" — no instalment's number. */
+  private val ElidedYear  = """['’`]\d\d\b""".r
+  /** Numbers a slash joins — a date ("10/19/26", "02/12/2026"), a short season ("RB&O 26/27"), a fraction ("Nine 1/2
+   *  Weeks") — no instalment's number. */
+  private val SlashedNumbers = """\d+(?:\s*/\s*\d+)+""".r
+  /** The instalment a title numbers: the number closing its first piece, after at least one word and not after a number
+   *  opening it, a date's and a season's numbers aside — an Arabic one of at
+   *  most three digits, a Roman one of two letters or more, or a number spelled after a part word ("… Part Two"). A year
+   *  ("Blade Runner 2049"), a number alone ("2001: A Space Odyssey"), one mid-title ("9½ Wochen") or in a later piece
+   *  ("WAJDA: re- wizje. Przegląd … w 100. rocznicę urodzin") numbers no instalment. */
+  private[billing] def instalmentNumber(title: String): Option[Int] = {
+    val dateless = SlashedNumbers.replaceAllIn(ElidedYear.replaceAllIn(withoutYears(title), " "), " ")
+    val series   = SeriesBreak.split(dateless).headOption.map(TitleContainment.tokens).getOrElse(Nil)
+    series.lastOption.filter(_ => series.sizeIs >= 2).flatMap { last =>
+      if (series.init.lastOption.exists(PartWordTokens) && PartNumbers.contains(last)) PartNumbers(last).toIntOption
+      // a series opening with a number as well as closing on one is named by its numbers: "13 Going on 30", "9 to 5"
+      else if (series.head.forall(_.isDigit)) None
+      // an Arabic number of ASCII digits only: another script's digits ("٢") number nothing
+      else if (last.length <= 3 && last.forall(_.isDigit)) Option.when(last.forall(c => c >= '0' && c <= '9'))(last.toInt)
+      else if (numbersAnInstalment(last)) romanValue(last)
+      else None
+    }
+  }
+}

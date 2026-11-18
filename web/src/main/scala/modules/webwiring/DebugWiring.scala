@@ -101,7 +101,7 @@ trait DebugWiring { self: Wiring =>
         // THIS stack's country, not the serving one: /debug reads another
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
-        val normalizer = services.movies.TitleNormalizer.forCountry(country)
+        val normalizer = services.titles.TitleNormalizer.forCountry(country)
         val repository = new MongoMovieRepository(conn.database, clock,
           screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch)
         val freshness  = mirrorFreshnessOf(conn)

@@ -4,8 +4,9 @@ import testsupport.SourceTrees
 import models.Country
 import services.identity._
 import services.identity.ListingShape
-import services.movies.{ListingKey, TitleContainment, TitleNormalizer}
-import services.titlerules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
+import services.movies.ListingKey
+import services.titles.{TitleContainment, TitleNormalizer}
+import services.titles.rules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
 import tools.{CommandLine, UnmatchedClusters}
 
 import play.api.libs.json.Json
@@ -18,7 +19,7 @@ import java.util.regex.Pattern
  * The weekly DECORATION DISCOVERY (`.github/workflows/decoration-discovery.yml`): mines the listing titles the
  * identity pipeline leaves unmatched (the unmatched clusters' fixture, [[UnmatchedClusters]]) for edge runs that
  * recur around many different titles — a venue's programme banner ("Edukacja Młode Horyzonty"), a format or
- * premiere tag — proposes each as a search strip ([[services.titlerules.ExtraTitleRules.discovered]]), and MEASURES
+ * premiere tag — proposes each as a search strip ([[services.titles.rules.ExtraTitleRules.discovered]]), and MEASURES
  * every proposal on its own against the fixture's replay:
  *
  *  - the clusters a proposal's new search titles touch are resolved again with it and without it (the control),
@@ -62,7 +63,7 @@ object DecorationDiscovery {
   /** The marker line in the title-rule table (`title-rules.tsv`) the kept proposals are inserted above: the end of
    *  the lookup tier. */
   val Marker = "# decoration-discovery: proposals are inserted above this line"
-  val RulesSource: Path = SourceTrees("common/src/main/resources").file(services.titlerules.TitleRuleTable.Resource)
+  val RulesSource: Path = SourceTrees("common/src/main/resources").file(services.titles.rules.TitleRuleTable.Resource)
 
   // ── mining ────────────────────────────────────────────────────────────────────────────────
 

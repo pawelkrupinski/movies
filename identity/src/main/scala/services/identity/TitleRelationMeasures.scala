@@ -1,7 +1,7 @@
 package services.identity
 
-import services.billing.{BillJoins, BillingParse}
-import services.movies.TitleContainment
+import services.titles.billing.{BillJoins, BillingParse}
+import services.titles.TitleContainment
 
 import IdentityMeasures.*
 

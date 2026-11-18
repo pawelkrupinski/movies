@@ -218,8 +218,8 @@ worker:tools.SourceTokenTablesSpec	@repo *.scala
 # #2601). scripts/ci/lint_registry_reads.py --missing names a reader with no row; --suggest prints the row it would want.
 common:models.CountrySpec	data/germany/retired.json
 common:services.MongoConnectionSpec	scripts/local-mirror/mirror-targets.js
-common:services.titlerules.ProdTitlesNormalizationSpec	common/src/test/resources/fixtures/prod-movies/titles.txt
-common:services.titlerules.TitleRulesGoldenSpec	common/src/test/resources/fixtures/prod-movies/titles.txt test/resources/fixtures/billing-parse/golden.jsonl test/resources/fixtures/title-rules/golden.jsonl
+common:services.titles.rules.ProdTitlesNormalizationSpec	common/src/test/resources/fixtures/prod-movies/titles.txt
+common:services.titles.rules.TitleRulesGoldenSpec	common/src/test/resources/fixtures/prod-movies/titles.txt test/resources/fixtures/billing-parse/golden.jsonl test/resources/fixtures/title-rules/golden.jsonl
 common:tools.OutcomesCannotBeDroppedSpec	build.sbt
 e2e:services.movies.FilmScheduleEndToEndSpec	-	a basic line (local-tests.txt) runs it in every sbt check
 http:tools.TlsTrustSpec	http/src/test/resources/certs/cyber-folks-dv-tls-g3-r31-ca.pem
@@ -283,7 +283,7 @@ worker:diagnostics.RosterAuditArgumentsSpec	.github/workflows/roster-audit.yml s
 worker:modules.RemovalAuditLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
 worker:modules.WorkerFileLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
 worker:scripts.EnqueueSourceRefreshSpec	scripts/source-refresh
-worker:scripts.IdentityCaptureSpec	common/src/main/resources/title-rules.tsv common/src/main/scala/services/titlerules/ExtraTitleRules.scala identity/src/main/resources/identity-weights.json identity/src/main/scala/services/identity/IdentityResolver.scala identity/src/main/scala/services/identity/agreement/AgreementStage.scala web/src/main/scala/controllers/MovieController.scala worker/src/it/scala/IdentityShadow.scala
+worker:scripts.IdentityCaptureSpec	common/src/main/resources/title-rules.tsv common/src/main/scala/services/titles/rules/ExtraTitleRules.scala identity/src/main/resources/identity-weights.json identity/src/main/scala/services/identity/IdentityResolver.scala identity/src/main/scala/services/identity/agreement/AgreementStage.scala web/src/main/scala/controllers/MovieController.scala worker/src/it/scala/IdentityShadow.scala
 worker:scripts.IdentityDecorationScoreFitSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
 worker:scripts.IdentityDriftSpec	test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa/* test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc/* test/resources/fixtures/drift-slices/de/werkstattkino-camouflage-07fb3fab/* test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f/* test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734/* test/resources/fixtures/identity-flip-backlog.tsv test/resources/fixtures/identity-flips-allow.tsv test/resources/fixtures/identity-slices/uk-queen-s-film-theatre-belfast-rose-2023--4f64ad1a/*
 worker:scripts.IdentitySliceEmitCaseSpec	test/resources/fixtures/identity-unmatched/* test/resources/fixtures/identity-unmatched/uk.json.gz

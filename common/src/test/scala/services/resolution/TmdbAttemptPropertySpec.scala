@@ -1,5 +1,7 @@
 package services.resolution
 
+import services.movies.FilmEvidence
+
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators._

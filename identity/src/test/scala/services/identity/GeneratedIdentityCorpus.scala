@@ -1,7 +1,8 @@
 package services.identity
 
 import models._
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 
 import scala.util.Random
 
@@ -82,7 +83,7 @@ object GeneratedIdentityCorpus {
    *  One query in eleven and one record in seven are GAPS. */
   class SyntheticLookups(universe: Seq[Film], normalizer: TitleNormalizer) extends IdentityLookups {
     private val known = universe.filter(_.tmdbId.isDefined)
-    private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
+    private def words(s: String) = services.titles.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
     private def hit(f: Film) = Hit(f.tmdbId.get, f.title, None, Some(f.year), f.popularity)
     override def hasDetail(l: Listing): Boolean = false
     override def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)

@@ -6,7 +6,8 @@ import org.bson.json.{JsonMode, JsonWriterSettings}
 import services.identity._
 import services.identity.adapters.{CatalogueAnswerStore, FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts, VoterFamily}
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}

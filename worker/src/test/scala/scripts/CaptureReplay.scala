@@ -2,7 +2,8 @@ package scripts
 
 import services.identity._
 import services.identity.adapters.TmdbIdentityLookups
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 import tools.UnmatchedClusters
 
 import java.util.concurrent.ConcurrentHashMap

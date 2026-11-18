@@ -69,7 +69,7 @@ object UnmatchedClustersFill {
     val recorded = recording.map(dir => RecordedCorpus.open(country, dir.resolve("corpus").resolve(s"cinema-scrapes-${country.code}.json.gz"),
       settings.FixtureRoot(dir)))
     if (listingWords) recorded.foreach { opened =>
-      val normalizer = services.movies.TitleNormalizer.forCountry(country)
+      val normalizer = services.titles.TitleNormalizer.forCountry(country)
       val words = opened.rows.flatMap(row => row.films.map(Listing.of(row.cinema, _, normalizer))).map(l => l.key -> l.words).toMap
       val read  = capture.listings.count(l => words.get(l.key).exists(_.nonEmpty))
       capture = capture.copy(listings = capture.listings.map(l => words.get(l.key).fold(l)(w => l.copy(words = w))))
@@ -112,7 +112,7 @@ object UnmatchedClustersFill {
     var lookups     = new UnmatchedClusters.Replay(capture)
     val catalogue   = new CatalogueFill(store, clock, cache)
     def agree() = UnmatchedClusters.agree(capture.decisions, capture.listings, { lookups = new UnmatchedClusters.Replay(capture); lookups }, families.map(f => f -> store.answers(f)).toMap,
-      store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
+      store.version, tmdbOf, services.titles.TitleNormalizer.forCountry(country), posterStore,
       modules.wiring.IdentityProjectionWiring.identities(country.code), catalogue.answers,
         modules.wiring.IdentityProjectionWiring.listedOn(country.code))
     // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next time

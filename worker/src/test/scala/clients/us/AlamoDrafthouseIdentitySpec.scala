@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.us.AlamoDrafthouseClient
 import services.identity.{CatalogueId, Listing}
 import services.identity.adapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.LocalDate
 

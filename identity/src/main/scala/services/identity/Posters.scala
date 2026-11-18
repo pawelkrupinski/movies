@@ -1,9 +1,9 @@
 package services.identity
 
-import services.billing.BillingPieces
+import services.titles.billing.BillingPieces
 
 import java.awt.image.BufferedImage
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 /**
  * A poster's perceptual hash (pHash, 63 bits): the signs of the lowest 8×8 DCT frequencies of its 32×32 grey image,
@@ -216,7 +216,7 @@ object PosterEvidence {
    *  40th Anniversary") numbers no edition against a record titled with its own year. Of a title in pieces, only the
    *  pieces naming the film date it: a festival's year beside the work ("O vecech nadprirozených - Von übernatürlichen
    *  Dingen | Tschechischer Filmmittwoch | TDKT 2026") dates the festival, not the 1958 film. A whole title is read as its
-   *  pieces are ([[services.billing.BillingParse.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
+   *  pieces are ([[services.titles.billing.BillingParse.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
    *  year it is screened, as "Casablanca (2026) | Klassiker" does. Nor does the year an anniversary the title bills
    *  falls in ("Jaws 50th Anniversary 2025", the 1975 film's fiftieth) date it away. The agreement's guard
    *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. That year, if one does. */

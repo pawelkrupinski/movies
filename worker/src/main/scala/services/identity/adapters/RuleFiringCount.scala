@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import play.api.Logging
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.util.concurrent.Executor
 import scala.collection.mutable

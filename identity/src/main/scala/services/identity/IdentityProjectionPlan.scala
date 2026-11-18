@@ -3,8 +3,8 @@ package services.identity
 import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
-import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
-  StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens, StoredMovieRecord}
+import services.titles.TitleNormalizer
 import models.TmdbAttempt
 
 import java.time.Instant

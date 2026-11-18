@@ -8,7 +8,7 @@ import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity._
 import services.identity.adapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocuments, TmdbKind,
   TmdbDocumentRetention, TmdbStore, VenueDetailLookups, VenuePageIndex}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import services.venuepages.CapturedVenuePages
 
 import java.nio.charset.StandardCharsets

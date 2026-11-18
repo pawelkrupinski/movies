@@ -1,9 +1,9 @@
 @import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb, Filmweb}
-@import services.movies.TitleNormalizer
+@import services.titles.TitleNormalizer
 @import java.time.format.DateTimeFormatter
 @import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
-@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear, now: Instant)
+@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.titles.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear, now: Instant)
 @import services.movies.CinemaSlotReadings.*
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}

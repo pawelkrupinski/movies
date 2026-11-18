@@ -4,7 +4,7 @@ import models.Country
 import org.bson.{BsonDocument, RawBsonDocument}
 import services.identity.adapters.{FamilySource, TmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.VoterFamily
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.io.{DataInputStream, DataOutputStream, EOFException, FileInputStream}
 import java.nio.charset.StandardCharsets

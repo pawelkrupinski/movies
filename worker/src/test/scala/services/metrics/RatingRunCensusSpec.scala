@@ -170,7 +170,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
 
   // ── helpers ────────────────────────────────────────────────────────────────
   private def cacheOf(rows: Seq[(CacheKey, MovieRecord)]): MovieCacheReader = new MovieCacheReader {
-    val normalizer: services.movies.TitleNormalizer          = titleNormalizer
+    val normalizer: services.titles.TitleNormalizer          = titleNormalizer
     def snapshot(): Seq[StoredMovieRecord]                   = Nil
     def lastModified: Instant                                = Instant.EPOCH
     private[services] def keyOf(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)

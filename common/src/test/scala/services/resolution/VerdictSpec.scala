@@ -1,5 +1,7 @@
 package services.resolution
 
+import services.movies.FilmEvidence
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

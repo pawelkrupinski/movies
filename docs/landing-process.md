@@ -257,7 +257,7 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
    (cold: an sbt check there takes minutes). A non-kept live sbt in the checkout also forces the temporary worktree.
 8. **Area selection.** A change on the identity paths (`is_identity_path`: `identity/`,
    `worker/src/{main,test}/scala/services/identity/`, `common/src/main/resources/title-{rules,words}.tsv`,
-   `common/src/main/scala/services/titlerules/`, `common/src/main/scala/services/movies/TitleNormalizer.scala`,
+   `common/src/main/scala/services/titles/rules/`, `common/src/main/scala/services/titles/TitleNormalizer.scala`,
    `test/resources/fixtures/identity-*`) selects `identity`, and `sbt` with it (so the basic tests run). The page
    paths (`web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`) select `sbt` only: no `page` area since
    2026-11-17. The hook no longer asks for an identity-landing-check LANDABLE.

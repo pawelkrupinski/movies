@@ -411,7 +411,7 @@ object IdentityDrift {
    *  does not hold read from prod's filed ones. */
   def recorded(reads: Reads): StageAnswers.Sources = new StageAnswers.Sources {
     def country: Country                                   = reads.country
-    def normalizer: services.movies.TitleNormalizer        = reads.normalizer
+    def normalizer: services.titles.TitleNormalizer        = reads.normalizer
     def families: Seq[VoterFamily]                         = reads.families
     def sources: Map[VoterFamily, services.identity.adapters.FamilySource] = reads.sources
     def fetch: tools.HttpFetch                             = reads.fetch
@@ -753,8 +753,8 @@ object IdentityDrift {
   /** A listing's title as the agreement stage's venue count reads its title across the corpus (`venues.current`): the
    *  title it is searched under, a trailing parenthesis off, sanitised -- what [[Worker.project]] marks a title's venues
    *  moved by. The harness's key, not the model's: retention relates listings by the model's own title relation. */
-  def titleOf(listing: Listing, normalizer: services.movies.TitleNormalizer): String = {
-    val normalized = normalizer.sanitize(services.resolution.SearchTitles.withoutTrailingParenthesis(normalizer.searchQuery(listing.title)))
+  def titleOf(listing: Listing, normalizer: services.titles.TitleNormalizer): String = {
+    val normalized = normalizer.sanitize(services.titles.SearchTitles.withoutTrailingParenthesis(normalizer.searchQuery(listing.title)))
     if (normalized.nonEmpty) normalized else normalizer.sanitize(listing.title)
   }
 

@@ -3,8 +3,9 @@ package services.enrichment
 import java.util.Locale
 
 import models.MovieRecord
-import services.movies.{CacheKey, EmbeddedYear, LatestTitleYear, TitleNormalizer, TmdbLessEligibility}
-import services.resolution.SearchTitles
+import services.movies.{CacheKey, EmbeddedYear, LatestTitleYear, TmdbLessEligibility}
+import services.titles.TitleNormalizer
+import services.titles.SearchTitles
 
 /**
  * Rating-site links for a film TMDB has no record of — asked only once TMDB was asked and found

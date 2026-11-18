@@ -48,7 +48,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   it should "read a listing's venue detail from prod's venue pages, as the model does" in {
     val page    = "http://kinopalacowe.pl/filmy/15308-festiwal-piec-smakow-morze-zote/"
     val listing = ModelRead.corpus(Seq(models.KinoPalacowe -> Seq(film(models.KinoPalacowe, "Festiwal Pięć Smaków: Morze żółte", Some(page)))),
-      services.movies.TitleNormalizer.forCountry(poland)).head
+      services.titles.TitleNormalizer.forCountry(poland)).head
     val enrichers = ProdLookupInputs.enrichersOf(poland, clock)
     val group     = enrichers.find(_.cinema == models.KinoPalacowe).map(_.detailGroup).getOrElse(fail("no Kino Pałacowe detail enricher"))
     val read      = new BsonDocument("_id", new BsonString(s"$group|$page")).append("group", new BsonString(group)).append("page", new BsonString(page))
@@ -64,7 +64,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     store.put(TmdbKind.Query, Seq(prinzSearch -> query(1001), TmdbStore.titleSearchId(language, "Unasked") -> query(9)))
     store.put(TmdbKind.Film, Seq("1001" -> hitDoc(prinz2026), "9" -> hitDoc(Hit(9, "Unasked", None, None, 1.0))))
     val listings = ModelRead.corpus(Seq(models.Helios -> Seq(film(models.Helios, "Der kleine Prinz", None))),
-      services.movies.TitleNormalizer.forCountry(poland))
+      services.titles.TitleNormalizer.forCountry(poland))
     val captured = ProdLookupInputs.capture(store, Nil, listings, Nil, poland, clock)
     captured.answers(TmdbKind.Query).keySet should contain(prinzSearch)
     captured.answers(TmdbKind.Film).keySet shouldBe Set("1001")
@@ -93,7 +93,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   // for the billed listings alone, so the live drift check's whole resolve read the kept two as bare titles, took no
   // film, and IdentityIncrementalDrift called prod's right take drift for every venue.
   "the listings a capture reads" should "be the billed and the kept a billed listing still bills the title of, their pages with them" in {
-    val normalizer = services.movies.TitleNormalizer.forCountry(poland)
+    val normalizer = services.titles.TitleNormalizer.forCountry(poland)
     val nh   = "https://www.kinonh.pl/artykul.s?id=23063"
     val kept = ModelRead.corpus(Seq(models.KinoMuza -> Seq(film(models.KinoMuza, "Mizantrop", Some(nh))),
       models.Multikino -> Seq(film(models.Multikino, "Matilda", Some("https://example.org/matilda")))), normalizer)

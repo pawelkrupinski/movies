@@ -2,7 +2,7 @@ package diagnostics
 
 import java.util.Locale
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Loose title key for cross-source film matching in [[FilmwebDiff]]: the same

@@ -3,8 +3,9 @@ package services.identity
 import java.util.Locale
 
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Missing, MissingFilm, MissingListing, Number}
-import services.movies.{EmbeddedYear, TitleContainment}
-import services.resolution.SearchTitles
+import services.movies.EmbeddedYear
+import services.titles.TitleContainment
+import services.titles.SearchTitles
 
 /**
  * The LIVE rating gate's measurements, frozen: [[IdentityMeasures]] as it was when the gate's

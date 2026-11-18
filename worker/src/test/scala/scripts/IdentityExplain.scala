@@ -2,7 +2,8 @@ package scripts
 
 import models.Country
 import services.identity.{IdentityResolver, Listing, OlderRefs, ResolverDecision}
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 import tools.{IdentityJudgements, UnmatchedClusters}
 
 import java.nio.file.Path

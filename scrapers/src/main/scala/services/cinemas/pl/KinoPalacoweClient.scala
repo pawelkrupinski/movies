@@ -12,7 +12,7 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import java.time.LocalDateTime
 import scala.util.Try
 import models.CountryNames
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 ) extends CinemaScraper with DetailEnricher {

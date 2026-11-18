@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.titles.billing.BillingParse
 
 import services.identity.IdentityMeasures.Measure
 import services.movies.ListingConstraints
@@ -104,13 +104,13 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   }
 
   /** Does `node`'s title name the film only by the PROGRAMME SLOT it bills under a festival's banner
-   *  ([[services.billing.BillingParse.programmeSlot]])? UK "Unrestricted View Horror Film Festival 2026: Opening Night" names the 2016
+   *  ([[services.titles.billing.BillingParse.programmeSlot]])? UK "Unrestricted View Horror Film Festival 2026: Opening Night" names the 2016
    *  "Opening Night" (and Cassavetes' 1977 one) by its slot alone: the festival's opening night, an event. */
   def namesOnlyAProgrammeSlot(node: EvidenceNode, candidate: Candidate): Boolean = {
     val listing = node.evidence.published
     BillingParse(listing.rawTitle.getOrElse(listing.title)).programmeSlot.exists { slot =>
       val pieces = namingPieces(node, candidate)
-      pieces.nonEmpty && pieces.forall(_ == services.movies.TitleContainment.tokens(slot).toSeq)
+      pieces.nonEmpty && pieces.forall(_ == services.titles.TitleContainment.tokens(slot).toSeq)
     }
   }
 

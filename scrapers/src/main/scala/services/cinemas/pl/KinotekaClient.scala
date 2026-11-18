@@ -9,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._

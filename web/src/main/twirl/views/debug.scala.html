@@ -1,6 +1,6 @@
-@import services.movies.TitleNormalizer
+@import services.titles.TitleNormalizer
 @import controllers.DebugController
-@(table: controllers.DebugCorpusTable, normalizer: services.movies.TitleNormalizer, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.movies.MirrorFreshness.Age] = None)(implicit city: models.City)
+@(table: controllers.DebugCorpusTable, normalizer: services.titles.TitleNormalizer, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.movies.MirrorFreshness.Age] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>

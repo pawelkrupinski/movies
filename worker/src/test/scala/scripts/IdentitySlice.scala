@@ -6,7 +6,8 @@ import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
 import services.identity._
 import services.identity.agreement.{AgreementStage, InMemoryAgreementVerdicts, VoterFamily}
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets

@@ -1,9 +1,9 @@
 package services.identity
 
-import services.billing.{BillingParse, BillingPieces, Credits, DecorationWords}
+import services.titles.billing.{BillingParse, BillingPieces, Credits, DecorationWords}
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.IdentityMeasures.withoutLeadingArticle
-import services.movies.{TitleContainment, TitleSeason, TitleWords}
+import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
 /**
  * The ONE place a listing's SHAPE is read off its billing — what kind of screening it bills, before any film is in
@@ -290,7 +290,7 @@ object ListingShape {
 
 
   /** Does a bare billing under a FILM FESTIVAL's banner name `film` as an old catalogue film it cannot be told from? The
-   *  banner a colon or a pipe closes names a film festival ([[services.movies.TitleWords.Concept.FilmFestival]]), the
+   *  banner a colon or a pipe closes names a film festival ([[services.titles.TitleWords.Concept.FilmFestival]]), the
    *  listing states no year, director or running time, and the film was released [[FestivalCatalogueYears]] years or
    *  more before the season its screenings fall in, and the billing names none of its directors. A festival bills its retrospectives' films with their facts or by a
    *  title no newer film shares; a bare title under its banner names its programme's entry, and a catalogue namesake fits

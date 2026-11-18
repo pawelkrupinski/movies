@@ -3,7 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
-import services.resolution.{TitleMatch, YearWindow}
+import services.titles.{TitleMatch, YearWindow}
 import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead}
 
 import java.net.URLEncoder

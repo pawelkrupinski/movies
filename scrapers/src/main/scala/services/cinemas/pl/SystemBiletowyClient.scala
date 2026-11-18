@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.movies.FormatTags
+import services.titles.FormatTags
 import services.cinemas.common.ScraperParse
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import models._
 import tools.{HttpFetch, HttpRead, UnexpectedBodyException}
 import org.jsoup.Jsoup

@@ -1,6 +1,8 @@
 package services.identity
 
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+
+import services.titles.TitleNormalizer
 
 import scala.util.Random
 import scala.util.hashing.MurmurHash3

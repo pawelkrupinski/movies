@@ -2,7 +2,7 @@ package services.identity
 
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import scala.annotation.tailrec
 

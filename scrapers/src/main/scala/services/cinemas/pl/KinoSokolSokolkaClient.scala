@@ -3,7 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup

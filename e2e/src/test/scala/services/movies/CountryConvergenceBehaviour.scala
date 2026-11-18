@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import tools.SpecClock.given
 
 import tools.SpecTimeouts

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * THE TITLE RELATION (docs/investigations/2026-11-01-flip-unification.md, stage 2): how two listings' TITLES relate,

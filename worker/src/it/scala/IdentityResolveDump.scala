@@ -105,7 +105,7 @@ object IdentityResolveDump {
     }
     Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
     harness.identityFocus.foreach { f =>
-      val tokens  = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++ services.movies.TitleContainment.tokens(l.cleanTitle).toSet
+      val tokens  = (l: Listing) => services.titles.TitleContainment.tokens(l.rawTitle).toSet ++ services.titles.TitleContainment.tokens(l.cleanTitle).toSet
       val focused = listings.filter(l => f.covers(tokens(l))).map(_.key).toSet
       val trace   = mutable.ListBuffer.empty[String]
       IdentityResolver.explain(listings, lookups, c.normalizer, IdentityCalibration.resolver)(focused).foreach(_.render.foreach(trace += _))

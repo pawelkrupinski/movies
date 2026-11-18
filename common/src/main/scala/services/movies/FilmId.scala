@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 /**
  * The identity of a film row: the `_id` of its `movies` document, and the `filmId`
  * its `movie_slots`, `screenings` and read-model rows are filed under.

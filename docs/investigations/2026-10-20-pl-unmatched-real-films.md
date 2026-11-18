@@ -153,7 +153,7 @@ Not counted above:
 ## How titles are normalised today, and why these escape
 
 - **Generic splitting (query only).** `SearchTitles.candidates`
-  (`common/src/main/scala/services/resolution/SearchTitles.scala`) adds three kinds of split as extra search
+  (`common/src/main/scala/services/titles/SearchTitles.scala`) adds three kinds of split as extra search
   candidates: the halves around ` | `, the halves around a spaced dash, and the half after the first `: `. This is
   why most colon strands match without a rule of their own. In Poland, Akademia Kina Polskiego matches 9/10, DKF
   10/11, Dzień Kina Polskiego 11/11 and Kino Seniora 6/6.

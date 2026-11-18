@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleContainment
+
 /** A person's name as an order-insensitive whole-name key: accents folded, lowercased, its
  *  words sorted, so "Makoto Shinkai" = "Shinkai Makoto". One definition for every place that
  *  asks whether two credits name the same person by name alone. */

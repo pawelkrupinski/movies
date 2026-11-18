@@ -176,7 +176,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers with ScratchDirector
   "The code deciding the model's decisions" should "be the resolver and what feeds it, never the agreement stage" in {
     isDecisionInput("identity/src/main/scala/services/identity/IdentityResolver.scala") shouldBe true
     isDecisionInput("identity/src/main/resources/identity-weights.json") shouldBe true
-    isDecisionInput("common/src/main/scala/services/titlerules/ExtraTitleRules.scala") shouldBe true
+    isDecisionInput("common/src/main/scala/services/titles/rules/ExtraTitleRules.scala") shouldBe true
     isDecisionInput("common/src/main/resources/title-rules.tsv") shouldBe true
     isDecisionInput("worker/src/it/scala/IdentityShadow.scala") shouldBe true
     isDecisionInput("identity/src/main/scala/services/identity/agreement/AgreementStage.scala") shouldBe false

@@ -1,6 +1,6 @@
 package services.resolution
 
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Deterministic, order-independent keys for the per-source [[ResolutionCache]]s.

@@ -58,7 +58,7 @@ object OlderRefs {
 
   /** The listing set the identity model resolves off `byCinema`: `ModelRead.corpus`, prod's lean read, where the ref has
    *  it; read whole (`Listing.corpus`) in a ref from before it (2026-10-21), as that ref's own replays read them. */
-  def modelCorpus(byCinema: Iterable[(models.Cinema, Seq[models.CinemaMovie])], normalizer: services.movies.TitleNormalizer): Seq[Listing] =
+  def modelCorpus(byCinema: Iterable[(models.Cinema, Seq[models.CinemaMovie])], normalizer: services.titles.TitleNormalizer): Seq[Listing] =
     scala.util.Try(Class.forName("services.identity.ModelRead$").getField("MODULE$").get(null)).toOption
       .flatMap(read => call(read, "corpus", byCinema, normalizer)).map(_.asInstanceOf[Seq[Listing]])
       .getOrElse(Listing.corpus(byCinema, normalizer))

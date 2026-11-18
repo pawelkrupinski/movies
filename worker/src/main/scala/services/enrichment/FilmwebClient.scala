@@ -4,7 +4,7 @@ import java.util.Locale
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import services.resolution.{TitleMatch, YearWindow}
+import services.titles.{TitleMatch, YearWindow}
 import tools.{HttpFetch, HttpRead, ReadOutcome, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder

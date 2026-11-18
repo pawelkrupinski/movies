@@ -1,7 +1,8 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, VenueClock}
-import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
+import services.titles.TitleNormalizer
 import services.scrapes.{LeanListing, ScrapeArchiveReader, ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock

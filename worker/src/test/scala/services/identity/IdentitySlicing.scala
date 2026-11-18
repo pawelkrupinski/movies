@@ -1,6 +1,8 @@
 package services.identity
 
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+
+import services.titles.TitleNormalizer
 
 /**
  * What `scripts.IdentitySlice` cuts out of a whole recorded corpus to decide one listing as the whole corpus does, and

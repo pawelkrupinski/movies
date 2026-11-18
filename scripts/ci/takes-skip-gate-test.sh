@@ -16,8 +16,8 @@ trap 'rm -rf "$work"' EXIT
 # THE REPOSITORY: a base, then one commit per case, each on the base (a branch of its own).
 scratch_repo "$work/repo"
 put() { mkdir -p "$work/repo/$(dirname "$1")" && printf '%s\n' "${2:-x}" > "$work/repo/$1"; }
-for f in common/src/main/resources/title-rules.tsv common/src/main/scala/services/titlerules/Rules.scala \
-         common/src/main/scala/services/titlerules/TitleRulePlaceholders.scala common/src/main/scala/services/movies/TitleNormalizer.scala \
+for f in common/src/main/resources/title-rules.tsv common/src/main/scala/services/titles/rules/Rules.scala \
+         common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala common/src/main/scala/services/titles/TitleNormalizer.scala \
          identity/src/main/scala/services/identity/Resolver.scala common/src/main/scala/services/movies/Matcher.scala \
          worker/src/main/scala/services/Projection.scala docs/a.md README.md scripts/ci/takes-skip-gate.sh scripts/ci/identity-takes-check.sh \
          testkit/src/main/scala/services/movies/NormalizerTrace.scala testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala \
@@ -33,9 +33,9 @@ case_commit() { # <name> <file>... -> the commit changing those files on the bas
   scratch_git "$work/repo" rev-parse HEAD
 }
 rules=$(case_commit rules common/src/main/resources/title-rules.tsv)
-rules_and_docs=$(case_commit rules-docs common/src/main/resources/title-rules.tsv common/src/main/scala/services/titlerules/Rules.scala docs/a.md README.md)
-normalizer=$(case_commit normalizer common/src/main/scala/services/movies/TitleNormalizer.scala)
-placeholders=$(case_commit placeholders common/src/main/scala/services/titlerules/TitleRulePlaceholders.scala)
+rules_and_docs=$(case_commit rules-docs common/src/main/resources/title-rules.tsv common/src/main/scala/services/titles/rules/Rules.scala docs/a.md README.md)
+normalizer=$(case_commit normalizer common/src/main/scala/services/titles/TitleNormalizer.scala)
+placeholders=$(case_commit placeholders common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala)
 resolver=$(case_commit resolver common/src/main/resources/title-rules.tsv identity/src/main/scala/services/identity/Resolver.scala)
 matcher=$(case_commit matcher common/src/main/resources/title-rules.tsv common/src/main/scala/services/movies/Matcher.scala)
 projection=$(case_commit projection common/src/main/resources/title-rules.tsv worker/src/main/scala/services/Projection.scala)
@@ -49,7 +49,7 @@ tool_trace=$(case_commit tool-trace common/src/main/resources/title-rules.tsv te
 tool_check=$(case_commit tool-check common/src/main/resources/title-rules.tsv testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala)
 tool_gate=$(case_commit tool-gate common/src/main/resources/title-rules.tsv scripts/ci/takes-skip-gate.sh)
 tool_takes=$(case_commit tool-takes common/src/main/resources/title-rules.tsv scripts/ci/identity-takes-check.sh)
-identity_dir_rule=$(case_commit identity-rule common/src/main/scala/services/titlerules/IdentityRules.scala)
+identity_dir_rule=$(case_commit identity-rule common/src/main/scala/services/titles/rules/IdentityRules.scala)
 
 # THE TRACE: a base trace with two readings, an empty one, a broken gzip.
 printf '{"c":"pl","m":"clean","a":["x"],"o":"x"}\n{"c":"pl","m":"clean","a":["y"],"o":"y"}\n' | gzip > "$work/trace.jsonl.gz"

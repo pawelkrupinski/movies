@@ -1,7 +1,7 @@
 package services.cinemas.common
 
 import org.scalatest.matchers.should.Matchers
-import services.movies.FormatTags
+import services.titles.FormatTags
 import org.scalatest.flatspec.AnyFlatSpec
 import org.jsoup.Jsoup
 

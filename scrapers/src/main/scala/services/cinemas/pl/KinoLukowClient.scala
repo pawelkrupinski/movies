@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
-import services.movies.FormatTags
+import services.titles.FormatTags
 
 import models._
 import org.jsoup.Jsoup

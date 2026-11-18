@@ -4,8 +4,9 @@ import models.Country
 import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 import services.identity._
 import services.identity.adapters.TmdbIdentityLookups
-import services.movies.{ListingKey, TitleNormalizer}
-import services.titlerules.{ExtraTitleRules, TitleRuleSet, TitleRules}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
+import services.titles.rules.{ExtraTitleRules, TitleRuleSet, TitleRules}
 import tools._
 
 import java.nio.file.{Files, Path}
@@ -91,7 +92,7 @@ object IdentityRuleAblation {
       c.gaps))
     val every    = (TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(c.country))
     def resolve(config: Config): (Seq[Listing], Map[ListingKey, Take], Resolution) = {
-      val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = services.movies.TitleFacts.rulesFor(c.country))
+      val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = services.titles.TitleFacts.rulesFor(c.country))
       val listings   = listingsOf(w, normalizer)
       val resolution = RuleAblation.disabling(config.identityRules)(IdentityResolver.resolve(listings, lookups, normalizer, ResolveInputs.Unpinned))
       val takes      = listings.map { l =>

@@ -65,7 +65,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val gap = new ConstantHttpFetch("{}")
     val sources = new StageAnswers.Sources {
       def country: models.Country                            = de
-      def normalizer: services.movies.TitleNormalizer        = services.movies.TitleNormalizer.forCountry(de)
+      def normalizer: services.titles.TitleNormalizer        = services.titles.TitleNormalizer.forCountry(de)
       def families: Seq[VoterFamily]                         = Nil
       def sources: Map[VoterFamily, services.identity.adapters.FamilySource] = Map.empty
       def fetch: tools.HttpFetch                             = gap

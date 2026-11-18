@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
-import services.resolution.TitleMatch
+import services.titles.TitleMatch
 import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead}
 
 import java.net.URLEncoder

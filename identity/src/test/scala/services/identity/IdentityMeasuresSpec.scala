@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
-import services.movies.TitleSeason
+import services.titles.TitleSeason
 import services.identity.IdentityMeasures.{Category, Film, Listing, ListingListing, Missing, Number}
 import services.identity.StageRelays.{Billing, Houses}
 
@@ -1016,22 +1016,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "derive any house's initials from its names, never a list of them" in {
-    def names(line: String) = services.movies.StageHouse.parse(Iterator(line))
-    services.movies.StageHouse.initials shouldBe Set("rbo", "roh")
+    def names(line: String) = services.titles.StageHouse.parse(Iterator(line))
+    services.titles.StageHouse.initials shouldBe Set("rbo", "roh")
     // any house of the table: three initialled words or more, its articles and conjunctions skipped
-    services.movies.StageHouse.initialsOfHouses(names("The English National Opera|ENO Live") ++ names("Metropolitan Opera|The Met")) shouldBe Set("eno")
+    services.titles.StageHouse.initialsOfHouses(names("The English National Opera|ENO Live") ++ names("Metropolitan Opera|The Met")) shouldBe Set("eno")
   }
 
   it should "read a cinema season's banner only in the countries its row names, and refuse a row naming none" in {
-    import services.movies.StageHouse.{SeasonBanner, parseSeasonBanners}
+    import services.titles.StageHouse.{SeasonBanner, parseSeasonBanners}
     def banners(lines: String*) = parseSeasonBanners(lines.iterator)
     banners("banner\twhere\twhy", "# a comment", "RBO\tuk us\twhy", "Royal Ballet and Opera\tuk\twhy") shouldBe
       Seq(SeasonBanner(Seq("rbo"), Set("GB", "US")), SeasonBanner(Seq("royal", "ballet", "opera"), Set("GB")))
     an[IllegalArgumentException] should be thrownBy banners("RBO\t\twhy")
     an[IllegalArgumentException] should be thrownBy banners("RBO\tUK venues\twhy")
-    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "kino", "saison"), Some("DE")) shouldBe false
-    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), Some("GB")) shouldBe true
-    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), None) shouldBe false
+    services.titles.StageHouse.isSeasonBanner(Seq("rbo", "kino", "saison"), Some("DE")) shouldBe false
+    services.titles.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), Some("GB")) shouldBe true
+    services.titles.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), None) shouldBe false
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {
@@ -1848,7 +1848,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - ERLY FAN PREVIEW"), Film("Diuna: Część trzecia", year = Some(2026))) shouldBe false
     IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Diuna: Część czwarta", year = Some(2026))) shouldBe true
     IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 4 - Restaurierte Fassung"), Film("Der Pate Teil vier", year = Some(2030))) shouldBe false
-    services.billing.BillingParse("Das Boot (Teil vier, Die Rückkehr)").titledParts shouldBe Seq((Some("4"), Seq("ruckkehr")))
+    services.titles.billing.BillingParse("Das Boot (Teil vier, Die Rückkehr)").titledParts shouldBe Seq((Some("4"), Seq("ruckkehr")))
     // an episode, named whether or not it is numbered
     IdentityMeasures.titlesAnotherPart(Listing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),

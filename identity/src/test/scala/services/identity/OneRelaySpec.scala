@@ -5,7 +5,7 @@ import java.time.LocalDate
 import models.{Helios, KinoApollo, KinoMuza, KinoPalacowe, Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import FilmTable.{F, listing}
 

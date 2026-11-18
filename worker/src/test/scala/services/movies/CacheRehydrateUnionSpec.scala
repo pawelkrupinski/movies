@@ -1,12 +1,14 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import tools.SpecClock.given
 
 import scala.concurrent.duration.DurationInt
 import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.titlerules.{RuleScope, TitleRule, TitleRuleSet}
+import services.titles.rules.{RuleScope, TitleRule, TitleRuleSet}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Pins the fix for the late-added-merge-rule data-loss bug: when a merge-key
@@ -186,7 +188,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     val rows = Vector(showingAt("Takie jest życie/Kino Cafe", Multikino, Seq(evening(1, "https://book/a"))),
                       showingAt("Takie jest życie", Multikino, Seq(evening(2, "https://book/b"))))
     val cache = new CaffeineMovieCache(new PagedRepository(rows, pages = 2), clock = _root_.tools.SpecClock.Pinned,
-      normalizer = new TitleNormalizer(TitleRuleSet(services.titlerules.TitleRules.all :+ kinoCafeRule)))
+      normalizer = new TitleNormalizer(TitleRuleSet(services.titles.rules.TitleRules.all :+ kinoCafeRule)))
     cache.entries should have size 1
     cache.entries.head._2.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).toSeq shouldBe Seq(2)
   }

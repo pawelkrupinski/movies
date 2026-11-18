@@ -3,7 +3,7 @@ package adapters
 
 import models.{Cinema, CinemaMovie}
 import play.api.Logging
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration.FiniteDuration

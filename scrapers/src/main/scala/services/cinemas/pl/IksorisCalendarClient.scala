@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.movies.FormatTags
+import services.titles.FormatTags
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}

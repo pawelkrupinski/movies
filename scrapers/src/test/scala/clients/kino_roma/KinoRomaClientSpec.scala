@@ -60,7 +60,7 @@ class KinoRomaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "give the identity model's listing an absolute poster, as the card serves it" in {
     val film = fetched.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
     film.posterUrl.value should startWith ("/app/assets/movie/")
-    services.identity.Listing.of(KinoRoma, film, services.movies.TitleNormalizer.forCountry(models.Country.Poland)).poster shouldBe
+    services.identity.Listing.of(KinoRoma, film, services.titles.TitleNormalizer.forCountry(models.Country.Poland)).poster shouldBe
       Some("https://www.kinoroma.zabrze.pl/app/assets/movie/zieS_6XO_LtKn5uQL0krgB7Hlrd5.jpg")
   }
 }

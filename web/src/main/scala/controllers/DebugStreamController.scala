@@ -44,7 +44,7 @@ class DebugStreamController(
    *  the row's `_id` so the page can replace-or-insert it. The row's details cell
    *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
   private[controllers] def upsertFrame(row: StoredMovieRecord, country: models.Country,
-                                       normalizer: services.movies.TitleNormalizer): String = {
+                                       normalizer: services.titles.TitleNormalizer): String = {
     implicit val city: models.City = frameCity(country)
     val html = views.html._debugRow(row, normalizer, latestYear).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> row.id.value, "html" -> html))}\n\n"

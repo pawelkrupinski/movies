@@ -1,9 +1,9 @@
 package services.identity
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import services.identity.IdentityMeasures.*
-import services.movies.{TitleContainment, TitleSeason, TitleWords}
-import services.resolution.SearchTitles
+import services.titles.{TitleContainment, TitleSeason, TitleWords}
+import services.titles.SearchTitles
 
 /**
  * How a STAGE HOUSE's relay is billed — a season production, a house's banner on a work, the stage works a title names
@@ -134,7 +134,7 @@ object StageRelays {
   /** Words naming an opera or ballet HOUSE, or its relay, in the languages venues bill one in: a title carrying one bills a
    *  STAGING ("Paris Opera Ballett: …", "RB&O Live: Tosca (Oper)", "Balet z Opery Paryskiej …", "RBO …", "ROH …"). The
    *  word as its own token: "Dreigroschenoper" or "Operation" is no house. */
-  private def StageHouseWords: Set[String] = services.movies.StageHouse.Words
+  private def StageHouseWords: Set[String] = services.titles.StageHouse.Words
 
   /** Is `f` a SCREEN NAMESAKE of the work a stage house's relay bills: the listing's title names an opera or ballet house
    *  beside the work ([[StageHouseWords]]) and none of the film's own titles bills one? A house's banner names its
@@ -147,11 +147,11 @@ object StageRelays {
   /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone, or
    *  split by punctuation ([[splitHouseInitials]]: UK Penrith's "RB&O 26/27: Carmen", DE "Carmen (RB+O 2026/27)"): DE
    *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
-  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = services.movies.StageHouse.billed(titles)
+  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = services.titles.StageHouse.billed(titles)
   /** Does a title fragment name a house: a house word, or a house's split initials? */
   private def namesAHouse(fragment: String): Boolean = {
     val words = TitleContainment.tokens(fragment)
-    words.exists(StageHouseWords) || services.movies.StageHouse.splitInitials(words)
+    words.exists(StageHouseWords) || services.titles.StageHouse.splitInitials(words)
   }
 
   /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
@@ -233,7 +233,7 @@ object StageRelays {
    *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
    *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris", and PL
    *    Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 no Royal Ballet & Opera "Romeo and Juliet" of its
-   *    own season. Only under a CINEMA SEASON's banner ([[services.movies.StageHouse.seasonBanners]]) does another house's
+   *    own season. Only under a CINEMA SEASON's banner ([[services.titles.StageHouse.seasonBanners]]) does another house's
    *    record of the screenings' own season stay a candidate: the Royal Ballet & Opera's UK cinema season relays the
    *    Met's productions of that season (the owner, 2026-11-13).
    *  - A banner naming no house in particular ("Ballet - Notre-Dame de Paris") may be the record's house, so only a record
@@ -248,7 +248,7 @@ object StageRelays {
    *  title's banner shared by a film series reads as a house (DE "Der Herr der Ringe - Die Gefährten (Extended Version)").
    *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
    *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. `country`: the venue's (ISO-3166-1), where
-   *  a cinema season's banner is read ([[services.movies.StageHouse.isSeasonBanner]]). */
+   *  a cinema season's banner is read ([[services.titles.StageHouse.isSeasonBanner]]). */
   def anotherProduction(listing: Listing, film: Film, country: Option[String]): Boolean =
     listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
@@ -259,13 +259,13 @@ object StageRelays {
   /** Is `f` ANOTHER HOUSE's record of the season the relay names or screens in, under a banner naming a real house? A
    *  house's banner is its own relay: PL Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 is the Paris
    *  Opera Ballet's, never the Royal Ballet & Opera's 2026/27 "Romeo and Juliet" its season and work alone reached. Only a
-   *  CINEMA SEASON's banner ([[services.movies.StageHouse.seasonBanners]]) bills more than one house's productions: the
+   *  CINEMA SEASON's banner ([[services.titles.StageHouse.seasonBanners]]) bills more than one house's productions: the
    *  Royal Ballet & Opera's UK cinema season carries the Met's, UK Flicks' "RBO Cinema Season 2026-27: Macbeth" and
    *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13) — in the countries whose venues bill it so:
    *  PL's "Royal Ballet and Opera Sezon Kinowy" and DE's "RBO Kino Saison" bill only the house's own relays. */
   private def anotherHousesRelay(listing: Listing, film: Film, country: Option[String]): Boolean =
     listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
-      !listing.relay.houses.exists(services.movies.StageHouse.isSeasonBanner(_, country)) && billsAnotherHouse(listing, film)
+      !listing.relay.houses.exists(services.titles.StageHouse.isSeasonBanner(_, country)) && billsAnotherHouse(listing, film)
   /** Is `f` its own house's RECORDING of the work, dated by a year alone at most [[RecordingLag]] years before the season
    *  the relay's title names — what a cinema season screens of a house's staging, released years after it was filmed? DE
    *  Passage's and Traumpalast's "Opera de Paris: Schwanensee (2026/27)", screening 13 December 2026 with every other
@@ -310,15 +310,15 @@ object StageRelays {
   /** Does a house fragment's words ([[Relay.houses]]) name a house IN PARTICULAR — a word beside the art form and a relay's
    *  own ([[particularWords]]): "Met Opera", "Opéra national de Paris", "RB&O", never "Opera" or "Ballet Live"? */
   private[identity] def namesAHouseInParticular(house: Seq[String]): Boolean =
-    particularWords(services.movies.StageHouse.initialsJoined(house)).nonEmpty
+    particularWords(services.titles.StageHouse.initialsJoined(house)).nonEmpty
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
-   *  House"), or two names of one house ([[services.movies.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
+   *  House"), or two names of one house ([[services.titles.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
    *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
    *  ("RBO 26/27"). */
   private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(services.movies.StageHouse.initialsJoined(name))
-    def initials(name: Seq[String]) = services.movies.StageHouse.initialsOf(name)
+    def own(name: Seq[String]) = particularWords(services.titles.StageHouse.initialsJoined(name))
+    def initials(name: Seq[String]) = services.titles.StageHouse.initialsOf(name)
     val (ownA, ownB) = (own(a), own(b))
     ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
       ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
@@ -327,15 +327,15 @@ object StageRelays {
   /** Do two house names name one house by a word they share, initials or two names of one house ([[namesOneHouse]]) — not
    *  by one word merely opening the other ("Met" of "Metropolitan")? */
   private[identity] def nameOneHouseAlike(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(services.movies.StageHouse.initialsJoined(name))
-    def initials(name: Seq[String]) = services.movies.StageHouse.initialsOf(name)
+    def own(name: Seq[String]) = particularWords(services.titles.StageHouse.initialsJoined(name))
+    def initials(name: Seq[String]) = services.titles.StageHouse.initialsOf(name)
     val (ownA, ownB) = (own(a), own(b))
     ownA.exists(ownB.contains) || ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
       oneHouseRenamed(ownA.toSet, ownB.toSet)
   }
-  /** Each multi-named house's names ([[services.movies.StageHouse]]) as the words that say which house ([[particularWords]]). */
+  /** Each multi-named house's names ([[services.titles.StageHouse]]) as the words that say which house ([[particularWords]]). */
   private lazy val housesByName: Seq[Set[Set[String]]] =
-    services.movies.StageHouse.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
+    services.titles.StageHouse.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
   /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
    *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
   private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
@@ -347,7 +347,7 @@ object StageRelays {
    *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
    *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
   private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean = {
-    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.movies.StageHouse.UninitialledWords(word))
+    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.titles.StageHouse.UninitialledWords(word))
     def short(name: Seq[String]) = words(name) match {
       case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
       case _                                             => None

@@ -1,10 +1,10 @@
 package services.identity.agreement
 
-import services.billing.BillingPieces
+import services.titles.billing.BillingPieces
 
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.{Listing, ListingShape}
-import services.movies.{TitleContainment, TitleWords}
+import services.titles.{TitleContainment, TitleWords}
 
 import java.util.Locale
 

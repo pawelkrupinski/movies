@@ -31,7 +31,7 @@ fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectio
 fast sbt repochecks/testOnly deploy.WorkflowScriptsRunnableSpec deploy.SharedFileLayoutSpec deploy.WorkflowPlanSpec
 
 # identity: the identity module whole (agreement/equivalence specs included: IncrementalWholeEquivalence,
-# LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titlerules.* / worker
+# LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titles.rules.* / worker
 # scripts.* spec of every module plus the hard-cluster ratchet (Main's `test (worker-identity)` / `(heavy1)` / `(heavy2)`
 # identity parts; 651 tests, ~4 min). ~5 min warm, measured 2026-10-26 under a load of 17-130. NOT here (main's CI):
 # HardClusterConvergenceIntegrationSpec (IntegrationTest, Mongo), the convergence suite, the takes measure.
@@ -40,7 +40,7 @@ fast sbt repochecks/testOnly deploy.WorkflowScriptsRunnableSpec deploy.SharedFil
 # -- not IdentitySliceCasesSpec's first "lacks answers" of one case, a push at a time (main #2180: Halstead, Keswick).
 identity first scripts/identity-slice-coverage
 identity sbt identity/test
-identity sbt testOnly services.identity.* services.titlerules.* scripts.* tools.HardClusterRatchetSpec
+identity sbt testOnly services.identity.* services.titles.rules.* scripts.* tools.HardClusterRatchetSpec
 # the scraper specs the change reaches: a scraper cleans its titles with its venue's title rules and the country's
 # TitleNormalizer, so a title-rule row or normalizer change is a scraper change (Main #2266: helios-suffix-9 dropped,
 # caught only by HeliosClientFullRepertoireSpec; what-if and the takes measure replay stored titles, never a scraper).

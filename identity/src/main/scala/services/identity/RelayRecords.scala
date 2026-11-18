@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.RelayBanner
+import services.titles.RelayBanner
 
 /**
  * When a PLAIN listing's own facts rule out an event-cinema relay's record (the owner, 2026-11-01: the narrower fix

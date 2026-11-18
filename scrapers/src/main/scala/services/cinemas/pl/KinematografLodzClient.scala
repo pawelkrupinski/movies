@@ -11,7 +11,7 @@ import tools.HttpFetch
 
 import java.time.LocalDate
 import scala.jdk.CollectionConverters._
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * Kino Kinematograf w Łodzi — the cinema inside the Muzeum Kinematografii

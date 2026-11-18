@@ -90,7 +90,7 @@ private[identity] object RelayStage {
     // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
     lazy val works = l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)
     Option.when(houses.nonEmpty && season.nonEmpty && !namesTwoHouses(l) && works.nonEmpty)(
-      Production(houses, works, season.get, billsAnEncore(l), l.ownTitles.exists(title => services.movies.TitleContainment.tokens(title).contains("live"))))
+      Production(houses, works, season.get, billsAnEncore(l), l.ownTitles.exists(title => services.titles.TitleContainment.tokens(title).contains("live"))))
   }
 
   /** The keys of the production `l` bills ([[Production.keys]]), none when it bills none. */
@@ -118,8 +118,8 @@ private[identity] object RelayStage {
    *  screen the Met's 2026/27 Macbeth; keyed as the RBO's, they joined one another away from the Met's record and left
    *  the spellings beside both alone (recording 573: four right takes lost). */
   private def namesTwoHouses(l: Listing): Boolean = {
-    val banners = l.ownTitles.flatMap(title => services.movies.StageHouse.initialsJoined(services.movies.TitleContainment.tokens(title).toSeq))
-      .filter(word => ParticularBannerWords(word) || services.movies.StageHouse.initials(word)).distinct.map(Seq(_))
+    val banners = l.ownTitles.flatMap(title => services.titles.StageHouse.initialsJoined(services.titles.TitleContainment.tokens(title).toSeq))
+      .filter(word => ParticularBannerWords(word) || services.titles.StageHouse.initials(word)).distinct.map(Seq(_))
     val houses  = particularHouses(l) ++ banners
     houses.exists(a => houses.exists(b => !StageRelays.namesOneHouse(a, b)))
   }
@@ -128,14 +128,14 @@ private[identity] object RelayStage {
 
   /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
    *  [[StageRelays.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
-   *  ([[services.movies.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and
+   *  ([[services.titles.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and
    *  the season, which no search of the work's name alone reaches: UK Picture House Uckfield's "Tosca (ROH)", "Otello
    *  (MET)", Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" screen the 2026/27 relays. "Met" names no
    *  opera house as a word of its own ("When Harry Met Sally"), but beside a stage work it is the series the work is
    *  relayed under. */
   def searchedInItsSeason(l: Listing): Boolean =
-    l.billsAStageHouse || l.ownTitles.exists(title => services.movies.TitleContainment.tokens(title).exists(HouseBannerWords))
-  private lazy val HouseBannerWords: Set[String] = services.movies.TitleWords.tokens(services.movies.TitleWords.Concept.HouseBanner)
+    l.billsAStageHouse || l.ownTitles.exists(title => services.titles.TitleContainment.tokens(title).exists(HouseBannerWords))
+  private lazy val HouseBannerWords: Set[String] = services.titles.TitleWords.tokens(services.titles.TitleWords.Concept.HouseBanner)
 
   /** Where a lower-case letter runs into an upper-case one: the seam of a camel-cased word. */
   private val CamelSeam = """(?<=\p{Ll})(?=\p{Lu})""".r

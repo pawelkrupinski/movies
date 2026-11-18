@@ -30,7 +30,7 @@
 #
 # THE SPECS: exactly the identity-relevant suites of Main's rows (ci.yml), each group as its row runs it:
 #   unit        `test (worker-identity)` + `test (heavy1)` + `test (heavy2)` + the identity/common parts of `test (rest)` + the
-#               worker lint and ratchet specs: every services.identity.* (worker and identity modules), services.titlerules.*
+#               worker lint and ratchet specs: every services.identity.* (worker and identity modules), services.titles.rules.*
 #               (the golden, examples and mutation specs), scripts.* (the capture re-resolves), DocCommentPlacementSpec,
 #               HardClusterRatchetSpec
 #   it          `integration-test (identity)`: HardClusterConvergenceIntegrationSpec (the hard clusters, outage recovery)
@@ -93,7 +93,7 @@ say "base   $(git log --oneline -1 "$base" | cut -c1-100)"
 
 # ── the groups ─────────────────────────────────────────────────────────────────────────────────
 # name <TAB> sbt command (a root testOnly runs in every aggregated module, so one command covers worker, identity and common)
-groups=$'unit\ttestOnly services.identity.* services.titlerules.* scripts.* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec'
+groups=$'unit\ttestOnly services.identity.* services.titles.rules.* scripts.* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec'
 groups+=$'\nit\tworker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec'
 e2e=$(git diff --name-only --no-renames "$base" "$commit" | "$here/ci/ci-row-scope.sh" e2e 2> /dev/null) || e2e=true
 if [ "$e2e" = true ]; then

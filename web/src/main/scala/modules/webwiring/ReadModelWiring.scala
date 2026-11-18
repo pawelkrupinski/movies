@@ -55,8 +55,8 @@ trait ReadModelWiring { self: Wiring =>
    *  the same way the worker that wrote the corpus did; the per-country debug
    *  stacks (DebugWiring) each get their OWN, since they read another country's
    *  database. */
-  lazy val titleNormalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(country)
+  lazy val titleNormalizer: services.titles.TitleNormalizer =
+    services.titles.TitleNormalizer.forCountry(country)
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, clock,

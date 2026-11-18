@@ -148,7 +148,7 @@ object IdentityRefit {
     val judged = about.filter(_._2.nonEmpty)
     if (judged.isEmpty) Nil else {
       val nodes = IdentityResolver.evidenceOf(capture.listings, new UnmatchedClusters.Replay(capture),
-        services.movies.TitleNormalizer.forCountry(capture.country), calibration)(l => judged.contains(l.key))
+        services.titles.TitleNormalizer.forCountry(capture.country), calibration)(l => judged.contains(l.key))
       nodes.flatMap { node =>
         val said  = node.keys.flatMap(judged.get).flatten.distinct
         val right = said.filter(_.right).map(_.film).distinct

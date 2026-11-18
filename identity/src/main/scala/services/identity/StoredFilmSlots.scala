@@ -3,8 +3,9 @@ package services.identity
 import services.movies.LatestTitleYear
 
 import models.{CinemaShowing, SourceData}
-import services.movies.{EmbeddedYear, ListingConstraints, ListingKey, ScrapeListing, StoredMovieRecord, TitleNormalizer}
-import services.resolution.YearWindow
+import services.movies.{EmbeddedYear, ListingConstraints, ListingKey, ScrapeListing, StoredMovieRecord}
+import services.titles.TitleNormalizer
+import services.titles.YearWindow
 
 /** A stored film a listing is on before a projection — the film it inherits its id from
  *  ([[IdentityProjectionPlan.index]]): its film id and TMDB id. */

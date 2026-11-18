@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.Credits
+import services.titles.billing.Credits
 
 /**
  * The director a title CLOSES on, where nobody is credited: a bracket holding nothing but a person's name after the

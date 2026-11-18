@@ -3,7 +3,7 @@ package services.identity
 import models.{Helios, KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import tools.IndependentCases
 
 import FilmTable.{F, listing}

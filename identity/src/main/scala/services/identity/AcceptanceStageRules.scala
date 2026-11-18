@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.Scored.Accepted
-import services.resolution.YearWindow
+import services.titles.YearWindow
 
 /** The acceptance rules of a stage relay: the house's production, the relay's record ([[RelayStage]]), and the record of
  *  the season it is broadcast in.

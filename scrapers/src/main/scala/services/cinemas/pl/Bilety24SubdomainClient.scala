@@ -3,7 +3,7 @@ package services.cinemas.pl
 import tools.{HttpFetch, HttpRead}
 import models._
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.LocalDate
 import scala.util.Try

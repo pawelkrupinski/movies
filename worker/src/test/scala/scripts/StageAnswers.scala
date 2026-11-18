@@ -132,7 +132,7 @@ object StageAnswers {
    *  sites' (`services.identity.WhatIfAnswers`); a family missing from `sources` is a failed ask. */
   trait Sources {
     def country: Country
-    def normalizer: services.movies.TitleNormalizer
+    def normalizer: services.titles.TitleNormalizer
     def families: Seq[VoterFamily]
     def sources: Map[VoterFamily, FamilySource]
     def fetch: tools.HttpFetch

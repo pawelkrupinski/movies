@@ -2,7 +2,7 @@ package services.enrichment
 
 
 import play.api.libs.json._
-import services.resolution.YearWindow
+import services.titles.YearWindow
 import settings.WikidataUserAgent
 import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 

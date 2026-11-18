@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
-import services.movies.FormatTags
+import services.titles.FormatTags
 import models._
 import play.api.libs.json.Json
 import tools.{HttpFetch, HttpRead}

@@ -5,7 +5,8 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
 import services.identity._
 import services.identity.adapters.{HistoryEntry, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TakeExplanation}
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 
 import java.time.{Clock, Instant}
 import scala.concurrent.Await

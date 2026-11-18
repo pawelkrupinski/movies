@@ -1,5 +1,8 @@
 package services.movies
 
+import services.titles.SequelMarker
+import services.titles.TitleContainment
+
 import tools.SpecClock.given
 
 import org.scalatest.flatspec.AnyFlatSpec

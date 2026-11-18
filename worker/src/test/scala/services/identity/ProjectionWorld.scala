@@ -95,7 +95,7 @@ private[identity] final class ProjectionWorld(
 }
 
 private[identity] object ProjectionWorld {
-  val normalizer: services.movies.TitleNormalizer = SingleCountryNormalizer.titleNormalizer
+  val normalizer: services.titles.TitleNormalizer = SingleCountryNormalizer.titleNormalizer
 
   /** A WHOLE resolve of the listings a projection reads, over lookups that know no film — the projection before the
    *  incremental model. */

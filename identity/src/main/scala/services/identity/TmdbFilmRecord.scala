@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import play.api.libs.json.{JsValue, Json}
 
 import scala.util.Try

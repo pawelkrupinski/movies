@@ -1,5 +1,7 @@
 package services.movies
 
+import services.titles.TitleNormalizer
+
 import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 
 import java.io.{BufferedWriter, OutputStreamWriter}

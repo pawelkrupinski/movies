@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 /**
  * The hard-cluster fixture is a RATCHET: it only grows, and its exemptions only shrink. The

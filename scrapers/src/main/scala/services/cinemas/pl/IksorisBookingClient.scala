@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import services.movies.FormatTags
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}

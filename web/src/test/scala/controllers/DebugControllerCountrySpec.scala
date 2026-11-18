@@ -23,7 +23,7 @@ class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
   private def corpusStack(country: Country, title: String) = new DebugStack(
     country,
     new services.movies.InMemoryMovieRepository(Seq(
-      (title, Some(2021), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))))), normalizer = services.movies.TitleNormalizer.forCountry(country)),
+      (title, Some(2021), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))))), normalizer = services.titles.TitleNormalizer.forCountry(country)),
     services.cadence.RatingCadenceReader.empty,
     services.attempts.EnrichmentAttemptReader.empty)
 

@@ -53,7 +53,7 @@ class NoDefaultTitleNormalizerSpec extends AnyFlatSpec with Matchers {
   }
 
   "TitleNormalizer" should "offer no rule set resolved from the process environment" in {
-    val companion = Class.forName("services.movies.TitleNormalizer$")
+    val companion = Class.forName("services.titles.TitleNormalizer$")
     val names     = companion.getMethods.map(_.getName).toSet
     names should contain("forCountry")
     names should not contain "deployment"

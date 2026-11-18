@@ -1,8 +1,9 @@
 package services.identity
 
-import services.billing.DecorationWords
+import services.titles.billing.DecorationWords
 import services.identity.agreement.Agreement
-import services.movies.{ListingKey, TitleContainment, TitleWords}
+import services.movies.ListingKey
+import services.titles.{TitleContainment, TitleWords}
 
 /**
  * SUSPECT TAKES: a film a listing's cluster took that the listing's own evidence argues against — not a verdict, a

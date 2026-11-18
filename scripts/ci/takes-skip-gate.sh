@@ -8,7 +8,7 @@
 #   1. TAKES_SKIP_MODE is shadow or enforce (off, unset, anything else: RUN);
 #   2. base and head are distinct full commit names, and git can diff them (an error: RUN), and the diff is not empty;
 #   3. every changed file is either footprint-eligible -- a title-rule file the resolve reads only through the title
-#      normaliser's readings (title-rules.tsv, services/titlerules/*.scala but TitleRulePlaceholders.scala, which
+#      normaliser's readings (title-rules.tsv, services/titles/rules/*.scala but TitleRulePlaceholders.scala, which
 #      FormatTags reads directly, and TitleNormalizer.scala: identity-measure's footprint_rule_path) -- or inert (docs/,
 #      .claude/, a Markdown file). Any other file -- a spec, a judgement, a capture, a workflow, a script -- is RUN;
 #   4. no changed path names identity, matcher, resolver or projection code (checked on its own, whatever 3 said);
@@ -49,10 +49,10 @@ for f in "${tooling[@]:0:2}"; do git cat-file -e "$head:$f" 2> /dev/null || run 
 # 3. eligible or inert, every one
 eligible() {
   case $1 in
-    common/src/main/scala/services/titlerules/TitleRulePlaceholders.scala) return 1 ;; # FormatTags reads it directly
+    common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala) return 1 ;; # FormatTags reads it directly
     common/src/main/resources/title-rules.tsv) return 0 ;;
-    common/src/main/scala/services/titlerules/*.scala) return 0 ;;
-    common/src/main/scala/services/movies/TitleNormalizer.scala) return 0 ;;
+    common/src/main/scala/services/titles/rules/*.scala) return 0 ;;
+    common/src/main/scala/services/titles/TitleNormalizer.scala) return 0 ;;
   esac
   return 1
 }

@@ -80,7 +80,7 @@ check "...the measure asked for the footprint when eligible, the full measure ot
   "--head $code --base $base --footprint" "$(cat "$work/logs/measure-args")"
 check "...and every group Main's rows run for a resolver change, e2e included" "4" "$(wc -l < "$work/logs/commands" | tr -d ' ')"
 check "...the unit group naming the identity specs Main runs" "true" \
-  "$(grep -q '^testOnly services.identity.\* services.titlerules.\* scripts.\* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec$' "$work/logs/commands" && echo true || echo false)"
+  "$(grep -q '^testOnly services.identity.\* services.titles.rules.\* scripts.\* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec$' "$work/logs/commands" && echo true || echo false)"
 check "...the hard-cluster convergence among them" "true" \
   "$(grep -q 'integration.HardClusterConvergenceIntegrationSpec' "$work/logs/commands" && echo true || echo false)"
 

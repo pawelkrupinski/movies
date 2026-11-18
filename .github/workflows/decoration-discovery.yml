@@ -118,7 +118,7 @@ jobs:
               if: steps.changed.outputs.kept == 'true'
               run: |
                   # a kept row is MEANT to change what the corpus folds to: its golden is regenerated and shown in the PR
-                  sbt "common/Test/runMain services.titlerules.TitleRulesGoldenSpec" "common/testOnly services.titlerules.*" \
+                  sbt "common/Test/runMain services.titles.rules.TitleRulesGoldenSpec" "common/testOnly services.titles.rules.*" \
                       "worker/testOnly services.movies.ExtraTitleRulesSpec services.identity.UnmatchedClustersRatchetSpec"
 
             # A search strip can move the whole corpus's films: regenerate the whole-corpus

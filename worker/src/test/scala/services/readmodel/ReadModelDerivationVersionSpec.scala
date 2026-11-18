@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import tools.ReadModelDerivationCorpus
 
 import java.nio.charset.StandardCharsets.UTF_8

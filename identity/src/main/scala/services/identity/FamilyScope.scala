@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingPieces
+import services.titles.billing.BillingPieces
 
 import services.identity.IdentityMeasures.ListingFilm
 
@@ -455,7 +455,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
-   *  festival billed by its name alone ([[services.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
+   *  festival billed by its name alone ([[services.titles.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
    *  a cast field listing the film's cast ([[CastEvidence.castIsTheFilms]]). */
   private final case class Billing(festival: Boolean, silent: Boolean, castIsTheFilms: Boolean)
   private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {

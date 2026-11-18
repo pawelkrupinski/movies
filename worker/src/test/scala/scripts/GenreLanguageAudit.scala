@@ -1,7 +1,8 @@
 package scripts
 
 import models.{Country, Filmweb, Source, Tmdb}
-import services.movies.{LatestTitleYear, TitleNormalizer}
+import services.movies.LatestTitleYear
+import services.titles.TitleNormalizer
 import tools.CommandLine
 
 /**

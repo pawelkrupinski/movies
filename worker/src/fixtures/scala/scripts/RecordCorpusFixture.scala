@@ -132,7 +132,7 @@ object RecordCorpusFixture {
       // from a log if anyone ever needs to.
       val seed   = now.toEpochMilli
       // The corpus is this country's, so the sample must be drawn under its rules.
-      val titles = services.movies.TitleNormalizer.forCountry(country)
+      val titles = services.titles.TitleNormalizer.forCountry(country)
       val sample = CorpusSample.draw(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
       val keys   = CorpusSample.filmKeys(sample, titles).toSet
       val sampleKey  = s"${country.code}-sample"

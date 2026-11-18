@@ -37,5 +37,5 @@ object BillingReversals {
   /** The billings a projection reversed, and those forgotten to keep [[Capacity]]. */
   final case class Noted(reversed: Seq[String], forgotten: Seq[String])
 
-  def billing(rawTitle: String): String = services.movies.TitleContainment.tokens(rawTitle).mkString(" ").take(LabelLength)
+  def billing(rawTitle: String): String = services.titles.TitleContainment.tokens(rawTitle).mkString(" ").take(LabelLength)
 }

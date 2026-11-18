@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleContainment
+import services.titles.TitleContainment
 
 import IdentityMeasures.*
 

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import services.movies.FormatTags
+import services.titles.FormatTags
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.HttpFetch

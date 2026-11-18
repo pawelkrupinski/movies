@@ -1,8 +1,9 @@
 package services.identity
 
-import services.billing.{BillingParse, BillingPieces}
-import services.movies.{TitleContainment, TitleSeason, TitleWords}
-import services.resolution.{SearchTitles, YearWindow}
+import services.titles.billing.{BillingParse, BillingPieces}
+import services.titles.{TitleContainment, TitleSeason, TitleWords}
+import services.titles.SearchTitles
+import services.titles.YearWindow
 
 /**
  * The raw MEASUREMENTS the calibrated identity score reads: what one listing's own evidence says
@@ -186,7 +187,7 @@ object IdentityMeasures {
     private[identity] lazy val undecoratedWords: Seq[Seq[String]] =
       ownTitles.map(t => IdentityMeasures.creditedWork(t).getOrElse(t)).flatMap(decorations.strip)
         .map(IdentityMeasures.words).filter(_.nonEmpty).distinct
-    /** The title and raw title, each also as ingest cleans it ([[services.movies.FormatTags]]), as yearless tokens
+    /** The title and raw title, each also as ingest cleans it ([[services.titles.FormatTags]]), as yearless tokens
      *  (`StageRelays.billing`): a box office's certificate is no part of the house's billing. UK "NT LIVE: Golden Boy (15)" billed
      *  "Golden Boy" under no banner, its work not at the title's edge, and measured an `overlap` of "Golden Boy (NT Live)". */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
@@ -213,7 +214,7 @@ object IdentityMeasures {
     private[identity] lazy val creditsBesideYear: CreditRelation.Credits =
       if (yearCredits.isEmpty) directorCredits else new CreditRelation.Credits(creditedBesideYear)
     /** The original title as the `originalTitle` measures read it: without the screen-format and language-version tags
-     *  a feed bills in it -- the tags that are a showing's badge ([[services.movies.FormatTags.extractFormatTags]]'s
+     *  a feed bills in it -- the tags that are a showing's badge ([[services.titles.FormatTags.extractFormatTags]]'s
      *  tokens: OmU, OmeU, OV, 3D, IMAX, …), read off as the title's own are. DE Moviemento's "Die Blutgräfin - The Blood
      *  Countess (OmeU)" bills the showing's English-subtitled version, no word of the film's title; read with it, the
      *  original was a `segment` of Ottinger's "Die Blutgräfin" and the cannot-link cut denied the film. A note that is
@@ -222,7 +223,7 @@ object IdentityMeasures {
      *  published. */
     private[identity] lazy val measuredOriginal: Option[String] =
       originalTitle.map(_.trim).filter(_.nonEmpty).flatMap { original =>
-        services.movies.FormatTags.extractFormatTags(original) match {
+        services.titles.FormatTags.extractFormatTags(original) match {
           case (clean, tokens) if tokens.nonEmpty => Some(clean.trim).filter(_.nonEmpty)
           case _                                  => Some(original)
         }
@@ -397,7 +398,7 @@ object IdentityMeasures {
     def genreIdsOf(bits: Int): Set[Int] = Genres.indices.filter(place => (bits & (1 << place)) != 0).map(Genres).toSet
     /** A tagline's (or a billing piece's) words as one key: [[Film.taglineKey]]; 0 for none. */
     def taglineKeyOf(text: String): Int = {
-      val words = services.movies.TitleContainment.tokens(text)
+      val words = services.titles.TitleContainment.tokens(text)
       if (words.isEmpty) 0 else words.mkString(" ").hashCode
     }
   }

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
-import services.movies.FormatTags
+import services.titles.FormatTags
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup

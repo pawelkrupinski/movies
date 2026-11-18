@@ -3,9 +3,9 @@ package services.identity
 import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
-import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord,
-  TitleNormalizer, VenuePageFacts}
-import services.resolution.YearWindow
+import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord, VenuePageFacts}
+import services.titles.TitleNormalizer
+import services.titles.YearWindow
 
 // Everything a venue slot is built and fingerprinted by, and nothing else: this file is what the venue slot code version
 // digests (`IdentityRulesSources.VenueSlotRoots`), so a change to the rest of the projection keeps every recorded slot.

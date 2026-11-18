@@ -33,7 +33,7 @@ class DiagnosticCatalogEgressSpec extends AnyFlatSpec with Matchers {
 
   private def scrapeRefusing(http: HostLog, proxy: Option[HostLog]): Unit = {
     val catalog = new CinemaScraperCatalog(http, models.VenueClock.fixedOn(LocalDate.of(2026, 10, 2)), tools.SpecClock.Pinned,
-      titles = services.movies.TitleNormalizer.forCountry(Country.Poland), proxyShards = proxy.map(IndexedSeq(_)))
+      titles = services.titles.TitleNormalizer.forCountry(Country.Poland), proxyShards = proxy.map(IndexedSeq(_)))
     catalog.all.filter(s => Refusing.contains(s.cinema)).foreach(s => Try(s.fetch()))
   }
 

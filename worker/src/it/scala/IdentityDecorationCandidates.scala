@@ -2,7 +2,8 @@ package integration
 
 import play.api.libs.json.Json
 import services.identity._
-import services.movies.{ListingKey, TitleContainment}
+import services.movies.ListingKey
+import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
@@ -101,7 +102,7 @@ object IdentityDecorationCandidates {
       val matchedTitles = baseline.toSeq.filter(_._2.film.nonEmpty).flatMap { case (k, _) => Seq(byKey(k).title, byKey(k).rawTitle) }.map(TitleContainment.tokens).toSet
       val alignedFilms  = aligned.map(d => keyOf(d) -> d.films).toMap
       val recurringFilms = recurring.map(d => keyOf(d) -> d.films).toMap
-      val formatWords   = services.movies.FormatTags.FormatToken.keySet
+      val formatWords   = services.titles.FormatTags.FormatToken.keySet
       def featuresOf(d: TitleDecorations.Learned): DecorationScore.Features = {
         val run    = d.decoration.split(" ").toSeq
         val carry  = carriers.getOrElse((d.side, run), Nil)

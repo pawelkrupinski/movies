@@ -4,7 +4,8 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.CacheRefresher
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, MovieCache, TitleNormalizer}
+import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, MovieCache}
+import services.titles.TitleNormalizer
 import services.resolution.ResolutionCache
 import services.tasks.{BulkRefreshResult, HandlerOutcome, InMemoryBulkTaskResultStore, RefreshableSource, RefreshableSources, Task}
 import services.tasktypes.TaskType

@@ -1,7 +1,8 @@
 package services.identity
 
 import models.{Helios, KinoApollo, Multikino, Rialto}
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.ListingKey
+import services.titles.TitleNormalizer
 
 /** Corpora whose families' decisions hang on what OTHER families hold — the corpus-wide facts
  *  (`CorpusContext`) an incremental model must keep current. */

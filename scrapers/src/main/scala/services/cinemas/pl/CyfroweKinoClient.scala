@@ -1,11 +1,11 @@
 package services.cinemas.pl
 
 import models._
-import services.movies.FormatTags
+import services.titles.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.HttpFetch
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 import services.cinemas.common.{ListingPageScraper, ScraperParse}
 
 import java.time.LocalDateTime

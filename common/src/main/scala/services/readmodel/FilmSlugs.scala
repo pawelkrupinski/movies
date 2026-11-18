@@ -102,7 +102,7 @@ object FilmSlugs {
    *  decoration strip as the clean title. Compiles the country's rule set once —
    *  hold the returned function, never call this per corpus. */
   def forCountry(country: models.Country): Seq[ResolvedMovie] => FilmSlugs = {
-    val rules = services.titlerules.TitleRuleSet.forCountry(country)
+    val rules = services.titles.rules.TitleRuleSet.forCountry(country)
     movies => apply(movies, rules.search)
   }
 

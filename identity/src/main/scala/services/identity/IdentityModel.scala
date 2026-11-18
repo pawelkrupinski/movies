@@ -1,7 +1,8 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleSeason}
+import services.movies.{ListingKey, ScrapeListing, SlotFields}
+import services.titles.{TitleNormalizer, TitleSeason}
 
 import scala.annotation.unused
 
@@ -65,7 +66,7 @@ final case class Listing(
    *  Theatre Live: Hamlet". */
   properTitle:   Option[String] = None,
   /** The age certificate the venue bills it with (its `ageRating`, from its feed or peeled off its title at intake,
-   *  `services.movies.TitleFacts`): which cut of which film it screens, as the fill's guard reads it ([[Certificates.below]]).
+   *  `services.titles.TitleFacts`): which cut of which film it screens, as the fill's guard reads it ([[Certificates.below]]).
    *  The model weighs it too (the `certificate` measure, [[IdentityMeasures.certificateRelation]]): inside equality and hash. */
   certificate:   Option[String] = None,
   /** The venue's own cast FIELD, as the cast mismatch reads it ([[ListedCast]]) — none for a
@@ -310,9 +311,9 @@ object Listing {
   def keyOf(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): ListingKey =
     ListingKey.of(cinema, withFacts(cinema, scraped, normalizer))
 
-  /** `scraped` as `cinema` lists it, the facts its title bills read into its fields ([[services.movies.TitleFacts]]). Blank
+  /** `scraped` as `cinema` lists it, the facts its title bills read into its fields ([[services.titles.TitleFacts]]). Blank
    *  director names and non-positive runtimes are absent. Its title as every title is read
-   *  ([[services.movies.TitleText.tidy]]), those facts off it: a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
+   *  ([[services.titles.TitleText.tidy]]), those facts off it: a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
    *  Die") is searched and measured as "Die Tribute von Panem - …", as its family key already reads it — searched as filed,
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
   def of(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): Listing = {
@@ -448,7 +449,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           /** The season its screenings fall in, whatever it states ([[Listing.screenedSeason]]). */
                           screenedSeason: Option[Int] = None,
                           /** The season its first screening falls in, unconditionally: the seasons its title can name
-                           *  ([[services.movies.TitleSeason.near]]), never a fact it states. */
+                           *  ([[services.titles.TitleSeason.near]]), never a fact it states. */
                           screeningsSeason: Option[Int] = None,
                           /** Its screening days, where the air-day test reads them ([[Listing.airDays]]); else empty. */
                           airDays: Seq[java.time.LocalDate] = Nil,

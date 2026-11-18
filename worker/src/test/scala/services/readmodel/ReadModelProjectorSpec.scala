@@ -1722,7 +1722,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
    *  (`ReadModelProjection.variants`) is the only projection step that sanitizes a
    *  slot's reported title, so the count is the number of times a row was partitioned —
    *  immune to the sanitizing the repository does on the row's own key. */
-  private class SlotTitleCountingNormalizer(slotTitle: String) extends services.movies.TitleNormalizer(titleNormalizer.rules) {
+  private class SlotTitleCountingNormalizer(slotTitle: String) extends services.titles.TitleNormalizer(titleNormalizer.rules) {
     var hits = 0
     override def sanitize(title: String): String = {
       if (title == slotTitle) hits += 1

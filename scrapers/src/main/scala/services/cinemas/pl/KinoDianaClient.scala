@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import services.movies.FormatTags
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}

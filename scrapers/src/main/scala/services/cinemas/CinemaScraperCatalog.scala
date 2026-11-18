@@ -7,7 +7,7 @@ import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, Kinoh
 import services.cinemas.de.{ArsenalBerlinClient, GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues, UsIndependentVenues}
-import services.movies.TitleNormalizer
+import services.titles.TitleNormalizer
 
 import java.time.Clock
 import scala.concurrent.duration._
