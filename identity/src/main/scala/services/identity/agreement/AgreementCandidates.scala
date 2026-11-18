@@ -128,7 +128,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       })
       // read blind — a search with no answer — it is kept only while nothing is filed: the digest does not move when TMDB
       // answers, so kept for good, "none" stood for good; kept for no pass, every pass searched live TMDB again
-      val fresh = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying), reads.toMap)
+      val fresh = AgreementCandidates.CandidateFilms(digest, films, Option.when(blind)(applying), reads.toMap)
       candidateFilms.put(id, fresh); candidateFilms.check(id, digest, applying)
       fresh
     }
@@ -170,4 +170,10 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
         }
       }.toSet
     }
+}
+
+private[agreement] object AgreementCandidates {
+  /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
+   *  no answer, to be read again at another — with what the read took (its receipt). */
+  private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long], reads: Map[Dependency, Long])
 }

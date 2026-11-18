@@ -62,14 +62,14 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
    *  the venue's synopsis another's description (`synopsis`, [[synopsisAgainst]]). */
   private[agreement] def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[Question],
-                         distances: AgreementStage.Distances, synopsis: Int => Option[String]): Option[ResolverDecision] =
+                         distances: AgreementTakes.Distances, synopsis: Int => Option[String]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
       // a find given up on (Failed) names no TMDB film: the fill stands on its IMDb id (fix 4: decided on, never awaited)
       tmdbFilmOf(fill.tmdb, fill.imdb, finding).failedAs(None) match {
         case Answer.Unknown => None
         case Answer.Failed  => None // failedAs leaves none
         case Answer.Known(tmdbFilm) => screened(tmdbFilm, distances, synopsis)(()) match {
-          case AgreementStage.Take.Taken(_) =>
+          case AgreementTakes.Take.Taken(_) =>
             val rule = Some(s"fill:${fill.rule}")
             tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id), rule = rule))
               .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, rule = rule,
@@ -93,7 +93,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate;
    *  nor when the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]): REFUSED, saying why. */
   private[agreement] def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[Question],
-                    distances: AgreementStage.Distances, synopsis: Int => Option[String]): AgreementStage.Take[ResolverDecision] = {
+                    distances: AgreementTakes.Distances, synopsis: Int => Option[String]): AgreementTakes.Take[ResolverDecision] = {
     val imdb = agreed.crossId("imdb")
     // read only for a film the families' take may stand on: a find only review sites' agreement waits on is none to ask
     lazy val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb, finding)
@@ -103,26 +103,26 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
     // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
     // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
-    if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
+    if (!agreed.families.exists(_.namesFilms)) AgreementTakes.Take.Untaken
     else tmdb.failedAs(None) match {
-      case Answer.Unknown | Answer.Failed => AgreementStage.Take.Pending // failedAs leaves no Failed
+      case Answer.Unknown | Answer.Failed => AgreementTakes.Take.Pending // failedAs leaves no Failed
       case Answer.Known(Some(film)) => screened(Some(film), distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
-      case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken) { case (source, id) =>
+      case Answer.Known(None) => identityOf(agreed).fold[AgreementTakes.Take[ResolverDecision]](AgreementTakes.Take.Untaken) { case (source, id) =>
         screened(None, distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line,
-          fallback = Some(AgreementStage.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)) }
+          fallback = Some(AgreementTakes.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)) }
     }
   }
 
   /** `take` of `film` as the venues' evidence lets it stand — what an agreed film and a filled one are both screened by:
    *  pending while a venue poster is not hashed, VETOED where one names another candidate ([[PosterEvidence.veto]]),
    *  REFUSED where the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]), else taken. */
-  private[agreement] def screened[A](film: Option[Int], distances: AgreementStage.Distances, synopsis: Int => Option[String])(take: => A): AgreementStage.Take[A] =
+  private[agreement] def screened[A](film: Option[Int], distances: AgreementTakes.Distances, synopsis: Int => Option[String])(take: => A): AgreementTakes.Take[A] =
     // a poster given up on (Failed) is no evidence for or against: as no distance found
     distances(film).failedAs(Nil) match {
       case Answer.Known(found) =>
-        if (PosterEvidence.veto(film, found).nonEmpty) AgreementStage.Take.Vetoed
-        else film.flatMap(synopsis).fold[AgreementStage.Take[A]](AgreementStage.Take.Taken(take))(AgreementStage.Take.Refused(_))
-      case Answer.Unknown | Answer.Failed => AgreementStage.Take.Pending // failedAs leaves no Failed
+        if (PosterEvidence.veto(film, found).nonEmpty) AgreementTakes.Take.Vetoed
+        else film.flatMap(synopsis).fold[AgreementTakes.Take[A]](AgreementTakes.Take.Taken(take))(AgreementTakes.Take.Refused(_))
+      case Answer.Unknown | Answer.Failed => AgreementTakes.Take.Pending // failedAs leaves no Failed
     }
 
   /** The id a film TMDB holds no record of stands on: its IMDb id, else the own id of the first of [[identities]] that
@@ -164,7 +164,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
     Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), asked, attempted)
       .answered.flatten.map { taken =>
       taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
-        fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) }))(film =>
+        fallback = taken.fallback.map { case (source, id) => AgreementTakes.fallbackOn(source, id, taken.title, taken.year) }))(film =>
         taking(decision)(ResolverDecision.Basis.Catalogue, taken.line, film = Some(film)))
     }
 
@@ -193,4 +193,63 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         }
         .map(taken => taking(decision)(ResolverDecision.Basis.Broadcast, taken.line, film = Some(taken.film)))
     }
+
+  /** The takes a cluster the families' agreement took no film for is read by, by name — in [[AgreementTakes.FallThrough]]'s
+   *  order, the first to take one deciding: each reads its own evidence and notes in `asks` (the apply's [[AgreementStage.Pass]])
+   *  every question it waits on. */
+  private[agreement] lazy val takes: Map[String, (AgreementTakes.Unagreed, AgreementStage.Pass) => Option[ResolverDecision]] = Map(
+    AgreementTakes.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
+    AgreementTakes.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.version, u.asking)),
+    AgreementTakes.FillTake       -> ((u, _) => filledTake(u.decision, u.verdict, u.asking, u.distances,
+      film => synopsisAgainst(u.id, u.digest, u.listings, film))),
+    AgreementTakes.CatalogueTake  -> ((u, _) => catalogued(u.decision, u.listings, u.asking)))
+  private[agreement] def takeOf(rule: String, untaken: AgreementTakes.Unagreed, asks: AgreementStage.Pass): Option[ResolverDecision] = takes(rule)(untaken, asks)
+  private[agreement] lazy val fallThrough = AgreementTakes.FallThrough.map(takes)
+  /** The first of [[AgreementTakes.FallThrough]] to take a film for the cluster, else the cluster as the model left it. */
+  private[agreement] def fellThrough(untaken: AgreementTakes.Unagreed, asks: AgreementStage.Pass): ResolverDecision =
+    fallThrough.iterator.flatMap(_(untaken, asks)).nextOption().getOrElse(untaken.decision)
+}
+
+private[identity] object AgreementTakes {
+  /** The takes a cluster the families agreed on no film for (or one a venue poster vetoed) is read by, IN ORDER: the
+   *  first to take a film decides, and none after it is read (nor asks a question). The order is behaviour:
+   *  - [[PosterVoteTake]]: the one candidate a venue poster matches within [[PosterEvidence.VoteBits]], none vetoing it;
+   *  - [[BroadcastTake]]: the one record of the billed stage work broadcast on a screening day ([[agreement.Broadcast]]);
+   *  - [[FillTake]]: the first selected unified fill rule's film ([[services.identity.UnifiedRules.filled]]), unless a venue
+   *    poster vetoes it;
+   *  - [[CatalogueTake]]: the film the listings' own catalogue ids name ([[agreement.Catalogue]]). Last though an exact id:
+   *    where it names another film than a take above, the projection keeps that take, for the measure to list.
+   *  A film the families agree on for a listing billing a stage work yields to [[BroadcastTake]] first (PL Kino Amok's bare
+   *  "Manon" on the Met's broadcast day is the Met's, not Clouzot's). `identity-resolver.md` §21 lists this order; a spec
+   *  holds the two together. */
+  val PosterVoteTake = "poster-vote"
+  val BroadcastTake  = "broadcast"
+  val FillTake       = "fill"
+  val CatalogueTake  = "catalogue"
+  val FallThrough: Seq[String] = Seq(PosterVoteTake, BroadcastTake, FillTake, CatalogueTake)
+
+  /** A model no-match the families' agreement took no film for, as the takes read it: its cluster id, listings and their
+   *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
+  private[agreement] final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
+                                   distances: Distances, asking: mutable.Set[Question] = mutable.Set.empty)
+  /** A cluster's venue posters' distances to its candidates and to the film given (an agreed or filled one): what a take
+   *  is screened by ([[AgreementTakes.screened]]). `Unknown` while a poster is not hashed. */
+  private[agreement] type Distances = Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]
+
+  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
+   *  the venue's synopsis (and why), or none to take. */
+  private[agreement] enum Take[+A] {
+    case Taken(decision: A)
+    case Pending
+    case Vetoed
+    case Refused(why: String)
+    case Untaken
+  }
+
+  /** A fallback film standing on `source`'s `id`: one standing on another database's id than IMDb's carries its `title`
+   *  and `year`, that a link to its page is built of. */
+  private[agreement] def fallbackOn(source: String, id: String, title: Option[String], year: Option[Int]): ResolverDecision.Fallback = {
+    val named = source != VoterFamily.Imdb.database
+    ResolverDecision.Fallback(source, id, 1.0, title.filter(_ => named), year.filter(_ => named))
+  }
 }

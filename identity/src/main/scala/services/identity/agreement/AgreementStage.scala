@@ -218,7 +218,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] val askedNow = mutable.HashSet.empty[Long]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against — a cache
    *  of the TMDB answers the read took ([[Memo]]): kept while none of them was filed since. */
-  private[agreement] val candidateFilms = new Memo[String, AgreementStage.CandidateFilms](_.reads, _ => false)
+  private[agreement] val candidateFilms = new Memo[String, AgreementCandidates.CandidateFilms](_.reads, _ => false)
   /** The `version` the current [[apply]] runs at. */
   private[agreement] var applying = -1L
   /** The year the current [[apply]] reads a release as current by — an input every verdict's receipt names
@@ -228,7 +228,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  read at: a take's posters, families' questions and finds while the backfill hashes them — none kept once its
    *  evidence is all answered, nor once the take's listings move. */
   private[agreement] val correctionWaits = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The clusters whose agreed take the last apply left pending ([[AgreementStage.Take.Pending]]: a venue poster not
+  /** The clusters whose agreed take the last apply left pending ([[AgreementTakes.Take.Pending]]: a venue poster not
    *  hashed, an IMDb id not found in TMDB yet), with what it asked: the model's take is served meanwhile, typed Pending
    *  ([[StageWaits.outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
    *  posters of the candidates it read again, the model's no film served. */
@@ -453,17 +453,17 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     takeWaits -= id
     // the venue posters' distances to the cluster's candidates and to the film the families agree on
     // read through the apply's memo, as a correction's are: each poster decoded once an apply, not once a take
-    val distances: AgreementStage.Distances = also => posterDistances(id, digest, listings, also, asking, hashes = pass.reading.posters)
+    val distances: AgreementTakes.Distances = also => posterDistances(id, digest, listings, also, asking, hashes = pass.reading.posters)
     // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
-    verdict.fold(decision)(v => verdictTake(AgreementStage.Unagreed(decision, id, digest, listings, v, distances, asking), pass))
+    verdict.fold(decision)(v => verdictTake(AgreementTakes.Unagreed(decision, id, digest, listings, v, distances, asking), pass))
       .tap(_ => pass.asked ++= asking)
   }
 
   /** The take of the families' verdict on `cluster`: the film they agree on, unless a venue poster vetoes it, the venue's
-   *  synopsis refuses it, or an answer it waits on is not in (pending); else the first of [[AgreementStage.FallThrough]]
+   *  synopsis refuses it, or an answer it waits on is not in (pending); else the first of [[AgreementTakes.FallThrough]]
    *  to take one, and the line saying why none did. */
-  private def verdictTake(cluster: AgreementStage.Unagreed, pass: AgreementStage.Pass): ResolverDecision = {
-    val AgreementStage.Unagreed(decision, id, digest, listings, v, distances, asking) = cluster
+  private def verdictTake(cluster: AgreementTakes.Unagreed, pass: AgreementStage.Pass): ResolverDecision = {
+    val AgreementTakes.Unagreed(decision, id, digest, listings, v, distances, asking) = cluster
     // a cluster no take took a film for while one of them waits on a question -- a find, a poster, a broadcast's
     // record -- is pending on it, as an agreed take is (PL "SEVENTEEN World Tour": filled by IMDb once TMDB's find
     // of its id was filed, read as no film before it; the property "refine each take as answers are only filed")
@@ -472,21 +472,21 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       fell
     }
     pieceOf(v, listings).fold(
-    v.agreed.fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken)(taken(decision, _, asking, distances,
+    v.agreed.fold[AgreementTakes.Take[ResolverDecision]](AgreementTakes.Take.Untaken)(taken(decision, _, asking, distances,
       film => synopsisAgainst(id, digest, listings, film))) match {
       // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
       // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-      case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
-        takeOf(AgreementStage.BroadcastTake, cluster, pass).getOrElse(agreed)
-      case AgreementStage.Take.Taken(agreed) => agreed
-      case AgreementStage.Take.Pending       => takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet); decision
-      case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; waited(fellThrough(cluster, pass))
+      case AgreementTakes.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
+        takeOf(AgreementTakes.BroadcastTake, cluster, pass).getOrElse(agreed)
+      case AgreementTakes.Take.Taken(agreed) => agreed
+      case AgreementTakes.Take.Pending       => takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet); decision
+      case AgreementTakes.Take.Vetoed        => pass.posterVetoed += 1; waited(fellThrough(cluster, pass))
       // the venue's synopsis naming a namesake's description says why, where nothing else takes one
-      case AgreementStage.Take.Refused(why)  =>
+      case AgreementTakes.Take.Refused(why)  =>
         val fell = waited(fellThrough(cluster, pass))
         if (fell eq decision) taking(decision)(decision.basis, why) else fell
       // the guard that refused the film the families would agree on says why, where nothing else takes one
-      case AgreementStage.Take.Untaken       =>
+      case AgreementTakes.Take.Untaken       =>
         val fell = waited(fellThrough(cluster, pass))
         v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
     })(line => taking(decision)(decision.basis, line))
@@ -589,21 +589,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                                           rule: Option[String] = None): ResolverDecision =
     d.copy(film = film, basis = basis, explanation = d.explanation :+ line, fallback = fallback, agreed = agreed)(
       rule.fold(d.trace)(r => d.trace.copy(stage = Some(r))))
-
-  /** The takes a cluster the families' agreement took no film for is read by, by name — in [[AgreementStage.FallThrough]]'s
-   *  order, the first to take one deciding: each reads its own evidence and notes in `asks` (the apply's [[AgreementStage.Pass]])
-   *  every question it waits on. */
-  private[agreement] val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Pass) => Option[ResolverDecision]] = Map(
-    AgreementStage.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
-    AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.version, u.asking)),
-    AgreementStage.FillTake       -> ((u, _) => filledTake(u.decision, u.verdict, u.asking, u.distances,
-      film => synopsisAgainst(u.id, u.digest, u.listings, film))),
-    AgreementStage.CatalogueTake  -> ((u, _) => catalogued(u.decision, u.listings, u.asking)))
-  private[agreement] def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): Option[ResolverDecision] = takes(rule)(untaken, asks)
-  private[agreement] val fallThrough = AgreementStage.FallThrough.map(takes)
-  /** The first of [[AgreementStage.FallThrough]] to take a film for the cluster, else the cluster as the model left it. */
-  private[agreement] def fellThrough(untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): ResolverDecision =
-    fallThrough.iterator.flatMap(_(untaken, asks)).nextOption().getOrElse(untaken.decision)
 
   /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
   private[agreement] def eventOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Option[String] =
@@ -949,13 +934,6 @@ object AgreementStage {
     override def showing(venue: String): Answer[Seq[Showing]] = noted(s"showing|$venue", answers.showing(venue))
   }
 
-  /** A fallback film standing on `source`'s `id`: one standing on another database's id than IMDb's carries its `title`
-   *  and `year`, that a link to its page is built of. */
-  private[agreement] def fallbackOn(source: String, id: String, title: Option[String], year: Option[Int]): ResolverDecision.Fallback = {
-    val named = source != VoterFamily.Imdb.database
-    ResolverDecision.Fallback(source, id, 1.0, title.filter(_ => named), year.filter(_ => named))
-  }
-
   /** A family's answer to `question` read, as its digest and whether it was a gap: in the receipt `reads` — answered or
    *  not, so an answer filed where none was reads the verdict again as one that moved does — and among the questions
    *  `asked` when a gap, or read and stale (asked again). */
@@ -993,30 +971,6 @@ object AgreementStage {
       }
   }
 
-  /** The takes a cluster the families agreed on no film for (or one a venue poster vetoed) is read by, IN ORDER: the
-   *  first to take a film decides, and none after it is read (nor asks a question). The order is behaviour:
-   *  - [[PosterVoteTake]]: the one candidate a venue poster matches within [[PosterEvidence.VoteBits]], none vetoing it;
-   *  - [[BroadcastTake]]: the one record of the billed stage work broadcast on a screening day ([[agreement.Broadcast]]);
-   *  - [[FillTake]]: the first selected unified fill rule's film ([[services.identity.UnifiedRules.filled]]), unless a venue
-   *    poster vetoes it;
-   *  - [[CatalogueTake]]: the film the listings' own catalogue ids name ([[agreement.Catalogue]]). Last though an exact id:
-   *    where it names another film than a take above, the projection keeps that take, for the measure to list.
-   *  A film the families agree on for a listing billing a stage work yields to [[BroadcastTake]] first (PL Kino Amok's bare
-   *  "Manon" on the Met's broadcast day is the Met's, not Clouzot's). `identity-resolver.md` §21 lists this order; a spec
-   *  holds the two together. */
-  val PosterVoteTake = "poster-vote"
-  val BroadcastTake  = "broadcast"
-  val FillTake       = "fill"
-  val CatalogueTake  = "catalogue"
-  val FallThrough: Seq[String] = Seq(PosterVoteTake, BroadcastTake, FillTake, CatalogueTake)
-
-  /** A model no-match the families' agreement took no film for, as the takes read it: its cluster id, listings and their
-   *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
-  private[agreement] final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
-                                   distances: Distances, asking: mutable.Set[Question] = mutable.Set.empty)
-  /** A cluster's venue posters' distances to its candidates and to the film given (an agreed or filled one): what a take
-   *  is screened by ([[AgreementTakes.screened]]). `Unknown` while a poster is not hashed. */
-  private[agreement] type Distances = Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]
   /** One apply at the families' `version`: where its takes and corrections note what they wait on (`asked`: the families'
    *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again
    *  for their day) with the verdicts it moved, the clusters and model takes it read, and its cost. */
@@ -1080,16 +1034,6 @@ object AgreementStage {
     private var left = allowance
     def spend(): Boolean = { val granted = left > 0; left -= 1; granted }
     def overdrawn: Boolean = left < 0
-  }
-
-  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
-   *  the venue's synopsis (and why), or none to take. */
-  private[agreement] enum Take[+A] {
-    case Taken(decision: A)
-    case Pending
-    case Vetoed
-    case Refused(why: String)
-    case Untaken
   }
 
   /** A poster to hash: a venue's, by its URL, or a TMDB film's. */
@@ -1237,9 +1181,6 @@ object AgreementStage {
    *  the verdict that resolve gave (`read`). */
   private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None,
                                               read: Option[StoredVerdict] = None)
-  /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
-   *  no answer, to be read again at another — with what the read took (its receipt). */
-  private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long], reads: Map[Dependency, Long])
   /** Asks families' questions now, on the calling thread, for at most `within`, filing what they answer: a cluster with a
    *  newly scraped listing reads its families' answers in its first take (docs/design/identity-questions.md, step 3, the
    *  owner's choice). A question not answered by then is handed to the queue as every other is. */

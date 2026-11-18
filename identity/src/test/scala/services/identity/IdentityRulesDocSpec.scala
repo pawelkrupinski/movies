@@ -27,6 +27,6 @@ class IdentityRulesDocSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "list the agreement stage's takes in the order it reads them" in {
-    listed("agreement") shouldBe agreement.AgreementStage.FallThrough
+    listed("agreement") shouldBe agreement.AgreementTakes.FallThrough
   }
 }

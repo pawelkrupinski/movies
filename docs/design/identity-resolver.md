@@ -3352,7 +3352,7 @@ same concept. The consolidation kept every DECISION (proof below) and gave each 
 
 Each stage tries its rules in a fixed order, and the order is behaviour: the first to take decides. The orders live in
 code as registries (`Acceptance`'s alone rules, in the order `Acceptance.refusals` names them, and its `pooledOrder`;
-`AgreementStage.FallThrough`); `IdentityRulesDocSpec` fails when this table and the code disagree.
+`AgreementTakes.FallThrough`); `IdentityRulesDocSpec` fails when this table and the code disagree.
 
 | stage | # | rule | takes when |
 |---|---|---|---|
