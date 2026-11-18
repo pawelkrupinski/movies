@@ -1,4 +1,4 @@
-package services.movies
+package controllers
 
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec

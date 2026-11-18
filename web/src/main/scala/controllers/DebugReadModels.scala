@@ -9,13 +9,13 @@ import java.util.Locale
 
 /** One country's read model as `/debug/readmodel` reads it, and where that is (shown on the page). */
 final case class DebugReadModel(reader: ReadModelReader, source: String,
-                                 freshness: services.movies.MirrorFreshness = services.movies.MirrorFreshness.notMirrored) {
+                                 freshness: controllers.MirrorFreshness = controllers.MirrorFreshness.notMirrored) {
   /** The whole read model, or `None` when it could not be read whole ([[ReadModelDump.read]]). */
   def dump(): Option[ReadModelDump] = ReadModelDump.read(reader)
 
   /** How far behind its mirror this read model is at `now`: the debug navbar's age badge. */
-  def mirrorAge(now: java.time.Instant): Option[services.movies.MirrorFreshness.Age] =
-    services.movies.MirrorFreshness.describe(freshness.newestUpdate(), now)
+  def mirrorAge(now: java.time.Instant): Option[controllers.MirrorFreshness.Age] =
+    controllers.MirrorFreshness.describe(freshness.newestUpdate(), now)
 
   /** Every screening document of film `id`, or `None` when they could not be read. */
   def screeningsOf(id: String): Option[Seq[CityScreening]] = reader.findCard(id) match {
@@ -45,7 +45,7 @@ object DebugReadModels {
    *  own read model is empty. Without it, only the serving country, from the serving database.
    *  `freshnessOf` says how far behind a mirror database is: the debug navbar's age badge. */
   def of(serving: Country, servingReader: ReadModelReader, mirror: Option[String => ReadModelReader],
-         freshnessOf: String => services.movies.MirrorFreshness = _ => services.movies.MirrorFreshness.notMirrored): DebugReadModels =
+         freshnessOf: String => controllers.MirrorFreshness = _ => controllers.MirrorFreshness.notMirrored): DebugReadModels =
     mirror match {
       case Some(open) =>
         new DebugReadModels((Country.switchable :+ serving).distinct.map { country =>

@@ -1,7 +1,6 @@
 package controllers
 
 import play.api.Logging
-import services.movies.MirrorFreshness
 
 import java.io.{InputStream, ObjectInputStream, ObjectOutputStream, ObjectStreamClass}
 import java.nio.file.{Files, Path, StandardCopyOption}

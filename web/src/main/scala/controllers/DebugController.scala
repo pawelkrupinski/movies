@@ -78,9 +78,9 @@ class DebugController(cc: ControllerComponents,
    *  mirror look broken), plus how long ago that read was once it is old enough to
    *  matter, e.g. a snapshot restored after a restart. `None` in prod, where the
    *  pages read the source and there is no copy to be behind. */
-  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[services.movies.MirrorFreshness.Age] = {
+  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[controllers.MirrorFreshness.Age] = {
     val now = clock.instant()
-    services.movies.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
+    controllers.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
       val sinceRead = snapshot.takenAt.map(at => java.time.Duration.between(at, now).toMillis.millis)
       age.copy(snapshotAge = sinceRead.filter(_ >= DebugController.SnapshotAgeShownAfter))
     }

@@ -379,7 +379,7 @@ of rating checks, before any film had backed off) and read as a cadence bug.
 
 So the debug navbar carries the age of what it is showing — the newest
 `updatedAt` across that country's mirrored `movies` + `screenings`
-(`services.movies.MirrorFreshness`, read per page load; ~12–26ms against the loopback
+(`controllers.MirrorFreshness`, read per page load; ~12–26ms against the loopback
 Mongo). Past the same 30 minutes the re-seed gate uses, it turns amber and says
 `⚠ mirror 26h behind` instead of `mirror 12s behind`. Nothing is rendered in
 prod, where the pages read the source and there is no copy to be behind.
