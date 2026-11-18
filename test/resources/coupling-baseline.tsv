@@ -88,7 +88,6 @@ fanout	controllers.AuthController	16
 fanout	controllers.CityJsonPayloads	13
 fanout	controllers.DebugController	22
 fanout	controllers.DebugStreamController	11
-fanout	controllers.IdentityStagingController	10
 fanout	controllers.MovieController	25
 fanout	controllers.MovieControllerService	15
 fanout	controllers.ReviewController	32

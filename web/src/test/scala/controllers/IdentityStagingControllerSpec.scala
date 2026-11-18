@@ -75,10 +75,10 @@ class IdentityStagingControllerSpec extends AnyFlatSpec with Matchers {
   it should "carry the spellings the title search matches besides a row's titles: originals, unaccented and romanised" in {
     def film(facts: StagedFact*) = cluster("s1", "Lewiatan").copy(take = StagedTake(Some(265180), Some("Leviathan"), "OwnMatch", 0.9, filmFacts = facts))
     // an original no source spells in Latin letters is romanised
-    IdentityStagingController.searchTitlesOf(film(StagedFact("original title", "Левиафан"))) should contain allOf ("Левиафан", "Leviafan")
+    IdentityStagingJson.searchTitlesOf(film(StagedFact("original title", "Левиафан"))) should contain allOf ("Левиафан", "Leviafan")
     // beside a Latin spelling it is not (a machine romanisation is the fallback); each Latin one also unaccented
     val leviathan = film(StagedFact("original title", "Левиафан"), StagedFact("alternative titles", "Le Léviathan, Leviathan"))
-    val titles = IdentityStagingController.searchTitlesOf(leviathan)
+    val titles = IdentityStagingJson.searchTitlesOf(leviathan)
     titles shouldBe Seq("Левиафан", "Le Léviathan", "Le Leviathan")   // the title itself is matched as the title
     uk.publish("uk", Seq(leviathan), Nil, beat(1))
     val ukNow = (data(None) \ "countries").as[Seq[JsValue]].find(c => (c \ "code").as[String] == "uk").get
