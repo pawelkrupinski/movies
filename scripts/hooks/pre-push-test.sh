@@ -539,7 +539,7 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
-for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py pure-move-check pure_move_check.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
@@ -748,6 +748,19 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPU
 check "...with PREPUSH_ONLY, the job's own share" "0 identity" "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ' | sed 's/ $//')"
 code="$(area_push worker/src/main/scala/services/movies/L.scala PREPUSH_LIST=1 PREPUSH_ONLY=identity)"
 check "...and nothing for a change that selects none of it" "0 " "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ')"
+# A PURE MOVE'S CLAIM HOLDS: `Pure-Move: verified` selects the check whatever the commit touches, and the commit must be one
+code="$(AREA_MESSAGE=$'Notes: a line more\n\nPure-Move: verified' area_push notes/a.txt PREPUSH_LIST=1)"
+check "a commit claiming a pure move selects the puremove check whatever it touches" "0 1" "$code $(grep -cx puremove "$testroot/area-out")"
+code="$(AREA_MESSAGE=$'Notes: a line more\n\nPure-Move: verified' area_push notes/a.txt)"
+check "...and a claim that is no move refuses the push, naming the check" "1 1" \
+  "$code $(grep -c "puremove: .* says 'Pure-Move: verified' but scripts/pure-move-check does not find a pure move" "$testroot/area-out")"
+mkdir -p "$area/notes/moved"; scratch_git "$area" mv notes/a.txt notes/moved/a.txt
+scratch_git "$area" commit -qm $'Notes: moved\n\nPure-Move: verified'
+code=0; (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD \
+  > "$testroot/area-out" 2>&1) || code=$?
+check "...and a real move passes it" "0 1" "$code $(grep -c 'puremove: .* is a pure move' "$testroot/area-out")"
+code="$(area_push notes/b.txt PREPUSH_LIST=1)"
+check "...and a commit with no claim does not select it" "0 0" "$code $(grep -cx puremove "$testroot/area-out")"
 # THE IDENTITY SHARDS: PREPUSH_IDENTITY_SHARD=k/n runs shard k of the selected classes; the shards together run them all
 shard_classes() { grep -o 'services\.identity\.[A-Za-z]*Spec' "$AREA_CALLS" | sort | tr '\n' ' '; }
 all_in_shards=""

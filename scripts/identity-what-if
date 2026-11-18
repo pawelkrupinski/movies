@@ -65,6 +65,9 @@
 #
 # Each country it finishes is recorded for scripts/identity-measure's what-if gate (THE VERDICT RECORD, below).
 #
+# A PURE MOVE (scripts/pure-move-check: files, packages and classes renamed, nothing else) is not resolved at all: it
+# prints "PURE MOVE: what-if skipped (scripts/pure-move-check)", records a `pure-move` verdict a country and exits 0.
+#
 # Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
 # side failed. Every JVM takes a slot of scripts/jvm-gate.sh.
 set -euo pipefail
@@ -136,6 +139,27 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 [ "${#ccs[@]}" -gt 0 ] || { echo "name a country (pl de uk es us)" >&2; exit 2; }
+# A PURE MOVE MEASURES NOTHING (the owner, 2026-11-18): a range that only moves code -- files, packages and classes
+# renamed, nothing else (scripts/pure-move-check) -- moves no take, and its base cannot even be compiled with the head's
+# tool files across a package rename. Each country's verdict is recorded as `pure-move` for identity-measure's gate.
+# Not for --bisect, nor a `.` head with uncommitted edits (the check reads commits); not pure or undecidable: as before.
+if [ -z "$bisect_good" ] && [ -z "${KINOWO_PURE_MOVE_CHECKED:-}" ]; then
+  pure_head=$head
+  if [ "$pure_head" = . ]; then
+    pure_head=""; [ -n "$(git -C "$repo" status --porcelain --untracked-files=no)" ] || pure_head=HEAD
+  fi
+  if [ -n "$pure_head" ]; then
+    pure_rc=0; pure_out=$("$repo/scripts/pure-move-check" "$base..$pure_head" --quiet 2>&1) || pure_rc=$?
+    if [ "$pure_rc" = 0 ]; then
+      echo "PURE MOVE: what-if skipped (scripts/pure-move-check)"
+      pure_base=$(git -C "$repo" rev-parse --verify "$base^{commit}") pure_sha=$(git -C "$repo" rev-parse --verify "$pure_head^{commit}")
+      for cc in "${ccs[@]}"; do what_if_record_verdict "$pure_sha" "$pure_base" "$cc" pure-move "-"; done
+      exit 0
+    fi
+    identity_log "not a pure move (scripts/pure-move-check exit $pure_rc: $(tail -1 <<< "$pure_out")): resolving as before"
+  fi
+  export KINOWO_PURE_MOVE_CHECKED=1 # the vault's re-run of this tool, below, asks no second time
+fi
 if [ -n "$recording" ]; then
   # a CI recording, replayed by CI's own two tools (scripts/identity-measure-local): the measure's numbers exactly
   [ "$head" != . ] || { echo "--recording measures commits: name --head REF (commit the change first)" >&2; exit 2; }

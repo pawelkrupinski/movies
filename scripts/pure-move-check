@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# THE PURE MOVE CHECK: whether a range only moves code (files, packages and classes renamed), so no take can move and
+# scripts/identity-what-if -- which cannot compile a base across a package rename -- has nothing to measure.
+#
+#   scripts/pure-move-check <base>..<head> [--quiet]
+#
+# Exit 0 PURE MOVE, 1 NOT PURE (each non-move hunk and name risk named, with its location), 2 undecidable. A pure move's
+# commit says `Pure-Move: verified`; the pre-push hook's `puremove` check runs this again over each such commit.
+# What it normalises, what counts as a reference edit and what is a name risk: scripts/pure_move_check.py; its tests:
+# scripts/pure_move_check_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+exec python3 -I "$(dirname "$0")/pure_move_check.py" "$@"

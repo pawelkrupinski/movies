@@ -17,7 +17,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
 mkdir -p "$repo/scripts/ci" "$repo/scripts/local-mirror"
-cp "$REPO_ROOT"/scripts/identity-what-if "$REPO_ROOT"/scripts/identity-what-if-roots.tsv "$REPO_ROOT"/scripts/*.sh "$REPO_ROOT"/scripts/*.py "$repo/scripts/"
+cp "$REPO_ROOT"/scripts/identity-what-if "$REPO_ROOT"/scripts/pure-move-check "$REPO_ROOT"/scripts/identity-what-if-roots.tsv "$REPO_ROOT"/scripts/*.sh "$REPO_ROOT"/scripts/*.py "$repo/scripts/"
 cp "$REPO_ROOT"/scripts/ci/*.py "$repo/scripts/ci/"
 # the tool files the tool keys its sides by (TOOL_FILES), as the checkout holds them
 eval "$(sed -n '/^TOOL_FILES=(/,/)/p' "$REPO_ROOT/scripts/identity-what-if")"
@@ -116,5 +116,19 @@ check "a change the head resolves: its compile starts before the base's resolve 
   "$(head_compiled_beside_base)"
 check "...and the head resolves once both are done" "java-start head|java-end head" \
   "$(calls | tr '|' '\n' | grep 'java-.* head' | paste -sd'|' -)"
+
+# A PURE MOVE (scripts/pure-move-check) measures nothing: no compile, no JVM, a `pure-move` verdict a country recorded for
+# identity-measure's what-if gate
+c5=$(mkdir -p "$repo/moved"; scratch_git "$repo" mv common-row.txt moved/common-row.txt; scratch_git "$repo" commit -q -m "a pure move"
+  scratch_git "$repo" rev-parse HEAD)
+out=$(what_if "$c4" "$c5" 2026-11-06T12:00:00Z)
+check "a pure move: what-if says so and is skipped, compiling and starting nothing" \
+  "PURE MOVE: what-if skipped (scripts/pure-move-check)|" "$(grep 'PURE MOVE' <<<"$out")|$(calls)"
+check "...and records a pure-move verdict for identity-measure's gate" "uk pure-move" \
+  "$(cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" bash -c '. scripts/identity-tools.sh; what_if_verdicts "$1" "$2"' _ "$c5" "$c4")"
+# ...and a change that is no move still resolves (the inert one above was no move either, and resolved)
+check "a range that moves nothing says so and resolves as before" "yes" \
+  "$(out=$(what_if "$c0" "$c1" 2026-11-06T10:00:00Z)
+     grep -q 'not a pure move (scripts/pure-move-check exit 1' "$work/err" && grep -q CLEAN <<<"$out" && echo yes || echo "no: $(cat "$work/err")")"
 
 spec_summary

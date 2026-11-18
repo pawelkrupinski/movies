@@ -328,7 +328,9 @@ Before an ad-hoc test or a full convergence leg (10–90 min), use the local too
 `scripts/title-trace`, `scripts/venue-replay`, `scripts/recording-diff`, `scripts/listing-history`,
 `scripts/label-lookup`, `scripts/identity-ratchet-report`, `scripts/identity-judge-cards`,
 `scripts/identity-measure` (whole-corpus; optional before landing, main's convergence runs it after),
-`scripts/identity-what-if` (a change's model takes over prod's current corpus on the local mirror, base vs head, in minutes),
+`scripts/identity-what-if` (a change's model takes over prod's current corpus on the local mirror, base vs head, in minutes;
+`scripts/pure-move-check <base>..<head>` first: a pure code move -- files, packages, classes renamed -- owes no what-if,
+and its commit says `Pure-Move: verified`),
 `scripts/identity-refit`. Which tool
 answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
 subagent brief.**

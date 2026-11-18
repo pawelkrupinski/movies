@@ -140,6 +140,10 @@
 #                 `Drift-Harness-Refactor: <why>`; and a change to what the worker serves over time (the model's
 #                 input gate, holds, settle, asks) ships its gauges/alert in the same commit or names the earlier
 #                 push's commit that did (`Gauges-Shipped: <sha>`; else `Gauges: none -- <why>`). Seconds: git only
+#   `puremove`    scripts/pure-move-check <sha>^..<sha> over each pushed commit carrying `Pure-Move: verified`, whatever it
+#                 touches: a commit claiming to be a pure move (files, packages and classes renamed, nothing else, so no
+#                 take can move and scripts/identity-what-if has nothing to measure) is one. The trailer is optional --
+#                 identity-what-if runs the check itself -- and verified only when present. Seconds a commit
 #   `flipbacklog` THE FLIP BACKLOG IS COMPLETE (Main #2515: 97d260d67 committed the Ratzeburg Grinch drift slice with its
 #                 `drift` row alone; PopulationMonotonicitySpec failed main on four A -> B -> A takes no `population` row
 #                 named, and a slice changed alone selected no check at all), on a change to the flip backlog, the
@@ -1291,6 +1295,11 @@ if ! printf '%s\n' "$checks" | grep -qx driftguards; then
         checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
     done
 fi
+# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`), whatever the commit touches: selected by the trailer alone.
+for r in "${ranges[@]}"; do
+    [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
+    checks="$(printf '%s\npuremove' "$checks" | grep -v '^$')"; break
+done
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
 drift_reds="" drift_birth=""
@@ -1957,6 +1966,29 @@ check_identitydrift() {
     return $rc
 }
 check_driftguards() { commit_rules driftguards; }
+# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`): each commit saying `Pure-Move:` is one, by the check identity-what-if
+# runs, over that commit alone
+check_puremove() {
+    local r sha claim rc=0
+    need puremove python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do
+        while IFS= read -r sha; do
+            claim="$(git log -1 --format='%(trailers:key=Pure-Move,valueonly)' "$sha" | grep -v '^$' || true)"
+            [ -n "$claim" ] || continue
+            if [ "$claim" != verified ]; then
+                warn "puremove: ${sha:0:9} says 'Pure-Move: $claim': the trailer is 'Pure-Move: verified', or none"; rc=1; continue
+            fi
+            if scripts/pure-move-check "$sha^..$sha" > "$tmp/puremove.$sha" 2>&1; then
+                log "puremove: ${sha:0:9} is a pure move"
+            else
+                cat "$tmp/puremove.$sha" >&2
+                warn "puremove: ${sha:0:9} says 'Pure-Move: verified' but scripts/pure-move-check does not find a pure move: drop the trailer (and run scripts/identity-what-if) or make the commit one"
+                rc=1
+            fi
+        done < <(git rev-list --reverse "$r")
+    done
+    return $rc
+}
 # THE FLIP BACKLOG IS COMPLETE (the header's `flipbacklog`): the slices the change brings walked, judged as main's spec
 # judges them
 check_flipbacklog() {
