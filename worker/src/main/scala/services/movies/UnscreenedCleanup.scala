@@ -114,13 +114,13 @@ class UnscreenedCleanup(
 
     // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
     // holds a key the corpus doesn't, so dropping it is the whole point of this pass.
-    val orphans    = checked.collect { case (k, read) if !read.isFailed && !holdsCinemas(read.answered) => k }
-    val stillHeld  = checked.collect { case (k, read) if !read.isFailed && holdsCinemas(read.answered)  => k }
-    val unreadable = checked.collect { case (k, read) if read.isFailed                                => k }
+    val (unreadable, read)   = checked.partition(_._2.isFailed)
+    val (stillHeld, absent)  = read.partition { case (_, row) => holdsCinemas(row.answered) }
+    val orphans              = absent.map(_._1)
 
-    RemovalAudit.cleanupSkipped("unscreened-cleanup", stillHeld.map(label),
+    RemovalAudit.cleanupSkipped("unscreened-cleanup", stillHeld.map(row => label(row._1)),
       reason = "stored-record-still-holds-cinemas")
-    RemovalAudit.cleanupSkipped("unscreened-cleanup", unreadable.map(label),
+    RemovalAudit.cleanupSkipped("unscreened-cleanup", unreadable.map(row => label(row._1)),
       reason = "stored-record-read-failed")
 
     if (orphans.nonEmpty) {

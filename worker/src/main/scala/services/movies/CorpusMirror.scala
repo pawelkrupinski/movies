@@ -334,30 +334,31 @@ final class CorpusMirror(
       import ChangeStreamMetrics.VenueDecline as Why
       corpusIndex.keyOf(venues.filmId).flatMap(key => get(key).map(key -> _)) match {
         case None => VenueVerdict.Declined(Why.CacheNotResident)
+        case Some((_, resident)) if !holdsSameSlots(resident, venues) => VenueVerdict.Declined(Why.CacheSlotsDiffer)
         case Some((key, resident)) =>
-          // The venues' slots replace the resident ones whole, read as a whole-film read reads them, so
-          // the row stored is that read's exactly when the venues hold the same slots it does.
-          val fits = venues.atCinemas.forall { case (cinema, slots) =>
-            resident.data.keysIterator.collect { case s @ models.CinemaShowing(`cinema`, _) => s }.toSet == slots.map(_._1).toSet
-          }
-          if (!fits) VenueVerdict.Declined(Why.CacheSlotsDiffer)
-          else {
-            // Only the venues' slots are stripped again, not the whole row as `forCache` would: a
-            // one-venue change to a wide film stripped thousands of slots — 4% of the US worker's CPU
-            // (JFR 2026-10-01). The slot set is unchanged (checked above).
-            val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
-              val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) =>
-                source -> residentShape.kept(resident.data.get(source), residentShape.slot(slot)) }.toSeq
-              // Venues read back as the row holds them (the echo of this cache's own write) leave the row as it is.
-              if (!slots.forall { case (source, slot) => resident.data.get(source).exists(_ eq slot) }) {
-                store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
-                if (!slots.forall { case (source, slot) => resident.data.get(source).exists(LeanRecords.slotsEqual(_, slot)) })
-                  changed(venues.filmId)
-              }
-            }
-            if (applied) touch()
-            VenueVerdict.Applied
-          }
+          if (repository.writeFence.ifUndisturbed(venues.filmId.value, mark)(storeVenueSlots(key, resident, venues))) touch()
+          VenueVerdict.Applied
+      }
+    }
+
+    /** The venues' slots replace the resident ones whole, read as a whole-film read reads them, so
+     *  the row stored is that read's exactly when the venues hold the same slots it does. */
+    private def holdsSameSlots(resident: MovieRecord, venues: VenueSlots): Boolean =
+      venues.atCinemas.forall { case (cinema, slots) =>
+        resident.data.keysIterator.collect { case s @ models.CinemaShowing(`cinema`, _) => s }.toSet == slots.map(_._1).toSet
+      }
+
+    /** Only the venues' slots are stripped again, not the whole row as `forCache` would: a
+     *  one-venue change to a wide film stripped thousands of slots — 4% of the US worker's CPU
+     *  (JFR 2026-10-01). The slot set is unchanged ([[holdsSameSlots]]). Venues read back as the row holds them (the
+     *  echo of this cache's own write) leave the row as it is. */
+    private def storeVenueSlots(key: CacheKey, resident: MovieRecord, venues: VenueSlots): Unit = {
+      val slots = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) =>
+        source -> residentShape.kept(resident.data.get(source), residentShape.slot(slot)) }.toSeq
+      if (!slots.forall { case (source, slot) => resident.data.get(source).exists(_ eq slot) }) {
+        store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
+        if (!slots.forall { case (source, slot) => resident.data.get(source).exists(LeanRecords.slotsEqual(_, slot)) })
+          changed(venues.filmId)
       }
     }
 

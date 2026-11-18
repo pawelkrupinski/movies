@@ -244,38 +244,48 @@ object CorpusCensus {
       c.slug -> Window(ShowtimesDigest.startMinute(tomorrow.atStartOfDay),
         ShowtimesDigest.startMinute(tomorrow.plusDays(1).atStartOfDay))
     }.toMap
-    val zoneCutoffs = scala.collection.mutable.HashMap.empty[ZoneId, Int]
-    def zoneCutoff(zone: ZoneId) = zoneCutoffs.getOrElseUpdate(zone, upcomingAfter(venueClock.now(zone)))
+    val tally = new Tally(windows, venueClock)
+    films.foreach(tally.add)
+    val corpus = StaticSubsets.indices.map(i => StaticSubsets(i)._1 -> static(i).toInt) :+
+      (WorkerCorpusMetrics.Subset.UnresolvedWithShowtimes -> tally.unresolvedScreening)
+    Reading(WorkerCorpusMetrics.Subset.all.map(name => name -> corpus.collectFirst { case (`name`, n) => n }.getOrElse(0)),
+      tally.served.toMap, tally.upcoming.toMap, tally.widest)
+  }
 
-    val served    = scala.collection.mutable.HashMap.empty[(String, String), Int].withDefaultValue(0)
-    val upcoming  = scala.collection.mutable.HashMap.empty[String, Int].withDefaultValue(0)
+  /** One census pass's running counts, film by film: the cards served per city and scope, the showtimes ahead per
+   *  city, the unresolved films still screening and the widest film. */
+  private final class Tally(windows: Map[String, Window], venueClock: VenueClock) {
+    private val zoneCutoffs = scala.collection.mutable.HashMap.empty[ZoneId, Int]
+    val served   = scala.collection.mutable.HashMap.empty[(String, String), Int].withDefaultValue(0)
+    val upcoming = scala.collection.mutable.HashMap.empty[String, Int].withDefaultValue(0)
     var unresolvedScreening = 0
     var widest = 0
-    films.foreach { film =>
+
+    private def zoneCutoff(zone: ZoneId) = zoneCutoffs.getOrElseUpdate(zone, upcomingAfter(venueClock.now(zone)))
+
+    def add(film: FilmCensus): Unit = {
       if (film.cinemaSlots > widest) widest = film.cinemaSlots
-      if (film.ready) film.cards.foreach { card =>
-        val cardCities = scala.collection.mutable.HashMap.empty[String, (Boolean, Boolean)]
-        card.foreach { slot =>
-          slot.city.flatMap(slug => windows.get(slug).map(slug -> _)).foreach { case (slug, window) =>
-            // Started on the venue's own clock, as the web cuts it (`StartedShowtimeCut`): a US city's venues across a
-            // zone line keep their own. Tomorrow stays the city's day, as the web's tomorrow page reads it.
-            val ahead = slot.startsAfter(zoneCutoff(slot.zone))
-            upcoming(slug) += ahead
-            val (anyAhead, anyTomorrow) = cardCities.getOrElse(slug, (false, false))
-            cardCities(slug) = (anyAhead || ahead > 0, anyTomorrow || slot.startsWithin(window.tomorrowFrom, window.tomorrowUntil))
-          }
-        }
-        cardCities.foreach { case (slug, (anyAhead, anyTomorrow)) =>
-          if (anyAhead) served((slug, WorkerSourceFilmsMetrics.Scope.All)) += 1
-          if (anyTomorrow) served((slug, WorkerSourceFilmsMetrics.Scope.Tomorrow)) += 1
-        }
-      }
+      if (film.ready) film.cards.foreach(addCard)
       else if (film.screenable.exists(slot => slot.startsAfter(zoneCutoff(slot.zone)) > 0)) unresolvedScreening += 1
     }
-    val corpus = StaticSubsets.indices.map(i => StaticSubsets(i)._1 -> static(i).toInt) :+
-      (WorkerCorpusMetrics.Subset.UnresolvedWithShowtimes -> unresolvedScreening)
-    Reading(WorkerCorpusMetrics.Subset.all.map(name => name -> corpus.collectFirst { case (`name`, n) => n }.getOrElse(0)),
-      served.toMap, upcoming.toMap, widest)
+
+    private def addCard(card: Seq[SlotCensus]): Unit = {
+      val cardCities = scala.collection.mutable.HashMap.empty[String, (Boolean, Boolean)]
+      card.foreach { slot =>
+        slot.city.flatMap(slug => windows.get(slug).map(slug -> _)).foreach { case (slug, window) =>
+          // Started on the venue's own clock, as the web cuts it (`StartedShowtimeCut`): a US city's venues across a
+          // zone line keep their own. Tomorrow stays the city's day, as the web's tomorrow page reads it.
+          val ahead = slot.startsAfter(zoneCutoff(slot.zone))
+          upcoming(slug) += ahead
+          val (anyAhead, anyTomorrow) = cardCities.getOrElse(slug, (false, false))
+          cardCities(slug) = (anyAhead || ahead > 0, anyTomorrow || slot.startsWithin(window.tomorrowFrom, window.tomorrowUntil))
+        }
+      }
+      cardCities.foreach { case (slug, (anyAhead, anyTomorrow)) =>
+        if (anyAhead) served((slug, WorkerSourceFilmsMetrics.Scope.All)) += 1
+        if (anyTomorrow) served((slug, WorkerSourceFilmsMetrics.Scope.Tomorrow)) += 1
+      }
+    }
   }
 }
 
@@ -299,30 +309,40 @@ object FilmCensus {
    *  landing moves one slot of a film, and a film can hold thousands. */
   def of(stored: StoredMovieRecord, normalizer: TitleNormalizer, prior: Option[FilmCensus])(using LatestTitleYear): FilmCensus = {
     val record   = stored.record
-    val subsets  = CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
-      if (CorpusCensus.StaticSubsets(i)._2(record)) bits | (1 << i) else bits)
-    // Over the prior part's own map: only a slot that is not the object it held is derived again and put in, and a film
-    // whose slots all are keeps the map, its title groups and its screenable slots — derived anew on every change of a
-    // film, they were kept until its next one, so promoted and left to die old.
-    val held     = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
-    val cinemas  = record.data.iterator.collect { case (source, slot) if Source.cinemaOf(source).isDefined => source -> slot }.toSeq
-    val gone     = held.keysIterator.filterNot(record.data.contains).toSeq
-    val bySource = cinemas.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
-      if (map.get(source).exists(_.slot eq slot)) map else map.updated(source, SlotCensus(slot, Source.cinemaOf(source).get, normalizer))
-    }
+    val bySource = slotParts(record, prior, normalizer)
     val ready    = record.readyToProject
     val anchor   = Option.when(ready)(ReadModelProjection.anchorKeyOf(stored.asReadBack(normalizer), normalizer))
     prior.filter(p => (p.bySource eq bySource) && p.ready == ready && p.anchor == anchor) match {
-      case Some(p) => new FilmCensus(subsets, ready, bySource.size, bySource, p.cards, p.screenable, anchor)
-      case None =>
-        // Held as arrays, not lists: a wide film's part held a list cell per screening slot (24 bytes each), rebuilt on
-        // every change of the film — the largest named holder of dead list cells in worker-us's old generation (heap
-        // dump 2026-10-05: 9.1 MB).
-        val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).to(scala.collection.immutable.ArraySeq)
-        val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a))
-          .valuesIterator.to(scala.collection.immutable.ArraySeq))
-        new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening, anchor)
+      case Some(p) => new FilmCensus(subsetsOf(record), ready, bySource.size, bySource, p.cards, p.screenable, anchor)
+      case None    => fresh(subsetsOf(record), ready, bySource, anchor)
     }
+  }
+
+  private def subsetsOf(record: MovieRecord)(using LatestTitleYear): Int =
+    CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
+      if (CorpusCensus.StaticSubsets(i)._2(record)) bits | (1 << i) else bits)
+
+  /** The film's venue slots' parts, over the prior part's own map: only a slot that is not the object it held is
+   *  derived again and put in, and a film whose slots all are keeps the map, its title groups and its screenable
+   *  slots — derived anew on every change of a film, they were kept until its next one, so promoted and left to die
+   *  old. */
+  private def slotParts(record: MovieRecord, prior: Option[FilmCensus], normalizer: TitleNormalizer): Map[Source, SlotCensus] = {
+    val held    = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
+    val cinemas = record.data.iterator.collect { case (source, slot) if Source.cinemaOf(source).isDefined => source -> slot }.toSeq
+    val gone    = held.keysIterator.filterNot(record.data.contains).toSeq
+    cinemas.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
+      if (map.get(source).exists(_.slot eq slot)) map else map.updated(source, SlotCensus(slot, Source.cinemaOf(source).get, normalizer))
+    }
+  }
+
+  private def fresh(subsets: Int, ready: Boolean, bySource: Map[Source, SlotCensus], anchor: Option[String]): FilmCensus = {
+    // Held as arrays, not lists: a wide film's part held a list cell per screening slot (24 bytes each), rebuilt on
+    // every change of the film — the largest named holder of dead list cells in worker-us's old generation (heap
+    // dump 2026-10-05: 9.1 MB).
+    val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).to(scala.collection.immutable.ArraySeq)
+    val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a))
+      .valuesIterator.to(scala.collection.immutable.ArraySeq))
+    new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening, anchor)
   }
 }
 

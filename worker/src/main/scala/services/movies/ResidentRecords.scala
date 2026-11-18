@@ -67,10 +67,18 @@ private[movies] object ResidentRecords {
 
   /** Whether pooling `slot` ([[StringPool.slot]] → `pooled`) changed none of its fields: every one the pool's already. */
   def pooledAlike(pooled: SourceData, slot: SourceData): Boolean =
+    titlesAlike(pooled, slot) && creditsAlike(pooled, slot) && detailsAlike(pooled, slot)
+
+  private def titlesAlike(pooled: SourceData, slot: SourceData): Boolean =
     (pooled.title eq slot.title) && (pooled.rawTitle eq slot.rawTitle) && (pooled.originalTitle eq slot.originalTitle) &&
-      (pooled.englishTitle eq slot.englishTitle) && (pooled.synopsis eq slot.synopsis) && (pooled.cast eq slot.cast) &&
-      (pooled.director eq slot.director) && (pooled.countries eq slot.countries) && (pooled.genres eq slot.genres) &&
-      (pooled.posterUrl eq slot.posterUrl) && (pooled.filmUrl eq slot.filmUrl) && (pooled.trailerUrl eq slot.trailerUrl) &&
+      (pooled.englishTitle eq slot.englishTitle) && (pooled.synopsis eq slot.synopsis)
+
+  private def creditsAlike(pooled: SourceData, slot: SourceData): Boolean =
+    (pooled.cast eq slot.cast) && (pooled.director eq slot.director) && (pooled.countries eq slot.countries) &&
+      (pooled.genres eq slot.genres)
+
+  private def detailsAlike(pooled: SourceData, slot: SourceData): Boolean =
+    (pooled.posterUrl eq slot.posterUrl) && (pooled.filmUrl eq slot.filmUrl) && (pooled.trailerUrl eq slot.trailerUrl) &&
       (pooled.language eq slot.language) && (pooled.ageRating eq slot.ageRating) &&
       (pooled.runtimeMinutes eq slot.runtimeMinutes) && (pooled.releaseYear eq slot.releaseYear)
 }

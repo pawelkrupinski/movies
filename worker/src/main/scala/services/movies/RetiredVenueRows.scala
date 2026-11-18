@@ -100,17 +100,19 @@ object RetiredVenueRows {
         s"collections hold (over ${(MaxRetiredShare * 100).round}%) — refusing, a roster that short is more likely " +
         s"half-loaded than pruned. Venues: ${retired.toSeq.sorted.take(20).mkString(", ")}")
       none
-    } else {
-      val screeningRows     = screeningIds.keySet.filter(sweepable)
-      val slotRows          = slotIds.keySet.filter(sweepable)
-      val screeningsDeleted = if (screeningRows.isEmpty) 0L else screenings.fold(0L)(_.deleteRows(screeningRows))
-      val slotsDeleted      = if (slotRows.isEmpty) 0L else slots.fold(0L)(_.deleteRows(slotRows))
-      if (screeningsDeleted + slotsDeleted == 0) none
-      else {
-        val perVenue = (screeningRows.toSeq ++ slotRows.toSeq).groupMapReduce(venueOf)(_ => 1L)(_ + _)
-        RemovalAudit.retiredVenueRowsRemoved("side-rows.retiredVenues", screeningsDeleted, slotsDeleted, perVenue)
-        RetiredVenueRows(screeningsDeleted, slotsDeleted, perVenue)
-      }
+    } else deleteRows(screenings, slots, screeningIds.keySet.filter(sweepable), slotIds.keySet.filter(sweepable))
+  }
+
+  /** Delete `screeningRows` and `slotRows` from their stores, and audit what went. */
+  private def deleteRows(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows],
+                         screeningRows: Set[String], slotRows: Set[String]): RetiredVenueRows = {
+    val screeningsDeleted = if (screeningRows.isEmpty) 0L else screenings.fold(0L)(_.deleteRows(screeningRows))
+    val slotsDeleted      = if (slotRows.isEmpty) 0L else slots.fold(0L)(_.deleteRows(slotRows))
+    if (screeningsDeleted + slotsDeleted == 0) none
+    else {
+      val perVenue = (screeningRows.toSeq ++ slotRows.toSeq).groupMapReduce(venueOf)(_ => 1L)(_ + _)
+      RemovalAudit.retiredVenueRowsRemoved("side-rows.retiredVenues", screeningsDeleted, slotsDeleted, perVenue)
+      RetiredVenueRows(screeningsDeleted, slotsDeleted, perVenue)
     }
   }
 

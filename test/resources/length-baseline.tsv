@@ -7,9 +7,6 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	800
-method-lines	common/src/main/scala/services/movies/CinemaSlotBuilder.scala:CinemaSlotBuilder.build	86
-method-lines	common/src/main/scala/services/movies/MovieCodecs.scala:BackwardCompatibleSourceDataCodec.decode	66
-method-lines	common/src/main/scala/services/movies/ScrapeListing.scala:ScrapeListing.prepare	53
 method-lines	common/src/main/scala/services/titles/FormatTags.scala:FormatTags.peel	66
 method-lines	http/src/main/scala/tools/FallbackHttpFetch.scala:FallbackHttpFetch.tryEach	94
 method-lines	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	59
@@ -40,7 +37,6 @@ method-lines	scrapers/src/main/scala/services/cinemas/pl/SystemBiletowyClient.sc
 method-lines	scrapers/src/main/scala/services/cinemas/pl/VisualTicketClient.scala:VisualTicketClient.parse	52
 method-lines	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.main	57
 method-lines	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	66
-method-lines	worker/src/main/scala/services/corpus/MovieService.scala:MovieService.buildResolvedRecord	53
 method-lines	worker/src/main/scala/services/enrichment/CacheRefresher.scala:CacheRefresher.refreshAllUrlThenScore	58
 method-lines	worker/src/main/scala/services/enrichment/ImdbIdResolver.scala:ImdbIdResolver.lookupId	68
 method-lines	worker/src/main/scala/services/identityadapters/IdentityProjection.scala:IdentityProjection.write	54

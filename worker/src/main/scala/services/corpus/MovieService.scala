@@ -103,35 +103,37 @@ class MovieService(
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
    *  record — pure (no cache, no lock): how a resolution writes the TMDB-side fields
-   *  + `Tmdb` slot while carrying the cinema-side data and score fields forward. */
+   *  + `Tmdb` slot while carrying the cinema-side data and score fields forward.
+   *
+   *  The previously-known `imdbId`/`wikidataId` are preserved when TMDB resolved the
+   *  same film (same `tmdbId`) but momentarily dropped a cross-reference —
+   *  happens for very recent releases and occasional TMDB data hiccups. A
+   *  DIFFERENT tmdbId accepts the new film's ids (even None) so a stale id
+   *  can't leak across.
+   *
+   *  Every rating url and score describes a FILM, so they follow the film.
+   *  Carrying them forward unconditionally meant a corrected row kept the WRONG
+   *  film's numbers until each source's own refresh cadence came round: prod
+   *  served Michel Franco's "Dreams" with the Norwegian film's
+   *  `/movie/dreams-drommer` and metascore 81 long after the tmdbId was fixed.
+   *  The trigger is a film that demonstrably CHANGED — not merely "not the same
+   *  one". A row resolving for the FIRST time has no previous tmdbId, so there is
+   *  nothing stale to drop and a rating a refresher already wrote must survive
+   *  (the since-deleted `TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
+   *  re-resolve from the new identity.
+   *
+   *  @param basis None when the resolution came off the id cache, so the conclusion's real basis
+   *               is unknown here; the row then KEEPS the basis it already recorded rather than
+   *               being downgraded to the weakest one. See `resolveTmdbId`. */
   private def buildResolvedRecord(
     tmdbId:      Int,
     hit:         Option[TmdbClient.SearchResult],
     externalIds: TmdbClient.ExternalIds,
     detailsOpt:  Option[TmdbClient.FullDetails],
     existing:    MovieRecord,
-    // None when the resolution came off the id cache, so the conclusion's real basis
-    // is unknown here; the row then KEEPS the basis it already recorded rather than
-    // being downgraded to the weakest one. See `resolveTmdbId`.
     basis:       Option[TmdbBasis]
   ): MovieRecord = {
-    // Preserve the previously-known `imdbId`/`wikidataId` when TMDB resolved the
-    // same film (same `tmdbId`) but momentarily dropped a cross-reference —
-    // happens for very recent releases and occasional TMDB data hiccups. A
-    // DIFFERENT tmdbId accepts the new film's ids (even None) so a stale id
-    // can't leak across.
-    val sameFilm = existing.tmdbId.contains(tmdbId)
-    // Every rating url and score describes a FILM, so they follow the film.
-    // Carrying them forward unconditionally meant a corrected row kept the WRONG
-    // film's numbers until each source's own refresh cadence came round: prod
-    // served Michel Franco's "Dreams" with the Norwegian film's
-    // `/movie/dreams-drommer` and metascore 81 long after the tmdbId was fixed.
-    //
-    // The trigger is a film that demonstrably CHANGED — not merely "not the same
-    // one". A row resolving for the FIRST time has no previous tmdbId, so there is
-    // nothing stale to drop and a rating a refresher already wrote must survive
-    // (the since-deleted `TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
-    // re-resolve from the new identity.
+    val sameFilm      = existing.tmdbId.contains(tmdbId)
     val differentFilm = existing.tmdbId.exists(_ != tmdbId)
     def ifSameFilm[A](value: Option[A]): Option[A] = if (differentFilm) None else value
     MovieRecord(
