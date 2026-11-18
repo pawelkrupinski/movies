@@ -294,7 +294,7 @@ class MongoSlotsRepository(
   // Where a write that THREW is counted — see [[WriteOutcome]].
   writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
-  decodeFailures:       services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
+  decodeFailures:       services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends SlotsRepository with WatchedSlotKeyedRows with Logging {
   import SlotKeyed.idOf
 

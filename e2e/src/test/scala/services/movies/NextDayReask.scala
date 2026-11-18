@@ -1,5 +1,6 @@
 package services.movies
 
+
 import models.MovieRecord
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.tasks.{QueueEnrichmentRetrigger, RatingTasks, RetriggerTask}

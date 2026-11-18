@@ -101,7 +101,7 @@ class MetascoreRatings(
   // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
   private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
     Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
-      val directors = TmdbLessRatingLinks.directorsOf(e)
+      val directors = services.movies.TmdbLessEligibility.directorsOf(e)
       metacritic.resolveAcross(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), directors)
         .flatMap(resolved => metacritic.pageFor(resolved.url).filter(page =>
           TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)).map(page => MetacriticClient.Resolved(resolved.url, page.metascore)))

@@ -111,7 +111,7 @@ class MongoUserStateRepository(
   indexHealth: UserStateIndexHealth = UserStateIndexHealth.none,
   // Where a row the change stream could not decode is counted — the web's decode-failure
   // counter in production. See [[services.movies.ChangeEventDecoder]].
-  decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
+  decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends UserStateRepository with Logging {
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 

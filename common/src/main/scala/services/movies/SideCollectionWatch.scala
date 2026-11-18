@@ -4,7 +4,6 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.{Document, MongoCollection, Observer, Subscription}
 import play.api.Logging
-import services.readmodel.DecodeFailureMetrics
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.reflect.ClassTag

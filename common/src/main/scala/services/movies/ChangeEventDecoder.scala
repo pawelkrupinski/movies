@@ -5,7 +5,6 @@ import org.bson.{BsonDocument, BsonDocumentReader}
 import org.bson.codecs.{Decoder, DecoderContext}
 import org.bson.codecs.configuration.CodecRegistry
 import play.api.Logging
-import services.readmodel.DecodeFailureMetrics
 
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal

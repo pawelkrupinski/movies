@@ -238,7 +238,7 @@ class FilmwebRatings(
   // when it positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
   private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] =
     Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
-      val directors = TmdbLessRatingLinks.directorsOf(e)
+      val directors = services.movies.TmdbLessEligibility.directorsOf(e)
       TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer).iterator
         .flatMap(title => filmweb.lookup(title, TmdbLessRatingLinks.yearOf(key, e), None, directors, None))
         .find(info => TmdbLessRatingLinks.corroborated(key, e, info.year, info.directors.toSet))

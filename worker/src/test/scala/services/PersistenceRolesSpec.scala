@@ -54,7 +54,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
   }
 
   "the guard" should "see a writer-typed parameter, so the checks above are not vacuous" in {
-    writerTypedIn(classOf[services.movies.StrandedSideRowsCleanup], classOf[MovieRepository]) should not be empty
+    writerTypedIn(classOf[services.corpus.StrandedSideRowsCleanup], classOf[MovieRepository]) should not be empty
     writerTypedIn(classOf[services.metrics.MeteredTaskQueue], classOf[TaskQueue]) should not be empty
   }
 }

@@ -1,4 +1,4 @@
-package services.readmodel
+package services.movies
 
 /** Where a whole-collection scan counts a document it SKIPPED because it could not decode
  *  it — where the `movies` repository counts one it could not decode, which fails its read —
@@ -18,12 +18,6 @@ object DecodeFailureMetrics {
   /** The `movies` collection, whose reads do not skip an undecodable document but FAIL on it:
    *  the point read answers "unreadable" and the corpus scan comes back incomplete. */
   val SourceMoviesCollection = "movies"
-
-  /** Every collection counted, seeded at 0 so the first failure moves `increase()`. The last
-   *  three are counted only by their change streams, which skip a post-image they cannot decode. */
-  val Collections: Seq[String] =
-    Seq(MongoReadModelRepository.MoviesCollection, MongoReadModelRepository.ScreeningsCollection, SourceMoviesCollection,
-      services.movies.ScreeningsRepository.Collection, services.movies.SlotsRepository.Collection, "userStates")
 
   /** Whether a failed READ failed on the document rather than on the way to it. The codec's
    *  refusals take whatever shape the codec throws — a `BSONException`, a

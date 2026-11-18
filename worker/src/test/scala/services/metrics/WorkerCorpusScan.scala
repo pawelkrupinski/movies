@@ -105,7 +105,7 @@ object ReferenceCorpusMetrics {
       rtRating      = rtRating + bool(r.rottenTomatoes.isDefined),
       mcRating      = mcRating + bool(r.metascore.isDefined),
       fwRating      = fwRating + bool(r.filmwebRating.isDefined),
-      misresolved   = misresolved + bool(services.movies.CinemaCorroboration.contradicts(r)),
+      misresolved   = misresolved + bool(services.corpus.CinemaCorroboration.contradicts(r)),
       unresolvedWithShowtimes = unresolvedWithShowtimes + bool(unresolvedYetScreening(r, now))
     )
 

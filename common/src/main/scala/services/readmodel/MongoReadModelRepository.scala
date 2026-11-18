@@ -1,5 +1,7 @@
 package services.readmodel
 
+import services.movies.DecodeFailureMetrics
+
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}

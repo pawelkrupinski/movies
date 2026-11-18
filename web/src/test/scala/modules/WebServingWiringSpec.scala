@@ -35,7 +35,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not contain the MovieService enrichment worker pool" in {
-    an [ClassNotFoundException] should be thrownBy Class.forName("services.movies.MovieService")
+    an [ClassNotFoundException] should be thrownBy Class.forName("services.corpus.MovieService")
   }
 
   it should "not contain the FilmwebRatings enricher" in {

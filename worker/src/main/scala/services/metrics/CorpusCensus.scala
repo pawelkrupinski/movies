@@ -6,7 +6,8 @@ import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClock}
 import play.api.Logging
-import services.movies.{CacheKey, CinemaCorroboration, MovieCache, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCache, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
+import services.corpus.CinemaCorroboration
 import services.readmodel.ReadModelProjection
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 

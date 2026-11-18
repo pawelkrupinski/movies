@@ -115,7 +115,7 @@ class MongoMovieRepository(
   writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a `movies` document the codec could not decode is counted — the same counter as the
   // read model's skipped documents. Noop for scripts/web/tests.
-  decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
+  decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -353,8 +353,8 @@ class MongoMovieRepository(
   /** A read that failed on a document the codec refused: counted, since it fails every read that
    *  meets it (one such document leaves the whole corpus scan incomplete) and is otherwise a WARN. */
   private def countIfUndecodable(failure: Throwable): Unit =
-    if (services.readmodel.DecodeFailureMetrics.isDecodeFailure(failure))
-      decodeFailures.recordDecodeFailure(services.readmodel.DecodeFailureMetrics.SourceMoviesCollection)
+    if (services.movies.DecodeFailureMetrics.isDecodeFailure(failure))
+      decodeFailures.recordDecodeFailure(services.movies.DecodeFailureMetrics.SourceMoviesCollection)
 
   private def findOneChecked(filter: Bson, what: String, withShowtimes: Boolean = true): tools.ReadOutcome[StoredMovieRecord] = coll match {
     case Some(c) =>

@@ -109,7 +109,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
     clock:               Clock                       = _root_.tools.SpecClock.Pinned,
-    decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
+    decodeFailures:      services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop,
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", ResumeTokenStore.Ephemeral, stopwatch = new _root_.tools.Stopwatch(() => 0L)),
     rereadRetryMillis:   Long                        = 20L,
     fence:               FilmWriteFence              = new FilmWriteFence(),

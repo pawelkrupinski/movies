@@ -1,4 +1,7 @@
-package services.movies
+package services.corpus
+
+import services.movies.*
+
 
 import tools.SpecClock.given
 

@@ -1,4 +1,6 @@
-package services.movies
+package services.corpus
+
+import services.movies.*
 
 import models.{MovieRecord, Tmdb}
 import services.resolution.{Candidate, Contradiction, Verdict}

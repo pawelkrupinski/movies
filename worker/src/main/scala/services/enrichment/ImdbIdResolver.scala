@@ -323,5 +323,5 @@ object ImdbIdResolver {
 
   /** Whether a failed ladder is an ANSWER: every failure in it (the first and those suppressed beside it) one. */
   def definitive(failure: Throwable): Boolean =
-    (failure +: failure.getSuppressed.toSeq).forall(services.movies.MovieService.failedDefinitively)
+    (failure +: failure.getSuppressed.toSeq).forall(services.corpus.MovieService.failedDefinitively)
 }

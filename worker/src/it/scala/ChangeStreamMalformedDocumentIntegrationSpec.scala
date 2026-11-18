@@ -10,7 +10,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.readmodel.{DecodeFailureMetrics, MongoReadModelRepository}
+import services.readmodel.MongoReadModelRepository
+import services.movies.DecodeFailureMetrics
 import tools.{IsolatedMongoDatabase, MalformedChangeEventProbe}
 
 import scala.concurrent.Await

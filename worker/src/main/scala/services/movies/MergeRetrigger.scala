@@ -129,7 +129,7 @@ object MergeRetrigger {
     // in, missed, and only the next day's pass, asking again, found Filmweb's "Afrykańska przygoda 3D - safari nad
     // Okavango". So each site is asked again when one of them changes.
     kick(RetriggerKind.titleRatings, Seq(CinemaDirectors, CinemaOriginalTitles, CinemaYears),
-      after.tmdbId.isEmpty && services.enrichment.TmdbLessRatingLinks.eligible(after))
+      after.tmdbId.isEmpty && TmdbLessEligibility.eligible(after))
     builder.toMap
   }
 }

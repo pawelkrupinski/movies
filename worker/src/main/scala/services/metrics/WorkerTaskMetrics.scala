@@ -2,7 +2,8 @@ package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
+import services.movies.{RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
+import services.movies.CacheSyncMetrics
 import services.readmodel.ReadModelProjectionMetrics
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState}
 import services.tasktypes.TaskType
@@ -67,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ListingIntakeMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
+  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ListingIntakeMetrics with RepositoryWriteMetrics with services.movies.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.tasks.recordFirstRatingDelay(countryCode, site, seconds)

@@ -1,4 +1,7 @@
-package services.movies
+package services.corpus
+
+import services.movies.*
+
 
 import models.{Helios, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

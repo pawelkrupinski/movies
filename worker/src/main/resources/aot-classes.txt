@@ -9887,6 +9887,14 @@ services.config.MongoEnvRegistryStore
 services.config.MongoEnvRegistryStore$$anon$2
 services.config.RegisteredKnob
 services.config.RegisteredKnob$
+services.corpus.CinemaCorroboration$
+services.corpus.MovieService
+services.corpus.MovieService$
+services.corpus.StrandedSideRowsCleanup
+services.corpus.StrandedSideRowsCleanup$
+services.corpus.StrandedSideRowsCleanup$$anon$1
+services.corpus.StrandedSideRowsCleanup$$anon$2
+services.corpus.StrandedSideRowsCleanup$$anon$3
 services.enrichment.CacheRefresher
 services.enrichment.CinemetaClient
 services.enrichment.CinemetaClient$
@@ -10362,9 +10370,10 @@ services.movies.ChangeStreamReopen
 services.movies.ChangeStreamReopen$
 services.movies.ChangeStreamResumeToken
 services.movies.ChangeStreamResumeToken$
-services.movies.CinemaCorroboration$
 services.movies.CinemaSlotBuilder
 services.movies.CorpusIndex
+services.movies.DecodeFailureMetrics
+services.movies.DecodeFailureMetrics$
 services.movies.DirectorAliases$
 services.movies.EmbeddedYear$
 services.movies.EnrichmentRetrigger
@@ -10459,8 +10468,6 @@ services.movies.MovieRecordPatch
 services.movies.MovieRecordPatch$
 services.movies.MovieRepository
 services.movies.MovieRepository$
-services.movies.MovieService
-services.movies.MovieService$
 services.movies.MoviesUpsert$
 services.movies.MoviesUpsert$Identity
 services.movies.MoviesUpsert$Identity$
@@ -10546,11 +10553,6 @@ services.movies.StoredTmdbAttempt
 services.movies.StoredTmdbAttempt$
 services.movies.StrandedSideRows
 services.movies.StrandedSideRows$
-services.movies.StrandedSideRowsCleanup
-services.movies.StrandedSideRowsCleanup$
-services.movies.StrandedSideRowsCleanup$$anon$1
-services.movies.StrandedSideRowsCleanup$$anon$2
-services.movies.StrandedSideRowsCleanup$$anon$3
 services.movies.StringPool
 services.movies.StringPool$
 services.movies.TitleContainment$
@@ -10578,8 +10580,6 @@ services.movies.WriteOutcome$Written$
 services.readmodel.CardHash
 services.readmodel.CardHash$
 services.readmodel.CardHash$$anon$9
-services.readmodel.DecodeFailureMetrics
-services.readmodel.DecodeFailureMetrics$
 services.readmodel.DefaultingCodec
 services.readmodel.DefaultingCodec$
 services.readmodel.Derivation

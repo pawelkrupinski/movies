@@ -75,7 +75,7 @@ class RottenTomatoesRatings(
   // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
   private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[String] =
     Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
-      rt.urlForAny(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), TmdbLessRatingLinks.directorsOf(e))
+      rt.urlForAny(TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer), None, TmdbLessRatingLinks.searchYear(key, e), services.movies.TmdbLessEligibility.directorsOf(e))
         .filter(url => rt.pageFor(url).exists(page => TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors)))
         .map { url =>
           logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered without TMDB $url")

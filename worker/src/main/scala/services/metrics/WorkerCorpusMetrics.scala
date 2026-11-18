@@ -47,7 +47,7 @@ object WorkerCorpusMetrics {
     val McRating      = "mc_rating"
     val FwRating      = "fw_rating"
     /** Resolved to a film this row's own cinemas contradict — see
-     *  [[services.movies.CinemaCorroboration]]. Five such rows sat in prod
+     *  [[services.corpus.CinemaCorroboration]]. Five such rows sat in prod
      *  undetected until a hand-written scan found them; this is so nobody has to
      *  go looking again. Expected to sit at or near zero. */
     val Misresolved   = "misresolved"

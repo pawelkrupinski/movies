@@ -46,7 +46,7 @@ final class CorpusWriteSeries(countryCodes: Seq[String], registry: PrometheusReg
     RepositoryWriteMetrics.Writes.foreach { case (collection, op) =>
       RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
     }
-    services.readmodel.DecodeFailureMetrics.Collections.foreach(coll => decodeFailures.labelValues(c, coll).inc(0.0))
+    services.readmodel.DecodeFailureCollections.all.foreach(coll => decodeFailures.labelValues(c, coll).inc(0.0))
     Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
   }
 

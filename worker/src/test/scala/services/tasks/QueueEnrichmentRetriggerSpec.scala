@@ -8,7 +8,8 @@ import models.{Country, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CacheKey, RetriggerKind}
+import services.movies.CacheKey
+import services.movies.RetriggerKind
 
 import scala.concurrent.duration._
 

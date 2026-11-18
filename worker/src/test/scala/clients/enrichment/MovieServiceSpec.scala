@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import clients.tools.{FailingHttpFetch, FixtureFile, PatchedHttpFetch}
 import org.scalatest.matchers.should.Matchers
-import services.movies.MovieService
+import services.corpus.MovieService
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {

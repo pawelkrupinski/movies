@@ -1,5 +1,6 @@
 package services.movies
 
+
 import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -48,7 +49,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
     // A positive control: a moved tree would make the guard pass vacuously.
     Roots.scalaFiles.map(_.toString) should contain allOf (
       "common/src/main/scala/services/movies/ListingConstraints.scala",
-      "worker/src/main/scala/services/movies/MovieService.scala",
+      "worker/src/main/scala/services/corpus/MovieService.scala",
       "worker/src/fixtures/scala/tools/ServedCorpusInvariants.scala")
   }
 }

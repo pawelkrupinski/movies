@@ -146,7 +146,7 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
   it should "pass a declaration, a whole file path, and text that is no path" in {
     rulesOf("""val Main = SourceTrees("worker/src/main", "*/src/*/scala")""") shouldBe empty
     rulesOf("""SourceTrees.apply("worker/src/test")""") shouldBe empty
-    rulesOf("""Files.readString(Path.of("worker/src/main/scala/services/movies/MovieService.scala"))""") shouldBe empty
+    rulesOf("""Files.readString(Path.of("worker/src/main/scala/services/corpus/MovieService.scala"))""") shouldBe empty
     rulesOf("""element.attr("src") shouldBe "/poster.jpg";""") shouldBe empty
     rulesOf("""fail("belongs in an it tree (or web/src/page)")""") shouldBe empty
     rulesOf("""// Paths.get(module, "src")""") shouldBe empty
@@ -201,7 +201,7 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
     readersOf("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala") should contain allOf (
       "worker/src/test/scala/tools/ScalaSourceScan.scala", "scrapers/src/test/scala/services/cinemas/NoWallClockInClientsSpec.scala",
       "worker/src/test/scala/tools/ListingCompletenessSpec.scala", "common/src/test/scala/testsupport/ModuleSources.scala")
-    readersOf("worker/src/main/scala/services/movies/MovieService.scala") should contain (
+    readersOf("worker/src/main/scala/services/corpus/MovieService.scala") should contain (
       "worker/src/test/scala/services/movies/ListingConstraintsRoutingSpec.scala")
     readersOf("identity/src/main/scala/services/identity/Authority.scala") should contain (
       "identity/src/test/scala/services/identity/ProvenanceSpec.scala")

@@ -74,7 +74,7 @@ final class MovieChangeStream(
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
   rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis,
   // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
-  decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
+  decodeFailures:      services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop,
   // How long a film's re-read waits for the rest of its burst — see [[MovieChangeStream.Debounce]].
   // None queues each film's re-read at once, as every repository but the worker's does.
   debounce:            Option[MovieChangeStream.Debounce] = None,

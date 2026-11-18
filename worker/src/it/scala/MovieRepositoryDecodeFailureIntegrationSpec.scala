@@ -6,7 +6,6 @@ import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.readmodel.DecodeFailureMetrics
 
 import scala.concurrent.Await
 

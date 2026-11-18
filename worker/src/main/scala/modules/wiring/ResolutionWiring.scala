@@ -4,7 +4,7 @@ import settings.SettleInterval
 
 import modules.WorkerWiring
 import services.enrichment.{CinemetaClient, ImdbIdResolver}
-import services.movies.MovieService
+import services.corpus.MovieService
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.tasks.SettleReaper
 

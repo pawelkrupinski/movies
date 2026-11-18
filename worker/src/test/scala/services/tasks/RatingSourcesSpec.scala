@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Eligibility of the Filmweb rating source. Filmweb is un-gated for `tmdbId`-less
  * rows that carry a Filmweb URL: such a row can RESOLVE its tmdbId via
- * Filmweb→Wikidata (see [[services.movies.MovieService]]) and its rating refresh
+ * Filmweb→Wikidata (see [[services.corpus.MovieService]]) and its rating refresh
  * reads that known URL directly (no fuzzy match, so no bogus rating). A
  * tmdbId-less row WITHOUT a Filmweb URL stays ineligible — nothing to refresh
  * from and nothing to resolve through — so the ~190 event/opera/NT-Live rows

@@ -1,4 +1,6 @@
-package services.movies
+package services.corpus
+
+import services.movies.*
 
 import play.api.Logging
 import tools.Stoppable

@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.readmodel.DecodeFailureMetrics
+import services.movies.DecodeFailureMetrics
 
 /**
  * `kinowo_web_decode_failures_total{country, collection}` — documents the web's read-model
@@ -23,7 +23,7 @@ class WebDecodeFailureMetrics(registry: PrometheusRegistry, country: String) ext
     .labelNames("country", "collection")
     .register(registry)
 
-  DecodeFailureMetrics.Collections.foreach(c => skipped.labelValues(country, c))
+  services.readmodel.DecodeFailureCollections.all.foreach(c => skipped.labelValues(country, c))
 
   def recordDecodeFailure(collection: String): Unit = skipped.labelValues(country, collection).inc()
 }

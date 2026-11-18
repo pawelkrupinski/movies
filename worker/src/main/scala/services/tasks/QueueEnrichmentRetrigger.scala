@@ -5,7 +5,8 @@ import services.tasktypes.TaskType
 import models.{Country, MovieRecord}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{CacheKey, EnrichmentRetrigger, RetriggerKind}
+import services.movies.CacheKey
+import services.movies.{EnrichmentRetrigger, RetriggerKind}
 import services.movies.TitleNormalizer
 
 /**

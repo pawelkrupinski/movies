@@ -3,7 +3,6 @@ package services.tasks
 import services.tasktypes.TaskType
 
 import models.{Country, MovieRecord}
-import services.enrichment.TmdbLessRatingLinks
 import services.freshness.FreshnessKind
 import services.movies.LatestTitleYear
 
@@ -58,10 +57,10 @@ object RatingSources {
   // resolve through), so the event/opera/NT-Live long tail isn't enqueued.
   val all: Seq[RatingSource] = Seq(
     RatingSource(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined, rated = _.imdbRating.isDefined),
-    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined || TmdbLessRatingLinks.eligible(r), _.filmwebEnabled,
+    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined || services.movies.TmdbLessEligibility.eligible(r), _.filmwebEnabled,
       rated = _.filmwebRating.isDefined),
-    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r), rated = _.rottenTomatoes.isDefined),
-    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r), rated = _.metascore.isDefined)
+    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      r => r.tmdbId.isDefined || services.movies.TmdbLessEligibility.eligible(r), rated = _.rottenTomatoes.isDefined),
+    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      r => r.tmdbId.isDefined || services.movies.TmdbLessEligibility.eligible(r), rated = _.metascore.isDefined)
   )
 
   /** The rating sources that apply in `country` — the global ones plus the
