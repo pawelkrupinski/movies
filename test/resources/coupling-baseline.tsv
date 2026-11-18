@@ -97,7 +97,7 @@ fanout	controllers.SsoController	11
 fanout	controllers.StructuredData	11
 fanout	controllers.TasksController	11
 fanout	controllers.TuneSamples	15
-fanout	controllers.UptimeController	19
+fanout	controllers.UptimeController	12
 fanout	controllers.UserStateController	11
 fanout	controllers.WebMovieMetrics	13
 fanout	models.City	18

@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AdminAction, EnvConfigController, TasksController, UptimeController}
+import controllers.{AdminAction, EnvConfigController, ImageEventController, TasksController, UptimeBars, UptimeController, UptimeStreamController}
 import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
@@ -43,7 +43,11 @@ trait AdminWiring { self: Wiring =>
   /** The worker's closure sweep's verdicts (`venue_closures`), for /uptime's dropped-venue section. */
   lazy val closureLedger: services.closure.ClosureLedgerReader =
     mongoConnection.database.fold[services.closure.ClosureLedgerReader](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
-  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, new controllers.ImageLoadBeacon(uptimeMonitor), filmwebFallbackStore, closureLedger, country, clock)(using materializer)
+  private lazy val uptimeBars = new UptimeBars(uptimeMonitor, country.zone, clock)
+  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, uptimeBars, filmwebFallbackStore, closureLedger, country)
+  lazy val uptimeStreamController = new UptimeStreamController(controllerComponents, adminAction, uptimeMonitor, uptimeBars)(using materializer)
+  // Not behind the admin gate: every visitor's browser reports its poster loads (ImageEventController.imgEvent says why).
+  lazy val imageEventController = new ImageEventController(controllerComponents, new controllers.ImageLoadBeacon(uptimeMonitor))
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
   // Live config: install the override cache as Env's source + publish web's knobs
   // to the shared registry, and serve the /admin/config page (see EnvConfigService).

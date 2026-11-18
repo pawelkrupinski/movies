@@ -142,10 +142,42 @@ object UptimeBarPayload {
 /** A venue every source dropped, as the closure sweep found it (`verdict`), and the evidence line it was raised on. */
 case class DroppedRow(cinema: String, verdict: String, since: String, evidence: String)
 
+object DroppedRow {
+  /** The venues every source dropped, from the closure sweep's ledger: a CLOSED one awaits
+   *  its retirement; a SOURCE-DROPPED one is a venue still open that we no longer have a
+   *  programme for, which only a new source fixes. Gaps first, oldest first. */
+  def allIn(ledger: services.closure.ClosureLedgerReader, stamp: java.time.Instant => String): Seq[DroppedRow] =
+    ledger.entries().toSeq.sortBy { case (name, entry) => (entry.kind == services.closure.LedgerKind.Closed, entry.at, name) }.map {
+      case (name, entry) => DroppedRow(name, entry.kind match {
+        case services.closure.LedgerKind.SourceDropped => "open — needs a new source"
+        case services.closure.LedgerKind.Closed        => "closed — retirement pending"
+      }, stamp(entry.at), entry.evidence)
+    }
+}
+
 case class FallbackRow(
   cinema: String, source: String, ref: String, since: String, reason: String,
   fails: Int, nextProbe: String, history: Seq[String]
 )
+
+object FallbackRow {
+  /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty, by name.
+   *  Recovered cinemas and Filmweb-only-by-design venues are kept in Mongo but not listed. */
+  def activeIn(store: services.fallback.FallbackStore, stamp: java.time.Instant => String): Seq[FallbackRow] =
+    store.findAll().filter(_.active).sortBy(_.cinema).map(of(_, stamp))
+
+  /** A cinema's Filmweb-fallback state as its row shows it, every instant `stamp`ed. */
+  private def of(s: services.fallback.FallbackState, stamp: java.time.Instant => String): FallbackRow = FallbackRow(
+    cinema    = s.cinema,
+    source    = s.fallbackSource,
+    ref       = s.fallbackRef.getOrElse("—"),
+    since     = s.since.map(stamp).getOrElse("—"),
+    reason    = s.lastReason.getOrElse("—"),
+    fails     = s.consecutiveFailures,
+    nextProbe = s.nextPrimaryProbeAt.map(stamp).getOrElse("—"),
+    history   = s.history.take(8).map(e => s"${stamp(e.at)} · ${e.event} · ${e.reason}")
+  )
+}
 
 case class ServiceRow(
   name:       String,

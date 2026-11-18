@@ -40,7 +40,7 @@ import java.util.Locale
  */
 object PosterProxy {
   /** The proxy's host. Public because it names the proxy's own /uptime row
-   *  ([[controllers.UptimeController.ProxyService]]) and the tracker unwraps
+   *  ([[controllers.ImageLoadBeacon.ProxyService]]) and the tracker unwraps
    *  posters by comparing against it — one spelling, one source of truth. */
   val ProxyHost = "images.weserv.nl"
 
