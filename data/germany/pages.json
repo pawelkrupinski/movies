@@ -4138,7 +4138,6 @@
    "towns": [
     "Göppingen",
     "Geislingen an der Steige",
-    "Plochingen",
     "Donzdorf",
     "Deggingen",
     "Schlat"
@@ -4148,8 +4147,7 @@
     "Kinomobil Stuttgart - Bürgerhaus",
     "Kinomobil Stuttgart - Feuerwehrhaus Deggingen",
     "Sommerkino Donzdorf",
-    "Staufen-Movieplex",
-    "Union-Theater Plochingen"
+    "Staufen-Movieplex"
    ]
   },
   {
@@ -4603,23 +4601,6 @@
    ]
   },
   {
-   "slug": "hof",
-   "kind": "town",
-   "name": "Hof",
-   "anchor": "Hof",
-   "bundesland": "Bayern",
-   "qualifiedSlug": "hof-bayern",
-   "lat": 50.313,
-   "lon": 11.9126,
-   "towns": [
-    "Hof"
-   ],
-   "cinemas": [
-    "Central-Kino Hof",
-    "Scala Filmtheater Hof"
-   ]
-  },
-  {
    "slug": "hofheim-am-taunus",
    "kind": "cluster",
    "name": "Hofheim am Taunus",
@@ -4978,7 +4959,7 @@
   },
   {
    "slug": "kirchheim-unter-teck",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Kirchheim unter Teck",
    "anchor": "Kirchheim unter Teck",
    "bundesland": "Baden-Württemberg",
@@ -4986,12 +4967,17 @@
    "lat": 48.6468,
    "lon": 9.4538,
    "towns": [
-    "Kirchheim unter Teck"
+    "Kirchheim unter Teck",
+    "Nürtingen",
+    "Plochingen",
+    "Ensingen"
    ],
    "cinemas": [
+    "Kinomobil Stuttgart - BIO-Café Zimt und Zunder",
     "Kommunales Kino Kirchheim unter Teck",
     "Sommernachtskino (Kirchheim unter Teck)",
-    "Tyroler-Lichtspiele"
+    "Traumpalast Nürtingen",
+    "Union-Theater Plochingen"
    ]
   },
   {
@@ -5800,6 +5786,24 @@
    ]
   },
   {
+   "slug": "metzingen",
+   "kind": "cluster",
+   "name": "Metzingen",
+   "anchor": "Metzingen",
+   "bundesland": "Baden-Württemberg",
+   "qualifiedSlug": "metzingen-baden-wuerttemberg",
+   "lat": 48.5369,
+   "lon": 9.2833,
+   "towns": [
+    "Metzingen",
+    "Grafenberg"
+   ],
+   "cinemas": [
+    "Kinomobil Stuttgart - Historische Kelter",
+    "Luna-Filmtheater"
+   ]
+  },
+  {
    "slug": "minden",
    "kind": "cluster",
    "name": "Minden",
@@ -6383,28 +6387,6 @@
    ]
   },
   {
-   "slug": "nuertingen",
-   "kind": "cluster",
-   "name": "Nürtingen",
-   "anchor": "Nürtingen",
-   "bundesland": "Baden-Württemberg",
-   "qualifiedSlug": "nuertingen-baden-wuerttemberg",
-   "lat": 48.6257,
-   "lon": 9.342,
-   "towns": [
-    "Nürtingen",
-    "Metzingen",
-    "Ensingen",
-    "Grafenberg"
-   ],
-   "cinemas": [
-    "Kinomobil Stuttgart - BIO-Café Zimt und Zunder",
-    "Kinomobil Stuttgart - Historische Kelter",
-    "Luna-Filmtheater",
-    "Traumpalast Nürtingen"
-   ]
-  },
-  {
    "slug": "oberndorf-am-neckar",
    "kind": "town",
    "name": "Oberndorf am Neckar",
@@ -6688,12 +6670,14 @@
    "lon": 12.1378,
    "towns": [
     "Plauen",
+    "Hof",
     "Greiz",
     "Oelsnitz"
    ],
    "cinemas": [
     "Capitol-Kino Plauen",
     "Malzhaus",
+    "Central-Kino Hof",
     "Open-Air-Kino - Waldbühne Neuwürschnitz",
     "UT99 Kinocenter"
    ]
@@ -8746,6 +8730,10 @@
    "page": "asbach",
    "qualifiedSlug": "hachenburg-rheinland-pfalz"
   },
+  "hof": {
+   "page": "plauen",
+   "qualifiedSlug": "hof-bayern"
+  },
   "itzehoe": {
    "page": "elmshorn",
    "qualifiedSlug": "itzehoe-schleswig-holstein"
@@ -8777,6 +8765,10 @@
   "nonnweiler": {
    "page": "wadern",
    "qualifiedSlug": "nonnweiler-saarland"
+  },
+  "nuertingen": {
+   "page": "kirchheim-unter-teck",
+   "qualifiedSlug": "nuertingen-baden-wuerttemberg"
   },
   "regen": {
    "page": "deggendorf",

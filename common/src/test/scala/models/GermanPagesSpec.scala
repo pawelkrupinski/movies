@@ -162,7 +162,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     val dump = GermanRosterData.pages.map(page => page.copy(_8 = page._8.toList, _9 = page._9.toList)).mkString("\n") + "\n--\n" + GermanRosterData.retired.mkString("\n") +
       "\n--\n" + GermanRosterData.seasonal.toSeq.sorted.mkString("\n")
     val digest = java.security.MessageDigest.getInstance("SHA-256").digest(dump.getBytes("UTF-8")).map("%02x".format(_)).mkString
-    digest shouldBe "ae50cf7051f5280e2c1e575684d3c2c8aa7b0a444178a1f94e21ee2be224332e"
+    digest shouldBe "e149d14b4c404f03c74e9cfb050627579079f40ab9d15105a24ff5f9fdf6c457"
     GeneratedTable.rows("generated/de-roster/pages.tsv") should have size GermanRosterData.pages.size.toLong
   }
 }

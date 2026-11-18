@@ -99,12 +99,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.brandName shouldBe "Showtimes"   // any non-Polish deployment
     Country.Germany.cities shouldBe City.germanCities
     // The full data-driven roster — Filmstarts', and the cinemas only Cineamo or kinoheld
-    // list: 447 town and cluster pages (German slugs — muenchen, koeln, …; see
+    // list: 446 town and cluster pages (German slugs — muenchen, koeln, …; see
     // GermanPagesSpec and data/germany/).
-    Country.Germany.cities should have size 447
+    Country.Germany.cities should have size 446
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every page carries cinemas; the roster totals 1,541 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1541
+    // Every page carries cinemas; the roster totals 1,539 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1539
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {

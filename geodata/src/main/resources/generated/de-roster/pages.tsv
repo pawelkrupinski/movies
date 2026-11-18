@@ -202,7 +202,7 @@ germering	germering-bayern	Germering	Bayern	48.1339	11.3765	true	Germering|Dacha
 giessen	giessen-hessen	Gießen	Hessen	50.5873	8.6755	false	Gießen
 gifhorn	gifhorn-niedersachsen	Gifhorn	Niedersachsen	52.4777	10.5511	false	Gifhorn
 ginsheim-gustavsburg	ginsheim-gustavsburg-hessen	Ginsheim-Gustavsburg	Hessen	49.9711	8.3453	false	Ginsheim-Gustavsburg
-goeppingen	goeppingen-baden-wuerttemberg	Göppingen	Baden-Württemberg	48.7035	9.6521	true	Göppingen|Geislingen an der Steige|Plochingen|Donzdorf|Deggingen|Schlat
+goeppingen	goeppingen-baden-wuerttemberg	Göppingen	Baden-Württemberg	48.7035	9.6521	true	Göppingen|Geislingen an der Steige|Donzdorf|Deggingen|Schlat
 goerlitz	goerlitz-sachsen	Görlitz	Sachsen	51.1552	14.9885	false	Görlitz
 goslar	goslar-niedersachsen	Goslar	Niedersachsen	51.9042	10.4277	false	Goslar
 gotha	gotha-thueringen	Gotha	Thüringen	50.9482	10.7019	true	Gotha|Bad Langensalza
@@ -227,7 +227,6 @@ helgoland	helgoland-schleswig-holstein	Helgoland	Schleswig-Holstein	54.1814	7.88
 helmstedt	helmstedt-niedersachsen	Helmstedt	Niedersachsen	52.2279	11.0099	true	Helmstedt|Königslutter am Elm|Grasleben
 herford	herford-nordrhein-westfalen	Herford	Nordrhein-Westfalen	52.1146	8.6734	true	Herford|Bad Salzuflen|Bad Oeynhausen|Lemgo|Löhne|Oerlinghausen|Kirchlengern|Spenge|Rödinghausen
 herrenberg	herrenberg-baden-wuerttemberg	Herrenberg	Baden-Württemberg	48.5952	8.8665	false	Herrenberg
-hof	hof-bayern	Hof	Bayern	50.313	11.9126	false	Hof
 hofheim-am-taunus	hofheim-am-taunus-hessen	Hofheim am Taunus	Hessen	50.0902	8.4493	true	Hofheim am Taunus|Bad Soden am Taunus|Eppstein|Sulzbach
 holzkirchen	holzkirchen-bayern	Holzkirchen	Bayern	47.8766	11.7018	true	Holzkirchen|Hausham|Rottach-Egern
 holzminden	holzminden-niedersachsen	Holzminden	Niedersachsen	51.828	9.4455	false	Holzminden
@@ -247,7 +246,7 @@ kelheim	kelheim-bayern	Kelheim	Bayern	48.9173	11.8862	true	Kelheim|Abensberg
 kelkheim	kelkheim-hessen	Kelkheim	Hessen	50.137	8.4502	false	Kelkheim
 kempten-im-allgaeu	kempten-im-allgaeu-bayern	Kempten im Allgäu	Bayern	47.7267	10.3139	true	Kempten im Allgäu|Marktoberdorf|Immenstadt im Allgäu
 kerpen	kerpen-nordrhein-westfalen	Kerpen	Nordrhein-Westfalen	50.8699	6.6969	true	Kerpen|Frechen
-kirchheim-unter-teck	kirchheim-unter-teck-baden-wuerttemberg	Kirchheim unter Teck	Baden-Württemberg	48.6468	9.4538	false	Kirchheim unter Teck
+kirchheim-unter-teck	kirchheim-unter-teck-baden-wuerttemberg	Kirchheim unter Teck	Baden-Württemberg	48.6468	9.4538	true	Kirchheim unter Teck|Nürtingen|Plochingen|Ensingen
 kitzingen	kitzingen-bayern	Kitzingen	Bayern	49.7397	10.1507	true	Kitzingen|Ochsenfurt|Dettelbach|Sommerach
 kleve	kleve-nordrhein-westfalen	Kleve	Nordrhein-Westfalen	51.7883	6.1387	true	Kleve|Goch
 kloeden	kloeden-sachsen-anhalt	Klöden	Sachsen-Anhalt	51.7618	12.8317	false	Klöden
@@ -291,6 +290,7 @@ meppen	meppen-niedersachsen	Meppen	Niedersachsen	52.6906	7.291	true	Meppen|Haren
 merseburg	merseburg-sachsen-anhalt	Merseburg	Sachsen-Anhalt	51.3548	11.9892	true	Merseburg|Leuna
 merzig	merzig-saarland	Merzig	Saarland	49.4433	6.6387	true	Merzig|Schmelz
 meschede	meschede-nordrhein-westfalen	Meschede	Nordrhein-Westfalen	51.3502	8.2833	true	Meschede|Brilon|Korbach|Willingen
+metzingen	metzingen-baden-wuerttemberg	Metzingen	Baden-Württemberg	48.5369	9.2833	true	Metzingen|Grafenberg
 minden	minden-nordrhein-westfalen	Minden	Nordrhein-Westfalen	52.2895	8.9146	true	Minden|Stadthagen|Bückeburg
 moelln	moelln-schleswig-holstein	Mölln	Schleswig-Holstein	53.6207	10.6875	true	Mölln|Schwarzenbek|Ratzeburg|Boizenburg
 mosbach	mosbach-baden-wuerttemberg	Mosbach	Baden-Württemberg	49.3536	9.1511	true	Mosbach|Hardthausen am Kocher
@@ -322,7 +322,6 @@ norderney	norderney-niedersachsen	Norderney	Niedersachsen	53.708	7.1572	true	Nor
 nordhausen	nordhausen-thueringen	Nordhausen	Thüringen	51.5018	10.7957	true	Nordhausen|Sondershausen|Bleicherode
 nordhorn	nordhorn-niedersachsen	Nordhorn	Niedersachsen	52.4308	7.0683	false	Nordhorn
 northeim	northeim-niedersachsen	Northeim	Niedersachsen	51.7066	10.0	true	Northeim|Bad Gandersheim
-nuertingen	nuertingen-baden-wuerttemberg	Nürtingen	Baden-Württemberg	48.6257	9.342	true	Nürtingen|Metzingen|Ensingen|Grafenberg
 oberndorf-am-neckar	oberndorf-am-neckar-baden-wuerttemberg	Oberndorf am Neckar	Baden-Württemberg	48.2906	8.5722	false	Oberndorf am Neckar
 oberstdorf	oberstdorf-bayern	Oberstdorf	Bayern	47.4072	10.2794	false	Oberstdorf
 oberviechtach	oberviechtach-bayern	Oberviechtach	Bayern	49.4581	12.4167	false	Oberviechtach
@@ -338,7 +337,7 @@ passau	passau-bayern	Passau	Bayern	48.5665	13.4312	false	Passau
 pfaffenhofen-an-der-ilm	pfaffenhofen-an-der-ilm-bayern	Pfaffenhofen an der Ilm	Bayern	48.5305	11.505	true	Pfaffenhofen an der Ilm|Wolnzach
 pirmasens	pirmasens-rheinland-pfalz	Pirmasens	Rheinland-Pfalz	49.2015	7.6053	true	Pirmasens|Annweiler am Trifels|Fischbach bei Dahn
 pirna	pirna-sachsen	Pirna	Sachsen	50.9584	13.937	false	Pirna
-plauen	plauen-sachsen	Plauen	Sachsen	50.4973	12.1378	true	Plauen|Greiz|Oelsnitz
+plauen	plauen-sachsen	Plauen	Sachsen	50.4973	12.1378	true	Plauen|Hof|Greiz|Oelsnitz
 plettenberg	plettenberg-nordrhein-westfalen	Plettenberg	Nordrhein-Westfalen	51.2095	7.8726	true	Plettenberg|Lennestadt|Attendorn
 preetz	preetz-schleswig-holstein	Preetz	Schleswig-Holstein	54.2358	10.2793	true	Preetz|Plön|Bordesholm
 prenzlau	prenzlau-brandenburg	Prenzlau	Brandenburg	53.317	13.864	false	Prenzlau

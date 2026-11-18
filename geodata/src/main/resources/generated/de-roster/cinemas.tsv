@@ -900,7 +900,6 @@ goeppingen	Kinomobil Stuttgart - Bürgerhaus	Kinomobil Stuttgart - Bürgerhaus	A
 goeppingen	Kinomobil Stuttgart - Feuerwehrhaus Deggingen	Kinomobil Stuttgart - Feuerwehrhaus Deggingen	A2128		Deggingen
 goeppingen	Sommerkino Donzdorf	Sommerkino Donzdorf	A2544		Donzdorf
 goeppingen	Staufen-Movieplex	Staufen-Movieplex	A1151		Göppingen
-goeppingen	Union-Theater Plochingen	Union-Theater Plochingen	A1654	/kino/plochingen/uniontheater-32941	Plochingen
 goerlitz	Camillo-Sommerkino im Rathaushof	Camillo-Sommerkino im Rathaushof	A2090	/kino/goerlitz-neisse/camillosommerkino-im-rathaushof-56457	Görlitz
 goerlitz	CamilloKino	CamilloKino	A0138	/kino/goerlitz-neisse/camillokino-53777	Görlitz
 goerlitz	Filmpalast Görlitz	Filmpalast Görlitz	A0510	/kino/goerlitz-neisse/filmpalast-31536	Görlitz
@@ -965,8 +964,6 @@ herford	Zentral-Theater Spenge	Zentral-Theater Spenge	A1288	/kino/spenge/zentral
 herford	KNUP – Soziokulturelles Zentrum Oerlinghausen	KNUP – Soziokulturelles Zentrum Oerlinghausen	kinoheld:3871		Oerlinghausen
 herrenberg	Kommunales Kino Herrenberg	Kommunales Kino Herrenberg	A0860	/kino/herrenberg/kommunales-kino-69497	Herrenberg
 herrenberg	Open Air Kino Herrenberg	Open Air Kino Herrenberg	A2770		Herrenberg
-hof	Central-Kino Hof	Central-Kino Hof	A1346	/kino/hof/centralkino-32794	Hof
-hof	Scala Filmtheater Hof	Scala Filmtheater Hof	A1051	/kino/hof/scala-filmtheater-32793	Hof
 hofheim-am-taunus	CasaBlanca Art House	CasaBlanca Art House	A1531	/kino/bad-soden-am-taunus/kino-casablanca-art-house-33116	Bad Soden am Taunus
 hofheim-am-taunus	Filmpalast Hofheim	Filmpalast Hofheim	A2641	/kino/hofheim-am-taunus/filmpalast-78837	Hofheim am Taunus
 hofheim-am-taunus	Open-Air Spielwiese neben dem Rathaus	Open-Air Spielwiese neben dem Rathaus	A2458		Hofheim am Taunus
@@ -1018,9 +1015,11 @@ kempten-im-allgaeu	Union Filmtheater Immenstadt im Allgäu	Union Filmtheater Imm
 kerpen	Capitol-Theater Kerpen	Capitol-Theater Kerpen	A1340	/kino/kerpen/capitoltheater-33457	Kerpen
 kerpen	Euromax - Cinemas	Euromax - Cinemas	A0471	/kino/kerpen/euromax-cinemas-31830	Kerpen
 kerpen	Linden Theater Frechen	Linden Theater Frechen	A0918	/kino/frechen/lindentheater-31800	Frechen
+kirchheim-unter-teck	Kinomobil Stuttgart - BIO-Café Zimt und Zunder	Kinomobil Stuttgart - BIO-Café Zimt und Zunder	A0814		Ensingen
 kirchheim-unter-teck	Kommunales Kino Kirchheim unter Teck	Kommunales Kino Kirchheim unter Teck	A1692		Kirchheim unter Teck
 kirchheim-unter-teck	Sommernachtskino (Kirchheim unter Teck)	Sommernachtskino (Kirchheim unter Teck)	A2823		Kirchheim unter Teck
-kirchheim-unter-teck	Tyroler-Lichtspiele	Tyroler-Lichtspiele	A1197	/kino/kirchheim-unter-teck/tyrolerlichtspiele-32813	Kirchheim unter Teck
+kirchheim-unter-teck	Traumpalast Nürtingen	Traumpalast Nürtingen	A1511	/kino/nuertingen/traumpalast-nuertingen-32917	Nürtingen
+kirchheim-unter-teck	Union-Theater Plochingen	Union-Theater Plochingen	A1654	/kino/plochingen/uniontheater-32941	Plochingen
 kitzingen	Casablanca Ochsenfurt	Casablanca Ochsenfurt	A0173	/kino/ochsenfurt/casablanca-32206	Ochsenfurt
 kitzingen	Cineworld Mainfrankenpark Dettelbach	Cineworld Mainfrankenpark Dettelbach	A0387	/kino/dettelbach/cineworld-erlebniskino-mainfrankenpark-39999	Dettelbach
 kitzingen	Open Air Kino Winzerkeller Sommerach	Open Air Kino Winzerkeller Sommerach	A2277	/kino/sommerach/open-air-kino-im-winzerkeller-73921	Sommerach
@@ -1136,6 +1135,8 @@ meschede	Cine K Korbach	Cine K Korbach	A2902	/kino/korbach/cinek-91980	Korbach
 meschede	Cineplex Brilon	Cineplex Brilon	G00YX	/kino/brilon/cineplex-brilon-92576	Brilon
 meschede	Kino Studio Willingen	Kino Studio Willingen	A0096	/kino/willingen/kino-studio-60757	Willingen
 meschede	Linden-Theater	Linden-Theater	A1701		Meschede
+metzingen	Kinomobil Stuttgart - Historische Kelter	Kinomobil Stuttgart - Historische Kelter	A2134		Grafenberg
+metzingen	Luna-Filmtheater	Luna-Filmtheater	A1549	/kino/metzingen/lunafilmtheater-32849	Metzingen
 minden	Filmtheater &quot;Die Birke&quot;	Filmtheater &quot;Die Birke&quot;	A2798	/kino/minden-westfalen/die-birke-31866	Minden
 minden	Kleines Theater Am Weingarten	Kleines Theater Am Weingarten	kinoheld:3905		Minden
 minden	Kinocenter Stadthagen	Kinocenter Stadthagen	A1632	/kino/stadthagen/kinocenter-32618	Stadthagen
@@ -1218,10 +1219,6 @@ nordhausen	Filmtheater Bleicherode	Filmtheater Bleicherode	A0534	/kino/bleichero
 nordhorn	UCI LUXE Nordhorn	UCI LUXE Nordhorn	A2895		Nordhorn
 northeim	Kino Gandeon	Kino Gandeon	A2707	/kino/bad-gandersheim/kino-gandeon-87077	Bad Gandersheim
 northeim	Neue Schauburg Northeim	Neue Schauburg Northeim	A0984	/kino/northeim/neue-schauburg-32568	Northeim
-nuertingen	Kinomobil Stuttgart - BIO-Café Zimt und Zunder	Kinomobil Stuttgart - BIO-Café Zimt und Zunder	A0814		Ensingen
-nuertingen	Kinomobil Stuttgart - Historische Kelter	Kinomobil Stuttgart - Historische Kelter	A2134		Grafenberg
-nuertingen	Luna-Filmtheater	Luna-Filmtheater	A1549	/kino/metzingen/lunafilmtheater-32849	Metzingen
-nuertingen	Traumpalast Nürtingen	Traumpalast Nürtingen	A1511	/kino/nuertingen/traumpalast-nuertingen-32917	Nürtingen
 oberndorf-am-neckar	KKK-Filmtheater	KKK-Filmtheater	A0848		Oberndorf am Neckar
 oberndorf-am-neckar	Sommernachtskino im Klosterhof in Oberndorf	Sommernachtskino im Klosterhof in Oberndorf	A1987		Oberndorf am Neckar
 oberstdorf	Kurfilmtheater Oberstdorf	Kurfilmtheater Oberstdorf	A0883	/kino/oberstdorf/kurfilmtheater-66638	Oberstdorf
@@ -1260,6 +1257,7 @@ pirmasens	Wasgau-Theater	Wasgau-Theater	A1269		Fischbach bei Dahn
 pirna	Filmpalast Pirna	Filmpalast Pirna	A0511	/kino/pirna/filmpalast-31630	Pirna
 plauen	Capitol-Kino Plauen	Capitol-Kino Plauen	A0156	/kino/plauen-vogtland/capitolkino-31631	Plauen
 plauen	Malzhaus	Malzhaus	A2375	/kino/plauen-vogtland/malzhaus-75077	Plauen
+plauen	Central-Kino Hof	Central-Kino Hof	A1346	/kino/hof/centralkino-32794	Hof
 plauen	Open-Air-Kino - Waldbühne Neuwürschnitz	Open-Air-Kino - Waldbühne Neuwürschnitz	A1846		Oelsnitz
 plauen	UT99 Kinocenter	UT99 Kinocenter	A1250		Greiz
 plettenberg	JAC Kino Attendorn	JAC Kino Attendorn	A2914	/kino/attendorn/jac-kino-attendorn-91983	Attendorn
