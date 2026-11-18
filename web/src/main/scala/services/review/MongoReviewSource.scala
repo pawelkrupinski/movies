@@ -157,35 +157,49 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }.toMap
 
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = {
-    val ids = tmdbIds.distinct
-    if (ids.isEmpty) Map.empty
+    val records = corpusFilms(tmdbIds.distinct)
+    val filmIds = records.map(_._1)
+    if (filmIds.isEmpty) Map.empty
     else {
-      val records = await(collection(MoviesCollection).find(Filters.in("tmdbId", ids*))
-        .projection(Projections.include("tmdbId", "imdbId")).batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).flatMap { b =>
-        Option(b.get("tmdbId")).filter(_.isNumber).map(t => (idText(b.get("_id")), t.asNumber.intValue, string(b, "imdbId")))
-      }
-      val filmIds = records.map(_._1)
-      val served  = if (filmIds.isEmpty) Map.empty[String, BsonDocument]
-        else await(collection(WebMoviesCollection).find(Filters.in("_id", filmIds*)).projection(Projections.exclude("synopsisByCity", "ratings"))
-          .batchSize(tools.MongoReplies.Films).toFuture()).map(d => idText(d.toBsonDocument.get("_id")) -> d.toBsonDocument).toMap
-      val tmdbSlots = if (filmIds.isEmpty) Map.empty[String, BsonDocument]
-        else await(collection(SlotsRepository.Collection).find(Filters.and(Filters.in("filmId", filmIds*), Filters.eq("slotKey", "TMDB")))
-          .projection(Projections.include("filmId", "slot")).batchSize(tools.MongoReplies.Default).toFuture())
-          .flatMap(d => doc(d.toBsonDocument, "slot").map(idText(d.toBsonDocument.get("filmId")) -> _)).toMap
+      val served    = servedMovies(filmIds)
+      val tmdbSlots = tmdbSlotsOf(filmIds)
       records.map { case (filmId, tmdb, imdb) =>
         val web  = served.get(filmId).map(facts(_, poster = "posterUrl", directors = "directors", synopsis = "synopsis"))
         val slot = tmdbSlots.get(filmId).map(facts(_, poster = "posterUrl"))
-        val f    = web.getOrElse(VenueFacts())
-        val s    = slot.getOrElse(VenueFacts())
-        tmdb -> FilmCard(tmdb, imdb, f.title.orElse(s.title), f.originalTitle.orElse(s.originalTitle), f.year.orElse(s.year),
-          if (f.directors.nonEmpty) f.directors else s.directors, f.runtime.orElse(s.runtime), f.poster.orElse(s.poster),
-          f.synopsis.orElse(s.synopsis), if (f.cast.nonEmpty) f.cast else s.cast)
+        tmdb -> MongoReviewSource.filmCard(tmdb, imdb, web.getOrElse(VenueFacts()), slot.getOrElse(VenueFacts()))
       }.toMap
     }
   }
+
+  /** The corpus's films carrying these TMDB ids: (film id, TMDB id, IMDb id). */
+  private def corpusFilms(tmdbIds: Seq[Int]): Seq[(String, Int, Option[String])] =
+    if (tmdbIds.isEmpty) Nil
+    else await(collection(MoviesCollection).find(Filters.in("tmdbId", tmdbIds*))
+      .projection(Projections.include("tmdbId", "imdbId")).batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).flatMap { b =>
+      Option(b.get("tmdbId")).filter(_.isNumber).map(t => (idText(b.get("_id")), t.asNumber.intValue, string(b, "imdbId")))
+    }
+
+  /** The read model's documents of these films, by film id. */
+  private def servedMovies(filmIds: Seq[String]): Map[String, BsonDocument] =
+    await(collection(WebMoviesCollection).find(Filters.in("_id", filmIds*)).projection(Projections.exclude("synopsisByCity", "ratings"))
+      .batchSize(tools.MongoReplies.Films).toFuture()).map(d => idText(d.toBsonDocument.get("_id")) -> d.toBsonDocument).toMap
+
+  /** These films' TMDB slots, by film id. */
+  private def tmdbSlotsOf(filmIds: Seq[String]): Map[String, BsonDocument] =
+    await(collection(SlotsRepository.Collection).find(Filters.and(Filters.in("filmId", filmIds*), Filters.eq("slotKey", "TMDB")))
+      .projection(Projections.include("filmId", "slot")).batchSize(tools.MongoReplies.Default).toFuture())
+      .flatMap(d => doc(d.toBsonDocument, "slot").map(idText(d.toBsonDocument.get("filmId")) -> _)).toMap
 }
 
 object MongoReviewSource {
+  /** A film's card from what the read model serves of it, each fact falling back to its TMDB slot's. */
+  private def filmCard(tmdb: Int, imdb: Option[String], served: VenueFacts, slot: VenueFacts): FilmCard = {
+    def orSlot(own: Seq[String], fallback: Seq[String]): Seq[String] = if (own.nonEmpty) own else fallback
+    FilmCard(tmdb, imdb, served.title.orElse(slot.title), served.originalTitle.orElse(slot.originalTitle),
+      served.year.orElse(slot.year), orSlot(served.directors, slot.directors), served.runtime.orElse(slot.runtime),
+      served.poster.orElse(slot.poster), served.synopsis.orElse(slot.synopsis), orSlot(served.cast, slot.cast))
+  }
+
   val VenuePagesCollection = services.DebugMirror.VenuePages
   val ListingsCollection   = services.DebugMirror.IdentityListings
   val TmdbFilmsCollection  = services.DebugMirror.TmdbFilms

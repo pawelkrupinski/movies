@@ -72,12 +72,6 @@ cognitive	scrapers/src/main/scala/services/cinemas/pl/KinoZorzaClient.scala:Kino
 cognitive	scrapers/src/main/scala/services/cinemas/roster/CopiedFeedDetector.scala:CopiedFeedDetector.fingerprintsOf	16
 cognitive	scrapers/src/main/scala/services/cinemas/roster/CopiedFeedDetector.scala:CopiedFeedDetector.sessionParts	16
 cognitive	scrapers/src/main/scala/services/cinemas/uk/OdeonParser.scala:OdeonParser.formatToken	23
-cognitive	web/src/main/scala/services/review/MongoReviewSource.scala:MongoReviewSource.films	18
-cognitive	web/src/main/scala/services/review/ReviewSource.scala:ListingFeed.catalogueIdsOf	24
-cognitive	web/src/main/scala/services/users/UserStateRepository.scala:MongoUserStateRepository.subscribe	22
-cognitive	web/src/main/scala/tools/FormEncoding.scala:FormEncoding.append	17
-cognitive	web/src/main/scala/tools/Minify.scala:Minify.minifyJs	30
-cognitive	web/src/main/scala/tools/Minify.scala:Minify.process#2	21
 cognitive	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	31
 cognitive	worker/src/main/scala/services/corpus/CorpusCensus.scala:CorpusCensus.tally	28
 cognitive	worker/src/main/scala/services/identityadapters/IdentityModelService.scala:IdentityModelService.resumed	17
@@ -203,12 +197,6 @@ cyclomatic	scrapers/src/main/scala/services/cinemas/roster/RosterLocationAudit.s
 cyclomatic	scrapers/src/main/scala/services/cinemas/uk/OdeonParser.scala:OdeonParser.formatToken	25
 cyclomatic	scrapers/src/main/scala/services/cinemas/uk/UkFeed.scala:UkFeed.parse	16
 cyclomatic	web/src/main/scala/controllers/ReviewController.scala:ReviewController.agentJudged	11
-cyclomatic	web/src/main/scala/services/review/FilmRef.scala:FilmRef.fromUrl	16
-cyclomatic	web/src/main/scala/services/review/LabelsExport.scala:LabelsExport.rowsOf	11
-cyclomatic	web/src/main/scala/services/review/ReviewSource.scala:ListingFeed.catalogueIdsOf	12
-cyclomatic	web/src/main/scala/tools/FormEncoding.scala:FormEncoding.passesThrough	11
-cyclomatic	web/src/main/scala/tools/Minify.scala:Minify.minifyJs	21
-cyclomatic	web/src/main/scala/tools/Minify.scala:Minify.process#2	12
 cyclomatic	worker/src/main/scala/services/alerts/FallbackAlert.scala:FallbackAlert.messageFor	13
 cyclomatic	worker/src/main/scala/services/closure/ClosureSweep.scala:ClosureSweep.settle	23
 cyclomatic	worker/src/main/scala/services/corpus/CorpusCensus.scala:CorpusCensus.tally	11

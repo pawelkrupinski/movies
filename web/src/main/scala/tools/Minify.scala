@@ -49,46 +49,40 @@ object Minify extends Minifier {
   def process(html: String, minifyJs: String => String, minifyCss: String => String): String = {
     val sb = new java.lang.StringBuilder(html.length)
     var i = 0
-    while (i < html.length) {
-      // Find the next opening tag we care about; if none, copy the rest.
-      val nextScript = html.indexOf("<script", i)
-      val nextStyle  = html.indexOf("<style",  i)
-      val (tagStart, tagName, minifier) = (nextScript, nextStyle) match {
-        case (-1, -1)              => (-1,             "",       identity[String])
-        case (s, -1)               => (s,              "script", minifyJs)
-        case (-1, t)               => (t,              "style",  minifyCss)
-        case (s, t)  if s < t      => (s,              "script", minifyJs)
-        case (_, t)                => (t,              "style",  minifyCss)
-      }
-      if (tagStart < 0) {
-        sb.append(html, i, html.length)
-        i = html.length
-      } else {
-        // Copy verbatim up to the opening tag.
-        sb.append(html, i, tagStart)
-        // Walk through the opening tag's attributes to find the `>`.
-        val openEnd = html.indexOf('>', tagStart)
-        if (openEnd < 0) { sb.append(html, tagStart, html.length); i = html.length }
-        else {
-          // Self-closing or void tag — no body to minify.
-          val isSelfClosing = html.charAt(openEnd - 1) == '/'
-          sb.append(html, tagStart, openEnd + 1)
-          if (isSelfClosing) i = openEnd + 1
-          else {
-            val closeTag = s"</$tagName>"
-            val closeStart = html.indexOf(closeTag, openEnd + 1)
-            if (closeStart < 0) { sb.append(html, openEnd + 1, html.length); i = html.length }
-            else {
-              val body = html.substring(openEnd + 1, closeStart)
-              sb.append(minifier(body))
-              sb.append(closeTag)
-              i = closeStart + closeTag.length
-            }
-          }
-        }
-      }
-    }
+    while (i < html.length) i = copyThroughNextBlock(html, i, sb, minifyJs, minifyCss)
     sb.toString
+  }
+
+  /** Copies `html` from `from` up to and through the next `<script>` / `<style>` block (its body minified), or
+   *  the rest when there is none; answers where to go on from. */
+  private def copyThroughNextBlock(html: String, from: Int, sb: java.lang.StringBuilder,
+                                   minifyJs: String => String, minifyCss: String => String): Int = {
+    val nextScript = html.indexOf("<script", from)
+    val nextStyle  = html.indexOf("<style",  from)
+    if (nextScript < 0 && nextStyle < 0) { sb.append(html, from, html.length); html.length }
+    else if (nextStyle < 0 || (nextScript >= 0 && nextScript < nextStyle)) copyBlock(html, from, nextScript, "script", minifyJs, sb)
+    else copyBlock(html, from, nextStyle, "style", minifyCss, sb)
+  }
+
+  /** Copies verbatim up to the opening tag at `tagStart`, the tag itself, and its body through `minifier`;
+   *  answers the index after the block. */
+  private def copyBlock(html: String, from: Int, tagStart: Int, tagName: String, minifier: String => String,
+                        sb: java.lang.StringBuilder): Int = {
+    sb.append(html, from, tagStart)
+    // Walk through the opening tag's attributes to find the `>`.
+    val openEnd = html.indexOf('>', tagStart)
+    if (openEnd < 0) { sb.append(html, tagStart, html.length); return html.length }
+    sb.append(html, tagStart, openEnd + 1)
+    // Self-closing or void tag — no body to minify.
+    if (html.charAt(openEnd - 1) == '/') return openEnd + 1
+    val closeTag   = s"</$tagName>"
+    val closeStart = html.indexOf(closeTag, openEnd + 1)
+    if (closeStart < 0) { sb.append(html, openEnd + 1, html.length); html.length }
+    else {
+      sb.append(minifier(html.substring(openEnd + 1, closeStart)))
+      sb.append(closeTag)
+      closeStart + closeTag.length
+    }
   }
 
   // ── JS ────────────────────────────────────────────────────────────────────
@@ -122,27 +116,39 @@ object Minify extends Minifier {
       if (s.startsWith("//") || s.startsWith("/*")) ""
       else java.util.regex.Matcher.quoteReplacement(s)
     })
-    val sb = new java.lang.StringBuilder(noComments.length)
+    collapseJsWhitespace(noComments).trim
+  }
+
+  private def collapseJsWhitespace(src: String): String = {
+    val sb = new java.lang.StringBuilder(src.length)
     var i = 0
-    val n = noComments.length
-    while (i < n) {
-      val c = noComments.charAt(i)
-      if (c == ' ' || c == '\t') {
-        sb.append(' ')
-        while (i < n && (noComments.charAt(i) == ' ' || noComments.charAt(i) == '\t')) i += 1
-      } else if (c == '\n' || c == '\r') {
-        // Trim trailing horizontal whitespace already in sb, then one '\n'.
-        while (sb.length > 0 && (sb.charAt(sb.length - 1) == ' ' || sb.charAt(sb.length - 1) == '\t'))
-          sb.setLength(sb.length - 1)
-        if (sb.length == 0 || sb.charAt(sb.length - 1) != '\n') sb.append('\n')
-        i += 1
-        while (i < n && (noComments.charAt(i) == '\n' || noComments.charAt(i) == '\r' ||
-                         noComments.charAt(i) == ' ' || noComments.charAt(i) == '\t')) i += 1
-      } else {
-        sb.append(c); i += 1
-      }
+    while (i < src.length) {
+      val c = src.charAt(i)
+      if (isHorizontalSpace(c)) { sb.append(' '); i = skipHorizontalSpace(src, i) }
+      else if (c == '\n' || c == '\r') { endLine(sb); i = skipWhitespace(src, i + 1) }
+      else { sb.append(c); i += 1 }
     }
-    sb.toString.trim
+    sb.toString
+  }
+
+  private def isHorizontalSpace(c: Char): Boolean = c == ' ' || c == '\t'
+
+  private def skipHorizontalSpace(src: String, from: Int): Int = {
+    var i = from
+    while (i < src.length && isHorizontalSpace(src.charAt(i))) i += 1
+    i
+  }
+
+  private def skipWhitespace(src: String, from: Int): Int = {
+    var i = from
+    while (i < src.length && (isHorizontalSpace(src.charAt(i)) || src.charAt(i) == '\n' || src.charAt(i) == '\r')) i += 1
+    i
+  }
+
+  /** Trim trailing horizontal whitespace already in `sb`, then one '\n'. */
+  private def endLine(sb: java.lang.StringBuilder): Unit = {
+    while (sb.length > 0 && isHorizontalSpace(sb.charAt(sb.length - 1))) sb.setLength(sb.length - 1)
+    if (sb.length == 0 || sb.charAt(sb.length - 1) != '\n') sb.append('\n')
   }
 
   // ── CSS ───────────────────────────────────────────────────────────────────

@@ -88,30 +88,40 @@ object LabelsExport {
   }
 
   def rowsOf(answer: ReviewAnswer, identity: FilmIdentity = FilmIdentity.Unlinked): Seq[LabelRow] = {
-    def rows(film: FilmFacts, right: Boolean, note: String): Seq[LabelRow] =
-      answer.members.groupBy(_.rawTitle).toSeq.sortBy(_._1).map { case (raw, members) =>
-        val venues = members.map(_.venue).distinct
-        LabelRow(answer.country, if (venues.size == 1) venues.head else "*", LabelsTsv.normalise(raw), film.ref.render,
-          if (right) "right" else "wrong", s"review page: $note")
-      }
     val shown = answer.shown.toSeq
     answer.verdict match {
-      case ReviewVerdict.Right       => shown.flatMap(f => rows(f, right = true, s"right: ${f.describe}"))
-      case ReviewVerdict.Wrong       => shown.flatMap(f => rows(f, right = false, s"wrong: ${f.describe}"))
-      case ReviewVerdict.NoneOfThese => shown.flatMap(f => rows(f, right = false, s"none of the candidates: ${f.describe}"))
-      case ReviewVerdict.Event       => shown.flatMap(f => rows(f, right = false, s"not a film: ${f.describe}"))
-      case ReviewVerdict.Bill        => shown.flatMap(f => rows(f, right = false, s"double bill: ${f.describe}"))
-      case ReviewVerdict.Film        =>
+      case ReviewVerdict.Film =>
         answer.ref.toSeq.flatMap { ref =>
           val chosen = shown.find(_.ref == ref).getOrElse(FilmFacts(ref))
-          rows(chosen, right = true, s"hand label: ${chosen.describe}") ++
+          labelRows(answer, chosen, right = true, s"hand label: ${chosen.describe}") ++
             // the film shown is ruled out only when it is PROVABLY another film: the same film often goes by another
             // database's id on the label the answer corrects (filmweb:10008278 and tmdb:1157322 are one Franz)
-            shown.filter(f => identity.provablyDifferent(f.ref, ref)).flatMap(f => rows(f, right = false, s"must not: ${f.describe}"))
+            shown.filter(f => identity.provablyDifferent(f.ref, ref)).flatMap(f => labelRows(answer, f, right = false, s"must not: ${f.describe}"))
         }
-      case ReviewVerdict.Unsure | ReviewVerdict.Undo => Nil
+      case verdict =>
+        ShownFilmVerdicts.get(verdict).toSeq.flatMap { case (right, note) =>
+          shown.flatMap(f => labelRows(answer, f, right, s"$note: ${f.describe}"))
+        }
     }
   }
+
+  /** The verdicts that judge the film shown, each as right or wrong and the note its rows carry. Unsure and Undo
+   *  file no row. */
+  private val ShownFilmVerdicts: Map[ReviewVerdict, (Boolean, String)] = Map(
+    ReviewVerdict.Right       -> (true, "right"),
+    ReviewVerdict.Wrong       -> (false, "wrong"),
+    ReviewVerdict.NoneOfThese -> (false, "none of the candidates"),
+    ReviewVerdict.Event       -> (false, "not a film"),
+    ReviewVerdict.Bill        -> (false, "double bill"),
+  )
+
+  /** One row a raw title the answer's members bill `film` under: at their one venue, else every venue (`*`). */
+  private def labelRows(answer: ReviewAnswer, film: FilmFacts, right: Boolean, note: String): Seq[LabelRow] =
+    answer.members.groupBy(_.rawTitle).toSeq.sortBy(_._1).map { case (raw, members) =>
+      val venues = members.map(_.venue).distinct
+      LabelRow(answer.country, if (venues.size == 1) venues.head else "*", LabelsTsv.normalise(raw), film.ref.render,
+        if (right) "right" else "wrong", s"review page: $note")
+    }
 
   def merge(existing: Seq[LabelRow], answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): (Seq[LabelRow], Summary) = {
     val rows = scala.collection.mutable.ArrayBuffer.from(existing)

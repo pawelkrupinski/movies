@@ -3,6 +3,7 @@ package services.review
 import services.identity.ResolverDecision
 
 import java.time.Instant
+import scala.jdk.CollectionConverters._
 
 /** What a venue said about a listing, in one place it said it (its listing row, or its own film page). */
 final case class VenueFacts(title: Option[String] = None, originalTitle: Option[String] = None, year: Option[Int] = None,
@@ -26,25 +27,26 @@ object ListingFeed {
   /** Catalogue ids however a document spells them: a map (`{"flicks": "29423"}`, how the scrape archive stores
    *  `externalIds`), one `{source, id}` object, a list of those or of `source:id` strings, or one such string. A value
    *  of any other shape is no id, never a failed card. */
-  def catalogueIdsOf(value: org.bson.BsonValue): Seq[services.identity.CatalogueId] = {
-    import scala.jdk.CollectionConverters._
-    def text(v: org.bson.BsonValue): Option[String] =
-      if (v.isString) Some(v.asString.getValue.trim).filter(_.nonEmpty)
-      else if (v.isNumber) Some(v.asNumber.longValue.toString) else None
-    def fromString(s: String) = s.split(":", 2) match {
-      case Array(source, id) if source.nonEmpty && id.nonEmpty => Some(services.identity.CatalogueId(source, id))
-      case _                                                   => None
-    }
+  def catalogueIdsOf(value: org.bson.BsonValue): Seq[services.identity.CatalogueId] =
     Option(value).toSeq.flatMap { v =>
       if (v.isArray) v.asArray.getValues.asScala.toSeq.flatMap(catalogueIdsOf)
-      else if (v.isDocument) {
-        val d = v.asDocument
-        if (d.containsKey("source") && d.containsKey("id"))
-          (for { s <- text(d.get("source")); i <- text(d.get("id")) } yield services.identity.CatalogueId(s, i)).toSeq
-        else d.asScala.toSeq.flatMap { case (source, id) => text(id).map(services.identity.CatalogueId(source, _)) }
-      }
+      else if (v.isDocument) documentIds(v.asDocument)
       else text(v).flatMap(fromString).toSeq
     }.distinct.sortBy(id => (id.source, id.id))
+
+  /** One `{source, id}` object, or a map of source to id. */
+  private def documentIds(d: org.bson.BsonDocument): Seq[services.identity.CatalogueId] =
+    if (d.containsKey("source") && d.containsKey("id"))
+      (for { s <- text(d.get("source")); i <- text(d.get("id")) } yield services.identity.CatalogueId(s, i)).toSeq
+    else d.asScala.toSeq.flatMap { case (source, id) => text(id).map(services.identity.CatalogueId(source, _)) }
+
+  private def text(v: org.bson.BsonValue): Option[String] =
+    if (v.isString) Some(v.asString.getValue.trim).filter(_.nonEmpty)
+    else if (v.isNumber) Some(v.asNumber.longValue.toString) else None
+
+  private def fromString(s: String): Option[services.identity.CatalogueId] = s.split(":", 2) match {
+    case Array(source, id) if source.nonEmpty && id.nonEmpty => Some(services.identity.CatalogueId(source, id))
+    case _                                                   => None
   }
 }
 

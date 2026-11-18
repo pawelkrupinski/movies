@@ -250,36 +250,40 @@ class MongoUserStateRepository(
         liveness.watching(UserStateRepository.Collection)
         if (reopened) listener.foreach { case (_, _, onLostTrack) => onLostTrack() }
       }
-      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
-        reopen.opened()
-        liveness.delivered(UserStateRepository.Collection)
-        (decoder.postImage(change), listener) match {
-          case (ChangeEventDecoder.PostImage.Present(state), Some((onUpsert, _, _))) => onUpsert(state)
-          // A row changed and we cannot say whose, or what to: stop vouching, as for a delete.
-          case (ChangeEventDecoder.PostImage.Undecodable, Some((_, _, onLostTrack))) => onLostTrack()
-          // A delete carries only its documentKey — and a row's `_id` is a driver-generated
-          // ObjectId, not the userId, so the key cannot say WHOSE row went (and there is no
-          // pre-image to ask). Deletes are rare (account deletion), so rather than enable
-          // collection pre-images, report "can no longer vouch for what changed" — the same
-          // signal as a dead cursor, which makes the change-time cache drop everything.
-          case (ChangeEventDecoder.PostImage.Absent, Some((_, onDelete, onLostTrack))) =>
-            Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
-              .fold(onLostTrack())(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
-          case _ => ()
-        }
-      }
+      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = deliver(decoder.postImage(change), change)
       override def onError(e: Throwable): Unit = {
         logger.warn(s"UserStateRepository change stream ended (${e.getMessage}) — invalidating the cache; a reopen resumes it.")
-        subscription = None
-        listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
-        reopen.failed()
+        cursorEnded()
       }
-      override def onComplete(): Unit = {
-        subscription = None
-        listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
-        reopen.failed()
-      }
+      override def onComplete(): Unit = cursorEnded()
     })
+  }
+
+  /** One change, to the listener. `image` is decoded whether or not one listens: a refused row is counted either way. */
+  private def deliver(image: ChangeEventDecoder.PostImage[UserState], change: ChangeStreamDocument[BsonDocument]): Unit = {
+    reopen.opened()
+    liveness.delivered(UserStateRepository.Collection)
+    listener.foreach { case (onUpsert, onDelete, onLostTrack) =>
+      image match {
+        case ChangeEventDecoder.PostImage.Present(state) => onUpsert(state)
+        // A row changed and we cannot say whose, or what to: stop vouching, as for a delete.
+        case ChangeEventDecoder.PostImage.Undecodable    => onLostTrack()
+        // A delete carries only its documentKey — and a row's `_id` is a driver-generated
+        // ObjectId, not the userId, so the key cannot say WHOSE row went (and there is no
+        // pre-image to ask). Deletes are rare (account deletion), so rather than enable
+        // collection pre-images, report "can no longer vouch for what changed" — the same
+        // signal as a dead cursor, which makes the change-time cache drop everything.
+        case ChangeEventDecoder.PostImage.Absent =>
+          Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
+            .fold(onLostTrack())(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
+      }
+    }
+  }
+
+  private def cursorEnded(): Unit = {
+    subscription = None
+    listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
+    reopen.failed()
   }
 
   def close(): Unit = reopen.close()

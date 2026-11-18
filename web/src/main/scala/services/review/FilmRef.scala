@@ -73,26 +73,29 @@ object FilmRef {
     val withScheme = if (text.contains("://")) text else "https://" + text
     Try(new URI(withScheme.replace(" ", "%20"))).toOption.flatMap { uri =>
       val host = Option(uri.getHost).getOrElse("").toLowerCase(Locale.ROOT).stripPrefix("www.").stripPrefix("m.")
-      val segments = Option(uri.getRawPath).getOrElse("").split("/").filter(_.nonEmpty).toList
-      def after(marker: String): Option[String] = segments.dropWhile(_ != marker).drop(1).headOption
-      host match {
-        case h if h.endsWith("themoviedb.org") =>
-          after("movie").flatMap(slug => "^(\\d+)".r.findFirstMatchIn(slug)).map(m => FilmRef("tmdb", m.group(1).toInt.toString))
-        case h if h.endsWith("imdb.com") =>
-          after("title").filter(ImdbId.matches).map(FilmRef("imdb", _))
-        case h if h.endsWith("filmweb.pl") =>
-          // /film/Franz+Kafka-2025-10008278 — the id is the slug's last dash-separated number
-          after("film").flatMap(slug => "-(\\d+)$".r.findFirstMatchIn(slug)).map(m => FilmRef("filmweb", m.group(1)))
-        case h if h.endsWith("wikidata.org") =>
-          after("wiki").orElse(after("entity")).filter(WikidataId.matches).map(FilmRef("wikidata", _))
-        case h if h.endsWith("rottentomatoes.com") =>
-          after("m").map(FilmRef("rt", _))
-        case h if h.endsWith("letterboxd.com") =>
-          after("film").map(FilmRef("letterboxd", _))
-        case h if h.endsWith("metacritic.com") =>
-          after("movie").map(FilmRef("metacritic", _))
-        case _ => None
-      }
+      val path = UrlPath(Option(uri.getRawPath).getOrElse("").split("/").filter(_.nonEmpty).toList)
+      UrlReaders.collectFirst { case (site, read) if host.endsWith(site) => read(path) }.flatten
     }
   }
+
+  /** A link's path segments. */
+  private final case class UrlPath(segments: List[String]) {
+    /** The segment after `marker` (`movie` in `/movie/123-slug`). */
+    def after(marker: String): Option[String] = segments.dropWhile(_ != marker).drop(1).headOption
+  }
+
+  private val TmdbSlugId    = "^(\\d+)".r
+  private val FilmwebSlugId = "-(\\d+)$".r
+
+  /** Each site a film link can come from, and how its path names the film. */
+  private val UrlReaders: Seq[(String, UrlPath => Option[FilmRef])] = Seq(
+    "themoviedb.org" -> (_.after("movie").flatMap(TmdbSlugId.findFirstMatchIn).map(m => FilmRef("tmdb", m.group(1).toInt.toString))),
+    "imdb.com"       -> (_.after("title").filter(ImdbId.matches).map(FilmRef("imdb", _))),
+    // /film/Franz+Kafka-2025-10008278 — the id is the slug's last dash-separated number
+    "filmweb.pl"     -> (_.after("film").flatMap(FilmwebSlugId.findFirstMatchIn).map(m => FilmRef("filmweb", m.group(1)))),
+    "wikidata.org"   -> (path => path.after("wiki").orElse(path.after("entity")).filter(WikidataId.matches).map(FilmRef("wikidata", _))),
+    "rottentomatoes.com" -> (_.after("m").map(FilmRef("rt", _))),
+    "letterboxd.com" -> (_.after("film").map(FilmRef("letterboxd", _))),
+    "metacritic.com" -> (_.after("movie").map(FilmRef("metacritic", _))),
+  )
 }
