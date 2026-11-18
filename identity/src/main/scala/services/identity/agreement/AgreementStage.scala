@@ -2,8 +2,7 @@ package services.identity.agreement
 
 import scala.util.chaining.scalaUtilChainingOps
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision,
-  WaitingOn}
+  IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -104,7 +103,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            /** A question attempted and given up on for good (the question memory's durable non-answer, or
                             *  its give-up after its failures in a row): absent, not pending. One failed and in its backoff
                             *  is attempted -- the settle rule decides without it -- but still pending (P1): what
-                            *  [[outcomeOf]] types a settled take by. By default every attempted question is given up on. */
+                            *  [[StageWaits.outcomeOf]] types a settled take by. By default every attempted question is given up on. */
                            private[agreement] val givenUp: Question => Boolean = _ => true,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
                            private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
@@ -127,77 +126,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   def wanted: Set[Question] = questions.wanted
   /** The questions on their way to `ask`, and what of them is awaited. */
   private[agreement] val questions = new QuestionHandOver(ask, attemptsMarked)
-
-  /** What `decision`'s take waits on, as the last [[apply]] left it: the model's gaps, and the stage's own — its cluster's
-   *  family questions or its fill's TMDB answers ([[waiting]]), and its take's correction's questions ([[correctionWaits]]).
-   *  Read off the kept waits: a decision the stage does not wait on allocates nothing past its own. */
-  def waitingOn(decision: ResolverDecision): WaitingOn =
-    if (decision.members.isEmpty) WaitingOn.model(decision)
-    else {
-      val id         = keyOf(decision)
-      val cluster    = waiting.get(id)
-      val correction = correctionWaits.get(AgreementStage.correctionId(id))
-      val hold       = standingTakes.holdOf(id, decision.members)
-      if (cluster.isEmpty && correction.isEmpty && hold.isEmpty) WaitingOn.model(decision)
-      else WaitingOn(
-        decision.unanswered,
-        // a question attempted is waited on no more: asked still, the take decided without it
-        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.fold(Set.empty[Question])(_.gaps) ++
-          hold.fold(Set.empty[Question])(_.waits)).filterNot(tried),
-        onTmdb = cluster.exists(_.blindAt.isDefined))
-    }
-
-  /** What `decision` comes to as the last [[apply]] served it, typed: its film, or no film -- Pending while the model or
-   *  the stage still waits on something ([[ResolverDecision.awaits]], [[waitingOn]]: a verdict's or a correction's
-   *  questions unanswered, a fill's TMDB answers), NoFilm when nothing is. Read, never stored: the served decision stays
-   *  the object the projection diffs by. */
-  def outcomeOf(decision: ResolverDecision): services.identity.TakeOutcome = {
-    // every question its verdict, its take and its correction still lack -- an attempted one too: the settle rule decides
-    // without an answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as
-    // the stage serves it; typed as what it is. A film taken while its correction still waits is Pending too: the
-    // correction may move it (the property "refine each take as answers are only filed": Lalka 1001 -> 1002)
-    val stage = if (decision.members.isEmpty) Set.empty[Question] else stageWaits(keyOf(decision), decision)
-    decision.outcome match {
-      case taken: services.identity.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.TakeOutcome.Pending(stage)
-      case model                                  => if (stage.isEmpty) model else services.identity.TakeOutcome.Pending(decision.awaits ++ stage)
-    }
-  }
-
-  /** Every question the stage holds `decision`'s take of cluster `id` pending on ([[outcomeOf]]): a hold's, its
-   *  cluster's and its correction's waits, a standing correction's re-reads ([[correctionRereads]]), its take's waits
-   *  for its shape, and its settled verdict's questions none answered yet ([[settledUnanswered]]). */
-  private def stageWaits(id: String, decision: ResolverDecision): Set[Question] =
-    // a previous take standing while the cluster's take waits ([[StandingTakes]]): Pending on what it waits on
-    standingTakes.holdOf(id, decision.members).fold(Set.empty[Question])(_.waits) ++
-      waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
-      correctionRereads(id) ++
-      takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps) ++
-      settledUnanswered(id, decision)
-
-  /** A correction standing unread -- the apply's budget spent, or stored and trusted at boot -- while an answer its
-   *  receipt read was filed otherwise since: served as last decided, pending on its re-read (P3, a budget decides how
-   *  soon, never what: PL "Lalka" stood on 1001 after a restart, its families' answers since naming 1002). */
-  private def correctionRereads(id: String): Set[Question] =
-    held.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.reads.iterator.collect {
-      case (read, was) if readNow(read).exists(_ != was) => read
-      // a question it asked and read unanswered, not given up on: settled past, pending (P1)
-      case (read @ Dependency.Asked(question), _) if !givenUp(question) => read
-    }.flatMap {
-      case Dependency.Answer(question)       => Some(question)
-      case Dependency.Attempted(question)    => Some(question)
-      case Dependency.Lookup(_, _, question) => Some(question)
-      case Dependency.Asked(question)        => Some(question)
-      case _                                 => None
-    }.toSet)
-
-  /** A settled verdict's questions no family answered yet, unless given up on: asked on every pass, read again once
-   *  answered (PL "SEVENTEEN World Tour 'NEW_'": settled to none past a failed ask, filled by IMDb once it filed). */
-  private def settledUnanswered(id: String, decision: ResolverDecision): Set[Question] =
-    Option(digested.get(decision)).flatMap(d => held.get(id).filter(_.listings == d.digest)).fold(Set.empty[Question])(v =>
-      v.reads.iterator.collect {
-        case (Dependency.Answer(q), Dependency.Unanswered) => q
-        case (Dependency.Asked(q), _)                      => q
-      }.filterNot(givenUp).toSet)
 
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it ([[ClusterKeys.keyOf]]): read from any thread. */
   def keyOf(decision: ResolverDecision): String = clusterKeys.keyOf(decision)
@@ -302,11 +230,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] val correctionWaits = TrieMap.empty[String, AgreementStage.Waiting]
   /** The clusters whose agreed take the last apply left pending ([[AgreementStage.Take.Pending]]: a venue poster not
    *  hashed, an IMDb id not found in TMDB yet), with what it asked: the model's take is served meanwhile, typed Pending
-   *  ([[outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
+   *  ([[StageWaits.outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
    *  posters of the candidates it read again, the model's no film served. */
   private[agreement] val takeWaits = TrieMap.empty[String, AgreementStage.Waiting]
   /** Each cluster's last settled take, standing while the same listings' take waits ([[StandingTakes]]). */
   private[agreement] val standingTakes = new StandingTakes(clock)
+  /** What each cluster waits on, as the last [[apply]] left it, and what a decision comes to meanwhile ([[StageWaits]]):
+   *  read from any thread. */
+  val waits = new StageWaits(waiting, takeWaits, correctionWaits, keyOf, standingTakes, digested, id => held.get(id), readNow, tried, givenUp)
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -373,7 +304,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
     val started      = tools.Stopwatch.start()
     val pass         = opened(resolution, version)
-    val waitedBefore = staging.map(_ => waitingClusters)
+    val waitedBefore = staging.map(_ => waits.waitingClusters)
     val served       = servedAll(resolution, decidedAll(resolution, listingOf, pass), pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     closed(pass)
@@ -420,13 +351,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private def servedAll(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementStage.Pass): Seq[ResolverDecision] = {
     clusterKeys.publish(pass.keys)
     forgetGone(resolution, pass)
-    standingTakes.served(resolution, took, pass, openWaits)
+    standingTakes.served(resolution, took, pass, waits.openWaits)
   }
-
-  /** What cluster `id` waits on now, each set not empty: its families' questions or fill ([[waiting]]), its take's
-   *  ([[takeWaits]]) and its correction's ([[correctionWaits]]). */
-  private def openWaits(id: String): Seq[Set[Question]] =
-    Seq(waiting.get(id), takeWaits.get(id), correctionWaits.get(AgreementStage.correctionId(id))).flatten.map(_.gaps).filter(_.nonEmpty)
 
   /** The apply ends: what it read of TMDB published, what it met unanswered handed to the queue, whether its budget left
    *  a take unread, and the families' verdicts it did not read again dropped. */
@@ -454,6 +380,26 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private var appliesSinceValidation = 0
   private var validatedFrom          = 0
 
+  /** Tell `staging` the waits this apply started and ended, against those it began with (`before`): a cluster put to
+   *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
+   *  that waits no more. A cluster gone — regrouped, or taken by the model — is no wait ended: its listings are another
+   *  cluster's now. */
+  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementStage.Pass): Unit = {
+    import services.identity.staging.StagingEvent
+    val after  = waits.waitingClusters
+    val now    = clock.millis()
+    val events = Vector.newBuilder[StagingEvent]
+    (after -- before).toSeq.sorted.foreach(id => events += StagingEvent.Waiting(id, pass.inline.get(id).fold(now)(_._1), waits.questionsOf(id)))
+    pass.inline.toSeq.sortBy(_._1).foreach { case (id, (at, asked)) =>
+      if (!after(id) && !before(id)) { events += StagingEvent.Waiting(id, at, asked); events += StagingEvent.Settled(id, now) }
+    }
+    (before -- after).toSeq.sorted.filter(id => pass.seen(id) || pass.correcting(AgreementStage.correctionId(id)))
+      .foreach(id => events += StagingEvent.Settled(id, now))
+    pass.merged.sorted.foreach { case (into, from) => events += StagingEvent.Merged(into, from, now) }
+    val told = events.result()
+    if (told.nonEmpty) tell(told)
+  }
+
   /** The verdict held for the cluster `key` names with listings digesting to `digest` — under its key, else under
    *  whichever key it was filed by (a restart's keys lost or numbered otherwise, a pre-key verdict under its first
    *  listing): filed under `key` from now, the move stored with the apply's. A verdict stands on its listings and receipt,
@@ -474,35 +420,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** `verdict` in `index`, by its listings' digest. */
   private[agreement] def indexed(index: (mutable.LongMap[StoredVerdict], mutable.LongMap[StoredVerdict]), verdict: StoredVerdict): Unit =
     (if (verdict.correction.isDefined) index._2 else index._1)(verdict.listings) = verdict
-
-  /** The clusters the stage waits on now: on their families' questions or fill ([[waiting]]), or on their take's
-   *  correction ([[correctionWaits]]), by cluster id. */
-  private[agreement] def waitingClusters: Set[String] =
-    waiting.keySet.toSet ++ correctionWaits.keySet.iterator.map(_.stripPrefix(AgreementStage.CorrectionPrefix))
-
-  /** What the stage waits on for cluster `id`: its families' questions and its correction's. */
-  private def questionsOf(id: String): Set[Question] =
-    waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps)
-
-  /** Tell `staging` the waits this apply started and ended, against those it began with (`before`): a cluster put to
-   *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
-   *  that waits no more. A cluster gone — regrouped, or taken by the model — is no wait ended: its listings are another
-   *  cluster's now. */
-  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementStage.Pass): Unit = {
-    import services.identity.staging.StagingEvent
-    val after  = waitingClusters
-    val now    = clock.millis()
-    val events = Vector.newBuilder[StagingEvent]
-    (after -- before).toSeq.sorted.foreach(id => events += StagingEvent.Waiting(id, pass.inline.get(id).fold(now)(_._1), questionsOf(id)))
-    pass.inline.toSeq.sortBy(_._1).foreach { case (id, (at, asked)) =>
-      if (!after(id) && !before(id)) { events += StagingEvent.Waiting(id, at, asked); events += StagingEvent.Settled(id, now) }
-    }
-    (before -- after).toSeq.sorted.filter(id => pass.seen(id) || pass.correcting(AgreementStage.correctionId(id)))
-      .foreach(id => events += StagingEvent.Settled(id, now))
-    pass.merged.sorted.foreach { case (into, from) => events += StagingEvent.Merged(into, from, now) }
-    val told = events.result()
-    if (told.nonEmpty) tell(told)
-  }
 
   /** What the model's `decision` is taken as: a model take read against the evidence that may correct it, a no-match
    *  the families, the posters, the screening days, a fill or the catalogue ids take a film for — else the decision as

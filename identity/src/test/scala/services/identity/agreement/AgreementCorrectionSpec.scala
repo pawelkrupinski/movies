@@ -509,7 +509,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     settled.explanation.last should include ("imdb, wiki take 'Lalka' (1968)")
     val rtAsked = s.wanted.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q }
     rtAsked should not be empty                                          // asked still
-    s.waitingOn(settled).settled shouldBe true
+    s.waits.waitingOn(settled).settled shouldBe true
     rtAnswered = true
     filed = rtAsked.flatMap(_.id)
     decided(s, version = 2).explanation.last should include ("imdb, rt, wiki take 'Lalka' (1968)")
@@ -524,7 +524,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster,
       tmdb = Some(table()), correctionsPerApply = 1)
     val waited = decided(s)
-    s.waitingOn(waited).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
+    s.waits.waitingOn(waited).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
     // a scrape adds a listing to the take, and another take, first in content order, is met in the same apply
     val joined  = FilmTable.listing(Multikino, "Lalka", year = Some(2026)).copy(screenings = ScreeningDays.of(Seq(day)))
     val other   = FilmTable.listing(Multikino, "Klondike").copy(screenings = ScreeningDays.of(Seq(day)))
@@ -536,6 +536,6 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val decisions = s.apply(reshape, byKey.get, version = 2).decisions
     val reshaped = decisions.find(_.members.contains(joined.key)).get
     s.backlog shouldBe false                                             // no take left for a later apply
-    s.waitingOn(reshaped).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
+    s.waits.waitingOn(reshaped).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
   }
 }

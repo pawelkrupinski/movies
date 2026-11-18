@@ -117,7 +117,7 @@ object SearchRefreshHoldReplaySpec {
       if (!sameVersion) { version += 1; lastModel = model(listings) }
       stage.apply(lastModel, key => listings.find(_.key == key), version).decisions.head
     }
-    def outcome(decision: ResolverDecision): TakeOutcome = stage.outcomeOf(decision)
+    def outcome(decision: ResolverDecision): TakeOutcome = stage.waits.outcomeOf(decision)
     def refreshSearch(): Unit = { table = new FilmTable(Seq(game, blindGame), normalizer); filed += Dependency.QueryFiled }
     def filePoster(): Unit = { films(BlindGame) = Seq(PosterHash(-1L)); filed += s"poster:$BlindGame" }
   }

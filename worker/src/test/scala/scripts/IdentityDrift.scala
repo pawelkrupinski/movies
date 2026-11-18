@@ -602,7 +602,7 @@ object IdentityDrift {
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
       // the served take's outcome, typed (`AgreementStage.outcomeOf`): no film YET -- the model's or the stage's awaits
       // named -- is no take left (TakeFlips); never read off the explanation's prose
-      val awaiting = r.decisions.iterator.flatMap(d => stage.outcomeOf(d) match {
+      val awaiting = r.decisions.iterator.flatMap(d => stage.waits.outcomeOf(d) match {
         case TakeOutcome.Pending(awaits) => val kinds = awaits.map(kindOf); d.members.iterator.map(_ -> kinds)
         case _                           => Iterator.empty
       }).toMap

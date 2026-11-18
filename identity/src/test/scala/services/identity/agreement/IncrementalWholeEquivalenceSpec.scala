@@ -488,7 +488,7 @@ object IncrementalWholeEquivalenceSpec {
           decorations = TitleDecorations.None)
         val fresh = newStage(new InMemoryAgreementVerdicts, new InMemoryAgreementKeys, Int.MaxValue)
         fresh.apply(resolution, listingOf, world.round).decisions.foreach { d =>
-          val outcome = outcomeString(fresh.outcomeOf(d), d)
+          val outcome = outcomeString(fresh.waits.outcomeOf(d), d)
           d.members.foreach(key => outcomes(key) = outcomes.getOrElse(key, Vector.empty) :+ outcome)
         }
       }
@@ -503,7 +503,7 @@ object IncrementalWholeEquivalenceSpec {
       val label = if (last) finish() else event()
       val r     = applied()
       label -> r.decisions.iterator.flatMap { d =>
-        val outcome = outcomeString(stage.outcomeOf(d), d)
+        val outcome = outcomeString(stage.waits.outcomeOf(d), d)
         d.members.iterator.map(_ -> outcome)
       }.toMap
     }
@@ -514,7 +514,7 @@ object IncrementalWholeEquivalenceSpec {
     def stepwise(steps: Int = 30, provisional: () => Unit = () => ()): Option[String] =
       (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.flatMap { case (label, step) =>
         val now = applied()
-        now.decisions.foreach(d => if (servedOf(d) != "none" && stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending])
+        now.decisions.foreach(d => if (servedOf(d) != "none" && stage.waits.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending])
           d.members.foreach(_ => provisional()))
         difference(now, whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d")
       }.nextOption()
@@ -551,7 +551,7 @@ object IncrementalWholeEquivalenceSpec {
       var twin   = newStage(twinVerdicts, twinKeys, budget.perApply)
       var named  = false
       def waits(on: AgreementStage, resolution: Resolution) =
-        resolution.decisions.filter(_.members.nonEmpty).map(d => d.members.sorted(using ListingKey.ordering) -> on.waitingOn(d))
+        resolution.decisions.filter(_.members.nonEmpty).map(d => d.members.sorted(using ListingKey.ordering) -> on.waits.waitingOn(d))
           .sortBy(_._1.head)(using ListingKey.ordering)
       (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.flatMap { case (label, step) =>
         val restarted = Option.when(label == "restart") {

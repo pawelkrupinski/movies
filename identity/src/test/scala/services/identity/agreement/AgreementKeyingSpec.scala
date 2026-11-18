@@ -70,7 +70,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     s.stage.keyOf(joined) shouldBe s.stage.keyOf(settled)
     // RT's question for the joined cluster not attempted: it waits, as a whole resolve's does, the model's take standing
     Seq(joined.film) shouldBe whole(model(unmatched(first, second)))
-    s.stage.waitingOn(joined).settled shouldBe false
+    s.stage.waits.waitingOn(joined).settled shouldBe false
   }
 
   "a merge" should "keep the older key, told to the staging screen, and take on none of the younger's memories" in {
@@ -85,7 +85,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     val merged = s.apply(model(unmatched(first, second)), version = 2).head
     s.stage.keyOf(merged) shouldBe older
     Seq(merged.film) shouldBe whole(model(unmatched(first, second)))   // its settle is the question memory's, not a half's past
-    s.stage.waitingOn(merged).settled shouldBe false
+    s.stage.waits.waitingOn(merged).settled shouldBe false
     s.told.collect { case m: StagingEvent.Merged => (m.cluster, m.absorbed) } shouldBe Seq((older, younger))
   }
 

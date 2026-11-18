@@ -103,11 +103,11 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val blind = stage.apply(model, byKey.get, version = 1).decisions.head
     blind.basis shouldBe ResolverDecision.Basis.BelowThreshold
     stored.all().filter(_.filled.isEmpty) shouldBe empty   // nothing kept that a blind fill decided
-    stage.waitingOn(blind).onTmdb shouldBe true            // waiting on TMDB, not settled
+    stage.waits.waitingOn(blind).onTmdb shouldBe true            // waiting on TMDB, not settled
     answered = true
     val filled = stage.apply(model, byKey.get, version = 2).decisions.head
     (filled.basis, filled.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
-    stage.waitingOn(filled).settled shouldBe true
+    stage.waits.waitingOn(filled).settled shouldBe true
     stored.all().flatMap(_.filled).map(_.imdb) shouldBe Seq(Some("tt46658626"))
   }
 
@@ -817,7 +817,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // bound, until its answers are in ([[AgreementStage.standing]]); the first, decided again before any apply had served
     // it, has no previous take
     applies.map(_.count(_.film.isDefined)) shouldBe Seq(2, 2, 2)
-    applies.map(_.count(d => stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Taken])).last shouldBe 0
+    applies.map(_.count(d => stage.waits.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Taken])).last shouldBe 0
     stage.backlog shouldBe false
     verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }
@@ -931,7 +931,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // Filmweb asked and failed, though nothing was filed: settled on the families that answered (IMDb, Wikidata, RT agree)
     stage.apply(model, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
     resolves should be > afterFirst
-    stage.waitingOn(stage.apply(model, listingOf, version = 2).decisions.head).settled shouldBe true
+    stage.waits.waitingOn(stage.apply(model, listingOf, version = 2).decisions.head).settled shouldBe true
     handed.clear()
     stage.apply(model, listingOf, version = 3).decisions.head.film shouldBe Some(913760)   // settled: the take stands, its
     handed.flatten.collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty   // question still asked
@@ -989,7 +989,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       verdicts, clock = _root_.tools.SpecClock.Pinned, attempted = failed)
     val settled = first.apply(resolution, listingOf, version = 1).decisions.head
     settled.film shouldBe None                                      // settled on IMDb and Wikidata alone: no agreement, no film
-    first.waitingOn(settled).settled shouldBe true
+    first.waits.waitingOn(settled).settled shouldBe true
     // a worker restarted: the settled verdict stands, and what none answered is asked again on every pass
     val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val again = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
@@ -1125,13 +1125,13 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       ResolverDecision(Seq(bare.key, joined.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)(),
       resolution.decisions(1)), 3, Map(bare.key -> 0, joined.key -> 0, matched.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val waited = stage.apply(reshaped, Map(bare.key -> bare, joined.key -> joined, matched.key -> matched).get, version = 2).decisions.head
-    stage.waitingOn(waited).questions should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike: wojna w Donbasie"))
+    stage.waits.waitingOn(waited).questions should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike: wojna w Donbasie"))
     // the listing goes again: the first shape's verdict stands, and what the other shape waited on is no wait of this one
     val back = stage.apply(resolution, listingOf, version = 3).decisions.head
     back.film shouldBe Some(913760)
     stage.keyOf(back) shouldBe stage.keyOf(waited)
-    stage.waitingOn(back).settled shouldBe true
-    stage.waitingClusters should not contain stage.keyOf(back)
+    stage.waits.waitingOn(back).settled shouldBe true
+    stage.waits.waitingClusters should not contain stage.keyOf(back)
   }
 
   // The staging screen sampled the stage's waits every 20 s: a wait begun and ended in between was never seen.
@@ -1197,7 +1197,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decision shouldBe resolution.decisions.head
     stage.wanted should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     // what the drift check counts unsettled: the model's take waits on no gap of its own, yet on the family's question
-    val waits = stage.waitingOn(decision)
+    val waits = stage.waits.waitingOn(decision)
     (waits.modelGaps, waits.settled) shouldBe ((0, false))
     waits.questions should contain (services.identity.Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
   }

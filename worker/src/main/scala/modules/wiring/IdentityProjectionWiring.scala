@@ -175,7 +175,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code), threadPools = threadPools))
   /** What each staging publish works out ([[identityStagingPublisher]]): the clusters staging, what resolved, the beat. */
   private lazy val stagingSnapshots: services.identityadapters.StagingSnapshots =
-    new services.identityadapters.StagingSnapshots(waitingOn = agreementStage.waitingOn,
+    new services.identityadapters.StagingSnapshots(waitingOn = agreementStage.waits.waitingOn,
       outcomes = identityQuestionMemory.outcomes,
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
       read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()),
