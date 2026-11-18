@@ -241,30 +241,10 @@ object IdentityResolver {
   def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver,
                     decorations: TitleDecorations = TitleDecorations.resolver)(largest: Int): Seq[FamilyAnatomy] = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
-    import stages.families.{blockKeysOf, familyOf}
-    stages.generation.nodes.groupBy(node => familyOf(node.id)).values.toSeq.sortBy(members => -members.map(_.weight).sum).take(largest).map { members =>
-      val keysOf = members.map(node => node.id -> blockKeysOf(node.id)).toMap
-      val byKey  = keysOf.toSeq.flatMap { case (id, keys) => keys.map(_ -> id) }.groupMap(_._1)(_._2)
-      val ranked = byKey.toSeq.map { case (key, ids) => key -> ids.size }.sortBy { case (key, count) => (-count, key) }
-      def largestPieceKeeping(kept: String => Boolean): Int =
-        FamilyClosure.families(keysOf.map { case (id, keys) => id -> keys.filter(kept) }).groupBy(_._2).values.map(_.size).maxOption.getOrElse(0)
-      def largestPieceWithout(dropped: String): Int = largestPieceKeeping(_ != dropped)
-      // Which KIND of key meshes it: a sanitised title or segment (t:), a search form (q:), a film
-      // members accepted (id:), a pin's group.
-      val withoutKind = Seq("t:", "q:", "id:").map(kind => kind -> largestPieceKeeping(key => !key.startsWith(kind))) :+
-        ("t: and q:" -> largestPieceKeeping(key => !key.startsWith("t:") && !key.startsWith("q:")))
-      // The nodes joining the most keys other members carry: in a mesh no single key bridges, these weld it.
-      // Each title key with the inputs the segment rule read: its spread and whether it is a whole title.
-      val context = stages.generation.context
-      def explained(key: String) =
-        if (key.startsWith("t:")) s"$key(spread ${context.segmentSpread(key.drop(2))}${if (context.wholeTitle(key.drop(2))) ", whole" else ""})" else key
-      val connectors = members.map(node => node -> keysOf(node.id).filter(key => byKey(key).sizeIs > 1).toSeq.sorted)
-        .filter(_._2.sizeIs >= 2).sortBy { case (node, shared) => (-shared.size, node.id) }.take(40)
-        .map { case (node, shared) => s"${node.label} «${node.evidence.published.rawTitle.getOrElse(node.evidence.title)}»" -> shared.map(explained) }
-      FamilyAnatomy(members.map(_.weight).sum, members.size, ranked.take(25), ranked.take(15).map { case (key, _) => key -> largestPieceWithout(key) },
-        connectors, withoutKind)
-    }
+    val stages   = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
+    val anatomy  = new FamilyAnatomies(stages.families.blockKeysOf, stages.generation.context)
+    stages.generation.nodes.groupBy(node => stages.families.familyOf(node.id)).values.toSeq
+      .sortBy(members => -members.map(_.weight).sum).take(largest).map(anatomy.of)
   }
 
   /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
@@ -356,10 +336,14 @@ object IdentityResolver {
       val nodesShared = nodeKeys.forall { case (key, text) => (keyOf(key) eq key) && (textOf(key, text) eq text) }
       if (keysShared && decided && nodesShared) this
       else copy(
-        listings  = if (keysShared) listings else listings.map(keyOf),
-        decisions = if (decided) decisions else decisions.map(decision => decision.copy(members = decision.members.map(keyOf))(decision.trace)),
-        nodeKeys  = if (nodesShared) nodeKeys else nodeKeys.map { case (key, text) => keyOf(key) -> textOf(key, text) })
+        listings  = RegionFamily.keptOr(keysShared, listings)(listings.map(keyOf)),
+        decisions = RegionFamily.keptOr(decided, decisions)(decisions.map(decision => decision.copy(members = decision.members.map(keyOf))(decision.trace))),
+        nodeKeys  = RegionFamily.keptOr(nodesShared, nodeKeys)(nodeKeys.map { case (key, text) => keyOf(key) -> textOf(key, text) }))
     }
+  }
+  private[identity] object RegionFamily {
+    /** `kept` where it already shares the corpus's objects, else `rebuilt`. */
+    private def keptOr[A](shared: Boolean, kept: A)(rebuilt: => A): A = if (shared) kept else rebuilt
   }
 
   /** Resolve `listings` — a union of whole families — against the corpus's `corpus` context, family
