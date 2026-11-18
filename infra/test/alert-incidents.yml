@@ -383,8 +383,23 @@ incidents:
     # until 2026-11-12, so Prometheus holds nothing to replay it from and it cannot be listed here. Its
     # replay is over the CoreDNS `plugin/errors` lines in VictoriaLogs (the rule's comment: firing
     # 11-05 ~10:30Z to 11-06 ~10:40Z, quiet the rest of the 14 days), and its promtool case
-    # (alert-rules/k3s.yml) pins the incident's shape.
-    expect_firing: [WorkerHttpManyHostsCircuitOpen]
+    # (alert-rules/k3s.yml) pins the incident's shape. WorkerHttpHostCircuitOpen was the only alert that did
+    # fire (70f3409dd: "the only alert was the per-host WorkerHttpHostCircuitOpen in the third-party daily
+    # digest"), and must keep catching it (Alert backtest #1 counted its firing here as noise).
+    expect_firing: [WorkerHttpManyHostsCircuitOpen, WorkerHttpHostCircuitOpen]
+
+  - id: de-grinch-ratzeburg-flip-2026-11-10
+    description: >-
+      Production flipped Burgtheater Ratzeburg's "Adventskino: Der Grinch" between Ron Howard's 2000 film
+      (tmdb 8871) and the 2018 animated one (360920) six times under build 903b63459: a sibling/population flip
+      of the near-50/50 Grinch title family, filed as an open backlog row with its drift slice (97d260d67,
+      owner-approved 2026-11-15). IdentityListingFlipFlop reads a 24h flip count, so it holds up to a day past
+      the last flip: the grace.
+    source: test/resources/fixtures/identity-flip-backlog.tsv drift row for drift-slices/de/burgtheater-ratzeburg-adventskino-der-grinch-05c3cfc6 (prod, build 903b63459, 2026-11-10 20:46 .. 11-11 03:19; "IdentityListingFlipFlop, 24h on 11-10")
+    start: 2026-11-10T20:46:00Z
+    end: 2026-11-11T03:19:00Z
+    grace: 24h
+    expect_firing: [IdentityListingFlipFlop]
 
   - id: k3s-worker-1-hand-reboot-web-outage-2026-11-10
     description: >-
