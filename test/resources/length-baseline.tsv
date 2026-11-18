@@ -25,7 +25,7 @@ method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrec
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala:AgreementStage.resolved	67
 method-lines	scrapers/src/main/scala/services/cinemas/common/FlicksClient.scala:FlicksClient.parseDocument	53
 method-lines	scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.scala:SourceFallbackScraper.fetchWithSource	53
-method-lines	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	67
+method-lines	scrapers/src/main/scala/services/cinemas/pl/Bilety24Client.scala:Bilety24Client.parseEvent	63
 method-lines	scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala:CinemaCityClient.parseDay	55
 method-lines	scrapers/src/main/scala/services/cinemas/pl/FilmwebShowtimesClient.scala:FilmwebShowtimesClient.fetch	52
 method-lines	scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala:HeliosClient.fetchRestData	74

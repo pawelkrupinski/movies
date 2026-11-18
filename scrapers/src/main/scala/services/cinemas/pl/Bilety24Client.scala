@@ -55,6 +55,16 @@ object Bilety24Client {
   private val ButtonTitlePat = raw"""Kup bilet - Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-""".r
   private val RuntimePat      = """(\d+)\s*min""".r
 
+  /** A Bilety24 event page's `p.movie-parameters` pipe line ("Dramat | Komedia | 120 min"): the runtime, and every
+   *  other segment a genre (title-cased when the page shouts it). Shared by every venue on a Bilety24 shop. */
+  private[pl] def movieParameters(document: org.jsoup.nodes.Document): (Option[Int], Seq[String]) = {
+    val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
+    val segments   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
+    val runtime    = segments.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
+    val genres     = segments.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined).map(tools.TextNormalization.titleCaseIfAllLower)
+    (runtime, genres)
+  }
+
   def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String, titles: TitleNormalizer): Option[CinemaMovie] = {
     val document = Jsoup.parse(html)
 
@@ -89,11 +99,7 @@ object Bilety24Client {
       }
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
 
-    val parameters  = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
-    val segs    = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
-    val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
-    val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
-                      .map(tools.TextNormalization.titleCaseIfAllLower)
+    val (runtime, genres) = movieParameters(document)
     // The description block also carries a "czytaj więcej" toggle, an empty
     // `p.read-more` placeholder, and—on cycle/concert events—organiser links
     // (Instagram/Facebook handles, "Więcej: www…"). Drop the anchors and the

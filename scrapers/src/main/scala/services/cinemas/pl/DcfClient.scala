@@ -142,7 +142,6 @@ object DcfClient {
   )
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None) }
 
-  private val RuntimePat = """(\d+)\s*min""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
   /** Parse the Bilety24 event page: a `p.movie-parameters` pipe line
@@ -151,11 +150,7 @@ object DcfClient {
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
 
-    val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
-    val segs   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
-    val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
-    val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
-                      .map(tools.TextNormalization.titleCaseIfAllLower)
+    val (runtime, genres) = Bilety24Client.movieParameters(document)
 
     // The trailer is the `youtube`-classed buy-style anchor; its href is already
     // a `watch?v=` URL. Other YouTube links on the page are footer share buttons.
