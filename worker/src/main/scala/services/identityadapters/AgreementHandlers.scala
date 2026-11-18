@@ -204,19 +204,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
   }
 
   private def ask(question: Question, filed: () => Unit): HandlerOutcome = question match {
-    case Question.Family(family, asked) =>
-      if (!families.wanted(FamilyAnswerStore.questionId(family, asked))) fresh(family.label)
-      else sources.get(family) match {
-        case Some(source) =>
-          asking(Seq(question), family.label, s"${family.label} '$asked'", filed)(AgreementQuestions.file(families, family, source, asked))
-        // a family this worker has no source for answers nothing: filed once as no film, as an empty answer is, so the
-        // question is attempted and fresh for the family's age, never left open for a cluster to wait on
-        case None =>
-          asking(Seq(question), family.label, s"${family.label} '$asked' (no source)", filed) {
-            AgreementQuestions.file(families, family, FamilySource.answeringNothing(family), asked)
-            AgreementQuestionMetrics.Nothing
-          }
-      }
+    case Question.Family(family, asked) => askFamily(question, family, asked, filed)
     case Question.Find(imdbId) =>
       answered(question, AgreementQuestionMetrics.TmdbFind, s"TMDB find '$imdbId'", filed)(find(imdbId))
     case Question.Record(film) =>
@@ -227,6 +215,21 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     case Question.Catalogue(asked) => askCatalogue(Seq(asked), filed)
     case Question.Candidate(_) | Question.FilmRecord(_) | Question.Person(_) | Question.VenuePage(_) => Skipped
   }
+
+  /** A family's question asked of its source -- skipped while its answer is fresh; a family this worker has no source for
+   *  answers nothing: filed once as no film, as an empty answer is, so the question is attempted and fresh for the
+   *  family's age, never left open for a cluster to wait on. */
+  private def askFamily(question: Question, family: VoterFamily, asked: String, filed: () => Unit): HandlerOutcome =
+    if (!families.wanted(FamilyAnswerStore.questionId(family, asked))) fresh(family.label)
+    else sources.get(family) match {
+      case Some(source) =>
+        asking(Seq(question), family.label, s"${family.label} '$asked'", filed)(AgreementQuestions.file(families, family, source, asked))
+      case None =>
+        asking(Seq(question), family.label, s"${family.label} '$asked' (no source)", filed) {
+          AgreementQuestions.file(families, family, FamilySource.answeringNothing(family), asked)
+          AgreementQuestionMetrics.Nothing
+        }
+    }
 
   /** Catalogue questions asked as one: the ids mapped in one batch, each page read — skipped when the store holds fresh
    *  answers to them all. */

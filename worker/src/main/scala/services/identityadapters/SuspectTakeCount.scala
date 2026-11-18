@@ -56,6 +56,12 @@ final class SuspectTakeCount(venues: IdentityLookups, records: Seq[Int] => Map[I
     val wrongBillings = wrong.map(take => (take.listing.rawTitle, take.film)).distinct.size
     report(counts)
     reportWrong(wrongBillings)
+    logged(counts, wrongBillings, unjudged, wrong)
+  }
+
+  /** The count's log lines: the suspect billings by signal and those judged wrong, then each named. */
+  private def logged(counts: Map[SuspectTakes.Signal, Int], wrongBillings: Int, unjudged: Seq[(SuspectTakes.Take, Seq[SuspectTakes.Suspicion])],
+                     wrong: Seq[SuspectTakes.Take]): Unit = {
     val bySignal = SuspectTakes.Signal.values.toSeq.map(signal => signal -> counts.getOrElse(signal, 0))
     val total    = bySignal.map(_._2).sum
     tools.LogFields.info(logger.underlyingLogger, s"identity suspect takes: counted $total suspect billing(s) " +

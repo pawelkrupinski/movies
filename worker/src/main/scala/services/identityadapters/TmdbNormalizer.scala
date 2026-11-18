@@ -54,43 +54,61 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 
   private def normalize(method: String, url: String, outcome: Try[String]): Unit = if (method == "GET") {
     val uri    = new URI(url)
-    val params = Option(uri.getRawQuery).toSeq.flatMap(_.split('&')).flatMap { pair =>
-      pair.split("=", 2) match {
-        case Array(k, v) => Some(k -> URLDecoder.decode(v, StandardCharsets.UTF_8))
-        case Array(k)    => Some(k -> "")
-        case _           => None
-      }
-    }.toMap
+    val params = paramsOf(uri)
     val path   = Option(uri.getPath).getOrElse("").split('/').filter(_.nonEmpty).toSeq
     val body   = outcome match {
       case Success(b)                                          => Some(Right(b))
       case Failure(e: HttpStatusException) if e.code == 404    => Some(Left(404))
       case Failure(_)                                          => None
     }
-    (Option(uri.getHost).getOrElse(""), path, body) match {
-      case ("api.themoviedb.org", Seq("3", "search", "movie"), Some(Right(b))) if !params.contains("year") =>
-        params.get("query").zip(params.get("language")).foreach { case (query, language) =>
-          store.question(TmdbStore.titleSearchId(language, query), TmdbResponses.rankedResults(b).map(TmdbIdentityLookups.hitOf))
-        }
-      case ("api.themoviedb.org", Seq("3", "search", "person"), Some(Right(b))) =>
-        params.get("query").foreach(query => store.people(TmdbStore.personSearchId(query), TmdbResponses.personCandidates(b)))
-      case ("api.themoviedb.org", Seq("3", "person", id, "movie_credits"), Some(answer)) if id.forall(_.isDigit) =>
-        val b = answer.getOrElse("""{"crew":[]}""")
-        store.person(id.toInt, TmdbResponses.creditsIn(b, "Directing").map(TmdbIdentityLookups.hitOf), TmdbResponses.creditsIn(b, "Writing").map(TmdbIdentityLookups.hitOf))
-      case ("api.themoviedb.org", Seq("3", "movie", id), Some(answer)) if id.forall(_.isDigit) =>
-        val append = params.getOrElse("append_to_response", "")
-        val partial =
-          if (append.split(',').contains("credits")) Some(Partial.Local)
-          else if (append == "alternative_titles" && params.get("language").contains("en-US")) Some(Partial.English)
-          else None
-        partial.foreach(p => store.filmPartial(id.toInt, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
-      case ("api.themoviedb.org", Seq("3", "find", imdbId), Some(Right(b))) if params.get("external_source").contains("imdb_id") =>
-        store.question(TmdbStore.findId(imdbId), TmdbResponses.findMovieResults(b).map(TmdbIdentityLookups.hitOf))
-      case (_, _, Some(answer)) if url.startsWith(ImdbClient.SuggestionBase) =>
-        store.suggestions(TmdbStore.suggestionsId(url), answer.fold(_ => ImdbClient.Suggested(Nil, Nil), b => ImdbClient.suggestedIn(Json.parse(b))))
-      case _ => ()
-    }
+    if (Option(uri.getHost).getOrElse("") == "api.themoviedb.org") tmdbFiled(path, params, body)
+    else if (url.startsWith(ImdbClient.SuggestionBase))
+      body.foreach(answer => store.suggestions(TmdbStore.suggestionsId(url), answer.fold(_ => ImdbClient.Suggested(Nil, Nil), b => ImdbClient.suggestedIn(Json.parse(b)))))
   }
+
+  /** `uri`'s query parameters, decoded. */
+  private def paramsOf(uri: URI): Map[String, String] =
+    Option(uri.getRawQuery).toSeq.flatMap(_.split('&')).flatMap { pair =>
+      pair.split("=", 2) match {
+        case Array(k, v) => Some(k -> URLDecoder.decode(v, StandardCharsets.UTF_8))
+        case Array(k)    => Some(k -> "")
+        case _           => None
+      }
+    }.toMap
+
+  /** A TMDB answer at `path` with `params` filed as the identity reads it: a title search, a person's search or credits, a
+   *  film's partial record, an IMDb id's find -- a 404 (`Left`) filed as none where none is an answer. */
+  private def tmdbFiled(path: Seq[String], params: Map[String, String], body: Option[Either[Int, String]]): Unit = (path, body) match {
+    case (Seq("3", "search", "movie"), Some(Right(b))) => titleSearchFiled(params, b)
+    case (Seq("3", "search", "person"), Some(Right(b))) =>
+      params.get("query").foreach(query => store.people(TmdbStore.personSearchId(query), TmdbResponses.personCandidates(b)))
+    case (Seq("3", "person", id, "movie_credits"), Some(answer)) if id.forall(_.isDigit) =>
+      val b = answer.getOrElse("""{"crew":[]}""")
+      store.person(id.toInt, TmdbResponses.creditsIn(b, "Directing").map(TmdbIdentityLookups.hitOf), TmdbResponses.creditsIn(b, "Writing").map(TmdbIdentityLookups.hitOf))
+    case (Seq("3", "movie", id), Some(answer)) if id.forall(_.isDigit) => filmFiled(id.toInt, params, answer)
+    case (Seq("3", "find", imdbId), Some(Right(b))) if params.get("external_source").contains("imdb_id") =>
+      store.question(TmdbStore.findId(imdbId), TmdbResponses.findMovieResults(b).map(TmdbIdentityLookups.hitOf))
+    case _ => ()
+  }
+
+  /** A title search filed by its query and language -- one narrowed by a year is no title search the identity reads. */
+  private def titleSearchFiled(params: Map[String, String], body: String): Unit =
+    if (!params.contains("year"))
+      params.get("query").zip(params.get("language")).foreach { case (query, language) =>
+        store.question(TmdbStore.titleSearchId(language, query), TmdbResponses.rankedResults(body).map(TmdbIdentityLookups.hitOf))
+      }
+
+  /** A film's record filed as the partial its `append_to_response` names: the local one (with credits), or the English
+   *  one (alternative titles in en-US); none else. */
+  private def filmFiled(id: Int, params: Map[String, String], answer: Either[Int, String]): Unit = {
+    val append = params.getOrElse("append_to_response", "")
+    val partial =
+      if (append.split(',').contains("credits")) Some(Partial.Local)
+      else if (append == "alternative_titles" && params.get("language").contains("en-US")) Some(Partial.English)
+      else None
+    partial.foreach(p => store.filmPartial(id, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
+  }
+
 
 
   /** Files the responses of film `id`'s record its store does not hold as TMDB's absent ones -- as a 404 files them -- for

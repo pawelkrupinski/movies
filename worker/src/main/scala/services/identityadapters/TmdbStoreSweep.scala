@@ -48,11 +48,7 @@ final class TmdbStoreSweep(
       kind -> documents.fetchedBefore(kind, if (kind == TmdbKind.Family) familyCutoff else math.max(answerCutoff, markerCutoff)))
     val live    = liveKeys()
     val doomed  = scanned.map { case (kind, stamped) =>
-      kind -> stamped.filter { case (id, at) =>
-        if (kind == TmdbKind.Family) at < familyCutoff
-        else if (kind == TmdbKind.Marker || id.startsWith(QuestionMemory.Prefix)) at < markerCutoff
-        else at < answerCutoff && live.exists(keys => !keys.contains(TmdbStore.keyOf(kind, id)))
-      }
+      kind -> stamped.filter { case (id, at) => doomedAt(kind, id, at, answerCutoff, markerCutoff, familyCutoff, live) }
     }
     val swept = Swept(
       markers = doomed.flatMap { case (kind, ids) => ids.filter(i => kind == TmdbKind.Marker || i._1.startsWith(QuestionMemory.Prefix)) }.size,
@@ -63,6 +59,15 @@ final class TmdbStoreSweep(
        else "; no model taken up, so no answer was deleted"))
     swept
   }
+  /** Is the document `id` of `kind`, fetched `at`, past its keep: a family's answer before `familyCutoff`, a gap marker
+   *  (or a question memory's row) before `markerCutoff`, any other answer before `answerCutoff` and unread by the model
+   *  taken up (`live`: none taken up, none deleted)? */
+  private def doomedAt(kind: TmdbKind, id: String, at: Long, answerCutoff: Long, markerCutoff: Long, familyCutoff: Long,
+                       live: Option[Set[String]]): Boolean =
+    if (kind == TmdbKind.Family) at < familyCutoff
+    else if (kind == TmdbKind.Marker || id.startsWith(QuestionMemory.Prefix)) at < markerCutoff
+    else at < answerCutoff && live.exists(keys => !keys.contains(TmdbStore.keyOf(kind, id)))
+
 }
 
 object TmdbStoreSweep {

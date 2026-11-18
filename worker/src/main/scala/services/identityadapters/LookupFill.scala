@@ -222,7 +222,12 @@ final class LookupFill(
     if (answered.nonEmpty) memory.answered(memory.outcomes(answered).collect { case (question, QuestionMemory.Outcome.Failed(_, _, _)) => question })
     val failures = outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
       .toSeq.flatMap { case (host, failed) => memory.failed(failed, host).map { case (question, times) => (question, host, times) } }
-    // A record whose read keeps failing while its host answers others is filed absent, as a 404 is: never pending for good.
+    givenUp(failures, budget)
+  }
+
+  /** A record whose read keeps failing (`failures`: each question, its host and its failures in a row) while its host
+   *  answers others (`budget`'s) is filed absent, as a 404 is: never pending for good. */
+  private def givenUp(failures: Seq[(Question, Option[String], Int)], budget: LookupFillBudget): Unit = {
     val answering = budget.hosts.collect { case (host, (answered, _, _)) if answered > 0 => host }.toSet
     failures.foreach {
       case (Question.FilmRecord(id), host, times)

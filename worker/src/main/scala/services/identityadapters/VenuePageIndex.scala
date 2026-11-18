@@ -32,34 +32,41 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
 
   /** Take in what was announced since the last settle, telling the model of every page whose answer moved. */
   def settle(): Unit = synchronized {
-    if (!complete) {
-      // Announcements made before the scan are covered by it; one made while it runs may be of a page
-      // it already passed, so it stays noted for the next settle to read again.
-      pending.clear()
-      val all = Map.newBuilder[(String, String), Option[FilmDetail]]
-      val reachedEnd = pages.foreach(p => all += ((p.key.detailGroup, p.key.page) -> answerOf(p)))
-      val read = all.result()
-      // The first scan is the baseline and reports nothing. A scan a failed read stopped short is not
-      // the whole store: the pages past it stay gaps only until the next settle scans again, which
-      // reports every answer it moved — a page the model found a gap is re-asked then.
-      if (scanned) (read.keySet ++ answers.keySet).foreach { key =>
-        if (read.get(key) != answers.get(key)) changed(keyOf(key._1, key._2))
-      }
-      answers  = read
-      scanned  = true
-      complete = reachedEnd.isComplete
-    } else if (!pending.isEmpty) {
-      // Each page is un-noted only as it is read: a read that throws (a Mongo timeout) leaves it and
-      // every page after it noted for the next settle, instead of dropping their announcements. One
-      // announced again while it is read stays noted, to be read once more.
-      pending.asScala.toSeq.foreach { case key @ (group, page) =>
-        pending.remove(key)
-        val now = try pages.get(VenuePageKey(group, page)).map(answerOf)
-                  catch { case scala.util.control.NonFatal(e) => pending.add(key); throw e }
-        if (now != answers.get(key)) {
-          answers = now.fold(answers - key)(a => answers + (key -> a))
-          changed(keyOf(group, page))
-        }
+    if (!complete) rescan()
+    else if (!pending.isEmpty) rereadPending()
+  }
+
+  /** The whole store scanned again ([[settle]] while the last scan was not complete): every answer it moved announced. */
+  private def rescan(): Unit = {
+    // Announcements made before the scan are covered by it; one made while it runs may be of a page
+    // it already passed, so it stays noted for the next settle to read again.
+    pending.clear()
+    val all = Map.newBuilder[(String, String), Option[FilmDetail]]
+    val reachedEnd = pages.foreach(p => all += ((p.key.detailGroup, p.key.page) -> answerOf(p)))
+    val read = all.result()
+    // The first scan is the baseline and reports nothing. A scan a failed read stopped short is not
+    // the whole store: the pages past it stay gaps only until the next settle scans again, which
+    // reports every answer it moved — a page the model found a gap is re-asked then.
+    if (scanned) (read.keySet ++ answers.keySet).foreach { key =>
+      if (read.get(key) != answers.get(key)) changed(keyOf(key._1, key._2))
+    }
+    answers  = read
+    scanned  = true
+    complete = reachedEnd.isComplete
+  }
+
+  /** The pages announced since read again, each un-noted as it is read ([[settle]] once a scan was complete). */
+  private def rereadPending(): Unit = {
+    // Each page is un-noted only as it is read: a read that throws (a Mongo timeout) leaves it and
+    // every page after it noted for the next settle, instead of dropping their announcements. One
+    // announced again while it is read stays noted, to be read once more.
+    pending.asScala.toSeq.foreach { case key @ (group, page) =>
+      pending.remove(key)
+      val now = try pages.get(VenuePageKey(group, page)).map(answerOf)
+                catch { case scala.util.control.NonFatal(e) => pending.add(key); throw e }
+      if (now != answers.get(key)) {
+        answers = now.fold(answers - key)(a => answers + (key -> a))
+        changed(keyOf(group, page))
       }
     }
   }
