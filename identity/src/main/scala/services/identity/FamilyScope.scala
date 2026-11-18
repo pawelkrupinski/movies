@@ -187,22 +187,26 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     private lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
     private def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
 
+    /** The denials one candidate's evidence makes of another, in the order they are asked: each a test of the scored
+     *  candidate and why it is denied. */
+    private val besideDenials: Seq[(Scored => Boolean, String)] = Seq(
+      (ownLanguageUntitled, "a film of the venue's own language its title shares no word with"),
+      (anotherRecordOfItsBroadcast, "another record of a broadcast its film database holds twice"),
+      (scored => titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures),
+        "its director's other film, which the title does not name"),
+      (scored => creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) &&
+         IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && !IdentityMeasures.sameDirector(scored.measures),
+        "a namesake of the film its credited director made of its title"),
+      (scored => directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
+         !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film),
+        "a namesake of the film whose director its billing names"),
+      (scored => instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment),
+        "another instalment than the one the title numbers"),
+      (scored => housed.nonEmpty && besideItsOwnHouse(scored), "another house's staging of its work, beside its own house's record"))
+
     /** Why another candidate's evidence denies `scored`, if it does. */
     private def deniedBeside(scored: Scored): Option[String] =
-      if (ownLanguageUntitled(scored)) Some("a film of the venue's own language its title shares no word with")
-      else if (anotherRecordOfItsBroadcast(scored)) Some("another record of a broadcast its film database holds twice")
-      else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
-        Some("its director's other film, which the title does not name")
-      else if (creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
-               !IdentityMeasures.sameDirector(scored.measures))
-        Some("a namesake of the film its credited director made of its title")
-      else if (directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
-               !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
-        Some("a namesake of the film whose director its billing names")
-      else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
-        Some("another instalment than the one the title numbers")
-      else if (housed.nonEmpty && besideItsOwnHouse(scored)) Some("another house's staging of its work, beside its own house's record")
-      else None
+      besideDenials.collectFirst { case (denies, why) if denies(scored) => why }
 
     def scored: Seq[Scored] =
       candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = eventUntaken(scored).orElse(shortUntaken(scored))))(denial => scored.copy(denial = Some(denial))))
@@ -235,17 +239,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val listing = node.evidence.measured
     // whose claim the link is: the node's present listings' -- a kept one sharing its evidence is no claim of the link's
     val own     = SourceReliability.claimOf(node.listings.find(Authority.of(_) != Authority.Provenance.Kept).getOrElse(node.listings.head))
-    // the PRESENT sources' say: a kept listing ([[Listing.kept]]) keeps its own film's details alive, never a link a
-    // present listing's own sources overrule (DE "Eternity": Caligari's kept Freyne listing backed Cineamo's link)
-    def sources(candidate: Candidate) = backing.sources(backingGroups(listing, candidate), candidate.film, own, Authority.Act.Overrule)
-    // a rival the title names only as one of its pieces overrules no link to a film it names whole: DE Metropolis's
-    // "KIRSCHBLÜTEN - HANAMI", linked to Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes
-    val namedWhole = pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
-    val overruling = if (namedWhole) IdentityMeasures.Rivalling else IdentityMeasures.TitlesItsOwn
-    if (pool.exists(candidate => candidate.tmdbId == film && sources(candidate) > 0)) None
+    val overruling = overrulingRelation(listing, film)
+    if (pool.exists(candidate => candidate.tmdbId == film && overrulingSources(listing, own, candidate) > 0)) None
     else {
       val rivals = pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
-        .map(candidate => candidate -> sources(candidate))
+        .map(candidate => candidate -> overrulingSources(listing, own, candidate))
       rivals.filter(_._2 >= FeedLink.OverrulingSources).sortBy { case (rival, count) => (-count, rival.tmdbId) }.headOption
         .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
         .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
@@ -253,6 +251,18 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         .orElse(titledRival(node, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
     }
   }
+  /** The PRESENT sources' say for `candidate` against a link claimed by `own`: a kept listing ([[Listing.kept]]) keeps its
+   *  own film's details alive, never a link a present listing's own sources overrule (DE "Eternity": Caligari's kept
+   *  Freyne listing backed Cineamo's link). */
+  private def overrulingSources(listing: IdentityMeasures.Listing, own: String, candidate: Candidate): Int =
+    backing.sources(backingGroups(listing, candidate), candidate.film, own, Authority.Act.Overrule)
+  /** The title relations by which a rival of the linked `film` overrules the link. A rival the title names only as one
+   *  of its pieces overrules no link to a film it names whole: DE Metropolis's "KIRSCHBLÜTEN - HANAMI", linked to
+   *  Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes. */
+  private def overrulingRelation(listing: IdentityMeasures.Listing, film: Int): Set[String] =
+    if (pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value)))
+      IdentityMeasures.Rivalling
+    else IdentityMeasures.TitlesItsOwn
   /** The one current release among `backed` (the rivals a source backs, fewer than [[FeedLink.OverrulingSources]]) that
    *  the title names whole and more of the title's venues bill than `node`'s link, [[FeedLink.ReleaseVenues]] at least,
    *  when the linked `film` is an older one the listing does not date — with the venues billing it. The operator's pick
@@ -381,50 +391,59 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  die Welt" links kinoheld's page of another event, which copied Eisenstein's "Октябрь", his credit and its 142
    *  minutes, and took "Oktober 1917" at 61.9% while thirteen venues billed Ditscherlein's 2025 documentary. */
   private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[Denial] =
+    copiedBy(node).filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
+      copiedTitleDenial(evidenceOf(node).measured, candidate, feed, linked) }
+
+  /** The feed whose copy `node`'s original title is, with the film it links, if any: a TMDB-keyed feed's link, else a
+   *  page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
+   *  films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
+   *  und ein Treffen …") — and only a copy sharing nothing with the billing: one spelling the billed title, or
+   *  translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
+   *  Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl"). */
+  private def copiedBy(node: EvidenceNode): Option[(String, Option[Int])] =
     copyingLink(node).map { case (id, linked) => (s"${id.source} ${id.id}", Some(linked)) }
-      // a page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
-      // films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
-      // und ein Treffen …") — and only a copy sharing nothing with the billing: one spelling the billed title, or
-      // translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
-      // Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl")
       .orElse(Option.when(FeedLink.linked(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
         evidenceOf(node).measured.originalSharesNothingBilled && !evidenceOf(node).measured.originalTranslatesBilled)(sourceOf(node) -> None))
-      .filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
-      val listing = evidenceOf(node).measured
-      // a page feed's copy names no film, so the record must not carry the billing's words either: one sharing two of
-      // them, which a mere spelling keeps from naming it, is the billing's ("Madoka Magica - The Movie: Rebellion" is
-      // "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion"); one word is a namesake's chance
-      // ("Über Unterbiberger - Vom Woid in die Welt" and "Oktober 1917 – Zehn Tage, die die Welt erschütterten")
-      def billsItsWords = linked.isEmpty &&
-        (Seq(candidate.film.title) ++ candidate.film.originalTitle).exists(title => listing.wordsBilledOf(title) >= 2)
-      // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
-      // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
-      def sameYear = listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
-      // a SHORT ([[ShortFilms.isShort]]) beside a TMDB-keyed feed's link to another film is the copy's pull whatever the
-      // billed title names, and whatever year: the feed's pick is a programme's film, the year and an English title a short
-      // carries too the pick's restated (DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary, copying its English
-      // title "Summer Meadow", which a 3-minute 2024 short carries beside "L'Estive"; "HEIMSUCHUNG - MittagsKINO" took the
-      // 18-minute "Visitation", the English title of Schlöndorff's "Heimsuchung"; Kino Gelnhausen's "FILMKUNST: Ein einfacher
-      // Unfall", Panahi's 2025 film beside a 2025 short). Only where the feed copied a title the venue does not bill
-      // ([[FeedLink.copiesAnotherTitle]]): a short the venue's own original title is, is its namesake
-      if (linked.isDefined && FeedLink.copiesAnotherTitle(listing) && ShortFilms.isShort(candidate.film))
-        Some(Denial(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}", Denial.Kind.NotTheWork(creditOverrules = false)))
-      else Option.when(listing.originalTitle.nonEmpty && !sameYear && !billsItsWords &&
-        IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && {
-          // the billed titles — without the copied original, nor a search title that is only it again — against the
-          // record as its database holds it: the venue titles the corpus learned for it by that very original
-          // ([[IdentityMeasures.venueTitles]]) are the copy's pull again
-          val copied = listing.originalTitle.map(IdentityMeasures.key)
-          val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
-          val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
-          // nor by one word a first name runs into, no delimited piece of the billing: DE Centraltheater Brake's "RAY
-          // WILSON", a singer's concert Cineamo links to the 1944 "Wilson" and copies that title from, named "Wilson - Der
-          // Weltverbesserer" (2017) only by the surname (prod 2026-10-14)
-          val pieces = IdentityMeasures.namingPieces(billed, record)
-          def byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
-          !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record) || byOneWordOnly
-        })(Denial(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film")))
-    }
+
+  private def copiedTitleDenial(listing: IdentityMeasures.Listing, candidate: Candidate, feed: String, linked: Option[Int]): Option[Denial] =
+    // a SHORT ([[ShortFilms.isShort]]) beside a TMDB-keyed feed's link to another film is the copy's pull whatever the
+    // billed title names, and whatever year: the feed's pick is a programme's film, the year and an English title a short
+    // carries too the pick's restated (DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary, copying its English
+    // title "Summer Meadow", which a 3-minute 2024 short carries beside "L'Estive"; "HEIMSUCHUNG - MittagsKINO" took the
+    // 18-minute "Visitation", the English title of Schlöndorff's "Heimsuchung"; Kino Gelnhausen's "FILMKUNST: Ein einfacher
+    // Unfall", Panahi's 2025 film beside a 2025 short). Only where the feed copied a title the venue does not bill
+    // ([[FeedLink.copiesAnotherTitle]]): a short the venue's own original title is, is its namesake
+    if (linked.isDefined && FeedLink.copiesAnotherTitle(listing) && ShortFilms.isShort(candidate.film))
+      Some(Denial(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}", Denial.Kind.NotTheWork(creditOverrules = false)))
+    else Option.when(listing.originalTitle.nonEmpty && !sameYear(listing, candidate) && !billsItsWords(listing, candidate, linked) &&
+      IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && !namedByItsBilling(listing, candidate))(
+      Denial(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film")))
+
+  /** A page feed's copy names no film, so the record must not carry the billing's words either: one sharing two of
+   *  them, which a mere spelling keeps from naming it, is the billing's ("Madoka Magica - The Movie: Rebellion" is
+   *  "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion"); one word is a namesake's chance
+   *  ("Über Unterbiberger - Vom Woid in die Welt" and "Oktober 1917 – Zehn Tage, die die Welt erschütterten"). */
+  private def billsItsWords(listing: IdentityMeasures.Listing, candidate: Candidate, linked: Option[Int]): Boolean =
+    linked.isEmpty && (Seq(candidate.film.title) ++ candidate.film.originalTitle).exists(title => listing.wordsBilledOf(title) >= 2)
+
+  /** A year the listing states that the film shares — the linked film's, copied — makes the two one film under two
+   *  records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030. */
+  private def sameYear(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean =
+    listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
+
+  /** Whether the billed titles — without the copied original, nor a search title that is only it again — name the record
+   *  as its database holds it: the venue titles the corpus learned for it by that very original
+   *  ([[IdentityMeasures.venueTitles]]) are the copy's pull again. Nor by one word a first name runs into, no delimited
+   *  piece of the billing: DE Centraltheater Brake's "RAY WILSON", a singer's concert Cineamo links to the 1944 "Wilson"
+   *  and copies that title from, named "Wilson - Der Weltverbesserer" (2017) only by the surname (prod 2026-10-14). */
+  private def namedByItsBilling(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean = {
+    val copied = listing.originalTitle.map(IdentityMeasures.key)
+    val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
+    val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
+    val pieces = IdentityMeasures.namingPieces(billed, record)
+    lazy val byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
+    IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record) && !byOneWordOnly
+  }
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
@@ -474,13 +493,30 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val pooledMemo = mutable.HashMap.empty[Seq[String], Seq[Scored]]
 
   private def scorePooled(cluster: Seq[EvidenceNode]): Seq[Scored] = {
-    def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
-      values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (value, weight) => (-weight, value) }.headOption.map(_._1)
-    val lead     = cluster.minBy(node => (-node.weight, node.id))
+    val lead    = cluster.minBy(node => (-node.weight, node.id))
+    val listing = pooledListing(cluster, lead)
+    val reached = cluster.map(reach)
+    val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
+    val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
+    score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
+      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
+      reached.flatMap(_.directed).toSet,
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked, textNames(cluster))
+      .map(deniedByAMember(cluster))
+      .map(placedByImdb(cluster))
+      .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
+        case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)
+        case _                         => scored
+      })
+  }
+
+  /** The cluster read as one listing ([[pooled]]), under its `lead`'s titles. */
+  private def pooledListing(cluster: Seq[EvidenceNode], lead: EvidenceNode): IdentityMeasures.Listing = {
+    import FamilyScope.modal
     val evidence = cluster.map(node => node -> evidenceOf(node))
     val runtimes = evidence.flatMap { case (node, stated) => stated.runtime.toSeq.flatMap(runtime => Seq.fill(node.weight)(runtime)) }.sorted
     val year     = modal(evidence.flatMap { case (node, stated) => stated.year.map(_ -> node.weight) })
-    val listing  = evidenceOf(lead).measured.copy(
+    evidenceOf(lead).measured.copy(
       year          = year,
       yearCredits   = Some(evidence.collect { case (_, stated) if year.nonEmpty && stated.year == year => stated.directors }.flatten.distinct.sorted),
       originalTitle = modal(evidence.flatMap { case (node, stated) => stated.originalTitle.map(_ -> node.weight) }),
@@ -489,23 +525,19 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       countries     = evidence.flatMap(_._2.countries).distinct.sorted,
       // a certificate rates one listing's screening of its film: the cluster read as one listing states none
       certificate   = None)
-    val reached = cluster.map(reach)
-    val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
-    val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
-    score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
-      reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked, textNames(cluster))
-      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = RuleAblation.live(Some(Denial("a member's own evidence rules it out")))))
-      .map(placedByImdb(cluster))
-      .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
-        case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)
-        case _                         => scored
-      })
   }
+
+  /** A pooled candidate a member's own evidence rules out is denied the cluster too. */
+  private def deniedByAMember(cluster: Seq[EvidenceNode])(scored: Scored): Scored =
+    if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored
+    else scored.copy(denial = RuleAblation.live(Some(Denial("a member's own evidence rules it out"))))
 }
 
 private[identity] object FamilyScope {
+  /** The value of the greatest summed weight, the smallest on a tie. */
+  private def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
+    values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (value, weight) => (-weight, value) }.headOption.map(_._1)
+
   /** What a title relation reads of a listing ([[FamilyScope]]'s relations). The decorations by identity:
    *  one resolve's listings share its instance, and its structural hash was itself a cost. */
   final class TitleInputs(listing: IdentityMeasures.Listing) {
