@@ -43,8 +43,8 @@ module-edge	web->geodata	1
 module-edge	web->http	19
 module-edge	web->identity	46
 module-edge	worker->base	82
-module-edge	worker->common	1683
-module-edge	worker->http	197
+module-edge	worker->common	1692
+module-edge	worker->http	198
 module-edge	worker->identity	472
 module-edge	worker->scrapers	151
 ce	clients	3
@@ -264,6 +264,7 @@ fanout	services.movies.WholeRecordUpsert	17
 fanout	services.readmodel.BootCorpusStudy	10
 fanout	services.readmodel.MongoReadModelRepository	23
 fanout	services.readmodel.ReadModelBoot	26
+fanout	services.readmodel.ReadModelBootHeal	15
 fanout	services.readmodel.ReadModelContentAudit	14
 fanout	services.readmodel.ReadModelProjection	22
 fanout	services.readmodel.ReadModelProjector	39
