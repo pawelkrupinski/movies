@@ -81,8 +81,25 @@ are green locally (CLAUDE.md, "Run the relevant test layers").
 ## Stage 2: `agentctl land` — every change, identity included
 
 ```sh
-~/bin/agentctl land          # from the worktree; Bash run_in_background=true, then end your turn
+~/bin/agentctl land --until-done   # an agent's LAST step, from its worktree; Bash run_in_background=true, end your turn
 ```
+
+**`--until-done` owns the tail** (the owner, 2026-11-18; `~/bin/AGENTCTL.md`, "land --until-done"): it rebases and
+queues the change -- or, called again after an interruption, resumes its own entry (by worktree and head; never
+queued twice) -- runs the fast precheck in the foreground and waits for the verdict, bounded by `--deadline` (4 h).
+Its last line is what you act on, once:
+
+| last line | exit | do |
+|---|---|---|
+| `DONE <sha> ...: worktree removed` | 0 | every local commit's patch is on origin/main; the worktree and its branch are gone (no `git branch -D` by hand). Report once, naming the sha. |
+| `NOT LANDED: <why>` then `next: <command>` | 1 | run the named next step (rebase onto origin/main, or fix and commit), then `land --until-done` again |
+| `NOT DONE: <id> is <state> ...` | 2 | the deadline: run it again; it resumes the same entry |
+| `LANDED <sha> ...; NOT DONE: the worktree ... is kept: <why>` | 3 | landed; the worktree was not provably clean, yours and merged -- say why in the report, never force-remove it |
+
+A plain `agentctl land` still prints `QUEUED <id>` and leaves the rest to the inbox. In the queue, a change sharing a
+FILE with an older change still in flight is checked as one with it -- in one backlog batch, or after it lands, on top
+of it -- and when the two cannot be assembled together its author gets `CONFLICTS <id>: ...` in the inbox at once,
+not a NOT LANDED after a whole check (`~/bin/AGENTCTL.md`, "OVERLAPPING CHANGES ARE CHECKED AS ONE").
 
 `cmd_land` / `land_loop` / `watch_landed` in `~/bin/agentctl`, in order:
 

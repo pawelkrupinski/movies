@@ -22,9 +22,13 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
   CLAUDE.md lists, the `chore/identity-capture` verdict push and `scripts/mobile-ship.sh`'s own release commit are the
   exceptions — see `CLAUDE.md`). Before typing `git push` or `gh pr create`, run `git rev-parse --abbrev-ref HEAD` and name the
   ref you push (`<sha>:main`); a push of anything but `main` violates the rule.
-- **Landing:** rebase onto main → every relevant layer green locally → land → `git worktree remove <path>` and
-  `git branch -d <branch>` (your own, merged: `-d` refuses an unmerged one; never `-D`). Deleting a branch you didn't
-  create, or an unmerged one, needs the user's OK first.
+- **Landing:** rebase onto main → every relevant layer green locally → `~/bin/agentctl land --until-done` from your
+  worktree as your LAST step (Bash `run_in_background=true`, end your turn, report ONCE after its last line). It
+  queues (or resumes its own entry), waits for the verdict and ends `DONE <sha> ... worktree removed` -- it proves
+  every local commit's patch on origin/main and removes your clean worktree and branch itself, so no `git branch -D`
+  by hand -- or `NOT LANDED: <why>` + `next: <command>` (do that, then run it again); exit 2 is its deadline (run it
+  again), exit 3 landed but the worktree kept (say why). Table: `docs/landing-process.md`, stage 2. Deleting a
+  branch you didn't create, or an unmerged one, needs the user's OK first.
   The page layers (PageTest, Playwright) and `e2e (rest)` are not landing requirements since 2026-11-17 (the owner's
   "B1"): neither the hook nor the landing check runs them; Main does, after landing, as gate rows. Run the page layer
   locally when you change UI -- cheap insurance, not a gate.
