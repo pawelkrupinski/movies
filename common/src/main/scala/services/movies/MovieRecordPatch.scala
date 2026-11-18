@@ -41,7 +41,7 @@ final case class MovieRecordPatch(
   // different venues' scrapes write different slots concurrently, while the retained
   // synopses are rewritten as a set by the prune that owns them. A whole-map update
   // also keeps the field off the dotted `$set` path, which a `Source.displayName`
-  // containing '.' ("Helios Ostrów Wlkp.") cannot use — see `dottedReplaceRecord`.
+  // containing '.' ("Helios Ostrów Wlkp.") cannot use — see `InPlaceMovieUpdate.dottedReplaceRecord`.
   retainedSynopses:  FieldUpdate[Map[Source, String]]        = FieldUpdate.NoChange,
   data:              Map[Source, FieldUpdate[SourceData]]   = Map.empty
 ) {

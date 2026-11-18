@@ -5,7 +5,6 @@ import tools.SpecClock.given
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
-import org.mongodb.scala.MongoClient
 
 import scala.jdk.CollectionConverters._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -22,7 +21,7 @@ import java.time.Instant
  *   2. `MovieRecordPatch`        — or the field-level `$set` path (`updateIfPresent`)
  *                                  drops it, while whole-document writes keep it, so
  *                                  the value survives some writes and not others.
- *   3. `MovieRepository.patchToUpdate` — or the patch carries it and the wire doesn't.
+ *   3. `InPlaceMovieUpdate.patchToUpdate` — or the patch carries it and the wire doesn't.
  *   4. `ChangeStreamMetrics`     — or a change to it reads as the `other` catch-all
  *                                  and the change-stream metric quietly mis-labels.
  *
@@ -136,10 +135,10 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     // `MovieRecordPatch` but missing here satisfies `applyTo` — so every test backed by
     // `InMemoryMovieRepository` passes — while Mongo never receives it. Asserted against
     // the field names the update document actually emits.
-    val repository = new MongoMovieRepository(
-      sharedDb   = Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")), clock = _root_.tools.SpecClock.Pinned,
-      normalizer = titleNormalizer, stopwatch = new _root_.tools.Stopwatch(() => 0L))
-    val update = repository.patchToUpdate(MovieRecordPatch.diff(MovieRecord(), everyFieldSet))
+    val updates = new InPlaceMovieUpdate(screenings = None, slots = None, slotsForStorage = identity, normalizer = titleNormalizer,
+      stamps = new _root_.tools.MonotonicStampSequence(_root_.tools.SpecClock.Pinned), writeMetrics = RepositoryWriteMetrics.noop,
+      logger = play.api.Logger(getClass), readWhole = (_, _) => None)
+    val update = updates.patchToUpdate(MovieRecordPatch.diff(MovieRecord(), everyFieldSet))
       .toBsonDocument(classOf[BsonDocument], MovieCodecs.registry)
 
     // `{ $set: { a: …, b.c: … }, $unset: { d: … } }` — collect every field path either

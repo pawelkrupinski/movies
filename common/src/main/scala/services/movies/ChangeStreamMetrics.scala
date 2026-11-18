@@ -97,7 +97,7 @@ object ChangeStreamMetrics {
   }
   val Kinds: Seq[String] = Seq(Kind.SourceData, Kind.Rating, Kind.Identity, Kind.UpdatedAtOnly, Kind.Other)
 
-  // Stored field names as `patchToUpdate` emits them (NOT the domain names).
+  // Stored field names as `InPlaceMovieUpdate.patchToUpdate` emits them (NOT the domain names).
   private val RatingFields   = Set("imdbRating", "metascore", "filmwebRating", "rottenTomatoes", "filmwebUrl", "metacriticUrl", "rottenTomatoesUrl")
   private val IdentityFields = Set("key", "imdbId", "tmdbId", "tmdbBasis", "tmdbProvisional", "wikidataId", "searchTitle", "tmdbAttempt", "tmdbNoMatch")
 

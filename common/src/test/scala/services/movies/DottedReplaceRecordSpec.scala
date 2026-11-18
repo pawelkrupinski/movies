@@ -3,10 +3,8 @@ package services.movies
 import tools.SpecClock.given
 
 import models.{HeliosOstrowWlkp, MovieRecord, Multikino, Source, SourceData}
-import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `updateIfPresent` falls back to a whole-document replace when a per-source `$set
@@ -17,15 +15,10 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * for every dotted-name cinema. `dottedReplaceRecord` instead applies the SAME field-level
  * patch to the persisted doc, so the replace carries exactly the diff — ratings preserved.
  *
- * Pure decision (no Mongo I/O), so it's driven directly here against a client that never
- * connects, mirroring `RelaxedWriteConcernSpec`. Fails before the fix (the fallback wrote the
- * cache row, nulling the rating); passes after.
+ * Pure decision (no Mongo I/O), so it is driven directly here, as `InPlaceMovieUpdate.dottedReplaceRecord`.
+ * Fails before the fix (the fallback wrote the cache row, nulling the rating); passes after.
  */
 class DottedReplaceRecordSpec extends AnyFlatSpec with Matchers {
-
-  private def neverConnects =
-    MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")
-  private val repo = new MongoMovieRepository(sharedDb = Some(neverConnects), clock = _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = new _root_.tools.Stopwatch(() => 0L))
 
   // What Mongo holds: a fully-rated row.
   private val persisted = MovieRecord(
@@ -45,7 +38,7 @@ class DottedReplaceRecordSpec extends AnyFlatSpec with Matchers {
   private val patch = MovieRecordPatch.diff(cacheBefore, cacheAfter)
 
   "dottedReplaceRecord" should "preserve Mongo-owned ratings the cache row lacks while applying the slot change" in {
-    val merged = repo.dottedReplaceRecord(Some(persisted), patch).getOrElse(fail("expected a replacement record"))
+    val merged = InPlaceMovieUpdate.dottedReplaceRecord(Some(persisted), patch).getOrElse(fail("expected a replacement record"))
 
     // Ratings survive (the bug: a blind replace of the cache row nulled these)…
     merged.imdbRating     shouldBe Some(7.5)
@@ -58,6 +51,6 @@ class DottedReplaceRecordSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "report None (not-present) when the row is absent — nothing to replace, no upsert" in {
-    repo.dottedReplaceRecord(None, patch) shouldBe None
+    InPlaceMovieUpdate.dottedReplaceRecord(None, patch) shouldBe None
   }
 }
