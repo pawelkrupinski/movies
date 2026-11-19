@@ -123,6 +123,10 @@ enum QuestionSystem {
  * [[HttpPath]]s its requests are counted under today, the asker first that asks it in the steady state.
  */
 enum QuestionKind(val system: QuestionSystem, val askers: Seq[String]) {
+  /** Is it the model's own kind of question (a search, a film's or a person's record, a venue page:
+   *  [[QuestionSystem.Model]]), not the agreement stage's? */
+  def asksTheModel: Boolean = system == QuestionSystem.Model
+
   case Title       extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))
   case Director    extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))
   case Imdb        extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))

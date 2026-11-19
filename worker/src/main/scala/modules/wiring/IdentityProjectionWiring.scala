@@ -31,7 +31,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val identityListingIntake: IdentityListingIntake =
     new IdentityListingIntake(acceptedListings, scrapeArchive, scrapeGuardLedger, titleNormalizer,
       ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, corpusMetrics,
-      published = (cinema, films) => identityModel.venueScraped(cinema, films))
+      published = (cinema, films) =>
+        identityModel.venueScraped(cinema.displayName, services.identity.ModelRead.corpus(Seq(cinema -> films), titleNormalizer)))
 
   // The venue pages as a venue slot is built from them, and as which of them moved since the projection last asked.
   private lazy val venuePageFacts =

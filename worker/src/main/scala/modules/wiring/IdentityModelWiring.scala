@@ -93,7 +93,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.identityadapters.TmdbFilmRefresh(
       new services.identityadapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer),
       services.identityadapters.TmdbFilmRefresh.liveLookups(tmdbClientOver),
-      families = () => identityModel.families(WorkerWiring.IdentityModelPeek), fold = titleNormalizer.sanitize)
+      families = () => identityModel.caughtUp(WorkerWiring.IdentityModelPeek)(engine =>
+        services.identityadapters.TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings)), fold = titleNormalizer.sanitize)
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
    *  people it reads, while it is taken up. */
   lazy val identityRenewals: services.identityadapters.QuestionRenewals =
@@ -134,11 +135,9 @@ trait IdentityModelWiring { self: WorkerWiring =>
       clock      = clock,
       history    = identityHistory,
       build      = configuration.commit.value,
-      retainedStore = identityRetainedStore,
-      heldBefore = () => identityHeldBefore(),
-      readiness  = identityModelReadiness(pageWait),
-      pendingStore = identityPendingStore,
-      retentionWindow = configuration.identityRetentionWindow(WorkerWiring.DefaultRetentionWindow).duration)
+      retained   = services.identityadapters.ListingRetainer.Settings(identityRetainedStore, () => identityHeldBefore(),
+        configuration.identityRetentionWindow(WorkerWiring.DefaultRetentionWindow).duration),
+      gate       = services.identityadapters.ModelInputGate.Settings(identityModelReadiness(pageWait), identityPendingStore))
     identityTmdbStore.onChanged(model.filed)
     model
   }
@@ -148,7 +147,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.identityadapters.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
   /** What the venues' own detail pages state of their listings ([[venuePageIndex]]). */
   def venueDetailLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identityadapters.VenueDetailLookups =
-    new services.identityadapters.VenueDetailLookups(detailEnrichers, venuePageIndex, reads)
+    new services.identityadapters.VenueDetailLookups(services.identityadapters.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */

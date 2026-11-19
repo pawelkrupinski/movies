@@ -1,7 +1,6 @@
 package services.identityadapters
 
-import services.venuepages.{MongoVenuePageStore, StoredVenuePage, VenuePage, VenuePageKey, VenuePageStore}
-import org.bson.BsonDocument
+import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey, VenuePageStore}
 import services.cinemas.common.FilmDetail
 
 /** `inner`, every page whose ANSWER a read moved — its detail, or its being gone — appended to `history` as `venue_pages`
@@ -20,12 +19,8 @@ final class HistoryVenuePageStore(inner: VenuePageStore, history: IdentityHistor
 
   def put(page: VenuePage): Boolean = {
     val kept = inner.put(page)
-    if (kept && (history ne IdentityHistory.Discard)) {
-      val before = Option(last.asMap.put(page.key.id, page))
-      if (!before.map(_.outcome).contains(page.outcome))
-        history.append(Seq(HistoryEntry(HistoryVenuePageStore.Kind, page.key.id, clock.millis(), before.map(HistoryVenuePageStore.docOf),
-          Some(HistoryVenuePageStore.docOf(page)), build, beforeUnknown = before.isEmpty)))
-    }
+    if (kept && (history ne IdentityHistory.Discard))
+      VenuePageHistory.appendMoved(history, Option(last.asMap.put(page.key.id, page)), page, clock.millis(), build)
     kept
   }
 }
@@ -33,7 +28,4 @@ final class HistoryVenuePageStore(inner: VenuePageStore, history: IdentityHistor
 object HistoryVenuePageStore {
   /** How many pages' last outcomes are remembered to tell a re-read alike. */
   val PagesHeld = 100000
-  val Kind: String = s"answer:${MongoVenuePageStore.Collection}"
-  /** The page as `venue_pages` holds it: what a replay's captured store decodes (`CapturedVenuePages`). */
-  def docOf(page: VenuePage): BsonDocument = MongoVenuePageStore.documentOf(page).toBsonDocument
 }

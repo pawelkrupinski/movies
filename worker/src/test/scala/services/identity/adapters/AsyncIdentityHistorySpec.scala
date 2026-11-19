@@ -161,7 +161,7 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     service.takeUp()
     (1 to 50).foreach { i =>
       tmdb.people(s"q$i", Seq(i))
-      service.venueScraped(KinoMuza, (1 to i).map(n => row(KinoMuza, s"Film $n")))
+      service.venueScraped(KinoMuza.displayName, ModelRead.corpus(Seq(KinoMuza -> (1 to i).map(n => row(KinoMuza, s"Film $n"))), titles))
       clock.advance(java.time.Duration.ofMinutes(1))
       service.drain()
     }

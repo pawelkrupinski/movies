@@ -114,10 +114,10 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, scheduler(), pageWait = pageWait,
-      clock = clock, retainedStore = retained, readiness = readiness, pendingStore = pendingStore, newWhilePending = newWhilePending,
-      metrics = gate, retentionWindow = retentionWindow)
+      clock = clock, retained = ListingRetainer.Settings(retained, window = retentionWindow),
+      gate = ModelInputGate.Settings(readiness, pendingStore), newWhilePending = newWhilePending, metrics = gate)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
-      scrapes += cinema -> films; service.venueScraped(cinema, films)
+      scrapes += cinema -> films; service.venueScraped(cinema.displayName, ModelRead.corpus(Seq(cinema -> films), normalizer))
     }
     def expected: Set[(Set[ListingKey], Option[Int])] =
       decided(IdentityResolver.resolve(listingsOf(scrapes), lookups, normalizer, ResolveInputs.Unpinned.copy(calibration = calibration)).decisions)
@@ -479,7 +479,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     batches.clear()
     service.drain()
     batches shouldBe empty                                         // nothing queued
-    service.venueScraped(Multikino, Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")))
+    service.venueScraped(Multikino.displayName, ModelRead.corpus(Seq(Multikino -> Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda"))), normalizer))
     service.drain()
     batches.loneElement.moved shouldBe true
   }

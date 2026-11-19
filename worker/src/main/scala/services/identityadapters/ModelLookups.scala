@@ -1,17 +1,12 @@
 package services.identityadapters
 
 import services.identity.*
-import services.cinemas.common.DetailEnricher
 
 /**
  * The identity model's venue detail and nothing else: a listing's page as venue_pages holds it
- * ([[VenuePageIndex]]) — a gap until the page is read, re-asked when its read is announced. TMDB and IMDb are the store's ([[StoredTmdbLookups]], whose `details` this is).
+ * ([[VenuePageDetails.of]]) — a gap until the page is read, re-asked when its read is announced. TMDB and IMDb are the store's ([[StoredTmdbLookups]], whose `details` this is).
  */
-final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageIndex,
-                               reads: ObservationReads = ObservationReads.Untracked) extends IdentityLookups {
-  private val gaps    = new LookupGaps
-  private val details = new VenueDetails(enrichers.map(new VenuePageDetailEnricher(_, index, gaps, reads)), gaps)
-
+final class VenueDetailLookups(details: VenueDetails) extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = Answer.Unknown
@@ -57,13 +52,11 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
     unlessGivenUp(question, fromStore.orElse {
       if (!asks.due(question)) Answer.Unknown
       else {
-        val failedBefore = LiveAsks.failures
-        val requested    = new tools.RequestedHost.Recording
-        val liveAnswer   = tools.RequestedHost.within(requested)(tools.HttpPath.within(tools.HttpPath.Live)(asked))
-        val answer       = fromStore.orElse(liveAnswer)
+        val live   = LiveAsks.read(asked)
+        val answer = fromStore.orElse(live.answer)
         if (!answer.isAnswered) {
-          val failed = LiveAsks.failures != failedBefore
-          asks.unanswered(question, failed, if (failed) LiveAsks.failedHost(requested) else None)
+          val failed = live.failed
+          asks.unanswered(question, failed, if (failed) live.failedHost else None)
         }
         answer
       }
@@ -114,6 +107,20 @@ object LiveAsks {
   /** The host this thread's latest failed read went to: the one its failure names, else the last host requested within
    *  `requested` ([[AgreementQuestions.hostOf]], as the agreement's asks name theirs). */
   def failedHost(requested: tools.RequestedHost.Recording): Option[String] = AgreementQuestions.hostOf(lastFailure.get, requested.last)
+
+  /** `asked`, read on the live path (`tools.HttpPath.Live`) with each request's host noted (`tools.RequestedHost`). */
+  def read[A](asked: => A): LiveRead[A] = {
+    val failedBefore = failures
+    val requested    = new tools.RequestedHost.Recording
+    new LiveRead(tools.RequestedHost.within(requested)(tools.HttpPath.within(tools.HttpPath.Live)(asked)), failedBefore, requested)
+  }
+
+  /** A live read's `answer`, and whether a read on this thread failed since it began ([[failures]]) -- against
+   *  [[failedHost]] -- as the thread stands when asked. */
+  final class LiveRead[A](val answer: A, failedBefore: Long, requested: tools.RequestedHost.Recording) {
+    def failed: Boolean            = failures != failedBefore
+    def failedHost: Option[String] = LiveAsks.failedHost(requested)
+  }
 
   /** `fetch`, its failed reads counted on the requesting thread ([[failures]]) and each request's host noted
    *  (`tools.RequestedHost`). */

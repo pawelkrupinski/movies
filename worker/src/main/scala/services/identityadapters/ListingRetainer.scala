@@ -144,3 +144,22 @@ final class ListingRetainer(retainedStore: RetainedListingStore, heldBefore: () 
   private def persist(write: => Unit): Unit =
     try write catch { case NonFatal(e) => logger.warn(s"identity model: the departed listings could not be written: $e") }
 }
+
+object ListingRetainer {
+  /** What the kept listings are set up with besides the title pipeline, clock and gauges: where every departed listing
+   *  is persisted (`store`), the listings the history last saw the model hold (`heldBefore`, [[RetainedListingStore.fromHistory]]:
+   *  what a take-up reads the departed listings from when the store was never written), and how long a departed listing
+   *  stays an input (`window`, [[ListingRetention.live]]: the worker's typed config `settings.IdentityRetentionWindow`). In
+   *  memory, nothing held before, [[ListingRetention.DefaultMaxAge]], by default. */
+  final case class Settings(store: RetainedListingStore = new RetainedListingStore.InMemory(),
+                            heldBefore: () => Seq[Listing] = () => Nil,
+                            window: java.time.Duration = ListingRetention.DefaultMaxAge)
+  object Settings {
+    /** The departed listings kept in memory, none held before, the default window: a fresh store each call. */
+    def inMemory: Settings = Settings()
+  }
+
+  /** The kept listings `settings` set up, reading titles with `normalizer`, on `clock`, reporting to `metrics`. */
+  def of(settings: Settings, normalizer: TitleNormalizer, clock: java.time.Clock, metrics: IdentityModelMetrics): ListingRetainer =
+    new ListingRetainer(settings.store, settings.heldBefore, normalizer, clock, settings.window, metrics)
+}

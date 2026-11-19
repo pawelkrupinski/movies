@@ -17,13 +17,15 @@ final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex,
   private def pageOf(listing: Listing): Option[(DetailEnricher, String)] =
     for { page <- listing.page; enricher <- enricherOf.get(listing.cinema) } yield enricher -> page
 
+  /** Has a read of `page` never been tried? */
+  private def untried(enricher: DetailEnricher, page: String): Boolean =
+    freshness.lastFetchedAt(services.venuepages.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty
+
   def awaiting(listing: Listing): Boolean = pageOf(listing).exists { case (enricher, page) =>
-    index.answer(enricher, page).isEmpty &&
-      (enricher.defersTmdbResolution || freshness.lastFetchedAt(services.venuepages.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty)
+    index.unanswered(enricher, page) && (enricher.defersTmdbResolution || untried(enricher, page))
   }
   override def unattempted(listing: Listing): Boolean = pageOf(listing).exists { case (enricher, page) =>
-    index.answer(enricher, page).isEmpty &&
-      freshness.lastFetchedAt(services.venuepages.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty
+    index.unanswered(enricher, page) && untried(enricher, page)
   }
   def request(listing: Listing): Unit = pageOf(listing).foreach { case (enricher, page) => ReadVenuePageTasks.enqueue(queue, enricher, page, clock.instant()) }
 }

@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore, VenueDetailLookups, VenuePageIndex}
+import services.identityadapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore, VenueDetailLookups, VenuePageDetails, VenuePageIndex}
 import models.{CinemaMovie, Country}
 import org.bson.BsonDocument
 import org.bson.json.{JsonMode, JsonWriterSettings}
@@ -57,7 +57,7 @@ object ProdLookupInputs {
   def lookups(docs: TmdbDocuments, pages: Seq[BsonDocument], enrichers: Seq[services.cinemas.common.DetailEnricher], live: IdentityLookups,
               country: Country, clock: Clock): IdentityLookups = {
     val language = country.language.toLanguageTag
-    val details  = new VenueDetailLookups(enrichers, new VenuePageIndex(CapturedVenuePages.store(pages)), ObservationReads.Untracked)
+    val details  = new VenueDetailLookups(VenuePageDetails.of(enrichers, new VenuePageIndex(CapturedVenuePages.store(pages)), ObservationReads.Untracked))
     new StoredFirstLookups(new StoredTmdbLookups(new TmdbStore(docs, clock), language, details, ObservationReads.Untracked), live,
       LiveAsks.remembered(new QuestionMemory(docs, language, clock)))
   }

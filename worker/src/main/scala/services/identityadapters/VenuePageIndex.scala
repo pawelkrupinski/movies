@@ -26,6 +26,9 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
     answers.get((enricher.detailGroup, page))
   }
 
+  /** Is `page` of `enricher`'s group still unread: no [[answer]] yet, neither a detail nor gone? */
+  def unanswered(enricher: DetailEnricher, page: String): Boolean = answer(enricher, page).isEmpty
+
   /** `page` of `detailGroup` was written to venue_pages: re-read it at the next [[settle]]. */
   def pageRead(detailGroup: String, page: String): Unit = { pending.add((detailGroup, page)); () }
 

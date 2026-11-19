@@ -216,6 +216,20 @@ final class ModelInputGate(
 }
 
 object ModelInputGate {
+  /** What a gate is set up with besides its clock and gauges: whether a listing's questions are answered (`readiness`),
+   *  where the held listings are persisted (`store`), and the backstop (`maxHold`). Always ready, in memory, by default. */
+  final case class Settings(readiness: ListingReadiness = ListingReadiness.Always,
+                            store: PendingListingStore = new PendingListingStore.InMemory(),
+                            maxHold: java.time.Duration = MaxHold)
+  object Settings {
+    /** Every listing ready at once, the held ones kept in memory, the backstop the default one: a fresh store each call. */
+    def inMemory: Settings = Settings()
+  }
+
+  /** The gate `settings` set up, on `clock`, reporting to `metrics`. */
+  def of(settings: Settings, clock: java.time.Clock, metrics: IdentityModelMetrics): ModelInputGate =
+    new ModelInputGate(settings.readiness, settings.store, clock, metrics, settings.maxHold)
+
   /** A listing's key as a log line names it: its venue and raw title, never the serialised key, whose NUL separators
    *  turned the drift replay's log binary to grep (the drift check read no verdict, run 42230476293). */
   def described(key: ListingKey): String = s"${key.venue} | ${key.rawTitle}"

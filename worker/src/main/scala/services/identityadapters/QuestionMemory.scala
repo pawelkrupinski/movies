@@ -250,7 +250,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
    *  before the move. */
   private def markers(ids: Seq[(Question, String)]): Map[String, BsonDocument] = {
     val held   = docs.answers(TmdbKind.Marker, ids.map(_._2).distinct)
-    val before = ids.collect { case (question, marker) if question.kind.system == QuestionSystem.Model && !held.contains(marker) => marker }
+    val before = ids.collect { case (question, marker) if question.kind.asksTheModel && !held.contains(marker) => marker }
     if (before.isEmpty) held else docs.get(TmdbKind.Query, before.distinct) ++ held
   }
 
@@ -266,7 +266,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   private def isAnswered(doc: BsonDocument): Boolean                  = stringOf(doc.get(OutcomeField)).contains(AnsweredOutcome)
   // the host a failure was marked against: a model question's with none recorded (marked before 2026-10-24) is TMDB's
   private def hostOf(question: Question, doc: BsonDocument): Option[String] =
-    stringOf(doc.get(HostField)).orElse(Option.when(question.kind.system == QuestionSystem.Model)(TmdbHost))
+    stringOf(doc.get(HostField)).orElse(Option.when(question.kind.asksTheModel)(TmdbHost))
   private def stringOf(value: org.bson.BsonValue): Option[String] = Option(value).filter(_.isString).map(_.asString.getValue)
   // a failure marked before the count was kept (the model's, until 2026-10-24) counts once
   private def failuresOf(doc: BsonDocument): Int = BsonFields.int64(doc.get(Failures)).fold(1)(_.toInt)

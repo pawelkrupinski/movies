@@ -1,7 +1,6 @@
 package services.identityadapters
 
 import services.identity.*
-import models.{Cinema, CinemaMovie}
 import play.api.Logging
 import services.titles.TitleNormalizer
 
@@ -91,24 +90,15 @@ final class IdentityModelService(
    *  after ([[HistoryEntry.Listing]]), by the build `build`: what a replay of a moment's takes resolves. */
   history:    IdentityHistory = IdentityHistory.Discard,
   build:      String = "",
-  /** Every listing that left, with its last-seen facts and departure ([[ListingRetention.Departed]]), persisted: the
-   *  input the kept listings are read from on every drain and take-up ([[ListingRetention.retainedAt]]). */
-  retainedStore: RetainedListingStore = new RetainedListingStore.InMemory(),
-  /** The listings the history last saw the model hold ([[RetainedListingStore.fromHistory]]): what a take-up reads
-   *  the departed listings from when the store was never written. */
-  heldBefore: () => Seq[Listing] = () => Nil,
+  /** The kept listings' store, what a take-up reads them from when the store was never written, and how long a departed
+   *  listing stays an input ([[ListingRetainer.Settings]]). */
+  retained:   ListingRetainer.Settings = ListingRetainer.Settings.inMemory,
   /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in only once
-   *  every question its own facts put to the film databases' families is answered or given up on. */
-  readiness:  ListingReadiness = ListingReadiness.Always,
-  /** The listings the gate holds, persisted: what a take-up resumes ([[PendingListingStore]]). */
-  pendingStore: PendingListingStore = new PendingListingStore.InMemory(),
+   *  every question its own facts put to the film databases' families is answered or given up on
+   *  ([[ModelInputGate.Settings]]: the readiness, the held listings' store, the backstop). */
+  gate:       ModelInputGate.Settings = ModelInputGate.Settings.inMemory,
   /** Whether a listing new to the model, its version held, is shown meanwhile on its own, Pending -- or not at all. */
-  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default,
-  /** The backstop: a listing held this long is taken in regardless, and counted (`promoted{at="bound"}`). */
-  maxHold: java.time.Duration = ModelInputGate.MaxHold,
-  /** How long a departed listing stays an input ([[ListingRetention.live]]): the worker's typed config
-   *  (`settings.IdentityRetentionWindow`), [[ListingRetention.DefaultMaxAge]] unless set. */
-  retentionWindow: java.time.Duration = ListingRetention.DefaultMaxAge
+  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -116,14 +106,12 @@ final class IdentityModelService(
   private var model: Option[IncrementalResolver] = scala.None
   /** The model's input gate (fix 1): the listings whose newest version is held on their own questions, read and moved on
    *  the model's thread. */
-  private val inputGate = new ModelInputGate(readiness, pendingStore, clock, metrics, maxHold)
+  private val inputGate = ModelInputGate.of(gate, clock, metrics)
 
-  /** A venue's scrape was archived with `films`: its listings now, read as the take-up reads the archive's
-   *  ([[ModelRead]]). Read whole, a venue scraped since boot fired rules a venue taken up lean never did — and the
-   *  measurement, replaying recordings, could not tell which prod held. */
-  def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
-    venues.put(cinema.displayName, ModelRead.corpus(Seq(cinema -> films), normalizer)); wake()
-  }
+  /** A venue's scrape was archived: `listings`, its listings now, read as the take-up reads the archive's
+   *  (`ModelRead.corpus`, the caller's: read whole, a venue scraped since boot fired rules a venue taken up lean never did
+   *  — and the measurement, replaying recordings, could not tell which prod held). */
+  def venueScraped(venue: String, listings: Seq[Listing]): Unit = { venues.put(venue, listings); wake() }
 
   /** New content was filed under `key` (the venue page index, the proposal index): every question that reads it is
    *  asked again. */
@@ -177,11 +165,11 @@ final class IdentityModelService(
     model.map(_.familyOf)
   }
 
-  /** Each family's questions, the films its decisions name and its listings' titles, the model caught up as [[peek]]
-   *  catches it up — never a take-up: what an operator's [[TmdbFilmRefresh]] reaches. `None` as [[peek]]'s. */
-  def families(timeout: FiniteDuration): Option[Seq[TmdbFilmRefresh.Family]] = onModel(timeout) {
+  /** `read` of the model caught up as [[peek]] catches it up -- never a take-up: what an operator's `TmdbFilmRefresh` reads
+   *  its families from. `None` as [[peek]]'s. */
+  def caughtUp[A](timeout: FiniteDuration)(read: IncrementalResolver => A): Option[A] = onModel(timeout) {
     catchUp()
-    model.map(engine => TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings))
+    model.map(read)
   }
 
   /** The model caught up with what queued, if it has been taken up — never a take-up: what the
@@ -285,7 +273,7 @@ final class IdentityModelService(
   }
 
   /** The kept listings ([[ListingRetention]]): the departed ones' inputs and the kept set, moved on every drain and take-up. */
-  private val retention = new ListingRetainer(retainedStore, heldBefore, normalizer, clock, retentionWindow, metrics)
+  private val retention = ListingRetainer.of(retained, normalizer, clock, metrics)
 
   /** `seen` and `gone`, as they move what `engine` holds, into the history ([[ListingHistoryEntries]]). */
   private def kept(engine: IncrementalResolver, seen: Seq[Listing], gone: Seq[models.ListingKey]): Unit =

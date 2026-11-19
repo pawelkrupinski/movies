@@ -99,9 +99,9 @@ class IdentityHistoryReplaySpec extends AnyFlatSpec with Matchers {
     val t1 = w.tick()
     val muza = CinemaMovie(Movie("Lalka", releaseYear = Some(1968)), KinoMuza, None, Some("Muza/Lalka"), None, Nil, Nil,
       Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 2, 18, 0), None)))
-    w.service.venueScraped(KinoMuza, Seq(muza))
+    w.service.venueScraped(KinoMuza.displayName, ModelRead.corpus(Seq(KinoMuza -> Seq(muza)), titles))
     w.tick()
-    w.service.venueScraped(Multikino, Nil)
+    w.service.venueScraped(Multikino.displayName, Nil)
     w.tick()
     val replay = IdentityHistoryReplay.from(w.history, t1)
     replay.listings(w.model.get.listings).map(_.key) shouldBe w.first.map(_.key)
