@@ -151,7 +151,7 @@ object IdentityProjectionPlan {
   def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slotSource: VenueSlotSource,
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
               changed: Set[ListingKey] = Set.empty): ProjectionDraft =
-    new ProjectionDrafting(index, scope, normalizer, slotSource, memo, shapes, changed).draft
+    new ScopeDrafting(index, scope, normalizer, slotSource, memo, shapes, changed).draft
 
   /** How many venues' rows a projection reads at once to build their slots: a batch's rows are let go before the next. */
   private[identity] val RowBatch = 200

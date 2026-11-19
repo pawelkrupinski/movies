@@ -4,7 +4,7 @@ import models.{Cinema, ListingKey}
 
 import IdentityProjectionPlan.VenueGroup
 
-/** The films one draft ([[ProjectionDrafting]]) plans, by the ids `assigned` gave them over `index`: each film's venues'
+/** The films one draft ([[ScopeDrafting]]) plans, by the ids `assigned` gave them over `index`: each film's venues'
  *  groups, kept from its last draft ([[FilmShapes]]) where nothing they are built from moved — of a scoped draft, whose
  *  `changed` listings say what did — else worked out. */
 private[identity] final class FilmPlans(index: ProjectionIndex, scope: ProjectionScope, shapes: FilmShapes,
@@ -82,7 +82,7 @@ private[identity] object FilmPlans {
   /** A venue group worked out: the group, and the films its listings were on and the slots those held at the venue. */
   type PlannedGroup = (VenueGroup, Seq[Option[String]], Seq[Int])
 
-  /** A film [[ProjectionDrafting]] plans: its venues' groups, each one kept from the last draft (`Left`) or
+  /** A film [[ScopeDrafting]] plans: its venues' groups, each one kept from the last draft (`Left`) or
    *  worked out (`Right`, with the stored records of the films its priors are from). */
   final case class Planned(counter: Long, members: Set[ListingKey], keys: Seq[ListingKey], titles: Map[String, Int],
                            groups: Seq[(Cinema, Either[VenueShape, PlannedGroup])], was: Option[FilmShape])

@@ -243,7 +243,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The search title is one venue's title for the film, and which venue's depends on history: the first draft that
-   *  took the film keeps its title (`ProjectionDrafting`), so a film whose take arrived late -- TMDB down meanwhile --
+   *  took the film keeps its title (`ScopeDrafting`), so a film whose take arrived late -- TMDB down meanwhile --
    *  searched as its other listings call it. PL "Samson i Dalila" (2026) is found only as "Opera-samson i dalila", and
    *  lost its IMDb id after an outage (Main #2617). Every title the film's venues publish is searched before the film is
    *  concluded unmatched; after every other rung, so a film the search title finds asks nothing more. */

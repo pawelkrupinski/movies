@@ -5,7 +5,7 @@ import models.{Cinema, CinemaMovie, ListingKey, Source, SourceData}
 /**
  * Where a projection's venue slots come from: each venue's rows, read again by the listing key each is published under,
  * a digest of the detail pages its listings publish, and a film's slots at a venue built from those rows over the films
- * the projection's index stored. Drafting builds its lean slots from it ([[VenueSlotBuilds]]) and the write completes a
+ * the projection's index stored. Drafting builds its lean slots from it ([[LeanVenueSlots]]) and the write completes a
  * draft from it ([[ProjectionDraft.complete]]): handed in from the composition root ([[VenueSlots.FromArchive]]), never
  * held by the draft, which is data.
  */

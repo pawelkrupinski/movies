@@ -6,11 +6,11 @@ import services.titles.TitleNormalizer
 import IdentityProjectionPlan.ResolverAttempt
 import FilmPlans.Planned
 
-/** Each planned film's record, for one draft ([[ProjectionDrafting]]): its venues' slots as `venueSlots` built them,
+/** Each planned film's record, for one draft ([[ScopeDrafting]]): its venues' slots as `venueSlots` built them,
  *  over what other writers keep on the stored film while it is the same film, and its venues' shapes kept for the next
  *  draft. `within`: the scope's clusters; `previousIdOf`: the stored film a counter numbered, if any. */
 private[identity] final class FilmRecordDrafts(index: ProjectionIndex, within: ProjectionIndex.Within, shapes: FilmShapes,
-                                               normalizer: TitleNormalizer, venueSlots: VenueSlotBuilds,
+                                               normalizer: TitleNormalizer, venueSlots: LeanVenueSlots,
                                                previousIdOf: Long => Option[String]) {
   import index.storedById
 

@@ -67,7 +67,7 @@ the last apply keyed — exactly `IdAssigner`'s rule, which the projection's Fil
 Why the stage's own counter, not the projection's FilmId:
 
 1. **Order.** The stage runs inside the projection BEFORE the projection assigns ids (`IdentityProjection.planned`:
-   agreement, then `live.update`, then `IdAssigner` in `ProjectionDrafting`). A FilmId is known only for a cluster the
+   agreement, then `live.update`, then `IdAssigner` in `ScopeDrafting`). A FilmId is known only for a cluster the
    previous projection wrote; a new cluster, and the smaller half of a split, would key provisionally until the next
    written projection gave it a counter — a second re-key, one tick later, of exactly the clusters that matter most
    (new ones, asked inline).

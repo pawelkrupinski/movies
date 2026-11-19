@@ -5,11 +5,11 @@ import services.titles.TitleNormalizer
 
 import IdentityProjectionPlan.{RowBatch, VenueGroup}
 
-/** The LEAN venue slots of one draft ([[ProjectionDrafting]]): each venue's from the memo when nothing it is built from
+/** The LEAN venue slots of one draft ([[ScopeDrafting]]): each venue's from the memo when nothing it is built from
  *  moved, else built from the venue's rows, read a batch of venues at a time and let go. Built per draft: what it holds
  *  is that draft's. `previousOf`: the films the scope's listings were on, whose stored slots a restarted worker's memo
  *  reuses. */
-private[identity] final class VenueSlotBuilds(index: ProjectionIndex, previousOf: Map[ListingKey, StoredFilmRef],
+private[identity] final class LeanVenueSlots(index: ProjectionIndex, previousOf: Map[ListingKey, StoredFilmRef],
                                               normalizer: TitleNormalizer, slotSource: VenueSlotSource, memo: VenueSlotMemo) {
   import index.storedById
 

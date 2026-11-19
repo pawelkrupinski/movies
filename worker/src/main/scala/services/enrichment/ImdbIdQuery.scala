@@ -21,7 +21,7 @@ final case class ImdbIdQuery(
   def crossReferenceTitles: Seq[String] = (searchTitle +: venueTitles).distinct
 
   /** The film's other venue titles, sorted: the search title is ONE venue's, kept from the first draft that took the
-   *  film (`ProjectionDrafting`), so which it is depends on history. */
+   *  film (`ScopeDrafting`), so which it is depends on history. */
   def otherTitles: Seq[String] = venueTitles.sorted.filterNot(_ == searchTitle)
 }
 

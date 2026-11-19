@@ -8,9 +8,9 @@ import services.titles.TitleNormalizer
 
 /** One run of [[IdentityProjectionPlan.draftOf]]: the drafts of the films `scope` names over `index`, worked out in its
  *  steps — the films' ids by overlap and their venues' groups ([[FilmPlans]]), the venue slots each film's venues need built
- *  ([[VenueSlotBuilds]]), each film's record ([[FilmRecordDrafts]]) and the projection's draft as a whole ([[projectionDraft]]).
+ *  ([[LeanVenueSlots]]), each film's record ([[FilmRecordDrafts]]) and the projection's draft as a whole ([[projectionDraft]]).
  *  The mutable state a run reads and writes — the memo of venue slots, the films' shapes — is written in that order. */
-private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer,
+private[identity] final class ScopeDrafting(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer,
                                                  slotSource: VenueSlotSource, memo: VenueSlotMemo,
                                                  shapes: FilmShapes, changed: Set[ListingKey]) {
   import index.covered
@@ -29,9 +29,9 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
   private def previousIdOf(c: Long): Option[String] = Option.when(c < covered.nextCounter)(covered.filmIdOf(c)).flatten
 
   // 3. Each film's record. Its venue slots are LEAN, each venue's from the memo when nothing it is built from
-  // moved, else built from the venue's rows, read a batch of venues at a time and let go ([[VenueSlotBuilds]]); the
+  // moved, else built from the venue's rows, read a batch of venues at a time and let go ([[LeanVenueSlots]]); the
   // record over them ([[FilmRecordDrafts]]).
-  private val venueSlots = new VenueSlotBuilds(index, previousOf, normalizer, slotSource, memo)
+  private val venueSlots = new LeanVenueSlots(index, previousOf, normalizer, slotSource, memo)
   private val records    = new FilmRecordDrafts(index, within, shapes, normalizer, venueSlots, previousIdOf)
   /** The projection's draft of `planned` films drafted as `drafts`: the films retired and the regroupings. */
   private def projectionDraft(planned: Seq[Planned], drafts: Seq[FilmDraft]): ProjectionDraft = {
