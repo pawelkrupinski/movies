@@ -20,11 +20,11 @@ class FilmLookupEncodingSpec extends AnyFlatSpec with Matchers {
   // Far in the future so the screening is always "upcoming" whenever the test runs.
   private val showAt = LocalDateTime.of(2099, 1, 1, 18, 0)
 
-  private val service = new MovieControllerService(
-    TestReadModel.fromRecords(Seq(("Drugie życie", Some(2026), MovieRecord(data = Map[Source, SourceData](
+  private val readModel = TestReadModel.fromRecords(Seq(("Drugie życie", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Rialto -> SourceData(title = Some("Drugie życie"),
                            showtimes = Seq(Showtime(showAt, bookingUrl = None)))
-    ))))), clock = TestCityControllers.clock)
+    )))))
+  private val service = new FilmDeepLinks(readModel, new MovieControllerService(readModel, clock = TestCityControllers.clock))
 
   "film" should "resolve a plainly-decoded title" in {
     service.film(Poznan, "Drugie życie").map(_.movie.title) shouldBe Some("Drugie życie")

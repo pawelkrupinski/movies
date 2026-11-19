@@ -32,7 +32,7 @@ final class CityRequests(messagesApi: MessagesApi,
   // copy client-side instead (`shared.js`'s `applyLanguage`, fed by the
   // language pack `I18nPacks` embeds), so the server never has to branch per
   // visitor and every plain city URL stays edge-cacheable unconditionally
-  // (see `MovieController.cacheablePlainPage`).
+  // (see `ListingResponse.cacheablePlainPage`).
   //
   // BARE ("pl", not "pl-PL"), NOT `Lang(servingCountry.language)` directly —
   // `messagesApi.preferred(...)` always normalises its result down to one

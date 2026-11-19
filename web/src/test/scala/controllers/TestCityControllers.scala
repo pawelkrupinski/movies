@@ -86,7 +86,7 @@ object TestCityControllers {
     val cc = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi)
     val cityRequests = new CityRequests(cc.messagesApi, servingCountry, readModel_, responseCache,
       now = () => service.now(), build = settings.CommitSha("unknown"))
-    val movie = new MovieController(
+    val movie = modules.webwiring.MovieControllerWiring.movieController(
       cc                     = cc,
       cityRequests           = cityRequests,
       movieControllerService = service,
@@ -97,7 +97,7 @@ object TestCityControllers {
       recordRender           = recordRender,
       filmCards              = filmCards,
     )
-    val filmPage = new FilmPageController(cc, cityRequests, service, oauthProviders = Set.empty, tools.Minifier.forMode(mode),
+    val filmPage = new FilmPageController(cc, cityRequests, new FilmDeepLinks(readModel_, service), oauthProviders = Set.empty, tools.Minifier.forMode(mode),
       pageTags, filmPageServed)
     TestCityControllers(movie, filmPage, new MovieApiController(cc, cityRequests, service),
       new CrawlerController(cc, cityRequests, CrawlerFiles.live(servingCountry, service, readModel_)),

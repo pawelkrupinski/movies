@@ -7,7 +7,8 @@ import play.api.mvc._
  *  the listing is ([[MovieController]]): no `UserRepository`, so no response can vary by session. */
 class FilmPageController(cc: ControllerComponents,
                          cityRequests: CityRequests,
-                         movieControllerService: MovieControllerService,
+                         // A film page's address resolved to its schedule, and its other cities' pages.
+                         filmLinks: FilmDeepLinks,
                          oauthProviders: Set[String],
                          // Rewrites the page's inline `<script>`/`<style>` blocks (`Minifier.forMode`).
                          minifier: tools.Minifier,
@@ -26,7 +27,7 @@ class FilmPageController(cc: ControllerComponents,
   /** The canonical film page, addressed by slug. */
   def filmBySlug(city: String, slug: String): Action[AnyContent] = Action { request =>
     withCity(city, request) { implicit c =>
-      movieControllerService.filmBySlug(c, slug) match {
+      filmLinks.filmBySlug(c, slug) match {
         // A slug that reached the film but is not its address — a former billing-title
         // address, or a stale fold the fallback re-slugged — 301s onto the address, so a
         // shared link keeps working and crawlers consolidate on one URL per film.
@@ -46,7 +47,7 @@ class FilmPageController(cc: ControllerComponents,
    *  slug and users land on the canonical address. */
   def film(city: String, title: String): Action[AnyContent] = Action { request =>
     withCity(city, request) { implicit c =>
-      movieControllerService.film(c, title) match {
+      filmLinks.film(c, title) match {
         // A title with no usable slug has no other address to offer, so it
         // renders here rather than 301-ing to itself.
         case Some(schedule) if schedule.slug.isDefined =>
@@ -62,11 +63,8 @@ class FilmPageController(cc: ControllerComponents,
     val meta = FilmPageMeta.of(schedule, request, c)
     // Sibling cities currently showing this same film — the cross-links a
     // near-duplicate per-city page needs so it isn't only reachable through
-    // the sitemap. See [[MovieControllerService.citiesShowing]].
-    val otherCities: Seq[(City, String)] =
-      movieControllerService
-        .citiesShowing(schedule, c)
-        .map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
+    // the sitemap.
+    val otherCities = filmLinks.otherCities(schedule, c)
     // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
     // the browser copy, bfcache works) replaces the `no-store` a signed-in render
     // used to need. It stops short of offering itself to a shared cache only

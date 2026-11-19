@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, FilmPageController, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, FilmPageController, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, PickerController, PickerFragments, SupportController, WellKnownController}
 
 /** ── The public site ───────────────────────────────────────────────────────
  *  The controllers a visitor (or the mobile apps) reach without signing in:
@@ -44,14 +44,16 @@ trait ControllersWiring { self: Wiring =>
   // deployment's language and the conditional GET over the shared gzip cache.
   lazy val cityRequests = new CityRequests(controllerComponents.messagesApi, country, webReadModel, encodedResponseCache,
     now = () => movieControllerService.now(), build = processConfiguration.commit)
-  lazy val movieController  = new MovieController(controllerComponents, cityRequests, movieControllerService, oauthProviders.keySet, environmentMode,
+  lazy val movieController: controllers.MovieController = MovieControllerWiring.movieController(controllerComponents, cityRequests, movieControllerService,
+    oauthProviders.keySet, environmentMode,
     minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,
     recordRender = webRenderMetrics.record)
   // The film pages, read per render like the listing.
-  lazy val filmPageController = new FilmPageController(controllerComponents, cityRequests, movieControllerService,
+  lazy val filmPageController = new FilmPageController(controllerComponents, cityRequests,
+    new controllers.FilmDeepLinks(webReadModel, movieControllerService),
     oauthProviders.keySet, minifier, pageTags = () => controllers.PageTags.from(processConfiguration),
     filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)))
   // The per-city JSON the mobile apps read (`/{city}/api/*`).

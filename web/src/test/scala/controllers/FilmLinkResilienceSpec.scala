@@ -26,14 +26,16 @@ class FilmLinkResilienceSpec extends AnyFlatSpec with Matchers {
     (title, Some(year), MovieRecord(data = Map[Source, SourceData](
       Rialto -> SourceData(title = Some(title), showtimes = Seq(Showtime(showAt, bookingUrl = None))))))
 
-  private def serviceOver(rows: (String, Option[Int], MovieRecord)*) =
-    new MovieControllerService(TestReadModel.fromRecords(rows), clock = TestCityControllers.clock)
+  private def serviceOver(rows: (String, Option[Int], MovieRecord)*) = {
+    val readModel = TestReadModel.fromRecords(rows)
+    new FilmDeepLinks(readModel, new MovieControllerService(readModel, clock = TestCityControllers.clock))
+  }
 
   private def serviceWith(showAt: LocalDateTime) = serviceOver(showing("Drugie życie", 2026, showAt))
 
   /** The fallback's log lines, as (level, message). */
   private def fallbackLog(body: => Unit): Seq[(Level, String)] =
-    LogCapture.capture(classOf[MovieControllerService].getName, Some(Level.INFO))(body)
+    LogCapture.capture(classOf[FilmDeepLinks].getName, Some(Level.INFO))(body)
       .filter(_.getFormattedMessage.startsWith("film deep-link"))
       .map(e => e.getLevel -> e.getFormattedMessage)
 

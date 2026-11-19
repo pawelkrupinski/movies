@@ -43,10 +43,10 @@ class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
 
   /** A warm service: one live lookup has built every memoised index, so what
    *  the counter sees afterwards is the per-request cost alone. */
-  private def warmService(): (MovieControllerService, CountingReadModel) = {
+  private def warmService(): (FilmDeepLinks, CountingReadModel) = {
     val readModel = new CountingReadModel(TestReadModel.store(records))
     readModel.reload()
-    val service = new MovieControllerService(readModel, clock = TestCityControllers.clock)
+    val service = new FilmDeepLinks(readModel, new MovieControllerService(readModel, clock = TestCityControllers.clock))
     service.film(Poznan, "Rocky 2").map(_.movie.title) shouldBe Some("Rocky 2")
     readModel.allMoviesCalls.set(0)
     readModel.movieCalls.set(0)

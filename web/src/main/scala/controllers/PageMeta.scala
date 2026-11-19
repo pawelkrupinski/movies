@@ -29,6 +29,11 @@ object PageMeta {
   def canonicalUrl(request: RequestHeader): String =
     origin(request) + request.uri
 
+  /** `https://kinowo.net/poznan/` — `city`'s bare listing on this request's origin: the canonical every
+   *  `?filter` variation, `/{city}/movies` and each browse facet folds back onto. */
+  def listingUrl(request: RequestHeader, city: models.City): String =
+    origin(request) + models.CityPath(city) + "/"
+
   /** `https://kinowo.net` — scheme + host without path/query.
    *  Reads `X-Forwarded-Proto` / `X-Forwarded-Host` directly — the
    *  `play.http.forwarded.trustedProxies` knob didn't make `request.secure`
