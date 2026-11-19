@@ -1,9 +1,6 @@
 package services.identity
 
-import services.movies.LatestTitleYear
-
-import models.{Cinema, CinemaMovie, Source, SourceData, ListingKey, ShowtimesDigest}
-import services.movies.{CinemaSlotBuilder, ScreeningTokens}
+import models.{Cinema, Source, SourceData, ListingKey, ShowtimesDigest}
 import services.titles.TitleNormalizer
 
 import IdentityProjectionPlan.{RowBatch, VenueGroup}
@@ -13,9 +10,7 @@ import IdentityProjectionPlan.{RowBatch, VenueGroup}
  *  is that draft's. `previousOf`: the films the scope's listings were on, whose stored slots a restarted worker's memo
  *  reuses. */
 private[identity] final class VenueSlotBuilds(index: ProjectionIndex, previousOf: Map[ListingKey, StoredFilmRef],
-                                              normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens,
-                                              rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
-                                              memo: VenueSlotMemo)(using LatestTitleYear) {
+                                              normalizer: TitleNormalizer, slotSource: VenueSlotSource, memo: VenueSlotMemo) {
   import index.storedById
 
   // Each stored film's venue slots by venue, worked out once per film, not once per venue of every film it lends a
@@ -24,9 +19,6 @@ private[identity] final class VenueSlotBuilds(index: ProjectionIndex, previousOf
   private def slotsByVenueOf(id: String): Map[Cinema, Seq[(Source, SourceData)]] = slotsByFilm.getOrElseUpdate(id,
     storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(stored => VenueSlots.byVenue(stored.record)))
 
-  val build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] =
-    // Over the whole index: a slot's prior is its representative listing's film's, whichever of the venue's listings that is.
-    (cinema, keys, rows) => VenueSlots.buildVenue(cinema, keys, rows, index.previousOf, storedById, normalizer, slots, tokens)
   private val venueSlots = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
 
   /** The lean slots of the venue group under `key`, once [[buildAll]] has put them in. */
@@ -50,14 +42,16 @@ private[identity] final class VenueSlotBuilds(index: ProjectionIndex, previousOf
   }
 
   private def buildBatch(batch: Seq[(Cinema, Seq[VenueGroup])]): Unit = {
-    val fetched = rowsOf(batch.map(_._1).toSet)
+    val fetched = slotSource.rowsOf(batch.map(_._1).toSet)
     batch.foreach { case (cinema, groups) =>
-      val rows = VenueSlots.rowsByKey(cinema, fetched.getOrElse(cinema, Nil), normalizer)
+      val rows = fetched.getOrElse(cinema, Map.empty)
       groups.foreach { group =>
-        val lean = build(cinema, group.rows.map(_.listing.key), rows).map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
+        // Over the whole index: a slot's prior is its representative listing's film's, whichever of the venue's listings that is.
+        val lean = slotSource.build(index, cinema, group.rows.map(_.listing.key), rows).map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
         venueSlots(group.key) = lean
         memo.store(group.key, lean, keep = VenueSlots.readAsListed(cinema, group.rows, rows, normalizer), writtenAs = Some(group.counter))
       }
     }
   }
 }
+

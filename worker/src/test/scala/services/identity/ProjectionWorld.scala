@@ -78,8 +78,9 @@ private[identity] final class ProjectionWorld(
     cache = cache, filmIds = filmIds,
     announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
     drafter = new services.identityadapters.ProjectionDrafter(
-      new ProjectionDrafts(normalizer, slots, ScreeningTokens.of(Country.Poland),
-        venues => { rowsRead ++= venues; intake.rowsOf(venues) })(using services.movies.LatestTitleYear(clock)),
+      { given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+        new ProjectionDrafts(normalizer, new VenueSlots.FromArchive(normalizer, slots, ScreeningTokens.of(Country.Poland),
+          venues => { rowsRead ++= venues; intake.rowsOf(venues) })) },
       normalizer, details, fingerprints, logger, slotMemoOf),
     // as the worker's: each take kept as the projection moves it (AsyncIdentityHistory writes takes before it returns),
     // the reversal count seeded from them at construction

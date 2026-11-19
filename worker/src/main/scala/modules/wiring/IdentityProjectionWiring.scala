@@ -56,9 +56,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filmIds     = filmIdCounterStore,
       announce    = movieService.announceReidentified,
       drafter     = new services.identityadapters.ProjectionDrafter(
-        new services.identity.ProjectionDrafts(titleNormalizer,
-          new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens,
-          identityListingIntake.rowsOf)(using services.movies.LatestTitleYear(clock)),
+        { given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+          new services.identity.ProjectionDrafts(titleNormalizer, new services.identity.VenueSlots.FromArchive(titleNormalizer,
+            new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens, identityListingIntake.rowsOf)) },
         titleNormalizer, movieService.withFilmDetails, venueSlotFingerprints, logger),
       takeReports = new services.identityadapters.ProjectionTakeReports(metrics,
         changeFeed = { val projections = new java.util.concurrent.atomic.AtomicLong

@@ -30,11 +30,19 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
   private val sorting = new StagingSort(waitingOn, keyOf)
   private val resolutions = new StagedResolutions(new StagedChanges(clusterKey))
 
+  /** What a publish reads its takes against: each listing's facts as a change carried them, else as the projection last
+   *  read them, walked only when asked. */
+  private def readingOf(resolution: Resolution, changed: Seq[StagingEvent.Changed]): StagingReading = {
+    val carried = changed.iterator.flatMap(c => c.change.published.map(c.change.listing -> _)).toMap
+    lazy val lastRead = read().map(l => l.key -> l).toMap
+    new StagingReading(resolution, storedFilm, key => carried.get(key).orElse(lastRead.get(key)).fold(Nil)(StagedEvidence.listing))
+  }
+
   /** The snapshot of `resolution`, against `wasStaging` (what the last publish left in the store, by key), over `events`
    *  (those since the last written publish), at `now`; `dropped`: the events let go since the last written beat. */
   def of(resolution: Resolution, wasStaging: Map[String, StagedCluster], events: Vector[StagingEvent], now: Long, dropped: Long): Snapshot = {
     val digest  = StagingSort.EventDigest.of(events)
-    val reading = StagingReadings.of(resolution, digest.changed, storedFilm, read)
+    val reading = readingOf(resolution, digest.changed)
     val sorted  = sorting(resolution, wasStaging, digest)
     // every question this tick shows, its last ask's outcome read from the memory at once
     val resolvedQuestions = wasStaging.valuesIterator.flatMap(_.questions).flatMap(q => Question.parse(q.text)).toSet

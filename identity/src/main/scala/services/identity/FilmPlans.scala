@@ -1,7 +1,6 @@
 package services.identity
 
 import models.{Cinema, ListingKey}
-import services.movies.CinemaSlotBuilder
 
 import IdentityProjectionPlan.VenueGroup
 
@@ -9,7 +8,7 @@ import IdentityProjectionPlan.VenueGroup
  *  groups, kept from its last draft ([[FilmShapes]]) where nothing they are built from moved — of a scoped draft, whose
  *  `changed` listings say what did — else worked out. */
 private[identity] final class FilmPlans(index: ProjectionIndex, scope: ProjectionScope, shapes: FilmShapes,
-                                        slots: CinemaSlotBuilder, changed: Set[ListingKey], assigned: IdAssigner.Assignment) {
+                                        slotSource: VenueSlotSource, changed: Set[ListingKey], assigned: IdAssigner.Assignment) {
   import index.{byKey, storedById, covered}
   import FilmPlans.{Planned, PlannedGroup}
 
@@ -19,7 +18,7 @@ private[identity] final class FilmPlans(index: ProjectionIndex, scope: Projectio
   private def priorsAt(cinema: Cinema, previous: Seq[Option[String]]): Seq[Int] =
     previous.flatten.distinct.sorted.map(id => priorsOf(id).getOrElse(cinema, 0))
   // What the venue's pages for these listings said when last read: a slot carries its page-written detail from them.
-  private def pagesAt(cinema: Cinema, keys: Seq[ListingKey]): Int = slots.pages.digest(cinema, keys)
+  private def pagesAt(cinema: Cinema, keys: Seq[ListingKey]): Int = slotSource.pagesDigest(cinema, keys)
   private def groupOf(cinema: Cinema, ofVenue: Seq[ProjectedListing], counter: Long): PlannedGroup = {
     // The prior slots any of these rows' previous films held at the venue: a superset of the one each built
     // slot carries forward, so a change to any of them is a change to the key — and which film each row is on,

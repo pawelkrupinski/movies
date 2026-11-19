@@ -192,7 +192,19 @@ object VenueSlotMemo {
 
 
 /** How one film's slots at one venue are built from the venue's rows ([[IdentityProjectionPlan.draftOf]]). */
-private[identity] object VenueSlots {
+object VenueSlots {
+  /** The projection's [[VenueSlotSource]] over the venues' rows as the scrape archive holds them (`rows`, read a batch of
+   *  venues at a time): keyed by `normalizer` ([[rowsByKey]]), a film's slots built by `slots` and `tokens`
+   *  ([[buildVenue]]). */
+  final class FromArchive(normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens,
+                          rows: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]])(using LatestTitleYear) extends VenueSlotSource {
+    private[identity] def rowsOf(cinemas: Set[Cinema]): Map[Cinema, VenueRows] =
+      rows(cinemas).map { case (cinema, fetched) => cinema -> rowsByKey(cinema, fetched, normalizer) }
+    private[identity] def build(index: ProjectionIndex, cinema: Cinema, keys: Seq[ListingKey], byKey: VenueRows): Seq[(Source, SourceData)] =
+      buildVenue(cinema, keys, byKey, index.previousOf, index.storedById, normalizer, slots, tokens)
+    private[identity] def pagesDigest(cinema: Cinema, keys: Seq[ListingKey]): Int = slots.pages.digest(cinema, keys)
+  }
+
   /** A venue's rows now, by the listing key each is published under: grouped once per venue a projection reads, for
    *  every film it builds there — grouped once per film, a venue with many changed films regrouped its whole programme
    *  for each. */

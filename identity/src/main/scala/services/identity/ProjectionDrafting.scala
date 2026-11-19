@@ -2,10 +2,8 @@ package services.identity
 
 import models.FilmId
 
-import services.movies.LatestTitleYear
 
-import models.{Cinema, CinemaMovie, ListingKey}
-import services.movies.{CinemaSlotBuilder, ScreeningTokens}
+import models.ListingKey
 import services.titles.TitleNormalizer
 
 /** One run of [[IdentityProjectionPlan.draftOf]]: the drafts of the films `scope` names over `index`, worked out in its
@@ -13,9 +11,8 @@ import services.titles.TitleNormalizer
  *  ([[VenueSlotBuilds]]), each film's record ([[FilmRecordDrafts]]) and the projection's draft as a whole ([[projectionDraft]]).
  *  The mutable state a run reads and writes — the memo of venue slots, the films' shapes — is written in that order. */
 private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer,
-                                                 slots: CinemaSlotBuilder, tokens: ScreeningTokens,
-                                                 rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo,
-                                                 shapes: FilmShapes, changed: Set[ListingKey])(using LatestTitleYear) {
+                                                 slotSource: VenueSlotSource, memo: VenueSlotMemo,
+                                                 shapes: FilmShapes, changed: Set[ListingKey]) {
   import index.covered
   import FilmPlans.Planned
 
@@ -34,7 +31,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
   // 3. Each film's record. Its venue slots are LEAN, each venue's from the memo when nothing it is built from
   // moved, else built from the venue's rows, read a batch of venues at a time and let go ([[VenueSlotBuilds]]); the
   // record over them ([[FilmRecordDrafts]]).
-  private val venueSlots = new VenueSlotBuilds(index, previousOf, normalizer, slots, tokens, rowsOf, memo)
+  private val venueSlots = new VenueSlotBuilds(index, previousOf, normalizer, slotSource, memo)
   private val records    = new FilmRecordDrafts(index, within, shapes, normalizer, venueSlots, previousIdOf)
   /** The projection's draft of `planned` films drafted as `drafts`: the films retired and the regroupings. */
   private def projectionDraft(planned: Seq[Planned], drafts: Seq[FilmDraft]): ProjectionDraft = {
@@ -48,7 +45,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     val retired = stored.map(_.id).filterNot(kept).distinct.sortBy(_.value)
 
     ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions,
-      regroupings(drafts, retired), venues, venueSlots.build, rowsOf, VenueSlots.rowsByKey(_, _, normalizer))
+      regroupings(drafts, retired), venues)
   }
 
   private def regroupings(drafts: Seq[FilmDraft], retired: Seq[FilmId]): Regroupings = {
@@ -63,7 +60,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
 
   /** The draft: plan every film, build the venue slots the plans need, then draft each film's record. */
   def draft: ProjectionDraft = {
-    val planned = new FilmPlans(index, scope, shapes, slots, changed, assigned).all
+    val planned = new FilmPlans(index, scope, shapes, slotSource, changed, assigned).all
     venueSlots.buildAll(planned.flatMap(_.groups.collect { case (_, Left(venue)) => venue }),
       planned.flatMap(_.groups.collect { case (_, Right((group, _, _))) => group }))
     projectionDraft(planned, planned.map(records.filmDraftOf))

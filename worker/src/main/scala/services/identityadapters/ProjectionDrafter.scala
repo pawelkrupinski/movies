@@ -18,6 +18,8 @@ final class ProjectionDrafter(drafts: ProjectionDrafts, normalizer: TitleNormali
                               logger: play.api.Logger,
                               /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
                               slotMemoOf: Long => VenueSlotMemo = new VenueSlotMemo(_)) {
+  /** How the drafts' venue slots are built in full: what the write completes a draft by. */
+  def slotSource: VenueSlotSource = drafts.slotSource
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))
   /** Each film as last drafted, so a scoped projection works out only the venues of a film that moved. */

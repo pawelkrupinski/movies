@@ -84,6 +84,7 @@ object IdentityDraftBench {
       ProjectedListing.of(if (adopt) modelled.get(fresh.key).filter(_ == fresh).getOrElse(fresh) else fresh, row)
     }
     val rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = vs => rows.toSeq.collect { case ((_, c), row) if vs(c) => c -> row }.groupMap(_._1)(_._2)
+    val slotSource = new VenueSlots.FromArchive(normalizer, slots, tokens, rowsOf)
     val byFilm = modelled.values.toSeq.groupBy(_.rawTitle)
     // As the identity model holds them after a restart: each film's family decoded from its store (keys and node texts
     // of their own), then — unless `decoded` is given, as before 2026-10-05 — named by the held listings' key objects
@@ -154,7 +155,7 @@ object IdentityDraftBench {
       }
       val (scope, scopeS, scopeMB) = timed(if (!lastOk || !scoped) ProjectionScope.Whole else
         ProjectionScope.close(index, changes ++ ProjectionScope.standing(index)))
-      val (undetailed, draftS, draftMB) = timed(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, rowsOf, memo,
+      val (undetailed, draftS, draftMB) = timed(IdentityProjectionPlan.draftOf(index, scope, normalizer, slotSource, memo,
         shapes, changes.listings))
       // As the projection's details fetch: a film new to its record gets TMDB's details, once.
       val draft = undetailed.copy(drafts = undetailed.drafts.map(d => d.needsDetails.fold(d)(film =>
@@ -164,7 +165,7 @@ object IdentityDraftBench {
         val plan = FilmKeys.finish(draft, normalizer, stored.contains)
         // As ProjectionWrite: only the films that differ from the stored (lean) records are completed.
         val changed = draft.complete(plan.films.filter(f => stored.get(f.id).forall(s =>
-          s.key(normalizer) != f.key || !models.ShowtimesDigest.leanEqual(f.record, s.record))), id => stored.get(id).map(_.record))
+          s.key(normalizer) != f.key || !models.ShowtimesDigest.leanEqual(f.record, s.record))), id => stored.get(id).map(_.record), index, slotSource)
         (plan, changed)
       }
       val size = if (scope.whole) "whole" else s"${scope.films.size} films/${scope.listings.size} listings"

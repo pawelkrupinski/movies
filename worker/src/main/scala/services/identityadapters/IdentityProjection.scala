@@ -157,7 +157,7 @@ final class IdentityProjection(
   private given LatestTitleYear = LatestTitleYear(clock)
 
   private val mapping = new FilmIdMapping(filmIds)
-  private val writer  = new ProjectionWrite(cache, filmIds, announce, normalizer, metrics, agreementBacklog, logger)
+  private val writer  = new ProjectionWrite(cache, filmIds, announce, normalizer, drafter.slotSource, metrics, agreementBacklog, logger)
   private val drift   = new ProjectionDrift(normalizer, metrics, logger)
   private var consecutiveShrinks = 0
 
@@ -349,7 +349,7 @@ final class IdentityProjection(
   private def writePlanned(run: Run, counters: FilmIdCounters, p: IdentityProjection.Planned,
                            scopeStored: Seq[StoredMovieRecord]): ProjectionTick = {
     val films = run.stored.size - scopeStored.size + p.plan.films.size
-    val tick  = writer(p.resolution, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
+    val tick  = writer(p.resolution, p.index, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
       movedElsewhere = p.changes.fold(Set.empty[String])(_.films))
     // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
     // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one

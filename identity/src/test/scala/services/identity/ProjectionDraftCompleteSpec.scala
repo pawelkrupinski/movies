@@ -6,6 +6,7 @@ import models.{Cinema, CinemaShowing, Helios, KinoApollo, KinoMuza, MovieRecord,
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
+import tools.SpecClock.given
 import java.time.LocalDateTime
 
 class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {
@@ -29,9 +30,16 @@ class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {
     val film    = ProjectedFilm(FilmId("diuna|2021"), 1L, "Diuna", Some(2021), "diuna|2021",
       MovieRecord(tmdbId = Some(438631), data = cinemas.map(c => at(c) -> slot(18)).toMap + (Tmdb -> SourceData(title = Some("Dune"), cast = cast))), Nil)
     val draft   = ProjectionDraft(Nil, Nil, Nil, FilmIdCounters.empty, Nil, Regroupings(0, 0, 0, 0, 0),
-      venues = Map(1L -> cinemas.map(_ -> Nil).toMap), build = (cinema, _, _) => Seq(at(cinema) -> slot(20)))
+      venues = Map(1L -> cinemas.map(_ -> Nil).toMap))
+    val slotSource = new VenueSlotSource {
+      private[identity] def rowsOf(cinemas: Set[Cinema]) = Map.empty
+      private[identity] def build(index: ProjectionIndex, cinema: Cinema, keys: Seq[models.ListingKey], rows: Map[models.ListingKey, Seq[models.CinemaMovie]]) =
+        Seq(at(cinema) -> slot(20))
+      private[identity] def pagesDigest(cinema: Cinema, keys: Seq[models.ListingKey]) = 0
+    }
 
-    val Seq(completed) = draft.complete(Seq(film), _ => None)
+    val Seq(completed) = draft.complete(Seq(film), _ => None, ProjectionIndexing.index(Nil, Resolution.ofModel(Nil, 0, Map.empty), Nil, FilmIdCounters.empty,
+      SingleCountryNormalizer.titleNormalizer), slotSource)
 
     cinemas.map(c => completed.record.data(at(c))) shouldBe cinemas.map(_ => slot(20))
     cast.reads shouldBe 0

@@ -12,10 +12,10 @@ import scala.util.Try
 import scala.util.chaining.scalaUtilChainingOps
 
 /** The write of one planned projection ([[IdentityProjection]]): the FilmId map extended, the films that changed
- *  completed and written, the ids no film carries retired, a film newly identified announced, and the projection
+ *  completed (their venue slots built in full by `rebuild` over the projection's index) and written, the ids no film carries retired, a film newly identified announced, and the projection
  *  counted and logged. Logs under the projection's `logger`. */
 private[services] final class ProjectionWrite(cache: MovieCache, filmIds: FilmIdCounterStore, announce: (CacheKey, MovieRecord) => Unit,
-                                              normalizer: TitleNormalizer, metrics: IdentityProjectionMetrics,
+                                              normalizer: TitleNormalizer, slotSource: VenueSlotSource, metrics: IdentityProjectionMetrics,
                                               agreementBacklog: () => Boolean, logger: play.api.Logger) {
   private val writes = new ProjectedFilmWrites(cache, logger)
 
@@ -28,7 +28,7 @@ private[services] final class ProjectionWrite(cache: MovieCache, filmIds: FilmId
    *  holds parked: what the index holds as written. */
   def written(changed: Seq[ProjectedFilm]): Seq[ProjectedFilm] = changed.filterNot(f => lastUnwritten(f.id)) ++ lastParked
 
-  def apply(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
+  def apply(resolution: Resolution, index: ProjectionIndex, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
             films: Int, started: tools.Stopwatch.Started,
             phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String]): ProjectionTick = {
     val before    = stored.map(r => r.id -> r).toMap
@@ -44,7 +44,7 @@ private[services] final class ProjectionWrite(cache: MovieCache, filmIds: FilmId
     // and a film whose built slots are the ones stored moved nothing. Written, every hourly projection rewrote it as it
     // was and counted it as drift — "(key)", nothing of it named — where a scoped one left it (prod PL, 2026-10-27).
     val (changed, unmoved) = phases("compare")(drafted.filter(moved)
-      .pipe(films => detailed.complete(films, id => before.get(id).map(_.record))).partition(moved))
+      .pipe(films => detailed.complete(films, id => before.get(id).map(_.record), index, slotSource)).partition(moved))
     if (unmoved.nonEmpty) warnUnbuilt(unmoved, drafted)
     // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.

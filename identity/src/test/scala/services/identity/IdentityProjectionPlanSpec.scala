@@ -28,7 +28,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
                          tokens: ScreeningTokens, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
                          memo: VenueSlotMemo = VenueSlotMemo.none): ProjectionDraft = {
     val whole = ProjectionIndexing.index(listings, resolution, stored, counters, normalizer)
-    IdentityProjectionPlan.draftOf(whole, whole.everything, normalizer, slots, tokens, rowsOf, memo)
+    IdentityProjectionPlan.draftOf(whole, whole.everything, normalizer, new VenueSlots.FromArchive(normalizer, slots, tokens, rowsOf), memo)
   }
   private val start      = LocalDateTime.of(2026, 9, 27, 18, 0)
 
@@ -69,7 +69,8 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
                    counters: FilmIdCounters = FilmIdCounters.empty, slots: CinemaSlotBuilder = slots): ProjectionPlan = {
     val d = draftWhole(listings, r, stored, counters, normalizer, slots, tokens, rowsOf(listings))
     val p = FilmKeys.finish(d, normalizer, id => stored.exists(_.id == id))
-    p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
+    p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record),
+      ProjectionIndexing.index(listings, r, stored, counters, normalizer), new VenueSlots.FromArchive(normalizer, slots, tokens, rowsOf(listings))))
   }
 
   private def storedOf(p: ProjectionPlan): Seq[StoredMovieRecord] =
@@ -160,7 +161,8 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val shapes = FilmShapes()
     def drafted(stored: Seq[StoredMovieRecord], counters: FilmIdCounters) = {
       val index = ProjectionIndexing.index(lalka ++ obcy, r, stored, counters, normalizer)
-      val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo, shapes)
+      val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer,
+        new VenueSlots.FromArchive(normalizer, slots, tokens, rowsOf(lalka ++ obcy)), memo, shapes)
       memo.endTick(); shapes.commit(whole = true); d
     }
     val first     = drafted(Nil, FilmIdCounters.empty)

@@ -2,10 +2,8 @@ package services.identity
 
 import models.{FilmId, LeanRecords}
 
-import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey}
-import services.movies.{CinemaSlotBuilder, ScreeningTokens}
 import services.titles.TitleNormalizer
 import models.TmdbAttempt
 
@@ -14,7 +12,7 @@ import java.time.Instant
 /** One listing a venue publishes: the resolver's view of it, and digests of the row as scraped — of everything but
  *  its showtimes (`row`), and of its showtimes. A US projection held every listing's row and showtimes (1.7M, ~560 MB
  *  live) through each tick to build the slots of the few films that changed; a slot that must be built reads its
- *  venue's rows again (`IdentityProjectionPlan.draftOf`'s `rowsOf`), a batch of venues at a time. */
+ *  venue's rows again ([[VenueSlotSource.rowsOf]]), a batch of venues at a time. */
 final case class ProjectedListing(listing: Listing, row: Int, showtimes: Int)
 
 object ProjectedListing {
@@ -66,12 +64,7 @@ final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: O
  *  map extended over the previous films, and the regroupings. */
 final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
                                  additions: Seq[FilmIdCounter], regroupings: Regroupings,
-                                 venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
-                                 build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
-                                 rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
-                                 // A venue's rows by the key each listing is published under (`VenueSlots.rowsByKey`, which
-                                 // needs the drafting's normalizer); none without `rowsOf`'s rows.
-                                 keyRows: (Cinema, Seq[CinemaMovie]) => VenueSlots.VenueRows = (_, _) => Map.empty) {
+                                 venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty) {
   /** This draft over `films` in place of its drafts: the same retirements, map and venues. */
   def withDrafts(films: Seq[FilmDraft]): ProjectionDraft = copy(drafts = films)
 
@@ -79,8 +72,10 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
    *  only their digest and starts — enough to compare and guard by); a venue whose lean slot differs from the stored
    *  one is built in full from its rows, read a batch of venues at a time. One that matches a stored slot kept
    *  stripped is written lean — the write re-stitches a stripped slot from the stored screenings, which are its
-   *  own — so a film at hundreds of venues that changed at one rebuilds that one. */
-  def complete(films: Seq[ProjectedFilm], stored: FilmId => Option[MovieRecord]): Seq[ProjectedFilm] = {
+   *  own — so a film at hundreds of venues that changed at one rebuilds that one. Built by `rebuild` over the `index`
+   *  the draft was drafted over: the draft holds no behaviour of its own. */
+  def complete(films: Seq[ProjectedFilm], stored: FilmId => Option[MovieRecord], index: ProjectionIndex,
+               slotSource: VenueSlotSource): Seq[ProjectedFilm] = {
     val wanted = films.map { film =>
       // Of a film whose untouched slots are the ones written last ([[ProjectedFilm.touched]]), only the touched can differ.
       val slots = film.touched.fold(film.record.data.iterator)(_.iterator.flatMap(s => film.record.data.get(s).map(s -> _)))
@@ -94,11 +89,11 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
     // a set of the films: a film hashes its whole record, a wide release's thousands of slots.
     val filmsAt = wanted.flatMap { case (film, differing) => differing.iterator.map(_ -> film) }.groupMap(_._1)(_._2)
     filmsAt.keys.toSeq.sortBy(_.displayName).grouped(IdentityProjectionPlan.RowBatch).foreach { batch =>
-      val rows = rowsOf(batch.toSet)
+      val rows = slotSource.rowsOf(batch.toSet)
       batch.foreach { cinema =>
-        val byKey = keyRows(cinema, rows.getOrElse(cinema, Nil))
+        val byKey = rows.getOrElse(cinema, Map.empty)
         filmsAt(cinema).foreach { film =>
-          built((film.counter, cinema)) = build(cinema, venues.getOrElse(film.counter, Map.empty).getOrElse(cinema, Nil), byKey)
+          built((film.counter, cinema)) = slotSource.build(index, cinema, venues.getOrElse(film.counter, Map.empty).getOrElse(cinema, Nil), byKey)
         }
       }
     }
@@ -153,11 +148,10 @@ object IdentityProjectionPlan {
   /** The drafts of the films `scope` names — every film of the corpus, or the ones a tick's changes reach, closed over
    *  everything that couples one film's draft to another's ([[ProjectionScope]]) — over `index`. Drafting a scope so
    *  closed gives each of its films exactly the draft the whole corpus would. */
-  def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
-              tokens: ScreeningTokens, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
+  def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slotSource: VenueSlotSource,
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
-              changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft =
-    new ProjectionDrafting(index, scope, normalizer, slots, tokens, rowsOf, memo, shapes, changed).draft
+              changed: Set[ListingKey] = Set.empty): ProjectionDraft =
+    new ProjectionDrafting(index, scope, normalizer, slotSource, memo, shapes, changed).draft
 
   /** How many venues' rows a projection reads at once to build their slots: a batch's rows are let go before the next. */
   private[identity] val RowBatch = 200
