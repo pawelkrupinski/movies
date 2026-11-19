@@ -115,13 +115,21 @@ linux_build() {
         return 0
     fi
     log "swift build --build-tests on Linux (swift:6.2, as ios.yml)"
-    # The sources read-only; the build products in a named volume, so a Linux .build never
-    # lands in ios/.build next to the Mac one.
-    built linux "the package compiles on Linux" 'error:' docker run --rm \
-        -v "$PWD/ios:/src:ro" \
+    # The sources (tracked and untracked, never ignored: no Mac ios/.build) come in on stdin and are unpacked at /src,
+    # not mounted: Rancher Desktop's VM keeps a host descriptor for every file and directory a container saw through
+    # the shared home, the worktree deleted or not (run-script-tests' linux_tree_slot says what that cost). The build
+    # products in a named volume, so a Linux .build never lands in ios/.build next to the Mac one.
+    local sources status=0
+    sources="$(mktemp "${TMPDIR:-/tmp}/ios-compile-check-sources.XXXXXX")" || return 1
+    git ls-files -z --cached --others --exclude-standard -- ios \
+        | COPYFILE_DISABLE=1 tar --no-xattrs --null -T - -cf "$sources" || { rm -f "$sources"; return 1; }
+    built linux "the package compiles on Linux" 'error:' docker run --rm -i \
         -v kinowo-ios-linux6-build:/scratch \
         swift:6.2 \
-        swift build --build-tests --package-path /src --scratch-path /scratch
+        sh -c 'mkdir -p /src && tar -xf - -C /src --strip-components=1 && exec swift build --build-tests --package-path /src --scratch-path /scratch' \
+        < "$sources" || status=$?
+    rm -f "$sources"
+    return "$status"
 }
 
 case "$mode" in

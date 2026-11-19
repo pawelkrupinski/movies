@@ -18,6 +18,7 @@ for tool in xcodebuild swift docker; do
 #!/usr/bin/env bash
 case "\$1" in -version|--version|info) [ "\${STUB_MISSING:-}" != $tool ]; exit ;; esac
 echo "$tool: compiling"
+[ $tool != docker ] || [ -z "\${STUB_RECORD:-}" ] || { echo "\$*" > "\$STUB_RECORD.args"; case " \$* " in *" -i "*) cat ;; esac > "\$STUB_RECORD.stdin"; }
 [ "\${STUB_WARN:-}" = $tool ] && printf '%b\\n' "\$STUB_WARNING"
 [ "\${STUB_FAIL:-}" = $tool ] && { echo "Foo.swift:1: error: no such thing"; exit 65; }
 exit 0
@@ -33,6 +34,14 @@ compile; code=$?
 check "all three compile: exit 0, each said" "0 yes yes yes" \
   "$code $(said 'app target compiles') $(said 'compiles on the Mac') $(said 'compiles on Linux')"
 check "...and no build output is left behind" "0" "$(left)"
+
+# the sources come in on the container's stdin, never a mount: Rancher's VM keeps a host descriptor for every file and
+# directory a container saw through the shared home, the worktree deleted or not (run-script-tests' linux_tree_slot)
+(cd "$REPO_ROOT" && STUB_RECORD="$work/docker" compile --linux-only)
+check "the Linux build: the sources on its stdin, no host directory mounted" "1 0 yes" \
+  "$(grep -c -- '^run --rm -i ' "$work/docker.args") $(grep -c -- '-v [^ ]*/ios:' "$work/docker.args") \
+$(tar -tf "$work/docker.stdin" | grep -qx 'ios/Package.swift' && echo yes || echo no)"
+check "...unpacked at /src before the build" "1" "$(grep -c -- 'tar -xf - -C /src --strip-components=1 .*--package-path /src' "$work/docker.args")"
 
 STUB_FAIL=docker compile; code=$?
 check "the Linux build failing: exit 1, its errors shown" "1 yes" "$code $(grep -q 'error: no such thing' "$work/out" && echo yes || echo no)"
