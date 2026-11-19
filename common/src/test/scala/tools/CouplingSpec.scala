@@ -107,7 +107,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
 
   "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
     Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
-      "limit\tfanout\t2", "limit\tfanout-measure\t3", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
+      "limit\tfanout\t2", "limit\tfanout-measure\t4", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
@@ -181,34 +181,12 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.fanOutLimit("services.identity.IdentityResolver", 9) shouldBe Some(9)
     table.distanceLimit("services.movies", 20) shouldBe Some(20)
     table.contractsOf("services.cinemas.pl.HeliosClient").map(c => c._1 -> c._2.size) shouldBe Seq("scrape" -> 12)
-    table.contractsOf("services.identity.IdentityResolver").map(c => c._1 -> c._2.size) shouldBe Seq("resolver-vocabulary" -> 8)
+    table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
-  "the resolver vocabulary contract" should "be one dependency of the resolver core alone, never of the projection, the measures or the agreement stage" in {
+  "the resolver vocabulary and projection contracts" should "be gone: under the collaborators-only count every member was data, or a lone collaborator" in {
     val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    table.contracts.find(_._1 == "resolver-vocabulary").map(_._3.toSet) shouldBe Some(Set("services.identity.Listing", "models.ListingKey",
-      "services.identity.EvidenceNode", "services.identity.Evidence", "services.identity.Candidate", "services.identity.CandidateQuery",
-      "services.identity.Scored", "services.identity.Denial"))
-    Seq("services.identity.FamilyScope", "services.identity.ConstraintEdges", "services.identity.IncrementalResolver")
-      .map(table.contractsOf(_).map(_._1)) shouldBe Seq(Seq("resolver-vocabulary"), Seq("resolver-vocabulary"), Seq("resolver-vocabulary"))
-    Seq("services.identity.ProjectionDrafting", "services.identity.IdentityMeasures", "services.identity.agreement.Agreement",
-      "services.identityadapters.IdentityProjection").flatMap(table.contractsOf).map(_._1) should not contain "resolver-vocabulary"
-  }
-
-  "the projection contract" should "be one dependency of the identity projection alone, never of the resolver core, the measures, the agreement stage or the other adapters" in {
-    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    table.contracts.find(_._1 == "projection").map(_._3.toSet) shouldBe Some(Set("services.identity.ProjectionIndex",
-      "services.identity.ProjectionScope", "services.identity.ProjectedListing", "services.identity.FilmDraft",
-      "services.identity.ProjectedFilm", "services.identity.ProjectionPlan", "services.identity.Regroupings"))
-    val users = Seq("services.identityadapters.IdentityProjection", "services.identityadapters.ProjectionWrite",
-      "services.identityadapters.ProjectionDrift", "services.identity.ProjectionDrafting", "services.identity.FilmRecordDrafts",
-      "services.identity.FilmPlans", "services.identity.VenueSlotBuilds", "services.identity.FilmKeys",
-      "services.identity.ProjectionDrafts", "services.identity.StoredFilmListings")
-    users.map(table.contractsOf(_).map(_._1)) shouldBe users.map(_ => Seq("projection"))
-    Seq("services.identity.IdentityResolver", "services.identity.IncrementalResolver", "services.identity.IdentityMeasures",
-      "services.identity.agreement.Agreement", "services.identity.IdentityListingIntake",
-      "services.identityadapters.IdentityAgreementMetrics", "services.identityadapters.IdentityProjectionMetrics")
-      .flatMap(table.contractsOf).map(_._1) should not contain "projection"
+    table.contracts.map(_._1) should contain noneOf ("resolver-vocabulary", "projection")
   }
 
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {
@@ -408,6 +386,107 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val corrected = Coupling.withoutImportCharge(zinc, tally, uses(tally), importTops.values.toSet)
     corrected shouldBe Set(booking -> venue, ledger -> listing, tally -> listing, tally -> showtimes)
     Coupling.fans(Graph(Seq(booking, ledger, tally, venue, listing, showtimes).map(n => t(n)), corrected))(tally)._2 shouldBe 2
+  }
+
+  // ── data or collaborator (Coupling.Collaborators: the fixture's class files, couplingfixture/kinds/Kinds.scala) ──
+
+  private val kinds = s"$fixture.kinds"
+  private val kindNames = Seq("Point", "Origin", "Colour", "Figure", "Circle", "Blank", "Slug", "Units", "Score", "Celsius", "NotFound",
+    "Booking", "Title", "Stamp", "Counter", "Memo", "Env", "Draft", "YearCap", "Normalizer", "Store", "MapStore", "Port", "Rule",
+    "EmptyRule", "Wiring", "Tickets", "Source", "Fixed", "Live", "Node", "Numbering")
+  private lazy val kindReasons: Map[String, String] =
+    Coupling.Collaborators.classify(compiled(kinds), Coupling.foldBinary(_, tops(kinds, kindNames*))).map { case (k, v) => k.stripPrefix(s"$kinds.") -> v }
+
+  "a data type" should "be a case class or object, an enum, a sealed data hierarchy, a value class, an exception, a record-like class or an object of pure functions" in {
+    Seq("Point", "Origin", "Colour", "Figure", "Circle", "Blank", "Slug", "Units", "Score", "Celsius", "NotFound", "Node")
+      .filter(kindReasons.contains) shouldBe empty
+  }
+
+  it should "include a pure strategy: an object of pure functions implementing a trait, and so the trait" in {
+    Seq("Rule", "EmptyRule").filter(kindReasons.contains) shouldBe empty
+  }
+
+  it should "stay data holding data, with a lazy val of its fields, and with a method taking a collaborator (its caller counts that)" in {
+    Seq("Booking", "Title", "Stamp").filter(kindReasons.contains) shouldBe empty
+  }
+
+  "a collaborator" should "be a type holding state: a var, a field written after construction, a mutable collection, a clock" in {
+    kindReasons("Counter") shouldBe s"state: $kinds.Counter$$.count"
+    kindReasons("Memo") should startWith("state:")
+    kindReasons("Normalizer") shouldBe s"state: $kinds.Normalizer.last" // TitleNormalizer's memo caches
+    kindReasons("YearCap") shouldBe s"state: $kinds.YearCap.clock" // LatestTitleYear's clock
+  }
+
+  it should "be a type reading the world, and a case class carrying a closure" in {
+    kindReasons("Env") shouldBe s"effect: $kinds.Env$$ calls java.util.UUID#randomUUID"
+    kindReasons("Draft") shouldBe s"behaviour: $kinds.Draft.rowsOf is a function" // ProjectionDraft's closures, which read the store
+  }
+
+  it should "be an interface: a trait implemented by a collaborator, or by nothing" in {
+    kindReasons("Store") shouldBe s"implemented by $kinds.MapStore"
+    kindReasons("MapStore") should startWith("state:")
+    kindReasons("Port") shouldBe s"an interface: $kinds.Port has no implementation"
+  }
+
+  it should "be a type holding a collaborator, reading an object that reads the world, or a hierarchy one of whose implementations is one" in {
+    kindReasons("Wiring") should startWith("holds")
+    kindReasons("Tickets") shouldBe s"reads the object $kinds.Env$$, which reaches java.util.UUID#randomUUID"
+    kindReasons.keySet should not contain "Numbering" // Counter's var is Counter's state, not its reader's
+    kindReasons("Source") shouldBe s"implemented by $kinds.Live"
+    kindReasons.keySet should not contain "Fixed"
+  }
+
+  "a use of a nested type" should "be judged by that type: a nested data type no coupling, a call of its object's own function one" in {
+    val nested = s"$fixture.nested"
+    // binary name -> named type (a nested one by itself, an object apart from its class: Coupling.Collaborators.unitOf)
+    val unitOfBinary = Map(s"$nested.Measures$$" -> "Measures", s"$nested.Measures$$Film" -> "Measures.Film", s"$nested.Measures$$Film$$" -> "Measures.Film",
+      s"$nested.FilmCount" -> "FilmCount", s"$nested.Relating" -> "Relating").map { case (b, n) => b -> Coupling.Collaborators.unitOf(b, s"$nested.$n") }
+    unitOfBinary(s"$nested.Measures$$Film$$") shouldBe s"$nested.Measures.Film$$"
+    val topOf = (u: String) => if (u.contains(".Measures")) s"$nested.Measures" else u.stripSuffix("$")
+    val topOfBinary = unitOfBinary.map { case (b, u) => b -> topOf(u) }
+    val classes = compiled(nested)
+    val reasons = Coupling.Collaborators.classify(classes, Coupling.foldBinary(_, unitOfBinary))
+    reasons(s"$nested.Measures$$") should startWith("state:")
+    reasons.keySet.filter(_.contains("Film")) shouldBe empty // a lazily computed reading of its own fields is no state
+    val uses = classes.flatMap(c => Coupling.foldBinary(c.name, topOfBinary).map(_ -> c.uses.flatMap(Coupling.foldBinary(_, unitOfBinary))))
+      .groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
+    val (count, relating, measures) = (s"$nested.FilmCount", s"$nested.Relating", s"$nested.Measures")
+    val edges = Set(count -> measures, relating -> measures)
+    // Zinc records the object too for a use of its nested type: the class files say which was used
+    val zinc = Map((count -> measures) -> Set(measures, s"$nested.Measures.Film"), (relating -> measures) -> Set(measures, s"$nested.Measures.Film"))
+    uses(count) should contain(s"$nested.Measures.Film")
+    uses(count) should not contain s"$nested.Measures$$"
+    Coupling.Collaborators.coupledEdges(edges, uses, zinc, topOf, reasons.contains) shouldBe Set(relating -> measures)
+    // a use no class file shows (an inline method) falls back to Zinc's record, then to the type itself
+    Coupling.Collaborators.coupledEdges(edges, Map.empty, zinc, topOf, reasons.contains) shouldBe edges
+    Coupling.Collaborators.coupledEdges(edges, Map.empty, Map((count -> measures) -> Set(s"$nested.Measures.Film")), topOf, reasons.contains) shouldBe
+      Set(relating -> measures)
+  }
+
+  "a segregated interface" should "cost nothing: a collaborator and an interface it implements are ONE dependency, a type's own supertypes none" in {
+    // TitleNormalizer implements TitleForms; Resolver holds a normalizer and hands it on where TitleForms is expected
+    val (normalizer, forms, resolver, cache) = ("services.titles.TitleNormalizer", "services.titles.TitleForms",
+      "services.identity.Resolver", "services.movies.MovieCache")
+    val supertypes = Coupling.supertypeClosure(Map(normalizer -> Set(forms), forms -> Set.empty))
+    val g = Graph(Seq(t(normalizer), t(forms, isAbstract = true), t(resolver), t(cache, isAbstract = true)),
+      Set(resolver -> normalizer, resolver -> forms, resolver -> cache, normalizer -> forms), supertypes = supertypes)
+    Coupling.heldFanOut(g, Coupling.Exemptions.empty)(resolver) shouldBe 2 // the normalizer (as its forms too), the cache
+    Coupling.heldFanOut(g, Coupling.Exemptions.empty)(normalizer) shouldBe 0 // its own interface is no collaborator
+    // a class using the interface alone still counts it
+    Coupling.withoutSupertypes(resolver, Set(forms, cache), supertypes) shouldBe Set(forms, cache)
+    Coupling.supertypeClosure(Map("a.C" -> Set("a.B"), "a.B" -> Set("a.A"))) shouldBe Map("a.C" -> Set("a.B", "a.A"), "a.B" -> Set("a.A"))
+  }
+
+  "fan-out" should "count only the collaborators a class uses, a data type none" in {
+    val g = Graph(Seq(t("services.a.User"), t("services.b.Store", isAbstract = true), t("models.Film"), t("models.Cinema")),
+      Set("services.a.User" -> "services.b.Store", "services.a.User" -> "models.Film", "services.a.User" -> "models.Cinema",
+        "models.Film" -> "models.Cinema"), data = Set("models.Film", "models.Cinema"))
+    Coupling.fans(g)("services.a.User") shouldBe ((0, 1))
+    Coupling.fans(g)("models.Film") shouldBe ((0, 0))
+    Coupling.heldTargets(g, Coupling.Exemptions.empty)("services.a.User") shouldBe Set("services.b.Store")
+    Coupling.packageEdges(g).keySet shouldBe Set("services.a" -> "services.b", "services.a" -> "models") // still a dependency
+    Coupling.collaboratorRows(g.copy(collaboratorWhy = Map("services.b.Store" -> "an interface"))) should contain allOf (
+      "models.Film\tdata\t", "services.b.Store\tcollaborator\tan interface")
   }
 
   "a descriptor or a generic signature" should "name its classes, not its type variables or primitives" in {

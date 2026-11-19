@@ -32,11 +32,21 @@ object Coupling {
   /** A top-level production class: its name, its module, whether it is a trait or an abstract class. */
   final case class Type(name: String, module: String, isAbstract: Boolean)
 
-  /** The graph: every type, and the dependencies between them (`from` uses `to`; both types' names). */
-  final case class Graph(types: Seq[Type], edges: Set[(String, String)]) {
+  /** The graph: every type, the dependencies between them (`from` uses `to`; both types' names), the types that are
+   *  DATA ([[Collaborators]]: no coupling to depend on), why each other type is a collaborator, and each type's
+   *  supertypes among the types ([[supertypeClosure]]). */
+  final case class Graph(types: Seq[Type], edges: Set[(String, String)], data: Set[String] = Set.empty,
+                         collaboratorWhy: Map[String, String] = Map.empty, coupledEdges: Option[Set[(String, String)]] = None,
+                         supertypes: Map[String, Set[String]] = Map.empty) {
     val byName: Map[String, Type] = types.map(t => t.name -> t).toMap
     /** The edges between two distinct known types. */
     val known: Set[(String, String)] = edges.filter { case (from, to) => from != to && byName.contains(from) && byName.contains(to) }
+    /** The known edges into a COLLABORATOR: what a class's fan-out and fan-in count -- `coupledEdges` when measured
+     *  ([[Collaborators.coupledEdges]]: a use of a nested type judged by that type), else every edge into a type not in
+     *  `data`. Cycles, layers, module edges and a package's Ca, Ce and D read every known edge: a data type's users do
+     *  make its package harder to change (a field renamed breaks them), and Ca/Ce over collaborators alone, against an
+     *  abstractness over every type, put 10 more packages past the distance limit (2026-11-19). */
+    val coupled: Set[(String, String)] = coupledEdges.fold(known.filterNot { case (_, to) => data(to) })(known.intersect)
   }
 
   /** A class's full package: its name less the last segment (`<root>` for none). */
@@ -109,6 +119,192 @@ object Coupling {
     zinc.filterNot { case (from, to) => from == owner && !confirmed(to) && usedByOthers(to) }
   }
 
+  // ── collaborators ──
+
+  /**
+   * DATA OR COLLABORATOR (the owner, 2026-11-19: "ignore data types and other non-collaborators, only count
+   * collaborators"): which production types a dependency on couples a class to. Read from every production class file
+   * ([[ClassReferences.Shape]]), each class folded into its named type; a type is a COLLABORATOR when any of its
+   * classes (the class, its companion object, the classes nested in it that are no named type of their own -- a nested
+   * type is judged by itself) is one of:
+   *
+   *  - a class holding STATE: a field some method other than a constructor writes (a `var`, a hand-rolled cache; a lazy
+   *    val's own machinery aside), or a field of a mutable or effectful library type ([[StatefulTypes]]: a mutable
+   *    collection, a cache, an atomic, a clock, a stream, a logger, a client) -- `TitleNormalizer`'s memo caches,
+   *    `LatestTitleYear`'s clock;
+   *  - a class carrying BEHAVIOUR: an instance field of a function type (`ProjectionDraft`'s closures that read the store);
+   *  - a class doing IO or reading the world: a method body calling one of [[EffectCalls]] (the clock, the environment,
+   *    files, the network, a database, randomness, threads, logging, metrics);
+   *  - a trait or abstract class with no production implementation (an interface: `MovieRepository` is implemented, by
+   *    classes that hold a database, so it is one anyway), or with an implementation that is a collaborator;
+   *  - a class holding a collaborator (a field of its type), reading an object that reads the world (itself, or through
+   *    an object it reads: a `MODULE$` read), or extending one that is a collaborator by itself (not merely as the
+   *    parent of a collaborator sibling). Reading an object that only keeps private state -- a memo of a pure function
+   *    (`TitleTextMeasures.Qualifiers`' memo, `CreditRelation`'s thread-local transliterator) -- passes nothing on: the
+   *    reader's results stay a function of its inputs, and a class calling that object directly counts it.
+   *
+   * Every other type is DATA: immutable, effect-free, and holding only data -- case classes and case objects, enums,
+   * hierarchies (sealed or not) of such, value classes, record-like final classes of vals (`EvidenceNode`), objects of
+   * constants and pure functions (opaque types and type aliases live in one; a string helper of `tools`), pure strategy
+   * objects. A lazy val is data: computed once from its owner's fields, then never written again -- immutable, no IO.
+   * A method of a data type may take a collaborator as a parameter: its caller holds that collaborator, and counts it.
+   * The verdict is the greatest fixpoint: a type is data unless a rule above, or a collaborator it holds, reads or
+   * extends, or one implementing it, makes it one.
+   */
+  object Collaborators {
+    private def any(prefixes: Seq[String])(name: String): Boolean = prefixes.exists(p => name == p || name.startsWith(p))
+
+    /** Library types whose instance is state or a door to the world: a field of one is state. */
+    val StatefulTypes: Seq[String] = Seq("scala.collection.mutable.", "scala.collection.Iterator", "scala.collection.concurrent.",
+      "java.util.concurrent.", "java.util.ArrayList", "java.util.LinkedList", "java.util.HashMap", "java.util.LinkedHashMap",
+      "java.util.TreeMap", "java.util.HashSet", "java.util.LinkedHashSet", "java.util.TreeSet", "java.util.ArrayDeque",
+      "java.util.Map", "java.util.List", "java.util.Set", "java.util.Collection", "java.util.Deque", "java.util.Queue",
+      "java.util.Iterator", "java.util.Random", "java.util.Timer", "java.lang.ThreadLocal", "java.lang.Thread",
+      "java.lang.StringBuilder", "java.lang.Process", "java.time.Clock", "java.time.InstantSource", "scala.util.Random",
+      "scala.concurrent.", "java.io.InputStream", "java.io.OutputStream", "java.io.Reader", "java.io.Writer",
+      "java.io.PrintStream", "java.io.BufferedReader", "java.io.RandomAccessFile", "java.nio.channels.",
+      "java.net.http.", "java.net.Socket", "java.net.ServerSocket", "java.net.URLConnection", "java.net.HttpURLConnection",
+      "com.mongodb.", "org.mongodb.", "org.bson.codecs.", "com.github.benmanes.caffeine.", "io.prometheus.", "io.micrometer.",
+      "org.slf4j.Logger", "play.api.Logger", "play.api.libs.ws.", "sttp.", "akka.", "org.apache.pekko.")
+
+    /** Library types whose instance is a function: an instance field of one is behaviour. */
+    val FunctionTypes: Seq[String] = (0 to 22).map(n => s"scala.Function$n") ++ Seq("scala.PartialFunction", "java.util.function.")
+
+    /** The calls that reach the world on their own (`owner#method`; a prefix ending in `.` or `#` names a package or
+     *  every method of a class): the static entry points -- the system clock, the environment, files, the network, a
+     *  database, randomness, threads, logging, metrics. A cache's get is none: a cache is state, its holder's. A call on a handle the caller was given (`clock.instant()` on
+     *  an injected `Clock`, `random.nextInt`) is none: the handle's holder holds that state, and counts it. A classpath
+     *  resource read (`getResourceAsStream`, `Source.fromResource`) is none either: a table shipped with the code is a
+     *  constant. */
+    val EffectCalls: Seq[String] = Seq("java.lang.System#currentTimeMillis", "java.lang.System#nanoTime",
+      "java.lang.System#getenv", "java.lang.System#getProperty", "java.lang.System#getProperties",
+      "java.lang.System#setProperty", "java.lang.System#exit", "java.lang.Runtime#", "java.lang.ProcessBuilder#",
+      "java.lang.Thread#sleep", "java.lang.Thread#start",
+      "java.time.Instant#now()", "java.time.LocalDate#now()", "java.time.LocalDateTime#now()", "java.time.LocalTime#now()",
+      "java.time.ZonedDateTime#now()", "java.time.OffsetDateTime#now()", "java.time.Year#now()", "java.time.YearMonth#now()",
+      "java.time.Clock#system",
+      "java.util.UUID#randomUUID", "java.util.Random#<init>", "scala.util.Random$#", "java.util.concurrent.Executors#",
+      "java.util.concurrent.CompletableFuture#supplyAsync", "java.util.concurrent.CompletableFuture#runAsync",
+      "java.util.concurrent.ThreadLocalRandom#", "java.util.concurrent.TimeUnit#sleep",
+      "java.nio.file.Files#", "java.io.File#exists", "java.io.File#isFile", "java.io.File#isDirectory", "java.io.File#list",
+      "java.io.File#listFiles", "java.io.File#delete", "java.io.File#mkdir", "java.io.File#mkdirs", "java.io.File#length",
+      "java.io.File#lastModified", "java.io.File#createNewFile", "java.io.File#renameTo", "java.io.FileInputStream#",
+      "java.io.FileOutputStream#", "java.io.FileReader#", "java.io.FileWriter#", "java.io.RandomAccessFile#",
+      "java.io.PrintStream#print", "scala.Predef$#print", "scala.Console$#print", "scala.io.Source$#fromFile",
+      "scala.io.Source$#fromURL", "scala.io.StdIn", "java.net.http.", "java.net.URL#open", "java.net.Socket",
+      "java.net.InetAddress#", "com.mongodb.", "org.mongodb.", "io.prometheus.",
+      "io.micrometer.", "org.slf4j.", "play.api.Logger", "play.api.libs.ws.", "sttp.", "scala.concurrent.Future$#apply",
+      "scala.concurrent.Await", "scala.concurrent.package$#blocking")
+
+    private val ImplementedBy = "implemented by"
+
+    /** Field names of a lazy val's own machinery (Scala 3: `x$lzy1`, `OFFSET$_m_0`, `0bitmap$1`; 2: `bitmap$0`). */
+    private def lazyMachinery(field: String): Boolean =
+      field.contains("$lzy") || field.startsWith("OFFSET$") || field.contains("bitmap$")
+
+    private def isModule(c: ClassReferences.Compiled): Boolean =
+      c.name.endsWith("$") && c.shape.fields.exists(f => f.name == "MODULE$" && f.isStatic)
+    private def isAnonymous(c: ClassReferences.Compiled): Boolean =
+      c.name.contains("$anon") || c.name.matches(".*\\$[A-Za-z_]\\w*\\$\\d+")
+    private def isAbstractType(c: ClassReferences.Compiled): Boolean = c.shape.isInterface || c.shape.isAbstract
+
+    /** Why ONE class file makes its type a collaborator by itself, none when it does not. `all`: every production class
+     *  by binary name. */
+    def ownReason(c: ClassReferences.Compiled, all: Map[String, ClassReferences.Compiled]): Option[String] = {
+      val s = c.shape
+      // a field holding an object (an `export`ed object's alias) is a read of that object, judged as one, no state
+      def holdsObject(f: ClassReferences.Field): Boolean = f.types.nonEmpty && f.types.forall(t => all.get(t).exists(isModule))
+      val fields = s.fields.filterNot(f => lazyMachinery(f.name) || f.name == "MODULE$" || holdsObject(f))
+      val state = fields.find(f => s.rewritten(f.name) || f.types.exists(any(StatefulTypes)))
+      val effect = s.calls.toSeq.sorted.find(any(EffectCalls))
+      // an anonymous class's fields are what its enclosing code captured: that code is judged itself
+      val function = if (isModule(c) || isAnonymous(c)) None else fields.find(f => !f.isStatic && f.types.exists(any(FunctionTypes)))
+      state.map(f => s"state: ${c.name}.${f.name}")
+        .orElse(effect.map(call => s"effect: ${c.name} calls $call"))
+        .orElse(function.map(f => s"behaviour: ${c.name}.${f.name} is a function"))
+    }
+
+    /** Every production type's verdict: its name -> why it is a collaborator, absent for a DATA type. `compiled`: every
+     *  production class file; `topOf`: a binary name's top-level production type (None: a library class). */
+    def classify(compiled: Seq[ClassReferences.Compiled], topOf: String => Option[String]): Map[String, String] = {
+      val all: Map[String, ClassReferences.Compiled] = compiled.map(c => c.name -> c).toMap
+      val byTop: Map[String, Seq[ClassReferences.Compiled]] = compiled.flatMap(c => topOf(c.name).map(_ -> c)).groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+      // each production abstract class's direct implementations
+      val implementations: Map[String, Seq[ClassReferences.Compiled]] = compiled
+        .flatMap(c => (c.shape.superName +: c.shape.interfaces).filter(all.contains).map(_ -> c)).groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+      val reason = scala.collection.mutable.Map.empty[String, String]
+      byTop.foreach { case (top, classes) =>
+        classes.iterator.flatMap(c => ownReason(c, all)).toSeq.headOption.foreach(r => reason(top) = r)
+        classes.filter(isAbstractType).foreach { a =>
+          if (!reason.contains(top) && implementations.getOrElse(a.name, Nil).isEmpty) reason(top) = s"an interface: ${a.name} has no implementation"
+        }
+      }
+      def collaborator(binary: String, from: String): Boolean = topOf(binary).exists(t => t != from && reason.contains(t))
+      // the types that read the world, themselves or through an object they read: what a read of an object passes on
+      val effectful = scala.collection.mutable.Map.empty[String, String] // a type -> the effect call it reaches
+      byTop.foreach { case (top, classes) =>
+        classes.iterator.flatMap(c => c.shape.calls.toSeq.sorted.find(any(EffectCalls))).toSeq.headOption.foreach(call => effectful(top) = call)
+      }
+      def objectsRead(c: ClassReferences.Compiled): Seq[String] =
+        (c.shape.modules.toSeq ++ c.shape.fields.flatMap(_.types).filter(t => all.get(t).exists(isModule))).distinct.sorted
+      var spreading = true
+      while (spreading) {
+        spreading = false
+        byTop.foreach { case (top, classes) =>
+          if (!effectful.contains(top)) classes.iterator.flatMap(objectsRead).flatMap(m => topOf(m).filter(t => t != top && effectful.contains(t)))
+            .toSeq.headOption.foreach { t => effectful(top) = effectful(t); spreading = true }
+        }
+      }
+      var changed = true
+      while (changed) {
+        changed = false
+        byTop.foreach { case (top, classes) =>
+          if (!reason.contains(top)) {
+            val why: Option[String] = classes.iterator.flatMap { c =>
+              c.shape.fields.iterator.flatMap(f => f.types.filterNot(t => all.get(t).exists(isModule)).find(collaborator(_, top))
+                .map(t => s"holds ${c.name}.${f.name}: $t")) ++
+                // an object read passes on only its reading of the world: an object's private memo is no state of its caller's
+                objectsRead(c).iterator.find(m => collaborator(m, top) && topOf(m).exists(effectful.contains))
+                  .map(m => s"reads the object $m, which reaches ${topOf(m).map(effectful).getOrElse("")}") ++
+                // a parent that is a collaborator by itself, not merely as a sibling's parent (`Fixed` beside `Live`)
+                (c.shape.superName +: c.shape.interfaces).find(p => collaborator(p, top) && topOf(p).exists(t => !reason(t).startsWith(ImplementedBy)))
+                  .map(p => s"extends $p") ++
+                (if (isAbstractType(c)) implementations.getOrElse(c.name, Nil).find(i => collaborator(i.name, top))
+                  .map(i => s"$ImplementedBy ${i.name}") else None)
+            }.toSeq.headOption
+            why.foreach { w => reason(top) = w; changed = true }
+          }
+        }
+      }
+      reason.toMap
+    }
+
+    /** The named type a compiled class is (`binary`, its source name `name`): the source name, an object's (its module
+     *  class, `X$`) with a `$` -- an object is judged apart from its companion class: calling `Qualifiers.split` uses no
+     *  memo a `Qualifiers` instance holds. */
+    def unitOf(binary: String, name: String): String = normalize(name) + (if (binary.endsWith("$")) "$" else "")
+
+    /** The DATA types among `types`: those [[classify]] finds no reason in. */
+    def data(types: Seq[String], reasons: Map[String, String]): Set[String] = types.filterNot(reasons.contains).toSet
+
+    /**
+     * The edges that couple: `from` -> `to` (top-level types) counts when what `from` uses of `to` is a collaborator --
+     * judged per TYPE used, a nested type by itself (`IdentityMeasures.Film`, a case class, is data even though
+     * `IdentityMeasures`' own functions make it a collaborator; a call of those functions counts it). What `from` uses
+     * of `to`: the types of `to` (`unitsOf(to)`) its class files name (`classFileUses(from)`: the types they name,
+     * folded to their nearest named type), else -- a use the class files do not show (an inline method, a type alias)
+     * -- the ones Zinc records (`zincUses((from, to))`: source names, each its class and its object), else `to` itself,
+     * class and object. `collaborator`: whether a named type ([[unitOf]]) is one ([[classify]] over every named type).
+     */
+    def coupledEdges(edges: Set[(String, String)], classFileUses: Map[String, Set[String]], zincUses: Map[(String, String), Set[String]],
+                     topOf: String => String, collaborator: String => Boolean): Set[(String, String)] =
+      edges.filter { case e @ (from, to) =>
+        val seen = classFileUses.getOrElse(from, Set.empty[String]).filter(u => topOf(u) == to)
+        val used = if (seen.nonEmpty) seen else zincUses.getOrElse(e, Set.empty[String]).flatMap(u => Set(u, u + "$")).filter(u => topOf(u) == to)
+        (if (used.nonEmpty) used else Set(to, to + "$")).exists(collaborator)
+      }
+  }
+
   // ── modules ──
 
   /** Cross-module edges: (from module, to module) -> the class->class references across them. */
@@ -152,6 +348,13 @@ object Coupling {
    *  (scripts/ci/coupling_ratchet.py's `--fanouts`; `--update` records each frozen class's targets as its reference set). */
   def fanOutRows(g: Graph, exemptions: Exemptions): Seq[String] =
     heldTargets(g, exemptions).toSeq.sortBy(_._1).map { case (c, ts) => s"$c\t${ts.size}\t${ts.toSeq.sorted.mkString(",")}" }
+
+  /** Every named type's verdict (a nested type's too, an object's as `X$`), one `<type><TAB>data|collaborator<TAB><why>`
+   *  line each, sorted: what a dependency on it
+   *  costs a class's fan-out ([[Collaborators]]; scripts/coupling-report --out keeps it as collaborators.tsv). */
+  def collaboratorRows(g: Graph): Seq[String] =
+    (if (g.data.isEmpty && g.collaboratorWhy.isEmpty) g.types.map(_.name) else (g.data ++ g.collaboratorWhy.keys).toSeq).distinct.sorted
+      .map(t => if (g.data(t)) s"$t\tdata\t" else s"$t\tcollaborator\t${g.collaboratorWhy.getOrElse(t, "")}")
 
   /** The strongly connected components of a directed graph with two or more nodes (Tarjan), each sorted, sorted. */
   def components(nodes: Seq[String], edges: Set[(String, String)]): Seq[Seq[String]] = {
@@ -274,10 +477,11 @@ object Coupling {
 
   // ── classes ──
 
-  /** Per class: (fan-in, fan-out) over distinct production classes. */
+  /** Per class: (fan-in, fan-out) over distinct production classes, a dependency on a DATA type no coupling (fan-out
+   *  counts the collaborators a class uses; a data type's fan-in is 0). */
   def fans(g: Graph): Map[String, (Int, Int)] = {
-    val out = g.known.groupBy(_._1).map { case (k, v) => k -> v.size }
-    val in  = g.known.groupBy(_._2).map { case (k, v) => k -> v.size }
+    val out = g.coupled.groupBy(_._1).map { case (k, v) => k -> v.size }
+    val in  = g.coupled.groupBy(_._2).map { case (k, v) => k -> v.size }
     g.types.map(t => t.name -> ((in.getOrElse(t.name, 0), out.getOrElse(t.name, 0)))).toMap
   }
 
@@ -286,14 +490,34 @@ object Coupling {
    *  contract it is the plain fan-out of [[fans]]. */
   def heldFanOut(g: Graph, exemptions: Exemptions): Map[String, Int] = heldTargets(g, exemptions).map { case (c, ts) => c -> ts.size }
 
-  /** Per class: what its held fan-out counts -- the production classes it references, a declared contract it uses
-   *  folded into one `contract:<name>`. A `Coupling: split of <X>` claim holds the pieces' union of these to X's. */
+  /** Per class: what its held fan-out counts -- the COLLABORATORS it references (a data type none), a declared contract it uses
+   *  folded into one `contract:<name>`. A `Coupling: split of <X>` claim holds the pieces' union of these to X's.
+   *  A type's own supertypes are no collaborator of it, and a supertype of another collaborator it uses is that same
+   *  collaborator ([[withoutSupertypes]]: segregating an interface out of a class costs its users nothing). */
   def heldTargets(g: Graph, exemptions: Exemptions): Map[String, Set[String]] = {
-    val out = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+    val out = g.coupled.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
     g.types.map { t =>
       val contracts = exemptions.contractsOf(t.name)
-      t.name -> out.getOrElse(t.name, Set.empty[String]).map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
+      t.name -> withoutSupertypes(t.name, out.getOrElse(t.name, Set.empty[String]), g.supertypes)
+        .map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
     }.toMap
+  }
+
+  /** `targets` of `from` less `from`'s own supertypes and every supertype of another target: a class depending on
+   *  `TitleNormalizer` and on `TitleForms`, an interface TitleNormalizer implements, depends on ONE collaborator (it
+   *  hands its normalizer on as its forms), and `TitleNormalizer` implementing `TitleForms` is no dependency of its
+   *  own. `supertypes`: each type's supertypes among the production types, transitively. */
+  def withoutSupertypes(from: String, targets: Set[String], supertypes: Map[String, Set[String]]): Set[String] = {
+    val own = supertypes.getOrElse(from, Set.empty[String])
+    val implied = targets.flatMap(t => supertypes.getOrElse(t, Set.empty[String]))
+    targets.filterNot(t => own(t) || implied(t))
+  }
+
+  /** Each type's supertypes among the production types, transitively (`direct`: each type's own parents). */
+  def supertypeClosure(direct: Map[String, Set[String]]): Map[String, Set[String]] = {
+    def up(t: String, seen: Set[String]): Set[String] =
+      direct.getOrElse(t, Set.empty[String]).filterNot(seen).flatMap(p => up(p, seen + p) + p)
+    direct.keys.map(t => t -> (up(t, Set(t)) - t)).toMap
   }
 
   // ── exemptions ──
@@ -387,8 +611,9 @@ object Coupling {
   /** How fan-out is measured, held as a limit row so a measurement fix re-takes the frozen rows (coupling_ratchet.py's
    *  `refrozen`, with its `Coupling:` trailer): 1, Zinc's record alone (a class's uses of the top-level classes of its own
    *  file uncounted); 2, those counted ([[sameFileEdges]]); 3, a file's imports no longer charged to its last class
-   *  ([[withoutImportCharge]]). */
-  val FanOutMeasure = 3
+   *  ([[withoutImportCharge]]); 4, only COLLABORATORS counted ([[Collaborators]]: a data type, nested ones judged by
+   *  themselves, is no coupling). */
+  val FanOutMeasure = 4
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
   /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
@@ -429,14 +654,15 @@ object Coupling {
     "# `kind<TAB>key<TAB>value`:",
     "#   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; fanout-measure: how",
     "#                fan-out is counted (2: a class's uses of its own file's top-level classes too; 3: a file's imports",
-    "#                charged to the classes using them, not to its last class); new-package-ce: a",
+    "#                charged to the classes using them, not to its last class; 4: only collaborators, a data type none);",
+    "#                new-package-ce: a",
     "#                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of",
     "#                that many types or more without a distance row (or an exemption) has at most this D",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --",
     "#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file",
     "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
-    "#   fanout       <class>, its fan-out (distinct production classes it uses, a declared contract's members one) past the",
+    "#   fanout       <class>, its fan-out (distinct collaborators it uses, a declared contract's members one) past the",
     "#                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption",
     "#                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit",
     "#   distance     <package>, its D in hundredths past the limit: frozen the same way",

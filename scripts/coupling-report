@@ -11,8 +11,9 @@
 #                                       conflicted baseline the least of every side's); and
 #                                       each frozen class's reference set to test/resources/coupling-fanout-refs.tsv
 #                                       (what a later `Coupling: split of <X>` claim is held to)
-#   scripts/coupling-report --out DIR   keep rows.tsv, report.md, edges.tsv (every package edge's class references) and
-#                                       fanouts.tsv (every class's held fan-out) in DIR
+#   scripts/coupling-report --out DIR   keep rows.tsv, report.md, edges.tsv (every package edge's class references),
+#                                       fanouts.tsv (every class's held fan-out) and collaborators.tsv (every type's
+#                                       verdict: data, or collaborator and why -- only a collaborator counts) in DIR
 #                                       (default: a temporary directory)
 #   scripts/coupling-report --check-split <X> <piece>... [--base REV]
 #                                       whether the ratchet would accept the WORKING TREE's split of frozen class X
@@ -39,7 +40,7 @@ while [ $# -gt 0 ]; do
             while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do pieces+=("$1"); shift; done
             [ ${#pieces[@]} -gt 0 ] || { echo "coupling-report: --check-split <X> needs at least one piece" >&2; exit 2; }
             continue ;;
-        -h|--help) sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "coupling-report: unknown argument $1" >&2; exit 2 ;;
     esac
     shift
@@ -47,7 +48,7 @@ done
 if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
 mkdir -p "$out"
 cd "$root"
-"$root/scripts/sbt-warm" "couplingReport $out/rows.tsv $out/report.md $out/edges.tsv $out/fanouts.tsv" > "$out/sbt.log" 2>&1 \
+"$root/scripts/sbt-warm" "couplingReport $out/rows.tsv $out/report.md $out/edges.tsv $out/fanouts.tsv $out/collaborators.tsv" > "$out/sbt.log" 2>&1 \
     || { tail -30 "$out/sbt.log" >&2; echo "coupling-report: sbt couplingReport failed (log: $out/sbt.log)" >&2; exit 2; }
 if [ -n "$split" ]; then
     args=(split-check --current "$out/rows.tsv" --fanouts "$out/fanouts.tsv" --split "$split")

@@ -25,6 +25,7 @@ object CouplingAnalysis {
     val topOf = scala.collection.mutable.Map.empty[String, String]
     val types = Seq.newBuilder[Coupling.Type]
     val shared = Seq.newBuilder[SharedSource]
+    val compiledAll = Seq.newBuilder[ClassReferences.Compiled]
     all.foreach { case (module, a) =>
       a.relations.classes.forwardMap.foreach { case (src, names) =>
         if (TestImpact.repoPath(repo, src).startsWith(s"$module/src/main/")) {
@@ -34,9 +35,10 @@ object CouplingAnalysis {
           tops.values.toSeq.distinct.foreach { t =>
             types += Coupling.Type(t, module, names.exists(n => Coupling.normalize(n) == t && isAbstract(a, n)))
           }
+          val compiled = a.relations.products(src).toSeq.map(p => ClassReferences.read(java.nio.file.Files.readAllBytes(converter.toPath(p))))
+          compiledAll ++= compiled
           if (tops.values.toSet.size > 1) {
             val binaries = names.toSeq.flatMap(n => a.relations.productClassName.forward(n).map(_ -> tops(Coupling.normalize(n)))).toMap
-            val compiled = a.relations.products(src).toSeq.map(p => ClassReferences.read(java.nio.file.Files.readAllBytes(converter.toPath(p))))
             shared += SharedSource(binaries, compiled, new String(java.nio.file.Files.readAllBytes(converter.toPath(src)), "UTF-8"))
           }
         }
@@ -45,18 +47,39 @@ object CouplingAnalysis {
     val sourceNameOf: Map[String, String] = all.flatMap { case (_, a) =>
       a.relations.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap
     val topOfBinary: Map[String, String] = sourceNameOf.collect { case (binary, name) if topOf.contains(name) => binary -> topOf(name) }
-    val zinc = all.flatMap { case (_, a) =>
+    val raw = all.flatMap { case (_, a) =>
       a.relations.internalClassDep.all.toSeq ++
         a.relations.externalClassDep.all.toSeq.map { case (from, to) => from -> sourceNameOf.getOrElse(to, to) }
-    }.collect { case (from, to) if topOf.contains(from) && topOf.contains(to) => topOf(from) -> topOf(to) }
-      .filter { case (from, to) => from != to }.toSet
+    }.filter { case (from, to) => topOf.contains(from) && topOf.contains(to) && topOf(from) != topOf(to) }
+    val zinc = raw.map { case (from, to) => topOf(from) -> topOf(to) }.toSet
+    // the named types (a nested one too: `IdentityMeasures.Film`) each edge's target side is, as Zinc records them
+    val zincUses: Map[(String, String), Set[String]] =
+      raw.groupBy { case (from, to) => (topOf(from), topOf(to)) }.map { case (k, v) => k -> v.map(e => Coupling.normalize(e._2)).toSet }
     val sources = shared.result()
     val edges = sources.foldLeft(zinc) { (edges, s) =>
       Coupling.importOwner(s.text, s.tops.values.toSet).fold(edges) { owner =>
         Coupling.withoutImportCharge(edges, owner, Coupling.classFileUses(s.compiled, s.tops, topOfBinary).getOrElse(owner, Set.empty), s.tops.values.toSet)
       }
     }
-    Coupling.Graph(types.result().sortBy(_.name), edges ++ sources.flatMap(s => Coupling.sameFileEdges(s.compiled, s.tops)))
+    // DATA OR COLLABORATOR, judged per named type -- a nested one by itself, an object apart from its companion class: a
+    // binary name's named type (a local or anonymous class folds into its enclosing one), and each one's top-level type
+    val compiled = compiledAll.result()
+    val unitOfBinary: Map[String, String] = sourceNameOf.collect { case (binary, name) if topOf.contains(name) => binary -> Coupling.Collaborators.unitOf(binary, name) }
+    val topOfUnit: Map[String, String] = sourceNameOf.collect { case (binary, name) if topOf.contains(name) => Coupling.Collaborators.unitOf(binary, name) -> topOf(name) }
+    val unitOf: String => Option[String] = Coupling.foldBinary(_, unitOfBinary)
+    val reasons = Coupling.Collaborators.classify(compiled, unitOf)
+    val classFileUses: Map[String, Set[String]] = compiled.flatMap(c => Coupling.foldBinary(c.name, topOfBinary).map(_ -> c.uses.flatMap(u => unitOf(u).toSeq)))
+      .groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
+    val typed = types.result().sortBy(_.name)
+    val graphEdges = edges ++ sources.flatMap(s => Coupling.sameFileEdges(s.compiled, s.tops))
+    val coupled = Coupling.Collaborators.coupledEdges(graphEdges, classFileUses, zincUses, u => topOfUnit.getOrElse(u, u), reasons.contains)
+    // each top-level type's own parents (its class's and its object's, not a nested class's), as top-level types
+    val parents: Map[String, Set[String]] = compiled.flatMap { c =>
+      unitOfBinary.get(c.name).filter(u => topOfUnit.get(u).contains(u.stripSuffix("$"))).map(u => u.stripSuffix("$") ->
+        (c.shape.superName +: c.shape.interfaces).flatMap(p => topOfBinary.get(p)).filter(_ != u.stripSuffix("$")).toSet)
+    }.groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
+    Coupling.Graph(typed, graphEdges, Coupling.Collaborators.data(topOfUnit.keys.toSeq, reasons), reasons, Some(coupled),
+      Coupling.supertypeClosure(parents))
   }
 
   private def isAbstract(a: sbt.internal.inc.Analysis, name: String): Boolean =

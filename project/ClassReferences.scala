@@ -19,8 +19,24 @@ package kinowo.build
  */
 object ClassReferences {
 
-  /** A class file's own class (binary name, dotted: `services.Foo$Bar`) and the classes it uses (binary names too). */
-  final case class Compiled(name: String, uses: Set[String])
+  /** A class file's own class (binary name, dotted: `services.Foo$Bar`), the classes it uses (binary names too), and its
+   *  [[Shape]]: what Coupling.Collaborators reads to tell a data type from a collaborator. */
+  final case class Compiled(name: String, uses: Set[String], shape: Shape = Shape.empty)
+
+  /** A field: its name, whether it is static and final, and the classes its type names (descriptor and generic
+   *  signature; binary names, dotted). */
+  final case class Field(name: String, isStatic: Boolean, isFinal: Boolean, types: Seq[String])
+
+  /** What a class file says of its class's kind and behaviour: its superclass and interfaces, whether it is an interface
+   *  or abstract, its fields, the methods its bodies call (`owner#name`, the owner's binary name dotted; one taking no
+   *  argument also as `owner#name()`: `Instant.now()`, not `Instant.now(clock)`) and the objects
+   *  they read (the owners of every `MODULE$` read: a Scala object's module class), and its own fields a method other
+   *  than a constructor or static initialiser writes (`rewritten`: a `var`'s, or a hand-rolled cache's). */
+  final case class Shape(superName: String, interfaces: Seq[String], isInterface: Boolean, isAbstract: Boolean,
+                         fields: Seq[Field], calls: Set[String], modules: Set[String], rewritten: Set[String] = Set.empty)
+  object Shape {
+    val empty: Shape = Shape("java.lang.Object", Nil, isInterface = false, isAbstract = false, Nil, Set.empty, Set.empty)
+  }
 
   /** The mirror method a sealed parent's companion carries (`ordinal(x: Parent): Int`): read as no use. */
   private def isMirrorOrdinal(name: String, descriptor: String): Boolean =
@@ -51,7 +67,16 @@ object ClassReferences {
       i += 1
     }
     val uses = Set.newBuilder[String]
+    val calls = Set.newBuilder[String]
+    val modules = Set.newBuilder[String]
     var muted = false
+    var inConstructor = false
+    val rewritten = Set.newBuilder[(String, String)]
+    // a field write (putfield, putstatic) outside a constructor: the field's owner and name
+    def written(index: Int): Unit = if (!inConstructor && index > 0 && index < count && tags(index) == 9)
+      rewritten += ((className(first(index)), memberName(index)))
+    def className(index: Int): String = utf8(first(index)).replace('/', '.')
+    def memberName(index: Int): String = utf8(first(second(index)))
     def signature(index: Int): Unit =
       if (!muted && index > 0 && utf8(index) != null) Signatures.types(utf8(index)).foreach(uses += _)
     def classEntry(index: Int): Unit = if (!muted && index > 0 && tags(index) == 7) {
@@ -61,7 +86,14 @@ object ClassReferences {
     // a constant an instruction names: a class, a member (its owner and its type), a method type, an invokedynamic
     def constant(index: Int): Unit = if (index > 0 && index < count) tags(index) match {
       case 7 => classEntry(index)
-      case 9 | 10 | 11 => classEntry(first(index)); constant(second(index))
+      case 9 | 10 | 11 =>
+        if (tags(index) == 9) { if (memberName(index) == "MODULE$") modules += className(first(index)) }
+        else {
+          val call: String = className(first(index)) + "#" + memberName(index)
+          calls += call
+          if (utf8(second(second(index))).startsWith("()")) calls += call + "()" // a call taking no argument, told apart
+        }
+        classEntry(first(index)); constant(second(index))
       case 12 => signature(second(index))
       case 16 => signature(first(index))
       case 15 => constant(first(index))
@@ -88,21 +120,36 @@ object ClassReferences {
       in.readUnsignedShort(); in.readUnsignedShort()
       val code = new Array[Byte](in.readInt())
       in.readFully(code)
-      instructions(code, constant)
+      instructions(code, constant, written)
       val handlers: Int = in.readUnsignedShort()
       (0 until handlers).foreach { _ => in.readUnsignedShort(); in.readUnsignedShort(); in.readUnsignedShort(); classEntry(in.readUnsignedShort()) }
       attributes(code = true)
     }
-    in.readUnsignedShort()
+    val access: Int = in.readUnsignedShort()
     val self: Int = in.readUnsignedShort()
-    classEntry(in.readUnsignedShort())
-    (0 until in.readUnsignedShort()).foreach(_ => classEntry(in.readUnsignedShort()))
-    (0 until in.readUnsignedShort()).foreach { _ =>
-      in.readUnsignedShort(); in.readUnsignedShort(); signature(in.readUnsignedShort()); attributes(code = false)
+    val superIndex: Int = in.readUnsignedShort()
+    classEntry(superIndex)
+    val interfaces: Seq[String] = (0 until in.readUnsignedShort()).map { _ => val i: Int = in.readUnsignedShort(); classEntry(i); className(i) }
+    val fields: Seq[Field] = (0 until in.readUnsignedShort()).map { _ =>
+      val flags: Int = in.readUnsignedShort()
+      val fieldName: String = utf8(in.readUnsignedShort())
+      val descriptor: Int = in.readUnsignedShort()
+      signature(descriptor)
+      // the field's type: its descriptor, and its generic signature
+      var generic: Seq[String] = Nil
+      (0 until in.readUnsignedShort()).foreach { _ =>
+        val attribute: String = utf8(in.readUnsignedShort())
+        val length: Int = in.readInt()
+        if (attribute == "Signature") { val index: Int = in.readUnsignedShort(); signature(index); generic = Signatures.types(utf8(index)) }
+        else skip(length)
+      }
+      val types: Seq[String] = (Signatures.types(utf8(descriptor)) ++ generic).map(_.replace('/', '.')).distinct
+      Field(fieldName, (flags & 0x0008) != 0, (flags & 0x0010) != 0, types)
     }
     (0 until in.readUnsignedShort()).foreach { _ =>
       in.readUnsignedShort()
       val name: String = utf8(in.readUnsignedShort())
+      inConstructor = name == "<init>" || name == "<clinit>"
       val descriptor: Int = in.readUnsignedShort()
       // the mirror's signature and body are the compiler's, not the source's: read past them
       muted = isMirrorOrdinal(name, utf8(descriptor))
@@ -110,12 +157,14 @@ object ClassReferences {
       muted = false
     }
     attributes(code = false)
-    val name: String = utf8(first(self)).replace('/', '.')
-    Compiled(name, uses.result().map(_.replace('/', '.')) - name)
+    val name: String = className(self)
+    val shape = Shape(if (superIndex > 0) className(superIndex) else "", interfaces, (access & 0x0200) != 0, (access & 0x0400) != 0,
+      fields, calls.result(), modules.result() - name, rewritten.result().collect { case (owner, field) if owner == name => field })
+    Compiled(name, uses.result().map(_.replace('/', '.')) - name, shape)
   }
 
-  /** Every constant-pool index a method body's instructions name, handed to `constant`. */
-  private def instructions(code: Array[Byte], constant: Int => Unit): Unit = {
+  /** Every constant-pool index a method body's instructions name, handed to `constant`; a field write's to `written` too. */
+  private def instructions(code: Array[Byte], constant: Int => Unit, written: Int => Unit): Unit = {
     def u1(at: Int): Int = code(at) & 0xff
     def u2(at: Int): Int = (u1(at) << 8) | u1(at + 1)
     def s4(at: Int): Int = (u2(at) << 16) | u2(at + 2)
@@ -124,7 +173,8 @@ object ClassReferences {
       val op: Int = u1(pc)
       pc += (op match {
         case 0x12 => constant(u1(pc + 1)); 2
-        case 0x13 | 0x14 | 0xb2 | 0xb3 | 0xb4 | 0xb5 | 0xb6 | 0xb7 | 0xb8 | 0xbb | 0xbd | 0xc0 | 0xc1 => constant(u2(pc + 1)); 3
+        case 0xb3 | 0xb5 => constant(u2(pc + 1)); written(u2(pc + 1)); 3
+        case 0x13 | 0x14 | 0xb2 | 0xb4 | 0xb6 | 0xb7 | 0xb8 | 0xbb | 0xbd | 0xc0 | 0xc1 => constant(u2(pc + 1)); 3
         case 0xb9 | 0xba => constant(u2(pc + 1)); 5
         case 0xc5 => constant(u2(pc + 1)); 4
         case 0x10 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19 | 0x36 | 0x37 | 0x38 | 0x39 | 0x3a | 0xa9 | 0xbc => 2

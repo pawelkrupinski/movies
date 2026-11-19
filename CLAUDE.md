@@ -256,7 +256,24 @@ a cycle is refused first as an upward edge, saying which direction is allowed; a
 the commit adding it, and an `allow` row, a moved layer or a changed rank needs the same trailer as a baseline rise. The
 ratchet also holds the code to `test/resources/coupling-baseline.tsv`: no new cross-module edge kind, no package's Ce
 past its row. **Two limits** (the owner, 2026-11-18): a class's fan-out ≤ 9 and, for a package of 8+ types, its
-distance D ≤ 0.20. What was past them then is frozen (`fanout` / `distance` rows, which only fall); a class or package
+distance D ≤ 0.20. **Fan-out counts only COLLABORATORS** (the owner, 2026-11-19: "ignore data types and other
+non-collaborators"; `Coupling.Collaborators`, read from the class files; every type's verdict and why in `--out`'s
+`collaborators.tsv`). A type is a COLLABORATOR when it holds state (a field written after construction -- a `var`, a
+hand-rolled cache --, or a field of a mutable or effectful library type: a mutable collection, cache, clock, stream,
+logger, client), carries a function in an instance field (`ProjectionDraft`'s closures), does IO or reads the world
+(clock, environment, files, network, database, randomness, threads, logging, metrics), is a trait with no
+implementation or a collaborator implementing it (an interface), or holds or extends a collaborator, or reads an
+object that reads the world (`TitleNormalizer`: its memo caches; `LatestTitleYear`: its clock). Calling an object
+that only keeps private state (a memo of a pure function) passes nothing on to the caller's type; a class calling it
+counts it. Everything else is DATA: immutable, effect-free and
+holding only data -- case classes and objects, enums, hierarchies of such, value classes, record-like final classes of
+vals, objects of constants and pure functions (a string helper), pure strategy objects; a lazy val is data (computed
+once from its owner's fields, never written again). A nested type is judged by itself: using `IdentityMeasures.Film`
+(data) is no coupling, calling `IdentityMeasures`' own functions is. A data type's method may take a collaborator as a
+parameter: the caller holds it, and counts it. A class's own supertypes are no collaborator of it, and a collaborator
+and an interface it implements are ONE (handing a `TitleNormalizer` on as its `TitleForms` costs nothing: segregating an
+interface never raises a fan-out). Cycles, layers, module edges and a package's Ca/Ce/D still read every
+dependency (a data type's users do make its package harder to change). What was past the limits then is frozen (`fanout` / `distance` rows, which only fall); a class or package
 NEWLY past a limit fails, and neither `--update` nor a trailer admits it -- cut it (a trait at the seam, a leaf value type
 down to `models`, a generic helper to `tools`), or add an exemption row to `test/resources/coupling-exemptions.tsv` with a
 `Coupling: <why>` trailer. Its categories: the composition roots (`modules.*`, `diagnostics.*`), registries (venue

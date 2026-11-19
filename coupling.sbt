@@ -1,7 +1,8 @@
 // COUPLING (project/Coupling.scala, scripts/coupling-report): `couplingReport <rows out> [<markdown out> [<edges out>
-// [<fanouts out>]]]` writes the production code's coupling rows -- the shape of test/resources/coupling-baseline.tsv,
+// [<fanouts out> [<collaborators out>]]]]` writes the production code's coupling rows -- the shape of test/resources/coupling-baseline.tsv,
 // which scripts/ci/coupling_ratchet.py compares them with -- and, given more paths, the human report, every class
-// reference, and every class's held fan-out (what a `Coupling: split of <X>` claim sums). Every deployed
+// reference, every class's held fan-out (what a `Coupling: split of <X>` claim sums), and every type's verdict, data or
+// collaborator (only a collaborator counts in a fan-out). Every deployed
 // module's Compile analysis (testkit, itkit, repochecks and e2e are test code), and the layering it must keep
 // (test/resources/coupling-layers.tsv: every package's layer, an upward package edge a `layer-violation` row), and the
 // exemptions from the fan-out and distance limits (test/resources/coupling-exemptions.tsv).
@@ -25,11 +26,11 @@ lazy val couplingDeclared = Def.setting {
     "worker" -> declared((couplingModule("worker") / thisProject).value), "web" -> declared((couplingModule("web") / thisProject).value))
 }
 
-lazy val couplingReport = inputKey[Unit]("the production code's coupling: couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out>]]]")
+lazy val couplingReport = inputKey[Unit]("the production code's coupling: couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out> [<collaborators out>]]]]")
 
 couplingReport := {
-  val args = Def.spaceDelimited("<rows out> [<markdown out> [<edges out> [<fanouts out>]]]").parsed
-  require(args.size >= 1 && args.size <= 4, "couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out>]]]")
+  val args = Def.spaceDelimited("<rows out> [<markdown out> [<edges out> [<fanouts out> [<collaborators out>]]]]").parsed
+  require(args.size >= 1 && args.size <= 5, "couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out> [<collaborators out>]]]]")
   val started = System.nanoTime
   val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value, fileConverter.value)
   val layers = Some(kinowo.build.Coupling.Layers.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-layers.tsv")))
@@ -37,7 +38,8 @@ couplingReport := {
   IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers, exemptions = exemptions))
   if (args.size >= 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers, exemptions = exemptions))
   if (args.size >= 3) IO.writeLines(file(args(2)), kinowo.build.Coupling.edgeRows(graph))
-  if (args.size == 4) IO.writeLines(file(args(3)), kinowo.build.Coupling.fanOutRows(graph, exemptions))
-  streams.value.log.info(s"couplingReport: ${graph.types.size} classes, ${graph.known.size} dependencies, " +
+  if (args.size >= 4) IO.writeLines(file(args(3)), kinowo.build.Coupling.fanOutRows(graph, exemptions))
+  if (args.size == 5) IO.writeLines(file(args(4)), kinowo.build.Coupling.collaboratorRows(graph))
+  streams.value.log.info(s"couplingReport: ${graph.types.size} classes (${graph.data.size} data), ${graph.known.size} dependencies (${graph.coupled.size} on collaborators), " +
     s"${(System.nanoTime - started) / 1000000} ms after the compiles, to ${args.mkString(" and ")}")
 }
