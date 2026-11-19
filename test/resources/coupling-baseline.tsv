@@ -39,12 +39,12 @@ module-edge	scrapers->geodata	3
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
 module-edge	web->base	30
-module-edge	web->common	580
+module-edge	web->common	594
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	41
 module-edge	worker->base	80
-module-edge	worker->common	1628
+module-edge	worker->common	1630
 module-edge	worker->http	182
 module-edge	worker->identity	516
 module-edge	worker->scrapers	149
@@ -255,7 +255,6 @@ fanout	services.movies.MongoScreeningsRepository	26
 fanout	services.movies.MongoSlotsRepository	23
 fanout	services.movies.MovieChangeStream	19
 fanout	services.movies.MovieCodecs	13
-fanout	services.movies.MovieRepository	14
 fanout	services.movies.MovieSideStitch	17
 fanout	services.movies.MoviesChangeCursor	14
 fanout	services.movies.ResidentCorpus	13
@@ -309,4 +308,4 @@ fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
 distance	services.identity	43
 distance	services.metrics	38
-distance	services.movies	39
+distance	services.movies	28
