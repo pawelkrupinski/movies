@@ -46,8 +46,8 @@ module-edge	web->common	594
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	41
-module-edge	worker->base	80
-module-edge	worker->common	1616
+module-edge	worker->base	81
+module-edge	worker->common	1626
 module-edge	worker->http	176
 module-edge	worker->identity	516
 module-edge	worker->scrapers	149
@@ -268,13 +268,15 @@ fanout	services.movies.SlotKeyed	10
 fanout	services.movies.StitchedCorpusScan	11
 fanout	services.movies.UnscreenedCleanup	14
 fanout	services.movies.WholeRecordUpsert	17
+fanout	services.readmodel.CardProjection	12
+fanout	services.readmodel.CardStore	15
 fanout	services.readmodel.MongoReadModelRepository	23
 fanout	services.readmodel.PruneSweep	18
 fanout	services.readmodel.ReadModelBoot	23
 fanout	services.readmodel.ReadModelBootHeal	14
 fanout	services.readmodel.ReadModelContentAudit	13
 fanout	services.readmodel.ReadModelProjection	22
-fanout	services.readmodel.ReadModelProjector	32
+fanout	services.readmodel.ReadModelProjector	31
 fanout	services.readmodel.ReadModelReader	10
 fanout	services.readmodel.ReadModelStreams	15
 fanout	services.readmodel.ReadModelSweeper	23
