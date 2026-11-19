@@ -738,7 +738,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "start MongoDB in the background and wait for it before it ends" in {
     val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
     val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- name:")).toSeq
-    setup should include("scripts/ci/in-background.sh start mongo-start \"$GITHUB_WORKSPACE\"/scripts/ci/start-mongo-replset.sh")
+    // pulled by the shared action (CiPinnedImageSpec), which starts it in the background under `mongo-start`
+    val start = RepoFile.step(setup, "Start MongoDB (single-node replica set, for change streams)")
+    start should include("uses: ./.github/actions/pull-pinned-image")
+    start should include("background: mongo-start")
+    start should include("\"$GITHUB_WORKSPACE\"/scripts/ci/start-mongo-replset.sh")
     steps.last shouldBe "- name: Wait for MongoDB, started in the background above"
     RepoFile.step(setup, "Wait for MongoDB, started in the background above") should include(
       "scripts/ci/in-background.sh wait mongo-start 240")
