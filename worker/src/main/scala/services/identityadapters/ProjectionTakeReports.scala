@@ -7,7 +7,7 @@ import services.movies.{FilmId, StoredMovieRecord}
 /** How a written identity projection's take changes are told ([[IdentityProjection]]): to the metrics (the changes, and
  *  those that undid the listing's last change, `reversals`), the change feed, the log (a line each, then a summary) and the
  *  take history. Logs under the projection's `logger`. */
-private[services] final class ProjectionTakeReports(metrics: IdentityProjectionMetrics, changeFeed: Seq[TakeChange] => Unit,
+final class ProjectionTakeReports(metrics: IdentityProjectionMetrics, changeFeed: Seq[TakeChange] => Unit,
                                                     takeLines: TakeChangeLines, takeHistory: TakeHistory, reversals: TakeReversals,
                                                     logger: play.api.Logger) {
 

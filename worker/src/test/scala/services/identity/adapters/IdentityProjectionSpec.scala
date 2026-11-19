@@ -765,7 +765,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       FilmDraft(5L, None, Nil, models.MovieRecord(), "Unmatched")
     // Each fetch waits for another to be under way: fetched one at a time, the first never returns.
     val together = new java.util.concurrent.CyclicBarrier(2)
-    val fetched  = IdentityProjection.detailed(drafts, (record, film) => {
+    val fetched  = services.identityadapters.ProjectionDrafter.detailed(drafts, (record, film) => {
       if (film <= 102) together.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       Some(record.copy(imdbId = Some(s"tt$film")))
     })

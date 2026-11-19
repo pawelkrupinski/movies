@@ -59,29 +59,36 @@ private[identity] final class ProjectionWorld(
   val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
   /** Every venue whose rows the projection read back, showtimes and all, to build its slots. */
   val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
+  private val metrics = new IdentityProjectionMetrics {
+    def projected(films: Int, listings: Int, regroupings: Regroupings, seconds: Double): Unit =
+      reported = Some(films)
+    def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
+    def drifted(films: Int): Unit = { drifts += films; () }
+    def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
+    def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
+    override def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = { reversed ++= reversals; () }
+    def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
+  }
+  private val logger = play.api.Logger(classOf[IdentityProjection])
   val projection = new IdentityProjection(
-    listings = () => { listingsRead(); intake.projectedByVenue(venues) }, rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
+    listings = () => { listingsRead(); intake.projectedByVenue(venues) },
     changedListings = () => { listingsRead(); intake.projectedChanged(venues) },
-    resolve = resolve, cache = cache, filmIds = filmIds, details = details,
+    resolve = resolve,
+    cache = cache, filmIds = filmIds,
     announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
-    normalizer = normalizer, slots = slots,
-    tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
-      def projected(films: Int, listings: Int, regroupings: Regroupings, seconds: Double): Unit =
-        reported = Some(films)
-      def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
-      def drifted(films: Int): Unit = { drifts += films; () }
-      def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
-      def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
-      override def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = { reversed ++= reversals; () }
-      def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
-    }, clock = clock, fingerprints = fingerprints, takeLines = new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
-    scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
-    suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () }, pagesMoved = pagesMoved,
-    slotMemoOf = slotMemoOf,
+    drafter = new services.identityadapters.ProjectionDrafter(
+      new IdentityProjectionPlan.Drafts(normalizer, slots, ScreeningTokens.of(Country.Poland),
+        venues => { rowsRead ++= venues; intake.rowsOf(venues) })(using services.movies.LatestTitleYear(clock)),
+      normalizer, details, fingerprints, logger, slotMemoOf),
     // as the worker's: each take kept as the projection moves it (AsyncIdentityHistory writes takes before it returns),
     // the reversal count seeded from them at construction
-    takeHistory = new services.identityadapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
-    reversalsHeld = () => services.identityadapters.TakeHistory.reversalsHeld(history, clock.millis()))
+    takeReports = new services.identityadapters.ProjectionTakeReports(metrics, _ => (),
+      new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
+      new services.identityadapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
+      new TakeReversals(clock, seed = services.identityadapters.TakeHistory.reversalsHeld(history, clock.millis())), logger),
+    normalizer = normalizer, metrics = metrics, clock = clock,
+    scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
+    suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () }, pagesMoved = pagesMoved)
 
   def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
     archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))

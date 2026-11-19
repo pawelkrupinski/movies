@@ -19,6 +19,15 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val slots      = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
   private val tokens     = ScreeningTokens.of(Country.Poland)
+
+  /** The drafts of every film of the corpus: its index built afresh ([[ProjectionIndexing.index]]), the whole of it drafted. */
+  private def draftWhole(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord],
+                         counters: FilmIdCounters, normalizer: services.titles.TitleNormalizer, slots: CinemaSlotBuilder,
+                         tokens: ScreeningTokens, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
+                         memo: VenueSlotMemo = VenueSlotMemo.none): ProjectionDraft = {
+    val whole = ProjectionIndexing.index(listings, resolution, stored, counters, normalizer)
+    IdentityProjectionPlan.draftOf(whole, whole.everything, normalizer, slots, tokens, rowsOf, memo)
+  }
   private val start      = LocalDateTime.of(2026, 9, 27, 18, 0)
 
   private def row(cinema: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
@@ -56,7 +65,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
   private def plan(listings: Seq[ProjectedListing], r: Resolution, stored: Seq[StoredMovieRecord] = Nil,
                    counters: FilmIdCounters = FilmIdCounters.empty, slots: CinemaSlotBuilder = slots): ProjectionPlan = {
-    val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, rowsOf(listings))
+    val d = draftWhole(listings, r, stored, counters, normalizer, slots, tokens, rowsOf(listings))
     val p = IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
     p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
   }
@@ -133,11 +142,11 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   "A film drafted again over its own lean slots" should "be drafted over the stored record's very map" in {
     val r      = resolution(decision(Some(1), lalka*), decision(None, obcy*))
     val memo   = new VenueSlotMemo(0L)
-    val first  = IdentityProjectionPlan.draft(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
+    val first  = draftWhole(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     memo.endTick()
     val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
     val stored = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
-    val again  = IdentityProjectionPlan.draft(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
+    val again  = draftWhole(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     val byId   = stored.map(s => s.id -> s.record).toMap
     again.drafts.size shouldBe 2
     again.drafts.foreach(d => assert(d.record.data eq byId(d.inherited.get).data, s"${d.inherited}: the stored map was copied"))
@@ -175,7 +184,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val stored = StoredMovieRecord("Lalka", Some(1968), MovieRecord(tmdbId = Some(2), imdbRating = Some(8.0),
       data = Map(Tmdb -> SourceData(title = Some("Lalka")), slotOf(lalka.head))),
       FilmId("lalka|1968"), Some("lalka|1968"))
-    val d = IdentityProjectionPlan.draft(lalka, resolution(decision(Some(1), lalka*)), Seq(stored), FilmIdCounters.empty,
+    val d = draftWhole(lalka, resolution(decision(Some(1), lalka*)), Seq(stored), FilmIdCounters.empty,
       normalizer, slots, tokens, rowsOf(lalka))
     d.drafts.map(_.inherited) shouldBe Seq(Some(FilmId("lalka|1968")))
     d.drafts.head.record.imdbRating shouldBe None
@@ -192,7 +201,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     def leaning(imdbNumber: Int) = decision(None, obcy*).copy(leaning = Some(ResolverDecision.Leaning(51010, imdbNumber)))(DecisionTrace.Empty)
     def fallback(id: String) = decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("imdb", id, 0.4)))(DecisionTrace.Empty)
     def drafted(d: ResolverDecision, stored: Seq[StoredMovieRecord] = Seq(carried)) =
-      IdentityProjectionPlan.draft(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
+      draftWhole(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
     val lean = drafted(leaning(1360887))
     (lean.imdbId, lean.imdbRating) shouldBe ((None, None))
     drafted(leaning(1360887), stored = Nil).imdbId shouldBe None
@@ -220,7 +229,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       val record = if (d.film.isEmpty) written else written.copy(tmdbId = d.film, imdbId = None, wikidataId = None)
       val stored = StoredMovieRecord("Obcy", Some(1979), record, FilmId("obcy|1979"), Some("obcy|1979"))
       def drafted(stored: Seq[StoredMovieRecord]) =
-        IdentityProjectionPlan.draft(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
+        draftWhole(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
       withClue(s"$d: ")(drafted(Seq(stored)).copy(searchTitle = None) shouldBe drafted(Nil).copy(searchTitle = None))
     }
   }
@@ -240,7 +249,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     Seq(Some(1), Some(2)).foreach { film =>
       val stored = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), data = Map(slotOf(lalka.head), network)),
         FilmId("lalka|2026"), Some("lalka|2026"))
-      val d = IdentityProjectionPlan.draft(lalka, resolution(decision(film, lalka*)), Seq(stored), FilmIdCounters.empty,
+      val d = draftWhole(lalka, resolution(decision(film, lalka*)), Seq(stored), FilmIdCounters.empty,
         normalizer, slots, tokens, rowsOf(lalka))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(models.CinemaCityChain) shouldBe Some(network._2))
     }
@@ -255,7 +264,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val enriched = slotOf(bunkier) match { case (source, slot) => source -> slot.copy(releaseYear = Some(2021), director = Seq("Jenny Perlin")) }
     Seq(None, Some(889389)).foreach { film =>
       val stored = StoredMovieRecord("Bunkier", None, MovieRecord(data = Map(enriched)), FilmId("bunkier"), Some("bunkier"))
-      val d = IdentityProjectionPlan.draft(Seq(bunkier), resolution(decision(film, bunkier)), Seq(stored), FilmIdCounters.empty,
+      val d = draftWhole(Seq(bunkier), resolution(decision(film, bunkier)), Seq(stored), FilmIdCounters.empty,
         normalizer, slots, tokens, rowsOf(Seq(bunkier)))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(enriched._1).flatMap(_.releaseYear) shouldBe Some(2021))
     }
@@ -271,7 +280,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
       FilmId("obcy|1979"), Some("obcy|1979"))
     def drafted(d: ResolverDecision) =
-      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
+      draftWhole(obcy, resolution(d), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
     val none = drafted(decision(None, obcy*))
     (none.imdbId, none.imdbRating, none.data.contains(Imdb)) shouldBe ((None, None, false))
     (none.filmwebUrl, none.filmwebRating, none.data.contains(Filmweb)) shouldBe ((Some("https://www.filmweb.pl/film/x"), Some(7.1), true))
@@ -291,7 +300,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       filmwebUrl = Some("https://www.filmweb.pl/film/Obcy-1979-1"), filmwebRating = Some(7.1), searchTitle = Some("Obcy"),
       data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
       FilmId("obcy|1979"), Some("obcy|1979"))
-    def drafted(fallback: ResolverDecision.Fallback) = IdentityProjectionPlan.draft(obcy, resolution(decision(None, obcy*).copy(fallback = Some(fallback))(
+    def drafted(fallback: ResolverDecision.Fallback) = draftWhole(obcy, resolution(decision(None, obcy*).copy(fallback = Some(fallback))(
       DecisionTrace.Empty)), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
     val filmweb = drafted(ResolverDecision.Fallback("filmweb", "10105049", 1.0, Some("Płazy. Pionierzy życia na lądzie"), Some(2023)))
     (filmweb.filmwebUrl, filmweb.filmwebRating, filmweb.data.contains(Filmweb)) shouldBe
@@ -406,7 +415,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val memo  = new VenueSlotMemo(0L)
     val r     = resolution(decision(Some(1968), has))
     def yearDrafted = {
-      val d = IdentityProjectionPlan.draft(Seq(has), r, Nil, FilmIdCounters.empty, normalizer, built, tokens, rowsOf(Seq(has)), memo)
+      val d = draftWhole(Seq(has), r, Nil, FilmIdCounters.empty, normalizer, built, tokens, rowsOf(Seq(has)), memo)
       memo.endTick()
       d.drafts.head.record.data.values.flatMap(_.releaseYear).toSeq
     }
@@ -427,7 +436,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
         data = Map(source -> slot.copy(synopsis = Some("Z detalu.")))), FilmId("f-lalka"), Some("lalka"))
     }
     def synopsis(stored: StoredMovieRecord, memo: VenueSlotMemo) = {
-      val d = IdentityProjectionPlan.draft(Seq(first, second), r, Seq(stored), FilmIdCounters.empty, normalizer, slots, tokens,
+      val d = draftWhole(Seq(first, second), r, Seq(stored), FilmIdCounters.empty, normalizer, slots, tokens,
         rowsOf(Seq(first, second)), memo)
       memo.endTick()
       d.drafts.head.record.data.collect { case (CinemaShowing(KinoApollo, _), slot) => slot.synopsis }.toSeq

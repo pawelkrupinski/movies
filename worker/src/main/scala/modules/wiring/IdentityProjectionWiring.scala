@@ -41,39 +41,47 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** The answers a listing's own questions are filed under, as the take-change lines and the history name them. */
   private lazy val takeReads: services.identity.Listing => Seq[String] =
     services.identityadapters.TakeReads.of(country.language.toLanguageTag)
-  lazy val identityProjection: IdentityProjection =
+  lazy val identityProjection: IdentityProjection = {
+    // every piece logs under the projection's own logger, as its lines always have
+    val logger  = play.api.Logger(classOf[IdentityProjection])
+    val metrics = workerMetrics.identityProjection.forCountry(country.code)
     new IdentityProjection(
       listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
       changedListings = () => identityListingIntake.projectedChanged(liveCinemas),
-      rows        = identityListingIntake.rowsOf,
-      resolve     = IdentityProjection.modelled(identityModel, identityModelTimeout),
+      // the incremental model, brought up to now on its own thread: no resolve here
+      resolve     = { val (model, timeout) = (identityModel, identityModelTimeout)
+        _ => model.current(timeout).map(snapshot =>
+          IdentityProjection.Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings)) },
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
-      details     = movieService.withFilmDetails,
       announce    = movieService.announceReidentified,
+      drafter     = new services.identityadapters.ProjectionDrafter(
+        new services.identity.IdentityProjectionPlan.Drafts(titleNormalizer,
+          new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens,
+          identityListingIntake.rowsOf)(using services.movies.LatestTitleYear(clock)),
+        titleNormalizer, movieService.withFilmDetails, venueSlotFingerprints, logger),
+      takeReports = new services.identityadapters.ProjectionTakeReports(metrics,
+        changeFeed = { val projections = new java.util.concurrent.atomic.AtomicLong
+          changes => {
+            takeChangesTold(changes)
+            val (projection, at) = (projections.incrementAndGet(), clock.millis())
+            identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_, projection, at)))
+          } },
+        takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
+          listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
+        takeHistory = new services.identityadapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
+        reversals   = new services.identity.TakeReversals(clock, seed = identityReversalsHeld()), logger = logger),
       normalizer  = titleNormalizer,
-      slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts),
-      tokens      = screeningTokens,
-      metrics     = workerMetrics.identityProjection.forCountry(country.code),
+      metrics     = metrics,
       clock       = clock,
-      fingerprints = venueSlotFingerprints,
-      takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
-        listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
-      takeHistory = new services.identityadapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
-      reversalsHeld = () => identityReversalsHeld(),
       adopt       = identityListingIntake.adopt,
       // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw)
       agreement   = (resolution, listingOf, republished) =>
         services.identity.TakeJudgements.withdraw(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished), judged),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      changeFeed  = { val projections = new java.util.concurrent.atomic.AtomicLong
-        changes => {
-          takeChangesTold(changes)
-          val (projection, at) = (projections.incrementAndGet(), clock.millis())
-          identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_, projection, at)))
-        } },
       pagesMoved  = venuePageFacts.takeMoved)
+  }
 
   /** This country's hand judgements of takes, as the worker was built with them ([[BundledJudgements]]). */
   lazy val judged: services.identity.TakeJudgements.Index = BundledJudgements.index(country.code)

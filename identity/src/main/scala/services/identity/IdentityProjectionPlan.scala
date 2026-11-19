@@ -12,7 +12,7 @@ import java.time.Instant
 /** One listing a venue publishes: the resolver's view of it, and digests of the row as scraped — of everything but
  *  its showtimes (`row`), and of its showtimes. A US projection held every listing's row and showtimes (1.7M, ~560 MB
  *  live) through each tick to build the slots of the few films that changed; a slot that must be built reads its
- *  venue's rows again (`IdentityProjectionPlan.draft`'s `rowsOf`), a batch of venues at a time. */
+ *  venue's rows again (`IdentityProjectionPlan.draftOf`'s `rowsOf`), a batch of venues at a time. */
 final case class ProjectedListing(listing: Listing, row: Int, showtimes: Int)
 
 object ProjectedListing {
@@ -44,6 +44,12 @@ final case class FilmDraft(counter: Long, inherited: Option[FilmId], members: Se
    *  never arrived. The projection fetches them by id before it writes (`resolved by id`, never a
    *  search). */
   def needsDetails: Option[Int] = record.tmdbId.filterNot(_ => record.data.contains(models.Tmdb))
+
+  /** This draft with its film's TMDB details read into `detailed`: what the projection derived — the title it searches
+   *  by, the synopses it keeps — stays the projection's. Details can move any field and source of the record, so the
+   *  film is compared and written whole. */
+  def withDetails(detailed: MovieRecord): FilmDraft =
+    copy(record = detailed.copy(searchTitle = record.searchTitle, retainedSynopses = record.retainedSynopses), touched = None)
 }
 
 /** A film as the projection writes it: its id and counter, display title and year, the unique
@@ -64,6 +70,9 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
                                  // A venue's rows by the key each listing is published under (`VenueSlots.rowsByKey`, which
                                  // needs the drafting's normalizer); none without `rowsOf`'s rows.
                                  keyRows: (Cinema, Seq[CinemaMovie]) => VenueSlots.VenueRows = (_, _) => Map.empty) {
+  /** This draft over `films` in place of its drafts: the same retirements, map and venues. */
+  def withDrafts(films: Seq[FilmDraft]): ProjectionDraft = copy(drafts = films)
+
   /** `films` as they are written over the films stored before (`stored`). Every drafted slot is LEAN (no showtimes,
    *  only their digest and starts — enough to compare and guard by); a venue whose lean slot differs from the stored
    *  one is built in full from its rows, read a batch of venues at a time. One that matches a stored slot kept
@@ -139,13 +148,6 @@ object IdentityProjectionPlan {
    *  stamp its own). */
   val ResolverAttempt: TmdbAttempt = TmdbAttempt(ResolverVerdict, Instant.EPOCH)
 
-  def draft(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
-            normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens,
-            rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo = VenueSlotMemo.none)(using LatestTitleYear): ProjectionDraft = {
-    val whole = ProjectionIndexing.index(listings, resolution, stored, counters, normalizer)
-    draftOf(whole, whole.everything, normalizer, slots, tokens, rowsOf, memo)
-  }
-
   /** The drafts of the films `scope` names — every film of the corpus, or the ones a tick's changes reach, closed over
    *  everything that couples one film's draft to another's ([[ProjectionScope]]) — over `index`. Drafting a scope so
    *  closed gives each of its films exactly the draft the whole corpus would. */
@@ -154,6 +156,21 @@ object IdentityProjectionPlan {
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
               changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft =
     new ProjectionDrafting(index, scope, normalizer, slots, tokens, rowsOf, memo, shapes, changed).draft
+
+  /** [[draftOf]] and [[finish]] over one country's title normalizer, slot builder, screening tokens and venue rows: how a
+   *  projection drafts its films, tick after tick (the worker's `ProjectionDrafter`, which keeps the venue slot memo and
+   *  the films' shapes between projections). */
+  final class Drafts(normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens,
+                     rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]])(using LatestTitleYear) {
+    def draftOf(index: ProjectionIndex, scope: ProjectionScope, memo: VenueSlotMemo, shapes: FilmShapes,
+                changed: Set[ListingKey]): ProjectionDraft =
+      IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, rowsOf, memo, shapes, changed)
+    /** `draft` titled and keyed, a fresh id never one a film stored in `index` holds. */
+    def finish(draft: ProjectionDraft, index: ProjectionIndex): ProjectionPlan = {
+      val storedIds = index.storedById.valuesIterator.map(_.id).toSet
+      IdentityProjectionPlan.finish(draft, normalizer, storedIds)
+    }
+  }
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already. A fresh id is neither live nor one the FilmId map holds: the map

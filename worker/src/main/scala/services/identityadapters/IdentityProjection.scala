@@ -6,9 +6,9 @@ import services.movies.LatestTitleYear
 import java.util.Locale
 import scala.util.chaining.scalaUtilChainingOps
 
-import models.{Cinema, CinemaMovie, MovieRecord, ListingKey}
+import models.{Cinema, MovieRecord, ListingKey}
 import play.api.Logging
-import services.movies.{CacheKey, LeanRecords, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens, StoredMovieRecord}
+import services.movies.{CacheKey, LeanRecords, FilmId, MovieCache, StoredMovieRecord}
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
@@ -101,7 +101,7 @@ object IdentityProjectionMetrics {
  *  3. plans the films ([[IdentityProjectionPlan]]): ids by overlap through the persisted FilmId
  *     map, each film's slots from its listings, every showtime kept;
  *  4. refuses a plan that would empty the site ([[ProjectionGuard]]);
- *  5. fetches, BY ID, the TMDB details of a film new to its record (`details`);
+ *  5. fetches, BY ID, the TMDB details of a film new to its record ([[ProjectionDrafter]]);
  *  6. writes the films that changed and retires the ids no film carries (through the cache's
  *     projection funnel, no identity gate), extends the FilmId map, and announces a film whose
  *     TMDB answer changed, once its details are in, to the enrichment chain (`announce`: IMDb-id
@@ -117,20 +117,17 @@ object IdentityProjectionMetrics {
  */
 final class IdentityProjection(
   listings:    () => Seq[(Cinema, Seq[ProjectedListing])],
-  rows:        Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
   resolve:     (() => Seq[Listing]) => Option[IdentityProjection.Resolved],
   cache:       MovieCache,
   filmIds:     FilmIdCounterStore,
-  details:     (MovieRecord, Int) => Option[MovieRecord],
   announce:    (CacheKey, MovieRecord) => Unit,
+  /** Each film's draft: its venue slots, TMDB details, title and key. */
+  drafter:     ProjectionDrafter,
+  /** How a written projection's take changes are told: the metrics, the change feed, the log and the take history. */
+  takeReports: ProjectionTakeReports,
   normalizer:  TitleNormalizer,
-  slots:       CinemaSlotBuilder,
-  tokens:      ScreeningTokens,
   metrics:     IdentityProjectionMetrics,
   clock:       Clock,
-  fingerprints: VenueSlotFingerprints,
-  /** The log lines of the take changes a projection writes. */
-  takeLines:   TakeChangeLines,
   /** The listings as [[listings]] gives them, read again only where this worker's own scrapes moved them: what a projection
    *  run on those ([[tickChanged]]) reads, leaving what other processes filed to the next periodic [[tick]]. */
   changedListings: () => Seq[(Cinema, Seq[ProjectedListing])],
@@ -148,34 +145,19 @@ final class IdentityProjection(
   /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
    *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
   suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => (),
-  /** Handed each written projection's change list, as [[IdentityProjectionMetrics.takesChanged]] is: what the staging
-   *  screen is told ([[staging.ChangeFeed]]), which must return at once. */
-  changeFeed:  Seq[TakeChange] => Unit = _ => (),
   /** The venue pages (venue, page) whose read moved since the last call, each given once (`IndexedVenuePageFacts.takeMoved`):
    *  a venue slot is built from its listing's page ([[CinemaSlotBuilder.pages]]), so a listing whose page moved is a change
    *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. Read off the one feed
    *  every input's change comes on; None when it no longer holds every filing since the last call: every listing on a
    *  page is then a change. */
-  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil),
-  /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
-  slotMemoOf:  Long => VenueSlotMemo = new VenueSlotMemo(_),
-  /** Where each take a written projection moves is kept with what decided it ([[TakeHistory]]). */
-  takeHistory: TakeHistory = TakeHistory.Discard,
-  /** The last film changes the take history kept within [[TakeReversals.Horizon]], read once at construction: what the
-   *  reversal count starts from, so a restart forgets none ([[TakeHistory.reversalsHeld]]). */
-  reversalsHeld: () => Seq[(ListingKey, TakeReversals.Held)] = () => Nil
+  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil)
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
   private val mapping = new FilmIdMapping(filmIds)
   private val writes  = new ProjectedFilmWrites(cache, logger)
-  private val takeReports = new ProjectionTakeReports(metrics, changeFeed, takeLines, takeHistory, new TakeReversals(clock, seed = reversalsHeld()), logger)
   private var consecutiveShrinks = 0
-  /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
-  private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))
-  /** The fingerprints of the slots the memo keeps, as the store holds them. */
-  private val slotFingerprints = new SlotFingerprintRecord(fingerprints, slotMemo, logger)
 
   /** That the last projection wrote everything it planned, and the FilmId map's size once it had. */
   private final case class Last(counters: Int)
@@ -202,8 +184,6 @@ final class IdentityProjection(
   /** The index, kept from one projection to the next and moved where its inputs moved — afresh after any projection that
    *  did not write all it planned. */
   private var live = new LiveProjectionIndex(normalizer)
-  /** Each film as last drafted, so a scoped projection works out only the venues of a film that moved. */
-  private var shapes = FilmShapes()
   /** The kept index over `counters`: what a spec holds to the index built afresh from the same corpus. */
   private[services] def keptIndex(counters: FilmIdCounters): ProjectionIndex = synchronized(live.index(counters))
 
@@ -306,8 +286,8 @@ final class IdentityProjection(
     lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution, { val venues = run.venues
       () => venues.iterator.flatMap(_._2).map(_.listing) }))
     val at          = clock.instant()
-    phases("seed")(slotFingerprints.seed())
-    if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
+    phases("seed")(drafter.seed())
+    if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); drafter.forget(); carried = ProjectionScope.Changes.none }
     // Exactly the listings the resolution decided: one that reached the intake after the
     // model's snapshot is projected by the next tick, never left out of its film by this one.
     val updated = phases("index")(live.update(run.byVenue, held, resolution.decisions, run.stored) ++ pageChanges(run))
@@ -322,7 +302,7 @@ final class IdentityProjection(
     val reconciling = run.mode.reconciles(scopedSinceWhole, scopedBetweenWhole)
     val reconcile   = moved.isDefined && reconciling
     val freed       = changes.fold(Set.empty[String])(_.keys)
-    val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
+    val (scope, draft, detailed, plan) = drafter.drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
       changes.fold(Set.empty[ListingKey])(_.listings), index, phases)
     IdentityProjection.Planned(resolution, at, updated, index, changes, moved, freed, reconciling, reconcile, scope, draft, detailed, plan)
   }
@@ -345,13 +325,13 @@ final class IdentityProjection(
   /** The planned projection, held back by the shrink guard or written. */
   private def projectResolution(run: Run, counters: FilmIdCounters,
                                 p: IdentityProjection.Planned): ProjectionTick = {
-    val (slotCounts, misses) = slotReport(run, p.scope)
+    val (slotCounts, misses) = drafter.slotReport(run.mode.periodic, p.scope, run.phases)
     val scopeStored = if (p.scope.whole) run.stored else run.stored.filter(s => p.scope.films(s.id.value))
     run.phases("guard")(ProjectionGuard.refusal(p.draft, scopeStored, LocalDateTime.ofInstant(p.at, ZoneOffset.UTC), corpus = run.stored)) match {
       case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
         consecutiveShrinks += 1
         carried = carried ++ p.updated
-        shapes.discard()
+        drafter.discard()
         refuse(run, IdentityProjectionMetrics.Refusal.Shrink, s"$why (refusal $consecutiveShrinks of ${ProjectionGuard.Grace})",
           Some(p.resolution), keep = true)
       case shrink =>
@@ -360,18 +340,6 @@ final class IdentityProjection(
         writePlanned(run, counters, p, scopeStored)
           .copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses, scoped = !p.scope.whole)
     }
-  }
-
-  /** Close the slot memo's tick (recording its fingerprints on a periodic projection) and note what it reused and
-   *  built: the reused and built counts, and the misses by cause. */
-  private def slotReport(run: Run, scope: ProjectionScope): ((Int, Int), (Int, Int, Int)) = {
-    val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
-    if (run.mode.periodic) run.phases("fingerprints")(slotFingerprints.record())
-    val misses = slotMemo.lastMisses()
-    run.phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
-      s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
-    if (!scope.whole) run.phases.note(s"scope ${scope.films.size} stored films, ${scope.clusters.size} clusters, ${scope.listings.size} listings")
-    (slotCounts, misses)
   }
 
   /** Write the planned projection, then hand on its suspect takes, check its drift, and — once every write was taken —
@@ -394,32 +362,13 @@ final class IdentityProjection(
       fresh = run.previous.isEmpty)
     if (tick.declined == 0) {
       ownTakes = true
-      shapes.commit(whole = p.scope.whole)
+      drafter.commit(whole = p.scope.whole)
       carried = ProjectionScope.Changes.none
       last = Some(Last(counters.size + p.plan.counterAdditions.size))
       // The hour between two reconciles is counted in periodic projections; one run on scrapes counts none.
       scopedSinceWhole = if (p.scope.whole) 0 else if (run.mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
     }
     tick
-  }
-
-  /** The drafts of `scope`, detailed and titled. A scope is closed again over every stored film outside it under one of
-   *  its films' plain title keys, new or old — the older of two films of one title and year keeps the plain key, so
-   *  their keys are decided together — until none is left outside. */
-  private def drafted(start: ProjectionScope, freed: Set[String], changed: Set[ListingKey], index: ProjectionIndex,
-                      phases: ProjectionPhases): (ProjectionScope, ProjectionDraft, ProjectionDraft, ProjectionPlan) = {
-    val storedIds = index.storedById.valuesIterator.map(_.id).toSet
-    @scala.annotation.tailrec
-    def loop(scope: ProjectionScope): (ProjectionScope, ProjectionDraft, ProjectionDraft, ProjectionPlan) = {
-      val draft    = phases("draft")(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, rows, slotMemo, shapes, changed))
-      val detailed = phases("details")(draft.copy(drafts = IdentityProjection.detailed(draft.drafts, details)))
-      val plan     = phases("finish")(IdentityProjectionPlan.finish(detailed, normalizer, storedIds))
-      (if (scope.whole) None else ProjectionScope.widened(index, scope, plan.films.map(_.key), freed, normalizer)) match {
-        case Some(wider) => loop(wider)
-        case None        => (scope, draft, detailed, plan)
-      }
-    }
-    loop(start)
   }
 
   /** A reconciling projection of the whole corpus, checked against the scope its changes alone gave it — closed over key
@@ -581,21 +530,6 @@ object IdentityProjection {
   /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
   private[services] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
 
-  /** How many films' TMDB details a projection fetches at once — within what TMDB tolerates (see the
-   *  external-api-rate-limits budgets). */
-  private[services] val DetailsConcurrency = 8
-
-  /** Each draft whose film is new to its record, with that film's TMDB details — fetched side by
-   *  side, since each is its own film's: one at a time, a country's first projection waited on
-   *  ~2,250 of them in a row (a US boot). The details builder owns the TMDB side; what the projection
-   *  derived stays the projection's, and a fetch that fails leaves its draft as it was. */
-  private[services] def detailed(drafts: Seq[FilmDraft], details: (MovieRecord, Int) => Option[MovieRecord]): Seq[FilmDraft] =
-    tools.BoundedParallel.map("identity-projection-details", drafts, DetailsConcurrency) { d =>
-      // Details can move any field and source of the record: the film is compared and written whole.
-      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
-        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses), touched = None)))
-    }
-
   /** How many periodic projections of a scope run between two of the whole corpus — the reconciliation that would put right
    *  a film a scope missed, and counts it ([[IdentityProjectionMetrics.drifted]]). The worker's projections run on scrapes
    *  and are reconciled by the clock ([[ReconcileEvery]]); this paces [[tick]] alone, which an operator's settle runs. */
@@ -673,8 +607,4 @@ object IdentityProjection {
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
   final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)
-
-  /** The incremental model, brought up to now on its own thread — no resolve here. */
-  def modelled(model: IdentityModelService, timeout: FiniteDuration): (() => Seq[Listing]) => Option[Resolved] = _ =>
-    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings))
 }
