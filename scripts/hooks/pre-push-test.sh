@@ -74,7 +74,7 @@ check "checks come out once each, in run order" "newchecks schedules driftguards
 
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
 check "an expected match runs them" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
-check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
+check "a hard-cluster expectation runs it, and the identity area (the hard-cluster ratchet reads it)" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
 
 # THE AREAS (the owner, 2026-10-26: no pre-merge CI; the basic tests, plus an area's own local tests when it is touched).
 check "the resolver runs the identity area's tests" "driftguards sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
@@ -85,7 +85,7 @@ check "the title normalizer runs them (it applies the title rules: Main #2266, a
   "driftguards sbt identity" "$(plan common/src/main/scala/services/titles/TitleNormalizer.scala)"
 # Main #2515: a drift slice is what PopulationMonotonicitySpec and IdentityDriftSlicesSpec walk -- 97d260d67's slice would
 # have walked only because its backlog row rode along
-check "a drift slice runs the flip backlog check (the population walk over it)" "flipbacklog" \
+check "a drift slice runs the flip backlog check (the population walk over it), and the identity area (IdentityDriftSlicesSpec replays it)" "driftguards sbt flipbacklog identity" \
   "$(plan test/resources/fixtures/drift-slices/de/x-05c3cfc6/slice.json.gz)"
 check "...and so do the flip backlog (with the identity area), the struck flips and the drift-gate seeds" \
   "allowlists driftguards sbt flipbacklog identity|flipbacklog|flipbacklog" \
@@ -104,11 +104,19 @@ check "docs run nothing, no area" "" "$(plan docs/landing-process.md docs/design
 check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
 check "an unmatched-cluster capture runs the identity area's tests, not the lint" "driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
+# WHAT THE IDENTITY SPECS READ BESIDE THE RESOLVER (2026-11-19, identity-impact-check hook: NO AREA): the capture readers
+# of the worker's fixtures config, the hard-cluster seeds, the identity set's own scripts.* specs and the ratchet spec,
+# and the test support they share -- a mutation of UnmatchedClusters' capture path failed the ratchet unseen
+check "the capture reader runs the identity area's tests" "driftguards sbt identity" "$(plan worker/src/fixtures/scala/tools/UnmatchedClusters.scala)"
+check "...and so do the hard-cluster seeds" "driftguards sbt identity" "$(plan test/resources/fixtures/corpus/hard-clusters-seeds.tsv)"
+check "...an identity script spec, the hard-cluster ratchet and the country scope" \
+  "driftguards scripttests sbt identity|driftguards scripttests sbt identity|driftguards scripttests sbt identity" \
+  "$(plan worker/src/test/scala/scripts/IdentityRefitMeasureAllSpec.scala)|$(plan worker/src/test/scala/tools/HardClusterRatchetSpec.scala)|$(plan worker/src/test/scala/tools/CountryScope.scala)"
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
-check "a file identity-slice drops into old refs compiles the tools into their floors" "sbt oldrefs" \
+check "a file identity-slice drops into old refs compiles the tools into their floors (a fixtures tool: the identity area too)" "driftguards sbt identity oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
 check "...and one title-trace drops in (an identity test: the identity area's tests too)" "driftguards scripttests sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
-check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
+check "a fixtures-config file neither tool drops in compiles no floor (the identity area runs: the drift-slice replays read it)" "driftguards sbt identity" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
 # it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of
@@ -211,7 +219,7 @@ check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" 
   "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
 check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
 check "a Python self-test runs the self-tests, and the sbt check for the self-test lint" "scripttests sbt" "$(plan scripts/ci/x_test.py)"
-check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/fixtures/resources/x.json)"
+check "worker's fixtures config selects the sbt check, and the identity area (its capture readers)" "driftguards sbt identity" "$(plan worker/src/fixtures/resources/x.json)"
 
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
 # The plan modes never read the root checkout's state: its full `git status` made each plan call cost a whole-tree rehash
@@ -628,8 +636,8 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPAC
 check "...and ALL runs every class once, by name: identity's specs not again under the worker's glob, the shards able to split it" "0 1 0" \
   "$code $(calls '\[identity/testOnly services.identity.ResolverSpec -- -Didentity.population.candidates=[^]]*\] \[worker/testOnly services.identity.AdapterSpec -- -Didentity.population.candidates=[^]]*\]') $(calls '\[identity/test\]')"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='web services.movies.ElsewhereSpec\n')"
-check "...and none at all when it reaches no identity spec, said" "0 0 1" \
-  "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
+check "...and none at all when it reaches no identity spec, said, nor its first line (a fixtures tool no spec reads)" "0 0 1 0" \
+  "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out") $(calls first-check)"
 check "...and no population walk against the base while no slice is a candidate" "0" "$(calls population-walk-diff)"
 # FROM A CHECK TREE (scripts/identity-impact-check `hook` runs the real one): the identity selection in a detached
 # worktree of the clone, its TMPDIR elsewhere, as a landing check's checkout is; PREPUSH_IDENTITY_PLAN writes the plan

@@ -121,8 +121,9 @@ green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
 running="$(run_json 38529260149 in_progress "" 38529260149)"
 # Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them),
-# driftguards too: the `fixing` commit's Fixes-Red: trailer selects it whatever the pushed paths.
-pathchecks="judgements eslint drift driftguards snapshot dashboards metricalerts sbt scripttests actionlint shellcheck ios newchecks schedules"
+# driftguards too: the `fixing` commit's Fixes-Red: trailer selects it whatever the pushed paths; and the identity area,
+# which a tools-only commit's worker/src/fixtures/ file selects (the capture readers, 2026-11-19).
+pathchecks="judgements eslint drift driftguards snapshot dashboards metricalerts sbt identity scripttests actionlint shellcheck ios newchecks schedules"
 push() { # <range> -> exit code; stderr in $gate/err
   (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
   all_green() { GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" "$@"; }

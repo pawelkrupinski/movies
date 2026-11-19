@@ -256,9 +256,14 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
    checkout's kept `scripts/sbt-warm` server if one is live; otherwise in a temporary worktree of the pushed commit
    (cold: an sbt check there takes minutes). A non-kept live sbt in the checkout also forces the temporary worktree.
 8. **Area selection.** A change on the identity paths (`is_identity_path`: `identity/`,
-   `worker/src/{main,test}/scala/services/identity/`, `common/src/main/resources/title-{rules,words}.tsv`,
+   `worker/src/main/scala/services/identityadapters/`, `common/src/main/resources/title-{rules,words}.tsv`,
    `common/src/main/scala/services/titles/rules/`, `common/src/main/scala/services/titles/TitleNormalizer.scala`,
-   `test/resources/fixtures/identity-*`) selects `identity`, and `sbt` with it (so the basic tests run). The page
+   `test/resources/fixtures/identity-*`; and what the identity specs read beside them, 2026-11-19: their own spec trees
+   `*/src/test/scala/services/{identity,titles/rules}/`, `worker/src/test/scala/scripts/`, the hard-cluster ratchet
+   and `tools.CountryScope`, the worker's fixtures config `worker/src/fixtures/` (the capture readers), testkit's
+   `services/identity/` doubles and its two normalizers, `test/resources/fixtures/{corpus,drift-slices}/`) selects
+   `identity`, and `sbt` with it (so the basic tests run). The test-impact selection then narrows the area to the
+   specs the change reaches; one reaching none runs nothing, not even the slice coverage. The page
    paths (`web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`) select `sbt` only: no `page` area since
    2026-11-17. The hook no longer asks for an identity-landing-check LANDABLE.
 9. **The path checks**, in this order; a failure is recorded and the rest still run:

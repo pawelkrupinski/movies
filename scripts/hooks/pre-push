@@ -386,14 +386,23 @@ LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
 has_local_tests() { # <set>
     [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh|first)[[:space:]]" "$LocalTests"
 }
-# The identity paths: the resolver, its worker adapters (services.identityadapters) and tests, title rules and the normalizer applying them, the
-# identity fixtures.
+# The identity paths: the resolver, its worker adapters (services.identityadapters), title rules and the normalizer
+# applying them, the identity fixtures -- and what the identity set's specs read beside them (2026-11-19, identity-impact-check
+# hook: NO AREA for a capture reader whose mutation failed the ratchet): the set's own spec trees (services.identity.*,
+# services.titles.rules.*, scripts.*, the hard-cluster ratchet and its country scope, in whichever module), the worker's
+# fixtures config (the capture readers, the corpus and enrichment-cache harness), testkit's identity doubles and the
+# normalizers the specs build, and the corpus captures, hard-cluster seeds and drift slices. The test-impact selection
+# narrows each to the specs that read it (identityImpact: one a fixtures tool no spec reaches selects none, and runs none).
 is_identity_path() { # <path>
     case "$1" in
-        identity/*|worker/src/main/scala/services/identityadapters/*|worker/src/test/scala/services/identity/*|\
+        identity/*|worker/src/main/scala/services/identityadapters/*|*/src/test/scala/services/identity/*|\
         common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
         common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
-        test/resources/fixtures/identity-*) return 0 ;;
+        */src/test/scala/services/titles/rules/*|worker/src/test/scala/scripts/*|\
+        worker/src/test/scala/tools/HardClusterRatchetSpec.scala|worker/src/test/scala/tools/CountryScope.scala|\
+        worker/src/fixtures/*|testkit/src/main/scala/services/identity/*|\
+        testkit/src/main/scala/services/movies/SingleCountryNormalizer.scala|testkit/src/main/scala/services/movies/NormalizerTrace.scala|\
+        test/resources/fixtures/identity-*|test/resources/fixtures/corpus/*|test/resources/fixtures/drift-slices/*) return 0 ;;
     esac
     return 1
 }
@@ -1768,7 +1777,8 @@ local_test_lines() { # <set> <kind>
     sed -nE "s/^$1[[:space:]]+$2[[:space:]]+//p" scripts/hooks/local-tests.txt
 }
 # An area's local tests: its first lines (each a fast check whose failure names everything at once: it fails the area
-# there, nothing else run), its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
+# there, nothing else run; the identity area's after its test-impact selection, none when it selected nothing), its sbt
+# lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
 # compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
 # THE IDENTITY PLAN ALONE: PREPUSH_IDENTITY_PLAN=<file> makes the identity area write the sbt lines its TEST-IMPACT
 # SELECTION picked (a `# ` line first: the selection's summary, or why there was none and every identity test is the
@@ -1779,19 +1789,6 @@ run_local_tests() { # <set>
     local cmds=() line rc=0 sh_lines=1 plan_only=""
     [ "$1" != identity ] || plan_only="${PREPUSH_IDENTITY_PLAN:-}"
     need_jvm "$1" || return 1
-    # the first lines: once, never sharded (shard 1 runs them, as the sh lines)
-    if [ -n "$plan_only" ]; then :
-    elif [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
-        while IFS= read -r line; do
-            [ -n "$line" ] || continue
-            if ! bash -c "$line" < /dev/null > "$tmp/$1.first.log" 2>&1; then
-                cat "$tmp/$1.first.log" >&2
-                warn "$1: \`$line\` failed (full log: $tmp/$1.first.log)"
-                return 1
-            fi
-            grep -m1 -E '^[a-z-]+: [0-9]+ ' "$tmp/$1.first.log" || true
-        done < <(local_test_lines "$1" first)
-    fi
     while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
         local selected=()
@@ -1811,6 +1808,19 @@ run_local_tests() { # <set>
             return 0
         fi
         if [ "${#cmds[@]}" -eq 0 ]; then log "identity: the change reaches no identity spec"; return 0; fi
+    fi
+    # the first lines: once, never sharded (shard 1 runs them, as the sh lines); the identity area's after its selection,
+    # and only when that reached a spec (a fixtures tool no identity spec reads ran the slice coverage for nothing)
+    if [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            if ! bash -c "$line" < /dev/null > "$tmp/$1.first.log" 2>&1; then
+                cat "$tmp/$1.first.log" >&2
+                warn "$1: \`$line\` failed (full log: $tmp/$1.first.log)"
+                return 1
+            fi
+            grep -m1 -E '^[a-z-]+: [0-9]+ ' "$tmp/$1.first.log" || true
+        done < <(local_test_lines "$1" first)
     fi
     # THE IDENTITY SHARDS (precommit-check.yml's `check (identity k/n)` jobs): PREPUSH_IDENTITY_SHARD=<k>/<n> runs shard k of
     # the selected lines (scripts/ci/shard_tests.py: every class in exactly one shard, under its own line's command and

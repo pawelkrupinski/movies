@@ -3,8 +3,9 @@
 # laptop; main's CI tests everything after the merge. This file is their one definition.
 # Lines: `<set> sbt <command>` (a set's sbt lines go to sbt in order: the basic ones inside the `sbt` check's run, an
 # area's in one scripts/sbt-warm call), `<set> sh <command>` (run by bash from the checkout's root, after the set's
-# sbt lines) or `<set> first <command>` (an area's: run by bash from the checkout's root BEFORE its sbt lines and their
-# test-impact selection; a failure fails the area there, its output shown, nothing else run). Blank and # lines are
+# sbt lines) or `<set> first <command>` (an area's: run by bash from the checkout's root BEFORE its sbt lines -- the
+# identity area's after their test-impact selection, and not at all when that selected no spec; a failure fails the
+# area there, its output shown, nothing else run). Blank and # lines are
 # skipped. Sets:
 #   basic     rides the hook's `sbt` check, whenever that runs. Deterministic, self-contained, seconds to a few minutes
 #             warm: compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing needing Mongo or the network;
