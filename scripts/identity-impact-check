@@ -18,7 +18,8 @@ never leaves out a test that could fail. Two ways, each in a checkout of its own
               pre-push hook's own identity area run there with PREPUSH_IDENTITY_PLAN (the plan alone, nothing run):
               AGREES when the hook made a selection and it names exactly the classes this tool's own selection does;
               NO SELECTION when the hook fell back to every identity test (its why named: 2026-11-19's question,
-              whether a check tree's selection silently fails), DISAGREES otherwise.
+              whether a check tree's selection silently fails), NO AREA when the hook runs no identity area for the
+              change at all (is_identity_path), DISAGREES otherwise.
 
 Usage: scripts/identity-impact-check mutations [--only NAME,...] | hook [--only NAME,...] | replay [-n 50] [--ref REF] [--from N]
 Exit 0 sound, 1 a test the selection left out changed outcome (named; hook: a mutation not AGREES), 2 the check could
@@ -312,8 +313,10 @@ def hook_plan(tree, log, plan_file, hook_tmp):
     with open(log, "w") as fh:
         rc = subprocess.run(["bash", "scripts/hooks/pre-push", "--checks-only", "HEAD~1..HEAD"], cwd=tree, env=env,
                             stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL).returncode
-    if rc != 0 or not os.path.exists(plan_file):
-        raise RuntimeError(f"the hook wrote no identity plan (exit {rc}): {log}")
+    if rc != 0:
+        raise RuntimeError(f"the hook failed (exit {rc}): {log}")
+    if not os.path.exists(plan_file):  # the change is no identity path to the hook (is_identity_path): no area run
+        return None, []
     lines = [l.rstrip("\n") for l in open(plan_file, encoding="utf-8") if l.strip()]
     return next((l[2:] for l in lines if l.startswith("# ")), ""), [l for l in lines if not l.startswith("#")]
 
@@ -333,8 +336,9 @@ def hook(tree, out, only):
         mine = plan_classes(identity_impact.plan(set_lines(tree), why, chosen, countries, every_test=every if why else None))
         summary, lines = hook_plan(tree, f"{out}/{name}.hook.log", f"{out}/{name}.hook.plan", f"{out}/{name}.hook-tmp")
         theirs = plan_classes(lines)
-        verdict = "NO SELECTION" if summary.startswith("no test-impact selection") else \
-            ("AGREES" if theirs == mine else "DISAGREES")
+        verdict = "NO AREA" if summary is None else "NO SELECTION" if summary.startswith("no test-impact selection") \
+            else ("AGREES" if theirs == mine else "DISAGREES")
+        summary = summary if summary is not None else "the hook runs no identity area for this change"
         if verdict != "AGREES":
             unsound.append(name)
         rows.append([name, verdict, str(len(flat(theirs))), str(len(flat(mine))), summary[:160]])
