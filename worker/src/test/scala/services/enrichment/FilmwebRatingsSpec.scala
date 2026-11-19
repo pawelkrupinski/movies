@@ -65,7 +65,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(1986)))
 
@@ -90,7 +90,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/1084/rating" -> """{"rate":7.4,"count":1000}""")))
-    new FilmwebRatings(cache, disabledTmdb, filmweb).refreshOneSync(cache.keyOf("Przekleństwa niewinności", Some(2026)))
+    SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb).refreshOneSync(cache.keyOf("Przekleństwa niewinności", Some(2026)))
     cache.get(cache.keyOf("Przekleństwa niewinności", Some(2026))).flatMap(_.filmwebUrl)
   }
   private val pageCredit = Filmweb -> SourceData(director = Seq("Sofia Coppola"), releaseYear = Some(1999))
@@ -114,7 +114,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(2026)))
 
@@ -130,7 +130,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/1174/rating" -> """{"rate":6.6,"count":1000}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Lalka", Some(1968)))
 
@@ -146,7 +146,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/10007434/rating" -> """{"rate":6.72,"count":1000}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Mortal Kombat II", Some(2026)))
 
@@ -165,7 +165,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.filmwebRating) shouldBe Some(7.5)
@@ -185,7 +185,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/10052360/preview" -> """{"directors":[{"id":1,"name":"Gints Zilbalodis"}],"genres":[{"id":2,"name":{"text":"Animacja"}}],"plot":{"synopsis":"Kot w łódce."}}""",
       "/film/10052360/rating"  -> """{"rate":8.04,"count":900}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Flow", Some(2024)))
 
@@ -210,7 +210,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/555/info"        -> """{"title":"Drama","year":2024}""",
       "/film/555/rating"      -> """{"rate":7.2,"count":500}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Drama", Some(2024)))
 
@@ -256,7 +256,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/779836/preview"  -> """{"directors":[{"id":1,"name":"Denis Villeneuve"}]}""",
       "/film/779836/rating"   -> """{"rate":8.2,"count":100}"""
     )))
-    val ratings = new FilmwebRatings(cache, tmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, tmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Diuna: Część druga", Some(2024)))
 
@@ -289,7 +289,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/1/info"      -> """{"title":"Belle","year":2013}""",
       "/film/1/preview"   -> """{"directors":[{"id":10,"name":"Amma Asante"}]}"""
     )))
-    val ratings = new FilmwebRatings(cache, tmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, tmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Belle", Some(2021)))
 
@@ -321,7 +321,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/111/rating"  -> """{"rate":7.1,"count":500}"""
     ))
     val filmweb = new FilmwebClient(fetch)
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     // The row keys on its derived display title (year-less scraped key); grab it
     // rather than reconstruct the sanitisation here.
@@ -351,7 +351,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Lucius Glantz walczy o hotel."}}""",
       "/film/900/rating"  -> """{"rate":4.7,"count":50}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     val key = cache.entries.head._1
     ratings.refreshOneSync(key)
@@ -384,7 +384,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}]}""",
       "/film/900/rating"  -> """{"rate":4.7,"count":50}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.entries.head._1)
 
@@ -403,7 +403,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val brokenFilmweb = new FilmwebClient(RoutingHttpFetch.dead("boom"))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, brokenFilmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, brokenFilmweb)
 
     a[RuntimeException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", None))
     cache.get(cache.keyOf("Foo", None)).flatMap(_.filmwebRating) shouldBe Some(6.0)
@@ -411,7 +411,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(RoutingHttpFetch.dead("unused")))
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, new FilmwebClient(RoutingHttpFetch.dead("unused")))
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
 
@@ -421,7 +421,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))
 
@@ -439,7 +439,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.53,"count":1001}""")))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))
 
@@ -464,7 +464,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/33/info"    -> """{"title":"C","year":2024}""",
       "/film/33/rating"  -> """{"rate":8.1,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     val result = ratings.refreshAll()
 
@@ -498,11 +498,11 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/live/search"     -> """{"searchHits":[{"id":838929,"type":"film","matchedTitle":"Wartość sentymentalna"}]}""",
       "/film/838929/info" -> """{"title":"It's About Time","year":2015}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     val outcome = ratings.auditOneSync("Wartość sentymentalna", Some(2025))
 
-    outcome shouldBe FilmwebRatings.Dropped(staleUrl)
+    outcome shouldBe SiteRatings.Dropped(staleUrl)
     val after = cache.get(cache.keyOf("Wartość sentymentalna", Some(2025))).get
     after.filmwebUrl    shouldBe None
     after.filmwebRating shouldBe None
@@ -520,11 +520,11 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       s"/film/$rightId/info"  -> """{"title":"Foo","year":2024}""",
       s"/film/$rightId/rating"-> """{"rate":8.0,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     val outcome = ratings.auditOneSync("Foo", Some(2024))
 
-    outcome shouldBe a [FilmwebRatings.Corrected]
+    outcome shouldBe a [SiteRatings.Corrected]
     val after = cache.get(cache.keyOf("Foo", Some(2024))).get
     after.filmwebUrl.get should include (s"-$rightId")
     after.filmwebRating  shouldBe Some(8.0)
@@ -543,11 +543,11 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       s"/film/$rightId/preview"-> """{"directors":[{"id":1,"name":"Jane Doe"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Blurb po polsku."}}""",
       s"/film/$rightId/rating" -> """{"rate":7.0,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb)
 
     val outcome = ratings.auditOneSync("Foo", Some(2024))
 
-    outcome shouldBe FilmwebRatings.Kept(rightUrl)
+    outcome shouldBe SiteRatings.Kept(rightUrl)
     val after = cache.get(cache.keyOf("Foo", Some(2024))).get
     after.filmwebUrl    shouldBe Some(rightUrl)
     after.filmwebRating shouldBe Some(7.0)
@@ -588,7 +588,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
     )))
     var fired: Option[(String, Option[Int], String)] = None
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb,
       onImdbIdMissing = (title, year, search) => fired = Some((title, year, search)))
 
     ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
@@ -606,7 +606,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
     )))
     var fired = false
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb,
       onImdbIdMissing = (_, _, _) => fired = true)
 
     ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
@@ -625,7 +625,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
     )))
     var fired = false
-    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb,
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, filmweb,
       onImdbIdMissing = (_, _, _) => fired = true)
 
     ratings.refreshOneSync(cache.keyOf("Popiół i diament", Some(1958)))
@@ -636,7 +636,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   "the Filmweb url cache" should "search once across two audits of the same row" in {
     val site = countedFilmwebSite()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site),
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, new FilmwebClient(site),
       new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)))
 
     ratings.auditOneSync("Foo", Some(2024))
@@ -647,7 +647,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   it should "search on every audit without the cache (control)" in {
     val site = countedFilmwebSite()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site),
+    val ratings = SiteRatingsOf.filmweb(cache, disabledTmdb, new FilmwebClient(site),
       services.resolution.ResolutionCache.passthrough)
 
     ratings.auditOneSync("Foo", Some(2024))

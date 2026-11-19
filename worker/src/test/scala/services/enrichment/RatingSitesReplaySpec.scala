@@ -142,13 +142,13 @@ class RatingSitesReplaySpec extends AnyFlatSpec with Matchers {
 
   private val sites = Seq(
     Site("Metacritic", mcRows,
-      (cache, cadence) => new MetascoreRatings(cache, disabledTmdb, new MetacriticClient(site(mcRoutes)), cadenceRecorder = cadence),
+      (cache, cadence) => SiteRatingsOf.metacritic(cache, disabledTmdb, new MetacriticClient(site(mcRoutes)), cadenceRecorder = cadence),
       r => s"url=${r.metacriticUrl.getOrElse("-")} score=${r.metascore.getOrElse("-")}"),
     Site("RT", rtRows,
-      (cache, cadence) => new RottenTomatoesRatings(cache, disabledTmdb, new RottenTomatoesClient(site(rtRoutes)), cadenceRecorder = cadence),
+      (cache, cadence) => SiteRatingsOf.rottenTomatoes(cache, disabledTmdb, new RottenTomatoesClient(site(rtRoutes)), cadenceRecorder = cadence),
       r => s"url=${r.rottenTomatoesUrl.getOrElse("-")} score=${r.rottenTomatoes.getOrElse("-")}"),
     Site("Filmweb", fwRows,
-      (cache, cadence) => new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site(fwRoutes)),
+      (cache, cadence) => SiteRatingsOf.filmweb(cache, disabledTmdb, new FilmwebClient(site(fwRoutes)),
         onImdbIdMissing = (title, year, search) => imdbMissing.add(s"$title|${year.getOrElse("-")}|$search"), cadenceRecorder = cadence),
       r => s"url=${r.filmwebUrl.getOrElse("-")} rating=${r.filmwebRating.getOrElse("-")} slot=${r.data.get(Filmweb).getOrElse("-")}"),
     Site("IMDb", imdbRows,

@@ -19,7 +19,7 @@ class RatingSiteTitlesSpec extends AnyFlatSpec with Matchers {
 
   "RatingSiteTitles.derive" should "ask under the stripped cinema title alone when there is nothing else" in {
     val key = keyFor("Wydma Qzx", Some(2021))
-    val titles = RatingSiteTitles.derive(key, MovieRecord(tmdbId = Some(1)), details = None, titleNormalizer)
+    val titles = RatingSiteTitles.derive(key.cleanTitle, MovieRecord(tmdbId = Some(1)), details = None, titleNormalizer)
 
     titles.linkTitle  shouldBe titleNormalizer.searchQuery(key.cleanTitle)
     titles.fallback   shouldBe None
@@ -29,7 +29,7 @@ class RatingSiteTitlesSpec extends AnyFlatSpec with Matchers {
 
   it should "lead with TMDB's original title and keep the cinema title as the fallback, with TMDB's year" in {
     val key = keyFor("Wydma Qzx", Some(2021))
-    val titles = RatingSiteTitles.derive(key, withOriginal("Qzx Dune"),
+    val titles = RatingSiteTitles.derive(key.cleanTitle, withOriginal("Qzx Dune"),
       Some(TmdbClient.Details(englishTitle = None, releaseYear = Some(2021))), titleNormalizer)
 
     titles.linkTitle shouldBe "Qzx Dune"
@@ -42,7 +42,7 @@ class RatingSiteTitlesSpec extends AnyFlatSpec with Matchers {
       englishTitle = Some("Harry Potter and the Philosopher's Stone"),
       releaseYear  = Some(2001),
       usTitle      = Some("Harry Potter and the Sorcerer's Stone")))
-    val titles = RatingSiteTitles.derive(keyFor("Harry Potter i Kamień filozoficzny", Some(2001)),
+    val titles = RatingSiteTitles.derive(keyFor("Harry Potter i Kamień filozoficzny", Some(2001)).cleanTitle,
       withOriginal("Harry Potter and the Philosopher's Stone"), details, titleNormalizer)
 
     // The English title repeats the primary, so the ladder is primary then US.
@@ -51,7 +51,7 @@ class RatingSiteTitlesSpec extends AnyFlatSpec with Matchers {
 
   it should "compare rungs case-insensitively" in {
     val details = Some(TmdbClient.Details(englishTitle = Some("QZX DUNE"), releaseYear = None, usTitle = Some("qzx dune")))
-    val titles = RatingSiteTitles.derive(keyFor("Wydma Qzx", None), withOriginal("Qzx Dune"), details, titleNormalizer)
+    val titles = RatingSiteTitles.derive(keyFor("Wydma Qzx", None).cleanTitle, withOriginal("Qzx Dune"), details, titleNormalizer)
 
     titles.candidates shouldBe Seq("Qzx Dune")
   }

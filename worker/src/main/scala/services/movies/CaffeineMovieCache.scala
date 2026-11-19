@@ -268,8 +268,7 @@ class CaffeineMovieCache(
   /** Conditional write — applies `updater` to the row if it currently exists
    *  in the cache, otherwise a no-op. Returns true if the write landed.
    *
-   *  Used by the rating listeners (`ImdbRatings`, `FilmwebRatings`,
-   *  `MetascoreRatings`, `RottenTomatoesRatings`) so a rating fetch that
+   *  Used by the rating refreshers (`ImdbRatings`, `SiteRatings`) so a rating fetch that
    *  finishes after a concurrent `cache.invalidate` doesn't resurrect the row.
    *  The updater runs inside Caffeine's per-key compute lock so two
    *  concurrent rating updates on the same key serialize cleanly. The Mongo

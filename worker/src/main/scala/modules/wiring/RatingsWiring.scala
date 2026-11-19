@@ -4,19 +4,19 @@ import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfi
 
 import services.attempts.{EnrichmentAttemptStore, MongoEnrichmentAttemptStore}
 import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
-import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings}
+import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings, SiteRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
 import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
 import services.tasktypes.TaskType
 
 
-/** Rating refresh: the four `*Ratings` sources, the queue handlers that run
- *  them per row, the reaper that is the SOLE enqueue path, and the OMDb
+/** Rating refresh: the four rating sources (IMDb's `ImdbRatings`, each URL-keyed site's port run by
+ *  `SiteRatings`), the queue handlers that run them per row, the reaper that is the SOLE enqueue path, and the OMDb
  *  identifier backfill that is off unless its key is set. */
 trait RatingsWiring { self: WorkerWiring =>
 
-  // The *Ratings classes refresh synchronously (the queue's RatingHandler / the
+  // The rating refreshers refresh synchronously (the queue's RatingHandler / the
   // operator bulk walk), so they own no EC — only imdbIdResolver still runs
   // async off the bus and draws a shared-budget EC.
   // Each bulk walk feeds its displayed-value changes into the SAME tmdbId-keyed
@@ -25,13 +25,17 @@ trait RatingsWiring { self: WorkerWiring =>
   // which a later per-row refresh would otherwise mis-read as a fresh change.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating, clock),
     enrichmentLanguage = country.language)
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, rtLinkCache,
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, mcLinkCache,
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, filmwebLinkCache,
-    onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)),
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating, clock))
+  // Every URL-keyed rating site is its port (`*Site`: find, read) run by the one shared flow (SiteRatings).
+  lazy val rottenTomatoesRatings = new SiteRatings(movieCache,
+    new RottenTomatoesRatings(tmdbClient, rottenTomatoesClient, movieCache.normalizer, rtLinkCache), stopwatch,
+    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
+  lazy val metascoreRatings = new SiteRatings(movieCache,
+    new MetascoreRatings(tmdbClient, metacriticClient, movieCache.normalizer, mcLinkCache), stopwatch,
+    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
+  lazy val filmwebRatings = new SiteRatings(movieCache,
+    new FilmwebRatings(tmdbClient, filmwebClient, movieCache.normalizer, filmwebLinkCache,
+      onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle))), stopwatch,
+    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating, clock))
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it
@@ -63,7 +67,7 @@ trait RatingsWiring { self: WorkerWiring =>
       () => Enqueued.of(taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant())),
       interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools)))
 
-  // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
+  // Rating refresh as queue tasks. The handlers reuse each rating refresher's
   // per-row refreshOneSync; the EnrichmentReaper is the SOLE enqueue path — it
   // refreshes each row once per 4h, phase-spread across frequent ticks and capped
   // per tick. A freshly-resolved film's first ratings come from the reaper's

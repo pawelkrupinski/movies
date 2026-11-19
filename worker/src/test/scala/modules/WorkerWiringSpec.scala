@@ -292,16 +292,16 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       new services.enrichment.ImdbRatings(movieCache, imdbClient) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("imdb"); None }
       }
-    override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
-      new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+    override lazy val rottenTomatoesRatings: services.enrichment.SiteRatings[Int] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.RottenTomatoesRatings(tmdbClient, rottenTomatoesClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("rt"); None }
       }
-    override lazy val metascoreRatings: services.enrichment.MetascoreRatings =
-      new services.enrichment.MetascoreRatings(movieCache, tmdbClient, metacriticClient) {
+    override lazy val metascoreRatings: services.enrichment.SiteRatings[Int] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(tmdbClient, metacriticClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("mc"); None }
       }
-    override lazy val filmwebRatings: services.enrichment.FilmwebRatings =
-      new services.enrichment.FilmwebRatings(movieCache, tmdbClient, filmwebClient) {
+    override lazy val filmwebRatings: services.enrichment.SiteRatings[Double] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.FilmwebRatings(tmdbClient, filmwebClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("filmweb"); None }
       }
     def sources: Seq[String] = refreshed.toArray(Array.empty[String]).toSeq
@@ -370,16 +370,16 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       new services.enrichment.ImdbRatings(movieCache, imdbClient) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
-    override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
-      new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+    override lazy val rottenTomatoesRatings: services.enrichment.SiteRatings[Int] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.RottenTomatoesRatings(tmdbClient, rottenTomatoesClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
-    override lazy val metascoreRatings: services.enrichment.MetascoreRatings =
-      new services.enrichment.MetascoreRatings(movieCache, tmdbClient, metacriticClient) {
+    override lazy val metascoreRatings: services.enrichment.SiteRatings[Int] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(tmdbClient, metacriticClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
-    override lazy val filmwebRatings: services.enrichment.FilmwebRatings =
-      new services.enrichment.FilmwebRatings(movieCache, tmdbClient, filmwebClient) {
+    override lazy val filmwebRatings: services.enrichment.SiteRatings[Double] =
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.FilmwebRatings(tmdbClient, filmwebClient, movieCache.normalizer), stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
   }
@@ -442,8 +442,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
    *  against CI's 307 and 478, because RT is listed above them. */
   it should "keep refreshing the other sources when one of them throws" in {
     val wiring = new RatingSourceRecordingWiring {
-      override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
-        new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+      override lazy val rottenTomatoesRatings: services.enrichment.SiteRatings[Int] =
+        new services.enrichment.SiteRatings(movieCache, new services.enrichment.RottenTomatoesRatings(tmdbClient, rottenTomatoesClient, movieCache.normalizer), stopwatch) {
           override def refreshOneSync(t: String, y: Option[Int]): Option[String] =
             throw new RuntimeException("RT slug probe 404'd")
         }

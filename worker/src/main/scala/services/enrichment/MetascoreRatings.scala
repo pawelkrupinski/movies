@@ -1,183 +1,88 @@
 package services.enrichment
 
-import services.movies.LatestTitleYear
-
 import clients.TmdbClient
-import services.movies.{CacheKey, MovieCache}
+import models.MovieRecord
+import services.enrichment.SiteRatings.{Columns, Found, PageRead}
+import services.movies.{CacheKey, LatestTitleYear}
 import services.resolution.{ResolutionCache, ResolutionKeys}
-import services.tasks.BulkRefreshResult
-
-import scala.util.Success
+import services.titles.TitleNormalizer
 
 /**
- * Metacritic side of enrichment — owns BOTH:
- *   - `metacriticUrl` discovery (slug probe + cleanTitle fallback + lazy
- *     `englishTitle` fallback for non-English films).
- *   - `metascore` scrape from the resolved URL.
+ * Metacritic behind the rating-site port: `metacriticUrl` discovery (slug probe, cleanTitle fallback, the lazy
+ * `englishTitle` fallback for non-English films) and the Metascore read off the page. [[SiteRatings]] runs the flow.
  *
- * Shared entry points live in [[CacheRefresher]]; the queue drives refresh
- * (`RatingHandler` per row, the operator-triggered `refreshAll` for the bulk).
- *
- * URL resolution needs TMDB data (release year, English title) that the
- * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
- * for rows that need URL discovery, and never for rows that already have a
- * canonical URL.
+ * Discovery needs TMDB data (release year, English title) that the row alone doesn't carry — `tmdb.details(tmdbId)`
+ * is asked only when a row needs its page found, never for a row that already has a link.
  */
-class MetascoreRatings(
-  movieCache: MovieCache,
+final class MetascoreRatings(
   tmdb:       TmdbClient,
   metacritic: MetacriticClient,
+  normalizer: TitleNormalizer,
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
-  mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
-  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-)(using LatestTitleYear) extends CacheRefresher(movieCache, cadenceRecorder) {
+  mcLinkCache: ResolutionCache = ResolutionCache.passthrough
+)(using LatestTitleYear) extends SiteRatings.Site[Int] {
 
-  override protected def sourceName: String = "Metacritic"
+  val name      = "Metacritic"
+  val walkLabel = "Metascore refresh"
+  val columns: Columns[Int] = MetascoreRatings.Columns
 
-  // ── Per-row work ───────────────────────────────────────────────────────────
-
-  // Two paths, mirroring FilmwebRatings:
-  //   - URL already known → cheap: scrape metascore, write back if changed.
-  //   - URL missing       → expensive: probe MC slug variants (with TMDB
-  //     details for English title + year disambiguation), write the URL,
-  //     then settle the metascore.
-  // Per-row failures are swallowed; the next refresh tries again.
-  protected def refreshOne(key: CacheKey): Option[String] =
-    cache.get(key).flatMap { e =>
-      e.metacriticUrl match {
-        case Some(url) => refreshScoreFromUrl(key, e, url)
-        case None =>
-          resolveAndPersistUrl(key, e) match {
-            case Some(resolved) => settleScore(key, resolved)
-            case None           => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no URL match"); None
-          }
-      }
-    }
-
-  // Probe MC for a canonical /movie/ URL using TMDB's title data; write it
-  // back to the cache when found. Returns the resolution (URL + any Metascore
-  // the slug-probe fetch already parsed off the page), or None if MC didn't
-  // index the film.
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
-    if (e.tmdbId.isEmpty) resolveWithoutTmdb(key, e)
-    else e.tmdbId.flatMap { tmdbId =>
-      val titles = RatingSiteTitles.derive(key, e, tmdb.details(tmdbId), cache.normalizer)
-      // The link cache stores the URL only (the score is read fresh each
-      // refresh). We thread the Metascore the resolving probe already parsed
-      // out-of-band via `freshScore`: it's set ONLY when the resolve closure
-      // actually ran — i.e. on a cache MISS, where we just fetched the movie
-      // page and can hand the score back so the caller skips a redundant
-      // re-fetch. On a cache HIT the closure is skipped, `freshScore` stays
-      // None, and the caller reads the score via `metascoreFor`.
+  /** A canonical /movie/ URL, probed with TMDB's title data, and the Metascore the probe already parsed off the page
+   *  (on a link-cache MISS, where the page was just fetched; on a HIT the flow reads it). */
+  def find(key: CacheKey, row: MovieRecord): Option[Found[Int]] =
+    row.tmdbId.fold(findWithoutTmdb(key, row)) { tmdbId =>
+      val titles = RatingSiteTitles.derive(key.cleanTitle, row, tmdb.details(tmdbId), normalizer)
+      // The link cache stores the URL only; the Metascore the resolving probe parsed is threaded out-of-band, set ONLY
+      // when the resolve closure actually ran.
       var freshScore: Option[Int] = None
-      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(titles.linkTitle, titles.fallback, titles.year, cache.normalizer)) {
-        // One attempt across all the candidate titles rather than one each:
-        // same ladder, same order, but the titles share a fetch memo so a slug
-        // an earlier title already probed isn't probed again ("The Sting" and
-        // "Sting" both end at /movie/sting).
-        // The film's own director — the one thing that tells two same-titled,
-        // same-year films apart on a rating site.
+      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(titles.linkTitle, titles.fallback, titles.year, normalizer)) {
+        // One attempt across all the candidate titles rather than one each: same ladder, same order, but the titles
+        // share a fetch memo so a slug an earlier title already probed isn't probed again ("The Sting" and "Sting"
+        // both end at /movie/sting).
         //
-        // From `directorsFor`, NOT the row's `Tmdb` slot: the slot keeps only the
-        // localised credit, so an anime directed by 秋本賢一郎 would never meet
-        // Metacritic's "Kenichiro Akimoto" and a perfectly good link would be
-        // thrown away. `directorsFor` returns the localised AND native-script
-        // spellings, so either side's rendering matches.
-        val directors = tmdb.directorsFor(tmdbId)
-        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, directors)
+        // The film's own director — the one thing that tells two same-titled, same-year films apart — from
+        // `directorsFor`, NOT the row's `Tmdb` slot: the slot keeps only the localised credit, so an anime directed by
+        // 秋本賢一郎 would never meet Metacritic's "Kenichiro Akimoto"; `directorsFor` returns the localised AND
+        // native-script spellings.
+        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, tmdb.directorsFor(tmdbId))
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }
-
-      url.map { u =>
-        logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered $u")
-        cache.putIfPresent(key, _.copy(metacriticUrl = Some(u)))
-        MetacriticClient.Resolved(u, freshScore)
-      }
+      url.map(Found.Link(_, freshScore))
     }
 
   // A film TMDB has no record of: searched under its stripped cinema titles and taken only when
   // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
-  private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
-    TmdbLessRatingLinks.discover(key, e, cache.normalizer)(metacritic.resolveAcross(_, None, _, _))(resolved =>
-      metacritic.pageFor(resolved.url).filter(page => TmdbLessRatingLinks.corroborated(key, e, page.year, page.directors))
-        .map(page => MetacriticClient.Resolved(resolved.url, page.metascore)))
-        .map { resolved =>
-          logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → URL discovered without TMDB ${resolved.url}")
-          cache.putIfPresent(key, _.copy(metacriticUrl = Some(resolved.url)))
-          resolved
-        }
+  private def findWithoutTmdb(key: CacheKey, row: MovieRecord): Option[Found[Int]] =
+    TmdbLessRatingLinks.discover(key, row, normalizer)(metacritic.resolveAcross(_, None, _, _))(resolved =>
+      metacritic.pageFor(resolved.url).filter(page => TmdbLessRatingLinks.corroborated(key, row, page.year, page.directors))
+        .map(page => Found.Link(resolved.url, page.metascore, " without TMDB")))
 
-  // Settle a freshly-discovered row's score: use the Metascore the slug probe
-  // already parsed when present (no extra fetch), else read it from the URL.
-  // Returns the new displayed metascore if it changed, else None.
-  private def settleScore(key: CacheKey, resolved: MetacriticClient.Resolved): Option[String] =
-    resolved.metascore match {
-      case Some(score) => cache.get(key).flatMap(applyScore(key, _, resolved.url, score))
-      // No score off the probe (search-fallback URL, link-cache hit, or a page
-      // with no aggregateRating) — read it from the resolved URL. Re-read the
-      // post-write row so the score copy doesn't clobber the URL we just wrote.
-      case None        => cache.get(key).flatMap(refreshScoreFromUrl(key, _, resolved.url))
-    }
-
-  // Deliberately NOT year-checked against the page, unlike the RT and Filmweb
-  // refreshers. Metacritic's `datePublished` is a US RELEASE date, so a
-  // restoration carries the modern one — /movie/angels-egg-1985 is Oshii's 1985
-  // film and publishes 2025 — and treating that as "a different film" drops a
-  // correct URL. The slug ladder already year-guards what it probes; a URL that
-  // reached here from the search fallback was accepted on the SERP's year, which
-  // is the better evidence of the two.
-  //
-  // Its CREDIT is checked, though: a director is not a release date, and a stored url
-  // whose page credits somebody else is another film's for good — prod's "Bogaci i
-  // martwi" (Romain Gavras, 2026) held /movie/sacrifice-2021, and nothing else would ever
-  // replace it (see `RatingPageIdentity`).
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
-    metascoreIfThisFilm(key, url).flatten match {
-      case Some(score) => applyScore(key, e, url, score)
-      case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page"); None
-    }
-
-  /** The Metascore on `url`'s page — `Some(None)` when it carries none — or `None` when
-   *  the page credits a director the row's film does not, in which case the url and its
-   *  score are dropped so the next tick re-resolves. The per-row refresh and the bulk
-   *  walk both ask this. */
-  private def metascoreIfThisFilm(key: CacheKey, url: String): Option[Option[Int]] = {
+  /** The Metascore on `url`'s page, or `Denied` when the page credits a director the row's film does not.
+   *
+   *  Deliberately NOT year-checked, unlike RT and Filmweb: Metacritic's `datePublished` is a US RELEASE date, so a
+   *  restoration carries the modern one — /movie/angels-egg-1985 is Oshii's 1985 film and publishes 2025. The slug
+   *  ladder already year-guards what it probes; a URL from the search fallback was accepted on the SERP's year.
+   *
+   *  Its CREDIT is checked, though: prod's "Bogaci i martwi" (Romain Gavras, 2026) held /movie/sacrifice-2021, and
+   *  nothing else would ever replace it (see `RatingPageIdentity`). */
+  def read(key: CacheKey, row: MovieRecord, url: String): PageRead[Int] = {
     val page = metacritic.pageFor(url)
-    if (page.exists(p => cache.get(key).exists(RatingPageIdentity.directorDenies(_, p.directors, tmdb.directorsFor)))) {
-      logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → page credits " +
-        s"${page.toSeq.flatMap(_.directors).mkString(", ")}, not this film — dropping the URL")
-      cache.putIfPresent(key, _.copy(metacriticUrl = None, metascore = None))
-      None
-    } else Some(page.flatMap(_.metascore))
+    if (page.exists(p => RatingPageIdentity.directorDenies(row, p.directors, tmdb.directorsFor)))
+      PageRead.Denied(s"page credits ${page.toSeq.flatMap(_.directors).mkString(", ")}")
+    else PageRead.Scored(page.flatMap(_.metascore))
   }
+}
 
-  // Write a known score back, skipping the no-op when it's unchanged; returns the
-  // new displayed value (the badge text) iff it changed.
-  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Option[String] =
-    persistIfMoved(key, url, "metascore", e.metascore, score, withMetascore, badge)
-
-  private def withMetascore(row: models.MovieRecord, score: Option[Int]): models.MovieRecord = row.copy(metascore = score)
-  private def badge(score: Int): String = score.toString
-
-  // ── Full-corpus walk ───────────────────────────────────────────────────────
-
-  /** Walk every cached row: re-resolve the URL of every row with a tmdbId, then
-   *  refresh the score off whatever URL the row holds. Per-row failures are
-   *  logged at debug — one bad row can't poison the whole tick. */
-  private[services] def refreshAll(): BulkRefreshResult = recheck(cache.entries)
-
-  /** The walk above over `rows` alone: an operator's re-check of given films re-resolves their URL too. */
-  override private[services] def recheck(rows: Seq[(CacheKey, models.MovieRecord)]): BulkRefreshResult =
-    refreshAllUrlThenScore[Int](
-      rows          = rows,
-      walkLabel     = "Metascore refresh",
-      urlOf         = _.metacriticUrl,
-      scoreOf       = _.metascore,
-      rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
-      fetchScore    = metascoreIfThisFilm,
-      withScore     = withMetascore,
-      badge         = badge
-    )
+object MetascoreRatings {
+  val Columns: SiteRatings.Columns[Int] = SiteRatings.Columns[Int](
+    noun      = "metascore",
+    plural    = "score(s)",
+    url       = _.metacriticUrl,
+    score     = _.metascore,
+    withUrl   = (row, url) => row.copy(metacriticUrl = Some(url)),
+    withScore = (row, score) => row.copy(metascore = score),
+    withPage  = (row, page) => row.copy(metascore = page.score),
+    cleared   = _.copy(metacriticUrl = None, metascore = None),
+    badge     = _.toString)
 }

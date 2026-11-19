@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 
 import clients.HttpTmdbClient
-import services.enrichment.{FilmwebClient, FilmwebRatings}
+import services.enrichment.{FilmwebClient, FilmwebRatings, SiteRatings}
 import services.movies.{CaffeineMovieCache, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
@@ -15,7 +15,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 /**
  * Audit + backfill: walk every row in Mongo that has a `filmwebUrl` and
  * re-run the tightened `FilmwebClient.lookup` (canonical-title bar + optional
- * TMDB director check) via `FilmwebRatings.auditOneSync`. The helper replaces
+ * TMDB director check) via `SiteRatings.auditOneSync` over `FilmwebRatings`. The helper replaces
  * the row's URL when the new lookup picks a different canonical id, drops
  * the URL when no candidate clears the bar, otherwise leaves the row alone.
  *
@@ -51,7 +51,7 @@ object FilmwebUrlAudit {
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val tmdb    = new HttpTmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
-    val ratings = new FilmwebRatings(cache, tmdb, filmweb)
+    val ratings = new SiteRatings(cache, new FilmwebRatings(tmdb, filmweb, cache.normalizer), tools.Stopwatch.System)
 
     val candidates = repository.findAll()
       .filter(_.record.filmwebUrl.isDefined)
@@ -68,24 +68,24 @@ object FilmwebUrlAudit {
       val outcome = ratings.auditOneSync(title, year)
       val index = done.incrementAndGet()
       outcome match {
-        case FilmwebRatings.Corrected(before, after) =>
+        case SiteRatings.Corrected(before, after) =>
           println(f"[$index%4d/$total%4d] CORRECTED $title (${yearLabel(year)})")
           println(s"             before: $before")
           println(s"             after : $after")
-        case FilmwebRatings.Dropped(before) =>
+        case SiteRatings.Dropped(before) =>
           println(f"[$index%4d/$total%4d] DROPPED   $title (${yearLabel(year)})")
           println(s"             was: $before")
-        case FilmwebRatings.Kept(_) | FilmwebRatings.NoUrl => () // silent; counted in summary.
+        case SiteRatings.Kept(_) | SiteRatings.NoUrl => () // silent; counted in summary.
       }
       (title, year, outcome)
     }
     executionContext.shutdown()
     repository.close()
 
-    val kept      = outcomes.collect { case (_, _, _: FilmwebRatings.Kept)      => () }
-    val corrected = outcomes.collect { case (t, y, c: FilmwebRatings.Corrected) => (t, y, c) }
-    val dropped   = outcomes.collect { case (t, y, d: FilmwebRatings.Dropped)   => (t, y, d) }
-    val noUrl     = outcomes.collect { case (_, _, FilmwebRatings.NoUrl)        => () }
+    val kept      = outcomes.collect { case (_, _, _: SiteRatings.Kept)      => () }
+    val corrected = outcomes.collect { case (t, y, c: SiteRatings.Corrected) => (t, y, c) }
+    val dropped   = outcomes.collect { case (t, y, d: SiteRatings.Dropped)   => (t, y, d) }
+    val noUrl     = outcomes.collect { case (_, _, SiteRatings.NoUrl)        => () }
 
     val elapsedSec = startedAt.seconds
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"

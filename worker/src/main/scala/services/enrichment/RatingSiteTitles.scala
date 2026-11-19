@@ -2,7 +2,6 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.movies.CacheKey
 import services.titles.TitleNormalizer
 import services.titles.TitleMatch
 
@@ -28,8 +27,8 @@ import services.titles.TitleMatch
 final case class RatingSiteTitles(linkTitle: String, fallback: Option[String], year: Option[Int], candidates: Seq[String])
 
 object RatingSiteTitles {
-  def derive(key: CacheKey, row: MovieRecord, details: Option[TmdbClient.Details], normalizer: TitleNormalizer): RatingSiteTitles = {
-    val cleanLookup = normalizer.searchQuery(key.cleanTitle)
+  def derive(cleanTitle: String, row: MovieRecord, details: Option[TmdbClient.Details], normalizer: TitleNormalizer): RatingSiteTitles = {
+    val cleanLookup = normalizer.searchQuery(cleanTitle)
     val linkTitle   = row.originalTitle.getOrElse(cleanLookup)
     val fallback    = if (linkTitle != cleanLookup) Some(cleanLookup) else None
     val englishTitle = details.flatMap(_.englishTitle)

@@ -26,7 +26,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
   // ── 1. Classpath boundary ────────────────────────────────────────────────
   // These three classes ARE the scrape/enrich engine (`ScrapeReaper` drives the
   // queue-based cinema scrape scheduling; `MovieService` owns the TMDB/IMDb
-  // worker pool; `FilmwebRatings` is one of the rating enrichers). They live in
+  // worker pool; `SiteRatings` runs the rating sites). They live in
   // `worker`, not on `web`'s classpath — so resolving them by name must fail. A
   // passing `Class.forName` would mean the engine had leaked back into the
   // serving app.
@@ -39,8 +39,8 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     an [ClassNotFoundException] should be thrownBy Class.forName("services.corpus.MovieService")
   }
 
-  it should "not contain the FilmwebRatings enricher" in {
-    an [ClassNotFoundException] should be thrownBy Class.forName("services.enrichment.FilmwebRatings")
+  it should "not contain the SiteRatings rating enricher" in {
+    an [ClassNotFoundException] should be thrownBy Class.forName("services.enrichment.SiteRatings")
   }
 
   // ── 2. Warm-cache-without-scrape ─────────────────────────────────────────

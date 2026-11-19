@@ -5,73 +5,45 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository}
-import services.tasks.BulkRefreshResult
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
- * The URL-then-score corpus walk on its own. A refresher whose hooks record
- * when they run pins the walk's contract here — re-resolve, then fetch off the
- * URL the row NOW holds, then persist through the cache's write path, then tell
- * the cadence — instead of leaving it to be inferred from the MC / RT specs.
+ * The shared rating-site flow's URL-then-score corpus walk on its own. A site whose port records when it is asked
+ * pins the walk's contract here — find, then read off the URL the row NOW holds, then persist through the cache's
+ * write path, then tell the cadence — instead of leaving it to be inferred from the MC / RT specs.
  */
-class CacheRefresherSpec extends AnyFlatSpec with Matchers {
+class SiteRatingsSpec extends AnyFlatSpec with Matchers {
 
   private val urlA = "https://scores.example/a"
   private val urlB = "https://scores.example/b"
   private val urlC = "https://scores.example/c"
   private val urlD = "https://scores.example/d"
 
-  /** Scores by URL; an unmapped URL throws on fetch. `discover` maps a row to
-   *  what its re-resolution does: find and store a URL, or fail. The fake keeps
-   *  its URL and score in the Metacritic fields — the walk itself is
-   *  field-agnostic. */
-  private class RecordingRefresher(
-    movieCache: CaffeineMovieCache,
-    scores:   Map[String, Option[Int]],
-    discover: Map[CacheKey, Try[String]],
-    recorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-  ) extends CacheRefresher(movieCache, recorder) {
+  /** Scores by URL; an unmapped URL throws on read. `discover` maps a row to what finding its page does: find a URL,
+   *  or fail. The fake keeps its URL and score in the Metacritic fields — the flow itself is field-agnostic. */
+  private class RecordingSite(scores: Map[String, Option[Int]], discover: Map[CacheKey, Try[String]]) extends SiteRatings.Site[Int] {
     val events = new ConcurrentLinkedQueue[String]
+    val name      = "Fake"
+    val walkLabel = "Fake refresh"
+    val columns: SiteRatings.Columns[Int] = MetascoreRatings.Columns.copy(
+      withScore = (row, score) => { events.add(s"persist ${row.metacriticUrl.get}"); row.copy(metascore = score) },
+      badge     = score => s"$score!")
 
-    override protected def sourceName: String = "Fake"
-    protected def refreshOne(key: CacheKey): Option[String] = None
-
-    private def withScore(row: MovieRecord, score: Option[Int]): MovieRecord = {
-      events.add(s"persist ${row.metacriticUrl.get}")
-      row.copy(metascore = score)
+    def find(key: CacheKey, row: MovieRecord): Option[SiteRatings.Found[Int]] = {
+      events.add(s"resolve ${key.cleanTitle}")
+      discover.get(key).map(found => SiteRatings.Found.Link(found.get))
     }
-    private def badge(score: Int): String = s"$score!"
 
-    def persist(key: CacheKey, url: String, stored: Option[Int], fresh: Int): Option[String] =
-      persistIfMoved(key, url, "score", stored, fresh, withScore, badge)
-
-    private[services] def refreshAll(): BulkRefreshResult =
-      refreshAllUrlThenScore[Int](
-        rows          = cache.entries,
-        walkLabel     = "Fake refresh",
-        urlOf         = _.metacriticUrl,
-        scoreOf       = _.metascore,
-        rediscoverUrl = (key, _) => {
-          events.add(s"resolve ${key.cleanTitle}")
-          discover.get(key) match {
-            case None               => Success(false)
-            case Some(Success(url)) => Success(cache.putIfPresent(key, _.copy(metacriticUrl = Some(url))))
-            case Some(Failure(e))   => Failure(e)
-          }
-        },
-        fetchScore    = (_, url) => {
-          events.add(s"fetch $url")
-          Some(scores.getOrElse(url, throw new RuntimeException(s"HTTP 503 $url")))
-        },
-        withScore     = withScore,
-        badge         = badge
-      )
+    def read(key: CacheKey, row: MovieRecord, url: String): SiteRatings.PageRead[Int] = {
+      events.add(s"fetch $url")
+      SiteRatings.PageRead.Scored(scores.getOrElse(url, throw new RuntimeException(s"HTTP 503 $url")))
+    }
   }
 
-  "refreshAllUrlThenScore" should "re-resolve, fetch off the URL the row now holds, persist, and tell the cadence — per row, in that order" in {
+  "the walk" should "re-resolve, fetch off the URL the row now holds, persist, and tell the cadence — per row, in that order" in {
     val repository = new InMemoryMovieRepository(Seq(
       ("A", None, MovieRecord(tmdbId = Some(1), metacriticUrl = Some(urlA), metascore = Some(1))),  // score moves
       ("B", None, MovieRecord(tmdbId = None,    metacriticUrl = Some(urlB), metascore = Some(2))),  // no tmdbId: no re-resolve; unchanged
@@ -81,14 +53,14 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val keyOf = (title: String) => cache.keyOf(title, None)
     val cadence = new ConcurrentLinkedQueue[(CacheKey, Option[Int], Option[String])]
-    val refresher = new RecordingRefresher(cache,
+    val site = new RecordingSite(
       scores   = Map(urlA -> Some(9), urlB -> Some(2), urlC -> Some(7)),
-      discover = Map(keyOf("C") -> Success(urlC)),
-      recorder = (key, tmdbId, value) => cadence.add((key, tmdbId, value)))
+      discover = Map(keyOf("C") -> Success(urlC)))
+    val refresher = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen, (key, tmdbId, value) => cadence.add((key, tmdbId, value)))
 
     val result = refresher.refreshAll()
 
-    val events = refresher.events.asScala.toSeq
+    val events = site.events.asScala.toSeq
     def rowEvents(title: String, url: String) =
       events.filter(e => e.endsWith(s" ${keyOf(title).cleanTitle}") || e.endsWith(s" $url"))
     rowEvents("A", urlA) shouldBe Seq(s"resolve ${keyOf("A").cleanTitle}", s"fetch $urlA", s"persist $urlA")
@@ -116,13 +88,13 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
       ("E", None, MovieRecord(tmdbId = Some(5), metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key = cache.keyOf("E", None)
-    val refresher = new RecordingRefresher(cache,
+    val site = new RecordingSite(
       scores   = Map(urlA -> Some(6)),
       discover = Map(key -> Failure(new RuntimeException("soft-blocked"))))
 
-    val result = refresher.refreshAll()
+    val result = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen).refreshAll()
 
-    refresher.events.asScala.toSeq shouldBe Seq(s"resolve ${key.cleanTitle}", s"fetch $urlA", s"persist $urlA")
+    site.events.asScala.toSeq shouldBe Seq(s"resolve ${key.cleanTitle}", s"fetch $urlA", s"persist $urlA")
     cache.get(key).flatMap(_.metascore) shouldBe Some(6)
     result.failed  shouldBe Some(1)
     result.changed shouldBe Some(1)
@@ -134,14 +106,15 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
       ("F", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key = cache.keyOf("F", None)
-    val refresher = new RecordingRefresher(cache, scores = Map.empty, discover = Map.empty)
+    val site = new RecordingSite(scores = Map.empty, discover = Map.empty)
+    val refresher = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen)
 
-    refresher.persist(key, urlA, stored = Some(5), fresh = 5) shouldBe None
-    refresher.events.asScala shouldBe empty
+    refresher.persistIfMoved(key, urlA, stored = Some(5), fresh = 5) shouldBe None
+    site.events.asScala shouldBe empty
     cache.get(key).flatMap(_.metascore) shouldBe Some(5)
 
-    refresher.persist(key, urlA, stored = Some(5), fresh = 6) shouldBe Some("6!")
-    refresher.events.asScala.toSeq shouldBe Seq(s"persist $urlA")
+    refresher.persistIfMoved(key, urlA, stored = Some(5), fresh = 6) shouldBe Some("6!")
+    site.events.asScala.toSeq shouldBe Seq(s"persist $urlA")
     cache.get(key).flatMap(_.metascore) shouldBe Some(6)
   }
 }

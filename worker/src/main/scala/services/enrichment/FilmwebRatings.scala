@@ -1,40 +1,27 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.{Filmweb, MovieRecord, Source, SourceData, EmbeddedYear}
-import services.movies.{CacheKey, LatestTitleYear, MovieCache}
+import models.{EmbeddedYear, Filmweb, MovieRecord, Source, SourceData}
+import services.enrichment.SiteRatings.{Columns, Found, Page, PageRead}
+import services.movies.{CacheKey, LatestTitleYear}
 import services.resolution.{ResolutionCache, ResolutionKeys}
-import services.tasks.BulkRefreshResult
-
-import scala.util.Try
+import services.titles.TitleNormalizer
 
 /**
- * Filmweb data maintenance — the Filmweb counterpart of `ImdbRatings`,
- * `RottenTomatoesRatings`, and `MetascoreRatings`.
+ * Filmweb behind the rating-site port. Unlike Metacritic and RT, Filmweb is a full enrichment source: a page found or
+ * read whole contributes a content slot (original title, year, directors, Polish genres and plot) besides its rating,
+ * and that slot drives re-resolution of the other sources when TMDB/IMDb are absent. [[SiteRatings]] runs the flow.
  *
- * Two refresh paths (both driven by the queue):
- *   1. **Per-row refresh** (`refreshOne`): the `RatingHandler` fetches Filmweb
- *      data for one resolved row.
- *   2. **Full-corpus refresh** (`refreshAll`): the operator-triggered bulk
- *      refresh — the shared URL-then-score walk: every row with a tmdbId
- *      re-runs the full `filmweb.lookup` (search + info + optionally preview +
- *      rating), then every row with a `filmwebUrl` re-reads its rating off it
- *      (one HTTP).
+ * Discovery needs TMDB data (English / original title, director credits) that the row alone may not carry —
+ * `tmdb.details` and `tmdb.directorsFor` are asked only when a row needs its page found.
  *
- * URL resolution needs TMDB data (English / original title, director credits)
- * that the MovieRecord row alone may not carry — we hit `tmdb.details` and
- * `tmdb.directorsFor` lazily for rows that need URL discovery, and never for
- * a per-row refresh of a row whose canonical Filmweb URL is already stored.
- *
- * Shared entry points live in [[CacheRefresher]].
- *
- * Filmweb has tighter rate limits than the other services (CLAUDE.md notes
- * "5 workers comfortable, more risks soft-blocks"); we cap its walk at 5.
+ * Filmweb has tighter rate limits than the other sites ("5 workers comfortable, more risks soft-blocks"): its walk is
+ * capped at 5.
  */
-class FilmwebRatings(
-  movieCache: MovieCache,
-  tmdb:    TmdbClient,
-  filmweb: FilmwebClient,
+final class FilmwebRatings(
+  tmdb:       TmdbClient,
+  filmweb:    FilmwebClient,
+  normalizer: TitleNormalizer,
   // Caches the Filmweb url discovery keyed by (title, year, fallback, directors),
   // so the same film's search + /info + /preview probes run once for 24h. Only
   // the url is cached; on a cache hit the rating + genres are rebuilt from the
@@ -43,224 +30,75 @@ class FilmwebRatings(
   // Called whenever we set (or confirm) a filmwebUrl on a row that still has
   // no imdbId — signals the resolver to attempt the Wikidata fallback.
   // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
-  onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
-  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-)(using LatestTitleYear) extends CacheRefresher(movieCache, cadenceRecorder) {
+  onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => ()
+)(using LatestTitleYear) extends SiteRatings.Site[Double] {
 
-  override protected def sourceName: String = "Filmweb"
+  val name      = "Filmweb"
+  val walkLabel = "Filmweb refresh"
+  val columns: Columns[Double] = FilmwebRatings.Columns
 
-  /** Audit-and-fix the stored `filmwebUrl` for `(title, year)` against the
-   *  tightened `FilmwebClient.lookup`. Re-resolves regardless of whether a
-   *  URL is already stored, writes back any change to the cache (which
-   *  write-throughs to Mongo), and returns a classification so the caller
-   *  (typically `scripts.FilmwebUrlAudit`) can summarise the run.
+  // Filmweb soft-blocks a datacenter IP past a handful of concurrent requests, so its walk runs lower than the others.
+  override val walkConcurrency: Int = 5
+
+  /** The film's page, read whole by the lookup (search → /info per candidate → /preview per candidate when verifying
+   *  directors → rating). */
+  def find(key: CacheKey, row: MovieRecord): Option[Found[Double]] =
+    (if (row.tmdbId.isEmpty && row.filmwebUrl.isEmpty) findWithoutTmdb(key, row) else findWithTmdbHints(key, row))
+      .map(info => Found.Whole(info.url, FilmwebRatings.page(info)))
+
+  /** The page at a stored `url`. A Filmweb URL names its film's year in the path, and when that positively contradicts
+   *  the row's own year the URL is a DIFFERENT film's — `Denied`, nothing fetched. Re-resolution alone never fixes
+   *  this: discovery writes only when it finds a page, so a row with no Filmweb page of its own kept serving the
+   *  namesake's rating forever — Wanda Jakubowska's "Zaproszenie" (1986) carried /film/Zaproszenie-2026-10109168. The
+   *  suspect page's own credit (its slot was written off this URL) is weighed against the TRUSTED side only — TMDB's
+   *  crew and the cinemas' credits. An undated URL is not evidence.
    *
-   *  Outcomes:
-   *    - Kept       — re-resolved to the same URL; rating refreshed if
-   *                   Filmweb returned a fresh value.
-   *    - Corrected  — re-resolved to a DIFFERENT canonical URL; URL +
-   *                   rating both replaced.
-   *    - Dropped    — no candidate clears the tightened bar; URL + rating
-   *                   both cleared.
-   *    - NoUrl      — row has no filmwebUrl and the re-resolve didn't find
-   *                   one either; nothing to do.
-   *
-   *  Backfill semantics — required by CLAUDE.md when ingestion logic
-   *  changes (the old `lookup` had no title acceptance bar, so the DB holds
-   *  stale URLs pointing at unrelated films). Public on the ratings class
-   *  so the audit script doesn't need cache visibility. */
-  def auditOneSync(title: String, year: Option[Int]): FilmwebRatings.AuditOutcome = {
-    val key = cache.keyOf(title, year)
-    cache.get(key) match {
-      case None => FilmwebRatings.NoUrl
-      case Some(e) => audit(key, e)
-    }
-  }
-
-  /** [[auditOneSync]] of the row `e` under `key`: its url re-resolved, then kept (its content backfilled),
-   *  corrected, or dropped. */
-  private def audit(key: CacheKey, e: models.MovieRecord): FilmwebRatings.AuditOutcome =
-        (e.filmwebUrl, resolveUrl(key, e)) match {
-          case (Some(before), Some(fw)) if fw.url == before =>
-            // URL unchanged, but BACKFILL the full content slot (originalTitle /
-            // director / year / genres / Polish synopsis) — rows enriched before
-            // Filmweb became a full source carry a genres-only (or empty) slot, and
-            // the cheap rating-only refresh path never fills it. `fw` already carries
-            // the content (resolveUrl fetched it), so this is zero extra HTTP, and it
-            // gives TMDB re-resolution the Filmweb hints for a film it missed. Only
-            // write when the rating or slot actually changed (no redundant churn).
-            val rating   = fw.rating.orElse(e.filmwebRating)
-            val slotData = withFilmwebData(e.data, fw)
-            if (rating != e.filmwebRating || slotData != e.data) {
-              cache.putIfPresent(key, r => r.copy(filmwebRating = rating, data = withFilmwebData(r.data, fw)))
-              cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
-            }
-            FilmwebRatings.Kept(before)
-          case (_, Some(fw)) =>
-            val before = e.filmwebUrl
-            cache.putIfPresent(key, r =>
-              r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
-            cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
-            before match {
-              case Some(b) => FilmwebRatings.Corrected(b, fw.url)
-              case None    => FilmwebRatings.Kept(fw.url) // first-time discovery counts as Kept-like.
-            }
-          case (Some(before), None) =>
-            cache.putIfPresent(key, r =>
-              r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))
-            FilmwebRatings.Dropped(before)
-          case (None, None) =>
-            FilmwebRatings.NoUrl
-        }
-
-  // Look up Filmweb data for the row, write back any changes. Two paths:
-  //   - Row already has filmwebUrl → cheap: rating-only refresh via the
-  //     URL's id. Skips the search/info round-trips that the original
-  //     resolution paid for -- unless the row holds no Filmweb slot for it,
-  //     when the page is read whole (`readWhole`).
-  //   - Row doesn't have filmwebUrl → expensive: full lookup with TMDB-
-  //     derived fallback title + director set (search → /info per candidate
-  //     → /preview per candidate when verifying directors → rating).
-  // A failed read (network blip, Filmweb soft-block) throws out of
-  // `ratingFor`; the caller records it and the next refresh tries again.
-  protected def refreshOne(key: CacheKey): Option[String] =
-    cache.get(key).flatMap { e =>
-      e.filmwebUrl match {
-        case Some(url) => refreshRatingFromUrl(key, e, url)
-        case None      => resolveAndPersistUrl(key, e)
-      }
-    }
-
-  // Returns the new displayed rating (badge text) if it changed, else None.
-  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
-    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    // A Filmweb URL names its film's year in the path, and when that positively
-    // contradicts the row's own year the URL is a DIFFERENT film's — drop it (and
-    // the rating that came off it) so the next tick re-resolves. Re-resolution
-    // alone never fixes this: `resolveAndPersistUrl` writes only when it finds a
-    // page, so a row with no Filmweb page of its own kept serving the namesake's
-    // rating forever — Wanda Jakubowska's "Zaproszenie" (1986) carried
-    // /film/Zaproszenie-2026-10109168. The MC and RT refreshers make the same
-    // check against the year their PAGE publishes; only Filmweb can read it off
-    // the URL. An undated URL is not evidence and is left alone.
-    // The suspect page's own credit (its slot was written off this URL), weighed
-    // against the TRUSTED side only — TMDB's crew and the cinemas' credits.
-    val pageCredit = e.data.get(models.Filmweb).toSeq.flatMap(_.director).toSet
+   *  A stored URL the row holds no Filmweb slot for is read whole, as a discovery is: a page the projection linked
+   *  (the resolver's Filmweb fallback, `ProjectionDrafting.heldLinks`, drops the slot of the page it replaces) arrives
+   *  as a URL alone, and a rating-only read never fills its content -- PL "Flow" (2024) showed no original title,
+   *  genres or plot, which the same page found by a title search first had stored. */
+  def read(key: CacheKey, row: MovieRecord, url: String): PageRead[Double] = {
+    val pageCredit = row.data.get(Filmweb).toSeq.flatMap(_.director).toSet
     if (!MetacriticClient.yearsCompatible(key.year, FilmwebClient.yearInUrl(url)) &&
-        !RatingPageIdentity.directorsAgree(e, pageCredit, tmdb.directorsFor)) {
-      logger.info(s"Filmweb: $label $url → URL names ${FilmwebClient.yearInUrl(url).getOrElse("?")}, " +
-        "not this film — dropping the URL")
-      cache.putIfPresent(key, r => r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))
-      return None
-    }
-    val change = if (!e.data.contains(models.Filmweb)) readWhole(key, e, url, label) else filmweb.ratingFor(url) match {
-      case Some(rating) =>
-        // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
-        // drift the user can't see isn't a change — see RatingDisplay.
-        persistIfMoved(key, url, "rating", e.filmwebRating, RatingDisplay.oneDecimal(rating), withFilmwebRating, RatingDisplay.label)
-      case None =>
-        logger.info(s"Filmweb: $label $url → no rating on page")
-        None
-    }
-    // A film TMDB has no record of takes its IMDb id from the identity resolver's fallback source, never from a title search.
-    if (e.imdbId.isEmpty && e.tmdbId.isDefined)
-      onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
-    change
+        !RatingPageIdentity.directorsAgree(row, pageCredit, tmdb.directorsFor))
+      PageRead.Denied(s"URL names ${FilmwebClient.yearInUrl(url).getOrElse("?")}")
+    else if (!row.data.contains(Filmweb)) filmweb.detailsFor(url).fold(PageRead.Scored(None))(info => PageRead.Read(FilmwebRatings.page(info)))
+    else walkRead(key, row, url)
   }
 
-  private def withFilmwebRating(row: MovieRecord, rating: Option[Double]): MovieRecord = row.copy(filmwebRating = rating)
+  /** The walk reads the rating alone, one request a row. */
+  override def walkRead(key: CacheKey, row: MovieRecord, url: String): PageRead[Double] =
+    PageRead.Scored(filmweb.ratingFor(url).map(RatingDisplay.oneDecimal))
 
-  // A stored URL the row holds no Filmweb slot for, read whole as a discovery is: a page the projection linked (the
-  // resolver's Filmweb fallback, `ProjectionDrafting.heldLinks`, drops the slot of the page it replaces) arrives as a
-  // URL alone, and a rating-only refresh never read its content -- PL "Flow" (2024) showed no original title, genres
-  // or plot, which the same page found by a title search first had stored. Returns the new badge text if it changed.
-  private def readWhole(key: CacheKey, e: models.MovieRecord, url: String, label: String): Option[String] =
-    filmweb.detailsFor(url).flatMap { read =>
-      val fw = read.copy(rating = read.rating.map(RatingDisplay.oneDecimal))
-      logger.info(s"Filmweb: $label $url → page read whole rating=${fw.rating.getOrElse("—")}")
-      cache.putIfPresent(key, r => r.copy(filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
-      cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
-      Option.when(fw.rating != e.filmwebRating)(fw.rating.map(RatingDisplay.label)).flatten
-    }
-
-  // Full URL discovery — only called when the row has no stored filmwebUrl.
-  // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish
-  // films whose cinema-reported title doesn't surface a Filmweb hit still
-  // resolve, and the union of TMDB credits + every cinema's reported director
-  // as `directors` so same-titled films across years disambiguate.
-  // Returns the new displayed rating (badge text) if it changed, else None (a
-  // first discovery that lands a rating counts as a change: None → Some).
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] = {
-    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    resolveUrl(key, e) match {
-      case Some(fw) =>
-        val changed = fw.rating != e.filmwebRating   // fw.rating is display-rounded by resolveUrl
-        logger.info(s"Filmweb: $label → URL discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-        cache.putIfPresent(key, r =>
-          r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
-        // The freshly-stored Filmweb slot (originalTitle / director / year) is a new
-        // resolution hint — re-kick TMDB / IMDb / (when resolved) the title-ratings
-        // so a film TMDB missed can now be found via Filmweb's data.
-        cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
-        if (e.imdbId.isEmpty && e.tmdbId.isDefined)
-          onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
-        if (changed) fw.rating.map(RatingDisplay.label) else None
-      case None =>
-        logger.info(s"Filmweb: $label → no match")
-        None
-    }
-  }
-
-  /** Merge freshly-resolved Filmweb metadata into the per-source slot map — the
-   *  Filmweb counterpart of [[ImdbRatings.makeSlot]]. Filmweb now contributes a
-   *  full content slot (originalTitle, year, directors, Polish genres, Polish
-   *  plot), not just genres, so it can back the display fields — and drive
-   *  re-resolution of the other sources — when TMDB/IMDb are absent. An empty
-   *  slot (no content at all) drops the Filmweb entry rather than storing a slot
-   *  that contributes nothing. */
-  private def withFilmwebData(data: Map[Source, SourceData], fw: FilmwebClient.FilmwebInfo): Map[Source, SourceData] = {
-    val slot = SourceData(
-      originalTitle = fw.originalTitle,
-      releaseYear   = fw.year,
-      director      = fw.directors,
-      genres        = fw.genres,
-      synopsis      = fw.plot
-    )
-    val hasContent = slot.originalTitle.isDefined || slot.releaseYear.isDefined ||
-                     slot.director.nonEmpty || slot.genres.nonEmpty || slot.synopsis.isDefined
-    if (hasContent) data + ((Filmweb: Source) -> slot) else data - (Filmweb: Source)
-  }
-
-  // Pure re-resolve — never writes. Shared by `resolveAndPersistUrl` (production
-  // URL-discovery path) and `auditOneSync` (one-off backfill that compares
-  // the freshly-resolved URL against what's already stored).
-  private def resolveUrl(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] =
-    if (e.tmdbId.isEmpty && e.filmwebUrl.isEmpty) resolveWithoutTmdb(key, e) else resolveWithTmdbHints(key, e)
+  // A film TMDB has no record of takes its IMDb id from the identity resolver's fallback source, never from a title search.
+  override def pageTaken(key: CacheKey, row: MovieRecord): Unit =
+    if (row.imdbId.isEmpty && row.tmdbId.isDefined)
+      onImdbIdMissing(key.cleanTitle, key.year, row.originalTitle.getOrElse(normalizer.apiQuery(key.cleanTitle)))
 
   // A film TMDB has no record of: each stripped cinema title searched in turn, and a page taken only
   // when it positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
-  private def resolveWithoutTmdb(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] =
-    Option.when(TmdbLessRatingLinks.checkable(key, e))(()).flatMap { _ =>
-      val directors = services.movies.TmdbLessEligibility.directorsOf(e)
-      TmdbLessRatingLinks.titlesOf(key, e, cache.normalizer).iterator
-        .flatMap(title => filmweb.lookup(title, TmdbLessRatingLinks.yearOf(key, e), None, directors, None))
-        .find(info => TmdbLessRatingLinks.corroborated(key, e, info.year, info.directors.toSet))
-        .map(info => info.copy(rating = info.rating.map(RatingDisplay.oneDecimal)))
+  private def findWithoutTmdb(key: CacheKey, row: MovieRecord): Option[FilmwebClient.FilmwebInfo] =
+    Option.when(TmdbLessRatingLinks.checkable(key, row))(()).flatMap { _ =>
+      val directors = services.movies.TmdbLessEligibility.directorsOf(row)
+      TmdbLessRatingLinks.titlesOf(key, row, normalizer).iterator
+        .flatMap(title => filmweb.lookup(title, TmdbLessRatingLinks.yearOf(key, row), None, directors, None))
+        .find(info => TmdbLessRatingLinks.corroborated(key, row, info.year, info.directors.toSet))
     }
 
-  private def resolveWithTmdbHints(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
+  // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish films whose cinema-reported title doesn't
+  // surface a Filmweb hit still resolve, and the union of TMDB credits + every cinema's reported director as
+  // `directors` so same-titled films across years disambiguate.
+  private def findWithTmdbHints(key: CacheKey, row: MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
     // Strip accessibility-programme decoration before hitting Filmweb —
     // "Kino bez barier: Freak Show (AD)" queries upstream as just
     // "Freak Show". Cache key keeps the full form so this row stays
     // distinct from the DKF / regular screening of the same film.
-    val linkTitle = cache.normalizer.searchQuery(key.cleanTitle)
-    val details   = e.tmdbId.flatMap(tmdb.details)
-    val fallback  = e.originalTitle
+    val linkTitle = normalizer.searchQuery(key.cleanTitle)
+    val details   = row.tmdbId.flatMap(tmdb.details)
+    val fallback  = row.originalTitle
       .orElse(details.flatMap(_.englishTitle))
       .filterNot(_.equalsIgnoreCase(linkTitle))
-    val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
-    val cinemaDirectors = e.evidence.directors.toSet
-    val directors       = tmdbDirectors ++ cinemaDirectors
+    val directors = row.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty) ++ row.evidence.directors.toSet
     // A yearless retrospective ("Konwicki: Lawa (1989)") carries no scraped year,
     // so the Filmweb search had nothing to gate a same-title collision against and
     // took the unrelated "Lawa"/orig "Lava" (2014). Read a delimited "(YYYY)" (or
@@ -268,72 +106,54 @@ class FilmwebRatings(
     // year — the SAME deterministic hint `resolveTmdbId` uses (`EmbeddedYear`), fed
     // here so the Filmweb side gets the same disambiguation. Falls back to the
     // scraped key year.
-    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.evidence.titles.toSeq, LatestTitleYear.current))
+    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: row.evidence.titles.toSeq, LatestTitleYear.current))
     // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
     // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
-    val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)
-      .orElse(e.retainedSynopses.get(models.Tmdb))
+    val referenceSynopsis = row.data.get(models.Tmdb).flatMap(_.synopsis)
+      .orElse(row.retainedSynopses.get(models.Tmdb))
 
     // Cache the url discovery (the expensive search + /info + /preview probes)
     // keyed by the Filmweb hints. `fresh` carries the full FilmwebInfo on a
     // cache MISS so the rating + genres are kept exactly as before; on a cache
     // HIT only the url is known, so rebuild the rating + genres from it.
     var fresh: Option[FilmwebClient.FilmwebInfo] = None
-    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors, cache.normalizer)) {
+    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors, normalizer)) {
       val info = filmweb.lookup(linkTitle, effectiveYear, fallback, directors, referenceSynopsis)
       fresh = info
       info.map(_.url)
     }
-    cachedUrl.map { url =>
-      val info = fresh.orElse(filmweb.detailsFor(url)).getOrElse(FilmwebClient.FilmwebInfo(url, filmweb.ratingFor(url)))
-      // Persist at the precision the badge shows, here at the single seam every
-      // discovery + audit caller funnels through.
-      info.copy(rating = info.rating.map(RatingDisplay.oneDecimal))
-    }
+    cachedUrl.map(url => fresh.orElse(filmweb.detailsFor(url)).getOrElse(FilmwebClient.FilmwebInfo(url, filmweb.ratingFor(url))))
   }
-
-  // ── Full-corpus walk ───────────────────────────────────────────────────────
-
-  // Filmweb soft-blocks a datacenter IP past a handful of concurrent requests
-  // (see CLAUDE.md), so cap its parallel walk lower than the other sources.
-  override protected def refreshConcurrency: Int = 5
-
-  /** Walk every cached row: re-run the full lookup for every row with a tmdbId
-   *  (a Filmweb soft-block or network blip counts the row as failed rather than
-   *  aborting the walk), then refresh the rating off whatever URL the row holds. */
-  private[services] def refreshAll(): BulkRefreshResult = recheck(cache.entries)
-
-  /** The walk above over `rows` alone: an operator's re-check of given films re-resolves their URL too. */
-  override private[services] def recheck(rows: Seq[(CacheKey, models.MovieRecord)]): BulkRefreshResult =
-    refreshAllUrlThenScore[Double](
-      rows          = rows,
-      walkLabel     = "Filmweb refresh",
-      urlOf         = _.filmwebUrl,
-      scoreOf       = _.filmwebRating,
-      rediscoverUrl = (key, row) => Try(resolveAndPersistUrl(key, row)).map { reported =>
-        // Discovery already scored the row (a first lookup lands the rating with
-        // the URL) — that displayed change is the cadence's to hear too.
-        reported.foreach(v => recordCadenceChange(key, row.tmdbId, Some(v)))
-        // Discovered iff the lookup stored a URL the snapshot row didn't have.
-        cache.get(key).exists(_.filmwebUrl.isDefined && !row.filmwebUrl.isDefined)
-      },
-      fetchScore    = (_, url) => Some(filmweb.ratingFor(url).map(RatingDisplay.oneDecimal)),
-      withScore     = withFilmwebRating,
-      badge         = RatingDisplay.label,
-      changedNoun   = "rating(s)"
-    )
 }
 
 object FilmwebRatings {
-  /** Outcome of a single `auditOneSync` call. The summary stats in the
-   *  `FilmwebUrlAudit` script are derived by counting these. */
-  sealed trait AuditOutcome
-  /** Stored URL re-resolves to the same canonical id (good). */
-  final case class Kept(url: String) extends AuditOutcome
-  /** Stored URL re-resolves to a DIFFERENT canonical id — fixed in place. */
-  final case class Corrected(before: String, after: String) extends AuditOutcome
-  /** Stored URL no longer passes the title + director bar — cleared. */
-  final case class Dropped(before: String) extends AuditOutcome
-  /** Row had no `filmwebUrl` and re-resolve didn't find one either. */
-  case object NoUrl extends AuditOutcome
+
+  /** A Filmweb read as a page: its rating at the precision the badge shows (`%.1f`: a sub-decimal vote drift the user
+   *  can't see isn't a change — see RatingDisplay), and its content slot — the Filmweb counterpart of
+   *  [[ImdbRatings.makeSlot]]: originalTitle, year, directors, Polish genres, Polish plot. A slot with no content at
+   *  all is none, and drops the row's. */
+  private def page(info: FilmwebClient.FilmwebInfo): Page[Double] = {
+    val slot = SourceData(
+      originalTitle = info.originalTitle,
+      releaseYear   = info.year,
+      director      = info.directors,
+      genres        = info.genres,
+      synopsis      = info.plot
+    )
+    val hasContent = slot.originalTitle.isDefined || slot.releaseYear.isDefined ||
+                     slot.director.nonEmpty || slot.genres.nonEmpty || slot.synopsis.isDefined
+    Page(info.rating.map(RatingDisplay.oneDecimal), Option.when(hasContent)(slot))
+  }
+
+  val Columns: SiteRatings.Columns[Double] = SiteRatings.Columns[Double](
+    noun      = "rating",
+    plural    = "rating(s)",
+    url       = _.filmwebUrl,
+    score     = _.filmwebRating,
+    withUrl   = (row, url) => row.copy(filmwebUrl = Some(url)),
+    withScore = (row, rating) => row.copy(filmwebRating = rating),
+    withPage  = (row, page) => row.copy(filmwebRating = page.score,
+      data = page.slot.fold(row.data - (Filmweb: Source))(slot => row.data + ((Filmweb: Source) -> slot))),
+    cleared   = row => row.copy(filmwebUrl = None, filmwebRating = None, data = row.data - (Filmweb: Source)),
+    badge     = RatingDisplay.label)
 }

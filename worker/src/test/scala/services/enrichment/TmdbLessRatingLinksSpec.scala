@@ -84,7 +84,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     val (cache, key, _) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
     cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
     val rt = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(u => if (u == url) page else UpstreamNotFound(u)))
-    new RottenTomatoesRatings(cache, new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None), rt).refreshOneSync(key)
+    SiteRatingsOf.rottenTomatoes(cache, new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None), rt).refreshOneSync(key)
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
   }
 
@@ -97,7 +97,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     def resolving(pages: Map[String, String]) = {
       val (cache, key, _) = unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))
       val mc = new MetacriticClient(new ScriptedByUrlHttpFetch(url => pages.get(url.stripSuffix("/")).orElse(pages.get(url)).getOrElse(UpstreamNotFound(url))))
-      new MetascoreRatings(cache, new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None), mc).refreshOneSync(key)
+      SiteRatingsOf.metacritic(cache, new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None), mc).refreshOneSync(key)
       cache.get(key).flatMap(_.metacriticUrl)
     }
     resolving(Map("https://www.metacritic.com/movie/nadzy" -> page("Mike Leigh", 1993))) shouldBe Some("https://www.metacritic.com/movie/nadzy")

@@ -116,7 +116,7 @@ object MergeRetrigger {
     // tmdbId change means the row's film identity firmed up, so a re-fetch under the now-known title is
     // warranted.
     kick(RetriggerKind.titleRatings, Seq(TitleOrYear, SearchTitle, TmdbId), after.tmdbId.isDefined)
-    // Filmweb's search reads two inputs more (FilmwebRatings.resolveWithTmdbHints, its link-cache key): the original
+    // Filmweb's search reads two inputs more (FilmwebRatings.findWithTmdbHints, its link-cache key): the original
     // title it falls back to and the directors the cinemas credit, which confirm a page whose year is off by one.
     // A miss is remembered under the key it was asked by, so a film asked before a cinema's director reached it kept
     // the miss while a whole resolve, all of it there from the start, took the page: Verify scrape recording #23's

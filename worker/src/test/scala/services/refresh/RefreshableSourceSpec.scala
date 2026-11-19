@@ -139,7 +139,7 @@ class RefreshableSourceSpec extends AnyFlatSpec with Matchers {
       ("The Odyssey", Some(2026), MovieRecord(tmdbId = Some(1368337), rottenTomatoesUrl = Some(stored)))), normalizer = normalizer),
       normalizer = normalizer, clock = tools.SpecClock.Pinned)
     val asked = mutable.Set.empty[String]
-    val rt = new services.enrichment.RottenTomatoesRatings(cache, new clients.HttpTmdbClient(clients.tools.FailingHttpFetch.Unexpected, apiKey = None),
+    val rt = services.enrichment.SiteRatingsOf.rottenTomatoes(cache, new clients.HttpTmdbClient(clients.tools.FailingHttpFetch.Unexpected, apiKey = None),
       new services.enrichment.RottenTomatoesClient(http = new clients.tools.ScriptedByUrlHttpFetch(url => { asked += url; tools.UpstreamNotFound(url) })))(using tools.SpecClock.latestTitleYear)
     new RatingRefreshSource("rt", rt, cache, new Links).refresh(Seq("1368337"))
     asked should contain("https://www.rottentomatoes.com/m/theodyssey")   // the link derived again

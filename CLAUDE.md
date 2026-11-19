@@ -221,7 +221,7 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
 **SOLID, with Dependency Inversion as the load-bearing one.**
 
 - Every non-trivial collaboration is wired in `AppLoader` (the composition root); everything else receives
-  abstractions through constructor parameters — `class FilmwebRatings(cache: MovieCache, client: FilmwebClient)`,
+  abstractions through constructor parameters — `class FilmwebRatings(tmdb: TmdbClient, filmweb: FilmwebClient)`,
   never constructing collaborators inside. Constructors and parameters take the abstraction, never a concrete class;
   production code never references a test subclass.
 - Reaching for a feature flag to toggle behaviour usually means a missing abstraction: a trait with two
@@ -229,7 +229,8 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
 - Single responsibility: one reason to change per class (`ImdbIdResolver` vs `ImdbRatings`); treat
   `Manager`/`Handler`/`Util`/`Helper`/`Processor` names as a smell.
 - Open/closed: a new cinema is a new `CinemaXClient` on the scrape contract (`ScrapeReaper` unchanged); a new rating
-  source is a `*Ratings` class plus one `RatingSource` entry in `RatingSources`.
+  site is a `*Ratings` class on the rating-site port (`SiteRatings.Site`: its find and read; `SiteRatings` unchanged)
+  plus one `RatingSource` entry in `RatingSources`.
 - Liskov: an `InMemoryMovieRepository` honours `MovieRepository`'s write-through contract; callers never need
   `isInstanceOf`.
 - Interface segregation: `MovieRepository` stays the persistence contract (`findAll`, `upsert`, `updateIfPresent`,

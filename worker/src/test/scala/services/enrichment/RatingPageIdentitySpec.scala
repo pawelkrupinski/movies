@@ -44,7 +44,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   "a stored Rotten Tomatoes url whose page credits another director" should "be dropped with its score" in {
     val (cache, key) = bogaci(rtUrl = Some(RtLenzi), rt = Some(39))
-    new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(http(Map(RtLenzi -> recorded("rt-sacrifice.html")))))
+    SiteRatingsOf.rottenTomatoes(cache, tmdb, new RottenTomatoesClient(http(Map(RtLenzi -> recorded("rt-sacrifice.html")))))
       .refreshOneSync(key)
 
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe None
@@ -53,7 +53,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   it should "be kept when the page credits the film's own director" in {
     val (cache, key) = bogaci(rtUrl = Some(RtGavras))
-    new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(http(Map(RtGavras -> recorded("rt-sacrifice_2026.html")))))
+    SiteRatingsOf.rottenTomatoes(cache, tmdb, new RottenTomatoesClient(http(Map(RtGavras -> recorded("rt-sacrifice_2026.html")))))
       .refreshOneSync(key)
 
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe Some(RtGavras)
@@ -61,7 +61,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   "Rotten Tomatoes discovery" should "not store an undated bare slug whose page credits another director" in {
     val (cache, key) = bogaci()
-    new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(http(Map(RtLenzi -> recorded("rt-sacrifice.html")))))
+    SiteRatingsOf.rottenTomatoes(cache, tmdb, new RottenTomatoesClient(http(Map(RtLenzi -> recorded("rt-sacrifice.html")))))
       .refreshOneSync(key)
 
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe None
@@ -72,7 +72,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   "a stored Metacritic url whose page credits another director" should "be dropped with its score" in {
     val (cache, key) = bogaci(mcUrl = Some("https://www.metacritic.com/movie/sacrifice"), mc = Some(61))
-    new MetascoreRatings(cache, tmdb, new MetacriticClient(http(Map(McBruno -> recorded("mc-sacrifice.html")))))
+    SiteRatingsOf.metacritic(cache, tmdb, new MetacriticClient(http(Map(McBruno -> recorded("mc-sacrifice.html")))))
       .refreshOneSync(key)
 
     cache.get(key).flatMap(_.metacriticUrl) shouldBe None
@@ -81,7 +81,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   it should "be kept when the page credits the film's own director" in {
     val (cache, key) = bogaci(mcUrl = Some("https://www.metacritic.com/movie/sacrifice-2025"))
-    new MetascoreRatings(cache, tmdb, new MetacriticClient(http(Map(McGavras -> recorded("mc-sacrifice-2025.html")))))
+    SiteRatingsOf.metacritic(cache, tmdb, new MetacriticClient(http(Map(McGavras -> recorded("mc-sacrifice-2025.html")))))
       .refreshOneSync(key)
 
     cache.get(key).flatMap(_.metacriticUrl) shouldBe Some("https://www.metacritic.com/movie/sacrifice-2025")
