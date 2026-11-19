@@ -114,10 +114,10 @@ trait MovieRepositoryReader {
    *  the corpus bytes, so omitting them roughly halves what the scan transfers
    *  and holds. Callers that NEED showtimes (cache hydrate, read-model
    *  projection) must use [[findAll]]/[[findById]]. The default strips in-process
-   *  via [[MovieRepository.withoutShowtimes]]; `MongoMovieRepository` overrides
+   *  via `StoredMovieRecord.withoutShowtimes`; `MongoMovieRepository` overrides
    *  it to strip server-side so the bytes never cross the wire. */
   def findAllForListing(): Seq[StoredMovieRecord] =
-    findAll().map(MovieRepository.withoutShowtimes)
+    findAll().map(_.withoutShowtimes)
 
   /** Stream every persisted record through `f`, one row at a time. The default loads via
    *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository` overrides

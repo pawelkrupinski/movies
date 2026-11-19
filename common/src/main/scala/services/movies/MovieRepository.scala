@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord}
+import models.{CacheKey, FilmId}
 
 import models.{MovieRecord, Source, SourceData}
 
@@ -128,20 +128,7 @@ object MovieRepository {
    *  harmless: a projection writes only what changed. */
   val CatchUpOverlap: java.time.Duration = java.time.Duration.ofMillis(2 * WriteTimeout.toMillis)
 
-  /** A `movies` document as the dotted-name fallback read it: decoded, to patch, and `whole`, as
-   *  stored, for the replace to be guarded on. */
-  final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
-
   /** The corpus collection. Named here rather than inline so
    *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
   val Collection = "movies"
-
-  /** A copy of `row` with every source's `showtimes` dropped — the shared rule
-   *  behind [[MovieRepository.findAllForListing]]. `MongoMovieRepository` strips
-   *  the same field server-side; this keeps the in-memory store's listing view
-   *  byte-for-byte equivalent so both impls honour the same "no showtimes"
-   *  contract (the listing renders cinema metadata + counts, never showtimes). */
-  def withoutShowtimes(row: StoredMovieRecord): StoredMovieRecord =
-    row.copy(record = row.record.copy(
-      data = row.record.data.view.mapValues(_.copy(showtimes = Seq.empty)).toMap))
 }

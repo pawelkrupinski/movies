@@ -324,9 +324,9 @@ class MongoMovieRepository(
 
   /** The stored document the dotted-name fallback of [[InPlaceMovieUpdate]] patches — a seam a spec uses to land
    *  another write between this read and the replace. */
-  protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[MovieRepository.ReadDocument] =
+  protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[InPlaceMovieUpdate.ReadDocument] =
     Option(Await.result(c.withDocumentClass[org.bson.BsonDocument]().find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-      .map(whole => MovieRepository.ReadDocument(
+      .map(whole => InPlaceMovieUpdate.ReadDocument(
         c.codecRegistry.get(classOf[StoredMovieDto]).decode(new org.bson.BsonDocumentReader(whole), org.bson.codecs.DecoderContext.builder().build()),
         whole))
 

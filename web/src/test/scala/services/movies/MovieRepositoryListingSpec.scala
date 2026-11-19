@@ -14,7 +14,7 @@ import java.time.LocalDateTime
  * row renders (per-cinema metadata + counts) but with the heavy per-cinema
  * `showtimes` dropped — they're ~58% of the corpus bytes (measured on prod) and
  * the table never renders them (they're fetched per-row on expand). The trait
- * default strips in-process via `MovieRepository.withoutShowtimes`, keeping the
+ * default strips in-process via `StoredMovieRecord.withoutShowtimes`, keeping the
  * in-memory store's listing view identical to the Mongo one (which strips
  * server-side). `findAll` still carries showtimes — the strip is listing-only.
  */
@@ -44,9 +44,9 @@ class MovieRepositoryListingSpec extends AnyFlatSpec with Matchers with LoneElem
     repo.findAll().loneElement.record.cinemaData(CinemaCityWroclavia).showtimes should have size 2
   }
 
-  "MovieRepository.withoutShowtimes" should "clear showtimes on every source while preserving the rest" in {
+  "StoredMovieRecord.withoutShowtimes" should "clear showtimes on every source while preserving the rest" in {
     val before = repo.findAll().loneElement
-    val after  = MovieRepository.withoutShowtimes(before)
+    val after  = before.withoutShowtimes
     after.record.data(CinemaCityWroclavia).showtimes shouldBe empty
     after.record.data(CinemaCityWroclavia).title shouldBe Some("Belle")
     after.title shouldBe before.title

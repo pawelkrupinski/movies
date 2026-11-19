@@ -29,7 +29,7 @@ private[movies] final class InPlaceMovieUpdate(
   stamps:          tools.MonotonicStampSequence,
   writeMetrics:    RepositoryWriteMetrics,
   logger:          play.api.Logger,
-  readWhole:       (MongoCollection[StoredMovieDto], String) => Option[MovieRepository.ReadDocument]
+  readWhole:       (MongoCollection[StoredMovieDto], String) => Option[InPlaceMovieUpdate.ReadDocument]
 )(using LatestTitleYear) {
 
   /** Update the stored row of `film` in `c` from `before` to `after` — see [[MovieRepository.updateIfPresent]]. */
@@ -132,6 +132,10 @@ private[movies] final class InPlaceMovieUpdate(
 }
 
 object InPlaceMovieUpdate {
+  /** A `movies` document as the dotted-name fallback read it: decoded, to patch, and `whole`, as
+   *  stored, for the replace to be guarded on. */
+  final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
+
   /** The full-document replacement to write in the dotted-displayName fallback of
    *  [[updateIfPresent]] (a per-source `$set sourceData.<name>` is rejected when the
    *  name holds a '.'). Apply the SAME field-level patch to the CURRENT persisted

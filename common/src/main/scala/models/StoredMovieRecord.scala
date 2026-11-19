@@ -20,6 +20,13 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   def cacheKey(normalizer: String => String): CacheKey =
     storedKey.fold(CacheKey(title, year, normalizer))(CacheKey.stored(title, _))
 
+  /** A copy of this row with every source's `showtimes` dropped — the shared rule behind
+   *  `MovieRepositoryReader.findAllForListing`. `MongoMovieRepository` strips the same field server-side; this keeps the
+   *  in-memory store's listing view byte-for-byte equivalent so both impls honour the same "no showtimes" contract (the
+   *  listing renders cinema metadata + counts, never showtimes). */
+  def withoutShowtimes: StoredMovieRecord =
+    copy(record = record.copy(data = record.data.view.mapValues(_.copy(showtimes = Seq.empty)).toMap))
+
   /** This row as a read of it back from the store would give it ([[StoredMovieRecord.fromStorage]]), titled by
    *  `displayTitle`. */
   def readBack(displayTitle: String => String): StoredMovieRecord =
