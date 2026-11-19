@@ -240,7 +240,7 @@ object FamilyIndex {
       val contextMoved = context.toSeq.collect { case (read, d) if read.digestIn(now.context) != d => read.id }
       val answersMoved = answers.toSeq.collect { case (dependency, d) if !Lookups.digestIn(dependency, now.lookups, now.listingOf).contains(d) =>
         Dependency.encode(dependency) }
-      val pinsMoved    = Option.when(pinsOf(now.pins, members.keySet) != pins)("pins").toSeq
+      val pinsMoved    = Option.when(now.pins.idsTouching(members.keySet) != pins)("pins").toSeq
       membersMoved ++ contextMoved ++ answersMoved ++ pinsMoved ++ now.outsideBlockKeys(this).toSeq.map("block|" + _)
     }
   }
@@ -249,10 +249,8 @@ object FamilyIndex {
    *  the season they place a relay in), none of the stage's alone (its poster, days, names, words) -- a venue adding a
    *  showtime moves no family's model entry. The final take's reads digest the whole listing. */
   def modelDigest(listing: Listing): Long =
-    ContentHash.of((listing.copy(poster = None, screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None,
-      pageFacts = false), listing.screenedSeason))
+    ContentHash.of((Listing.asTheModelReads(listing), listing.screenedSeason))
 
-  private def pinsOf(pins: PinConstraints, members: Set[ListingKey]): Set[String] = pins.pins.filter(_.listings.exists(members)).map(_.id).toSet
 
   /** An index's build: its entries, the corpus resolve they were read off, and the listings whose take resolved alone
    *  differed from the corpus resolve's (A3: none expected). */
@@ -276,7 +274,7 @@ object FamilyIndex {
       val rules    = keys.map(key => key -> decided.get(key).toSeq.flatMap(d => d.trace.rulesOf(key) ++ d.trace.stage)).toMap
       val apart    = keys.filter(key => whole.decisionOf.get(key).flatMap(PopulationMonotonicity.takeOf) != takes(key))
       (Entry(members.map(l => l.key -> modelDigest(l)).toMap, regions.flatMap(_.blockKeys).toSet, context.reads,
-        recorded.reads, pinsOf(inputs.pins, keys.toSet), takes, rules), apart,
+        recorded.reads, inputs.pins.idsTouching(keys.toSet), takes, rules), apart,
         Option.when(values)(Recorded(members, context.values.toMap, recorded.answers.toMap, recorded.detailed.toMap)))
     }
     val built =

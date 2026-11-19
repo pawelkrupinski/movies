@@ -10,7 +10,7 @@ import IdentityResolver.{FamilyCrossing, Mutation}
  *  ([[IdentityResolver.resolveScored]]). */
 private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutation, pieces: Boolean) {
   import stages.{acceptance, families, generation, links, ordered, scoring}
-  import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
+  import generation.{candidateOf, issued, nodeById, nodes}
   import families.{familyOf, scopes}
 
   // ── B. global assignment, per family ─────────────────────────────────────────────────
@@ -41,7 +41,7 @@ private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutat
   // its pooled evidence. Showcase's "9 to 5 (2026)" credits Colin Higgins at two venues; its two
   // bare venues, dated only by the re-release, had taken a two-minute 2026 short.
   private val contested: Set[String] =
-    nodes.flatMap(node => node.listings.flatMap(_.catalogueIds).distinct.map(id => edges.catalogueKey(id, node) -> node.id)).groupMap(_._1)(_._2).values
+    nodes.flatMap(node => edges.catalogueKeys(node).map(_ -> node.id)).groupMap(_._1)(_._2).values
       .flatMap(ids => if (ids.distinct.flatMap(ownFilms.get).distinct.sizeIs > 1) ids else Nil).toSet
   private val acceptedAll: Map[String, Int] = ownFilms.filterNot { case (id, _) => contested(id) } ++ families.pinnedFilm
   // Round A's edges over EVERY pair of nodes sharing a block key, then the family check: an
@@ -62,10 +62,10 @@ private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutat
       familyOf       = nodes.flatMap(node => node.listings.map(_.key -> familyOf(node.id))).toMap,
       edges          = perFamily.flatMap(_._1),
       queries        = issued.toSeq,
-      filmLookups    = if (generation.partOfCorpus) 0 else records.size,
-      unknownQueries = answers.count(!_._2.isAnswered),
-      unknownDetails = details.count(!_._2.isAnswered),
-      unknownFilms   = if (generation.partOfCorpus) 0 else records.count(!_._2.isAnswered),
+      filmLookups    = generation.filmLookups,
+      unknownQueries = generation.unknownQueries,
+      unknownDetails = generation.unknownDetails,
+      unknownFilms   = generation.unknownFilms,
       violations     = perFamily.map(_._3).sum,
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
       scorings       = families.scorings,

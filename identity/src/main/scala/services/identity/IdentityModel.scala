@@ -307,6 +307,11 @@ object Listing {
   def republishedAs(held: Listing, now: Listing): Option[Listing] =
     Option.when((held ne now) && held == now && movedOutsideEquality(held, now))(now.copy(key = held.key))
 
+  /** `l` as the MODEL reads it: every field inside its equality ([[Listing.equals]]), none of the stage's alone (its
+   *  poster, days, names, words, page facts): what a family's model entry digests ([[FamilyIndex.modelDigest]]). */
+  def asTheModelReads(l: Listing): Listing =
+    l.copy(poster = None, screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None, pageFacts = false)
+
   /** `l`'s facts alone: its screenings, names and words (what re-publishes it daily, and most of its weight) off. */
   def factsAlone(l: Listing): Listing = l.copy(screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None)
 

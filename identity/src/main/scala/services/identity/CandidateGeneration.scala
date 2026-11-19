@@ -78,6 +78,12 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   lazy val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id)) }
   /** Whether these listings are part of a larger corpus, read through its context. */
   def partOfCorpus: Boolean = corpus.isDefined
+  /** A whole resolve's lookup counts ([[Resolution]]): the film records it looked up, and the questions, venue pages and
+   *  records it asked that went unanswered -- a region's records are its corpus's, none looked up here. */
+  def filmLookups: Int    = if (partOfCorpus) 0 else records.size
+  def unknownQueries: Int = answers.count(!_._2.isAnswered)
+  def unknownDetails: Int = details.count(!_._2.isAnswered)
+  def unknownFilms: Int   = if (partOfCorpus) 0 else records.count(!_._2.isAnswered)
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
   def reached(node: EvidenceNode): Seq[Int] = CandidateGeneration.reached(reach(node.id).search, reach(node.id).walk)
 

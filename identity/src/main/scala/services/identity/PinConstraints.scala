@@ -23,6 +23,9 @@ import models.ListingKey
  */
 final case class PinConstraints(pins: Seq[Pin]) {
 
+  /** The ids of the pins naming any of `listings`: what a family's model entry holds its pins by ([[FamilyIndex]]). */
+  def idsTouching(listings: Set[ListingKey]): Set[String] = pins.filter(_.listings.exists(listings)).map(_.id).toSet
+
   /** Listings pinned together (by a same-film pin, or pinned to one film), each group sorted,
    *  keyed by its smallest listing. */
   private val groupOf: Map[ListingKey, ListingKey] = {

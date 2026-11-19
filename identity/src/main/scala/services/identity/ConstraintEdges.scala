@@ -51,10 +51,11 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  feed's ([[SourceReliability.linkDecides]]) only beside the node's title: an aggregator links screenings to its entries
    *  and can link two venues' different films to one (Filmstarts' placeholder 51988 "Film Program"), so its id joins
    *  only listings whose titles already agree. */
-  def catalogueKey(id: CatalogueId, node: EvidenceNode): String =
+  private def catalogueKey(id: CatalogueId, node: EvidenceNode): String =
     if (!SourceReliability.linkDecides(id)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
 
-  private def catalogueKeys(node: EvidenceNode): Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.map(catalogueKey(_, node))
+  /** The keys `node`'s catalogue ids bind it by ([[catalogueKey]]). */
+  def catalogueKeys(node: EvidenceNode): Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.map(catalogueKey(_, node))
 
   private def sharesCatalogueId(first: EvidenceNode, second: EvidenceNode): Boolean = {
     val keys = catalogueKeys(first)
