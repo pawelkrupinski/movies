@@ -181,7 +181,18 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.fanOutLimit("services.identity.IdentityResolver", 9) shouldBe Some(9)
     table.distanceLimit("services.movies", 20) shouldBe Some(20)
     table.contractsOf("services.cinemas.pl.HeliosClient").map(c => c._1 -> c._2.size) shouldBe Seq("scrape" -> 12)
-    table.contractsOf("services.identity.IdentityResolver") shouldBe empty
+    table.contractsOf("services.identity.IdentityResolver").map(c => c._1 -> c._2.size) shouldBe Seq("resolver-vocabulary" -> 8)
+  }
+
+  "the resolver vocabulary contract" should "be one dependency of the resolver core alone, never of the projection, the measures or the agreement stage" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    table.contracts.find(_._1 == "resolver-vocabulary").map(_._3.toSet) shouldBe Some(Set("services.identity.Listing", "models.ListingKey",
+      "services.identity.EvidenceNode", "services.identity.Evidence", "services.identity.Candidate", "services.identity.CandidateQuery",
+      "services.identity.Scored", "services.identity.Denial"))
+    Seq("services.identity.FamilyScope", "services.identity.ConstraintEdges", "services.identity.IncrementalResolver")
+      .map(table.contractsOf(_).map(_._1)) shouldBe Seq(Seq("resolver-vocabulary"), Seq("resolver-vocabulary"), Seq("resolver-vocabulary"))
+    Seq("services.identity.ProjectionDrafting", "services.identity.IdentityMeasures", "services.identity.agreement.Agreement",
+      "services.identityadapters.IdentityProjection").flatMap(table.contractsOf) shouldBe empty
   }
 
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {

@@ -60,3 +60,49 @@ member	models.ResolvedMovie	served	web	the read model's film: its identity, rati
 member	models.Movie	served	web	a film's own fields within it
 member	models.Cinema	served	web	the venue a screening is at
 member	models.Showtime	served	web	one screening
+contract	services.identity.IdentityResolver	resolver-vocabulary	identity	the resolver core's side of its vocabulary contract: the eight immutable value types every stage of a resolve reads together (a listing, its key, its evidence and evidence node, a candidate, the query that found it, its scoring and denial) count as one dependency. Scoped by name to the resolver core (candidate generation, families, scoring, acceptance, the constraint edges and solver run, the decisions, the incremental model and its index), never the projection, the measures, the staging, the agreement stage or the adapters
+contract	services.identity.FamilyIndex	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.FamilyScope	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ResolverRun	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.LiveCorpus	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ClusterVoting	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.IncrementalResolver	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.Acceptance	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.BilledPiece	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.CandidateScoring	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ClusterRead	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ConstraintEdges	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ResolverDecisions	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.Families	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.Listing	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ResolveReports	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ListingScoring	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ListingShape	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.CandidateGeneration	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.DecisionTraces	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ListingsApart	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.MembersApart	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.SourcesApart	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.CopiedTitleDenial	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.FeedLinkOverrule	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.ResolveStages	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.AcceptanceFactRules	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.CorpusContext	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.NodeDenials	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.Corroboration	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.StageRelays	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.TrackedLookups	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.AcceptanceCalibratedRules	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.AcceptanceTitleRules	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.TitleLinks	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.AcceptanceStageRules	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.BillingDenials	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+contract	services.identity.TitleRelation	resolver-vocabulary	identity	the resolver core (see IdentityResolver)
+member	services.identity.Listing	resolver-vocabulary	identity	one listing as its venue published it: the resolve's input
+member	models.ListingKey	resolver-vocabulary	identity	a listing's key: what every decision, edge and family names its listings by
+member	services.identity.EvidenceNode	resolver-vocabulary	identity	listings of identical evidence, the unit a resolve scores and links
+member	services.identity.Evidence	resolver-vocabulary	identity	a node's merged facts, as the measures read them
+member	services.identity.Candidate	resolver-vocabulary	identity	a film a node has an evidence path to, with its record
+member	services.identity.CandidateQuery	resolver-vocabulary	identity	a candidate question a node asks: what found a candidate
+member	services.identity.Scored	resolver-vocabulary	identity	a candidate as a node's evidence scored it
+member	services.identity.Denial	resolver-vocabulary	identity	why a node's evidence rules a candidate out
