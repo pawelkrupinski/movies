@@ -47,6 +47,7 @@ on:
             - Identity run
             - iOS
             - Main
+            - Mirror pinned images
             - Nightly stress
             - Stage NixOS closures
             - Nix update

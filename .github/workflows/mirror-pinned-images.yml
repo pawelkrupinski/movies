@@ -26,13 +26,17 @@ on:
 permissions:
     contents: read
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 concurrency:
     group: mirror-pinned-images
     cancel-in-progress: false
 
 jobs:
     mirror:
-        # github.com's hosted image carries skopeo; the job writes GHCR with this repo's GITHUB_TOKEN.
+        # github.com's hosted image carries skopeo (SelfHostedRunnersSpec's NeedsHosted); it writes GHCR with GITHUB_TOKEN.
         runs-on: ubuntu-24.04
         timeout-minutes: 60
         permissions:
@@ -75,7 +79,7 @@ jobs:
         name: report (scheduled run)
         needs: [mirror]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-24.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

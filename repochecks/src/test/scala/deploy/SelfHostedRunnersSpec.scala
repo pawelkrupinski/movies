@@ -176,7 +176,9 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     "order-independence.yml: ios", "order-independence.yml: android-instrumented",
     // browser timing stress needs steady CPU (the owner, 2026-11-08): on movies-measure's shared host, Nightly stress #29's
     // WebKit phones timed out when a co-tenant starved every worker at once
-    "nightly-stress.yml: races", "nightly-stress.yml: webkit-phones", "nightly-stress.yml: report")
+    "nightly-stress.yml: races", "nightly-stress.yml: webkit-phones", "nightly-stress.yml: report",
+    // the copy to GHCR takes skopeo, which github.com's image carries and ci-runner's job image does not
+    "mirror-pinned-images.yml: mirror")
 
   "every other workflow" should "run on ci-runner, bitcashier first, whatever its ref (the owner, 2026-11-06)" in {
     // "distribute other workflows as well": the nightly explorers, the recording, the bots, Stage NixOS closures ...
