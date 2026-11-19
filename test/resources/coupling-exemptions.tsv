@@ -12,8 +12,8 @@
 # collaborators>` (e.g. `pipeline stage: clusters a family's members; needs the evidence, edges and solver it sequences`;
 # 40+ characters and 6+ words besides the class's name; no generic `complex`, `needed`, `for now`, `hard to split`); its
 # `added` date (YYYY-MM-DD); and a `Coupling: exempt <Class> — <reason>` trailer in the commit's FINAL trailer block.
-# `scripts/coupling-report --new-exemptions --since 7d` lists the week's new rows with their reasons and commits, for the
-# owner to strike any.
+# `scripts/coupling-report --new-exemptions --since 7d` lists the week's new rows with their reasons and commits. Every
+# Monday, .github/workflows/coupling-exemptions.yml puts that list in an owner-assigned issue so he can strike any.
 #
 # pattern: a class or package name; `*` matches any run of characters (dots too); `p.*` also matches `p` itself.
 # kind, and what it exempts:

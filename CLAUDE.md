@@ -280,8 +280,9 @@ down to `models`, a generic helper to `tools`), or add an exemption row to `test
 SPECIFIC why naming its role and the collaborators it needs (`pipeline stage: clusters a family's members; needs the
 evidence, edges and solver it sequences` -- linted: 40+ characters besides the class name, no generic `complex` /
 `needed` / `for now`), its `added` date column, and `Coupling: exempt <Class> — <reason>` in the commit's FINAL trailer
-block; every fan-out row added (root, registry, config, class) is held so. The owner reads `scripts/coupling-report
---new-exemptions --since 7d` weekly (each new row's date, commit, reason, trailer) and strikes any. Its categories: the composition roots (`modules.*`, `diagnostics.*`), registries (venue
+block; every fan-out row added (root, registry, config, class) is held so. `coupling-exemptions.yml` runs `scripts/coupling-report
+--new-exemptions --since 7d` every Monday: the week's new rows (date, commit, reason, trailer) go to its summary and to an
+owner-assigned issue, and he strikes any he does not accept. Its categories: the composition roots (`modules.*`, `diagnostics.*`), registries (venue
 rosters, scraper catalogues), the typed-config root (`settings.ProcessConfiguration`), the foundation packages (`models`,
 `tools`, `settings`, `services.titles`: stable and concrete on purpose), and the declared scrape contract, whose twelve
 member types a scraper's fan-out counts as ONE dependency. Prefer cutting the dependency (a trait at the seam, the class

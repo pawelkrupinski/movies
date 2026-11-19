@@ -33,6 +33,15 @@
         "Mon *-*-* 00:01:00 UTC"
       ]
     },
+    "coupling-exemptions": {
+      "crons": [
+        "47 10 * * 1"
+      ],
+      "file": "coupling-exemptions.yml",
+      "onCalendar": [
+        "Mon *-*-* 10:47:00 UTC"
+      ]
+    },
     "decoration-discovery": {
       "crons": [
         "0 10 * * 2"

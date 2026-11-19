@@ -1,0 +1,69 @@
+name: Coupling exemptions
+
+# THE WEEKLY EXEMPTION REPORT (CLAUDE.md, "Coupling is reviewed on every change"; a report, never a gate). The owner,
+# 2026-11-19, let agents exempt a new class past the fan-out limit on two conditions: each row carries a specific
+# reason, and the new rows are reported weekly. This workflow does the reporting. It runs
+# `scripts/coupling-report --new-exemptions --since 7d`, which lists main's exemption rows added in the last 7 days with
+# their dates, commits, reasons and `Coupling: exempt` trailers, and writes the list to the run's summary. When the list
+# is not empty, the report job opens an issue assigned to the owner, or refreshes its body if one is already open
+# (scripts/ci/scheduled-failure-issue.sh `alert`). The owner reads it and strikes any row he does not accept. The next
+# week with no new rows closes the issue. No sbt run: the list comes from git history.
+on:
+    schedule:
+        # Mondays 10:47 UTC, a slot no other scheduled job uses
+        - cron: '47 10 * * 1'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py): treated as the schedule.
+    repository_dispatch:
+        types: [scheduled-coupling-exemptions]
+    workflow_dispatch:
+
+concurrency:
+    group: coupling-exemptions
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
+jobs:
+    exemptions:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        outputs:
+            found: ${{ steps.list.outputs.found }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # the week of history the list reads
+                  fetch-depth: 0
+            - name: List the week's new exemptions
+              id: list
+              run: |
+                  scripts/coupling-report --new-exemptions --since 7d > "$RUNNER_TEMP/exemptions.md"
+                  cat "$RUNNER_TEMP/exemptions.md" >> "$GITHUB_STEP_SUMMARY"
+                  rows="$(grep -c '^- ' "$RUNNER_TEMP/exemptions.md" || true)"
+                  if [ "$rows" -gt 0 ]; then
+                      echo "found=$rows new coupling exemption row(s) this week: their reasons and commits are in the run's summary (scripts/coupling-report --new-exemptions --since 7d); strike any you do not accept" >> "$GITHUB_OUTPUT"
+                  fi
+
+    # New rows open (or refresh) one issue assigned to the owner, closed by the next week with none. A failed run opens
+    # the same issue: .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [exemptions]
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
+                  alert: ${{ needs.exemptions.outputs.found != '' }}
+                  found: ${{ needs.exemptions.outputs.found }}

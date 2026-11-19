@@ -27,6 +27,7 @@ on:
             - Android
             - Archive recording
             - Branch CI
+            - Coupling exemptions
             - Convergence daily full run
             - Convergence fill
             - Daily country fixture artifact
