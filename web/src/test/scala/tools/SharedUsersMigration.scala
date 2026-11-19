@@ -2,7 +2,7 @@ package tools
 
 import models.{Country, User, UserState}
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs, UserRepository, UserStateRepository, UserStateRows}
+import services.users.{MongoUserRepository, UserCodecs, UserRepository, UserStateRepository, UserStateRows}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -146,7 +146,7 @@ object SharedUsersMigration {
         // atomic field-scoped pipelines) — `UserStateRows` is that replace, and a
         // failed one is reported here and caught by the read-back below.
         val userStore   = new MongoUserRepository(Some(targetDb))
-        val stateStore  = new MongoUserStateRepository(Some(targetDb), java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+        val stateStore  = services.users.MongoUserStateRepository(Some(targetDb), java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
         users.foreach(userStore.upsert)
         states.foreach { state =>
           scala.util.Try(UserStateRows.replace(targetDb, state)).failed

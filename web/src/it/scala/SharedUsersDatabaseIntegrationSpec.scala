@@ -9,7 +9,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.users.{MongoUserRepository, MongoUserStateRepository, UserStateRows}
+import services.users.{MongoUserRepository, UserStateRows}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -54,7 +54,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
     new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)))
 
   private def statesOn(country: Country, sharedUsersDb: Option[String]) =
-    new MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+    services.users.MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
 
   override protected def afterAll(): Unit = try {
     (Country.all.map(corpusDb) :+ SharedDb).distinct.foreach { db =>

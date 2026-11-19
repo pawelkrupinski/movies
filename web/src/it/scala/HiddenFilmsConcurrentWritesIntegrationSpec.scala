@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.FakeRequest
-import services.users.{InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
+import services.users.{InMemoryUserRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
 import tools.IsolatedMongoDatabase
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
@@ -33,7 +33,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
   private val isolated = IsolatedMongoDatabase.open(mongoTarget, "hidden-films-concurrent")
   private val database = isolated.database
-  private val states = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned,
+  private val states = services.users.MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned,
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () }, stopwatch = _root_.tools.Stopwatch.System)
   private val users  = new InMemoryUserRepository
   private val pool   = Executors.newFixedThreadPool(32)

@@ -4,18 +4,15 @@ import tools.ChangeStreamLiveness
 
 import com.mongodb.{ErrorCategory, MongoServerException}
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument}
-import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
-import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
-import org.mongodb.scala.model.{Aggregates, Field, Filters}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
+import org.bson.BsonDocument
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import services.movies.{ChangeEventDecoder, ChangeStreamReopen}
 
 import scala.concurrent.Await
 import java.time.Instant
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -94,70 +91,25 @@ object UserStateRepository {
   val Collection = "userStates"
 }
 
+/** The `userStates` store over Mongo: its reads and atomic writes (each one `findOneAndUpdate`, the update a
+ *  server-side pipeline: [[UserStatesCollection]]), its change stream [[UserStateChangeStream]]'s. Built by
+ *  its companion. */
 class MongoUserStateRepository(
   // The users database, handed in by the composition root (`UsersWiring`, on the
   // shared `MongoConnection`); `None` (no Mongo configured, or the connection
   // failed) leaves the store disabled. It never opens a client of its own.
   database: Option[MongoDatabase],
-  // The composition root's clock: the `userStates` cursor's liveness ages on it.
-  clock: java.time.Clock,
-  // The composition root's monotonic clock: the cursor's decoder log throttle times on it.
-  stopwatch: tools.Stopwatch,
-  // The reopen driver for the `userStates` cursor. Production schedules on a daemon
-  // thread; a spec hands over one that fires when it says so.
-  reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
+  // The `userStates` change stream over the same database.
+  changes: UserStateChangeStream,
   // How each atomic write went, one outcome per write — the web's
   // `UserStateWriteMetrics` in production.
   writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
   // Whether the unique `userId` index is in place — the web's `UserStateIndexMetrics`.
-  indexHealth: UserStateIndexHealth = UserStateIndexHealth.none,
-  // Where a row the change stream could not decode is counted — the web's decode-failure
-  // counter in production. See [[services.movies.ChangeEventDecoder]].
-  decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
+  indexHealth: UserStateIndexHealth = UserStateIndexHealth.none
 ) extends UserStateRepository with Logging {
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 
-  private lazy val coll: Option[MongoCollection[UserState]] = database.map { db =>
-    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState](UserStateRepository.Collection)
-    // The web's only write path: seeded here, at boot, or a country nobody has signed in to publishes no write-error
-    // series at all, which AppMetricAbsent reads as the counter unwired.
-    tools.MongoWriteErrors.seed(c)
-    uniqueUserIdIndexOrReport(db)
-    c
-  }
-
-  // `unique` — without it an upserting write keyed on `Filters.eq("userId", …)`
-  // can't tell "this user's one row" from "the first of several": a plain
-  // (non-unique) index let 4 duplicate rows for one userId accumulate from a
-  // historic write race (found + cleaned up 2026-09-20), after which `find`
-  // and a write could silently disagree on WHICH duplicate is "the" row.
-  //
-  // BUILD OR CONVERT, NEVER DROP. Every web pod runs this on every boot, and a
-  // rolling deploy boots the new pod while the old one writes. This used to drop a
-  // legacy plain `userId_1` to make room for the unique one, and two pods
-  // booting together both read "legacy" and both dropped it: the second drop
-  // either found nothing (that pod reported the index missing although the
-  // first had built it) or removed the unique index the first had just built
-  // (`UserStateAcrossPodsIntegrationSpec`). `MongoIndex` converts a plain index
-  // to unique IN PLACE instead — two `collMod`s that are no-ops once applied, so
-  // two pods converting together both succeed and the index is never absent.
-  //
-  // LOUD, NOT FATAL. The store keeps serving without the index — failing the boot
-  // would take every web pod (the whole read tier) down over a write-correctness
-  // risk to a few signed-in visitors' rows — but an index not in place (duplicate
-  // rows, a credential without `collMod`) is logged at ERROR and reported to
-  // `indexHealth`, whose gauge `UserStateUniqueIndexMissing` (web-errors.rules)
-  // alerts on.
-  private def uniqueUserIdIndexOrReport(db: MongoDatabase): Unit = {
-    val outcome = tools.MongoIndex.ensure(db, UserStateRepository.Collection,
-      org.mongodb.scala.model.Indexes.ascending("userId"), new org.mongodb.scala.model.IndexOptions().unique(true), "userStates")
-    outcome match {
-      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
-        logger.error(s"userStates has NO unique userId index ($reason). Writes keyed on userId may pick either of two rows.")
-      case _ => ()
-    }
-    indexHealth.uniqueUserIdIndex(outcome.inPlace)
-  }
+  private lazy val coll: Option[MongoCollection[UserState]] = database.map(UserStatesCollection.open(_, indexHealth))
 
   def enabled: Boolean = coll.isDefined
 
@@ -169,10 +121,10 @@ class MongoUserStateRepository(
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =
     atomically(userId, s"changeHiddenFilms($userId, $country)", Endpoint.of(change),
-      MongoUserStateRepository.hiddenFilmsPipeline(country, change, now))
+      UserStatesCollection.hiddenFilmsPipeline(country, change, now))
 
   def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] =
-    atomically(userId, s"setLanguage($userId)", Endpoint.Language, MongoUserStateRepository.languagePipeline(language, now))
+    atomically(userId, s"setLanguage($userId)", Endpoint.Language, UserStatesCollection.languagePipeline(language, now))
 
   /** Run `update` against `userId`'s row as one `findOneAndUpdate` — upserting
    *  when there is no row — and answer with the row right after it, reporting
@@ -207,143 +159,26 @@ class MongoUserStateRepository(
     }
   }
 
-  private val liveness = new ChangeStreamLiveness(clock)
-  // Written by the caller's thread, read on the driver's: volatile so a registration (or
-  // its close) is seen by the next event rather than whenever the cache line happens to move.
-  @volatile private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
-  @volatile private var subscription: Option[Subscription] = None
-  private lazy val reopen: ChangeStreamReopen = reopenDriver("userStates", () => subscribe(reopened = true))
+  override def changeStreamLiveness: ChangeStreamLiveness = changes.liveness
 
-  override def changeStreamLiveness: ChangeStreamLiveness = liveness
-
-  /** Replaces any existing registration (see the trait doc — one consumer at a
-   *  time). Opens at "now": unlike `MovieChangeStream` this cache has nothing
-   *  durable to resume — a missed event just means that one user's cache entry
-   *  stays a miss until their next write, which is harmless (the caller reads
-   *  storage directly on a miss). */
   override def watchChanges(
     onUpsert:     UserState => Unit,
     onDelete:     String => Unit,
     onDisconnect: () => Unit
-  ): Option[AutoCloseable] = coll.map { _ =>
-    listener = Some((onUpsert, onDelete, onDisconnect))
-    subscribe(reopened = false)
-    new AutoCloseable {
-      override def close(): Unit = {
-        reopen.close()
-        subscription.foreach(_.unsubscribe())
-        subscription = None
-        listener = None
-      }
-    }
-  }
+  ): Option[AutoCloseable] = changes.watch(onUpsert, onDelete, onDisconnect)
 
-  /** `reopened`: this open replaces a cursor that DIED. It opens at "now", so every write
-   *  between the death and this open was never delivered — and the death's `onDisconnect`
-   *  only cleared what was cached THEN, not what callers cached during the gap. So a reopen
-   *  reports losing track again, once the new cursor is live. */
-  private def subscribe(reopened: Boolean): Unit = coll.foreach { c =>
-    // Decoded here rather than in the driver: one row the codec refuses used to END the cursor.
-    val decoder = ChangeEventDecoder.of[UserState](UserStateRepository.Collection, c.codecRegistry, decodeFailures, stopwatch)
-    c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[BsonDocument]] {
-      override def onSubscribe(s: Subscription): Unit = {
-        subscription = Some(s)
-        s.request(Long.MaxValue)
-        liveness.watching(UserStateRepository.Collection)
-        if (reopened) listener.foreach { case (_, _, onLostTrack) => onLostTrack() }
-      }
-      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = deliver(decoder.postImage(change), change)
-      override def onError(e: Throwable): Unit = {
-        logger.warn(s"UserStateRepository change stream ended (${e.getMessage}) — invalidating the cache; a reopen resumes it.")
-        cursorEnded()
-      }
-      override def onComplete(): Unit = cursorEnded()
-    })
-  }
-
-  /** One change, to the listener. `image` is decoded whether or not one listens: a refused row is counted either way. */
-  private def deliver(image: ChangeEventDecoder.PostImage[UserState], change: ChangeStreamDocument[BsonDocument]): Unit = {
-    reopen.opened()
-    liveness.delivered(UserStateRepository.Collection)
-    listener.foreach { case (onUpsert, onDelete, onLostTrack) =>
-      image match {
-        case ChangeEventDecoder.PostImage.Present(state) => onUpsert(state)
-        // A row changed and we cannot say whose, or what to: stop vouching, as for a delete.
-        case ChangeEventDecoder.PostImage.Undecodable    => onLostTrack()
-        // A delete carries only its documentKey — and a row's `_id` is a driver-generated
-        // ObjectId, not the userId, so the key cannot say WHOSE row went (and there is no
-        // pre-image to ask). Deletes are rare (account deletion), so rather than enable
-        // collection pre-images, report "can no longer vouch for what changed" — the same
-        // signal as a dead cursor, which makes the change-time cache drop everything.
-        case ChangeEventDecoder.PostImage.Absent =>
-          Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
-            .fold(onLostTrack())(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
-      }
-    }
-  }
-
-  private def cursorEnded(): Unit = {
-    subscription = None
-    listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
-    reopen.failed()
-  }
-
-  def close(): Unit = reopen.close()
+  def close(): Unit = changes.close()
 }
 
 object MongoUserStateRepository {
-  import UpdatePipeline.{field, literal, op}
-
-  // Both pipelines below are single-stage `$set`s: the server evaluates every
-  // field against the row it is writing — nothing read beforehand, nothing to
-  // go stale. User text (titles, cinema names) always travels inside
-  // `$literal`, since a string starting with `$` would otherwise read as a
-  // field path.
-
-  private def strings(values: Iterable[String]): BsonArray = new BsonArray(values.toList.map(v => new BsonString(v): BsonValue).asJava)
-  private def orEmpty(path: String): BsonDocument = op("$ifNull", field(path), new BsonArray())
-
-  /** `UserState.nextUpdatedAt`: now, or a millisecond past the stored stamp. */
-  private def stamped(now: Instant): BsonDocument =
-    op("$max", new BsonDateTime(now.toEpochMilli), op("$add", field("updatedAt"), new BsonInt32(1)))
-
-  /** A legacy global set, nothing writes any more: the stored one, or empty on
-   *  the upsert's insert, since the codec needs both sets on every row. */
-  private def legacySet(name: String): Field[BsonValue] = Field(name, orEmpty(name))
-
-  /** [[HiddenFilmsChange.applyTo]] plus the `updatedAt` stamp — neither applied
-   *  when the change declines. */
-  private[users] def hiddenFilmsPipeline(country: String, change: HiddenFilmsChange, now: Instant): Seq[BsonDocument] = {
-    // Country codes come from `models.Country` — but this becomes a field path.
-    require(country.matches("[a-z]{2,3}"), s"not a country code: '$country'")
-    val path   = s"hiddenFilmsByCountry.$country"
-    val bucket = orEmpty(path)
-    val always = org.bson.BsonBoolean.TRUE
-    val (next, applies) = change match {
-      case HiddenFilmsChange.Hide(title, limit) =>
-        op("$setUnion", bucket, literal(strings(Seq(title)))) ->
-          op("$or", op("$in", literal(new BsonString(title)), bucket), op("$lt", op("$size", bucket), new BsonInt32(limit)))
-      case HiddenFilmsChange.Unhide(title) => op("$setDifference", bucket, literal(strings(Seq(title)))) -> always
-      case HiddenFilmsChange.Clear         => literal(new BsonArray()) -> always
-    }
-    val unstamped = op("$ifNull", field("updatedAt"), new BsonDateTime(now.toEpochMilli))
-    Seq(Aggregates.set(
-      Field[BsonValue](path,        op("$cond", applies, next, field(path))),
-      Field[BsonValue]("updatedAt", op("$cond", applies, stamped(now), unstamped)),
-      legacySet("hiddenFilms"),
-      legacySet("disabledCinemas")
-    ).toBsonDocument)
-  }
-
-  /** The language pick plus the `updatedAt` stamp. A cleared language is
-   *  `$$REMOVE`d — the codec reads an absent field as `None`. */
-  private[users] def languagePipeline(language: Option[String], now: Instant): Seq[BsonDocument] =
-    Seq(Aggregates.set(
-      Field[BsonValue]("language", language.fold[BsonValue](new BsonString("$$REMOVE"))(l => literal(new BsonString(l)))),
-      Field[BsonValue]("updatedAt", stamped(now)),
-      legacySet("hiddenFilms"),
-      legacySet("disabledCinemas")
-    ).toBsonDocument)
+  /** The store over `database`, with its [[UserStateChangeStream]] over the same one. */
+  def apply(database: Option[MongoDatabase], clock: java.time.Clock, stopwatch: tools.Stopwatch,
+            reopenDriver: (String, () => Unit) => services.movies.ChangeStreamReopen = services.movies.ChangeStreamReopen.onDaemonScheduler,
+            writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
+            indexHealth: UserStateIndexHealth = UserStateIndexHealth.none,
+            decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop): MongoUserStateRepository =
+    new MongoUserStateRepository(database, new UserStateChangeStream(database, clock, stopwatch, reopenDriver, decodeFailures),
+      writeOutcomes, indexHealth)
 }
 
 /** The states as `userStates` would hold them: each written through its codec to BSON and read back. */
