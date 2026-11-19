@@ -1,8 +1,8 @@
 package services.movies
 
-import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
+import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
-import org.mongodb.scala.{Document, MongoCollection, Observer}
+import org.mongodb.scala.Observer
 
 /**
  * The `movies` change-stream SUBSCRIPTION: one shared cursor, decoded once and fanned
@@ -38,7 +38,7 @@ import org.mongodb.scala.{Document, MongoCollection, Observer}
  * the film's last projection and were never projected again.
  *
  * `source` is the seam: production opens the collection's cursor
- * ([[MovieChangeStream.Source.ofCollection]]); a spec pushes events by hand.
+ * ([[MongoMovieChangeFeed]]); a spec pushes events by hand.
  * `reread` re-reads a film by id, stitched (showtimes and slots live in their own
  * collections) — see [[FilmRereads]], the apply side every cursor rings into.
  *
@@ -48,8 +48,9 @@ import org.mongodb.scala.{Document, MongoCollection, Observer}
  */
 final class MovieChangeStream(
   source:              MovieChangeStream.Source,
-  screenings:          Option[ScreeningsRepository],
-  slots:               Option[SlotsRepository],
+  // The side collections whose applied rows the two side cursors watch (`screenings`, `movie_slots`); None, unsplit.
+  screenings:          Option[SlotKeyedRows],
+  slots:               Option[SlotKeyedRows],
   reread:              String => tools.ReadOutcome[StoredMovieRecord],
   // Marked before every `reread`, so a consumer that also writes films (the cache) can tell a
   // read taken before its own write from one taken after — see [[FilmWriteFence]].
@@ -59,11 +60,15 @@ final class MovieChangeStream(
   screeningsMetrics:   SideCollectionChangeMetrics,
   slotsMetrics:        SideCollectionChangeMetrics,
   changeDemandWindow:  Int,
-  // The repository's clock: the debounce runs on it, and the liveness ages from it.
+  // The repository's clock: the debounce runs on it.
   clock:               java.time.Clock,
-  // The sequence the repository stamps `updatedAt` from — the liveness takes every catch-up floor
-  // from it, so a floor and a row's stamp are strictly ordered (see [[ChangeStreamLiveness.now]]).
-  stamps:              tools.MonotonicStampSequence,
+  /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
+   *  cursor has no other way of giving. Stamped on the driver's `onNext`, before the apply
+   *  and before coalescing, so it says what the CURSOR did, not what the apply thread got
+   *  round to. See [[ChangeStreamLiveness]]. Built by the store over the sequence it stamps
+   *  `updatedAt` from, so a catch-up floor and a row's stamp are strictly ordered
+   *  ([[ChangeStreamLiveness.now]]). */
+  val liveness:        ChangeStreamLiveness,
   // The repository's monotonic clock: the post-image decoder's log throttle times on it.
   stopwatch:           tools.Stopwatch,
   // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
@@ -80,14 +85,8 @@ final class MovieChangeStream(
   readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
   // Waits out each film's debounce (built only when `debounce` is set) — injected so a spec can
   // step a debounce boundary on a hand-moved `clock` instead of sleeping across it.
-  debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = () => tools.DaemonExecutors.scheduler("movie-change-debounce")
+  debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = FilmRereads.DebounceScheduler
 ) extends AutoCloseable {
-
-  /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
-   *  cursor has no other way of giving. Stamped on the driver's `onNext`, before the apply
-   *  and before coalescing, so it says what the CURSOR did, not what the apply thread got
-   *  round to. See [[ChangeStreamLiveness]]. */
-  val liveness = new ChangeStreamLiveness(clock, Some(stamps))
 
   private val movieChanges = new ChangeStreamFanout[FilmRereads.Delivery, FilmRereads.VenueDelivery]("MovieRepository")
   private val changeLock   = new AnyRef
@@ -111,10 +110,8 @@ final class MovieChangeStream(
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
   // `movie_slots` (movies stays put), so without these the projector would never see either.
   private val sideCursors: Seq[SideChangeCursor] = Seq(
-    new SideChangeCursor(ChangeStreamLiveness.Screenings, screeningsMetrics,
-      (onChange, demand) => screenings.flatMap(_.watchRowsApplied(onChange, demand)), rereads, liveness, changeDemandWindow),
-    new SideChangeCursor(ChangeStreamLiveness.Slots, slotsMetrics,
-      (onChange, demand) => slots.flatMap(_.watchRowsApplied(onChange, demand)), rereads, liveness, changeDemandWindow))
+    new SideChangeCursor(ChangeStreamLiveness.Screenings, screeningsMetrics, screenings, rereads, liveness, changeDemandWindow),
+    new SideChangeCursor(ChangeStreamLiveness.Slots, slotsMetrics, slots, rereads, liveness, changeDemandWindow))
 
   // Set while an open deferred on an unreadable resume position waits on `changeReopen`. A
   // registration meanwhile leaves the open to that reopen rather than re-reading the position:
@@ -245,15 +242,5 @@ object MovieChangeStream {
    *  end the cursor (see [[ChangeEventDecoder]]). */
   trait Source {
     def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[BsonDocument]]): Unit
-  }
-
-  object Source {
-    /** Production: the collection's own change stream, with post-images looked up. */
-    def ofCollection(c: MongoCollection[StoredMovieDto]): Source = new Source {
-      override def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[BsonDocument]]): Unit = {
-        val base = c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
-        resumeAfter.fold(base)(t => base.resumeAfter(Document(t))).subscribe(observer)
-      }
-    }
   }
 }

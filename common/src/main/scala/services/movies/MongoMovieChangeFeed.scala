@@ -1,5 +1,9 @@
 package services.movies
 
+import com.mongodb.client.model.changestream.FullDocument
+import org.bson.BsonDocument
+import org.mongodb.scala.Document
+
 /**
  * The `movies` store's change stream, mixed into a [[MongoMovieRepository]] that serves consumers
  * who watch it — `new MongoMovieRepository(…) with MongoMovieChangeFeed(…)`, at the composition
@@ -44,7 +48,11 @@ trait MongoMovieChangeFeed(
 
   private val changeStream: Option[MovieChangeStream] = collection.map { c =>
     new MovieChangeStream(
-      source              = MovieChangeStream.Source.ofCollection(c),
+      // The collection's own change stream, with post-images looked up (left undecoded: the stream decodes them).
+      source              = (resumeAfter, observer) => {
+        val base = c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
+        resumeAfter.fold(base)(t => base.resumeAfter(Document(t))).subscribe(observer)
+      },
       screenings          = screeningsStore,
       slots               = slotsStore,
       reread              = id => findByIdChecked(FilmId(id)),
@@ -56,7 +64,8 @@ trait MongoMovieChangeFeed(
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
       clock               = clock,
-      stamps              = stamps,
+      // On the store's stamp sequence: a catch-up floor and a row's `updatedAt` are strictly ordered.
+      liveness            = new ChangeStreamLiveness(clock, Some(stamps)),
       stopwatch           = stopwatch,
       decodeFailures      = decodeFailures,
       debounce            = changeDebounce,

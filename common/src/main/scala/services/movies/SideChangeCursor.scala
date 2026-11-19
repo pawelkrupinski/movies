@@ -10,7 +10,8 @@ import scala.util.Try
 final class SideChangeCursor(
   collection:         String,
   metrics:            SideCollectionChangeMetrics,
-  open:               ((String, () => Unit) => Unit, ChangeStreamDemand) => Option[AutoCloseable],
+  // The side collection whose applied rows this cursor watches; None (no split) opens nothing.
+  rows:               Option[SlotKeyedRows],
   rereads:            FilmRereads,
   liveness:           ChangeStreamLiveness,
   changeDemandWindow: Int
@@ -20,7 +21,7 @@ final class SideChangeCursor(
 
   // The re-read is a BLOCKING read, so it (and the fanout) run on `changeApply`, never
   // on this cursor's I/O event loop.
-  def ensureOpen(): Unit = if (handle.get().isEmpty) handle.set(open(applyChange, demand))
+  def ensureOpen(): Unit = if (handle.get().isEmpty) handle.set(rows.flatMap(_.watchRowsApplied(applyChange, demand)))
   def close(): Unit      = { handle.getAndSet(None).foreach(h => Try(h.close())); demand.closed() }
 
   /** One side-collection change: re-read the film (stitched) and fan it out, COALESCING

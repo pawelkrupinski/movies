@@ -348,6 +348,10 @@ final class FilmRereads(
 }
 
 object FilmRereads {
+  /** Where each film's debounce is waited out when no spec steps it by hand: a daemon scheduler of its own. */
+  val DebounceScheduler: () => java.util.concurrent.ScheduledExecutorService =
+    () => tools.DaemonExecutors.scheduler("movie-change-debounce")
+
   /** The apply queue's capacity: the three cursors' demand windows, each event at most one task,
    *  plus room for the re-read retries that owe no demand. */
   private[movies] def applyQueueCapacity(window: Int): Int = math.min(Int.MaxValue.toLong, 3L * window + 4096L).toInt

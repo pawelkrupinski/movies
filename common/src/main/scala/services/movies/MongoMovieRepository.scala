@@ -331,8 +331,8 @@ class MongoMovieRepository(
   /** The `movies` collection, None on a disabled store — what [[MongoMovieChangeFeed]] opens its cursor on. */
   private[movies] def collection: Option[MongoCollection[StoredMovieDto]] = coll
   /** The side collections a change stream mixed in ([[MongoMovieChangeFeed]]) watches beside `movies`. */
-  private[movies] def screeningsStore: Option[ScreeningsRepository] = screenings
-  private[movies] def slotsStore: Option[SlotsRepository] = slots
+  private[movies] def screeningsStore: Option[SlotKeyedRows] = screenings
+  private[movies] def slotsStore: Option[SlotKeyedRows] = slots
 
   /** Nothing of its own to release: the client is the composition root's `MongoConnection`'s. */
   def close(): Unit = ()
