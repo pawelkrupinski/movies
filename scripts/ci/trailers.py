@@ -8,6 +8,14 @@ refused as if no trailer was given (2026-11-19: an agent's `Coupling:` line abov
 path)` says so for the commits of a range a ratchet refuses for want of that key; the ratchets print it beside their
 refusal.
 
+THE ATTRIBUTION RULE (2026-11-19): a ratchet's trailer justifies the rise of the commit carrying it, never another's.
+A batch push stacks several agents' changes, and a trailer read from any commit of the range let one change's
+`Coupling:` excuse another's rise. `unjustified_rises(rng, path, key, rose)` walks the commits of the range changing the
+checked-in file `path` (a baseline, a layer or exemption table) and judges each one's own step -- its parent's text to
+its own, as if it were pushed alone: every commit whose step grows the file must carry the trailer. The file itself is the
+per-commit measure: each change records its rows in its own commit (agentctl folds a regenerated baseline into the
+member's commit), so no per-commit sbt run is needed.
+
   scripts/ci/trailers.py lint --range A..B [--range ...]   warn (stderr) about every misplaced known-trailer line of
                                                            the pushed commits; always exits 0 (pre-push runs it)"""
 
@@ -16,7 +24,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-from typing import Iterable, List, NamedTuple, Optional
+from typing import Callable, Iterable, List, NamedTuple, Optional
 
 # Every trailer key a ratchet, commit rule or the red gate reads.
 KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Pure-Move", "Fixes-Red", "Identity-Design",
@@ -74,6 +82,39 @@ def misplaced_notes(rng: str, key: str, path: Optional[str] = None) -> List[str]
     read as a trailer: why a ratchet refusing for want of `key` saw none."""
     shas = git("rev-list", rng, *(["--", path] if path else [])).split()
     return [f"{sha[:9]}: {explain(m)}" for sha in shas for m in misplaced(message_of(sha), (key,))]
+
+
+def carries(sha: str, key: str) -> bool:
+    """Whether commit `sha` carries a non-empty `key:` trailer (git's reading: the final trailer block)."""
+    value = git("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x20)", sha)
+    return bool(value.strip())
+
+
+def text_at(rev: str, path: str) -> str:
+    """`path` at `rev`, "" where it does not exist (or `rev` does not: a root commit's parent)."""
+    shown = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
+    return shown.stdout if shown.returncode == 0 else ""
+
+
+def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], List[str]]) -> List[str]:
+    """The commits of `rng` whose own change to `path` grows it (`rose(its parent's text, its text)`, the ratchet's growth,
+    non-empty) and that carry no `key:` trailer, oldest first: `<sha9> <subject>: <its rise>` each (THE ATTRIBUTION RULE,
+    above). A commit creating or deleting `path` is no step (the range's own check has no baseline to compare). When no
+    single commit's step grows it although the range does (each step within its parent's limit), some commit of the
+    range changing `path` must carry the trailer. Empty when every rise is justified where it was made."""
+    changed = git("rev-list", "--reverse", rng, "--", path).split()
+    raisers, refused = 0, []
+    for sha in changed:
+        before, after = text_at(f"{sha}^", path), text_at(sha, path)
+        own = rose(before, after) if before and after else []
+        if own:
+            raisers += 1
+            if not carries(sha, key):
+                subject = git("log", "-1", "--format=%s", sha).strip()
+                refused.append(f"{sha[:9]} {subject}: " + "; ".join(own))
+    if not raisers and not any(carries(sha, key) for sha in changed):
+        refused.append(f"no commit of {rng} changing {path} carries `{key}:`")
+    return refused
 
 
 def main(argv: List[str]) -> int:

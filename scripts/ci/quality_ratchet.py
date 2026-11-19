@@ -16,11 +16,13 @@
 # never raise it -- a higher moved row is a rise, and a same-named source git does not call a rename is no move). The
 # measure's limit may not rise past the baseline's. The baseline itself may grow
 # (a row added or raised, a limit raised) only in a commit changing it that carries the ratchet's trailer
-# (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`). A fall needs none: `update` writes the measured rows, every fall included.
+# (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`) -- the commit whose own step raises it: in a batch push,
+# one change's trailer never excuses another's rise (trailers.py, THE ATTRIBUTION RULE). A fall needs none: `update`
+# writes the measured rows, every fall included.
 #
 #   quality_ratchet.py check --current <rows> [--ratchet NAME ...] [--range A..B ...]
-#       violations: measured rows past a baseline (exit 1), and, for each range, a baseline grown between A and B with
-#       no commit in the range changing it carrying its trailer (exit 1). Falls not yet recorded are said, and pass.
+#       violations: measured rows past a baseline (exit 1), and, for each range, a baseline grown between A and B by a
+#       commit of the range not carrying its trailer (exit 1). Falls not yet recorded are said, and pass.
 #   quality_ratchet.py update --current <rows> [--ratchet NAME ...]
 #       each ratchet's baseline rewritten from the measured rows (a rise is then committed with its trailer).
 from __future__ import annotations
@@ -208,12 +210,6 @@ def file_at(rev: str, path: str) -> str:
     return shown.stdout if shown.returncode == 0 else ""
 
 
-def justified(rng: str, path: str, trailer: str) -> bool:
-    """Whether a commit of `rng` changing `path` carries a non-empty `<trailer>:` trailer."""
-    log = git("log", f"--format=%x00%(trailers:key={trailer},valueonly,separator=%x20)", rng, "--", path)
-    return any(entry.strip() for entry in log.split("\x00"))
-
-
 def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renames) -> bool:
     with open(ratchet.baseline) as f:
         baseline = parse(f.read())
@@ -230,12 +226,17 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
     for rng in ranges:
         old = file_at(rng.split("..")[0], ratchet.baseline)
         grown = growth(ratchet, parse(old), baseline, renames) if old else []
-        if grown and not justified(rng, ratchet.baseline, ratchet.trailer):
+        unjustified = trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, lambda a, b: growth(
+            ratchet, parse(a), parse(b), renames)) if grown else []
+        if unjustified:
             failed = True
             print(f"THE {ratchet.name.upper()} BASELINE GREW in {rng} with no `{ratchet.trailer}: <why>` trailer on the"
                   " commit changing it:")
             for g in grown:
                 print(f"  - {g}")
+            print(f"  Each rise needs the trailer on the commit making it, not on another commit of the push; without one:")
+            for u in unjustified:
+                print(f"  - {u}")
             for note in trailers.misplaced_notes(rng, ratchet.trailer, ratchet.baseline):
                 print(f"  {note}")
     down = falls(ratchet, current, baseline)

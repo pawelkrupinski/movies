@@ -358,6 +358,42 @@ class CouplingRatchetTest(RatchetHarness):
         self.assert_fails(grown, "module-edge common->worker added", rng=f"{self.base}..{head}")
         self.assertTrue(first)
 
+    def test_a_batch_where_only_the_other_commit_carries_the_trailer_fails_naming_the_raiser(self):
+        own = rows("ce\tmodels\t14", drop=("ce\tmodels",))
+        self.commit({BASELINE: own}, "change A: models reads the clock\n\nCoupling: the clock is the one seam")
+        both = own + "module-edge\tcommon->worker\t1\n"
+        head = self.commit({BASELINE: both}, "change B: use the worker from common")
+        self.assert_fails(both, "THE COUPLING BASELINE GREW", "module-edge common->worker added",
+                          f"{head[:9]} change B: use the worker from common: module-edge common->worker added",
+                          rng=f"{self.base}..{head}")
+
+    def test_a_batch_whose_commits_each_justify_their_own_rise_passes(self):
+        own = rows("ce\tmodels\t14", drop=("ce\tmodels",))
+        self.commit({BASELINE: own}, "change A\n\nCoupling: the clock is the one seam")
+        both = own + "module-edge\tcommon->worker\t1\n"
+        head = self.commit({BASELINE: both}, "change B\n\nCoupling: the worker's one entry point")
+        self.assert_passes(both, rng=f"{self.base}..{head}")
+
+    def test_a_batch_of_a_justified_rise_and_an_unrelated_trailerless_change_passes(self):
+        own = rows("ce\tmodels\t14", drop=("ce\tmodels",))
+        self.commit({BASELINE: own}, "change A\n\nCoupling: the clock is the one seam")
+        head = self.commit({"README": "x\n"}, "change B: docs")
+        self.assert_passes(own, rng=f"{self.base}..{head}")
+
+    def test_a_batch_where_only_the_other_commit_carries_the_trailer_fails_for_the_layer_table(self):
+        own = LAYER_ROWS + "allow\tservices.movies->controllers\tthe view reads it\n"
+        self.commit({LAYERS: own}, "change A: allow it\n\nCoupling: the view model is the one seam")
+        head = self.commit({LAYERS: own + "allow\tmodels->controllers\tthe models read it\n"}, "change B: allow more")
+        self.assert_fails(ROWS, "THE LAYER TABLE LOOSENED",
+                          f"{head[:9]} change B: allow more: allow models->controllers added", rng=f"{self.base}..{head}")
+
+    def test_a_batch_where_only_the_other_commit_carries_the_trailer_fails_for_the_exemption_table(self):
+        own = EXEMPTION_ROWS + "registry\tworker.Wiring\texempt\tworker\ta table\n"
+        self.commit({EXEMPTIONS: own}, "change A: exempt it\n\nCoupling: a venue table, one row a venue")
+        head = self.commit({EXEMPTIONS: own + "registry\tweb.Wiring\texempt\tweb\ta table\n"}, "change B: exempt more")
+        self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED",
+                          f"{head[:9]} change B: exempt more: registry web.Wiring (exempt) added", rng=f"{self.base}..{head}")
+
     def test_an_empty_trailer_does_not_count(self):
         grown = rows("ce\tmodels\t14", drop=("ce\tmodels",))
         head = self.commit({BASELINE: grown}, "models reads the clock\n\nCoupling: ")

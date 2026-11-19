@@ -114,5 +114,37 @@ class RangeTest(unittest.TestCase):
         self.assertIn("`Length: this one` on line 3", notes[0])
 
 
+    def rises(self, rng, rose):
+        os.chdir(self.repo)
+        try:
+            return trailers.unjustified_rises(rng, "a.txt", "Length", rose)
+        finally:
+            os.chdir(ROOT)
+
+    @staticmethod
+    def longer(before, after):
+        return [f"{len(before)} -> {len(after)}"] if len(after) > len(before) else []
+
+    def test_each_commit_is_judged_on_its_own_step(self):
+        self.commit({"a.txt": "ab\n"}, f"A grows it\n\nLength: A's why\n{CO}")
+        self.commit({"a.txt": "a\n"}, "B shrinks it")
+        head = self.commit({"a.txt": "abcd\n"}, "C grows it")
+        self.assertEqual([f"{head[:9]} C grows it: 2 -> 5"], self.rises(f"{self.base}..{head}", self.longer))
+
+    def test_a_trailer_on_a_commit_not_changing_the_path_justifies_nothing(self):
+        first = self.commit({"a.txt": "ab\n"}, "A grows it")
+        head = self.commit({"b.txt": "b\n"}, f"B\n\nLength: not A's\n{CO}")
+        self.assertEqual([f"{first[:9]} A grows it: 2 -> 3"], self.rises(f"{self.base}..{head}", self.longer))
+
+    def test_a_growth_no_single_step_makes_needs_the_trailer_on_some_commit_changing_the_path(self):
+        self.commit({"a.txt": "b\n"}, "A")
+        head = self.commit({"a.txt": "c\n"}, "B")
+        whole = lambda before, after: []  # noqa: E731 -- each step within its parent's limits
+        self.assertEqual([f"no commit of {self.base}..{head} changing a.txt carries `Length:`"],
+                         self.rises(f"{self.base}..{head}", whole))
+        head = self.commit({"a.txt": "d\n"}, f"C\n\nLength: the range's why\n{CO}")
+        self.assertEqual([], self.rises(f"{self.base}..{head}", whole))
+
+
 if __name__ == "__main__":
     unittest.main()

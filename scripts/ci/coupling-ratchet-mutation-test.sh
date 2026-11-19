@@ -58,17 +58,18 @@ mutants=(
   'an oversized contract never fails @@         if oversized:
             failed = True @@         if oversized:
             failed = False'
-  'a loosened exemption table never fails @@ if loose and not justified(rng, EXEMPTIONS_PATH): @@ if False:'
-  'the trailer is not read @@ return any(entry.strip() for entry in log.split("\x00")) @@ return True'
-  'growth never fails @@ if grown and not justified(rng): @@ if False:'
+  'a loosened exemption table never fails @@ if unjustified_exemptions: @@ if False:'
+  'the trailer is not read @@ return trailers.unjustified_rises(rng, path, "Coupling", rose) @@ return []'
+  'growth never fails @@ if unjustified_growth: @@ if False:'
   'violations never fail @@     if found:
         failed = True @@     if found:
         failed = False'
   'an added allow row is no loosening @@ out = [f"allow {edge} added" for edge in sorted(new[1] - old[1])] @@ out = []'
   'a moved layer is no loosening @@ if was is not None and now is not None and was != now: @@ if False:'
   'a sub-package lifted by a new row is no loosening @@ named = [p for p in rows if pkg == p or pkg.startswith(p + ".")] @@ named = [p for p in rows if pkg == p]'
-  'a loosened layer table never fails @@ if loosened and not justified(rng, LAYERS_PATH): @@ if False:'
-  'any commit counts for the layer table trailer @@ rng, "--", path) @@ rng)'
+  'a loosened layer table never fails @@ if unjustified_layers: @@ if False:'
+  'the layer table judged by the baseline'"'"'s commits @@ unjustified(rng, LAYERS_PATH, @@ unjustified(rng, BASELINE_PATH,'
+  'the exemption table judged by the baseline'"'"'s commits @@ unjustified(rng, EXEMPTIONS_PATH, @@ unjustified(rng, BASELINE_PATH,'
   'a split piece is never admitted @@ and not (kind == "fanout" and key in split): @@ and True:'
   'a split claim needs no frozen original @@ if original is None:
             refused.append @@ if original is None:

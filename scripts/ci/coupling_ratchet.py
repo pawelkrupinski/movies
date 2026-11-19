@@ -9,9 +9,10 @@
 # a higher rank (the layering, test/resources/coupling-layers.tsv: a `layer-violation` or `rank-violation` row fails
 # whatever the baseline says, naming the direction allowed), no package without its layer or rank -- and the baseline
 # itself may grow, and the layer table loosen (an `allow` row added, a package given another layer or rank: either lets
-# an edge through that failed before), only in a commit changing that file carrying `Coupling: <why>`. A fall needs no
-# trailer: `scripts/coupling-report --update` writes the measured rows, every fall included; a new package's row, or a
-# row dropped, loosens nothing.
+# an edge through that failed before), only in a commit changing that file carrying `Coupling: <why>` -- the commit whose
+# own step grows or loosens it: in a batch push, one change's trailer never excuses another's (trailers.py, THE
+# ATTRIBUTION RULE). A fall needs no trailer: `scripts/coupling-report --update` writes the measured rows, every fall
+# included; a new package's row, or a row dropped, loosens nothing.
 #
 # THE LIMITS: a class's fan-out (`limit fanout`, a declared contract's members counted once) and a package's distance D
 # (`limit distance` in hundredths, packages of `limit distance-min-types` types or more) are FROZEN where they were past
@@ -41,8 +42,8 @@
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
 #                             [--fanouts <file>] [--range A..B ...]
 #       violations: a package cycle edge and the measured rows past the baseline (exit 1), and, for each range, a
-#       baseline grown or a layer table loosened between A and B with no commit in the range that changed it carrying
-#       `Coupling:` (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
+#       baseline grown or a layer table loosened between A and B by a commit of the range not carrying `Coupling:`
+#       (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
 #       class reference with its package edge) names the class references behind each refused edge.
 #   coupling_ratchet.py refs --current <rows> --fanouts <file>
 #       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
@@ -510,10 +511,16 @@ def print_misplaced(rng: str, path: Optional[str] = None) -> None:
         print(f"  {note}")
 
 
-def justified(rng: str, path: str = BASELINE_PATH) -> bool:
-    """Whether a commit of `rng` changing `path` carries a non-empty `Coupling:` trailer."""
-    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x20)", rng, "--", path)
-    return any(entry.strip() for entry in log.split("\x00"))
+def unjustified(rng: str, path: str, rose) -> List[str]:
+    """The commits of `rng` whose own step grows `path` (`rose` over its parsed texts) with no `Coupling:` trailer
+    (trailers.py, THE ATTRIBUTION RULE)."""
+    return trailers.unjustified_rises(rng, path, "Coupling", rose)
+
+
+def print_unjustified(found: List[str]) -> None:
+    print("  Each rise needs the trailer on the commit making it, not on another commit of the push; without one:")
+    for u in found:
+        print(f"  - {u}")
 
 
 Fanouts = Tuple[Dict[str, int], Dict[str, Set[str]]]  # every class's held fan-out, and what it counts (when given)
@@ -597,21 +604,26 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                 print(f"  - {g}")
             print_misplaced(rng)
         grown = growth(before, baseline)
-        if grown and not justified(rng):
+        unjustified_growth = unjustified(rng, BASELINE_PATH, lambda a, b: growth(parse(a), parse(b))) if grown else []
+        if unjustified_growth:
             failed = True
             print(f"THE COUPLING BASELINE GREW in {rng} with no `Coupling: <why>` trailer on the commit changing it:")
             for g in grown:
                 print(f"  - {g}")
+            print_unjustified(unjustified_growth)
             print_misplaced(rng, BASELINE_PATH)
         if os.path.exists(layers_path):
             with open(layers_path) as f:
                 loosened = loosening(parse_layers(file_at(base, LAYERS_PATH)), parse_layers(f.read()))
-            if loosened and not justified(rng, LAYERS_PATH):
+            unjustified_layers = unjustified(rng, LAYERS_PATH, lambda a, b: loosening(parse_layers(a), parse_layers(b))) \
+                if loosened else []
+            if unjustified_layers:
                 failed = True
                 print(f"THE LAYER TABLE LOOSENED in {rng} ({layers_path}) with no `Coupling: <why>` trailer on the commit"
                       " changing it:")
                 for item in loosened:
                     print(f"  - {item}")
+                print_unjustified(unjustified_layers)
                 print_misplaced(rng, LAYERS_PATH)
     if os.path.exists(exemptions_path):
         with open(exemptions_path) as f:
@@ -626,12 +638,15 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         if os.path.exists(exemptions_path):
             with open(exemptions_path) as f:
                 loose = exemption_loosening(parse_exemptions(file_at(base, EXEMPTIONS_PATH)), parse_exemptions(f.read()))
-            if loose and not justified(rng, EXEMPTIONS_PATH):
+            unjustified_exemptions = unjustified(rng, EXEMPTIONS_PATH, lambda a, b: exemption_loosening(
+                parse_exemptions(a), parse_exemptions(b))) if loose else []
+            if unjustified_exemptions:
                 failed = True
                 print(f"THE EXEMPTION TABLE LOOSENED in {rng} ({exemptions_path}) with no `Coupling: <why>` trailer on the"
                       " commit changing it:")
                 for item in loose:
                     print(f"  - {item}")
+                print_unjustified(unjustified_exemptions)
                 print_misplaced(rng, EXEMPTIONS_PATH)
     down = falls(current, baseline)
     if down:

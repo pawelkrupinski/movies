@@ -218,8 +218,9 @@ class QualityRatchetTest(unittest.TestCase):
         grown = rows("copies\ta/src/main/scala/C.scala|a/src/main/scala/D.scala\t2")
         head = self.commit({DUPLICATION: grown}, "a copy\n\nLength: not this ratchet's")
         self.assert_fails(grown, "THE DUPLICATION BASELINE GREW", rng=f"{self.base}..{head}")
-        head = self.commit({DUPLICATION: grown + "\n"}, "a copy\n\nDuplication: two clients of one vendor's markup")
-        self.assert_passes(grown, rng=f"{self.base}..{head}")
+        restored = self.commit({DUPLICATION: ROWS}, "no copy")
+        head = self.commit({DUPLICATION: grown}, "a copy\n\nDuplication: two clients of one vendor's markup")
+        self.assert_passes(grown, rng=f"{restored}..{head}")
 
     def test_one_ratchet_can_be_checked_alone(self):
         rc, out = self.run_tool("check", rows("file-lines\ta/src/main/scala/C.scala\t801"), "--ratchet", "complexity")
@@ -265,6 +266,41 @@ class QualityRatchetTest(unittest.TestCase):
         head = self.commit({"README": "x\n"}, "docs\n\nComplexity: not this commit's")
         self.assert_fails(grown, "C.scala:C.h raised", rng=f"{self.base}..{head}")
 
+    # ── a batch push: each rise justified on the commit making it (trailers.py, THE ATTRIBUTION RULE) ──
+
+    def test_a_batch_where_only_the_other_commit_carries_the_trailer_fails_naming_the_raiser(self):
+        own = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
+        self.commit({COMPLEXITY: own}, "change A: a hairy method\n\nComplexity: the parser's one state machine")
+        both = own + "cognitive\ta/src/main/scala/C.scala:C.h\t16\n"
+        head = self.commit({COMPLEXITY: both}, "change B: another hairy method")
+        self.assert_fails(both, "THE COMPLEXITY BASELINE GREW", "cognitive a/src/main/scala/C.scala:C.h raised <=15 -> 16",
+                          f"{head[:9]} change B: another hairy method: cognitive a/src/main/scala/C.scala:C.h raised"
+                          " <=15 -> 16", rng=f"{self.base}..{head}")
+
+    def test_a_batch_where_the_later_commit_carries_the_trailer_for_the_earlier_ones_rise_fails(self):
+        grown = rows("cognitive\ta/src/main/scala/C.scala:C.h\t16")
+        first = self.commit({COMPLEXITY: grown}, "change A: a hairy method")
+        regrown = grown.replace("A.f\t20", "A.f\t21")
+        head = self.commit({COMPLEXITY: regrown}, "change B\n\nComplexity: B's own")
+        _, out = self.check(regrown, f"{self.base}..{head}")
+        self.assert_fails(regrown, f"{first[:9]} change A: a hairy method: cognitive", rng=f"{self.base}..{head}")
+        self.assertNotIn(f"{head[:9]} change B", out)
+
+    def test_a_batch_whose_commits_each_justify_their_own_rise_passes(self):
+        own = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
+        self.commit({COMPLEXITY: own}, "change A\n\nComplexity: the parser's one state machine")
+        both = own + "cognitive\ta/src/main/scala/C.scala:C.h\t16\n"
+        head = self.commit({COMPLEXITY: both}, "change B\n\nComplexity: the scheduler's one table")
+        self.assert_passes(both, rng=f"{self.base}..{head}")
+
+    def test_a_batch_of_a_justified_rise_and_a_trailerless_fall_passes(self):
+        own = rows("cognitive\ta/src/main/scala/A.scala:A.f\t22", drop=("cognitive\ta/",))
+        self.commit({COMPLEXITY: own}, "change A\n\nComplexity: the parser's one state machine")
+        shrunk = "".join(line + "\n" for line in own.splitlines() if not line.startswith("inner-defs"))
+        self.commit({"README": "x\n"}, "change B: docs")
+        head = self.commit({COMPLEXITY: shrunk}, "change C: split B.g")
+        self.assert_passes(shrunk, rng=f"{self.base}..{head}")
+
     def test_an_empty_trailer_does_not_count(self):
         grown = rows("cognitive\ta/src/main/scala/C.scala:C.h\t16")
         head = self.commit({COMPLEXITY: grown}, "a hairy method\n\nComplexity: ")
@@ -280,8 +316,9 @@ class QualityRatchetTest(unittest.TestCase):
         head = self.commit({LENGTH: grown}, "a long file\n\nComplexity: not this ratchet's")
         self.assert_fails(grown, "THE LENGTH BASELINE GREW", "file-lines a/src/main/scala/C.scala raised <=800 -> 801",
                           rng=f"{self.base}..{head}")
-        head = self.commit({LENGTH: grown + "\n"}, "a long file\n\nLength: the generated roster's one table")
-        self.assert_passes(grown, rng=f"{self.base}..{head}")
+        restored = self.commit({LENGTH: ROWS}, "a short file")
+        head = self.commit({LENGTH: grown}, "a long file\n\nLength: the generated roster's one table")
+        self.assert_passes(grown, rng=f"{restored}..{head}")
 
     def test_a_shrunk_baseline_needs_no_trailer(self):
         shrunk = rows(drop=("inner-defs",))

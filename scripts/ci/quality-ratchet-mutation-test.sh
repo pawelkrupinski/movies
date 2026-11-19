@@ -3,7 +3,8 @@
 # and quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently stop
 # working and let complexity, length or duplication grow unreviewed. Each mutant is applied by exact text; a mutant
 # whose text is no longer in the tool exactly once fails this test too (the tool changed: re-aim the mutant at the new
-# check).
+# check). A mutant named `trailers.py: ...` mutates the module the tool imports (the attribution rule lives there), each
+# mutant in a directory of its own beside its own copy of that module.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
@@ -20,10 +21,12 @@ mutants=(
   'a missing limit row passes @@ raise ValueError(f"no `limit @@ return 10**9  # (f"no `limit'
   'a raised limit is no growth @@ if old_limit is not None and new_limit > old_limit: @@ if False:'
   'an added or raised row is no growth @@ if value > before.get(key, allowed_new) and not @@ if False and not'
-  'the trailer is not read @@ return any(entry.strip() for entry in log.split("\x00")) @@ return True'
-  'any trailer counts @@ trailers:key={trailer},valueonly @@ trailers:valueonly'
-  'any commit counts for the trailer @@ rng, "--", path) @@ rng)'
-  'growth never fails @@ if grown and not justified(rng, ratchet.baseline, ratchet.trailer): @@ if False:'
+  'trailers.py: the trailer is not read @@ return bool(value.strip()) @@ return True'
+  'trailers.py: any trailer counts @@ trailers:key={key},valueonly @@ trailers:valueonly'
+  'trailers.py: any commit of the range justifies a rise @@ if not carries(sha, key): @@ if not any(carries(s, key) for s in changed):'
+  'trailers.py: a step is judged against the range'"'"'s base @@ before, after = text_at(f"{sha}^", path), text_at(sha, path) @@ before, after = text_at(rng.split("..")[0], path), text_at(sha, path)'
+  'growth is judged on another ratchet'"'"'s trailer @@ trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, @@ trailers.unjustified_rises(rng, ratchet.baseline, "Complexity",'
+  'growth never fails @@ if unjustified: @@ if False:'
   'violations never fail @@     if found:
         failed = True @@     if found:
         failed = False'
@@ -39,13 +42,16 @@ mutants=(
 )
 
 mkdir -p "$work/mutants"
-cp "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/"  # the module the tool imports, beside each mutant
 i=0
 for m in "${mutants[@]}"; do
   i=$((i + 1))
   name=${m%% @@ *}; rest=${m#* @@ }; from=${rest%% @@ *}; to=${rest#* @@ }
   printf '%s' "$name" > "$work/mutants/$i.name"
-  python3 -I - "$tool" "$work/mutants/$i.py" "$from" "$to" <<'PY'
+  mkdir -p "$work/mutants/$i"
+  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/$i/"  # the tool and the module it imports, side by side
+  target="$work/mutants/$i/quality_ratchet.py"
+  case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
+  python3 -I - "$target" "$target" "$from" "$to" <<'PY'
 import sys
 src, dst, frm, to = sys.argv[1:]
 text = open(src).read()
@@ -56,7 +62,7 @@ PY
   check "the mutant '$name' is aimed at exactly one check in the tool" 0 "$?"
 done
 # shellcheck disable=SC2016 # expanded by the inner bash
-seq 1 "$i" | xargs -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2.py" python3 "$3" > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
+seq 1 "$i" | xargs -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/quality_ratchet.py" python3 "$3" > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
   _ "$work" {} "$REPO_ROOT/scripts/ci/quality_ratchet_test.py"
 for n in $(seq 1 "$i"); do
   check "quality_ratchet_test.py fails against the mutant: $(cat "$work/mutants/$n.name")" 1 \
