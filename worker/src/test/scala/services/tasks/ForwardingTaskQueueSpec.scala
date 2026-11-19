@@ -39,7 +39,7 @@ class ForwardingTaskQueueSpec extends AnyFlatSpec with Matchers {
     val series = new services.tasks.WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
     Seq[TaskQueue => TaskQueue](
       new CachingTaskQueue(_),
-      new services.tasks.MeteredTaskQueue(_, new services.tasks.WorkerTaskMetrics("pl", series)),
+      new services.tasks.MeteredTaskQueue(_, new services.tasks.TaskPipelineBinder("pl", series.tasks)),
       // The fixpoint ledger's queue answered every raise `false` (TaskQueue's default), unlike production's.
       new tools.ReaskCountingTaskQueue(_, new services.freshness.InMemoryFreshnessStore, _ => None, () => t0)
     ).foreach { decorate =>

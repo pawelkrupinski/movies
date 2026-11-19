@@ -6,43 +6,12 @@ import services.metrics.PrometheusExposition
 import services.metrics.ReadModelSeries
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
-import services.movies.CacheSyncMetrics
-import services.readmodel.ReadModelProjectionMetrics
-import services.tasktypes.TaskType
+import services.movies.ChangeStreamLiveness
 
 import java.time.Instant
 
-/** Lifecycle hook the [[services.tasks.TaskWorker]] calls so instrumentation
- *  stays out of the worker's hot path. Segregated to the two moments the worker
- *  knows about — a claim, and the outcome of running the handler — so a metrics
- *  sink (or a test spy) implements just these, not the whole queue contract. */
-trait TaskObserver {
-  /** A worker claimed `task` and is about to run its handler. */
-  def onStarted(task: Task): Unit
-  /** The handler returned: `outcome` is one of [[WorkerTaskMetrics.Outcomes]];
-   *  `handleMillis` is the handler's wall-clock (0 for `no_handler`, which never
-   *  ran one). */
-  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit
-}
-
-object TaskObserver {
-  val NoOp: TaskObserver = new TaskObserver {
-    def onStarted(task: Task): Unit                                       = ()
-    def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = ()
-  }
-
-  /** Fan one worker's lifecycle callbacks out to several observers, so the
-   *  [[TaskWorker]] still takes a single observer while every sink sees every
-   *  task. */
-  def composite(observers: TaskObserver*): TaskObserver = new TaskObserver {
-    def onStarted(task: Task): Unit                                       = observers.foreach(_.onStarted(task))
-    def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = observers.foreach(_.onFinished(task, outcome, handleMillis))
-  }
-}
-
 /**
- * Prometheus instrumentation for the worker's task pipeline — the worker-side
+ * Prometheus instrumentation for the worker's task pipeline -- the worker-side
  * counterpart to the web app's uptime `/metrics` (controllers.MetricsController).
  *
  * It counts the full lifecycle of every deferred task (enqueue → claim → finish)
@@ -55,95 +24,19 @@ object TaskObserver {
  * Multi-country: ONE JVM runs a [[modules.wiring.WorkerWiring]] per country against a
  * single shared [[WorkerTaskMetrics.Series]] (registered once on the shared
  * registry). Every series carries a `country` label so the two countries' rows
- * never collide on the single `/metrics` endpoint. This class is the cheap
- * PER-COUNTRY facade a wiring holds: it binds one `countryCode` and forwards every
- * record to the shared `Series`, so all existing call sites (which see the narrow
- * `TaskObserver` / `ReadModelProjectionMetrics` / … traits) stay unchanged.
+ * never collide on the single `/metrics` endpoint. Each wiring binds its country to
+ * one family at a time, through the binder of that family's port:
+ * [[TaskPipelineBinder]] (the queue and the worker), `services.metrics.ReadModelSeriesBinder`
+ * (the projector) and `services.metrics.CorpusSeriesBinder` (the cache's and the
+ * repositories' writes, and the change-stream cursors).
  *
  * Counters are monotonic since-boot totals — `rate()` handles the reset on each
  * worker reboot. Every `TaskType` (× every label value × every country) is
  * materialized to 0 at construction so its series exists from boot and Grafana
  * draws a continuous line rather than a gap for a type/outcome that hasn't
- * happened yet.
- *
- * Wiring: [[MeteredTaskQueue]] feeds `recordEnqueue`; [[services.tasks.TaskWorker]]
- * feeds `onStarted`/`onFinished` (this class is its `TaskObserver`); the queue
- * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
+ * happened yet. The queue gauges are refreshed from a per-country `QueueSnapshot`
+ * each `Series.scrape()`.
  */
-class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ListingIntakeMetrics with RepositoryWriteMetrics with services.movies.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
-
-  // ── RatingLatencyMetrics ────────────────────────────────────────────────────
-  def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.tasks.recordFirstRatingDelay(countryCode, site, seconds)
-
-  // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
-  def recordWrite(target: String, op: String, count: Int): Unit = series.readModel.recordWrite(countryCode, target, op, count)
-  def recordFilmPruned(reason: String, count: Int): Unit        = series.readModel.recordFilmPruned(countryCode, reason, count)
-  def recordCardRetired(reason: String): Unit                   = series.readModel.recordCardRetired(countryCode, reason)
-  def recordDrift(cause: String, documents: Int): Unit          = series.readModel.recordDrift(countryCode, cause, documents)
-  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = series.readModel.recordUnlistedVenues(countryCode, rows, withheld)
-  def recordCatchUp(rows: Int): Unit                            = series.readModel.recordCatchUp(countryCode, rows)
-  def recordCardWrite(changed: Set[String]): Unit               = series.readModel.recordCardWrite(countryCode, changed)
-  def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
-    series.readModel.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
-  def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit =
-    series.readModel.recordWriteBurst(countryCode, trigger, seconds)
-  def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
-    series.readModel.recordMetadataProjection(countryCode, trigger, reused)
-  def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.readModel.recordVenueProjection(countryCode, rebuilt, reused)
-  def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.readModel.recordReconcileSweep(countryCode, kind, didWork)
-  def recordHeal(trigger: String, rows: Int): Unit              = series.readModel.recordHeal(countryCode, trigger, rows)
-
-  // ── CacheSyncMetrics ────────────────────────────────────────────────────────
-  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.corpusWrites.recordRehydrate(countryCode, changedUpserts, deletes)
-
-  // ── ListingIntakeMetrics ────────────────────────────────────────────────────
-  def recordGuardVerdict(guard: String, verdict: String): Unit = series.corpusWrites.recordScrapeGuardVerdict(countryCode, guard, verdict)
-  def recordWriteSkipped(reason: String): Unit                 = series.corpusWrites.recordScrapeWriteSkipped(countryCode, reason)
-
-  // ── RepositoryWriteMetrics ──────────────────────────────────────────────────
-  def recordWriteFailed(collection: String, op: String, exception: String): Unit =
-    series.corpusWrites.recordRepositoryWriteFailed(countryCode, collection, op, exception)
-
-  // ── ChunkPageMemoMetrics ────────────────────────────────────────────────────
-  def recordPage(outcome: String): Unit = series.tasks.recordChunkPage(countryCode, outcome)
-
-  // ── DecodeFailureMetrics ────────────────────────────────────────────────────
-  def recordDecodeFailure(collection: String): Unit = series.corpusWrites.recordDecodeFailure(countryCode, collection)
-
-  // ── ChangeStreamMetrics for `movies` ────────────────────────────────────────
-  // A separate object rather than a direct mixin: `ChangeStreamMetrics.recordCoalescedChange`
-  // and `ScreeningsMetrics.recordCoalescedChange` erase to the same signature, so one class
-  // cannot implement both directly — the same reason `slotsChangeMetrics` below is its own
-  // object rather than a third mixin.
-  val movieChangeMetrics: ChangeStreamMetrics = new ChangeStreamMetrics {
-    def recordEvent(op: String): Unit        = series.changeStreams.recordEvent(countryCode, op)
-    def recordUpdateKind(kind: String): Unit = series.changeStreams.recordUpdateKind(countryCode, kind)
-    def recordCoalescedChange(): Unit        = series.changeStreams.recordMovieCoalesced(countryCode)
-    override def recordApply(path: String, reason: String): Unit = series.changeStreams.recordChangeApply(countryCode, path, reason)
-    override def recordVenueDecline(reason: String): Unit       = series.changeStreams.recordVenueDecline(countryCode, reason)
-  }
-
-  // ── ScreeningsMetrics ───────────────────────────────────────────────────────
-  def recordChangeEvent(op: String): Unit = series.changeStreams.recordScreeningsChangeEvent(countryCode, op)
-  def recordWrite(outcome: String, count: Int): Unit = series.changeStreams.recordScreeningsWrite(countryCode, outcome, count)
-  def recordCoalescedChange(): Unit = series.changeStreams.recordScreeningsCoalesced(countryCode)
-
-  // ── SideCollectionChangeMetrics for `movie_slots` ───────────────────────────
-  // A separate object rather than a third mixin: the slots cursor answers the same two
-  // questions as the screenings one, so its trait has the same two methods, and one class
-  // cannot route the same signature to two counters.
-  val slotsChangeMetrics: SideCollectionChangeMetrics = new SideCollectionChangeMetrics {
-    def recordChangeEvent(op: String): Unit = series.changeStreams.recordSlotsChangeEvent(countryCode, op)
-    def recordCoalescedChange(): Unit       = series.changeStreams.recordSlotsCoalesced(countryCode)
-  }
-
-  // ── Task lifecycle ──────────────────────────────────────────────────────────
-  def recordEnqueue(taskType: TaskType, result: String): Unit = series.tasks.recordEnqueue(countryCode, taskType, result)
-  def onStarted(task: Task): Unit                             = series.tasks.onStarted(countryCode, task)
-  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = series.tasks.onFinished(countryCode, task, outcome, handleMillis)
-}
-
 object WorkerTaskMetrics {
 
   /** The per-country queue sample [[Series.scrape]] folds into the gauges
@@ -174,7 +67,7 @@ object WorkerTaskMetrics {
 
   /**
    * The registered-once metric objects, SHARED across every country's
-   * [[WorkerTaskMetrics]] facade, one family of series per part of the worker. Registered on the
+   * country's binders, one family of series per part of the worker. Registered on the
    * single worker registry so ONE `/metrics` scrape exposes every country's task pipeline; each
    * series carries a leading `country` label so the countries never collide. Seeded to 0 for the
    * full cartesian of (country × every other label value) so no Grafana gap opens before a given

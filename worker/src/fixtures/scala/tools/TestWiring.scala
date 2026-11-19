@@ -88,7 +88,7 @@ trait TestWiring extends WorkerWiring {
     case rating if ReaskCountingTaskQueue.StampedTypes(rating)     => Some(ratingDueWindow)
     case _                                                         => None
   }, now = () => clock.instant())
-  override lazy val taskQueue: TaskQueue = new services.tasks.MeteredTaskQueue(reaskCountingQueue, taskMetrics)
+  override lazy val taskQueue: TaskQueue = new services.tasks.MeteredTaskQueue(reaskCountingQueue, taskPipelineMetrics)
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
   // The harness's detail handler announces its page reads (`VenueDetailRead`) to THIS buffer rather

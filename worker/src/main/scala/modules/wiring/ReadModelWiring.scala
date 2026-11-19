@@ -14,12 +14,12 @@ trait ReadModelWiring { self: WorkerWiring =>
 
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
-  lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics, stopwatch = stopwatch)
+  lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = corpusMetrics, stopwatch = stopwatch)
   // The projector's thread — its learning off the boot thread — and the sweeper's paced passes; the wiring's
   // stop() shuts it down, as does the projector's boot's.
   lazy val readModelScheduler: java.util.concurrent.ScheduledExecutorService =
     threadPools.scheduler("read-model-projector")
-  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
+  lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, readModelMetrics,
     shareCardGate = readModelShareCardGate, clock = clock,
     ratingGate = ratingGate)
   // The projector's boot reads and its change-stream subscription, on the projector's thread; stopped with the wiring.

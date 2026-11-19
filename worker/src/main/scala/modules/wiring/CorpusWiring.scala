@@ -28,7 +28,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
     new MongoScreeningsRepository(mongoConnection.database, resumeTokens = resumeTokens,
-      metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
+      metrics = corpusMetrics, roster = VenueRoster.of(country), writeMetrics = corpusMetrics, decodeFailures = corpusMetrics, clock = clock, stopwatch = stopwatch)
   // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
   // otherwise carries the whole film document, and those documents queue up on an
@@ -39,7 +39,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // lands without a `movies` write whenever the film document is unchanged, so this is the
     // third cursor on the projector and a restart must replay it too.
     new MongoSlotsRepository(mongoConnection.database, resumeTokens = resumeTokens,
-      metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
+      metrics = corpusMetrics.slots, roster = VenueRoster.of(country), writeMetrics = corpusMetrics, decodeFailures = corpusMetrics, clock = clock, stopwatch = stopwatch)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
    *  titles with another's. Every component takes its normalizer as a required
@@ -48,9 +48,9 @@ trait CorpusWiring { self: WorkerWiring =>
     TitleNormalizer.forCountry(country)
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
-    mongoConnection.database, clock, changeStreamMetrics = taskMetrics.movieChangeMetrics,
-    screeningsMetrics = taskMetrics, slotsMetrics = taskMetrics.slotsChangeMetrics,
-    writeMetrics = taskMetrics, decodeFailures = taskMetrics,
+    mongoConnection.database, clock, changeStreamMetrics = corpusMetrics.movies,
+    screeningsMetrics = corpusMetrics, slotsMetrics = corpusMetrics.slots,
+    writeMetrics = corpusMetrics, decodeFailures = corpusMetrics,
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
@@ -61,7 +61,7 @@ trait CorpusWiring { self: WorkerWiring =>
     new CaffeineMovieCache(movieRepository,
       retrigger = enrichmentRetrigger,
       normalizer = titleNormalizer, clock = clock,
-      listingIntakeMetrics = taskMetrics,
+      listingIntakeMetrics = corpusMetrics,
       stringPool = workerMetrics.stringPool,
       mirror = movieCacheMirror))
 
@@ -71,7 +71,7 @@ trait CorpusWiring { self: WorkerWiring =>
     new CorpusMirror(
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
-      cacheMetrics           = taskMetrics,
+      cacheMetrics           = corpusMetrics,
       rehydrateInterval      = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
       // The boot's other whole-corpus readers take the hydrate's read rather than read it again.
       bootReaders            = Seq(readModelBootStudy),

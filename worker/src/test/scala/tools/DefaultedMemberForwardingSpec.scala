@@ -1,7 +1,7 @@
 package tools
 
 import services.tasks.MeteredTaskQueue
-import services.tasks.WorkerTaskMetrics
+import services.tasks.{TaskPipelineBinder, WorkerTaskMetrics}
 import services.MonitoringHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -94,7 +94,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
     factories = Map(
       classOf[CachingTaskQueue] -> ((d: TaskQueue) => new CachingTaskQueue(d)),
       classOf[MeteredTaskQueue] -> ((d: TaskQueue) => new MeteredTaskQueue(d,
-        new WorkerTaskMetrics("pl", new WorkerTaskMetrics.Series(poolSize = 1, countryCodes = Seq("pl")))))
+        new TaskPipelineBinder("pl", new WorkerTaskMetrics.Series(poolSize = 1, countryCodes = Seq("pl")).tasks)))
     ),
     mayInherit = Map.empty
   )

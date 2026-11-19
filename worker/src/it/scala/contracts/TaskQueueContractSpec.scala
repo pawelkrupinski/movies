@@ -1,7 +1,7 @@
 package services.contracts
 
 import services.tasks.MeteredTaskQueue
-import services.tasks.WorkerTaskMetrics
+import services.tasks.{TaskPipelineBinder, WorkerTaskMetrics}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -43,8 +43,8 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
       case "java.lang.String"                              => Some(s"tasks_${collections.incrementAndGet()}")
       case "services.tasks.TaskQueue"                      => Some(new InMemoryTaskQueue)
-      case "services.tasks.WorkerTaskMetrics"            =>
-        Some(new WorkerTaskMetrics("pl", new WorkerTaskMetrics.Series(poolSize = 1, countryCodes = Seq("pl"))))
+      case "services.tasks.TaskPipelineBinder"           =>
+        Some(new TaskPipelineBinder("pl", new WorkerTaskMetrics.Series(poolSize = 1, countryCodes = Seq("pl")).tasks))
       case _ => None
     }).fold(missing => fail(missing), identity)
 

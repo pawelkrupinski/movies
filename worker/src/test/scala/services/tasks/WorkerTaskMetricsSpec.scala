@@ -33,10 +33,10 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
 
-  /** A single-country ("pl") series + its facade — the common case. */
-  private def newPl(): (WorkerTaskMetrics, WorkerTaskMetrics.Series) = {
+  /** A single-country ("pl") series + its task-pipeline binder — the common case. */
+  private def newPl(): (TaskPipelineBinder, WorkerTaskMetrics.Series) = {
     val series = new WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
-    (new WorkerTaskMetrics("pl", series), series)
+    (new TaskPipelineBinder("pl", series.tasks), series)
   }
 
   private def scrapePl(series: WorkerTaskMetrics.Series,
@@ -58,8 +58,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "keep two countries' series separate on one shared registry" in {
     val series = new WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl", "uk"))
-    val pl = new WorkerTaskMetrics("pl", series)
-    val uk = new WorkerTaskMetrics("uk", series)
+    val pl = new TaskPipelineBinder("pl", series.tasks)
+    val uk = new TaskPipelineBinder("uk", series.tasks)
 
     pl.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
     pl.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
@@ -119,14 +119,16 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count the rows the read-model sweep re-projected behind a silent change stream" in {
-    val (m, series) = newPl()
+    val (_, series) = newPl()
+    val m = new services.metrics.ReadModelSeriesBinder("pl", series.readModel)
     m.recordCatchUp(3)
     m.recordCatchUp(0)   // a quiet sweep adds nothing, and the series exists from boot regardless
     scrapePl(series) should include ("""kinowo_worker_readmodel_catchup_rows_total{country="pl"} 3""")
   }
 
   it should "time a projection's write phase under its trigger, every trigger seeded from boot" in {
-    val (m, series) = newPl()
+    val (_, series) = newPl()
+    val m = new services.metrics.ReadModelSeriesBinder("pl", series.readModel)
     m.recordWriteBurst(services.readmodel.ReadModelProjectionMetrics.ProjectTrigger.Heal, 0.25)
     val out = scrapePl(series)
     out should include ("""kinowo_worker_readmodel_write_burst_seconds_sum{country="pl",trigger="heal"} 0.25""")
@@ -302,7 +304,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   // samples, and the first one already holds the failure. So the incident's own shape, one
   // codec failure on `movies.upsert`, must land on a series that already reads 0.
   it should "seed every known repository write failure at zero, so increase() sees the first one" in {
-    val (m, series) = newPl()
+    val (_, series) = newPl()
+    val m = new services.metrics.CorpusSeriesBinder("pl", series.corpusWrites, series.changeStreams)
     val line = """kinowo_worker_repository_write_failed_total{collection="movies",country="pl",exception="CodecConfigurationException",op="upsert"}"""
 
     scrapePl(series).linesIterator.find(_.startsWith(line)).map(_.split(' ').last.toDouble) shouldBe Some(0.0)

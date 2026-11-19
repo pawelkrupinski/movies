@@ -192,9 +192,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // alerters are recorded per country by each wiring, the integrations once by WorkerMain.
   val envGatedFeatures: EnvGatedFeatureMetrics = new EnvGatedFeatureMetrics(registry)
 
-  /** The per-country task-metrics facade a wiring holds. Cheap — it just binds the
-   *  country code to the shared [[taskSeries]]. */
-  def taskMetricsFor(country: Country): WorkerTaskMetrics = new WorkerTaskMetrics(country.code, taskSeries)
 
   /** Start the process-level samplers (the per-country census samplers are started
    *  by each wiring). */

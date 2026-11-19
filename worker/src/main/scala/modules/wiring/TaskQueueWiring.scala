@@ -20,7 +20,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // Held so its occupancy can be published (`kinowo_worker_cache_*`); the queue
   // itself is consumed through the `TaskQueue` abstraction below.
   lazy val taskDedupCache: CachingTaskQueue = new CachingTaskQueue(new MongoTaskQueue(mongoConnection.database))
-  lazy val taskQueue: TaskQueue = new MeteredTaskQueue(taskDedupCache, taskMetrics)
+  lazy val taskQueue: TaskQueue = new MeteredTaskQueue(taskDedupCache, taskPipelineMetrics)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database, sleep = sleep)
 
   // THE REAPER-BACKOFF THROTTLE IS GONE, and the shape of what it was is worth a
@@ -62,14 +62,14 @@ trait TaskQueueWiring { self: WorkerWiring =>
   lazy val taskWorker = {
     // Each completed task announces itself (TaskFinished): the chunked-scrape coordinator
     // enqueues a run's reduce off its last chunk, and a share-card render re-projects its film.
-    // Claims / outcomes / handler durations are reported to the Prometheus metrics (`taskMetrics`).
-    val settlement = new services.tasks.TaskSettlement(taskQueue, taskMetrics,
+    // Claims / outcomes / handler durations are reported to the Prometheus metrics (`taskPipelineMetrics`).
+    val settlement = new services.tasks.TaskSettlement(taskQueue, taskPipelineMetrics,
       onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)), clock = clock)
     val handlers = Seq(scrapeCinemaHandler, enrichDetailsHandler, readVenuePageHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++
       ratingHandlers ++ operatorHandlers ++ shareCardHandlers ++ auditHandlers ++ agreementHandlers
     managedResources.stopping(new TaskWorker(taskQueue, new services.tasks.TaskDispatch(handlers, settlement, stopwatch),
       new services.tasks.TaskLeaseReaper(taskQueue, clock = clock, ticks = ticks, threadPools = threadPools),
-      poolSize = workerPoolSize, observer = taskMetrics, clock = clock, sleep = sleep, stopwatch = stopwatch))
+      poolSize = workerPoolSize, observer = taskPipelineMetrics, clock = clock, sleep = sleep, stopwatch = stopwatch))
   }
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing

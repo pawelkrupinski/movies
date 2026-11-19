@@ -45,7 +45,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   /** Publishes a chunked venue's listing — its reduce, or an empty plan's — and stamps it. */
   lazy val chunkedListingPublisher  = new ChunkedListingPublisher(publishScrape, scrapeFreshnessPolicy)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
-    new ChunkSlices(chunkPageMemo, taskMetrics), new HostDownDeferrals(clock), clock)
+    new ChunkSlices(chunkPageMemo, taskPipelineMetrics), new HostDownDeferrals(clock), clock)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, chunkedListingPublisher)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue, clock)
   private lazy val chunkScrapeScheduler = threadPools.scheduler("chunk-scrape-reaper")

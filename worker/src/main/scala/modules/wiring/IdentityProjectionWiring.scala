@@ -30,7 +30,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   // What each venue is taken to publish after every scrape reaches the identity model as its listings now.
   lazy val identityListingIntake: IdentityListingIntake =
     new IdentityListingIntake(acceptedListings, scrapeArchive, scrapeGuardLedger, titleNormalizer,
-      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, taskMetrics,
+      ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, corpusMetrics,
       published = (cinema, films) => identityModel.venueScraped(cinema, films))
 
   // The venue pages as a venue slot is built from them, and as which of them moved since the projection last asked.

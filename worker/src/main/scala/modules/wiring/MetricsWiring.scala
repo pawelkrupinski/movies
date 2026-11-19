@@ -5,11 +5,12 @@ import services.corpus.CorpusCensusMetrics
 import services.tasks.CinemaContentCensus
 import services.tasks.CinemaScrapeCensus
 import services.tasks.RatingRunCensus
-import services.tasks.WorkerTaskMetrics
+import services.tasks.TaskPipelineBinder
+import services.metrics.{CorpusSeriesBinder, ReadModelSeriesBinder}
 import services.metrics.RetiredVenueCensus
 
 /** This country's slice of the process-wide `/metrics` registry: the
- *  per-country task-pipeline facade, the cache-occupancy gauges, and the
+ *  per-country metric binders, the cache-occupancy gauges, and the
  *  off-band censuses (corpus, rating backlog, scrape staleness, content). */
 trait MetricsWiring { self: WorkerWiring =>
 
@@ -31,9 +32,13 @@ trait MetricsWiring { self: WorkerWiring =>
   // construction. This wiring holds only the PER-COUNTRY views/samplers that write
   // its own `country="…"` slice; the shared registry is served once by WorkerMain.
   //
-  // Per-country task-pipeline facade (enqueue/claim/finish/merge/… all tagged with
-  // this country) over the shared, registered-once Series.
-  lazy val taskMetrics: WorkerTaskMetrics = workerMetrics.taskMetricsFor(country)
+  // This country's binders over the shared, registered-once Series (every record tagged with
+  // this country): the task pipeline (enqueue/claim/finish), the read-model
+  // projection, and the corpus (its writes and its change-stream cursors).
+  lazy val taskPipelineMetrics: TaskPipelineBinder     = new TaskPipelineBinder(country.code, workerMetrics.taskSeries.tasks)
+  lazy val readModelMetrics: ReadModelSeriesBinder     = new ReadModelSeriesBinder(country.code, workerMetrics.taskSeries.readModel)
+  lazy val corpusMetrics: CorpusSeriesBinder           =
+    new CorpusSeriesBinder(country.code, workerMetrics.taskSeries.corpusWrites, workerMetrics.taskSeries.changeStreams)
   // THIS country's `movies` census — corpus coverage, per-city films served (overlaid on the web's
   // read-model gauge), per-city upcoming showtimes, the widest film — kept film by film as the
   // cache changes, with no read of its own (see CorpusCensus).

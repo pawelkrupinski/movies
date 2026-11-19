@@ -100,7 +100,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
       import corpus.{databaseName, readModel, repository}
       val country   = models.Country.Poland
       val metrics   = modules.wiring.WorkerMetrics.singleCountry(country, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
-      val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country), clock = tools.SpecClock.Pinned)
+      val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, new services.metrics.ReadModelSeriesBinder(country.code, metrics.taskSeries.readModel), clock = tools.SpecClock.Pinned)
       val sweeper   = new services.readmodel.ReadModelSweeper(projector.projection)
       val id        = StoredMovieRecord.keyFor(fixpointTitle, year, titleNormalizer)
       val projecting = repository.watchUpserts(projector.onMovieUpsert)

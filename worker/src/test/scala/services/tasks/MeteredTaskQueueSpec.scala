@@ -15,7 +15,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
 
   "MeteredTaskQueue" should "record added vs deduped enqueues" in {
     val series        = new WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
-    val metrics       = new WorkerTaskMetrics("pl", series)
+    val metrics       = new TaskPipelineBinder("pl", series.tasks)
     val queue: TaskQueue = new MeteredTaskQueue(new InMemoryTaskQueue, metrics)
 
     queue.enqueue(TaskType.ImdbRating, "film|2026", submittedAt = _root_.tools.SpecClock.Pinned.instant())        // added
@@ -31,7 +31,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
   // outcome where the task is NOT in hand, and this series is where that shows.
   it should "record an enqueue the queue failed to make as `failed`" in {
     val series        = new WorkerTaskMetrics.Series(poolSize = 4, countryCodes = Seq("pl"))
-    val metrics       = new WorkerTaskMetrics("pl", series)
+    val metrics       = new TaskPipelineBinder("pl", series.tasks)
     val failing = new InMemoryTaskQueue {
       override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
         EnqueueResult.Failed("mongo down")
