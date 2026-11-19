@@ -72,7 +72,7 @@ object SourceReliability {
   private def copied(facts: Fact*): Seq[(Fact, Trust, String)] = facts.map(f => (f, Trust.Support, CopiedFromTheEntry))
   /** The original title a feed copies: as its other facts, and a namesake only it names — never the billed title — the copy's pull. */
   private val CopiedOriginalTitle = (Fact.OriginalTitle, Trust.Support, CopiedFromTheEntry + "; a namesake only it names, never " +
-    "the billed title, is the copy's pull and denied the listing (FamilyScope.namedOnlyByCopiedTitle: DE Cinecitta's \"Über " +
+    "the billed title, is the copy's pull and denied the listing (CopiedTitleDenial.namedOnlyByCopiedTitle: DE Cinecitta's \"Über " +
     "Unterbiberger\" took Eisenstein's \"Oktober\" by kinoheld's copy of «Октябрь» from another event's page)")
   private val EntrysPoster = (Fact.Poster, Trust.Ignore, "the entry's poster, which votes for the entry whether or not it is the venue's film")
   private val EntrysText   = (Fact.Names, Trust.Ignore, "the synopsis and cast describe the entry, maybe another film than the venue's")
@@ -97,7 +97,7 @@ object SourceReliability {
     rules(copied(Fact.Year, Fact.Directors, Fact.Runtime)*) ++
     rules((Fact.OriginalTitle, Trust.Support, CopiedFromTheEntry + "; and the linked film's English title restated, so a namesake " +
       "only it names, or a short where the venue bills another title, is the copy's pull and denied the listing when the link " +
-      "names another film (FamilyScope.namedOnlyByCopiedTitle: DE \"Rodychi\" took the 2018 \"Kin\", " +
+      "names another film (CopiedTitleDenial.namedOnlyByCopiedTitle: DE \"Rodychi\" took the 2018 \"Kin\", " +
       "\"L`Estive\" a 3-minute \"Summer Meadow\")")) ++ rules(EntrysPoster, EntrysText),
     tmdbFilm = id => CineamoFilm.unapplySeq(id).flatMap(_.headOption).flatMap(_.toIntOption))
 

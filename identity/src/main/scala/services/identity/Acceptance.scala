@@ -140,7 +140,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  record's titles ([[billedBeyond]]) and stating no year of it? A billing the record's titles hold word for word
    *  ("Matrix" of "The Matrix", or a translation TMDB holds as an alternative title) is its own, and a year the listing
    *  states that the record shares makes the billing another record's spelling of it, as the copied facts' other reader
-   *  holds (`FamilyScope.namedOnlyByCopiedTitle`: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003]). The title
+   *  holds (`CopiedTitleDenial.namedOnlyByCopiedTitle`: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003]). The title
    *  relation cannot tell: it reads the original title as one of the listing's own shapes, a `segment` of every record
    *  so titled. */
   private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = {

@@ -1,9 +1,5 @@
 package services.identity
 
-import services.titles.billing.BillingPieces
-
-import services.identity.IdentityMeasures.ListingFilm
-
 import scala.collection.mutable
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
@@ -21,20 +17,20 @@ import scala.collection.mutable
  *  denies it, and the pending tally (IdentityDrift) counts how often such a take differs from the final one. */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
                                           counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
-  import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, candidateOf, fallbackOf, sharedOf}
 
   val pool: Seq[Candidate] =
     if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
     else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
 
-  /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
-   *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
-   *  record titled only a listing's qualifier does not name it. The family's own pool, so a
-   *  family resolves alone as it does among the others. */
-  val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
+  private val family  = new FamilyPool(pool, scoring.houses, related)
+  private val links   = new FeedLinkOverrule(family, scoring.generation, scoring.backing)
+  private val denials = new NodeDenials(scoring, links, new CopiedTitleDenial(family, links, scoring.generation))
 
-  /** Every candidate `l` has an evidence path to, scored; a `denial` marks, with its reason, the ones
+  /** The qualifiers the pool's records bill ([[FamilyPool.qualifiers]]). */
+  def qualifiers: IdentityMeasures.Qualifiers = family.qualifiers
+
+  /** Every candidate `l` has an evidence path to, scored ([[ListingScoring]]); a `denial` marks, with its reason, the ones
    *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
@@ -42,285 +38,19 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
             imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty,
             names: String => Boolean = _ => false): Seq[Scored] = {
     counted()
-    new ListingScoring(listing, venue, source, ranks, walked, shared, deniedByNode, suggested, directedBy, imdbTitles, country, linked, names).scored
+    new ListingScoring(family, scoring, acceptance, listing, venue, source, ranks, walked, shared, deniedByNode, suggested,
+      directedBy, imdbTitles, country, linked, names).scored
   }
 
-  /** One [[score]] of `listing` against the pool: the pool as the listing's titles relate to it, the candidates it reaches
-   *  measured, the release veto, then the denials one candidate's evidence makes of another. */
-  private final class ListingScoring(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int],
-                                     walked: Set[Int], shared: Set[Int], deniedByNode: Int => Option[Denial], suggested: Set[Int],
-                                     directedBy: Set[Int], imdbTitles: Map[Int, Set[String]], country: Option[String],
-                                     linked: Set[Int], names: String => Boolean) {
-    private val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
-    // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
-    // title already: it carries it too, so the listing's facts are read against a film its title names. PL "Camino dla
-    // opornych" [97′] read IMDb's Polish title of "Compostelle" as no relation, and its runtime alone denied the film.
-    // A namesake of the listing's own title, not of the original it publishes beside it: Helios bills "Camino dla
-    // opornych" with the original "Santiago", which Gordon Douglas's 1956 film is titled — the original is a fact its
-    // own measure weighs, and IMDb's title names the film the listing's title is.
-    private lazy val untranslated = listing.copy(originalTitle = None)
-    private val titledBy   = IdentityMeasures.soleImdbTitled(imdbTitles).filter { case (id, _) =>
-      // a film of the pool's, its IMDb title its to take, that no other film of the pool carries as its own
-      pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) &&
-        !pool.exists(other => other.tmdbId != id &&
-          IdentityMeasures.TitlesItsOwn(IdentityMeasures.titleRelation(untranslated, other.film, houses, qualifiers).value)) }
-    private val scoredPool = titledBy.fold(pool) { case (id, titles) => pool.map(candidate =>
-      if (candidate.tmdbId == id) candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, titles.toSeq.sorted)) else candidate) }
-    private val relationOf = titledBy.fold(related) { case (id, _) =>
-      related.updated(id, IdentityMeasures.titleRelation(listing, scoredPool.find(_.tmdbId == id).get.film, houses, qualifiers)) }
-    private val relation   = relationOf.view.mapValues(_.value).toMap
-    private def ownReach(id: Int) = ranks.contains(id) || walked(id) || shared(id)
-    private val reachable = scoredPool.filter(candidate => ownReach(candidate.tmdbId) ||
-      IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
-    // A film only IMDb suggested, under a title the listing does not carry, rivals nothing: the rules other than
-    // IMDb's own never see it, as before IMDb's other-language matches were followed.
-    private def onlySuggested(id: Int) = suggested(id) && !IdentityMeasures.Rivalling(relation(id))
-    private def rivalling(id: Int) = IdentityMeasures.Rivalling(relation(id)) && !onlySuggested(id)
-    private val close     = reachable.count(candidate => rivalling(candidate.tmdbId))
-    private val groups    = IdentityMeasures.titleGroups(listing)
-    private val textNamed = IdentityMeasures.textNamedDirectors(listing, names, reachable.map(_.film))
-    private val measured  = reachable.map(measure)
+  /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLinkOverrule.linked]]). */
+  private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] = links.linked(node)
 
-    private def measure(candidate: Candidate): Scored = {
-      val rivals   = close - (if (rivalling(candidate.tmdbId)) 1 else 0)
-      val measures = IdentityMeasures.creditedByText(candidate.film, textNamed, IdentityMeasures.creditedByTitle(listing, candidate.film,
-        IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
-          backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue, source),
-          relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId))))
-      val probability = calibration.probability(ListingFilm, measures)
-      val byNode = RuleAblation.live(deniedByNode(candidate.tmdbId))
-      Scored(candidate, probability, measures, byNode.orElse(RuleAblation.live(evidenceDenial(listing, candidate.film, measures, country))), listing, ranks.get(candidate.tmdbId),
-        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
-        suggestedOnly = onlySuggested(candidate.tmdbId), ownReach = ownReach(candidate.tmdbId))
-    }
+  /** `node`'s feed link, when the title's other sources overrule it ([[FeedLinkOverrule.overruled]]). */
+  def overruled(node: EvidenceNode): Option[FeedLink] = links.overruled(node)
 
-    // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
-    // rival in the evidence class of the namesakes left ([[ReleaseVeto]]). A namesake here is a film the title names
-    // EXACTLY: an original or alternative title is the venue's spelling of another language's film, not its own.
-    private def namesake(scored: Scored) = relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId)
-    private val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, namesake,
-      scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored))) ++
-      country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.screeningsSeason, measured, namesake, ownFacts = source == venue,
-        acceptance.weights.factsSupport))
-    private val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
-      val id = scored.candidate.tmdbId
-      if (vetoed.contains(id)) scored.copy(denial = scored.denial.orElse(RuleAblation.live(vetoed.get(id))))
-      else if (rivalling(id)) scored.copy(vetoedRivals = vetoed.size)
-      else scored
-    }
-
-    // The listing's whole title (or its original or an alternative title) and its credited
-    // director name ONE film together: another film of that director, which its title does not
-    // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
-    // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
-    private val titled = candidates.exists(scored => !scored.denied && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
-    // A film its credited director made that its title names as its own — reached by their filmography
-    // (`directedBy`), whether or not its record is answered yet — says whose film of the title the venue bills: a
-    // namesake their filmography did not reach, whose record does not credit them, is another director's film. DE "Rose":
-    // Metropol Düsseldorf credits Marie-Camille Babayan, KiKuBi Aurélie Saada, each the maker of a "Rose" of their own;
-    // while the three records went unanswered nothing else denied them Schleinzer's 2026 film, which they took by IMDb's
-    // suggestion and joined (prod 10-19, and again with every deploy's new questions).
-    // Not by a short of theirs: a feature's billing whose page copied a short namesake's credits names no short (DE Mal
-    // seh'n Kino's "THE THING WITH FEATHERS", a week of late shows, credits Anja Oelofse's 24-minute film — Southern's).
-    private val creditedNamesake = listing.directors.nonEmpty && candidates.exists(scored =>
-      !scored.denied && directedBy(scored.candidate.tmdbId) && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
-        !ShortFilms.isShort(scored.candidate.film))
-    // A billing naming the director of a film its title names ([[IdentityMeasures.bannerNamesItsDirector]]: a series'
-    // banner, "Hitchcock & Chabrol: Spellbound") says whose film of the title it shows: a namesake none of the directors
-    // it names made is not it, however popular — the 2024 animated "Spellbound" is no Hitchcock.
-    // Asked only of a candidate the title names as its own, stopping at the first: most listings bill no banner, and the
-    // denial below asks again only when one does.
-    private val directorBilled = candidates.exists(scored => !scored.denied && IdentityMeasures.TitlesItsOwn(relation(scored.candidate.tmdbId)) &&
-      IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
-    // The listing's title numbers its instalment as an eligible record of its series does
-    // (`numeral` `same`): another instalment of that series — one the listing numbers and it
-    // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
-    // "Niesamowite przygody skarpetek 4. Do roboty! – zestaw" is part 4, not the 2025 first set
-    // whose animators it credits).
-    private val instalment = candidates.exists(scored => !scored.denied && scored.category("numeral").contains("same"))
-    // A stage house's relay that an eligible record bills under its own house is not another house's staging of the
-    // work, however its screen director's credit or running time fits that one: UK Odeon's "English National Ballet: The
-    // Sleeping Beauty" {Ross MacGibbon} ×22 is ENB's 2026 record, not the Royal Ballet's 2017 one he also filmed. Only
-    // beside its own house's: UK's "RBO Cinema Season" relays the Met's productions, which RBO never staged.
-    // Its own house's by a banner word the other record lacks: "OPERA- SILENT NIGHT" names no house by "silent".
-    private val housed = if (listing.billsAStageHouse) candidates.filterNot(_.denied) else Nil
-    private def besideItsOwnHouse(other: Scored) = !other.denied && StageRelays.billsAnotherHouse(listing, other.candidate.film) &&
-      housed.exists(own => own.candidate.tmdbId != other.candidate.tmdbId &&
-        StageRelays.billsItsHouse(listing, own.candidate.film, other.candidate.film.titleWords))
-    // One broadcast its film database holds twice is one film: the record every listing of it takes is the first in
-    // `broadcastRecordOrder`, and the other is no listing's ([[StageRelays.sameBroadcast]]).
-    private def anotherRecordOfItsBroadcast(scored: Scored) = candidates.exists(other => other.candidate.tmdbId != scored.candidate.tmdbId &&
-      StageRelays.sameBroadcast(scored.candidate.film, other.candidate.film) &&
-      Ordering[(Int, Int, Int)].lt(StageRelays.broadcastRecordOrder(other.candidate.tmdbId, other.candidate.film),
-        StageRelays.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
-    // A short beside a feature the title names as its own is that feature's namesake, unless the venue bills a short: no
-    // rule takes it, and it stays a rival ([[ShortFilms]]): DE "GINA - mit der Domschule Würzburg" is no 7-minute "Gina"
-    // beside three feature-length ones. So is a short the billing opens on and goes on past ([[ShortFilms.billedBeyond]]): DE
-    // "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT" is an evening named after the 14-minute short, no feature beside it.
-    // A short of the director the listing credits is its own film, unless a feature of that director carries the title
-    // too (DE Filmmuseum München's "Nuisance Bear" {Osio Vanden, Weisman}: their 2026 feature, not their 2021 short).
-    private val features = candidates.filter(scored => !scored.denied && !ShortFilms.isShort(scored.candidate.film) &&
-      IdentityMeasures.TitlesItsOwn(relation(scored.candidate.tmdbId)))
-    private val creditedFeature = features.exists(scored => IdentityMeasures.sameDirector(scored.measures))
-    private def shortUntaken(scored: Scored) =
-      if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
-      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked,
-        features.nonEmpty || ShortFilms.isShort(scored.candidate.film) && !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
-          ShortFilms.billedBeyond(listing, scored.candidate.film, venue))
-    // A film the billing names only by the event it joins ("+ Q&A": Q & A, 1990) stays a rival no rule takes
-    // ([[IdentityMeasures.eventNamed]]).
-    private def eventUntaken(scored: Scored): Option[String] =
-      Option.when(!scored.denied && IdentityMeasures.eventNamed(listing, scored.candidate.film))(Scored.EventNamed)
-    // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
-    // film, however its director's credit or running time fits — a director's filmography is a path to candidates, never a
-    // title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
-    // "Social Reckoning" {Aaron Sorkin} [130′] The Trial of the Chicago 7, US "Sabotage (1937)" Hitchcock's Young and
-    // Innocent (prod 2026-10-14: every such take in the UK, DE and US wrong). A film of another language may be billed by a
-    // translation TMDB does not carry (PL "Kupiłem motocykl, który jest wampirem", the 1990 British film): left to the facts.
-    // Only one that would outrank every other candidate: a lower one is taken by nothing, and denying it anyway moved the
-    // family's vote — UK "Fallen Angels by Noël Coward" ×315, a stage capture, lost its film or took Lukas Dhont's "Coward"
-    // once its listings denied Scott Ellis's other Roundabout captures ("Harvey", "She Loves Me") ranked far below it
-    // (convergence 38670105172).
-    private def untitled(scored: Scored) = !scored.denied && relation(scored.candidate.tmdbId) == "none" &&
-      country.exists(venue => scored.candidate.film.countries.exists(_.exists(IdentityMeasures.sharesLanguage(venue, _)))) &&
-      IdentityMeasures.sharesNoWord(listing, scored.candidate.film)
-    private lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
-    private def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
-
-    /** The denials one candidate's evidence makes of another, in the order they are asked: each a test of the scored
-     *  candidate and why it is denied. */
-    private val besideDenials: Seq[(Scored => Boolean, String)] = Seq(
-      (ownLanguageUntitled, "a film of the venue's own language its title shares no word with"),
-      (anotherRecordOfItsBroadcast, "another record of a broadcast its film database holds twice"),
-      (scored => titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures),
-        "its director's other film, which the title does not name"),
-      (scored => creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) &&
-         IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && !IdentityMeasures.sameDirector(scored.measures),
-        "a namesake of the film its credited director made of its title"),
-      (scored => directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
-         !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film),
-        "a namesake of the film whose director its billing names"),
-      (scored => instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment),
-        "another instalment than the one the title numbers"),
-      (scored => housed.nonEmpty && besideItsOwnHouse(scored), "another house's staging of its work, beside its own house's record"))
-
-    /** Why another candidate's evidence denies `scored`, if it does. */
-    private def deniedBeside(scored: Scored): Option[String] =
-      besideDenials.collectFirst { case (denies, why) if denies(scored) => why }
-
-    def scored: Seq[Scored] =
-      candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = eventUntaken(scored).orElse(shortUntaken(scored))))(denial => scored.copy(denial = Some(denial))))
-        .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
-  }
-
-  // A title relation reads only the listing's titles — its title, raw, original and search titles and its
-  // decorations — never its facts, beside the film and this scope's houses and qualifiers. Every node and
-  // cluster of the family is related to the whole pool, so the nodes billing one title, and a cluster read
-  // under its lead's titles, share the pool's relations instead of reading them again.
-  private val relations = mutable.HashMap.empty[(FamilyScope.TitleInputs, Int), IdentityMeasures.Category]
-  private def titleRelation(listing: IdentityMeasures.Listing, candidate: Candidate): IdentityMeasures.Category =
-    relations.getOrElseUpdate((listing.titleInputs, candidate.tmdbId),
-      { related(); IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers) })
-
-  /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
-   *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
-  private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
-
-  /** [[feedLinked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
-   *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */
-  private def copyingLink(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    feedLinked(node).filter(_ => node.listings.forall(listing => !SourceReliability.decides(listing, SourceReliability.Fact.OriginalTitle)))
-
-  /** `node`'s feed link, when the title's other sources overrule it ([[FeedLink]]): once per node for this scope's life. */
-  def overruled(node: EvidenceNode): Option[FeedLink] = overruledMemo.getOrElseUpdate(node.id, overrule(node))
-  private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
-  private def overrule(node: EvidenceNode): Option[FeedLink] = feedLinked(node).flatMap { case (id, film) =>
-    val listing = node.evidence.measured
-    // whose claim the link is: the node's present listings' -- a kept one sharing its evidence is no claim of the link's
-    val own     = SourceReliability.claimOf(node.listings.find(Authority.of(_) != Authority.Provenance.Kept).getOrElse(node.listings.head))
-    val overruling = overrulingRelation(listing, film)
-    if (pool.exists(candidate => candidate.tmdbId == film && overrulingSources(listing, own, candidate) > 0)) None
-    else {
-      val rivals = pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
-        .map(candidate => candidate -> overrulingSources(listing, own, candidate))
-      overrulingLink(node, id, film, rivals)
-    }
-  }
-  /** The link of `node` to `film` overruled: by the rival most sources back, past [[FeedLink.OverrulingSources]], else by
-   *  a current release among the backed rivals, else by the one rival the titles alone name. */
-  private def overrulingLink(node: EvidenceNode, id: CatalogueId, film: Int, rivals: Seq[(Candidate, Int)]): Option[FeedLink] =
-    rivals.filter(_._2 >= FeedLink.OverrulingSources).sortBy { case (rival, count) => (-count, rival.tmdbId) }.headOption
-      .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
-      .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
-        .map { case (rival, venues) => FeedLink(id, film, rival, 1, venues) })
-      .orElse(titledRival(node, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
-  /** The PRESENT sources' say for `candidate` against a link claimed by `own`: a kept listing ([[Listing.kept]]) keeps its
-   *  own film's details alive, never a link a present listing's own sources overrule (DE "Eternity": Caligari's kept
-   *  Freyne listing backed Cineamo's link). */
-  private def overrulingSources(listing: IdentityMeasures.Listing, own: String, candidate: Candidate): Int =
-    backing.sources(backingGroups(listing, candidate), candidate.film, own, Authority.Act.Overrule)
-  /** The title relations by which a rival of the linked `film` overrules the link. A rival the title names only as one
-   *  of its pieces overrules no link to a film it names whole: DE Metropolis's "KIRSCHBLÜTEN - HANAMI", linked to
-   *  Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes. */
-  private def overrulingRelation(listing: IdentityMeasures.Listing, film: Int): Set[String] =
-    if (pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value)))
-      IdentityMeasures.Rivalling
-    else IdentityMeasures.TitlesItsOwn
-  /** The one current release among `backed` (the rivals a source backs, fewer than [[FeedLink.OverrulingSources]]) that
-   *  the title names whole and more of the title's venues bill than `node`'s link, [[FeedLink.ReleaseVenues]] at least,
-   *  when the linked `film` is an older one the listing does not date — with the venues billing it. The operator's pick
-   *  from a search is then an old namesake of the film opening that month, not one claim against another ([[FeedLink]]).
-   *  Never a release the title names only as one of its pieces (DE Babylon's "Nosferatu Live mit Babylon Orchester
-   *  Berlin", which Cineamo links to Herzog's 1979 film, is no 2025 "Nosferatu"), nor against a link the listing dates by
-   *  its film's year (Melodie's one-night "Spider-Man" [2002] is Raimi's, not the 2026 "Spider-Man: Brand New Day"). */
-  private def currentRelease(node: EvidenceNode, film: Int, backed: Seq[Candidate]): Option[(Int, Int)] = {
-    val current = currentAt(node)
-    val listing = node.evidence.measured
-    val older   = pool.find(_.tmdbId == film).exists(linked => !current(linked) &&
-      linked.film.year.exists(year => !node.evidence.statedYear.contains(year)))
-    if (!older) None
-    else backed.filter(candidate => current(candidate) && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
-      .map(candidate => candidate.tmdbId -> backing.corroborating(backingGroups(listing, candidate), candidate.film, node.venue, sourceOf(node), Authority.Act.Overrule))
-      .filter { case (_, venues) => venues >= FeedLink.ReleaseVenues && venues > node.venues.size } match {
-      case Seq(rival) => Some(rival)
-      case _          => None
-    }
-  }
-  /** The title groups whose venues back `candidate` for `listing`, by the one title relation ([[TitleRelation.backingGroups]]). */
-  private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
-    TitleRelation.backingGroups(listing, candidate.film)
-  /** Is a candidate a current release where `node` screens: dated [[IdentityResolver.CurrentRelease]] or fewer years
-   *  before its first screening's year? */
-  private def currentAt(node: EvidenceNode): Candidate => Boolean = {
-    val firstYear = node.listings.flatMap(_.screenings.firstYear).minOption
-    candidate => candidate.film.year.exists(year => firstYear.exists(year >= _ - IdentityResolver.CurrentRelease))
-  }
-  /** The one film of the pool `node`'s titles alone name exactly, when they name the linked `film` not at all — never
-   *  an older film against a link to a current release whose title carries the venue's whole, as one edge of it
-   *  (`fragment`: [[IdentityMeasures.ContainingRelations]]). A release is billed under the head of its title, which an
-   *  old namesake's record may carry whole: DE Cineamo's bare "Lieblingsmenschen", linked to Hufnagel's 2026
-   *  "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir", is not the 65-minute 2021
-   *  "Lieblingsmenschen" — overruled, 95 listings at 68 venues took none, the namesake refused and the release denied.
-   *  A link whose film the title does not carry is still overruled, current or not: Yorck's "Jin-Roh - Die
-   *  Wolfsbrigade", linked to the 2018 remake "Illang", and Bundesplatz-Studio's "Der Diplomat", linked to Shivam Nair's
-   *  2025 "The Diplomat" (its year copied: a feed's copy dates nothing), the 1995 Hessel documentary. */
-  private def titledRival(node: EvidenceNode, film: Int): Option[Int] = {
-    val titles = node.evidence.titlesOnly.measured
-    def relation(candidate: Candidate) = IdentityMeasures.titleRelation(titles, candidate.film, houses, qualifiers).value
-    val current = currentAt(node)
-    def carriedRelease(linked: Candidate) = current(linked) && IdentityMeasures.ContainingRelations(relation(linked))
-    val linked = pool.filter(_.tmdbId == film)
-    if (linked.isEmpty || linked.exists(candidate => IdentityMeasures.NamingRelations(relation(candidate)))) None
-    else pool.filter(candidate => candidate.tmdbId != film && relation(candidate) == "exact") match {
-      case Seq(rival) if !(linked.exists(carriedRelease) && !current(rival)) => Some(rival.tmdbId)
-      case _                                                                 => None
-    }
-  }
-
-  /** `node`'s evidence as this scope reads it: its titles alone when its feed link is overruled ([[FeedLink]]) — the facts
-   *  were the link's, restated — else its own. */
-  def evidenceOf(node: EvidenceNode): Evidence = if (overruled(node).isEmpty) node.evidence else node.evidence.titlesOnly
+  /** `node`'s evidence as this scope reads it ([[FeedLinkOverrule.evidenceOf]]): its titles alone when its feed link is
+   *  overruled, else its own. */
+  def evidenceOf(node: EvidenceNode): Evidence = links.evidenceOf(node)
 
   /** Does the venue's own text of any of `nodes`' listings name `name` WHOLE ([[VenueNames.names]]) — none of a node
    *  whose evidence was overruled to its titles ([[evidenceOf]])? What [[CreditMeasures.creditedByText]] credits by. */
@@ -348,7 +78,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val reached = reach(node)
     val soles   = soleResultsOf(evidenceOf(node).measured, reached)
     score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
-      id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
+      id => denials.of(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
       textNames(Seq(node))).map(placedByImdb(Seq(node)))
       .map(scored => if (soles(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
       .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles)))
@@ -382,112 +112,6 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
   }
 
-  /** Why `node`'s original title, a FEED's copy ([[SourceReliability.copiesOriginalTitle]]), denies it `candidate`: only that
-   *  copied title names it, never the billed title. The copied title is the feed entry's, restated — the entry's claim of
-   *  which film it is ([[FeedLink]]) — so a namesake it alone names is the copy's pull, not the venue's film; and the year,
-   *  director and running time the feed copied beside it agree with that entry by construction, so they confirm nothing
-   *  (one origin, counted once). A TMDB-keyed feed's link names the entry's film, which stays the node's to take. DE
-   *  Mathäser's "Rodychi (UKRAJINA CINEMA)": Cineamo links Chereshnya's "Родичі" (1658840m) and copies its English title
-   *  "Kin", which took Baker's 2018 "Kin"; "Karavan" took the 1946 "Caravan", "Akten des Missbrauchs" Zobel's "The Hunt".
-   *  Measured on convergence run 38529260149's DE model takes: 7 listings took a film only the copied title of another
-   *  linked film named, all 7 wrong. A page feed names no film, its copy no less one when it shares nothing with the
-   *  billing ([[IdentityMeasures.Listing.originalSharesNothingBilled]]): DE Cinecitta's "Über Unterbiberger - Vom Woid in
-   *  die Welt" links kinoheld's page of another event, which copied Eisenstein's "Октябрь", his credit and its 142
-   *  minutes, and took "Oktober 1917" at 61.9% while thirteen venues billed Ditscherlein's 2025 documentary. */
-  private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[Denial] =
-    copiedBy(node).filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
-      copiedTitleDenial(evidenceOf(node).measured, candidate, feed, linked) }
-
-  /** The feed whose copy `node`'s original title is, with the film it links, if any: a TMDB-keyed feed's link, else a
-   *  page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
-   *  films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
-   *  und ein Treffen …") — and only a copy sharing nothing with the billing: one spelling the billed title, or
-   *  translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
-   *  Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl"). */
-  private def copiedBy(node: EvidenceNode): Option[(String, Option[Int])] =
-    copyingLink(node).map { case (id, linked) => (s"${id.source} ${id.id}", Some(linked)) }
-      .orElse(Option.when(FeedLink.linked(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
-        evidenceOf(node).measured.originalSharesNothingBilled && !evidenceOf(node).measured.originalTranslatesBilled)(sourceOf(node) -> None))
-
-  private def copiedTitleDenial(listing: IdentityMeasures.Listing, candidate: Candidate, feed: String, linked: Option[Int]): Option[Denial] =
-    // a SHORT ([[ShortFilms.isShort]]) beside a TMDB-keyed feed's link to another film is the copy's pull whatever the
-    // billed title names, and whatever year: the feed's pick is a programme's film, the year and an English title a short
-    // carries too the pick's restated (DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary, copying its English
-    // title "Summer Meadow", which a 3-minute 2024 short carries beside "L'Estive"; "HEIMSUCHUNG - MittagsKINO" took the
-    // 18-minute "Visitation", the English title of Schlöndorff's "Heimsuchung"; Kino Gelnhausen's "FILMKUNST: Ein einfacher
-    // Unfall", Panahi's 2025 film beside a 2025 short). Only where the feed copied a title the venue does not bill
-    // ([[FeedLink.copiesAnotherTitle]]): a short the venue's own original title is, is its namesake
-    if (linked.isDefined && FeedLink.copiesAnotherTitle(listing) && ShortFilms.isShort(candidate.film))
-      Some(Denial(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}", Denial.Kind.NotTheWork(creditOverrules = false)))
-    else Option.when(listing.originalTitle.nonEmpty && !sameYear(listing, candidate) && !billsItsWords(listing, candidate, linked) &&
-      IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && !namedByItsBilling(listing, candidate))(
-      Denial(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film")))
-
-  /** A page feed's copy names no film, so the record must not carry the billing's words either: one sharing two of
-   *  them, which a mere spelling keeps from naming it, is the billing's ("Madoka Magica - The Movie: Rebellion" is
-   *  "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion"); one word is a namesake's chance
-   *  ("Über Unterbiberger - Vom Woid in die Welt" and "Oktober 1917 – Zehn Tage, die die Welt erschütterten"). */
-  private def billsItsWords(listing: IdentityMeasures.Listing, candidate: Candidate, linked: Option[Int]): Boolean =
-    linked.isEmpty && (Seq(candidate.film.title) ++ candidate.film.originalTitle).exists(title => listing.wordsBilledOf(title) >= 2)
-
-  /** A year the listing states that the film shares — the linked film's, copied — makes the two one film under two
-   *  records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030. */
-  private def sameYear(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean =
-    listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
-
-  /** Whether the billed titles — without the copied original, nor a search title that is only it again — name the record
-   *  as its database holds it: the venue titles the corpus learned for it by that very original
-   *  ([[IdentityMeasures.venueTitles]]) are the copy's pull again. Nor by one word a first name runs into, no delimited
-   *  piece of the billing: DE Centraltheater Brake's "RAY WILSON", a singer's concert Cineamo links to the 1944 "Wilson"
-   *  and copies that title from, named "Wilson - Der Weltverbesserer" (2017) only by the surname (prod 2026-10-14). */
-  private def namedByItsBilling(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean = {
-    val copied = listing.originalTitle.map(IdentityMeasures.key)
-    val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
-    val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
-    val pieces = IdentityMeasures.namingPieces(billed, record)
-    lazy val byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
-    IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record) && !byOneWordOnly
-  }
-
-  /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
-   *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
-   *  slot, a title billing a film festival alone, a billing as a silent film of a sound-era film, or a relay's record a
-   *  plain billing's own text contradicts ([[RelayRecords.contradictedByOwnText]]). */
-  private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] = denialMemo.getOrElseUpdate((node.id, id), denialOf(node, id))
-  // A pure function of the node and the film within this scope (its pins, links, pool and generation fixed): a node's own
-  // score and every pooled cluster holding it ask it again for each candidate of the pool, 5.5-9% of a convergence or
-  // order row's CPU (JFR, docs/investigations/2026-11-01-twenty-runners.md section 9).
-  private val denialMemo = mutable.HashMap.empty[(String, Int), Option[Denial]]
-  private def denialOf(node: EvidenceNode, id: Int): Option[Denial] =
-    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
-      .orElse(overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
-      .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
-      .orElse((Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
-      .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
-      .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
-      .orElse(Option.when(billingOf(node).festival)("its title bills a film festival by its name alone: the programme, no film"))
-      // a billing as a silent film dates it to the silent era, as the agreement reads it (DE "STUMMFILM MIT TOBIAS
-      // RANK:CHARLIE CHAPLIN" is no 1999 "Charlie Chaplin")
-      .orElse(Option.when(ListingShape.silentBillingDenies(candidateById(id).film.year, billingOf(node).silent))(
-        "it bills a silent film, and this one is of the sound era"))
-      // the venues' own cast fields name none of its cast, and none of their facts agrees with it
-      .orElse(CastEvidence.mismatch(node.listings, candidateById(id).film, node.country.flatMap(TitleRelationMeasures.languageOf),
-        billingOf(node).castIsTheFilms))
-      // a plain billing whose own text credits another film's director, never the relay's
-      .orElse(Option.when(RelayRecords.contradictedByOwnText(node.listings, candidateById(id).film,
-        scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
-
-  /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
-   *  festival billed by its name alone ([[services.titles.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
-   *  a cast field listing the film's cast ([[CastEvidence.castIsTheFilms]]). */
-  private final case class Billing(festival: Boolean, silent: Boolean, castIsTheFilms: Boolean)
-  private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {
-    val listing = node.evidence.published
-    Billing(BillingPieces.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm),
-      node.listings.exists(_.listedCast.nonEmpty) && node.castIsTheFilms)
-  })
-  private val billingMemo = mutable.HashMap.empty[String, Billing]
-
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
    *  median runtime, the modal original title, and every candidate any of them named. The
@@ -503,7 +127,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
+      id => cluster.iterator.flatMap(denials.of(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
       reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked, textNames(cluster))
       .map(deniedByAMember(cluster))

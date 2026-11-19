@@ -25,7 +25,7 @@ package services.identity
  *  names another film exactly and the linked one not at all ([[FeedLink.TitledRival]]): the operator typed the title
  *  and picked the record from a search, and the title is the claim. DE Yorck's "Jin-Roh - Die Wolfsbrigade", linked to
  *  Kim Jee-woon's 2018 "Illang" with its 139 minutes and original title copied, is Okiura's 1999 anime. Never an older
- *  film against a link to a current release whose title carries the venue's at one edge (`FamilyScope.titledRival`): a
+ *  film against a link to a current release whose title carries the venue's at one edge (`FeedLinkOverrule.titledRival`): a
  *  release is billed under the head of its title, which an old namesake's record may carry whole. DE Cineamo's bare
  *  "Lieblingsmenschen", linked to Hufnagel's 2026 "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes &
  *  Amir", is no 65-minute 2021 "Lieblingsmenschen"; overruled, its 95 listings took none (2026-11-14). A current
@@ -48,7 +48,7 @@ private[identity] object FeedLink {
   val OverrulingSources = 2
   /** How many venues besides the node's must bill a current release a single source backs for it to overrule a link to an
    *  older film -- and more of them than bill the link, the node's own venue counted ([[FeedLink.venues]];
-   *  `FamilyScope.currentRelease`: the release's venues besides the node's, `> node.venues.size`). The doc said "more than
+   *  `FeedLinkOverrule.currentRelease`: the release's venues besides the node's, `> node.venues.size`). The doc said "more than
    *  the link's own venues besides", one fewer than the code asks and was measured with (ecedac9aa; the review,
    *  2026-10-30). */
   val ReleaseVenues = 2
