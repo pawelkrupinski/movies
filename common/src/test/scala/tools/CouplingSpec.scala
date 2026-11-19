@@ -107,7 +107,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
 
   "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
     Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
-      "limit\tfanout\t2", "limit\tfanout-measure\t2", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
+      "limit\tfanout\t2", "limit\tfanout-measure\t3", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
@@ -350,6 +350,37 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.fans(apart)(s"$split.Schedule")._2 shouldBe 3
     Coupling.fans(joined)(s"$together.Schedule")._2 shouldBe 3
     Coupling.baselineRows(joined, fanOutLimit = 2).filter(_.startsWith("fanout")) shouldBe Seq(s"fanout\t$together.Schedule\t3")
+  }
+
+  // ── a file's imports, which Zinc charges to its last class ──
+
+  private val imports = s"$fixture.imports"
+  private val importTops = tops(imports, "Booking", "Ledger", "Tally")
+  private val splitPackage = s"$fixture.split"
+  private val splitTops = tops(splitPackage, "Listing", "Venue", "Showtimes", "Schedule")
+  private def inImports(name: String) = s"$imports.$name"
+  private def inSplit(name: String) = s"$splitPackage.$name"
+
+  "the class a file's imports are charged to" should "be its last top-level definition, or its top-level definitions' wrapper" in {
+    val source = new String(Files.readAllBytes(RepoRoot.file("common/src/test/scala/tools/couplingfixture/imports/Charged.scala").toPath), "UTF-8")
+    Coupling.importOwner(source, importTops.values.toSet) shouldBe Some(inImports("Tally"))
+    Coupling.importOwner("package a\n\nimport b.C\n\nfinal class First\ndef helper: Int = 1\nfinal class Last\n",
+      Set("a.First", "a.Last", "a.Charged$package")) shouldBe Some("a.Charged$package")
+    Coupling.importOwner("package a\n\n@deprecated(\"x\") private[a] sealed abstract class Only\n// object Mentioned\n", Set("a.Only")) shouldBe Some("a.Only")
+    Coupling.importOwner("package a\n", Set("a.Gone")) shouldBe None
+  }
+
+  "a file's imports" should "be charged to the classes using them, not to the last class of the file" in {
+    val (booking, ledger, tally) = (inImports("Booking"), inImports("Ledger"), inImports("Tally"))
+    val (venue, listing, showtimes) = (inSplit("Venue"), inSplit("Listing"), inSplit("Showtimes"))
+    // Zinc's record of Charged.scala: each import's real use, and both imports charged to Tally, the last class -- with
+    // a tree-only use of Tally's that its class file does not show and no other class of the file accounts for
+    val zinc = Set(booking -> venue, ledger -> listing, tally -> venue, tally -> listing, tally -> showtimes)
+    val uses = Coupling.classFileUses(compiled(imports), importTops, splitTops)
+    uses shouldBe Map(booking -> Set(venue), ledger -> Set(listing), tally -> Set(listing))
+    val corrected = Coupling.withoutImportCharge(zinc, tally, uses(tally), importTops.values.toSet)
+    corrected shouldBe Set(booking -> venue, ledger -> listing, tally -> listing, tally -> showtimes)
+    Coupling.fans(Graph(Seq(booking, ledger, tally, venue, listing, showtimes).map(n => t(n)), corrected))(tally)._2 shouldBe 2
   }
 
   "a descriptor or a generic signature" should "name its classes, not its type variables or primitives" in {

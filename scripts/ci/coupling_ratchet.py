@@ -20,8 +20,8 @@
 # and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
 # carrying `Coupling: <why>`. A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
 # A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
-# name gone). A measurement fix (`limit fanout-measure` raised: a count that missed real uses) re-takes the rows at their
-# true values, as a changed limit does, under its `Coupling:` trailer.
+# name gone). A measurement fix (`limit fanout-measure` raised: a count that missed real uses, or charged a class with
+# another's) re-takes the rows at their true values, as a changed limit does, under its `Coupling:` trailer.
 #
 # A SPLIT (the owner, 2026-11-18; the union rule, 2026-11-18): a frozen class X cut into pieces may freeze the pieces
 # past the limit at their new values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>`

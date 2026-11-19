@@ -3,7 +3,8 @@
 # their class files (project/Coupling.scala). One row a fact,
 # `kind<TAB>key<TAB>value`:
 #   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; fanout-measure: how
-#                fan-out is counted (2: a class's uses of its own file's top-level classes too); new-package-ce: a
+#                fan-out is counted (2: a class's uses of its own file's top-level classes too; 3: a file's imports
+#                charged to the classes using them, not to its last class); new-package-ce: a
 #                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of
 #                that many types or more without a distance row (or an exemption) has at most this D
 #   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind
@@ -21,32 +22,32 @@
 # A row added or raised lands only in a commit carrying `Coupling: <why>` (CLAUDE.md, Design rules); a fall is
 # recorded by --update with no trailer. Module-edge weights are information: only the pair is held.
 limit	fanout	9
-limit	fanout-measure	2
+limit	fanout-measure	3
 limit	new-package-ce	8
 limit	distance	20
 limit	distance-min-types	8
-module-edge	common->base	56
+module-edge	common->base	55
 module-edge	common->geodata	12
-module-edge	common->http	68
+module-edge	common->http	64
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	499
+module-edge	identity->common	472
 module-edge	identity->http	6
-module-edge	scrapers->base	52
-module-edge	scrapers->common	1550
+module-edge	scrapers->base	51
+module-edge	scrapers->common	1538
 module-edge	scrapers->geodata	3
-module-edge	scrapers->http	369
+module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
-module-edge	web->base	31
-module-edge	web->common	590
+module-edge	web->base	30
+module-edge	web->common	574
 module-edge	web->geodata	1
-module-edge	web->http	19
-module-edge	web->identity	46
-module-edge	worker->base	81
-module-edge	worker->common	1671
-module-edge	worker->http	198
-module-edge	worker->identity	472
-module-edge	worker->scrapers	151
+module-edge	web->http	18
+module-edge	web->identity	42
+module-edge	worker->base	79
+module-edge	worker->common	1589
+module-edge	worker->http	182
+module-edge	worker->identity	473
+module-edge	worker->scrapers	149
 ce	clients	3
 ce	controllers	21
 ce	diagnostics	5
@@ -83,7 +84,7 @@ ce	services.tasks	14
 ce	services.tasktypes	0
 ce	services.titles	2
 ce	services.users	4
-ce	services.venuepages	12
+ce	services.venuepages	11
 ce	settings	2
 ce	tools	0
 fanout	controllers.AgentJudgedController	16
@@ -105,30 +106,22 @@ fanout	models.SpanishRoster	11
 fanout	models.UsRoster	11
 fanout	services.MongoConnection	19
 fanout	services.UptimeMonitor	11
-fanout	services.alerts.TelegramNotifier	10
 fanout	services.cinemas.common.CinemaScrapeRunner	11
 fanout	services.cinemas.common.FlicksClient	10
 fanout	services.cinemas.common.SourceFallbackScraper	14
 fanout	services.cinemas.pl.HeliosClient	10
 fanout	services.cinemas.roster.CopiedFeedDetector	11
-fanout	services.cinemas.roster.RosterSourceReader	12
+fanout	services.cinemas.roster.RosterSourceReader	11
 fanout	services.closure.ClosureSweep	22
-fanout	services.closure.GitHubRetirementDispatch	10
 fanout	services.config.EnvConfigService	13
 fanout	services.corpus.CinemaCorroboration	10
 fanout	services.corpus.CorpusCensus	22
 fanout	services.corpus.FilmCensus	10
 fanout	services.corpus.MovieService	28
 fanout	services.enrichment.FilmwebClient	11
-fanout	services.enrichment.FilmwebRatings	24
-fanout	services.enrichment.ImdbIdResolver	33
-fanout	services.enrichment.ImdbRatings	18
 fanout	services.enrichment.MetacriticClient	11
-fanout	services.enrichment.MetascoreRatings	15
 fanout	services.enrichment.OMDbClient	12
-fanout	services.enrichment.OmdbBackfill	17
 fanout	services.enrichment.RottenTomatoesClient	11
-fanout	services.enrichment.RottenTomatoesRatings	16
 fanout	services.enrichment.TmdbLessRatingLinks	10
 fanout	services.identity.Acceptance	23
 fanout	services.identity.AcceptanceCalibratedRules	12
@@ -145,7 +138,6 @@ fanout	services.identity.Corroboration	13
 fanout	services.identity.Families	21
 fanout	services.identity.FamilyIndex	34
 fanout	services.identity.FamilyScope	41
-fanout	services.identity.FilmShapes	19
 fanout	services.identity.IdentityListingIntake	25
 fanout	services.identity.IdentityMeasures	35
 fanout	services.identity.IdentityProjectionPlan	29
@@ -167,7 +159,7 @@ fanout	services.identity.ProjectionDrafting	38
 fanout	services.identity.ProjectionGuard	10
 fanout	services.identity.ProjectionIndex	11
 fanout	services.identity.ProjectionIndexing	21
-fanout	services.identity.ProjectionScope	12
+fanout	services.identity.ProjectionScope	11
 fanout	services.identity.ResolverDecisions	26
 fanout	services.identity.ResolverRun	31
 fanout	services.identity.SearchMeasures	10
@@ -183,9 +175,9 @@ fanout	services.identity.TitleTextMeasures	13
 fanout	services.identity.TrackedLookups	13
 fanout	services.identity.UnifiedEvidence	28
 fanout	services.identity.VenueSlotMemo	15
-fanout	services.identity.VenueSlots	23
+fanout	services.identity.VenueSlots	21
 fanout	services.identity.YearRuntimeMeasures	11
-fanout	services.identity.agreement.Agreement	42
+fanout	services.identity.agreement.Agreement	39
 fanout	services.identity.agreement.AgreementCandidates	32
 fanout	services.identity.agreement.AgreementCorrections	33
 fanout	services.identity.agreement.AgreementStage	58
@@ -201,11 +193,11 @@ fanout	services.identityadapters.AgreementQuestions	28
 fanout	services.identityadapters.CatalogueAnswerStore	12
 fanout	services.identityadapters.FamilyAnswerStore	20
 fanout	services.identityadapters.HistoryVenuePageStore	10
-fanout	services.identityadapters.IdentityModelService	27
-fanout	services.identityadapters.IdentityProjection	43
+fanout	services.identityadapters.IdentityModelService	26
+fanout	services.identityadapters.IdentityProjection	42
 fanout	services.identityadapters.IdentityStagingPublisher	11
 fanout	services.identityadapters.IdentityTmdbLayer	13
-fanout	services.identityadapters.LookupFill	29
+fanout	services.identityadapters.LookupFill	26
 fanout	services.identityadapters.ModelSnapshots	14
 fanout	services.identityadapters.PosterAnswerStore	11
 fanout	services.identityadapters.PosterHashing	11
@@ -219,7 +211,7 @@ fanout	services.identityadapters.StagingReading	13
 fanout	services.identityadapters.StagingSnapshots	22
 fanout	services.identityadapters.StoredFirstLookups	11
 fanout	services.identityadapters.StoredTmdbLookups	21
-fanout	services.identityadapters.TakeReads	12
+fanout	services.identityadapters.TakeReads	11
 fanout	services.identityadapters.TmdbChangesSweep	13
 fanout	services.identityadapters.TmdbFilmRefresh	17
 fanout	services.identityadapters.TmdbIdentityLookups	15
@@ -232,7 +224,7 @@ fanout	services.movies.CaffeineMovieCache	38
 fanout	services.movies.CinemaSlotBuilder	14
 fanout	services.movies.CinemaSlotReadings	13
 fanout	services.movies.CorpusHydrate	22
-fanout	services.movies.CorpusMirror	21
+fanout	services.movies.CorpusMirror	18
 fanout	services.movies.CorpusStreamApplies	21
 fanout	services.movies.FilmEvidence	10
 fanout	services.movies.FilmRereads	12
@@ -243,11 +235,10 @@ fanout	services.movies.KeyAddressedMovieWrites	11
 fanout	services.movies.MixedFilmDetector	10
 fanout	services.movies.MongoMovieRepository	47
 fanout	services.movies.MongoScreeningsRepository	26
-fanout	services.movies.MongoSlotsRepository	24
-fanout	services.movies.MovieCache	12
+fanout	services.movies.MongoSlotsRepository	23
 fanout	services.movies.MovieChangeStream	25
-fanout	services.movies.MovieCodecs	17
-fanout	services.movies.MovieRepository	16
+fanout	services.movies.MovieCodecs	13
+fanout	services.movies.MovieRepository	15
 fanout	services.movies.MovieSideStitch	17
 fanout	services.movies.MoviesChangeCursor	14
 fanout	services.movies.ResidentCorpus	13
@@ -278,36 +269,28 @@ fanout	services.review.ReviewCard	19
 fanout	services.review.ReviewCards	16
 fanout	services.review.ReviewDigest	10
 fanout	services.scrapes.ForwardingScrapeArchive	11
-fanout	services.scrapes.InMemoryScrapeArchiveRepository	15
+fanout	services.scrapes.InMemoryScrapeArchiveRepository	14
 fanout	services.scrapes.MongoScrapeArchiveRepository	20
-fanout	services.scrapes.ScrapeArchiveCodecs	18
+fanout	services.scrapes.ScrapeArchiveCodecs	11
 fanout	services.scrapes.ScrapeArchiveRepository	10
-fanout	services.sharecards.BackfilledShareCardLedger	10
 fanout	services.sharecards.CityCardService	16
 fanout	services.sharecards.RescrapePageSender	12
 fanout	services.sharecards.ShareCardBackfill	14
 fanout	services.sharecards.ShareCardInputs	11
-fanout	services.sharecards.ShareCardPosters	14
+fanout	services.sharecards.ShareCardPosters	10
 fanout	services.sharecards.ShareCardService	20
 fanout	services.tasks.CinemaContentCensus	13
-fanout	services.tasks.EnrichmentReaper	21
 fanout	services.tasks.InMemoryTaskQueue	12
 fanout	services.tasks.MongoTaskQueue	18
 fanout	services.tasks.PremiereRatingWatch	10
-fanout	services.tasks.QueueEnrichmentRetrigger	15
 fanout	services.tasks.RatingEnqueuer	13
 fanout	services.tasks.RatingRunCensus	12
-fanout	services.tasks.RatingSchedule	10
 fanout	services.tasks.TaskWorker	10
 fanout	services.titles.TitleNormalizer	11
 fanout	services.users.MongoUserStateRepository	15
-fanout	services.venuepages.DetailPages	24
-fanout	services.venuepages.DetailReaper	24
-fanout	services.venuepages.EnrichDetailsHandler	34
-fanout	services.venuepages.ReadVenuePageHandler	12
-fanout	services.venuepages.VenuePageReader	12
+fanout	services.venuepages.EnrichDetailsHandler	20
 fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
-distance	services.identity	41
+distance	services.identity	40
 distance	services.metrics	38
-distance	services.movies	39
+distance	services.movies	38

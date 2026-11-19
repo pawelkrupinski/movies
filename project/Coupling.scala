@@ -20,6 +20,9 @@ package kinowo.build
  * top-level classes of ONE source file are two classes: Zinc records no dependency between them (its compiler bridge
  * drops a dependency on the source being compiled), so their uses of each other are read from their class files
  * ([[sameFileEdges]], project/ClassReferences.scala) -- moving a collaborator into a class's file lowers no fan-out.
+ * And Zinc charges every import of a file to the file's LAST top-level class ([[importOwner]]), on top of each real use:
+ * that class keeps only the dependencies its class files confirm or no other class of the file accounts for
+ * ([[withoutImportCharge]]) -- a helper class appended to a file inherits none of the file's imports.
  *
  * Compiled twice: into the build (Scala 2.12) and into common's tests (Scala 3, CouplingSpec) -- so it is written in the
  * syntax both accept.
@@ -72,9 +75,39 @@ object Coupling {
    *  uses (ClassReferences, its class file) folded as Zinc's record is -- a nested, companion, anonymous or local class
    *  into its top-level class --, the self-edges dropped. `tops`: the source's binary names -> top-level classes. */
   def sameFileEdges(compiled: Seq[ClassReferences.Compiled], tops: Map[String, String]): Set[(String, String)] =
+    classFileUses(compiled, tops, Map.empty).toSeq.flatMap { case (from, uses) => uses.map(from -> _) }.toSet
+
+  /** The top-level classes each top-level class of ONE source uses, read from its class files (ClassReferences) and
+   *  folded as Zinc's record is: `tops` folds the source's own binary names, `others` every other production binary
+   *  name (a name neither folds -- a library class -- is left out), the self-uses dropped. */
+  def classFileUses(compiled: Seq[ClassReferences.Compiled], tops: Map[String, String], others: Map[String, String]): Map[String, Set[String]] =
     compiled.flatMap { c =>
-      foldBinary(c.name, tops).toSeq.flatMap(from => c.uses.toSeq.flatMap(u => foldBinary(u, tops)).filter(_ != from).map(to => from -> to))
-    }.toSet
+      foldBinary(c.name, tops).toSeq.flatMap(from => c.uses.toSeq.flatMap(u => foldBinary(u, tops).orElse(foldBinary(u, others))).filter(_ != from).map(from -> _))
+    }.groupBy(_._1).map { case (from, uses) => from -> uses.map(_._2).toSet }
+
+  private val TopLevelDefinition =
+    """(?m)^(?:@\w+(?:\([^)\n]*\))?\s+)*(?:(?:final|sealed|abstract|case|implicit|open|transparent|private(?:\[\w+\])?|protected(?:\[\w+\])?)\s+)*(?:class|trait|object|enum)\s+(\w+)""".r
+
+  /** The class Zinc charges a source's imports to. Scala 3's dependency extraction charges a dependency outside every
+   *  class -- a top-level import's -- to the LAST top-level definition of the file (`firstClassOrModule`, which folds the
+   *  tree keeping the last one it meets): the top-level definitions' wrapper `<file>$package` when the source has one (the
+   *  compiler appends it after every class), else the last class, trait, object or enum the source text defines at its
+   *  first column. `tops`: the source's top-level classes. None: the text defines none of them there. */
+  def importOwner(source: String, tops: Set[String]): Option[String] =
+    tops.find(_.endsWith("$package")).orElse {
+      TopLevelDefinition.findAllMatchIn(source).map(_.group(1)).toSeq.lastOption
+        .flatMap(simple => tops.find(t => t == simple || t.endsWith("." + simple)))
+    }
+
+  /** Zinc's edges with one source's import charge taken off. Zinc charges every import of the file to its
+   *  [[importOwner]], so an edge of the owner's is the import's, not a use of it, when the owner's own class files do not
+   *  use the class (`confirmed`: [[classFileUses]] of it) and another of the file's top-level classes (`classes`) is
+   *  recorded using it -- the import's real user (an unused import fails the build, so every import has one). The
+   *  owner's edges its class files confirm, or no other class of the file accounts for, stay; so does every other edge. */
+  def withoutImportCharge(zinc: Set[(String, String)], owner: String, confirmed: Set[String], classes: Set[String]): Set[(String, String)] = {
+    val usedByOthers: Set[String] = zinc.collect { case (from, to) if from != owner && classes(from) => to }
+    zinc.filterNot { case (from, to) => from == owner && !confirmed(to) && usedByOthers(to) }
+  }
 
   // ── modules ──
 
@@ -353,8 +386,9 @@ object Coupling {
   val DefaultFanOutLimit = 9
   /** How fan-out is measured, held as a limit row so a measurement fix re-takes the frozen rows (coupling_ratchet.py's
    *  `refrozen`, with its `Coupling:` trailer): 1, Zinc's record alone (a class's uses of the top-level classes of its own
-   *  file uncounted); 2, those counted ([[sameFileEdges]]). */
-  val FanOutMeasure = 2
+   *  file uncounted); 2, those counted ([[sameFileEdges]]); 3, a file's imports no longer charged to its last class
+   *  ([[withoutImportCharge]]). */
+  val FanOutMeasure = 3
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
   /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
@@ -394,7 +428,8 @@ object Coupling {
     "# their class files (project/Coupling.scala). One row a fact,",
     "# `kind<TAB>key<TAB>value`:",
     "#   limit        fanout: a class without a fanout row (or an exemption) has at most this fan-out; fanout-measure: how",
-    "#                fan-out is counted (2: a class's uses of its own file's top-level classes too); new-package-ce: a",
+    "#                fan-out is counted (2: a class's uses of its own file's top-level classes too; 3: a file's imports",
+    "#                charged to the classes using them, not to its last class); new-package-ce: a",
     "#                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of",
     "#                that many types or more without a distance row (or an exemption) has at most this D",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
