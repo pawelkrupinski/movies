@@ -270,7 +270,7 @@ web:controllers.BrowseFilterParamsSpec	web/src/main/resources/routes
 web:controllers.CityTrailingSlashRedirectSpec	web/src/main/resources/routes
 web:controllers.LegalControllerSpec	web/src/main/resources/routes
 web:controllers.RenamedFilmPathRedirectSpec	web/src/main/resources/routes
-web:controllers.ReviewControllerSpec	test/resources/fixtures/* web/src/main/resources/routes
+web:controllers.ReviewPagesSpec	test/resources/fixtures/* web/src/main/resources/routes
 web:controllers.ShareCardOgImageSpec	web/src/main/resources/routes
 web:controllers.WellKnownControllerSpec	web/src/main/resources/wellknown/apple-app-site-association
 web:modules.CountryIsolationMatrixSpec	web/src/main/resources/messages*
