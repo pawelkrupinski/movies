@@ -56,7 +56,7 @@ class NoUnwiredThreadsAndWaitsSpec extends AnyFlatSpec with Matchers {
     ("identity/src/main/scala/services/identity/PopulationMonotonicity.scala", Rule.PoolBuilt)     -> Scoped,
     ("identity/src/main/scala/services/identity/FamilyIndex.scala", Rule.PoolBuilt)                ->
       (Scoped + "; and the resolver's closure: touching it re-resolves every worker on deploy"),
-    ("identity/src/main/scala/services/identity/IncrementalResolver.scala", Rule.PoolBuilt)        ->
+    ("identity/src/main/scala/services/identity/Regions.scala", Rule.PoolBuilt)                    ->
       (Scoped + "; and the resolver's closure: touching it re-resolves every worker on deploy"),
     ("scrapers/src/main/scala/services/cinemas/roster/CopiedFeedDetector.scala", Rule.PoolBuilt)   -> Workstream,
     ("common/src/main/scala/services/movies/FilmRereads.scala", Rule.PoolBuilt)                    ->

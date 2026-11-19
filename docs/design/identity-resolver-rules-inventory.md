@@ -277,7 +277,7 @@ corpora (5 resolves), and the identity/hard-cluster integration specs (1,210 res
 | IdentityMeasures.shapes | IdentityMeasures:698 | no new shape | finite substrings | 6 / 3 (full), 5 / 3 (captures) | already a worklist |
 | FamilyClosure.families | FamilyClosure:51 | union-find | one pass | — | already union-find (path compression) |
 | ConstraintSolver.solveAs | ConstraintSolver:53 | tiers | one pass per tier | — | union-find; `cannot` sets merged without small-to-large |
-| PinConstraints.groupOf / IncrementalResolver.pack | | union-find | one pass | — | already |
+| PinConstraints.groupOf / Regions.pack | | union-find | one pass | — | already |
 | ProjectionScope.close | ProjectionScope:86 | closure | each node once | — | already a worklist |
 | AgreementStage.applied | | one pass of `orElse` per decision | `CorrectionsPerApply` 200, posters 64 | — | not a fixed point: answers filed → next apply |
 | SearchTitles.candidates, TitleDecorations.strip | | single pass | — | — | — |

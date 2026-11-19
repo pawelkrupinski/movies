@@ -40,6 +40,9 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty,
                                   filmTitled: Set[ListingKey] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
+  /** This decision with only what a stage after the model reads of its trace ([[DecisionTrace.kept]]). */
+  def withTraceKept: ResolverDecision = copy()(DecisionTrace.kept(this))
+
   lazy val listings: Set[ListingKey] = members.toSet
   /** The rule the first member whose node accepted the film alone accepted it by ([[DecidedBy]]'s fallback for a listing
    *  whose own node accepted none): the same for every member, so worked out once a decision, not once a listing — asked
@@ -147,6 +150,12 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet
   lazy val decisionOf: Map[ListingKey, ResolverDecision] = decisions.flatMap(d => d.members.map(_ -> d)).toMap
+}
+object Resolution {
+  /** The identity model's resolution ([[IncrementalResolver.resolution]]): its `decisions` and the `films` they took, over
+   *  its `nodes`, with no families, edges or lookups -- those are a whole resolve's. */
+  def ofModel(decisions: Seq[ResolverDecision], nodes: Int, films: Map[Int, IdentityMeasures.Film]): Resolution =
+    Resolution(decisions, nodes, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, films)
 }
 
 /** One constraint edge between two nodes (named by their smallest listing's sort key). */

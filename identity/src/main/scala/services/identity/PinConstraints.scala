@@ -113,3 +113,8 @@ final case class PinConstraints(pins: Seq[Pin]) {
           s"${members(head).mkString(", ")} pinned both to and never to film ${(films & denied).toSeq.sorted.mkString(", ")}")
     }
 }
+
+object PinConstraints {
+  /** No pins: every take the rules make stands. */
+  val None: PinConstraints = PinConstraints(Nil)
+}

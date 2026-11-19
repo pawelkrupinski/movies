@@ -31,7 +31,7 @@ object AnswersChanged { val Empty: AnswersChanged = AnswersChanged(Set.empty, Se
  *    merges them — until no re-resolved family shares a key with one left alone.
  */
 final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNormalizer, calibration: IdentityCalibration,
-                                pins: PinConstraints = PinConstraints(Nil),
+                                pins: PinConstraints = PinConstraints.None,
                                 decorations: TitleDecorations = TitleDecorations.resolver,
                                 store: IdentityModelStore = new InMemoryIdentityModelStore,
                                 rules: String = "",
@@ -96,9 +96,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // held in its place, under the held key object its families name: the stages after the model read those fields
     // off the model's listings (`listings`, which the projection's own listings adopt).
     arriving.foreach(listing => byKey.get(listing.key).foreach { keyed =>
-      val held = keyed.listing
-      if (held != null && (held ne listing) && held == listing && Listing.movedOutsideEquality(held, listing))
-        keyed.listing = listing.copy(key = held.key)
+      if (keyed.listing != null) Listing.republishedAs(keyed.listing, listing).foreach(keyed.listing = _)
     })
     val freshKeys  = fresh.iterator.map(_.key).toSet
     val arrived    = fresh ++ redetailed.filterNot(listing => freshKeys(listing.key))
@@ -154,8 +152,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  of worker-us's model thread (2026-10-05) for a reader that never looked at it. */
   def resolution: Resolution = {
     val decided = decisions
-    Resolution(decided, corpus.nodeCount, Map.empty, Nil, Nil, 0, 0, 0, 0, 0,
-      decided.flatMap(_.film).distinct.flatMap(id => corpus.candidate(id).map(id -> _.film)).toMap)
+    Resolution.ofModel(decided, corpus.nodeCount, corpus.films(decided.flatMap(_.film).distinct))
   }
 
   /** The questions and records the model's lookups do not know yet: what a fill should ask. */
@@ -238,8 +235,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
      *  it would be resolved alone, and the fold is the same. */
     private def round(units: Seq[Set[ListingKey]]): Seq[Set[ListingKey]] = {
       val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
-      val regions = IncrementalResolver.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
-      val resolved = IncrementalResolver.inOrder(regions, threads)(listings =>
+      val regions = Regions.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
+      val resolved = Regions.inOrder(regions, threads)(listings =>
         clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context)))
       resolved.foreach { result =>
         reResolved += result.size
@@ -287,7 +284,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
           byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration))
     }
-    clock.slices(settled.foreach(family => remember(family.copy(decisions = family.decisions.map(d => d.copy()(DecisionTrace.kept(d)))),
+    clock.slices(settled.foreach(family => remember(family.copy(decisions = family.decisions.map(_.withTraceKept)),
       context.slice(family.reads).digest)))
     val added   = settled.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
@@ -368,46 +365,6 @@ object IncrementalResolver {
     else { val kept = Listing.distinct(listings).toSet; listings.filter(kept).distinctBy(_.key) }
   /** One listing key's entry: the listing held (null once released) and its family (-1 for none). */
   private final class Keyed { var listing: Listing = null; var family: Int = -1 }
-
-  /** `units` — each a set of listings resolved together, never split — merged where they overlap
-   *  and packed, smallest first, into batches of at most `limit` listings (a unit larger alone). */
-  def pack(handed: Seq[Set[ListingKey]], limit: Int): Seq[Set[ListingKey]] = {
-    // Indexed: the merge reads units by index, and an update hands them over as a list.
-    val units = handed.toIndexedSeq
-    // Overlapping units merged by a union-find over their indices, each listing naming the first unit holding it.
-    val parent = Array.tabulate(units.size)(identity)
-    def root(i: Int): Int = { var r = i; while (parent(r) != r) r = parent(r); var j = i
-                              while (parent(j) != r) { val up = parent(j); parent(j) = r; j = up }; r }
-    val firstUnit = mutable.HashMap.empty[ListingKey, Int]
-    units.zipWithIndex.foreach { case (unit, i) =>
-      unit.foreach(key => firstUnit.get(key).fold(firstUnit(key) = i)(other => parent(root(i)) = root(other)))
-    }
-    val merged = units.indices.groupMapReduce(root)(units(_))(_ ++ _).values.toSeq
-    // Smallest first, ties by smallest listing: the packing is a function of the units, not of their order.
-    val byFirst = ListingKey.ordering
-    merged.map(unit => (unit.size, unit.min(using byFirst), unit)).sortWith { case ((sa, fa, _), (sb, fb, _)) =>
-      sa < sb || (sa == sb && byFirst.lt(fa, fb)) }.map(_._3)
-      .foldLeft(Vector.empty[Set[ListingKey]]) { (batches, unit) =>
-        batches.lastOption match {
-          case Some(open) if open.size + unit.size <= limit => batches.init :+ (open ++ unit)
-          case _                                            => batches :+ unit
-        }
-      }
-  }
-
-  /** `f` of each of `items`, in their order: on the calling thread, or on at most `threads` threads of a pool made for the call (DaemonExecutors' bounded one)
-   *  (each item's work its own; the results gathered in order, the first failure thrown). The caller's switched-off
-   *  rules ([[RuleAblation]], held per thread) hold on every thread. */
-  private[identity] def inOrder[A, B](items: Seq[A], threads: Int)(f: A => B): Seq[B] =
-    if (threads <= 1 || items.sizeIs < 2) items.map(f)
-    else {
-      val off  = RuleAblation.switchedOff
-      val pool = tools.DaemonExecutors.boundedEC("identity-regions", math.min(threads, items.size))
-      try items.map(item => pool.submit(() => RuleAblation.disabling(off)(f(item)))).map { future =>
-        try future.get() catch { case e: java.util.concurrent.ExecutionException if e.getCause != null => throw e.getCause }
-      }
-      finally { val _ = pool.shutdownNow() }
-    }
 
   /** The most listings resolved together — in a full build or an event's update alike. A region is
    *  bounded by it unless one family is larger; 2,000 took over a minute a region in production. */

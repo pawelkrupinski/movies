@@ -79,6 +79,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // gets a fresh copy of the film, whose cached title forms are computed for that use and dropped
   // with it, never kept on the ~30k resident records (1.6M strings on the UK corpus when they were).
   def candidate(id: Int): Option[Candidate] = candidates.get(id).map(fresh)
+  /** The records of `ids` the corpus holds, each a fresh copy ([[candidate]]). */
+  def films(ids: Seq[Int]): Map[Int, IdentityMeasures.Film] = ids.flatMap(id => candidate(id).map(id -> _.film)).toMap
   // Read many times per resolve, changed per event: each view is built once after it changes. Built under the corpus's
   // lock: an update's regions may be resolved side by side (IncrementalResolver's `regionThreads`), each reading them.
   private var housesView: Option[StageRelays.Houses] = None

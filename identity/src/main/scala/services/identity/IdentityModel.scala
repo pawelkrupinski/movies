@@ -301,6 +301,12 @@ object Listing {
       (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
+  /** `now`, re-published equal to the `held` listing but moved outside the equality ([[movedOutsideEquality]]): to be held
+   *  in its place under `held`'s own key object, the one the model's families name. None where `now` is `held` itself, or
+   *  differs from it, or moved nothing. */
+  def republishedAs(held: Listing, now: Listing): Option[Listing] =
+    Option.when((held ne now) && held == now && movedOutsideEquality(held, now))(now.copy(key = held.key))
+
   /** `l`'s facts alone: its screenings, names and words (what re-publishes it daily, and most of its weight) off. */
   def factsAlone(l: Listing): Listing = l.copy(screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None)
 
