@@ -1,0 +1,53 @@
+IMDb row 'Kuzma' (2026): answered 7.4; id=tt1 rating=7.4 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=1; again answered -, writes=0
+IMDb row 'Snow Leopard' (2023): answered -; id=tt2 rating=6.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=1; again answered -, writes=0
+IMDb row 'Details Blocked' (2024): threw HttpStatusException; id=tt3 rating=5.0 slot=-; writes=0; again threw HttpStatusException, writes=0
+IMDb row 'Unrated' (2026): answered -; id=tt4 rating=3.0 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=1; again answered -, writes=0
+IMDb row 'Rating Blocked' (2026): threw HttpStatusException; id=tt5 rating=2.0 slot=-; writes=0; again threw HttpStatusException, writes=0
+IMDb row 'Both Blocked' (2024): threw HttpStatusException; id=tt6 rating=2.0 slot=-; writes=0; again threw HttpStatusException, writes=0
+IMDb row 'No Such Title' (2024): answered -; id=tt8 rating=4.0 slot=-; writes=0; again answered -, writes=0
+IMDb row 'No Id' (2024): answered -; id=- rating=- slot=-; writes=0; again answered -, writes=0
+IMDb row 'Snow Held' (2023): answered -; id=tt7 rating=8.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=1; again answered -, writes=0
+IMDb walk: walked=Some(8) changed=Some(6) discovered=Some(0) failed=Some(1) message=tick done in Nms — 6 changed, 1 failed, 1 unchanged. writes=6
+  Kuzma (2026): id=tt1 rating=7.4 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Snow Leopard (2023): id=tt2 rating=6.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Details Blocked (2024): id=tt3 rating=6.0 slot=-
+  Unrated (2026): id=tt4 rating=3.0 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Rating Blocked (2026): id=tt5 rating=2.0 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Both Blocked (2024): id=tt6 rating=2.0 slot=-
+  No Such Title (2024): id=tt8 rating=4.0 slot=-
+  No Id (2024): id=- rating=- slot=-
+  Snow Held (2023): id=tt7 rating=8.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List())
+  cadence Detailsblocked|3|6.0
+  cadence Kuzma|1|7.4
+IMDb recheck: walked=Some(9) changed=Some(1) discovered=Some(0) failed=Some(3) message=1 of 9 row(s) changed, 3 failed writes=4
+  Kuzma (2026): id=tt1 rating=7.4 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Snow Leopard (2023): id=tt2 rating=6.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Details Blocked (2024): id=tt3 rating=5.0 slot=-
+  Unrated (2026): id=tt4 rating=3.0 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Rating Blocked (2026): id=tt5 rating=2.0 slot=-
+  Both Blocked (2024): id=tt6 rating=2.0 slot=-
+  No Such Title (2024): id=tt8 rating=4.0 slot=-
+  No Id (2024): id=- rating=- slot=-
+  Snow Held (2023): id=tt7 rating=8.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List())
+  cadence Kuzma|1|7.4
+OMDb row 'Aftersun' (2022): answered imdbId tt19770238; id=tt19770238; writes=1; attempts=[]; again answered -, writes=0
+OMDb row 'Po słońcu' (2022): answered imdbId tt19770238; id=tt19770238; writes=1; attempts=[]; again answered -, writes=0
+OMDb row 'Unknown Film' (2020): answered -; id=-; writes=0; attempts=[Unknown Film|2020@1]; again answered -, writes=0
+OMDb row 'Aftersun' (2021): answered imdbId tt19770238; id=tt19770238; writes=1; attempts=[]; again answered -, writes=0
+OMDb row 'Identified' (2022): answered -; id=tt0000005; writes=0; attempts=[]; again answered -, writes=0
+OMDb row 'No Tmdb' (2022): answered -; id=-; writes=0; attempts=[]; again answered -, writes=0
+OMDb row 'Broken' (2022): threw HttpStatusException; id=-; writes=0; attempts=[]; again threw HttpStatusException, writes=0
+OMDb walk: walked=Some(7) changed=Some(3) discovered=Some(0) failed=Some(1) message=backfill done over 7 row(s) — 3 identifier(s) recovered, 1 lookup(s) failed. writes=3 attempts=[Unknownfilm|2020@1]
+  Aftersun (2022): id=tt19770238
+  Po słońcu (2022): id=tt19770238
+  Unknown Film (2020): id=-
+  Aftersun (2021): id=tt19770238
+  Identified (2022): id=tt0000005
+  No Tmdb (2022): id=-
+  Broken (2022): id=-
+OMDb walk, budget spent: walked=Some(5) changed=Some(0) discovered=Some(0) failed=Some(0) message=backfill done over 5 row(s) — 0 identifier(s) recovered, 0 lookup(s) failed, 5 left for a later sweep (OMDb budget). writes=0 attempts=[]
+  Aftersun (2022): id=-
+  Po słońcu (2022): id=-
+  Unknown Film (2020): id=-
+  Aftersun (2021): id=-
+  Broken (2022): id=-

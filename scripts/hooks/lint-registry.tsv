@@ -170,6 +170,7 @@ repochecks:deploy.WorkflowPlanSpec	@repo
 repochecks:deploy.WorkflowScriptsRunnableSpec	@repo android/gradlew
 worker:scripts.ToolCommandLinesSpec	@repo *.scala test/resources/fixtures/*
 worker:services.enrichment.NoTraktIntegrationSpec	@repo *.scala
+worker:services.enrichment.ImdbSourcesReplaySpec	test/resources/fixtures/imdb-sources-replay.txt test/resources/fixtures/imdb/* test/resources/fixtures/omdb/*
 worker:services.enrichment.RatingSitesReplaySpec	test/resources/fixtures/rating-sites-replay.txt test/resources/fixtures/metacritic/* test/resources/fixtures/rottentomatoes/* test/resources/fixtures/filmweb/*
 worker:services.movies.ListingConstraintsRoutingSpec	@repo *.scala
 worker:tools.AgreementStageCompositionSpec	@repo *.scala
