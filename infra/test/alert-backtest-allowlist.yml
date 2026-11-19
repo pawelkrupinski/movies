@@ -12,6 +12,9 @@ defaults:
   max_firing_fraction: 0.05
   # One distinct episode a day, averaged over the window.
   max_episodes_per_week: 7
+  # A noisy alert watched for fewer days than this (its metrics rolled out since) is YOUNG: reported, judged once it
+  # has lived this long (Alert backtest #5: CI-regression alerts failed at "100%" of under three days).
+  min_judged_days: 7
 
 allow:
   MonitoringHeartbeat:

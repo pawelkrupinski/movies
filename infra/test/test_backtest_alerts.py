@@ -25,7 +25,7 @@ _SPEC = importlib.util.spec_from_loader("backtest_alerts", _LOADER)
 bt = importlib.util.module_from_spec(_SPEC)
 _LOADER.exec_module(bt)
 
-BUDGET = {"days": 14, "max_firing_fraction": 0.05, "max_episodes_per_week": 7}
+BUDGET = {"days": 14, "max_firing_fraction": 0.05, "max_episodes_per_week": 7, "min_judged_days": 7}
 
 
 def grid(n, step=60):
@@ -195,6 +195,22 @@ class Verdict(unittest.TestCase):
     def test_an_allowlisted_noisy_alert_does_not_fail(self):
         self.assertEqual(bt.verdict(stats(1.0, 1), BUDGET, {"noisy": True, "reason": "r"}, [], True),
                          ("noisy", None))
+
+    # Alert backtest #5 (run 44459271435): six landed harness fixes later the check still failed alerts it had watched
+    # for under three days -- CiJob/CiRun/CiStepDurationRegressed (metrics rolled out 11-16, rules rewritten 11-18) at
+    # "100% of the window", PosterProbeFailing (11-16) at 14.7/week from 5 episodes. A fraction of a two-day life is no
+    # verdict on a rule; the owner (2026-11-18): rules newer than the snapshot are skipped and reported.
+    def test_a_noisy_alert_watched_for_under_the_minimum_is_young_never_failed(self):
+        self.assertEqual(bt.verdict(stats(1.0, 4, days=1.6), BUDGET, {}, [], True), ("young", None))
+
+    def test_a_noisy_alert_watched_for_the_minimum_is_still_noisy(self):
+        self.assertEqual(bt.verdict(stats(1.0, 4, days=7), BUDGET, {}, [], True)[0], "noisy")
+        self.assertIsNotNone(bt.verdict(stats(1.0, 4, days=7), BUDGET, {}, [], True)[1])
+
+    def test_a_young_rule_that_returned_nothing_over_a_missing_metric_is_still_dead(self):
+        status, problem = bt.verdict(stats(0.0, 0, returned=False, days=1.6), BUDGET, {}, ["m"], True)
+        self.assertEqual(status, "dead")
+        self.assertIsNotNone(problem)
 
     def test_a_per_alert_budget_overrides_the_default(self):
         allow = {"max_firing_fraction": 0.2, "reason": "r"}

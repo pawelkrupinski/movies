@@ -233,7 +233,11 @@ def rollout_start(presence, grid, min_coverage=0.9):
 def verdict(stats, budget, allow, missing_metrics, deployed):
     """(status, problem or None) for one alert's statistics against its budget and allowlist.
 
-    status is one of: ok, quiet, noisy, dead, not-deployed, error.
+    status is one of: ok, quiet, noisy, young, dead, not-deployed, error. YOUNG: noisy over a window shorter than
+    `min_judged_days` -- its metrics rolled out that recently -- reported, never a failure: a fraction of a two-day life
+    is no verdict on a rule (the owner, 2026-11-18: rules newer than the snapshot are skipped and reported; Alert
+    backtest #5's CI-regression and poster alerts failed at "100%" of under three days). It is judged once it has
+    lived the minimum. Dead is judged at any age: no data is never healthy.
     """
     if stats.get("error"):
         return "error", "query failed: %s" % stats["error"]
@@ -261,6 +265,8 @@ def verdict(stats, budget, allow, missing_metrics, deployed):
         return "ok", None
     if allow.get("noisy"):
         return "noisy", None
+    if stats.get("days", budget["days"]) < budget.get("min_judged_days", 0):
+        return "young", None
     return "noisy", "; ".join(problems)
 
 
@@ -832,6 +838,7 @@ def run_backtest(args, prom, source):
         "days": args.days,
         "max_firing_fraction": float(defaults.get("max_firing_fraction", 0.05)),
         "max_episodes_per_week": float(defaults.get("max_episodes_per_week", 7)),
+        "min_judged_days": float(defaults.get("min_judged_days", 7)),
     }
 
     step = args.step
@@ -944,6 +951,13 @@ def run_backtest(args, prom, source):
                  "-" if obs is None else "%.2f%%" % (100 * obs), e["episodes"], e["peak_series"],
                  "  [since %s]" % e["metrics_rolled_out_at"] if "metrics_rolled_out_at" in e else "",
                  "  [allowlisted]" if "allowlisted" in e else ""))
+
+    young = [n for n in selected if report[n]["status"] == "young"]
+    if young:
+        print("\nnote: noisy, but watched for under %g days (their metrics rolled out since): judged once they have"
+              " lived that long, never failed before:" % budget["min_judged_days"])
+        for name in young:
+            print("  %s: since %s" % (name, report[name].get("metrics_rolled_out_at", "?")))
 
     pending = [n for n in selected if report[n]["status"] == "not-deployed"]
     if pending:
