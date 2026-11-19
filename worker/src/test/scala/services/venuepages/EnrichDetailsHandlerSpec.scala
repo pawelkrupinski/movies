@@ -63,7 +63,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -86,7 +86,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val bus      = new RecordingEventBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Denis Villeneuve"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus,
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus,
       dueWindow, clock = specClock, pages = new _root_.tools.UnacknowledgedVenuePageWrites(new InMemoryVenuePageStore), enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
@@ -113,7 +113,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(synopsis = Some("Spice"), director = Seq("Denis Villeneuve"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
 
     h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
     val row = cache.get(cache.keyOf("Dune", None)).get
@@ -137,7 +137,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     cache.put(cache.keyOf("Ojczyzna", None),
       MovieRecord(data = Map(a -> slot("Pora dla seniora: Ojczyzna"), b -> slot("Za drzwiami: Ojczyzna"), c -> slot("Ojczyzna przedpremierowo"))))
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Jan Komasa"))))
-    val h = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
 
     h.handle(taskFor("kino-apollo", cache, "Ojczyzna", enricher)) shouldBe Done
     val row = cache.get(cache.keyOf("Ojczyzna", None)).get
@@ -167,7 +167,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(runtimeMinutes = Some(112))))
     val task     = taskFor("kino-apollo", cache, "Rozważna i romantyczna", enricher, year = Some(2026))
-    def handle() = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    def handle() = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
       .handle(task) shouldBe Done
 
     handle()
@@ -196,7 +196,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     def land(detail: FilmDetail) = {
       val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain),
         uptimeOverride = Some("Cinema City Enrichment"))
-      new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+      EnrichDetailsHandlerOf(Map("cinema-city" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
         noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(taskFor("cinema-city", cache, "Afrykanska Przygoda", enricher, Some(2007)))
     }
     asked.clear()
@@ -224,7 +224,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // network source, health under one global name.
     val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail),
       target = Some(CinemaCityChain), uptimeOverride = Some("Cinema City Enrichment"))
-    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("cinema-city" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("cinema-city", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -258,7 +258,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
     val enricher = new FakeDetailEnricher(models.UkRoster("BarnCinemaDartingtonArtCentre"), "flicks|uk",
       Some(FilmDetail(director = Seq("Denis Villeneuve"), releaseYear = Some(2021))), sharedPages = true)
-    new EnrichDetailsHandler(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+    EnrichDetailsHandlerOf(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
       noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(taskFor("flicks|uk", cache, "Dune", enricher)) shouldBe Done
 
     val record = cache.get(cache.keyOf("Dune", None)).get
@@ -275,7 +275,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant())
 
@@ -286,7 +286,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "drop a task whose detail group has no enricher" in {
     val cache = seededCache("Dune")
-    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h     = EnrichDetailsHandlerOf(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task  = taskFor("gone", cache, "Dune", new FakeDetailEnricher(KinoApollo, "gone", None))
     h.handle(task) shouldBe Done
   }
@@ -296,7 +296,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -316,7 +316,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -338,7 +338,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // 503 describes the moment, not the url — the every-tick retry is correct here.
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(503, "GET", "http://ref", None)))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -356,7 +356,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(403, "GET", "http://ref", None)))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val h        = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     (1 to EnrichDetailsHandler.ImmediateRetries).foreach { _ =>
@@ -391,7 +391,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(genres = Seq("Biograficzny/Muzyczny"),
       posterUrl = Some("https://kino.pl/plakaty/Czas, który nie nadszedł.jpg"))))
     val task     = taskFor("kino-apollo", cache, "Mariinka", enricher)
-    def handle() = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+    def handle() = EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
       noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(task) shouldBe Done
     def slot = cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo))
 
@@ -417,7 +417,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task  = taskFor("kino-apollo", cache, "Lalka", had)
     val pages = new InMemoryVenuePageStore
 
-    new EnrichDetailsHandler(Map("kino-apollo" -> had), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> had), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
       .handle(task) shouldBe Done
     cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
       .flatMap(_.releaseYear) shouldBe Some(1968)
@@ -426,7 +426,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
     val has = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(releaseYear = Some(2026), runtimeMinutes = Some(162), director = Seq("Maciej Kawalski"))))
-    new EnrichDetailsHandler(Map("kino-apollo" -> has), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> has), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
       .handle(task) shouldBe Done
 
     val slot = cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
@@ -449,7 +449,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val pages = new InMemoryVenuePageStore
     def handle(detail: FilmDetail, task: DetailEnricher => Task) = {
       val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain))
-      new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus,
+      EnrichDetailsHandlerOf(Map("cinema-city" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus,
         dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(task(enricher)) shouldBe Done
     }
     def chainSlot = cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(CinemaCityChain))
@@ -485,7 +485,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain))
       val task     = taskFor("cinema-city", cache, "Dune", enricher)
       fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
-      new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus,
+      EnrichDetailsHandlerOf(Map("cinema-city" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus,
         dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(task) shouldBe Done
     }
     def chainSlot = cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(CinemaCityChain))
@@ -514,7 +514,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val pages    = new InMemoryVenuePageStore
     val enricher = new FakeDetailEnricher(models.UkRoster("BarnCinemaDartingtonArtCentre"), "flicks|uk",
       Some(FilmDetail(releaseYear = Some(2021))), sharedPages = true)
-    new EnrichDetailsHandler(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+    EnrichDetailsHandlerOf(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
       noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(taskFor("flicks|uk", cache, "Dune", enricher)) shouldBe Done
 
     val page = VenuePageKey("flicks|uk", "http://ref")
@@ -536,7 +536,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task  = taskFor("kino-apollo", cache, "Lalka", gone, year = Some(2026))
     val pages = new InMemoryVenuePageStore
 
-    new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> gone), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
       .handle(task) shouldBe Done
 
     // Days later the page comes back. Age the 404's own stamp so the due gate lets
@@ -546,7 +546,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     // own year has to survive.
     val back = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151), director = Seq("Wojciech Has"))))
-    new EnrichDetailsHandler(Map("kino-apollo" -> back), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> back), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
       .handle(task) shouldBe Done
 
     val slot = cache.get(cache.keyOf("Lalka", Some(2026))).flatMap(_.cinemaData.get(KinoApollo))
@@ -564,7 +564,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val page  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(countries = Seq("Belgia", "Niderlandy", "Niemcy"), genres = Seq("Dokument"), runtimeMinutes = Some(95))))
     val task  = taskFor("kino-apollo", cache, "Mariinka", page)
-    def handler = new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, fresh,
+    def handler = EnrichDetailsHandlerOf(Map("kino-apollo" -> page), cache, fresh,
       new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
     def slot = cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo))
 
@@ -589,7 +589,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       val cache = seededCache("Mariinka")
       val page  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
         Some(FilmDetail(countries = Seq("Niderlandy", "Belgia", "Holandia"))))
-      new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+      EnrichDetailsHandlerOf(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
         new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock,
         enrichmentLanguage = language).handle(taskFor("kino-apollo", cache, "Mariinka", page)) shouldBe Done
       cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.countries)
@@ -606,7 +606,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       val page = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(countries = countries)))
       val task = taskFor("kino-apollo", cache, "Mariinka", page)
       fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
-      new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, fresh,
+      EnrichDetailsHandlerOf(Map("kino-apollo" -> page), cache, fresh,
         new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages)
         .handle(task) shouldBe Done
       cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.countries)
@@ -625,7 +625,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val key   = cache.keyOf("Lalka", Some(2026))
     val task  = Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.pageDedupKey("kino-apollo", "http://ref"),
       EnrichDetailsTasks.payload(page, key, "http://ref"), attempts = 1)
-    new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
       new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(task) shouldBe Done
 
     val slot = cache.get(key).flatMap(_.cinemaData.get(KinoApollo))
@@ -648,7 +648,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val page = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(runtimeMinutes = Some(170))))
     val task = Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.pageDedupKey("kino-apollo", "http://ref"),
       EnrichDetailsTasks.payload(page, second, "http://ref"), attempts = 1)
-    new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
       new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(task) shouldBe Done
 
     cache.get(second).flatMap(_.data.get(showing)).flatMap(_.runtimeMinutes) shouldBe Some(170)
@@ -662,7 +662,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Denis Villeneuve"))))
     val current  = taskFor("kino-apollo", cache, "Dune", enricher)
     val queued   = current.copy(payload = current.payload - EnrichDetailsTasks.RowKey)
-    new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore,
       new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(queued) shouldBe Done
     cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.director) shouldBe Some(Seq("Denis Villeneuve"))
     withClue("the stored key must not split the dedup key: an old and a new task for one film are one task: ")(
@@ -676,7 +676,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val detail   = FilmDetail(director = Seq("Denis Villeneuve"), runtimeMinutes = Some(155), releaseYear = Some(2021))
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(detail))
     val dune     = seededCache("Dune")
-    new EnrichDetailsHandler(Map("kino-apollo" -> enricher), dune, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> enricher), dune, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
       clock = specClock, enrichmentLanguage = polish, pages = read).handle(taskFor("kino-apollo", dune, "Dune", enricher)) shouldBe Done
     read.get(VenuePageKey("kino-apollo", "http://ref")) shouldBe
       Some(VenuePage(VenuePageKey("kino-apollo", "http://ref"), VenuePage.Read(detail), specClock.instant()))
@@ -684,7 +684,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val goneStore = new InMemoryVenuePageStore
     val gone      = new FakeDetailEnricher(KinoApollo, "kino-apollo", failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val lalka     = seededCache("Lalka")
-    new EnrichDetailsHandler(Map("kino-apollo" -> gone), lalka, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> gone), lalka, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
       clock = specClock, enrichmentLanguage = polish, pages = goneStore).handle(taskFor("kino-apollo", lalka, "Lalka", gone)) shouldBe Done
     goneStore.get(VenuePageKey("kino-apollo", "http://ref")).map(_.outcome) shouldBe Some(VenuePage.Gone(404))
   }
@@ -693,7 +693,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val store    = new InMemoryVenuePageStore
     val failing  = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
     val cache    = seededCache("Dune")
-    new EnrichDetailsHandler(Map("kino-apollo" -> failing), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
+    EnrichDetailsHandlerOf(Map("kino-apollo" -> failing), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow,
       clock = specClock, enrichmentLanguage = polish, pages = store).handle(taskFor("kino-apollo", cache, "Dune", failing)) shouldBe Done
     store.get(VenuePageKey("kino-apollo", "http://ref")) shouldBe None
   }

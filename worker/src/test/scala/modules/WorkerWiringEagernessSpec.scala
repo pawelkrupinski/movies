@@ -41,6 +41,7 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     // Deferred detail
     override lazy val enrichDetailsHandler    = sentinel("enrichDetailsHandler")
     override lazy val detailReaper            = sentinel("detailReaper")
+    override lazy val detailReaperSchedule    = sentinel("detailReaperSchedule")
     // Movies corpus
     override lazy val unscreenedCleanup       = sentinel("unscreenedCleanup")
     override lazy val strandedSideRowsCleanup = sentinel("strandedSideRowsCleanup")
@@ -52,6 +53,7 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val ratingHandlers          = sentinel("ratingHandlers")
     override lazy val ratingEnqueuer          = sentinel("ratingEnqueuer")
     override lazy val enrichmentReaper        = sentinel("enrichmentReaper")
+    override lazy val enrichmentReaperSchedule = sentinel("enrichmentReaperSchedule")
     override lazy val omdbBackfillReaper      = sentinel("omdbBackfillReaper")
     // Read model
     override lazy val readModelRepository     = sentinel("readModelRepository")

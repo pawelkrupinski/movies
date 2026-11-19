@@ -1,7 +1,6 @@
 package services.venuepages
 
 import play.api.Logging
-import services.UptimeRecorder
 import services.cinemas.common.DetailEnricher
 import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskProducer}
 import services.tasktypes.TaskType
@@ -21,8 +20,8 @@ object ReadVenuePageTasks {
 /** Reads one venue page into venue_pages (`VenuePageReader`) and records it on /uptime. A page that
  *  failed for now is left unread: the listing waiting for it is taken in at its wait's limit. One the
  *  store did not take is asked again. */
-final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeRecorder,
-                                 freshness: services.freshness.FreshnessStore, clock: java.time.Clock)
+final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: RecordedPageReader,
+                                 schedule: DetailSchedule, clock: java.time.Clock)
     extends TaskHandler with Logging {
 
   override val taskType: TaskType = TaskType.ReadVenuePage
@@ -31,12 +30,11 @@ final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], 
     val page = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
     enrichersByGroup.get(task.payload.getOrElse(EnrichDetailsTasks.GroupKey, "")) match {
       case Some(enricher) if page.nonEmpty =>
-        val read = reader.read(enricher, page)
-        DetailUptime.record(uptime, enricher, page, read.outcome)
+        val read = reader.read(enricher, page, label = page)
         // Not tried until the store took it: no one asks for this page again, so the task does.
         if (read.unfiled) HandlerOutcome.Reschedule(Some(s"venue_pages did not take ${task.dedupKey}"))
         else {
-          freshness.markFresh(EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page), services.freshness.FreshnessKind.DetailEnrich, clock.instant())
+          schedule.attempted(enricher.detailGroup, page, clock.instant())
           HandlerOutcome.Done
         }
       case _ =>

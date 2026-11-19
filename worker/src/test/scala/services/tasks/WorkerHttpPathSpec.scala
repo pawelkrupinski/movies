@@ -115,7 +115,8 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
       val detailGroup                                  = "kino-apollo"
       def fetchFilmDetail(ref: String): Option[FilmDetail] = { wire.fetch.get(ref); None }
     }
-    val reader = new VenuePageReader(new InMemoryVenuePageStore, new InMemoryFreshnessStore, _ => (), clock)
+    val reader = new VenuePageReader(new InMemoryVenuePageStore,
+      new services.venuepages.DetailSchedule(new InMemoryTaskQueue, new InMemoryFreshnessStore, new DueWindow(6.hours)), _ => (), clock)
     reader.read(enricher, "https://kinoapollo.pl/film/a")
     runTask(TaskType.ReadVenuePage)(_ => { reader.read(enricher, "https://kinoapollo.pl/film/b"); HandlerOutcome.Done })
     runTask(TaskType.EnrichDetails)(_ => { reader.read(enricher, "https://kinoapollo.pl/film/c"); HandlerOutcome.Done })

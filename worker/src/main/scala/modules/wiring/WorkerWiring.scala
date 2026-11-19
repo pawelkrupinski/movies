@@ -301,10 +301,10 @@ class WorkerWiring(
     // Arm AFTER the heartbeat (so the first pulse is already stamped) — restart a
     // wedged-but-alive JVM the throttle watchdog can't see.
     boot.step("liveness watchdog")(livenessWatchdog.start())
-    boot.step("enrichment reaper")(enrichmentReaper.start())
+    boot.step("enrichment reaper")(enrichmentReaperSchedule.start())
     // Identity is the projection's (`IdentityProjectionWiring`), so no TMDB retry reaper starts. Venue
     // detail pages are still enriched: the model reads them.
-    boot.step("detail reaper")(detailReaper.start())
+    boot.step("detail reaper")(detailReaperSchedule.foreach(_.start()))
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())
     boot.step("tmdb changes sweep")(identityTmdbChangesSchedule.start())

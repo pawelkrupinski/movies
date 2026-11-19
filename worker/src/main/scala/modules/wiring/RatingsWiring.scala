@@ -7,8 +7,10 @@ import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
 import services.enrichment.{FilmwebRatings, ImdbRatings, ImdbRowUpdates, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, OmdbBackoff, OmdbSearch, RatingColumns, RatingSiteFilms, RottenTomatoesRatings, SiteRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
-import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
+import services.tasks.{BulkCadenceRecorder, ClaimedEnqueueReaper, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
 import services.tasktypes.TaskType
+
+import scala.concurrent.duration.DurationInt
 
 
 /** Rating refresh: the four rating sources (IMDb's `ImdbRatings`, each URL-keyed site's port run by
@@ -119,8 +121,10 @@ trait RatingsWiring { self: WorkerWiring =>
   // newcomer-fold kick (`MovieService.announceResolvedNewMovie`) so the two agree on
   // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.
   lazy val ratingEnqueuer = new RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow, country)
-  lazy val enrichmentReaper = managedResources.stopping(new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
-    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
-    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer), clock = clock, ticks = ticks, threadPools = threadPools))
+  lazy val enrichmentReaper = new EnrichmentReaper(movieCache, freshnessStore, ratingEnqueuer,
+    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick, clock = clock)
+  // Its schedule: a tick every `enrichmentTickInterval`, one machine a window, held until the rating stamps hydrated.
+  lazy val enrichmentReaperSchedule = managedResources.stopping(new ClaimedEnqueueReaper(EnrichmentReaper.Occurrence,
+    () => enrichmentReaper.tick(), enrichmentTickInterval.value, initialDelay = 0.seconds, scheduledRunStore, clock,
+    ticks = ticks, threadPools = threadPools, ready = () => enrichmentReaper.ready, recordedAs = Some(EnrichmentReaper.Tick)))
 }

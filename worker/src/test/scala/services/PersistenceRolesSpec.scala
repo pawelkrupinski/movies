@@ -49,7 +49,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
       classOf[services.sharecards.ShareCardBackfill], classOf[services.identityadapters.VenuePageWait]
     ).flatMap(writerTypedIn(_, classOf[TaskQueue])) ++
       writerTypedIn(module("services.venuepages.ReadVenuePageTasks"), classOf[TaskQueue], "enqueue") ++
-      writerTypedIn(module("services.venuepages.EnrichDetailsTasks"), classOf[TaskQueue], "enqueueIfDueAs") shouldBe empty
+      writerTypedIn(classOf[services.venuepages.DetailSchedule], classOf[TaskQueue]) shouldBe empty
   }
 
   "the guard" should "see a writer-typed parameter, so the checks above are not vacuous" in {

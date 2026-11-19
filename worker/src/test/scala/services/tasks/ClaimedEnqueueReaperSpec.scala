@@ -65,4 +65,33 @@ class ClaimedEnqueueReaperSpec extends AnyFlatSpec with Matchers {
     }
     reaper.tickIfClaimed() shouldBe None   // the window already claimed: a no-op, which completes
   }
+
+  // The enrichment and detail reapers recorded their runs under their own names before they rode this schedule, and
+  // their stale alerts read those names: the name a run is recorded under is its own, the window claimed its occurrence's.
+  "A reaper recorded under its own name" should "record its runs by that name and claim its occurrence's window" in {
+    val clock     = new MutableClock(Instant.parse("2026-09-26T00:09:00Z"))
+    val scheduler = new ManualScheduler(clock)
+    val ticks     = new RecordingTickRecorder
+    val windows   = new InMemoryScheduledRunStore
+    val reaper    = new ClaimedEnqueueReaper("job", () => Enqueued(1, 0), 1.hour, 0.minutes, windows, clock, ticks = ticks,
+      threadPools = SpecThreadPools.scheduling(scheduler), recordedAs = Some("job-loop"))
+    reaper.start()
+    scheduler.advance(java.time.Duration.ZERO)
+    ticks.completedRuns shouldBe Seq("job-loop" -> 1.hour)
+    windows.claim(services.schedule.OccurrenceKey.at("job", clock.millis(), 1.hour, 0.seconds)) shouldBe false
+    reaper.stop()
+  }
+
+  "A reaper not ready yet" should "leave the window unclaimed for a replica that is" in {
+    val clock   = new MutableClock(Instant.parse("2026-09-26T00:09:00Z"))
+    val windows = new InMemoryScheduledRunStore
+    var ready   = false
+    var runs    = 0
+    def reaper  = new ClaimedEnqueueReaper("job", () => { runs += 1; Enqueued(1, 0) }, 1.hour, 0.minutes, windows, clock,
+      threadPools = tools.ThreadPools.Unmanaged, ready = () => ready)
+    reaper.tickIfClaimed() shouldBe None
+    ready = true
+    reaper.tickIfClaimed() shouldBe Some(TickRun.Completed)
+    runs shouldBe 1
+  }
 }

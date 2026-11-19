@@ -23,6 +23,9 @@ import scala.concurrent.duration._
  * (`FromBoot`), or at the start of each window, `Aligned(offset)` past the epoch-aligned boundary —
  * a daily job at a fixed time of day, whenever the replicas were deployed. An aligned reaper's boot
  * tick still claims the CURRENT window, so a window every replica slept through runs on boot.
+ *
+ * `ready` holds every tick until what `enqueue` reads has loaded (the freshness stamps a corpus reaper reads due-ness
+ * off): asked BEFORE the claim, so a replica not ready yet leaves the window to one that is, and a held tick completes.
  */
 class ClaimedEnqueueReaper(
   occurrence:   String,
@@ -35,34 +38,44 @@ class ClaimedEnqueueReaper(
   // Where each completed run is reported (`ScheduledTickStale`).
   ticks: TickRecorder = TickRecorder.Unrecorded,
   // Where the reaper's scheduler comes from (named after it); a spec hands in a stepped one.
-  threadPools: ThreadPools
+  threadPools: ThreadPools,
+  // Whether a tick may run yet: asked before the claim (see the class doc). Always, by default.
+  ready: () => Boolean = () => true,
+  // The name its runs are recorded under (`ScheduledTickStale`) and its scheduler is named: the occurrence's (its
+  // scheduler `<occurrence>-reaper`) by default.
+  recordedAs: Option[String] = None
 ) extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = threadPools.scheduler(s"$occurrence-reaper")
+  private val tick: String = recordedAs.getOrElse(occurrence)
+
+  private val scheduler: ScheduledExecutorService = threadPools.scheduler(recordedAs.getOrElse(s"$occurrence-reaper"))
 
   def start(): Unit = {
     scheduleNext(initialDelay)
-    ticks.started(occurrence, interval, initialDelay)
-    logger.info(s"$occurrence reaper started: enqueue once per ${interval.toSeconds}s.")
+    ticks.started(tick, interval, initialDelay)
+    logger.info(s"$tick reaper started: enqueue once per ${interval.toSeconds}s.")
   }
 
   /** Self-rescheduling tick: enqueue, then schedule the next reading `interval` afresh. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
       def run(): Unit = {
-        ScheduledTick.recorded(occurrence, interval, logger, ticks)(tickIfClaimed().getOrElse(TickRun.Completed))
+        ScheduledTick.recorded(tick, interval, logger, ticks)(tickIfClaimed().getOrElse(TickRun.Completed))
         scheduleNext(nextDelay())
       }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
 
-  /** Enqueue only if this machine wins the current window's occurrence claim: the run, or `None` when another
-   *  replica holds the window (a no-op, which completes). Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Option[TickRun] = {
-    val key = OccurrenceKey.at(occurrence, clock.millis(), interval, offset)
-    Option.when(runStore.claim(key))(enqueue().run)
-  }
+  /** Enqueue only if this machine is ready and wins the current window's occurrence claim: the run, or `None` when
+   *  not ready yet or another replica holds the window (a no-op, which completes). Package-private so tests can drive
+   *  it directly. */
+  private[services] def tickIfClaimed(): Option[TickRun] =
+    if (!ready()) None
+    else {
+      val key = OccurrenceKey.at(occurrence, clock.millis(), interval, offset)
+      Option.when(runStore.claim(key))(enqueue().run)
+    }
 
   /** How long until the tick after this one. Package-private so tests can read it. */
   private[tasks] def nextDelay(): FiniteDuration = timing match {

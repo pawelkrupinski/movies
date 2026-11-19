@@ -19,7 +19,13 @@ final case class VenuePageKey(detailGroup: String, page: String) {
 }
 
 /** What reading a venue page last said, and when: its detail, or that it is gone. */
-final case class VenuePage(key: VenuePageKey, outcome: VenuePage.Outcome, readAt: Instant)
+final case class VenuePage(key: VenuePageKey, outcome: VenuePage.Outcome, readAt: Instant) {
+  /** The freshness key this answer is stamped under: the page read (`pageRead`) or found gone (`pageGone`). */
+  def answerStamp: String = outcome match {
+    case VenuePage.Read(_) => EnrichDetailsTasks.pageRead(key.detailGroup, key.page)
+    case VenuePage.Gone(_) => EnrichDetailsTasks.pageGone(key.detailGroup, key.page)
+  }
+}
 
 object VenuePage {
   sealed trait Outcome
@@ -27,6 +33,15 @@ object VenuePage {
   final case class Read(detail: FilmDetail) extends Outcome
   /** The page is gone (404/410): asking again buys the same answer. */
   final case class Gone(code: Int) extends Outcome
+
+  /** What a fetch of the page at `key` answered, read at `at`: its detail, or that it is gone; `None` for a fetch that
+   *  failed for now, which says nothing of the page. */
+  def answered(key: VenuePageKey, outcome: services.cinemas.common.DetailFetchOutcome, at: Instant): Option[VenuePage] =
+    outcome match {
+      case services.cinemas.common.DetailFetchOutcome.Fetched(detail) => Some(VenuePage(key, Read(detail), at))
+      case services.cinemas.common.DetailFetchOutcome.Gone(code)      => Some(VenuePage(key, Gone(code), at))
+      case services.cinemas.common.DetailFetchOutcome.Failed          => None
+    }
 }
 
 /** What `venue_pages` holds of one page, in one read: its last read, if any, and what the film rows last took of it

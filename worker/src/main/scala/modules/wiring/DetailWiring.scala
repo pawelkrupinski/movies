@@ -1,9 +1,13 @@
 package modules.wiring
 
-import services.venuepages.{DetailReaper, EnrichDetailsHandler}
+import services.tasks.ClaimedEnqueueReaper
+import services.venuepages.{DetailPages, DetailReaper, DetailSchedule, EnrichDetailsHandler, LandedPages, ReadVenuePageHandler,
+  RecordedPageReader, VenuePageReader}
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.cinemas.common.DetailEnricher
+
+import scala.concurrent.duration.DurationInt
 
 
 /** Deferred per-film detail: the cinemas that scrape BARE and fill their detail
@@ -30,19 +34,18 @@ trait DetailWiring { self: WorkerWiring =>
   lazy val detailEnrichers: Seq[DetailEnricher] =
     countryScrapers.collect { case de: DetailEnricher => de }
 
-  // The shared detail refresh schedule is `detailDueWindow`, an eager member of the
-  // root: the SAME instance backs the reaper (enqueue gate) and the handler (pickup
-  // gate) so they agree on "due" — see [[services.tasks.DueWindow]].
-  lazy val enrichDetailsHandler = new EnrichDetailsHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
-    freshnessStore, uptimeMonitor, eventBus, detailDueWindow, clock = clock,
-    screeningTokens = screeningTokens, pages = venuePageStore, enrichmentLanguage = country.language
-  )
+  /** Each detail enricher by the detail group a task names. */
+  lazy val detailEnrichersByGroup: Map[String, DetailEnricher] = detailEnrichers.map(de => de.detailGroup -> de).toMap
+  // The shared detail due schedule over `detailDueWindow`, an eager member of the root: the SAME instance backs the
+  // reaper (enqueue gate) and the handler (pickup gate) so they agree on "due" — see [[services.tasks.DueWindow]].
+  lazy val detailSchedule = new DetailSchedule(taskQueue, freshnessStore, detailDueWindow)
+  /** Every venue page a task reads: into venue_pages, stamped and announced on `bus`, and recorded on /uptime. */
+  def detailPageReader(bus: services.events.EventBus): RecordedPageReader =
+    new RecordedPageReader(new VenuePageReader(venuePageStore, detailSchedule, event => bus.publish(event), clock), uptimeMonitor)
+  lazy val enrichDetailsHandler = new EnrichDetailsHandler(detailEnrichersByGroup, detailSchedule, detailPageReader(eventBus),
+    movieCache, new LandedPages(venuePageStore, country.language), screeningTokens, clock)
   /** Reads a venue page into venue_pages for a listing no film row holds yet (a cut-over country's wait). */
-  lazy val readVenuePageHandler = new services.venuepages.ReadVenuePageHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap,
-    new services.venuepages.VenuePageReader(venuePageStore, freshnessStore, event => eventBus.publish(event), clock), uptimeMonitor,
-    freshnessStore, clock)
+  lazy val readVenuePageHandler = new ReadVenuePageHandler(detailEnrichersByGroup, detailPageReader(eventBus), detailSchedule, clock)
   // The detail reaper enqueues every due fetch, phase-spread + capped so a re-key cohort trickles
   // instead of dumping (~1k EnrichDetails in one tick, which pinned the shared-CPU credit). Same
   // lever as the scrape/rating reapers.
@@ -53,9 +56,13 @@ trait DetailWiring { self: WorkerWiring =>
   // Default 1min (≈360 ticks per 6h).
   def detailTickInterval: DetailTickInterval =
     configuration.detailTickInterval(DetailTickInterval(DetailReaper.DefaultTickInterval))
-  lazy val detailReaper = managedResources.stopping(new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore,
-    dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    runStore = scheduledRunStore, clock = clock, ticks = ticks,
+  lazy val detailReaper = new DetailReaper(movieCache, detailSchedule,
     // The model reads every listing's page.
-    pages = services.venuepages.DetailPages.PerPage, threadPools = threadPools))
+    new DetailPages.PerPage(detailEnrichers), maxEnqueuePerTick = maxDetailEnqueuePerTick, clock = clock)
+  // Its schedule, only for a country with a deferred cinema: a tick every `detailTickInterval`, one machine a window,
+  // held until the detail stamps hydrated.
+  lazy val detailReaperSchedule: Option[ClaimedEnqueueReaper] = managedResources.stoppingEach(
+    Option.when(detailEnrichers.nonEmpty)(new ClaimedEnqueueReaper(DetailReaper.Occurrence, () => detailReaper.run(),
+      detailTickInterval.value, initialDelay = 0.seconds, scheduledRunStore, clock, ticks = ticks, threadPools = threadPools,
+      ready = () => detailReaper.ready, recordedAs = Some(DetailReaper.Tick))))
 }

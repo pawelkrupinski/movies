@@ -1,18 +1,12 @@
 package services.tasks
 
-import services.movies.LatestTitleYear
-
-import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval}
+import settings.EnrichmentMaxEnqueuePerTick
 
 import play.api.Logging
-import tools.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 
 /**
@@ -49,25 +43,17 @@ import scala.concurrent.duration._
  * pickup using the SAME [[DueWindow]], so the handler skips a task iff this
  * reaper would no longer enqueue it (a race where another machine refreshed it
  * first) — never a task that is still due. On a multi-machine worker each tick is gated by a cluster-wide
- * occurrence claim ([[ScheduledRunStore]]) keyed by the tick window, so one
- * machine walks the corpus per tick, rotating — not every machine every tick.
+ * occurrence claim keyed by the tick window, so one machine walks the corpus per tick, rotating — not every machine
+ * every tick: the schedule and the claim are the [[ClaimedEnqueueReaper]] the composition root runs this on
+ * ([[EnrichmentReaper.Occurrence]], recorded as [[EnrichmentReaper.Tick]], held until [[ready]]).
  */
 class EnrichmentReaper(
   cache:     MovieCacheReader,
-  queue:     TaskProducer,
   freshness: FreshnessStore,
-  // The shared due schedule (each row refreshed once per its period, phase-spread
-  // across it). The SAME instance must back `RatingHandler` so this enqueue gate
-  // and that execution gate agree on what counts as due — see [[DueWindow]].
-  dueWindow: DueWindow = new DueWindow(4.hours),
-  // How often the reaper wakes to enqueue the slice of the corpus now due — the
-  // spread granularity. Smaller = flatter trickle, at the cost of more (cheap,
-  // in-memory) corpus scans. Defaults to 1min (≈240 ticks per 4h period). BY-NAME
-  // + a self-rescheduling tick (not fixed-delay) so an `/admin/config` flip of the
-  // interval applies mid-flight, on the next cycle, without a restart.
-  tickInterval: => EnrichmentTickInterval = EnrichmentTickInterval(EnrichmentReaper.DefaultTickInterval),
-  // A small spacing before the first tick (0 in tests that drive `tick` directly).
-  initialDelay: EnrichmentReaper.InitialDelay = EnrichmentReaper.InitialDelay(0.seconds),
+  // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate), shared with the newcomer-fold path so
+  // the two can't drift: the wiring hands `MovieService` the SAME instance for the newcomer kick. Its due schedule must
+  // be the instance `RatingHandler` re-gates on — see [[DueWindow]].
+  enqueuer:  RatingEnqueuer,
   // Cap on enqueues per tick. The phase spread keeps steady-state ticks small,
   // but a cold or long-down corpus has every row due at once; capping bounds that
   // recovery burst the same way `ScrapeReaper` does — the leftover stays due and
@@ -75,81 +61,39 @@ class EnrichmentReaper(
   // unaffected; the wiring sets a finite cap comfortably above the steady-state.
   // BY-NAME: read live each tick, so an `/admin/config` flip applies mid-flight.
   maxEnqueuePerTick: => EnrichmentMaxEnqueuePerTick = EnrichmentMaxEnqueuePerTick(Int.MaxValue),
-  runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:    Clock,
-  // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate),
-  // shared with the newcomer-fold path so the two can't drift. `None` builds one over
-  // this reaper's own queue/freshness/dueWindow (tests are unaffected); the wiring
-  // passes `Some(...)` of the SAME instance it hands `MovieService` for the newcomer kick.
-  enqueuer: Option[RatingEnqueuer] = None,
-  // Where each completed run is reported (`ScheduledTickStale`).
-  ticks: TickRecorder = TickRecorder.Unrecorded,
-  threadPools: ThreadPools
-) extends Stoppable with Logging {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
-
-  private val scheduler: ScheduledExecutorService = threadPools.scheduler("enrichment-reaper")
-
-  private val ratingEnqueuer: RatingEnqueuer =
-    enqueuer.getOrElse(new RatingEnqueuer(queue, freshness, dueWindow))
-
-  def start(): Unit = {
-    scheduleNext(initialDelay.value)
-    ticks.started("enrichment-reaper", tickInterval.value, initialDelay.value)
-    logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed on an " +
-                s"adaptive cadence (base ${dueWindow.period.toHours}h, backing off per-film toward the cap when its " +
-                s"displayed value is stable), phase-spread over ticks every ${tickInterval.value.toSeconds}s.")
-  }
-
-  /** Self-rescheduling tick: run, then schedule the next one reading `tickInterval`
-   *  afresh — so an interval flip applies on the next cycle (a fixed-delay schedule
-   *  would freeze the boot-time value). */
-  private def scheduleNext(delay: FiniteDuration): Unit = {
-    scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.recorded("enrichment-reaper", tickInterval.value, logger, ticks)(tickIfClaimed().run); scheduleNext(tickInterval.value) }
-    }, delay.toMillis, TimeUnit.MILLISECONDS)
-    ()
-  }
-
-  /** Tick only if this machine wins the current tick window's occurrence claim —
-   *  otherwise another machine is walking the corpus for this window, so skip.
-   *  Package-private for tests. */
-  private[tasks] def tickIfClaimed(): Enqueued = {
-    // Same boot-hydrate gate as DetailReaper: the rating stamps load in the rest
-    // phase, so until they land an empty mirror reads as "every row's rating stale"
-    // and re-enqueues up to maxEnqueuePerTick rating tasks (×4 sources) on every
-    // deploy. All rating kinds share the one rest-hydrate signal, so any one of
-    // them answers "are the rating stamps loaded"; an in-memory store is ready now.
-    if (!freshness.isReady(FreshnessKind.ImdbRating)) return Enqueued.Zero
-    val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval.value, 0.seconds)
-    if (runStore.claim(key)) tick() else Enqueued.Zero
-  }
+  clock:    Clock
+) extends Logging {
+  /** Whether a tick may run: the rating stamps have hydrated. They load in the rest phase, so until they land an empty
+   *  mirror reads as "every row's rating stale" and re-enqueues up to maxEnqueuePerTick rating tasks (×4 sources) on
+   *  every deploy. All rating kinds share the one rest-hydrate signal, so any one of them answers "are the rating stamps
+   *  loaded"; an in-memory store is ready now. Same boot-hydrate gate as DetailReaper's. */
+  def ready: Boolean = freshness.isReady(FreshnessKind.ImdbRating)
 
   /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`: how many were added, and how many
-   *  enqueues failed (logged by the queue; a run with any is not a completed one). Package-private, with an
-   *  injectable `nowMillis`, so tests can drive time. */
-  private[tasks] def tick(nowMillis: Long = clock.millis()): Enqueued = {
+   *  enqueues failed (logged by the queue; a run with any is not a completed one). An injectable `nowMillis`, so tests
+   *  can drive time. */
+  def tick(nowMillis: Long = clock.millis()): Enqueued = {
     val cap      = maxEnqueuePerTick.value
     val now      = Instant.ofEpochMilli(nowMillis)
     var enqueued = Enqueued.Zero
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued.added < cap) {
       val (key, record) = rows.next()
-      enqueued += ratingEnqueuer.enqueueDueFor(key, record, now, cap - enqueued.added)
+      enqueued += enqueuer.enqueueDueFor(key, record, now, cap - enqueued.added)
     }
     if (enqueued.added > 0) logger.info(s"EnrichmentReaper enqueued ${enqueued.added} due rating-refresh task(s).")
     if (enqueued.failed > 0) logger.warn(s"EnrichmentReaper: ${enqueued.failed} rating-refresh enqueue(s) failed this tick.")
     enqueued
   }
-
-  override def stop(): Unit = { scheduler.shutdown(); () }
 }
 
 object EnrichmentReaper {
 
-  /** How long after `start()` the first tick runs. */
-  final case class InitialDelay(value: FiniteDuration) extends AnyVal
+  /** The tick window's occurrence claim, one machine a window. */
+  val Occurrence = "enrich-sweep"
+
+  /** What each completed run is recorded as (`ScheduledTickStale`) and its scheduler named. */
+  val Tick = "enrichment-reaper"
 
   /** How often the reaper wakes to enqueue the now-due slice of the corpus. At
    *  1min over a 4h period the corpus spreads across ~240 ticks, so each tick
