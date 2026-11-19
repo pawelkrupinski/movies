@@ -56,7 +56,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filmIds     = filmIdCounterStore,
       announce    = movieService.announceReidentified,
       drafter     = new services.identityadapters.ProjectionDrafter(
-        new services.identity.IdentityProjectionPlan.Drafts(titleNormalizer,
+        new services.identity.ProjectionDrafts(titleNormalizer,
           new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens,
           identityListingIntake.rowsOf)(using services.movies.LatestTitleYear(clock)),
         titleNormalizer, movieService.withFilmDetails, venueSlotFingerprints, logger),

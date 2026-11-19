@@ -66,7 +66,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   private def plan(listings: Seq[ProjectedListing], r: Resolution, stored: Seq[StoredMovieRecord] = Nil,
                    counters: FilmIdCounters = FilmIdCounters.empty, slots: CinemaSlotBuilder = slots): ProjectionPlan = {
     val d = draftWhole(listings, r, stored, counters, normalizer, slots, tokens, rowsOf(listings))
-    val p = IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
+    val p = FilmKeys.finish(d, normalizer, id => stored.exists(_.id == id))
     p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
   }
 
@@ -144,7 +144,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val memo   = new VenueSlotMemo(0L)
     val first  = draftWhole(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     memo.endTick()
-    val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
+    val firstPlan = FilmKeys.finish(first, normalizer, _ => false)
     val stored = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
     val again  = draftWhole(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     val byId   = stored.map(s => s.id -> s.record).toMap
@@ -162,7 +162,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       memo.endTick(); shapes.commit(whole = true); d
     }
     val first     = drafted(Nil, FilmIdCounters.empty)
-    val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
+    val firstPlan = FilmKeys.finish(first, normalizer, _ => false)
     val held      = first.drafts.map(d => d.counter -> shapes.get(d.counter).get.keys).toMap
     val stored    = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
     drafted(stored, counters(firstPlan)).drafts.foreach(d => assert(shapes.get(d.counter).get.keys eq held(d.counter), s"${d.counter}: keys copied"))

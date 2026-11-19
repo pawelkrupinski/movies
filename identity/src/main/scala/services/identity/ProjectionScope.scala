@@ -51,7 +51,7 @@ final case class ProjectionIndex(byKey: Map[ListingKey, ProjectedListing], store
   def placed(id: String): Boolean = listingsOf.contains(id)
 
   /** Each stored film's PLAIN key — the `title|year` it is stored under, or would be were an older film of that title and
-   *  year not holding it (`title~counter|year`, [[IdentityProjectionPlan.finish]]) — and the stored films under each:
+   *  year not holding it (`title~counter|year`, [[FilmKeys.finish]]) — and the stored films under each:
    *  worked out once per index, however often a scope is widened over it. */
   lazy val storedByPlainKey: Map[String, Seq[String]] =
     storedById.valuesIterator.map(r => ProjectionScope.plainKey(r.key(normalizer)) -> r.id.value).toSeq.groupMap(_._1)(_._2)
@@ -83,7 +83,7 @@ object ProjectionIndex {
  * A film's draft reads, besides its own listings' rows: its listings' previous films (`previousOf`), the clusters those
  * films' listings fall in (ids are handed out by OVERLAP — [[IdAssigner]]; a cluster is every listing of its TMDB film,
  * the index joins them), and every film whose plain title key is its own (the older one keeps it —
- * [[IdentityProjectionPlan.finish]]). [[close]] follows the first two from the changes until nothing new is reached; the
+ * [[FilmKeys.finish]]). [[close]] follows the first two from the changes until nothing new is reached; the
  * key collisions, known only once the drafts are titled, are followed by the caller ([[widened]]) and closed again.
  *
  * The changes ([[LiveProjectionIndex.update]]) are everything a projection reads that moved since the last one: a

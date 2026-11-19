@@ -11,9 +11,9 @@ import scala.util.{Failure, Success, Try}
  *  slots (`drafts`, [[IdentityProjectionPlan.draftOf]]) — the venue slot memo's where nothing a slot is built from moved,
  *  its fingerprints recorded (`identity_slot_fingerprints`) so a restarted worker reuses them, and each film as last
  *  drafted ([[FilmShapes]]) so a scoped projection works out only the venues that moved — then its TMDB details fetched
- *  by id ([[ProjectionDrafter.detailed]]), then titled and keyed ([[IdentityProjectionPlan.finish]]). `details` is a
+ *  by id ([[ProjectionDrafter.detailed]]), then titled and keyed ([[FilmKeys.finish]]). `details` is a
  *  film's record with the TMDB details of `film`. Logs under the projection's `logger`. */
-final class ProjectionDrafter(drafts: IdentityProjectionPlan.Drafts, normalizer: TitleNormalizer,
+final class ProjectionDrafter(drafts: ProjectionDrafts, normalizer: TitleNormalizer,
                               details: (MovieRecord, Int) => Option[MovieRecord], fingerprints: VenueSlotFingerprints,
                               logger: play.api.Logger,
                               /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */

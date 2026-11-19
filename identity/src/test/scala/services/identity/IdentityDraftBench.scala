@@ -159,8 +159,8 @@ object IdentityDraftBench {
         d.copy(record = d.record.copy(data = d.record.data + (models.Tmdb -> models.SourceData(title = Some(s"Film $film"))))))))
       val counts = memo.endTick(retainUnseen = !scope.whole)
       val ((plan, changed), restS, restMB) = timed {
-        val plan = IdentityProjectionPlan.finish(draft, normalizer, stored.contains)
-        // As IdentityProjection.write: only the films that differ from the stored (lean) records are completed.
+        val plan = FilmKeys.finish(draft, normalizer, stored.contains)
+        // As ProjectionWrite: only the films that differ from the stored (lean) records are completed.
         val changed = draft.complete(plan.films.filter(f => stored.get(f.id).forall(s =>
           s.key(normalizer) != f.key || !models.ShowtimesDigest.leanEqual(f.record, s.record))), id => stored.get(id).map(_.record))
         (plan, changed)

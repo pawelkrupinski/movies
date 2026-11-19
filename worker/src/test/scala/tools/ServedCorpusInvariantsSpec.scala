@@ -189,7 +189,7 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
 
   /** Found by `Identity model convergence` (runs 36722750256, UK and US): the resolver kept a lone
    *  "IT (2017)" apart from "It (2017)", and the projection stored the two under `it|2017` and
-   *  `it~<counter>|2017` — the same title and year, as `IdentityProjectionPlan.finish` means. The cache
+   *  `it~<counter>|2017` — the same title and year, as `FilmKeys.finish` means. The cache
    *  keys a row by its STORED key, so the check must too. */
   "duplicatedKeys" should "read each row's stored key, as the cache does, not one derived from its title and year" in {
     def row(id: String, storedKey: String) =

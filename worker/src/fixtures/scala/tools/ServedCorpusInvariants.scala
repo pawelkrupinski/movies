@@ -196,7 +196,7 @@ object ServedCorpusInvariants {
   /** Every key two or more `movies` documents answer to, as `key <- ids`, sorted — the key each row is
    *  STORED under, which is the one the cache keys it by (`StoredMovieRecord.cacheKey`, grouped by the
    *  rehydrate). Two films one title and year name are stored apart on purpose
-   *  (`IdentityProjectionPlan.finish`: `it|2017` and `it~7|2017`), and are two cache entries. */
+   *  (`FilmKeys.finish`: `it|2017` and `it~7|2017`), and are two cache entries. */
   def duplicatedKeys(rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[String] =
     rows.groupBy(_.key(normalizer))
       .collect { case (key, rs) if rs.sizeIs > 1 => s"$key <- ${rs.map(_.id.value).sorted.mkString(", ")}" }
