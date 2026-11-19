@@ -45,7 +45,7 @@ module-edge	scrapers->identity	8
 module-edge	web->base	31
 module-edge	web->common	604
 module-edge	web->geodata	1
-module-edge	web->http	18
+module-edge	web->http	19
 module-edge	web->identity	41
 module-edge	worker->base	81
 module-edge	worker->common	1627
