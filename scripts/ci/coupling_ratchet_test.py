@@ -510,6 +510,12 @@ def split_rows(*pieces: str, sweeper: int = None, readmodel_distance: int = 30, 
                 f"distance\tservices.web\t{web_distance}", drop=("distance\tservices.movies",))
 
 
+def frozen_sweeper(harness: RatchetHarness) -> str:
+    """The split tests' base: the sweeper frozen at 36, its references recorded."""
+    return harness.commit({BASELINE: split_rows(sweeper=36), REFS: SWEEPER_REFS,
+                           SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)}, "the sweeper, frozen at 36")
+
+
 class CouplingSplitTest(RatchetHarness):
     """A frozen class split honestly: `Coupling: split of <X>`, the pieces taking over X's code, each strictly below X's
     frozen value, the union of what they and X's remainder reference within X's frozen reference set at the base --
@@ -518,8 +524,7 @@ class CouplingSplitTest(RatchetHarness):
 
     def setUp(self):
         super().setUp()
-        self.base = self.commit({BASELINE: split_rows(sweeper=36), REFS: SWEEPER_REFS,
-                                 SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)}, "the sweeper, frozen at 36")
+        self.base = frozen_sweeper(self)
 
     def split(self, recorded: str, message: str, pass_text: str = None, sweeper_text=None) -> str:
         return self.commit({BASELINE: recorded, SWEEPER_PATH: sweeper_text, PLANNER_PATH: scala("SweepPlanner", PLANNED),
@@ -688,6 +693,87 @@ class CouplingSplitTest(RatchetHarness):
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
         self.assert_fails(recorded, "distance services.readmodel raised 30 -> 31", rng=f"{self.base}..{head}",
                           fanouts={PLANNER: deps(0, 16) + ["services.web.Fresh"], PASS: deps(17, 28)})
+
+
+class SplitCheckTest(RatchetHarness):
+    """`split-check` (scripts/coupling-report --check-split): the working tree's split judged by the ratchet's own
+    split_credit and frozen_growth before any commit carries the trailer -- and the ratchet, once it is committed with
+    the trailer the tool names, agrees, accepting what it accepted and refusing what it refused."""
+
+    VALID = CouplingSplitTest.VALID
+
+    def setUp(self):
+        super().setUp()
+        self.base = frozen_sweeper(self)
+
+    def write(self, files):
+        for path, text in files.items():
+            full = os.path.join(self.repo, path)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w") as f:
+                f.write(text)
+
+    def split_check(self, current, fanouts, *pieces):
+        current_path, fanouts_path = os.path.join(self.dir.name, "current.tsv"), os.path.join(self.dir.name, "fanouts.tsv")
+        with open(current_path, "w") as f:
+            f.write(current)
+        with open(fanouts_path, "w") as f:
+            f.write("".join(fanout_line(c, n) for c, n in fanouts.items()))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+                   GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        args = [sys.executable, "-I", TOOL, "split-check", "--current", current_path, "--fanouts", fanouts_path,
+                "--split", "ReadModelSweeper", "--base", self.base]
+        for p in pieces:
+            args += ["--into", p]
+        done = subprocess.run(args, cwd=self.repo, env=env, capture_output=True, text=True)
+        return done.returncode, done.stdout + done.stderr
+
+    def uncommitted_split(self):
+        self.write({PLANNER_PATH: scala("SweepPlanner", PLANNED), PASS_PATH: scala("SweepPass", PASSED)})
+        os.remove(os.path.join(self.repo, SWEEPER_PATH))
+
+    def test_an_honest_split_in_the_working_tree_is_accepted_and_the_ratchet_agrees(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=32)
+        self.uncommitted_split()
+        rc, out = self.split_check(recorded, self.VALID, "SweepPlanner", "SweepPass")
+        self.assertEqual(0, rc, out)
+        for said in (f"piece {PLANNER}: fan-out 17 -- below 36", f"piece {PASS}: fan-out 11 -- below 36",
+                     f"of them outside {SWEEPER}'s set: 0 (a subset)", "distance services.readmodel: 30 -> 32 -- rose within",
+                     f"commit it with: Coupling: split of {SWEEPER} into {PLANNER}, {PASS}"):
+            self.assertIn(said, out)
+        head = self.commit({BASELINE: recorded}, f"split the sweeper\n\nCoupling: split of {SWEEPER} into {PLANNER}, {PASS}")
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_piece_adding_a_dependency_is_refused_and_the_ratchet_agrees(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11")
+        fanouts = {PLANNER: deps(0, 16) + ["services.web.Fresh"], PASS: deps(17, 28)}
+        self.uncommitted_split()
+        rc, out = self.split_check(recorded, fanouts, "SweepPlanner", "SweepPass")
+        self.assertEqual(1, rc, out)
+        for said in ("REFUSED: split of", "outside", "services.web.Fresh", f"REFUSED: fanout {PLANNER} added at 17",
+                     "the union rule", "scripts/coupling-report --check-split"):
+            self.assertIn(said, out)
+        head = self.commit({BASELINE: recorded}, f"split the sweeper\n\nCoupling: split of {SWEEPER} into {PLANNER}, {PASS}")
+        self.assert_fails(recorded, "A `Coupling: split of <X>` CLAIM IS REFUSED", "services.web.Fresh",
+                          "scripts/coupling-report --check-split", rng=f"{self.base}..{head}", fanouts=fanouts)
+
+    def test_a_distance_rise_past_the_tolerance_is_refused_and_the_ratchet_agrees(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=33)
+        self.uncommitted_split()
+        rc, out = self.split_check(recorded, self.VALID, "SweepPlanner", "SweepPass")
+        self.assertEqual(1, rc, out)
+        self.assertIn("distance services.readmodel: 30 -> 33 -- rose: refused", out)
+        self.assertIn("REFUSED: distance services.readmodel raised 30 -> 33", out)
+        head = self.commit({BASELINE: recorded}, f"split the sweeper\n\nCoupling: split of {SWEEPER} into {PLANNER}, {PASS}")
+        self.assert_fails(recorded, "distance services.readmodel raised 30 -> 33", rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_the_check_leaves_the_index_and_refs_untouched(self):
+        self.uncommitted_split()
+        status = lambda: self.scratch("scratch_git", "status", "--porcelain") + self.scratch("scratch_git", "rev-parse", "HEAD")
+        before = status()
+        self.split_check(split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11"), self.VALID, "SweepPlanner", "SweepPass")
+        self.assertEqual(before, status())
 
 
 class CouplingRefsTest(unittest.TestCase):

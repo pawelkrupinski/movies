@@ -45,6 +45,12 @@
 #       baseline grown or a layer table loosened between A and B by a commit of the range not carrying `Coupling:`
 #       (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
 #       class reference with its package edge) names the class references behind each refused edge.
+#   coupling_ratchet.py split-check --current <rows> --fanouts <file> --split <X> --into <A> [--into <B> ...] [--base REV]
+#       whether a split of X into those pieces, in the WORKING TREE, would pass: the same split_credit and
+#       frozen_growth `check` runs, over the range from REV (default: the merge base with origin/main) to a snapshot
+#       commit of the working tree, the measured rows standing for the baseline `--update` would write. Says each
+#       piece's fan-out against X's row, the union of their references against X's at REV, each distance row the split
+#       may move, and the trailer to commit it under; exit 0 accepted, 1 refused (scripts/coupling-report --check-split).
 #   coupling_ratchet.py refs --current <rows> --fanouts <file>
 #       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
 #       scripts/coupling-report --update writes to test/resources/coupling-fanout-refs.tsv.
@@ -260,15 +266,18 @@ def covered(target: str, refs: Set[str], members: Dict[str, List[str]]) -> bool:
                                  for c, ps in members.items())
 
 
-def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]) -> Tuple[Set[str], Set[str], List[str], List[str]]:
+def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts],
+                 claims: Optional[List[Tuple[str, List[str]]]] = None,
+                 explain: Optional[List[dict]] = None) -> Tuple[Set[str], Set[str], List[str], List[str]]:
     """The fanout rows of `after` that `rng`'s `Coupling: split of <X>` trailers honestly admit and the packages whose
     distance they may raise, with a note for each split admitted and a reason for each refused (the rule: the module
-    docstring, A SPLIT)."""
+    docstring, A SPLIT). `claims` judges those splits instead of the range's trailers (`split-check`, before any commit
+    carries one); `explain` collects, per claim, what the judgement read."""
     base, head = rng.split("..", 1)
     head = head or "HEAD"
     frozen, now = of_kind(before, "fanout"), of_kind(after, "fanout")
     added = sorted(k for k in now if k not in frozen and not moved(k, now[k], frozen, now))
-    claims = split_claims(rng)
+    claims = split_claims(rng) if claims is None else claims
     counts, targets = fanouts or ({}, {})
     base_refs = recorded_refs(file_at(base, REFS_PATH)) if claims else {}
     members = contract_members(file_at(base, EXEMPTIONS_PATH)) if claims else {}
@@ -327,6 +336,9 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
             why.append(f"the pieces add what {original} did not reference at {base[:12]}: {', '.join(new[:5])}"
                        + (", ..." if len(new) > 5 else "") + " -- a split adds no dependency")
         summary = f"split of {original} ({frozen[original]}) into {shown}"
+        if explain is not None:
+            explain.append({"original": original, "frozen": frozen[original], "pieces": pieces, "values": values,
+                            "union": union, "recorded": was, "new": new, "why": why})
         if why:
             refused.append(f"{summary}: " + "; ".join(why))
         else:
@@ -595,6 +607,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                   " frozen value, and reference (with what X keeps) nothing X did not:")
             for r in refused:
                 print(f"  - {r}")
+            print(SPLIT_RULE)
         frozen = frozen_growth(before, baseline, split, split_packages)
         if frozen:
             failed = True
@@ -661,6 +674,94 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
     return 1 if failed else 0
 
 
+SPLIT_RULE = ("  The rule (the union rule, 0545f3a27; the D tolerance, 2cfa0ee95): every piece strictly below X's frozen fan-out,"
+              " each taking over X's code,\n  the UNION of what the pieces and X's remainder reference within X's"
+              f" reference set at the base ({REFS_PATH}),\n  and a distance row of a package the split holds or reaches"
+              f" rising by {DISTANCE_SPLIT_TOLERANCE} hundredths at most. Check a split before committing it:\n"
+              "  scripts/coupling-report --check-split <X> <piece>...")
+
+
+def snapshot() -> str:
+    """A commit of the working tree (tracked and untracked, .gitignore respected) on top of HEAD, built in a copy of
+    the index: no ref, the index and the tree untouched."""
+    import shutil
+    import tempfile
+    index = git("rev-parse", "--git-path", "index").strip()
+    with tempfile.TemporaryDirectory() as d:
+        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(d, "index"))
+        if os.path.exists(index):
+            shutil.copy(index, env["GIT_INDEX_FILE"])
+        run = lambda *a: subprocess.run(["git", *a], check=True, capture_output=True, text=True, env=env).stdout.strip()
+        run("add", "-A")
+        return run("commit-tree", run("write-tree"), "-p", "HEAD", "-m", "split-check: the working tree")
+
+
+def default_base() -> str:
+    found = subprocess.run(["git", "merge-base", "HEAD", "origin/main"], capture_output=True, text=True)
+    return found.stdout.strip() if found.returncode == 0 else git("rev-parse", "HEAD").strip()
+
+
+def split_check(current_path: str, fanouts_path: str, original: str, pieces: List[str], base: str = "") -> int:
+    """`split-check` (the module docstring): the ratchet's own split_credit and frozen_growth over base..<the working
+    tree>, explained."""
+    base = base or default_base()
+    with open(current_path) as f:
+        measured = parse(f.read())
+    before = parse(file_at(base, BASELINE_PATH))
+    fanouts = read_fanouts(fanouts_path)
+    rng = f"{base}..{snapshot()}"
+    explain: List[dict] = []
+    admitted, packages, notes, refused = split_credit(rng, before, measured, fanouts, [(original, pieces)], explain)
+    if explain:  # the names as the ratchet resolved them (a simple name to its one class)
+        original, pieces = explain[0]["original"], explain[0]["pieces"]
+    print(f"split-check: {original} into {', '.join(pieces)}, the working tree against {base[:12]}")
+    for e in explain:
+        print(f"  {e['original']}: frozen at {e['frozen']} at the base, {len(e['recorded'])} references recorded ({REFS_PATH})")
+        counts = (fanouts or ({}, {}))[0]
+        if e["original"] in counts:
+            print(f"  {e['original']} (what it keeps): fan-out {counts[e['original']]}")
+        for piece in e["pieces"]:
+            v = e["values"].get(piece)
+            mark = "no class" if v is None else ("below" if v < e["frozen"] else "NOT below")
+            print(f"  piece {piece}: fan-out {'-' if v is None else v} -- {mark} {e['frozen']}")
+        print(f"  union of references: {len(e['union'])}, of them outside {e['original']}'s set: {len(e['new'])}"
+              + (f" ({', '.join(e['new'][:5])}{', ...' if len(e['new']) > 5 else ''})" if e["new"] else " (a subset)"))
+    reached = packages or ({package_of(c) for c in pieces + [original]})
+    old_d, new_d = of_kind(before, "distance"), of_kind(measured, "distance")
+    for pkg in sorted(set(old_d) | set(new_d)):
+        a, b = old_d.get(pkg), new_d.get(pkg)
+        if a == b:
+            continue
+        if a is None:
+            verdict = "NEW past the limit: refused"
+        elif b is None or b < a:
+            verdict = "fell"
+        elif pkg in packages and b - a <= DISTANCE_SPLIT_TOLERANCE:
+            verdict = f"rose within the split's {DISTANCE_SPLIT_TOLERANCE}: tolerated"
+        else:
+            verdict = "rose: refused" + ("" if pkg in reached else " (a package the split does not reach)")
+        print(f"  distance {pkg}: {'-' if a is None else a} -> {'-' if b is None else b} -- {verdict}")
+    grown = frozen_growth(before, measured, admitted, packages)
+    ours = {original, *pieces} | reached
+    mine = [g for g in grown if g.split(" ")[1] in ours]
+    others = [g for g in grown if g not in mine]
+    for note in notes:
+        print(f"ACCEPTED: {note}")
+    for r in refused:
+        print(f"REFUSED: {r}")
+    for g in mine:
+        print(f"REFUSED: {g}")
+    if others:
+        print("  (the range also holds rows outside this split the ratchet would refuse: " + "; ".join(others[:5])
+              + (", ..." if len(others) > 5 else "") + ")")
+    if refused or mine:
+        print(SPLIT_RULE)
+        return 1
+    print(f"commit it with: Coupling: split of {original} into {', '.join(pieces)}"
+          " (after scripts/coupling-report --update records the pieces' rows)")
+    return 0
+
+
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -672,6 +773,12 @@ def main(argv: List[str]) -> int:
     c.add_argument("--exemptions", default=EXEMPTIONS_PATH)
     c.add_argument("--fanouts", default="")
     c.add_argument("--range", action="append", default=[])
+    s = sub.add_parser("split-check")
+    s.add_argument("--current", required=True)
+    s.add_argument("--fanouts", required=True)
+    s.add_argument("--split", required=True)
+    s.add_argument("--into", action="append", required=True)
+    s.add_argument("--base", default="")
     r = sub.add_parser("refs")
     r.add_argument("--current", required=True)
     r.add_argument("--fanouts", required=True)
@@ -679,6 +786,8 @@ def main(argv: List[str]) -> int:
     try:
         if args.command == "refs":
             return refs(args.current, args.fanouts)
+        if args.command == "split-check":
+            return split_check(args.current, args.fanouts, args.split, args.into, args.base)
         return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions, args.fanouts)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)

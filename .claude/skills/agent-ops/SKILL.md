@@ -177,6 +177,9 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - A CI speed-up counts only when a CI run proves it (a Mac is not the 2-core runner).
 - Run a changed script's self-test on Linux (`scripts/run-script-tests --linux`) before landing it.
 - Start local checks beside a dispatch, not after it; wait in the background, never in foreground sleep loops.
+- Ratchet numbers are computed: a lane report pastes `scripts/ratchet-diff <base>..<head>` (`--measure` when a fall
+  may be unrecorded), and a split of a frozen class is checked with `scripts/coupling-report --check-split <X> <piece>...`
+  before committing it.
 
 ## Downtime policy
 

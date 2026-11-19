@@ -282,6 +282,8 @@ one, or a frozen row rising, fails until split or recorded (`scripts/quality-rep
 trailer); a fall needs none. A moved source keeps its rows only when git sees the rename (`git diff -M`) and no value
 rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `quality-hotspots` release's
 assets) ranks sources by 90-day relative churn × cognitive complexity and names change-coupled pairs across packages.
+A lane's report pastes `scripts/ratchet-diff <base>..<head>` (every changed row, fell / rose / new, `--measure` for
+unrecorded falls), never hand-written numbers; a split is checked with `scripts/coupling-report --check-split <X> <piece>...`.
 
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
