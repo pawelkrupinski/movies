@@ -3,13 +3,12 @@ package services.sharecards
 import models.{City, Country}
 import play.api.Logging
 import services.readmodel.ReadModelReader
-import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskProducer}
+import services.tasks.{DueWindow, Enqueued, TaskProducer}
 import services.tasktypes.TaskType
 import tools.{CityCardRenderer, Digest}
 
 import java.nio.file.{Files, Path}
-import java.time.{Clock, Instant}
-import java.util.concurrent.ConcurrentHashMap
+import java.time.Clock
 import scala.concurrent.duration.*
 import scala.util.Try
 
@@ -155,42 +154,4 @@ object CityCardService {
   val CityKey = "city"
 
   def dedupKey(city: City): String = s"city-card|${city.slug}"
-}
-
-/**
- * The cities whose last render failed or was refused, each held out of the reaper's ticks until its
- * wait is over: [[CityCardService.FirstFailureRetry]] after the first miss, doubling per further
- * miss up to [[CityCardService.MaxFailureRetry]]. A drawn card forgets the city. In memory, per
- * service: a restart asks every held city once more, which costs one render each.
- */
-final class CityCardBackoff(clock: Clock) {
-  import CityCardService.{FirstFailureRetry, MaxFailureRetry}
-  private final case class Miss(at: Instant, waitMillis: Long)
-  private val misses = new ConcurrentHashMap[String, Miss]()
-
-  /** True while the city's latest miss is inside its wait. */
-  def holds(slug: String, now: Instant): Boolean =
-    Option(misses.get(slug)).exists(miss => now.isBefore(miss.at.plusMillis(miss.waitMillis)))
-
-  def missed(slug: String): Unit = {
-    misses.compute(slug, (_, previous) => {
-      val waitMillis = Option(previous).fold(FirstFailureRetry.toMillis)(p => (p.waitMillis * 2).min(MaxFailureRetry.toMillis))
-      Miss(clock.instant(), waitMillis)
-    })
-    ()
-  }
-
-  def drawn(slug: String): Unit = { misses.remove(slug); () }
-}
-
-/** `RenderCityCard`: render the city's card when it is due. A failure is retried, then given up —
- *  the city keeps its old card, or the country's home card while it has none. */
-class RenderCityCardHandler(service: CityCardService, maxAttempts: Int = 3) extends TaskHandler {
-  val taskType: TaskType = TaskType.RenderCityCard
-  def handle(task: Task): HandlerOutcome =
-    task.payload.get(CityCardService.CityKey).flatMap(service.renderIfDue) match {
-      case Some(ShareCardMetrics.CityOutcome.Failed) if task.attempts < maxAttempts => HandlerOutcome.Reschedule(Some("the city card could not be drawn"))
-      case Some(_) => HandlerOutcome.Done
-      case None    => HandlerOutcome.Skipped
-    }
 }

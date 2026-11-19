@@ -6,11 +6,10 @@ import services.movies.LatestTitleYear
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClock, ShowtimesDigest}
+import models.{City, MovieRecord, Showtime, VenueClock, ShowtimesDigest}
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache, StoredMovieRecord}
 import services.titles.TitleNormalizer
-import services.readmodel.ReadModelProjection
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
@@ -285,110 +284,6 @@ object CorpusCensus {
         if (anyAhead) served((slug, WorkerSourceFilmsMetrics.Scope.All)) += 1
         if (anyTomorrow) served((slug, WorkerSourceFilmsMetrics.Scope.Tomorrow)) += 1
       }
-    }
-  }
-}
-
-/** One film's part in the [[CorpusCensus]], from the film as the cache holds it.
- *
- *  `subsets` has a bit per [[CorpusCensus.StaticSubsets]] the film belongs to. A film ready to project
- *  (`readyToProject`, the projector's own gate) files its screening venue slots under `cards` — one card per
- *  display-title group, as [[ReadModelProjection.partition]] splits it — and one that is not keeps them in
- *  `screenable`, for `unresolved_with_showtimes`. A venue slot with no showtime start is in neither: it screens nothing. */
-final class FilmCensus private (val subsets: Int, val ready: Boolean, val cinemaSlots: Int,
-                                private val bySource: Map[Source, SlotCensus], val cards: Seq[Seq[SlotCensus]],
-                                val screenable: Seq[SlotCensus], private val anchor: Option[String]) {
-  /** The part of the slot at `source`, if the film holds one there. */
-  private[corpus] def partAt(source: Source): Option[SlotCensus] = bySource.get(source)
-  /** Whether this part holds `other`'s very map of slot parts. */
-  private[corpus] def sameSlots(other: FilmCensus): Boolean = bySource eq other.bySource
-}
-
-object FilmCensus {
-  /** `stored`'s part. A slot the cache holds as the very object it held for `prior` keeps its derived part: a scrape
-   *  landing moves one slot of a film, and a film can hold thousands. */
-  def of(stored: StoredMovieRecord, normalizer: TitleNormalizer, prior: Option[FilmCensus])(using LatestTitleYear): FilmCensus = {
-    val record   = stored.record
-    val bySource = slotParts(record, prior, normalizer)
-    val ready    = record.readyToProject
-    val anchor   = Option.when(ready)(ReadModelProjection.anchorKeyOf(stored.asReadBack(normalizer), normalizer))
-    prior.filter(p => (p.bySource eq bySource) && p.ready == ready && p.anchor == anchor) match {
-      case Some(p) => new FilmCensus(subsetsOf(record), ready, bySource.size, bySource, p.cards, p.screenable, anchor)
-      case None    => fresh(subsetsOf(record), ready, bySource, anchor)
-    }
-  }
-
-  private def subsetsOf(record: MovieRecord)(using LatestTitleYear): Int =
-    CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
-      if (CorpusCensus.StaticSubsets(i)._2(record)) bits | (1 << i) else bits)
-
-  /** The film's venue slots' parts, over the prior part's own map: only a slot that is not the object it held is
-   *  derived again and put in, and a film whose slots all are keeps the map, its title groups and its screenable
-   *  slots — derived anew on every change of a film, they were kept until its next one, so promoted and left to die
-   *  old. */
-  private def slotParts(record: MovieRecord, prior: Option[FilmCensus], normalizer: TitleNormalizer): Map[Source, SlotCensus] = {
-    val held    = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
-    val cinemas = record.data.iterator.collect { case (source, slot) if Source.cinemaOf(source).isDefined => source -> slot }.toSeq
-    val gone    = held.keysIterator.filterNot(record.data.contains).toSeq
-    cinemas.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
-      if (map.get(source).exists(_.slot eq slot)) map else map.updated(source, SlotCensus(slot, Source.cinemaOf(source).get, normalizer))
-    }
-  }
-
-  private def fresh(subsets: Int, ready: Boolean, bySource: Map[Source, SlotCensus], anchor: Option[String]): FilmCensus = {
-    // Held as arrays, not lists: a wide film's part held a list cell per screening slot (24 bytes each), rebuilt on
-    // every change of the film — the largest named holder of dead list cells in worker-us's old generation (heap
-    // dump 2026-10-05: 9.1 MB).
-    val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).to(scala.collection.immutable.ArraySeq)
-    val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a))
-      .valuesIterator.to(scala.collection.immutable.ArraySeq))
-    new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening, anchor)
-  }
-}
-
-/** One venue slot's part: its title group ([[ReadModelProjection.titleKeyOf]]), its city, the zone its venue keeps
- *  time in, and its showtime starts — the lean slot's own array. */
-final class SlotCensus private (val slot: SourceData, val titleKey: Option[String], val city: Option[String],
-                                val zone: ZoneId, val starts: IArray[Int]) {
-  /** How many starts fall after `minute`. */
-  def startsAfter(minute: Int): Int = starts.length - firstAbove(minute)
-
-  /** Whether a start falls in `[from, until)`. */
-  def startsWithin(from: Int, until: Int): Boolean = {
-    val i = firstAbove(from - 1)
-    i < starts.length && starts(i) < until
-  }
-
-  /** The index of the first start above `minute`; the starts are ascending. */
-  private def firstAbove(minute: Int): Int = {
-    var low  = 0
-    var high = starts.length
-    while (low < high) { val mid = (low + high) >>> 1; if (starts(mid) <= minute) low = mid + 1 else high = mid }
-    low
-  }
-}
-
-object SlotCensus {
-  def apply(slot: SourceData, cinema: Cinema, normalizer: TitleNormalizer): SlotCensus =
-    new SlotCensus(slot, ReadModelProjection.titleKeyOf(slot, normalizer), City.forCinema(cinema).map(_.slug),
-      VenueClock.zoneOf(cinema, ZoneOffset.UTC), ShowtimesDigest.startMinutes(slot))
-}
-
-/** Where [[CorpusCensus]] reports a tick that could not count the whole corpus. A trait so the census stays testable
- *  without a Prometheus registry. */
-trait CorpusCensusMetrics {
-  def recordIncompleteSample(): Unit
-}
-
-object CorpusCensusMetrics {
-  val noop: CorpusCensusMetrics = new CorpusCensusMetrics { def recordIncompleteSample(): Unit = () }
-
-  /** Binds one country's slice of the shared counter, materializing the series at 0 up front: a healthy country must
-   *  be an explicit 0, not an absent series, or an alert on it has nothing to compare against. */
-  def prometheus(counter: Counter, countryCode: String): CorpusCensusMetrics = {
-    counter.labelValues(countryCode)
-    new CorpusCensusMetrics {
-      def recordIncompleteSample(): Unit = counter.labelValues(countryCode).inc()
     }
   }
 }
