@@ -34,7 +34,7 @@ class StageAnswers(answering: StageAnswers.Sources, docs: StageAnswers.Documents
     answering.posterImages, answering.country.language.getLanguage)
   private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
   /** The catalogue questions whose ask failed, and how often: the family questions' [[failures]] for the catalogue, as
-   *  production's memory records any failed ask (`AgreementHandlers.asking` -> `QuestionMemory.failed`). Without it a
+   *  production's memory records any failed ask (`AgreementAsker.asking` -> `QuestionMemory.failed`). Without it a
    *  question the recording cannot answer (a Wikidata id it never met: a gap, read as `{}`) was never attempted, its
    *  cluster never settled, and every settle ran its 60 rounds (Identity family explorer #5, DE). */
   private val catalogueFailures = new ConcurrentHashMap[CatalogueQuestion, Integer]()
