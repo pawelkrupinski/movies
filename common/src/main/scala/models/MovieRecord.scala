@@ -112,6 +112,10 @@ case class MovieRecord(
     if (normalised.isEmpty) 0.0 else normalised.sum / normalised.size
   }
 
+  /** This row carrying `id` as its IMDb id unless it already carries one: a backfill never overrides an id a
+   *  canonical writer supplied. */
+  def withImdbIdIfMissing(id: String): MovieRecord = if (imdbId.isDefined) this else copy(imdbId = Some(id))
+
   // ── Slices and views ──────────────────────────────────────────────────────
 
   /** Every cinema slot paired with its source KEY — a bare [[Cinema]] or a

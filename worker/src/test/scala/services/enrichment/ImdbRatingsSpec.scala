@@ -40,7 +40,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
+    val ratings = ImdbSourcesOf.ratings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
 
@@ -51,7 +51,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
+    val ratings = ImdbSourcesOf.ratings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
 
@@ -70,14 +70,14 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     // ImdbClient must never be invoked — the stub throws on any request.
-    val ratings = new ImdbRatings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
+    val ratings = ImdbSourcesOf.ratings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
+    val ratings = ImdbSourcesOf.ratings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
@@ -91,7 +91,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
     ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, imdbStub(Map(
+    val ratings = ImdbSourcesOf.ratings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
       "tt2" -> 6.0,  // unchanged
       "tt3" -> 8.1   // changed
@@ -112,7 +112,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("D", None, MovieRecord(tmdbId = Some(1)))             // no imdbId → skipped (not walked)
     ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0, "tt3" -> 8.1)))
+    val ratings = ImdbSourcesOf.ratings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0, "tt3" -> 8.1)))
 
     val summary = ratings.refreshAll()
 
@@ -130,7 +130,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val cadence = new services.cadence.InMemoryRatingCadenceStore
-    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
+    val ratings = ImdbSourcesOf.ratings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
       (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.ImdbRating, key, tmdbId), v,
         java.time.Instant.parse("2026-06-01T10:00:00Z")))
 
@@ -153,7 +153,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "propagate a blocked source instead of reporting 'no rating'" in {
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, blockedImdb(403))
+    val ratings = ImdbSourcesOf.ratings(cache, blockedImdb(403))
 
     a[tools.HttpStatusException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
   }
@@ -163,7 +163,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     // refresh must never degrade a rating we already had.
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, blockedImdb(403))
+    val ratings = ImdbSourcesOf.ratings(cache, blockedImdb(403))
 
     an[Exception] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
     cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.imdbRating) shouldBe Some(5.0)
@@ -172,7 +172,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   it should "still report None (no throw) when IMDb genuinely has no such title" in {
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, blockedImdb(404))
+    val ratings = ImdbSourcesOf.ratings(cache, blockedImdb(404))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024))) shouldBe None
   }

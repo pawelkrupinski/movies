@@ -152,7 +152,7 @@ class RatingSitesReplaySpec extends AnyFlatSpec with Matchers {
         onImdbIdMissing = (title, year, search) => imdbMissing.add(s"$title|${year.getOrElse("-")}|$search"), cadenceRecorder = cadence),
       r => s"url=${r.filmwebUrl.getOrElse("-")} rating=${r.filmwebRating.getOrElse("-")} slot=${r.data.get(Filmweb).getOrElse("-")}"),
     Site("IMDb", imdbRows,
-      (cache, cadence) => new ImdbRatings(cache, new ImdbClient(http = imdbHttp), cadence),
+      (cache, cadence) => ImdbSourcesOf.ratings(cache, new ImdbClient(http = imdbHttp), cadence),
       r => s"id=${r.imdbId.getOrElse("-")} rating=${r.imdbRating.getOrElse("-")} slot=${r.data.get(Imdb).getOrElse("-")}"))
 
   private val imdbMissing = new ConcurrentLinkedQueue[String]

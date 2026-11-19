@@ -104,4 +104,10 @@ abstract class CacheRefresher(
   /** Per-source concurrency cap for a parallel full-corpus walk (see [[tools.BoundedParallel]]). Default 8; override
    *  lower for an upstream that soft-blocks under load (Filmweb). */
   protected def refreshConcurrency: Int = 8
+
+  /** `step` over every one of `rows`, [[refreshConcurrency]] at a time on threads named after `pool`
+   *  ([[tools.BoundedParallel]]): how every source's walk runs. A step that throws loses the whole batch, so each
+   *  source's step catches its own row's failure. */
+  protected def walkEach[A](pool: String, rows: Seq[A])(step: A => Unit): Unit =
+    tools.BoundedParallel.foreach(pool, rows, refreshConcurrency)(step)
 }

@@ -1,14 +1,9 @@
 package services.enrichment
 
-import services.movies.LatestTitleYear
-
 import services.movies.{CacheKey, MovieCache}
 import services.tasks.BulkRefreshResult
-import tools.BoundedParallel
 
-import java.time.Clock
-import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import scala.util.control.NonFatal
 
 /**
@@ -26,9 +21,9 @@ import scala.util.control.NonFatal
  *   - Writes via `orElse` against the live cached row, so a canonical writer
  *     that filled the id in between keeps its value — OMDb never overrides.
  *   - The imdb-id search is title-match guarded (see [[OMDbClient]]) so a fuzzy
- *     OMDb hit can't bind an unrelated film.
- *   - Only an ANSWER that names no film backs the film off. A lookup that could
- *     not be read (OMDb down, the free key's daily quota spent) throws out of
+ *     OMDb hit can't bind an unrelated film; how a row is asked is [[OmdbSearch]]'s.
+ *   - Only an ANSWER that names no film backs the film off ([[OmdbBackoff]]). A lookup
+ *     that could not be read (OMDb down, the free key's daily quota spent) throws out of
  *     `refreshOne` and records nothing, so the film is asked again next sweep —
  *     a spent quota once backed off every film still waiting behind it.
  *
@@ -42,82 +37,41 @@ import scala.util.control.NonFatal
  */
 class OmdbBackfill(
   movieCache: MovieCache,
-  omdb:  OMDbClient,
-  // Durable per-film backoff so a film OMDb can't resolve isn't re-probed on
-  // every daily sweep (which would burn the free 1000/day quota). Default no-op
-  // = no backoff (tests / Mongo-less wiring).
-  attempts: OmdbAttemptStore = OmdbAttemptStore.noop,
-  clock:    Clock,
+  search:     OmdbSearch,
+  // Durable per-film backoff so a film OMDb can't resolve isn't re-probed on every daily sweep.
+  backoff:    OmdbBackoff,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(movieCache, cadenceRecorder) {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
-
-  private val normalizer: services.titles.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "OMDb"
 
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
       if (e.imdbId.isDefined || e.tmdbId.isEmpty) None // already identified, or the resolver's to identify
-      else if (inBackoff(key)) None              // recently probed + missed → still backing off (no HTTP)
-      else {
-        // Original (production/English) title first — OMDb is an English DB; the
-        // cinema display title is the fallback spelling.
-        // A sweep's ask is bulk (leftover budget only, paced); a single film's is one somebody is waiting on.
-        val ask = if (sweepBackoff.isDefined) OmdbAsk.Bulk else OmdbAsk.UserWaiting
-        val foundImdbId =
-          omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet, ask)
-        foundImdbId match {
-          // A miss backs off: the next sweep skips the film until the (doubling) window elapses.
-          case None => recordMiss(key); None
-          case Some(imdbId) =>
-            // `orElse` against the LIVE row: a canonical writer that won the race keeps its id.
-            cache.putIfPresent(key, cur => cur.copy(imdbId = cur.imdbId.orElse(foundImdbId)))
-            logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle, normalizer)}' (${key.year.getOrElse("?")}) recovered imdbId $imdbId")
-            Some(s"imdbId $imdbId")
-        }
+      else if (backoff.holds(key.cleanTitle, key.year)) None               // recently probed + missed → still backing off (no HTTP)
+      else search.imdbIdOf(key, e, inSweep = backoff.sweeping) match {
+        // A miss backs off: the next sweep skips the film until the (doubling) window elapses.
+        case None => backoff.missed(key.cleanTitle, key.year); None
+        case Some(imdbId) =>
+          // `orElse` against the LIVE row: a canonical writer that won the race keeps its id.
+          cache.putIfPresent(key, _.withImdbIdIfMissing(imdbId))
+          logger.info(s"OMDb: '${search.label(key, e)}' (${key.year.getOrElse("?")}) recovered imdbId $imdbId")
+          Some(s"imdbId $imdbId")
       }
     }
 
-  private def filmKey(key: CacheKey): String =
-    s"${key.cleanTitle}|${key.year.map(_.toString).getOrElse("")}"
-
-  // Pre-loaded once per `refreshAll` sweep so the per-film backoff read is an
-  // in-memory lookup instead of a blocking Mongo `get` per candidate row. `None`
-  // on the single-film path (`refreshOneSync`), which reads the store directly.
-  @volatile private var sweepBackoff: Option[Map[String, OmdbAttempt]] = None
-
-  private def attemptFor(key: CacheKey): Option[OmdbAttempt] = sweepBackoff match {
-    case Some(snapshot) => snapshot.get(filmKey(key))
-    case None           => attempts.get(filmKey(key))
-  }
-
-  private def inBackoff(key: CacheKey): Boolean =
-    attemptFor(key).exists(a =>
-      clock.instant().isBefore(a.at.plusMillis(OmdbBackfill.backoffWindow(a.level).toMillis)))
-
-  private def recordMiss(key: CacheKey): Unit = {
-    val nextLevel = math.min(attemptFor(key).map(_.level).getOrElse(0) + 1, OmdbBackfill.MaxBackoffLevel)
-    attempts.record(filmKey(key), nextLevel, clock.instant())
-  }
-
   private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot = cache.entries
-    // ONE batched read of the backoff stamps for the whole sweep. Previously each
-    // candidate row triggered a blocking Mongo `get` inside `inBackoff`; run
-    // corpus-wide every sweep, those per-row reads drained the worker's shared-CPU
-    // credit to the floor (see OmdbAttemptStore.all).
-    sweepBackoff = Some(attempts.all())
     val changed = new AtomicInteger(0)
     val failed  = new AtomicInteger(0)
     // The fleet's OMDb budget refused this sweep a permit: the rest of the rows wait for the next sweep, untouched --
     // nothing asked, nothing recorded, nothing failed (OmdbBudget).
-    val spent    = new java.util.concurrent.atomic.AtomicReference[Option[OMDbClient.BudgetSpentException]](None)
+    val spent    = new AtomicReference[Option[OMDbClient.BudgetSpentException]](None)
     val deferred = new AtomicInteger(0)
-    try {
+    // ONE batched read of the backoff stamps for the whole sweep (OmdbBackoff.during).
+    backoff.during {
       logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
-      BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
+      walkEach("OMDb-backfill", snapshot) { case (key, e) =>
         if (spent.get.isDefined) { deferred.incrementAndGet(); () }
         else try refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
         catch {
@@ -129,28 +83,11 @@ class OmdbBackfill(
             failed.incrementAndGet()
         }
       }
-    } finally sweepBackoff = None
+    }
     spent.get.foreach(b => logger.info(s"OMDb backfill: the fleet's OMDb budget has no bulk permit until ${b.retryAt}; " +
       s"${deferred.get} row(s) wait for a later sweep."))
     BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = 0, failed = failed.get,
       message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered, ${failed.get} lookup(s) failed" +
         spent.get.fold(".")(_ => s", ${deferred.get} left for a later sweep (OMDb budget)."))
   }
-}
-
-object OmdbBackfill {
-  /** Cap on consecutive-miss backoff levels — level 5 already reaches the 30-day
-   *  ceiling. */
-  val MaxBackoffLevel = 5
-  private val BaseBackoff = 2.days
-  private val MaxBackoff  = 30.days
-
-  /** Exponential backoff after `level` consecutive misses: 2d, 4d, 8d, 16d, then
-   *  the 30-day cap. Level 0 (never missed) is immediately eligible. */
-  def backoffWindow(level: Int): FiniteDuration =
-    if (level <= 0) Duration.Zero
-    else {
-      val scaled = BaseBackoff * math.pow(2, (level - 1).toDouble).toLong
-      if (scaled > MaxBackoff) MaxBackoff else scaled
-    }
 }

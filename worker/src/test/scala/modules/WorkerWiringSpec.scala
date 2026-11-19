@@ -289,7 +289,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     // sources would go to the network on the first call and the swallowed throw
     // would skip everything after it.
     override lazy val imdbRatings: services.enrichment.ImdbRatings =
-      new services.enrichment.ImdbRatings(movieCache, imdbClient) {
+      new services.enrichment.ImdbRatings(movieCache, imdbClient, new services.enrichment.ImdbRowUpdates(country.language)) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("imdb"); None }
       }
     override lazy val rottenTomatoesRatings: services.enrichment.SiteRatings[Int] =
@@ -370,7 +370,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         ("Boże Ciało", Some(2019), models.MovieRecord(tmdbId = Some(550310), imdbId = Some("tt9078374")))), normalizer = titleNormalizer)
 
     override lazy val imdbRatings: services.enrichment.ImdbRatings =
-      new services.enrichment.ImdbRatings(movieCache, imdbClient) {
+      new services.enrichment.ImdbRatings(movieCache, imdbClient, new services.enrichment.ImdbRowUpdates(country.language)) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
     override lazy val rottenTomatoesRatings: services.enrichment.SiteRatings[Int] =

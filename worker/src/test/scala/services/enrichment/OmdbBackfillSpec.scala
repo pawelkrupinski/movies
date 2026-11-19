@@ -51,13 +51,13 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     // Its IMDb id is the resolver's to give, on every fact it publishes (`ResolverDecision.fallback`): a title
     // search guessed PL "Lalka" (2026) the 1968 film's.
     val cache = cacheWith(MovieRecord(tmdbAttempt = Some(models.TmdbAttempt.Legacy)))
-    new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
     cache.get(keyOf(cache)).flatMap(_.imdbId) shouldBe None
   }
 
   it should "recover a missing imdbId by title and write no Rotten Tomatoes link" in {
     val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
-    new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
 
     val e = cache.get(keyOf(cache)).get
     e.imdbId            shouldBe Some("tt0133093")
@@ -72,7 +72,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   it should "make no OMDb call for a row that already has its imdbId, whatever its RT link" in {
     val cache = cacheWith(MovieRecord(imdbId = Some("tt7654321")))  // canonical id, no RT link
-    val backfill = new OmdbBackfill(cache, new OMDbClient(
+    val backfill = ImdbSourcesOf.backfill(cache, new OMDbClient(
       http = new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("imdbId present — no call")),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned
     ), clock = _root_.tools.SpecClock.Pinned)
@@ -85,7 +85,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   it should "recover imdbId via title search when only the rottenTomatoesUrl is already set" in {
     val cache = cacheWith(MovieRecord(tmdbId = Some(603), rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/existing")))
-    new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
 
     val e = cache.get(keyOf(cache)).get
     e.imdbId            shouldBe Some("tt0133093")                                  // recovered
@@ -101,7 +101,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       http = new ScriptedByUrlHttpFetch(_ => """{"Response":"False","Error":"Movie not found!"}"""),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned
     )
-    new OmdbBackfill(cache, omdb, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdb, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
     repository.upserts shouldBe empty
   }
 
@@ -109,7 +109,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op (no HTTP) when the row already has both imdbId and rottenTomatoesUrl" in {
     val cache = cacheWith(MovieRecord(imdbId = Some("tt0133093"), rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/existing")))
-    val backfill = new OmdbBackfill(cache, new OMDbClient(
+    val backfill = ImdbSourcesOf.backfill(cache, new OMDbClient(
       http = new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("nothing missing — no call")),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned
     ), clock = _root_.tools.SpecClock.Pinned)
@@ -122,7 +122,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       http = new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("feature off — no call")),
       apiKey = None, clock = tools.SpecClock.Pinned
     )
-    new OmdbBackfill(cache, keyless, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, keyless, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
 
     val e = cache.get(keyOf(cache)).get
     e.imdbId shouldBe None
@@ -136,7 +136,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       http = new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(401, "GET", url, None)),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned
     )
-    val result = new OmdbBackfill(cache, failing, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
+    val result = ImdbSourcesOf.backfill(cache, failing, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
     result.failed shouldBe Some(1)
     attempts.all() shouldBe empty
     cache.get(keyOf(cache)).get.imdbId shouldBe None
@@ -148,7 +148,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       http = new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(503, "GET", url, None)),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned
     )
-    a[tools.HttpStatusException] should be thrownBy new OmdbBackfill(cache, failing, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    a[tools.HttpStatusException] should be thrownBy ImdbSourcesOf.backfill(cache, failing, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
     cache.get(keyOf(cache)).get.imdbId shouldBe None
   }
 
@@ -161,7 +161,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       ("C", None, MovieRecord(imdbId = Some("tt0003"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified → skip
     ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshAll()
+    ImdbSourcesOf.backfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshAll()
 
     cache.get(cache.keyOf("A", None)).get.imdbId            shouldBe Some("tt0133093") // recovered
     cache.get(cache.keyOf("A", None)).get.rottenTomatoesUrl shouldBe None
@@ -182,7 +182,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     ), normalizer = titleNormalizer)
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val attempts = new CountingOmdbAttemptStore
-    new OmdbBackfill(cache, omdbStub, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
+    ImdbSourcesOf.backfill(cache, omdbStub, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
 
     attempts.allCalls shouldBe 1 // one batched read for the whole sweep
     attempts.getCalls shouldBe 0 // never a per-row blocking read (the drain)
@@ -214,7 +214,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     val omdb = new OMDbClient(new ScriptedByUrlHttpFetch(_ => { httpCalls += 1; """{"Response":"False","Error":"Movie not found!"}""" }), apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned)
     val clock = Clock.fixed(T0.plusMillis(1.hour.toMillis), ZoneOffset.UTC) // 1h later — inside the 2d window
 
-    new OmdbBackfill(cache, omdb, attempts, clock).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdb, attempts, clock).refreshOneSync(keyOf(cache))
     httpCalls shouldBe 0
     cache.get(keyOf(cache)).get.imdbId shouldBe None
   }
@@ -224,7 +224,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     val attempts = new InMemoryOmdbAttemptStore
     val omdb = new OMDbClient(new ScriptedByUrlHttpFetch(_ => """{"Response":"False","Error":"Movie not found!"}"""), apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned)
 
-    new OmdbBackfill(cache, omdb, attempts, Clock.fixed(T0, ZoneOffset.UTC)).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdb, attempts, Clock.fixed(T0, ZoneOffset.UTC)).refreshOneSync(keyOf(cache))
     attempts.get(filmKey(cache)).map(_.level) shouldBe Some(1)
   }
 
@@ -234,17 +234,17 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     attempts.record(filmKey(cache), 1, T0) // 2-day window from T0
     val clock = Clock.fixed(T0.plusMillis(3.days.toMillis), ZoneOffset.UTC) // past the window
 
-    new OmdbBackfill(cache, omdbStub, attempts, clock).refreshOneSync(keyOf(cache))
+    ImdbSourcesOf.backfill(cache, omdbStub, attempts, clock).refreshOneSync(keyOf(cache))
     cache.get(keyOf(cache)).get.imdbId shouldBe Some("tt0133093") // re-probed + recovered
   }
 
-  "OmdbBackfill.backoffWindow" should "double per consecutive miss and cap at 30 days" in {
-    OmdbBackfill.backoffWindow(0) shouldBe Duration.Zero
-    OmdbBackfill.backoffWindow(1) shouldBe 2.days
-    OmdbBackfill.backoffWindow(2) shouldBe 4.days
-    OmdbBackfill.backoffWindow(4) shouldBe 16.days
-    OmdbBackfill.backoffWindow(5) shouldBe 30.days // 32d capped
-    OmdbBackfill.backoffWindow(9) shouldBe 30.days
+  "OmdbBackoff.window" should "double per consecutive miss and cap at 30 days" in {
+    OmdbBackoff.window(0) shouldBe Duration.Zero
+    OmdbBackoff.window(1) shouldBe 2.days
+    OmdbBackoff.window(2) shouldBe 4.days
+    OmdbBackoff.window(4) shouldBe 16.days
+    OmdbBackoff.window(5) shouldBe 30.days // 32d capped
+    OmdbBackoff.window(9) shouldBe 30.days
   }
 
   // ── the fleet's OMDb budget ───────────────────────────────────────────────────
@@ -261,7 +261,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     val omdb = new OMDbClient(
       http = new ScriptedByUrlHttpFetch(_ => { asked.incrementAndGet(); """{"Response":"False","Error":"Movie not found!"}""" }),
       apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned, budget = budget)
-    val result = new OmdbBackfill(cache, omdb, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
+    val result = ImdbSourcesOf.backfill(cache, omdb, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
     asked.get shouldBe 1
     result.failed shouldBe Some(0)
     attempts.all() should have size 1 // the one film OMDb answered "not found" for; the rest untouched

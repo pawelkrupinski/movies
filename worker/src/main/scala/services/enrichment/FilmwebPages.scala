@@ -8,7 +8,7 @@ import services.enrichment.SiteRatings.Page
 object FilmwebPages {
 
   /** A Filmweb read as a page: its rating at the precision the badge shows, and its content slot — the Filmweb
-   *  counterpart of [[ImdbRatings.makeSlot]]: originalTitle, year, directors, Polish genres, Polish plot. A slot with no
+   *  counterpart of [[ImdbSlot.of]]: originalTitle, year, directors, Polish genres, Polish plot. A slot with no
    *  content at all is none, and drops the row's. */
   def page(info: FilmwebClient.FilmwebInfo): Page[Double] = {
     val slot = SourceData(

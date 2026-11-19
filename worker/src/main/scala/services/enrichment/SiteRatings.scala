@@ -4,7 +4,7 @@ import models.{MovieRecord, SourceData}
 import services.enrichment.SiteRatings.{Found, Page, PageRead}
 import services.movies.{CacheKey, MovieCache}
 import services.tasks.BulkRefreshResult
-import tools.{BoundedParallel, Stopwatch}
+import tools.Stopwatch
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.{Failure, Success, Try}
@@ -133,7 +133,7 @@ class SiteRatings[A](
     val resolvable = rows.count { case (_, row) => row.tmdbId.isDefined }
     logger.info(s"${site.walkLabel}: starting tick over ${rows.size} cached row(s) ($resolvable re-resolving their URL first).")
     val counts = new SiteRatings.WalkCounts
-    BoundedParallel.foreach(site.walkLabel.replace(' ', '-'), rows, refreshConcurrency) { case (key, row) =>
+    walkEach(site.walkLabel.replace(' ', '-'), rows) { case (key, row) =>
       if (row.tmdbId.isDefined) rediscover(key, row, counts)
       rescore(key, row, counts)
     }

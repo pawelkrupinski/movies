@@ -97,7 +97,7 @@ class ImdbSourcesReplaySpec extends AnyFlatSpec with Matchers {
     s"id=${r.imdbId.getOrElse("-")} rating=${r.imdbRating.getOrElse("-")} slot=${r.data.get(Imdb).getOrElse("-")}"
 
   private def imdbRatings(cache: CaffeineMovieCache, cadence: Cadence) =
-    new ImdbRatings(cache, new ImdbClient(http = imdbHttp), cadence)
+    ImdbSourcesOf.ratings(cache, new ImdbClient(http = imdbHttp), cadence)
 
   private def imdbReplay: Seq[String] = {
     val perRow = imdbRows.map { row =>
@@ -168,7 +168,7 @@ class ImdbSourcesReplaySpec extends AnyFlatSpec with Matchers {
     val perRow = omdbRows.map { row =>
       val (cache, repository) = cacheOf(Seq(row))
       val attempts = new InMemoryOmdbAttemptStore
-      val backfill = new OmdbBackfill(cache, omdbClient(), attempts, clock = _root_.tools.SpecClock.Pinned)
+      val backfill = ImdbSourcesOf.backfill(cache, omdbClient(), attempts, clock = _root_.tools.SpecClock.Pinned)
       val key = cache.keyOf(row.title, row.year)
       val first = answer(backfill.refreshOneSync(key))
       val writes = repository.upserts.size
@@ -185,7 +185,7 @@ class ImdbSourcesReplaySpec extends AnyFlatSpec with Matchers {
   private def omdbWalk(name: String, rows: Seq[Row], budget: OmdbBudget): Seq[String] = {
     val (cache, repository) = cacheOf(rows)
     val attempts = new InMemoryOmdbAttemptStore
-    val summary = new OmdbBackfill(cache, omdbClient(budget), attempts, clock = _root_.tools.SpecClock.Pinned).refreshAllNow()
+    val summary = ImdbSourcesOf.backfill(cache, omdbClient(budget), attempts, clock = _root_.tools.SpecClock.Pinned).refreshAllNow()
     Seq(s"OMDb $name: ${summaryOf(summary)} writes=${repository.upserts.size} attempts=${attemptsOf(attempts)}") ++
       rows.map(row => s"  ${row.title} (${row.year.getOrElse("-")}): " +
         cache.get(cache.keyOf(row.title, row.year)).fold("gone")(omdbOwned))

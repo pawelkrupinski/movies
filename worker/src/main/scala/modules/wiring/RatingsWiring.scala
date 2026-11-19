@@ -4,7 +4,7 @@ import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfi
 
 import services.attempts.{EnrichmentAttemptStore, MongoEnrichmentAttemptStore}
 import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
-import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RatingColumns, RatingSiteFilms, RottenTomatoesRatings, SiteRatings}
+import services.enrichment.{FilmwebRatings, ImdbRatings, ImdbRowUpdates, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, OmdbBackoff, OmdbSearch, RatingColumns, RatingSiteFilms, RottenTomatoesRatings, SiteRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
 import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
@@ -23,8 +23,8 @@ trait RatingsWiring { self: WorkerWiring =>
   // adaptive cadence the per-row RatingHandler feeds (BulkCadenceRecorder), so an
   // operator's corpus refresh can't move a rating without the cadence seeing it —
   // which a later per-row refresh would otherwise mis-read as a fresh change.
-  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating, clock),
-    enrichmentLanguage = country.language)
+  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, new ImdbRowUpdates(country.language),
+    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating, clock))
   // Every URL-keyed rating site is its port (`*Ratings`: find, read) and its row columns, run by the one shared flow
   // (SiteRatings); every site searches and judges pages by the same film, the row and what TMDB knows of it.
   lazy val ratingSiteFilms = new RatingSiteFilms(tmdbClient, movieCache.normalizer)
@@ -54,7 +54,8 @@ trait RatingsWiring { self: WorkerWiring =>
   // key would corrupt that source's change history; the default no-op is correct.
   lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
   lazy val omdbBackfill: Option[OmdbBackfill] =
-    configuration.omdbApiKey.map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore, clock = clock))
+    configuration.omdbApiKey.map(_ => new OmdbBackfill(movieCache, new OmdbSearch(omdbClient, movieCache.normalizer),
+      new OmdbBackoff(omdbAttemptStore, clock)))
 
   // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
   // handled by the BulkRefreshHandler in OperatorWiring). This reaper is just the
