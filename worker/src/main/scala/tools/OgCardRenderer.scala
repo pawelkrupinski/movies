@@ -191,29 +191,10 @@ object OgCardRenderer {
       val bodyBottom = footerBaseline - 30
 
       directorLine.map(_.trim).filter(_.nonEmpty).foreach { d =>
-        yPosition += 26
-        g.setFont(regular.deriveFont(27f))
-        g.setColor(SubCol)
-        val dfm = g.getFontMetrics
-        yPosition += dfm.getAscent
-        g.drawString(ellipsize(g, d, textW), textLeft, yPosition)
-        yPosition += dfm.getDescent
+        yPosition = drawDirectorLine(g, d, textLeft, textW, yPosition)
       }
-
       synopsis.map(_.trim).filter(_.nonEmpty).foreach { text =>
-        yPosition += 16
-        g.setFont(regular.deriveFont(29f))
-        g.setColor(SynopsisCol)
-        val pfm    = g.getFontMetrics
-        val lineH  = pfm.getAscent + pfm.getDescent + 6
-        val fits   = math.max(0, (bodyBottom - yPosition) / lineH)
-        val maxLines = math.min(MaxSynopsisLines, fits)
-        if (maxLines > 0)
-          for (line <- wrap(g, text, textW, maxLines)) {
-            yPosition += pfm.getAscent
-            g.drawString(line, textLeft, yPosition)
-            yPosition += pfm.getDescent + 6
-          }
+        yPosition = drawSynopsis(g, text, textLeft, textW, yPosition, bodyBottom)
       }
 
       g.setFont(regular.deriveFont(28f))
@@ -223,6 +204,35 @@ object OgCardRenderer {
     } finally g.dispose()
 
     img
+  }
+
+  /** The director line below the badge rows, from `yPosition`; the y just below it. */
+  private def drawDirectorLine(g: Graphics2D, director: String, textLeft: Int, textW: Int, yPosition: Int): Int = {
+    g.setFont(regular.deriveFont(27f))
+    g.setColor(SubCol)
+    val dfm      = g.getFontMetrics
+    val baseline = yPosition + 26 + dfm.getAscent
+    g.drawString(ellipsize(g, director, textW), textLeft, baseline)
+    baseline + dfm.getDescent
+  }
+
+  /** As many synopsis lines (at most [[MaxSynopsisLines]]) as fit above `bodyBottom`, from `yPosition`; the y just
+   *  below them. */
+  private def drawSynopsis(g: Graphics2D, text: String, textLeft: Int, textW: Int, yPosition: Int, bodyBottom: Int): Int = {
+    var y = yPosition + 16
+    g.setFont(regular.deriveFont(29f))
+    g.setColor(SynopsisCol)
+    val pfm      = g.getFontMetrics
+    val lineH    = pfm.getAscent + pfm.getDescent + 6
+    val fits     = math.max(0, (bodyBottom - y) / lineH)
+    val maxLines = math.min(MaxSynopsisLines, fits)
+    if (maxLines > 0)
+      for (line <- wrap(g, text, textW, maxLines)) {
+        y += pfm.getAscent
+        g.drawString(line, textLeft, y)
+        y += pfm.getDescent + 6
+      }
+    y
   }
 
   /** `badges` drawn into `slot` on `base` (in place), which is returned. */

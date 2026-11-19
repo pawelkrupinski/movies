@@ -2,7 +2,7 @@ package tools
 
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
-import java.awt.{Color, LinearGradientPaint}
+import java.awt.{Color, Graphics2D, LinearGradientPaint}
 
 /**
  * Renders a CITY's 1200×630 Open Graph card — the image a shared `/{city}/` link previews with.
@@ -66,56 +66,61 @@ object CityCardRenderer {
       OgCardRenderer.applyHints(g)
       g.setColor(Background)
       g.fillRect(0, 0, Width, Height)
-
-      posters.take(PosterCount).zipWithIndex.foreach { case (poster, i) =>
-        val (x, y) = tileAt(i)
-        val saved  = g.getClip
-        g.setClip(new RoundRectangle2D.Float(x.toFloat, y.toFloat, TileWidth.toFloat, TileHeight.toFloat, 16f, 16f))
-        OgCardRenderer.drawCover(g, poster, x, y, TileWidth, TileHeight)
-        g.setClip(saved)
-      }
-
+      drawPosters(g, posters)
       g.setPaint(Gradient)
       g.fillRect(0, 0, Width, Height)
-
-      // The text block is centred vertically, as the overlay's `top:50%; translateY(-50%)` did:
-      // measured first, then drawn.
-      val brandFont   = OgCardRenderer.bold.deriveFont(86f)
-      val headingFont = OgCardRenderer.regular.deriveFont(36f)
-      val hostFont    = OgCardRenderer.bold.deriveFont(25f)
-      val brandFm     = g.getFontMetrics(brandFont)
-      val headingFm   = g.getFontMetrics(headingFont)
-      val hostFm      = g.getFontMetrics(hostFont)
-      g.setFont(headingFont)
-      val headingLines = OgCardRenderer.wrap(g, heading, TextWidth - 20, maxLines = 3)
-      val headingLineH = headingFm.getAscent + headingFm.getDescent + 6
-      val pills        = samplePills(brand.filmweb)
-      val pillsHeight  = OgCardRenderer.drawBadges(g, pills, TextLeft, 0, TextLeft + PillsWidth, paint = false, scale = PillScale)
-      val blockHeight  = brandFm.getAscent + brandFm.getDescent + 18 + headingLines.size * headingLineH +
-        30 + pillsHeight + 28 + hostFm.getAscent + hostFm.getDescent
-      var y = (Height - blockHeight) / 2
-
-      g.setColor(Color.WHITE)
-      g.setFont(brandFont)
-      y += brandFm.getAscent
-      g.drawString(brand.name, TextLeft, y)
-      y += brandFm.getDescent + 18
-
-      g.setFont(headingFont)
-      headingLines.foreach { line =>
-        y += headingFm.getAscent
-        g.drawString(line, TextLeft, y)
-        y += headingFm.getDescent + 6
-      }
-
-      y += 30
-      y = OgCardRenderer.drawBadges(g, pills, TextLeft, y, TextLeft + PillsWidth, scale = PillScale)
-
-      y += 28 + hostFm.getAscent
-      g.setFont(hostFont)
-      g.setColor(Color.WHITE)
-      g.drawString(brand.host, TextLeft, y)
+      drawTextBlock(g, heading, brand)
     } finally g.dispose()
     img
+  }
+
+  /** The posters, each in its rounded tile ([[tileAt]]), at most [[PosterCount]]. */
+  private def drawPosters(g: Graphics2D, posters: Seq[BufferedImage]): Unit =
+    posters.take(PosterCount).zipWithIndex.foreach { case (poster, i) =>
+      val (x, y) = tileAt(i)
+      val saved  = g.getClip
+      g.setClip(new RoundRectangle2D.Float(x.toFloat, y.toFloat, TileWidth.toFloat, TileHeight.toFloat, 16f, 16f))
+      OgCardRenderer.drawCover(g, poster, x, y, TileWidth, TileHeight)
+      g.setClip(saved)
+    }
+
+  /** The wordmark, the heading, the sample pills and the host. The block is centred vertically, as the overlay's
+   *  `top:50%; translateY(-50%)` did: measured first, then drawn. */
+  private def drawTextBlock(g: Graphics2D, heading: String, brand: Brand): Unit = {
+    val brandFont   = OgCardRenderer.bold.deriveFont(86f)
+    val headingFont = OgCardRenderer.regular.deriveFont(36f)
+    val hostFont    = OgCardRenderer.bold.deriveFont(25f)
+    val brandFm     = g.getFontMetrics(brandFont)
+    val headingFm   = g.getFontMetrics(headingFont)
+    val hostFm      = g.getFontMetrics(hostFont)
+    g.setFont(headingFont)
+    val headingLines = OgCardRenderer.wrap(g, heading, TextWidth - 20, maxLines = 3)
+    val headingLineH = headingFm.getAscent + headingFm.getDescent + 6
+    val pills        = samplePills(brand.filmweb)
+    val pillsHeight  = OgCardRenderer.drawBadges(g, pills, TextLeft, 0, TextLeft + PillsWidth, paint = false, scale = PillScale)
+    val blockHeight  = brandFm.getAscent + brandFm.getDescent + 18 + headingLines.size * headingLineH +
+      30 + pillsHeight + 28 + hostFm.getAscent + hostFm.getDescent
+    var y = (Height - blockHeight) / 2
+
+    g.setColor(Color.WHITE)
+    g.setFont(brandFont)
+    y += brandFm.getAscent
+    g.drawString(brand.name, TextLeft, y)
+    y += brandFm.getDescent + 18
+
+    g.setFont(headingFont)
+    headingLines.foreach { line =>
+      y += headingFm.getAscent
+      g.drawString(line, TextLeft, y)
+      y += headingFm.getDescent + 6
+    }
+
+    y += 30
+    y = OgCardRenderer.drawBadges(g, pills, TextLeft, y, TextLeft + PillsWidth, scale = PillScale)
+
+    y += 28 + hostFm.getAscent
+    g.setFont(hostFont)
+    g.setColor(Color.WHITE)
+    g.drawString(brand.host, TextLeft, y)
   }
 }

@@ -29,18 +29,7 @@ import scala.util.control.NonFatal
 object WorkerMain extends Logging {
 
   def main(args: Array[String]): Unit = {
-    // FIRST, before anything touches java.net.http: the residential egress tunnels HTTPS
-    // through an authenticated proxy, which the JDK's default refuses — see
-    // ProxyTunnelAuthentication for why this is the process's to set, once. Likewise the
-    // AIA intermediate fetching some cinema hosts' broken chains need (IssuerCertificateFetching).
-    ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
-    IssuerCertificateFetching.Enabled.applyToJvm()
-    // The process's config and the typed values resolved from it, HERE, once — the only
-    // place in the worker that asks the process anything; every wiring below is handed them.
-    val process = ProcessConfiguration.resolve()
-    // Before the first line: every line from here on names the image it came from (`build`), what ties it to a deploy.
-    tools.LogFields.stampBuild(process.commit.value)
-    logger.info(s"Worker starting — commit ${process.commit.value}")
+    val process = configureProcess()
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
     // cache hydrate can take ~a minute; liveness ("the process is up") must not
@@ -76,15 +65,34 @@ object WorkerMain extends Logging {
     // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
     // ANY country going stale wedges the machine they share.
     liveness.becomes(() => fleet.isAlive)
-    // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
-    // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
-    try java.nio.file.Files.createDirectories(heapDumpDir.value)
-    catch { case NonFatal(e) => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
+    ensureHeapDumpDirectory(heapDumpDir)
 
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => shutDown(shared, wirings, health, done)))
     done.await()
   }
+
+  /** The JVM-wide settings and the process's configuration, before anything else runs. FIRST, before anything
+   *  touches java.net.http: the residential egress tunnels HTTPS through an authenticated proxy, which the JDK's
+   *  default refuses — see ProxyTunnelAuthentication for why this is the process's to set, once. Likewise the AIA
+   *  intermediate fetching some cinema hosts' broken chains need (IssuerCertificateFetching). Then the process's
+   *  config and the typed values resolved from it, HERE, once — the only place in the worker that asks the process
+   *  anything; every wiring is handed them. */
+  private def configureProcess(): ProcessConfiguration = {
+    ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    IssuerCertificateFetching.Enabled.applyToJvm()
+    val process = ProcessConfiguration.resolve()
+    // Before the first line: every line from here on names the image it came from (`build`), what ties it to a deploy.
+    tools.LogFields.stampBuild(process.commit.value)
+    logger.info(s"Worker starting — commit ${process.commit.value}")
+    process
+  }
+
+  /** Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError (hard-OOM path) and the
+   *  watchdog (death-spiral path) both have somewhere to write. */
+  private def ensureHeapDumpDirectory(heapDumpDir: HeapDumpDirectory): Unit =
+    try java.nio.file.Files.createDirectories(heapDumpDir.value)
+    catch { case NonFatal(e) => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
 
   /** The countries this worker runs (KINOWO_COUNTRIES, default just the default country), unknown codes
    *  warned and skipped. A configuration this process cannot normalise correctly is refused, before any
