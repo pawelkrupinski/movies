@@ -292,6 +292,12 @@ rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `qua
 assets) ranks sources by 90-day relative churn × cognitive complexity and names change-coupled pairs across packages.
 A lane's report pastes `scripts/ratchet-diff <base>..<head>` (every changed row, fell / rose / new, `--measure` for
 unrecorded falls), never hand-written numbers; a split is checked with `scripts/coupling-report --check-split <X> <piece>...`.
+**The naming lint** (`scripts/ci/naming_lint.py`, the same step; the owner's "names must match behaviour", 2026-11-19):
+two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
+push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a
+NEW type named for an action (`...Apart`, `...Stages`, `...Read(s)`, `...Reading(s)`, `...Builds`, `...Rereads`,
+`...Drafts`, `...Traces`, `...Denials`, `...Plans`) with at most one public def is warned about: fold it into the class
+whose data it reads, or name the one thing it is.
 
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code

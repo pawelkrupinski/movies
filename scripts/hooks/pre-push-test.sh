@@ -148,13 +148,14 @@ qualities() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --quality
 check "a production Scala source of every deployed module selects the quality step" \
   "geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala" \
   "$(qualities geodata/src/main/scala/A.scala base/src/main/scala/A.scala http/src/main/scala/A.scala common/src/main/scala/A.scala identity/src/main/scala/A.scala scrapers/src/main/scala/A.scala worker/src/main/scala/A.scala web/src/main/scala/A.scala)"
-check "...and the measure, its dependencies, the baselines and the ratchet do" \
-  "quality/src/main/scala/quality/MethodMeasures.scala project/Dependencies.scala test/resources/complexity-baseline.tsv test/resources/length-baseline.tsv test/resources/duplication-baseline.tsv scripts/ci/quality_ratchet.py" \
-  "$(qualities quality/src/main/scala/quality/MethodMeasures.scala project/Dependencies.scala test/resources/complexity-baseline.tsv test/resources/length-baseline.tsv test/resources/duplication-baseline.tsv scripts/ci/quality_ratchet.py)"
+check "...and the measure, its dependencies, the baselines, the ratchet and the naming lint do" \
+  "quality/src/main/scala/quality/MethodMeasures.scala project/Dependencies.scala test/resources/complexity-baseline.tsv test/resources/length-baseline.tsv test/resources/duplication-baseline.tsv scripts/ci/quality_ratchet.py scripts/ci/naming_lint.py" \
+  "$(qualities quality/src/main/scala/quality/MethodMeasures.scala project/Dependencies.scala test/resources/complexity-baseline.tsv test/resources/length-baseline.tsv test/resources/duplication-baseline.tsv scripts/ci/quality_ratchet.py scripts/ci/naming_lint.py)"
 check "...but no test, tool, template, Java source or script does" "" \
   "$(qualities worker/src/test/scala/A.scala testkit/src/main/scala/A.scala e2e/src/main/scala/A.scala web/src/main/java/A.java web/src/main/twirl/a.scala.html scripts/x.sh)"
 check "a quality baseline alone runs the sbt check (where the quality step rides)" "sbt" "$(plan test/resources/complexity-baseline.tsv)"
 check "...and so does the ratchet (beside its self-tests)" "sbt" "$(plan scripts/ci/quality_ratchet.py | tr ' ' '\n' | grep -x sbt)"
+check "...and the naming lint" "sbt" "$(plan scripts/ci/naming_lint.py | tr ' ' '\n' | grep -x sbt)"
 check "the layer table alone runs the sbt check too: an \`allow\` row or a moved layer is judged by the ratchet" "sbt" \
   "$(plan test/resources/coupling-layers.tsv)"
 check "...and so does the exemption table: an exemption row added is judged by the ratchet" "sbt" \

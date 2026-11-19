@@ -45,7 +45,10 @@
 #                 800), and its clone groups (PMD CPD, 100+ tokens, beside the parse: ~7 s together) to
 #                 duplication-baseline.tsv -- no new group, no group gaining a copy; a baseline grows only in a commit
 #                 carrying its trailer (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`;
-#                 scripts/quality-report --update writes them; falls need no trailer).
+#                 scripts/quality-report --update writes them; falls need no trailer). And THE NAMING LINT
+#                 (scripts/ci/naming_lint.py, seconds): two top-level types of one package named with the same words
+#                 in another order refuse the push; a NEW type named for an action (...Apart, ...Plans, ...Reads) with
+#                 at most one public def is warned about.
 #                 PREPUSH_SKIP=quality skips just it
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
@@ -371,7 +374,7 @@ coupling_paths() { # stdin: changed paths -> the ones that select the coupling s
 # the ratchet's verdict -- production Scala (a source's text is what is measured: no Java, no template), the measure,
 # its dependencies and the baselines
 quality_paths() { # stdin: changed paths -> the ones that select the quality step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|scripts/ci/quality_ratchet\.py)$' || true
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|scripts/ci/quality_ratchet\.py|scripts/ci/naming_lint\.py)$' || true
 }
 
 # ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
@@ -473,7 +476,7 @@ plan() {
         # exemption row added as the exemptions loosening.
         case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv|test/resources/coupling-fanout-refs.tsv) sbt=1 ;; esac
         # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
-        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|scripts/ci/quality_ratchet.py) sbt=1 ;; esac
+        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|scripts/ci/quality_ratchet.py|scripts/ci/naming_lint.py) sbt=1 ;; esac
         # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
         case "$path" in
             geodata/src/main/resources/generated/*) sbt=1 ;;
@@ -1815,6 +1818,7 @@ check_sbt() {
         for r in "${ranges[@]}"; do qargs+=(--range "$r"); done
         [ -s "$tmp/quality.rows" ] || { warn "quality: quality/runMain quality.QualityReport wrote no rows (full log: $tmp/sbt.log)"; return 1; }
         python3 scripts/ci/quality_ratchet.py check --current "$tmp/quality.rows" ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+        python3 scripts/ci/naming_lint.py check ${qargs[@]+"${qargs[@]}"} >&2 || return 1
     fi
     [ "$gitops_stale" = 0 ]
 }
