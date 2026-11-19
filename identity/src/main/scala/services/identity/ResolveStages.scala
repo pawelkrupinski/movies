@@ -5,7 +5,7 @@ import services.titles.TitleNormalizer
 import IdentityResolver.Mutation
 
 /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
- *  and for [[IdentityResolver.candidatesOf]]. */
+ *  and for [[ResolveReports.candidatesOf]]. */
 private[identity] final class ResolveStages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                          calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations,
                                          corpus: Option[CorpusContext] = None) {

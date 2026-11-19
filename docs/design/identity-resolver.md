@@ -2989,7 +2989,7 @@ general mechanism, ≥1 right gained, 0 wrong. **No production change shipped: r
 allocation unchanged** (`--alloc 5`: 3,197 MB median per replay of every capture, heap after GC 360 MB, against main's
 3,197 MB, measured with `ThreadAllocation`). One constraint applies to every retrieval fix: the ratchet replays the
 CAPTURED model decisions, and its `Replay` fails on any TMDB question the capture does not hold (`unanswered`). A new
-search, in the resolver (`IdentityResolver.candidatesOf`, which the stage also calls through `AgreementStage.searchedFilms`) or in
+search, in the resolver (`ResolveReports.candidatesOf`, which the stage also calls through `AgreementStage.searchedFilms`) or in
 the stage, cannot be graded until the fixture is re-captured (below).
 
 1. **Programme prefixes whose film TMDB's search misses.** The prefix is no cause: "19. FGA:" is stripped into

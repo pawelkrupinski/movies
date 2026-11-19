@@ -87,7 +87,7 @@ Refusals: every listing no alone rule took carries one `refused:<rule>:<why>` pe
 | another house's season production | CandidateScoring:33 | `Houses` | 2,123 | IRC |
 | another instalment | FamilyScope:94 | numeral relation | 768 | AS, IRC |
 | ReleaseVeto (not released in CC) | ReleaseVeto:24 | country releases, namesake | 753 | IRC |
-| named only by a feed's copied title (incl. one undelimited word of the billing, 2026-10-14) | FamilyScope.namedOnlyByCopiedTitle | TMDB-keyed feed link, original title, `namingPieces` | — | IRC |
+| named only by a feed's copied title (incl. one undelimited word of the billing, 2026-10-14) | CopiedTitleDenial.namedOnlyByCopiedTitle | TMDB-keyed feed link, original title, `namingPieces` | — | IRC |
 | namesOnlyItsVenue | CandidateScoring:42 | naming pieces vs venue/city | 25 | IRC |
 | namesOnlyATag | CandidateScoring:57 | capitalised recurring tag | 2 | IRC |
 | pinned never | FamilyScope:138 | pins | 0 (no pins in recordings) | IRC, PinConstraintsSpec |
