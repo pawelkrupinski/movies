@@ -21,7 +21,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
   val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
     normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
   val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
-  val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
+  val projector  = ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
   val boot       = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
   val sweeper    = new ReadModelSweeper(projector.projection)
 

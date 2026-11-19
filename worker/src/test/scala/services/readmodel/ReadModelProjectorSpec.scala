@@ -47,7 +47,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a card write" should "be metered by the parts of the card that moved" in {
     val (_, repository, rm) = fixture()
     val m = new RecordingReadModelProjectionMetrics()
-    val metered = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val metered = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     def withSynopsis(rating: Option[Double], blurb: String) =
       MovieRecord(imdbRating = rating, tmdbId = Some(1), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Foo"), synopsis = Some(blurb), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -85,7 +85,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         if (withhold) services.readmodel.RatingGate.withheld(movie) else movie
       def version: Int = if (withhold) 1 else 0
     }
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock, ratingGate = gate)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock, ratingGate = gate)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     rm.findCard(fid).required.movie.flatMap(_.ratings.imdb) shouldBe Some(8.0)
@@ -180,7 +180,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "reconcile" should "NOT prune live read-model rows when the source scan failed mid-way (incomplete)" in {
     val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
     val rm         = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector  = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
 
     sweeper.reconcile() shouldBe true                    // clean scan → Foo is projected
@@ -200,7 +200,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "pruneOrphans" should "not complete its tick when the source scan was incomplete and the prune skipped" in {
     val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
     val rm         = new InMemoryReadModelRepository()
-    val sweeper    = new ReadModelSweeper(new ReadModelProjector(repository, rm, rm, clock = specClock).projection)
+    val sweeper    = new ReadModelSweeper(ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).projection)
     val ticks      = new _root_.tools.RecordingTickRecorder
     def tick(): Unit = _root_.tools.ScheduledTick.recorded("read-model-prune", scala.concurrent.duration.FiniteDuration(30, "minutes"),
       play.api.Logger(getClass), ticks)(sweeper.pruneOrphans())
@@ -237,7 +237,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       }
     }
     val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
-    (new ReadModelSweeper(new ReadModelProjector(repository, rm, rm, clock = specClock).projection), rm)
+    (new ReadModelSweeper(ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).projection), rm)
   }
 
   it should "report a prune that failed, so a caller asserting on the read model reconciles again" in {
@@ -250,7 +250,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         if (refuseDeletes.getAndDecrement() > 0) throw new java.util.concurrent.TimeoutException("Future timed out after [10 seconds]")
         else super.deleteMovie(id)
     }
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     sweeper.reconcile() shouldBe true
@@ -317,7 +317,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a showtime-only change at an existing cinema" should "REUSE cached metadata, not recompute it" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
 
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
     m.metadataRecomputed shouldBe 1   // first projection → recomputed + cached
@@ -336,7 +336,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a rating change" should "RECOMPUTE metadata and rewrite the movie document" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val shows = Seq(at("2026-06-12T20:00"))
 
     projector.onMovieUpsert(stored(record(Some(8.0), shows)))
@@ -352,7 +352,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a synopsis change at a cinema" should "RECOMPUTE metadata (a showtimes-stripped hash still sees it)" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val shows = Seq(at("2026-06-12T20:00"))
     def withSynopsis(s: String) = MovieRecord(tmdbId = Some(1),
       data = Map[Source, SourceData](Multikino -> slot(shows).copy(synopsis = Some(s))))
@@ -367,7 +367,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a film gaining a cinema in a NEW city" should "RECOMPUTE metadata (new city → new synopsisByCity)" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val shows = Seq(at("2026-06-12T20:00"))
     def wroclawSlot = SourceData(title = Some("Foo"), releaseYear = Some(2024),
       filmUrl = Some("https://mk/foo-wro"), showtimes = shows)
@@ -393,11 +393,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     val streamed = new RecordingReadModelProjectionMetrics()
-    new ReadModelProjector(repository, rm, rm, streamed, clock = specClock).onMovieUpsert(repository.findAll().head)
+    ReadModelProjector(repository, rm, rm, streamed, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(repository.findAll().head)
     streamed.metadataProjections.toSeq shouldBe Seq(ReadModelProjectionMetrics.ProjectTrigger.Stream -> false)
 
     val m       = new RecordingReadModelProjectionMetrics()
-    val checker = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val checker = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val checkerBoot = new ReadModelBoot(checker, ReadModelProjectorFixtures.scheduler())
     val checkerSweeper = new ReadModelSweeper(checker.projection)
     checkerBoot.start(checkerSweeper)
@@ -423,7 +423,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a showtime change at one venue of several" should "rebuild only that venue's screenings row" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     def row(extra: Seq[Showtime]) = stored(MovieRecord(tmdbId = Some(1), data = venues.take(3).zipWithIndex.map { (cinema, i) =>
       (cinema: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")) ++ (if (i == 1) extra else Nil)) }.toMap))
 
@@ -443,9 +443,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     // not the slots it was built from — so nothing may be skipped on that say-so.
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val record = MovieRecord(tmdbId = Some(1), data = venues.take(3).map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
-    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(stored(record))
+    ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(stored(record))
     val m = new RecordingReadModelProjectionMetrics()
-    val restarted = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val restarted = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val restartedBoot = new ReadModelBoot(restarted, ReadModelProjectorFixtures.scheduler())
     val restartedSweeper = new ReadModelSweeper(restarted.projection)
     restartedBoot.start(restartedSweeper)
@@ -468,8 +468,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         tools.ReadOutcome.Answered(super.findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)))
     }
     val record = MovieRecord(tmdbId = Some(1), data = venues.take(3).map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
-    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(stored(record))
-    val restarted = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(stored(record))
+    val restarted = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val restartedBoot = new ReadModelBoot(restarted, ReadModelProjectorFixtures.scheduler())
     val restartedSweeper = new ReadModelSweeper(restarted.projection)
     restartedBoot.prepare(restartedSweeper)
@@ -488,7 +488,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     def rebuiltPerStep(venueCount: Int): Seq[(Int, Int)] = {
       val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
       val m = new RecordingReadModelProjectionMetrics()
-      val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+      val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
       val cinemas = wide.take(venueCount)
       def row(rating: Double, moved: Boolean) = stored(MovieRecord(imdbRating = Some(rating), tmdbId = Some(1),
         data = cinemas.zipWithIndex.map { (cinema, i) =>
@@ -521,7 +521,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     (1 to 40).foreach { seed =>
       val random = new scala.util.Random(seed)
       val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
-      val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+      val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
       val sweeper = new ReadModelSweeper(projector.projection)
       var data   = venues.take(4).map(c => (c: Source) -> venueSlot("Foo", times.take(1))).toMap
       var rating = Some(7.0)
@@ -541,7 +541,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         projector.onMovieUpsert(row)
 
         val fresh = new InMemoryReadModelRepository()
-        new ReadModelProjector(new InMemoryMovieRepository(normalizer = titleNormalizer), fresh, fresh, clock = specClock).onMovieUpsert(row)
+        ReadModelProjector(new InMemoryMovieRepository(normalizer = titleNormalizer), fresh, fresh, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(row)
         withClue(s"seed $seed, step $step: ") {
           rm.findAllMovies().sortBy(_._id)         shouldBe fresh.findAllMovies().sortBy(_._id)
           rm.findAllScreenings().sortBy(_._id)     shouldBe fresh.findAllScreenings().sortBy(_._id)
@@ -630,7 +630,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
       cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
     repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, new CapturingScheduler)
     val sweeper = new ReadModelSweeper(projector.projection)
     projectorBoot.prepare(sweeper)
@@ -659,8 +659,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     }
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))
-    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, new CapturingScheduler)
     val sweeper = new ReadModelSweeper(projector.projection)
     projectorBoot.prepare(sweeper)
@@ -687,9 +687,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     }
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), record)
-    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
+    ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
     rm.findAllScreenings() should not be empty
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, new CapturingScheduler)
     val sweeper = new ReadModelSweeper(projector.projection)
     projectorBoot.prepare(sweeper)
@@ -712,13 +712,13 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     }
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    new ReadModelSweeper(new ReadModelProjector(repository, rm, rm, clock = specClock).projection).reconcile()   // Foo carded by the last process
+    new ReadModelSweeper(ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock).projection).reconcile()   // Foo carded by the last process
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val before = rm.movieUpserts.size
     scans.set(0)
 
     val study  = new BootCorpusStudy(titleNormalizer)
-    val booted = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val booted = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val bootedBoot = new ReadModelBoot(booted, ReadModelProjectorFixtures.scheduler(), bootStudy = Some(study))
     val bootedSweeper = new ReadModelSweeper(booted.projection)
     study.bootPage(repository.findAll())
@@ -741,7 +741,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val study  = new BootCorpusStudy(titleNormalizer)
-    val booted = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val booted = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val bootedBoot = new ReadModelBoot(booted, ReadModelProjectorFixtures.scheduler(), bootStudy = Some(study))
     val bootedSweeper = new ReadModelSweeper(booted.projection)
     study.bootReadEnded(services.movies.BootReadEnd.GaveUp)
@@ -789,7 +789,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -841,7 +841,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val rm = new InMemoryReadModelRepository() {
       override def findAllMoviesChecked(): tools.ReadOutcome[Seq[ResolvedMovie]] = throw new IllegalStateException("the boot read blows up")
     }
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val sweeper = new ReadModelSweeper(projector.projection)
     noException should be thrownBy projectorBoot.start(sweeper)
@@ -854,7 +854,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "the projector" should "meter the movie + screening upserts of a first projection" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
       .onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
     m.writes((Target.Movie, Op.Upsert))     shouldBe 1
     m.writes((Target.Screening, Op.Upsert)) shouldBe 1
@@ -864,7 +864,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "the project-duration metric" should "record one timed projectAll per ready row projected" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
 
     // A ready row projected via the change-stream path → one timing recorded.
@@ -892,7 +892,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "the project-calls metric" should "name the trigger of every projection, and count only events as the stream's" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
 
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
@@ -915,7 +915,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     // yet" for a slow multi-city projection — see `recordWriteBurst`'s doc.
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     import ReadModelProjectionMetrics.ProjectTrigger
 
@@ -946,8 +946,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     // from THAT clock rather than from however long the projection happened to take.
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m,
-      cpuClock = new SteppingCpuClock(stepNanos = 250000000L), clock = specClock) // 0.25s of CPU per reading
+    val projector = ReadModelProjector(repository, rm, rm, m,
+      cpuClock = new SteppingCpuClock(stepNanos = 250000000L), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock) // 0.25s of CPU per reading
 
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
 
@@ -962,7 +962,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "a re-key that prunes the old film in reconcile" should "meter a film prune + its document deletes" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     sweeper.reconcile()                       // projects the film
@@ -982,7 +982,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         SourceData(title = Some("Foo"), releaseYear = Some(y),
           filmUrl = Some("https://mk/foo"), showtimes = Seq(at("2026-06-12T20:00")))))
 
-    val p1 = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val p1 = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val p1Sweeper = new ReadModelSweeper(p1.projection)
     repository.upsert("Foo", Some(2025), recordYear(2025))
     p1Sweeper.reconcile()
@@ -995,7 +995,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Foo", Some(2026), recordYear(2026))
 
     // A fresh projector boots with an empty `lastMovie` and reconciles.
-    val p2 = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val p2 = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val p2Sweeper = new ReadModelSweeper(p2.projection)
     rm.movieDeletes.clear(); rm.screeningDeletes.clear()
     p2Sweeper.reconcile()
@@ -1037,7 +1037,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
 
     // One variant card gone: the row is projected whole, and the missing card comes back.
     val partial = new InMemoryReadModelRepository()
-    val healer  = new ReadModelProjector(repository, partial, partial, clock = specClock)
+    val healer  = ReadModelProjector(repository, partial, partial, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val healerBoot = new ReadModelBoot(healer, ReadModelProjectorFixtures.scheduler())
     val healerSweeper = new ReadModelSweeper(healer.projection)
     partial.upsertMovie(rm.movieUpserts.find(_._id == ids.head).get)
@@ -1106,7 +1106,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val partial = new InMemoryReadModelRepository()
     rm.findAllMovies().foreach(partial.upsertMovie)
     rm.findAllScreenings().filter(_._id == ids.head).foreach(partial.upsertScreening)   // one venue short
-    val healer = new ReadModelProjector(repository, partial, partial, clock = specClock)
+    val healer = ReadModelProjector(repository, partial, partial, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val healerBoot = new ReadModelBoot(healer, ReadModelProjectorFixtures.scheduler())
     val healerSweeper = new ReadModelSweeper(healer.projection)
 
@@ -1131,7 +1131,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clockSkippingSliceOf(repository.findAll().head.id))
     val sweeper = new ReadModelSweeper(projector.projection)
     projector.onMovieUpsert(repository.findAll().head)
 
@@ -1161,7 +1161,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       Multikino   -> SourceData(title = Some("Foo"), showtimes = times),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"))))
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clockSkippingSliceOf(repository.findAll().head.id))
     val sweeper = new ReadModelSweeper(projector.projection)
     projector.onMovieUpsert(repository.findAll().head)
     sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
@@ -1181,7 +1181,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
                                                  slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
-    val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     def film(muranow: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -1217,15 +1217,15 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
-    val previous = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val previous = ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     previous.onMovieUpsert(repository.findAll().head)
     // The previous process wrote it long before, and the cursor has delivered since — so the
     // silent-cursor catch-up, overlap and all, has no reason to read it again.
     clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
     repository.changeStreamLiveness.delivered(ChangeStreamLiveness.Movies)
     val m      = new RecordingReadModelProjectionMetrics()
-    val booted = new ReadModelProjector(repository, rm, rm, m,
-                                        clock = clockSkippingSliceOf(repository.findAll().head.id))
+    val booted = ReadModelProjector(repository, rm, rm, m,
+                                        stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clockSkippingSliceOf(repository.findAll().head.id))
     val bootedBoot = new ReadModelBoot(booted, new CapturingScheduler)
     val bootedSweeper = new ReadModelSweeper(booted.projection)
 
@@ -1252,11 +1252,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         Multikino   -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))),
         KinoMuranow -> SourceData(title = Some(title), showtimes = Nil))))
     }
-    val previous = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val previous = ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     repository.findAll().foreach(previous.onMovieUpsert)
     rm.findAllMovies().filter(_.title == "Foo").foreach(c => rm.deleteMovie(c._id))
     val m      = new RecordingReadModelProjectionMetrics()
-    val booted = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val booted = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val bootedBoot = new ReadModelBoot(booted, new CapturingScheduler)
     val bootedSweeper = new ReadModelSweeper(booted.projection)
 
@@ -1299,7 +1299,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))))))
     }
-    val previous = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val previous = ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     repository.findAll().foreach(previous.onMovieUpsert)
     val cards = rm.findAllMovies().map(c => c.title -> c._id).toMap
     // Foo's venue row as an older roster filed it; Bar's simply gone.
@@ -1309,7 +1309,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     }
     rm.findAllScreenings().filter(_.filmId == cards("Bar")).foreach(row => rm.deleteScreening(row._id))
     val m      = new RecordingReadModelProjectionMetrics()
-    val booted = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val booted = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val bootedBoot = new ReadModelBoot(booted, new CapturingScheduler)
     val bootedSweeper = new ReadModelSweeper(booted.projection)
     bootedBoot.start(bootedSweeper)
@@ -1335,7 +1335,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))))))
     }
-    val booted = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val booted = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val bootedBoot = new ReadModelBoot(booted, ReadModelProjectorFixtures.scheduler())
     val bootedSweeper = new ReadModelSweeper(booted.projection)
 
@@ -1359,7 +1359,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
                                                  slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     def foo(showtime: String) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))),
@@ -1396,7 +1396,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     // The stream's apply thread: what it had queued when the sweep took the lock, run once it is free.
     val queued = scala.collection.mutable.Buffer.empty[StoredMovieRecord]
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper   = new ReadModelSweeper(projector.projection, awaitStreamApplied = _ => queued.foreach(projector.onMovieUpsert))
     repository.findAll().foreach(projector.onMovieUpsert)
     // A scrape lands Foo at a second venue; its event is delivered, and waits behind the sweep.
@@ -1430,7 +1430,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     // The stream's apply thread: what it had queued when the sweep took the lock, run once it is free.
     val queued = scala.collection.mutable.Buffer.empty[StoredMovieRecord]
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper   = new ReadModelSweeper(projector.projection, awaitStreamApplied = _ => queued.foreach(projector.onMovieUpsert))
     repository.findAll().foreach(projector.onMovieUpsert)
     // Foo gains a showtime; its event is delivered, and waits behind the sweep.
@@ -1456,7 +1456,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
                                                  slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
-    val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -1487,7 +1487,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer, clock = clock)
     val rm         = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector  = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
@@ -1502,7 +1502,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Bar", Some(2024), record(Some(6.0), Seq(at("2026-06-14T20:00")), tmdbId = 2))
 
     val m       = new RecordingReadModelProjectionMetrics()
-    val checker = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val checker = ReadModelProjector(repository, rm, rm, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val checkerBoot = new ReadModelBoot(checker, ReadModelProjectorFixtures.scheduler())
     val checkerSweeper = new ReadModelSweeper(checker.projection)
     checkerBoot.start(checkerSweeper)          // seeds its memo from the stale read model, exactly as a restart does
@@ -1535,7 +1535,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
 
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-09-24T00:00:00Z"))
     (1 to 48).foreach { _ =>
-      val booted = new ReadModelProjector(repository, rm, rm, clock = clock)
+      val booted = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clock)
       val bootedBoot = new ReadModelBoot(booted, ReadModelProjectorFixtures.scheduler())
       val bootedSweeper = new ReadModelSweeper(booted.projection)
       bootedBoot.start(bootedSweeper)
@@ -1580,7 +1580,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val blind = new InMemoryReadModelRepository() {
       override def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new java.io.IOException("unreadable on purpose")))
     }
-    val projector = new ReadModelProjector(repository, blind, blind, clock = specClock)
+    val projector = ReadModelProjector(repository, blind, blind, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -1605,10 +1605,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     }
     val m = new RecordingReadModelProjectionMetrics()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    val previous = new ReadModelProjector(repository, blind, blind, clock = specClock)
+    val previous = ReadModelProjector(repository, blind, blind, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     previous.onMovieUpsert(repository.findAll().head)
     val before = blind.screeningUpserts.size
-    val projector = new ReadModelProjector(repository, blind, blind, m, clock = specClock)
+    val projector = ReadModelProjector(repository, blind, blind, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, new CapturingScheduler)
     val sweeper = new ReadModelSweeper(projector.projection)
 
@@ -1628,7 +1628,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         if (failOnce) { failOnce = false; throw new RuntimeException("simulated screenings write failure") }
         else super.upsertScreening(s)
     }
-    val projector = new ReadModelProjector(repository, flaky, flaky, clock = specClock)
+    val projector = ReadModelProjector(repository, flaky, flaky, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     val row = repository.findAll().head
 
@@ -1651,7 +1651,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         else super.deleteMovie(id)
     }
     val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, flaky, flaky, m, clock = specClock)
+    val projector = ReadModelProjector(repository, flaky, flaky, m, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -1674,7 +1674,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         if (failing) throw new RuntimeException("simulated screenings delete failure") else super.deleteScreening(id)
     }
     val flaky = new FailingScreeningDeletes
-    val projector = new ReadModelProjector(repository, flaky, flaky, clock = specClock)
+    val projector = ReadModelProjector(repository, flaky, flaky, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     val row = repository.findAll().head
     projector.onMovieUpsert(row)
@@ -1690,7 +1690,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   "start" should "schedule no pass of its own, leaving the sweeper's to whoever built it" in {
     val fakeScheduler = new CapturingScheduler
     val (_, repository, rm) = fixture()
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, fakeScheduler)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projectorBoot.start(new ReadModelSweeper(projector.projection))
@@ -1704,7 +1704,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val projectorBoot = new ReadModelBoot(projector, fakeScheduler)
     val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(new ReadModelDerivationPass(projector.projection)))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -1749,7 +1749,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some(banner), showtimes = Seq(at("2026-06-13T20:00"))))))
     val row = repository.findAll().head
-    val projector = new ReadModelProjector(repository, rm, rm, clock = clockSkippingSliceOf(row.id))
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clockSkippingSliceOf(row.id))
     val sweeper = new ReadModelSweeper(projector.projection)
     val onePartition  = hitsOf(counting)(ReadModelProjection.filmIds(row, counting))
     val oneProjection = hitsOf(counting)(ReadModelProjection.projectAll(row, counting))
@@ -1779,7 +1779,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
         batches += screenings.size; screenings.foreach(super.upsertScreening)
       }
     }
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
     val showing   = Seq(at("2026-10-02T18:00"))
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](

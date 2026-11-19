@@ -25,7 +25,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val metrics    = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
+    val projector  = ReadModelProjector(repository, rm, rm, metrics, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val sweeper = new ReadModelSweeper(projector.projection)
     projectorBoot.start(sweeper)

@@ -45,41 +45,38 @@ import services.movies.{MovieChangeFeed, MovieRepositoryReader}
  * neither side depends on it.
  *
  * The change-stream callback and the sweeper's passes are serialised by one lock (its [[ProjectionMemo]]'s),
- * so the in-memory last-projection state needs no further synchronisation. This class owns
- * the per-row projection and its memo; [[ScreeningRowWrites]] the screenings rows' diff; its [[ShareCardGate]] the
- * share-card hold; [[ReadModelBoot]] the boot reads and the change-stream subscription that drive it; [[ReadModelSweeper]]
- * the passes over the whole corpus, which drive it through its [[projection]]. The projector builds no sweeper and no
- * boot: the composition root builds both over it.
+ * so the in-memory last-projection state needs no further synchronisation. A change passes three stages: this class
+ * decides which of a row's cards stand and which go; its [[CardProjection]] projects the row's cards and plans their
+ * screenings rows; its [[ShareCardGate]] holds a brand-new card back for its share card; its [[CardStore]] writes what
+ * stands and removes what goes. [[ReadModelBoot]] runs the boot reads and the change-stream subscription that drive it;
+ * [[ReadModelSweeper]] the passes over the whole corpus, which drive it through its [[projection]]. The projector builds
+ * none of them: [[ReadModelProjector.apply]] assembles its stages, and the composition root builds the sweeper and the
+ * boot over it.
  */
-class ReadModelProjector(
+class ReadModelProjector private[readmodel] (
   movieRepository: MovieRepositoryReader & MovieChangeFeed,
-  writer:    ReadModelWriter,
-  reader:    ReadModelReader,
-  metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
-  cpuClock:  tools.ThreadCpuClock = tools.ThreadCpuClock.threadMxBean,
+  writer:          ReadModelWriter,
+  reader:          ReadModelReader,
+  metrics:         ReadModelProjectionMetrics,
   // Where each card's `shareCard` comes from, and the first-publish gate that holds a brand-new card
   // back (bounded) waiting for its share card — see [[ShareCardGate]].
-  shareCardGate: ShareCardGate = ShareCardGate.ungated,
-  // No default: the rolling content check numbers its slice by this clock, so a spec left on the
-  // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
-  clock:     java.time.Clock,
-  // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
-  // — the card as projected — unless the worker's composition root switches it on.
-  ratingGate: RatingGate = RatingGate.off
-) extends Logging {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
+  shareCardGate:   ShareCardGate,
+  clock:           java.time.Clock,
+  stopwatch:       tools.Stopwatch,
+  // What this process knows it has written: the diff state of every projection, and the lock serialising them.
+  private[readmodel] val memo: ProjectionMemo,
+  // The stages a row's change passes through: its cards projected, then written.
+  cardProjection:  CardProjection,
+  cardStore:       CardStore
+)(using LatestTitleYear) extends Logging {
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
   // it rather than accepting a second, separately-wired copy that could disagree.
   private val normalizer: services.titles.TitleNormalizer = movieRepository.normalizer
 
-  import ReadModelProjectionMetrics.{Op, ProjectTrigger, RetireReason, Target}
+  import ReadModelProjectionMetrics.{ProjectTrigger, RetireReason}
 
-  // What this process knows it has written: the diff state of every projection, and the lock serialising them.
-  private[readmodel] val memo = new ProjectionMemo
-  import memo.{healedClean, lastCardsByRow, lastGroups, lastMetadata, lastMovie, lastScreenings, lock}
-  private val screeningRows = new ScreeningRowWrites(writer, metrics, lastScreenings)
+  import memo.{healedClean, lastCardsByRow, lastGroups, lastMovie, lastScreenings, lock}
 
   // The sweeper over [[projection]], when one is: what this projector tells it of each change it applies,
   // read and replaced under `lock` only.
@@ -105,12 +102,8 @@ class ReadModelProjector(
       if (!lastCardsByRow.contains(rowId)) lastCardsByRow.update(rowId, cards)
     def recordRowCards(rowId: String, cards: Set[String]): Unit = lastCardsByRow.update(rowId, cards)
     def retainRows(live: String => Boolean): Unit = memo.retainRows(live)
-    def removeCard(filmId: String, audit: String): Unit = ReadModelProjector.this.removeCard(filmId, audit)
-    def removeScreening(ref: ScreeningRef): Unit = {
-      writer.deleteScreening(ref._id)
-      metrics.recordWrite(Target.Screening, Op.Delete, 1)
-      lastScreenings.forget(ref.filmId, ref._id)
-    }
+    def removeCard(filmId: String, audit: String): Unit = cardStore.remove(filmId, audit)
+    def removeScreening(ref: ScreeningRef): Unit = cardStore.removeScreening(ref)
   }
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
@@ -146,7 +139,7 @@ class ReadModelProjector(
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
         sweep.noteApplied(rowId)
-        byCard.foreach(screeningRows.applyVenues)
+        byCard.foreach(cardStore.writeVenues)
         if (shareCardGate.holdsAny) releaseExpired()
         services.movies.VenueVerdict.Applied
     }
@@ -184,12 +177,12 @@ class ReadModelProjector(
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently.
-    val variants = timedProjection(trigger)(planRow(partition, trigger))
+    val variants = planRow(partition, trigger)
     // The WRITE half, timed separately from the computation above (`recordProject`) — see
     // `recordWriteBurst`. A wide release writes one document per (card, city, cinema)
-    // through `writer.upsertMovie`/`screeningRows.diff`, sequentially; this is the phase that
+    // through the card store, sequentially; this is the phase that
     // scales with city count, not with resolve/synopsisByCity/ratings cost.
-    val writing = tools.Stopwatch.start()
+    val writing = stopwatch.start()
     // A content check's writes are DRIFT CANDIDATES — the stored projection disagreed with the
     // source — held by what moved for the sweep's verdict, which counts and names only the rows
     // no event then repaired, the film ids being what a drift investigation has to start from.
@@ -198,7 +191,7 @@ class ReadModelProjector(
     val publish = variants.flatMap { case (projected, screenings) =>
       shareCardGate.admit(rowId, projected, screened = screenings.nonEmpty, served = memo.served(projected._id), now).map(_ -> screenings)
     }
-    val written = publish.map { case (movie, screenings) => writeVariant(movie, screenings, drift) }.sum
+    val written = publish.map { case (movie, screenings) => cardStore.write(movie, screenings, drift) }.sum
     retireVariantsGone(rowId, publish.map(_._1._id).toSet)
     metrics.recordWriteBurst(trigger, writing.seconds)
     drift.flatMap(_.of(rowId)).foreach(sweep.noteDrift)
@@ -213,67 +206,16 @@ class ReadModelProjector(
     shareCardGate.dropHoldsNotProducedBy(rowId, Set.empty)
   }
 
-  /** Run a pure projection and measure it BOTH ways: wall-clock answers "how long did it take" (the
-   *  latency histogram), thread CPU answers "how much CPU did it burn" (the credit-floor attribution).
-   *  They diverge under concurrency and under steal, so the one that may be compared against process
-   *  CPU is the CPU one — see `recordProject`. */
-  private def timedProjection[A](trigger: ProjectTrigger)(projection: => A): A = {
-    val wall     = tools.Stopwatch.start()
-    val cpuStart = cpuClock.nanos()
-    val result   = projection
-    metrics.recordProject(trigger, wallSeconds = wall.seconds, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
-    result
-  }
-
   /** Caller holds `lock`. Project a ready row's cards and plan their screenings rows, remembering its
    *  title groups and dropping the holds on cards it no longer produces. */
   private def planRow(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Seq[(ResolvedMovie, Seq[PlannedScreening])] = {
     val rowId     = partition.stored.id.value
-    val projected = projectReusingMetadata(partition, trigger)
-    val variants  = projected.map { (movie, venues) => (movie, screeningRows.plan(movie._id, venues)) }
+    val cards     = cardProjection.plan(partition, trigger)
     lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
-      projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
+      cards.iterator.flatMap(_.venues).filter(_.slotCount > 1).map(_._id).toSet))
+    val variants  = cards.map(card => card.movie -> card.screenings)
     shareCardGate.dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     variants
-  }
-
-  /** Caller holds `lock`. Write one published card and its screenings rows where they changed: the
-   *  documents written. */
-  private def writeVariant(movie: ResolvedMovie, screenings: Seq[PlannedScreening], drift: Option[RowDriftLog]): Int = {
-    val hash    = CardHash.of(movie)
-    val changed = !lastMovie.get(movie._id).contains(hash)
-    if (changed) {
-      val parts = upsertCard(movie, hash)
-      drift.foreach(_.card(movie._id, parts))
-    }
-    val screeningDiff = screeningRows.diff(movie._id, screenings)
-    // A card kept but some of its screening slots trimmed — routine reprojection
-    // churn (DEBUG), but it's how a film can drop out of "served tomorrow" without
-    // its whole card being deleted, so the audit covers it too.
-    if (screeningDiff.deleted.nonEmpty)
-      services.movies.RemovalAudit.screeningsCleared("read-model.diff", movie._id, screeningDiff.deleted.size,
-        whole = screenings.isEmpty, reason = "reproject-trim")
-    drift.foreach(_.screenings(screeningDiff))
-    // Remembered only once the screenings are written too: a throw in the screenings
-    // write used to leave the card's hash "current", so the screenings were never
-    // retried until the row changed again.
-    if (changed) rememberCard(movie, hash, screened = screenings.nonEmpty)
-    (if (changed) 1 else 0) + screeningDiff.documents
-  }
-
-  /** Caller holds `lock`. Write a card whose hash moved to `hash`: the parts that moved. */
-  private def upsertCard(movie: ResolvedMovie, hash: CardHash): Set[String] = {
-    writer.upsertMovie(movie)
-    metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-    val parts = lastMovie.get(movie._id).fold(Set.empty[String])(_.partsDifferingFrom(hash))
-    metrics.recordCardWrite(parts)
-    parts
-  }
-
-  /** Caller holds `lock`. Remember a card as written at `hash`, and tell the share-card gate. */
-  private def rememberCard(movie: ResolvedMovie, hash: CardHash, screened: Boolean): Unit = {
-    lastMovie.update(movie._id, hash)
-    shareCardGate.cardWritten(movie, screened = screened)
   }
 
   /** Caller holds `lock`. A variant card this row produced last time and no longer does — its
@@ -339,69 +281,8 @@ class ReadModelProjector(
 
   /** Caller holds `lock`. Remove one card and its screenings on the change-stream path. */
   private def retireCard(cardId: String, reason: String): Unit = {
-    removeCard(cardId, audit = s"stream-$reason")
+    cardStore.remove(cardId, audit = s"stream-$reason")
     metrics.recordCardRetired(reason)
-  }
-
-  // Caller holds `lock`. Project the row, REUSING the cached `ResolvedMovie` metadata when
-  // the row's metadata inputs are unchanged (a showtime-only change at an already-present
-  // cinema — the overwhelming common case under reproject/enrich showtime churn). Correctness:
-  // an unchanged `metadataHash` guarantees an unchanged metadata output AND an unchanged
-  // display-title variant partition (the hash covers the whole record bar showtimes, and no
-  // metadata accessor reads showtimes), so `venuesAll` — the SAME partition's variants in
-  // the SAME order — lines up 1:1 with the cached movie(s). The size guard is a
-  // belt-and-suspenders fallback to recomputing: it can never pair a movie with the wrong
-  // screenings. Reusing skips the resolve/synopsisByCity/ratings work; the venues' rows are
-  // built (or not) afterwards, by `screeningRows.plan`.
-  private def projectReusingMetadata(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Seq[(ResolvedMovie, Seq[ReadModelProjection.VenueScreening])] = {
-    val stored = partition.stored
-    // Keyed by the SOURCE ROW (`persistedId`, unique per `movies` document), NOT by the
-    // projected `ReadModelProjection.filmId`: that id keys on `resolvedYear` and so
-    // deliberately COLLAPSES several source rows onto one card (`kumotry|2025` and
-    // `kumotry|2026` both project to `kumotry|2026` — see its doc). The cached VALUE is one
-    // row's hash + `ResolvedMovie`s, so keying on the shared card id let two rows overwrite
-    // each other's entry on every alternating change: neither ever read its own hash back,
-    // every projection recomputed, and the miss rate never decayed. Keying per row makes each
-    // row's entry its own.
-    val rowKey = stored.id.value
-    // The gate's version is part of the key: a new gate must not reuse cards gated by the old one.
-    val hash   = (ReadModelProjection.metadataHash(stored), ratingGate.version).##
-    val venues = partition.venuesAll
-    val movies = lastMetadata.get(rowKey) match {
-      case Some((cachedHash, cached)) if cachedHash == hash && venues.sizeIs == cached.size =>
-        metrics.recordMetadataProjection(trigger, reused = true)
-        cached
-      case _ =>
-        val recomputed = partition.moviesAll.map(ratingGate(stored, _))
-        lastMetadata.update(rowKey, hash -> recomputed)
-        metrics.recordMetadataProjection(trigger, reused = false)
-        recomputed
-    }
-    movies.zip(venues)
-  }
-
-  /** Caller holds `lock`. Remove a card and the screenings this process remembers for
-   *  it; `audit` names the path on the removal-audit line. */
-  private def removeCard(filmId: String, audit: String): Unit = {
-    val screeningIds = lastScreenings.ids(filmId)
-    writer.deleteMovie(filmId)
-    // The card is gone from here on, so its share-card files go and the memo forgets it even if a
-    // screenings delete then throws — remembered, the row coming back unchanged would skip writing
-    // the card, and nothing would retire its files again. Screenings left behind belong to no live
-    // card; the prune removes them while it stays retired.
-    shareCardGate.cardRetired(filmId)
-    tools.AnyThrowable.rethrownAfter(screeningIds.foreach(writer.deleteScreening))(_ => forgetCard(filmId))
-    // The point a film actually leaves the served site (web_movies + its
-    // web_screenings). During a "cards vanish" episode this names every dropped
-    // filmId, one INFO line each — the read-model half of the removal audit.
-    services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = audit)
-    metrics.recordWrite(Target.Movie, Op.Delete, 1)
-    if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
-    forgetCard(filmId)
-    // NOT evicted here: `lastMetadata` is keyed by SOURCE ROW id, and `filmId` is a projected
-    // CARD id — several rows can collapse onto one card, so there is no card→row mapping to
-    // remove by. The prune sweep retains exactly the live row keys instead (see `retainRows`),
-    // which is a tighter eviction than this best-effort remove ever was.
   }
 
   /** Caller holds `lock`. Re-project the CARDS of a row read without its showtimes, and rewrite
@@ -413,25 +294,14 @@ class ReadModelProjector(
    *  cards-only), and a row that lost its readiness. */
   private def projectCards(partition: ReadModelProjection.Partition): Int = {
     if (!partition.stored.readyToProject) return 0
-    val cards = timedProjection(ProjectTrigger.Derivation)(projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1))
-    cards.filter(card => lastMovie.contains(card._id) && !shareCardGate.holds(card._id)).count { projected =>
-      val movie   = shareCardGate.withShareCard(projected)
-      val hash    = CardHash.of(movie)
-      val changed = !lastMovie.get(movie._id).contains(hash)
-      if (changed) {
-        upsertCard(movie, hash)
-        rememberCard(movie, hash, screened = lastScreenings.holdsAny(movie._id))
-      }
-      changed
-    }
+    val cards = cardProjection.cards(partition, ProjectTrigger.Derivation).map(_._1)
+    cards.filter(card => lastMovie.contains(card._id) && !shareCardGate.holds(card._id))
+      .count(projected => cardStore.rewrite(shareCardGate.withShareCard(projected)))
   }
 
-  /** A card the read model serves, as the boot seed reads it ([[ReadModelBoot]]): remembered as written, and its
-   *  share card's pending state told to the gate. Caller holds `lock`. */
-  private[readmodel] def seedCard(movie: ResolvedMovie): Unit = {
-    lastMovie.update(movie._id, CardHash.of(movie))
-    if (movie.shareCardPending) shareCardGate.seedPending(movie._id)
-  }
+  /** A card the read model serves, as the boot seed reads it ([[ReadModelBoot]]): remembered as written. Caller holds
+   *  `lock`. */
+  private[readmodel] def seedCard(movie: ResolvedMovie): Unit = cardStore.seed(movie)
 
   /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose
    *  screenings rows under `absentVenues` are known to be missing from the read model —
@@ -456,8 +326,8 @@ class ReadModelProjector(
    *  `None` when nothing was projected -- the row is gone by the time it is read whole, or no
    *  longer ready; otherwise whether the absence was repaired. */
   private def heal(id: models.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] = {
-    absentCards.foreach(forgetCard)
-    absentVenues.foreach(forgetScreening)
+    absentCards.foreach(cardStore.forget)
+    absentVenues.foreach(cardStore.forgetScreening)
     movieRepository.findById(id).flatMap { whole =>
       projectRow(whole, ProjectTrigger.Heal)
       // Forgotten above, so remembered now only if this projection produced and wrote it.
@@ -468,15 +338,33 @@ class ReadModelProjector(
       Option.when(whole.readyToProject)(repaired)
     }
   }
+}
 
-  private def forgetCard(filmId: String): Unit = {
-    lastMovie.remove(filmId)
-    shareCardGate.forget(filmId)
-    lastScreenings.forgetCard(filmId)
+object ReadModelProjector {
+  /** A projector and its stages over one memo — the [[CardProjection]] that projects a row's cards and the
+   *  [[CardStore]] that writes them — as the worker's composition root and the specs build it. */
+  def apply(
+    movieRepository: MovieRepositoryReader & MovieChangeFeed,
+    writer:          ReadModelWriter,
+    reader:          ReadModelReader,
+    metrics:         ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
+    cpuClock:        tools.ThreadCpuClock = tools.ThreadCpuClock.threadMxBean,
+    shareCardGate:   ShareCardGate = ShareCardGate.ungated,
+    // No default: the rolling content check numbers its slice by this clock, so a spec left on the
+    // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
+    clock:           java.time.Clock,
+    // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
+    // — the card as projected — unless the worker's composition root switches it on.
+    ratingGate:      RatingGate = RatingGate.off,
+    // What the projection's and the writes' durations are measured on: the root's.
+    stopwatch:       tools.Stopwatch
+  ): ReadModelProjector = {
+    // The latest year a title may name, read off the projector's clock at each ask (`LatestTitleYear`).
+    given LatestTitleYear = LatestTitleYear(clock)
+    val memo          = new ProjectionMemo
+    val screeningRows = new ScreeningRowWrites(writer, metrics, memo.lastScreenings)
+    new ReadModelProjector(movieRepository, writer, reader, metrics, shareCardGate, clock, stopwatch, memo,
+      cardProjection = new CardProjection(memo, screeningRows, ratingGate, metrics, cpuClock, stopwatch),
+      cardStore      = new CardStore(writer, metrics, memo, screeningRows, shareCardGate))
   }
-
-  /** Drop one screenings row from the memo, by its id — its film is whichever memo
-   *  entry holds the id, so the card id need not be parsed out of it. */
-  private def forgetScreening(screeningId: String): Unit =
-    lastScreenings.forget(screeningId)
 }

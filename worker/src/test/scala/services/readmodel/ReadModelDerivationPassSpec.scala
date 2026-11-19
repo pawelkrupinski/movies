@@ -50,7 +50,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
                      marker: ReadModelDerivationMarker,
                      metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
                      history: Seq[Derivation] = ReadModelDerivation.History): (ReadModelBoot, ReadModelSweeper, ReadModelDerivationPass) = {
-    val projector = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
+    val projector = ReadModelProjector(repository, rm, rm, metrics, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history)
     val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))
@@ -329,7 +329,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
       def onRetired(filmId: String): Unit                        = ()
     }
     val marker    = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
-    val projector = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
+    val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history(DerivationScope.Cards))
     val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))

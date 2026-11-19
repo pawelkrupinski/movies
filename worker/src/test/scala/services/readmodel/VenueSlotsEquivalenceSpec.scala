@@ -63,7 +63,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def projector(rm: InMemoryReadModelRepository,
                         source: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) =
-    new ReadModelProjector(source, rm, rm, clock = clock)
+    ReadModelProjector(source, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = clock)
 
   private def boot(projector: ReadModelProjector, bootStudy: Option[BootCorpusStudy] = None) =
     new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler(), bootStudy)
