@@ -24,6 +24,15 @@ object SourceDigest {
     digest.digest.map("%02x".format(_)).mkString
   }
 
+  /** A tracked path's bytes as git stores them: a symlink's target (a link to a directory is a link, never read
+   *  through), any other file's content. The reader every digest of `git ls-files` paths passes to `of`
+   *  (Landing check build cache #577: `backtest-snapshot-remote/current`, a link to a directory, failed the walk). */
+  def tracked(repo: java.io.File)(path: String): Array[Byte] = {
+    val file = repo.toPath.resolve(path)
+    if (java.nio.file.Files.isSymbolicLink(file)) java.nio.file.Files.readSymbolicLink(file).toString.getBytes("UTF-8")
+    else java.nio.file.Files.readAllBytes(file)
+  }
+
   /** What a path is digested as: a module's main source or resource by where it sits on the class path
    *  (`common/src/main/scala/tools/Stopwatch.scala` is `scala/tools/Stopwatch.scala`), so moving a file to another
    *  module, its package kept, moves no version: what the resolver is built from is the same. Any other path as is. */

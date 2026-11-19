@@ -404,7 +404,7 @@ lazy val identity = (project in file("identity"))
         val stamps  = (Compile / resourceManaged).value / "services" / "identity"
         val version = stamps / s"$name-version.txt"
         val listed  = stamps / s"$name-sources.txt"
-        IO.write(version, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(repo / path)))
+        IO.write(version, kinowo.build.SourceDigest.of(paths, kinowo.build.SourceDigest.tracked(repo)))
         IO.write(listed, paths.mkString("\n"))
         Seq(version, listed)
       }
