@@ -92,8 +92,7 @@ object UserStateRepository {
 }
 
 /** The `userStates` store over Mongo: its reads and atomic writes (each one `findOneAndUpdate`, the update a
- *  server-side pipeline: [[UserStatesCollection]]), its change stream [[UserStateChangeStream]]'s. Built by
- *  its companion. */
+ *  server-side pipeline: [[UserStatesCollection]]), its change stream [[UserStateChangeStream]]'s, handed in over the same database. */
 class MongoUserStateRepository(
   // The users database, handed in by the composition root (`UsersWiring`, on the
   // shared `MongoConnection`); `None` (no Mongo configured, or the connection
@@ -168,17 +167,6 @@ class MongoUserStateRepository(
   ): Option[AutoCloseable] = changes.watch(onUpsert, onDelete, onDisconnect)
 
   def close(): Unit = changes.close()
-}
-
-object MongoUserStateRepository {
-  /** The store over `database`, with its [[UserStateChangeStream]] over the same one. */
-  def apply(database: Option[MongoDatabase], clock: java.time.Clock, stopwatch: tools.Stopwatch,
-            reopenDriver: (String, () => Unit) => services.movies.ChangeStreamReopen = services.movies.ChangeStreamReopen.onDaemonScheduler,
-            writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
-            indexHealth: UserStateIndexHealth = UserStateIndexHealth.none,
-            decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop): MongoUserStateRepository =
-    new MongoUserStateRepository(database, new UserStateChangeStream(database, clock, stopwatch, reopenDriver, decodeFailures),
-      writeOutcomes, indexHealth)
 }
 
 /** The states as `userStates` would hold them: each written through its codec to BSON and read back. */

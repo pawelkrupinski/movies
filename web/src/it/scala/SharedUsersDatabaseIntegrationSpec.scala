@@ -53,8 +53,10 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
   private def usersOn(country: Country, sharedUsersDb: Option[String]) =
     new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)))
 
-  private def statesOn(country: Country, sharedUsersDb: Option[String]) =
-    services.users.MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+  private def statesOn(country: Country, sharedUsersDb: Option[String]) = {
+    val db = Some(usersDbFor(country, sharedUsersDb))
+    new services.users.MongoUserStateRepository(db, new services.users.UserStateChangeStream(db, _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+  }
 
   override protected def afterAll(): Unit = try {
     (Country.all.map(corpusDb) :+ SharedDb).distinct.foreach { db =>

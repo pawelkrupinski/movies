@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{AccountController, AuthController, FacebookDataDeletionController, SsoController, UserStateController}
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, NativeTokenVerifier, OauthProvider}
-import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, UserRepository, UserStateRepository, MongoUserStateRepository}
+import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateChangeStream, UserStateRepository}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
 import tools.{HttpFetch, RealHttpFetch, TlsTrust}
 import services.MonitoringHttpFetch
@@ -39,8 +39,9 @@ trait UsersWiring { self: Wiring =>
   // replica set, made only for signed-in visitors. `UserAcrossPodsSpec` pins
   // these sequences.
   lazy val userRepository:      UserRepository      = new MongoUserRepository(usersConnection.database)
-  lazy val userStateRepository: UserStateRepository = MongoUserStateRepository(usersConnection.database, clock,
-    writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
+  lazy val userStateRepository: UserStateRepository = new MongoUserStateRepository(usersConnection.database,
+    new UserStateChangeStream(usersConnection.database, clock, stopwatch = stopwatch, decodeFailures = webDecodeFailureMetrics),
+    writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics)
 
   // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
   // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it
