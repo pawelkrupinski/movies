@@ -120,6 +120,18 @@ object ReaderNames {
   private val ResourceRoots = Seq("src/main/resources/", "src/test/resources/", "src/it/resources/", "src/page/resources/",
     "src/fixtures/resources/", "test/resources/fixtures/", "test/resources/")
 
+  /** BOOKKEEPING (2026-11-19): the ratchets' and the build's own tables -- the coupling and quality baselines
+   *  (`scripts/coupling-report --update`, `scripts/quality-report --update`), the coupling layer and exemption tables
+   *  (the build's couplingReport, CouplingSpec) -- and the worker's AOT class list (the image's class archive,
+   *  AotClassListSpec). Read only by tools and specs outside what the selection is for, they seed nothing: a change to
+   *  one moves no take, and is never a resource of unknown reader (46 of 100 common/ commits ran every identity spec
+   *  for a re-recorded coupling-baseline.tsv or aot-classes.txt). */
+  val Bookkeeping: Set[String] = Set("test/resources/coupling-baseline.tsv", "test/resources/coupling-fanout-refs.tsv",
+    "test/resources/coupling-exemptions.tsv", "test/resources/coupling-layers.tsv", "test/resources/complexity-baseline.tsv",
+    "test/resources/length-baseline.tsv", "test/resources/duplication-baseline.tsv", "worker/src/main/resources/aot-classes.txt")
+
+  def isBookkeeping(path: String): Boolean = Bookkeeping(path)
+
   /** Whether a path is data some spec may read off the class path or the fixtures tree. */
   def isResource(path: String): Boolean = ResourceRoots.exists(r => path.startsWith(r) || path.contains("/" + r))
 

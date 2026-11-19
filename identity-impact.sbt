@@ -8,6 +8,8 @@ lazy val ImpactFixtures = Configuration.of("Fixtures", "fixtures")
 lazy val impactUnits = Def.task {
   Seq(
     TestImpact.Unit("geodata", (impactModule("geodata") / Compile / compile).value), TestImpact.Unit("geodata", (impactModule("geodata") / Test / compile).value),
+    TestImpact.Unit("base", (impactModule("base") / Compile / compile).value), TestImpact.Unit("base", (impactModule("base") / Test / compile).value),
+    TestImpact.Unit("http", (impactModule("http") / Compile / compile).value), TestImpact.Unit("http", (impactModule("http") / Test / compile).value),
     TestImpact.Unit("common", (impactModule("common") / Compile / compile).value), TestImpact.Unit("common", (impactModule("common") / Test / compile).value),
     TestImpact.Unit("identity", (impactModule("identity") / Compile / compile).value), TestImpact.Unit("identity", (impactModule("identity") / Test / compile).value),
     TestImpact.Unit("testkit", (impactModule("testkit") / Compile / compile).value), TestImpact.Unit("testkit", (impactModule("testkit") / Test / compile).value),
@@ -33,6 +35,7 @@ lazy val impactRepoChecksTests = Def.taskDyn {
 lazy val impactTests = Def.task {
   Map(
     "geodata" -> (impactModule("geodata") / Test / definedTestNames).value, "common" -> (impactModule("common") / Test / definedTestNames).value,
+    "base" -> (impactModule("base") / Test / definedTestNames).value, "http" -> (impactModule("http") / Test / definedTestNames).value,
     "identity" -> (impactModule("identity") / Test / definedTestNames).value, "testkit" -> (impactModule("testkit") / Test / definedTestNames).value,
     "scrapers" -> (impactModule("scrapers") / Test / definedTestNames).value, "worker" -> (impactModule("worker") / Test / definedTestNames).value,
     "web" -> (impactModule("web") / Test / definedTestNames).value, "e2e" -> (impactModule("e2e") / Test / definedTestNames).value) ++

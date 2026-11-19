@@ -121,6 +121,16 @@ check "...a common tool and a common Java source too" "sbt identity|sbt identity
 check "...and the testkit's generic helpers, MutableClock and SpecClock" "sbt identity|sbt identity" \
   "$(plan testkit/src/main/scala/tools/MutableClock.scala)|$(plan testkit/src/main/scala/tools/SpecClock.scala)"
 check "...but not a common resource no identity rule names (its readers are found by name)" "" "$(plan common/src/main/resources/genres.tsv)"
+# AN IDENTITY CHANGE (agentctl's batch-alone rule, `--identity-change`): only a change that can move takes -- the
+# resolver and its worker adapters, the title rules and words and the normalizer applying them, the judgements. The
+# identity AREA runs for more (the specs' own trees, fixtures, common's code): those still batch (2026-11-19).
+kinds() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --identity-change | tr '\n' ' ' | sed 's/ $//'; }
+check "the resolver, an identity adapter, a title rule, the title words, the normalizer and the judgements are identity changes" \
+  "identity|identity|identity|identity|identity|identity|identity" \
+  "$(kinds identity/src/main/scala/services/identity/Resolver.scala)|$(kinds worker/src/main/scala/services/identityadapters/A.scala)|$(kinds common/src/main/scala/services/titles/rules/Rule.scala)|$(kinds common/src/main/resources/title-words.tsv)|$(kinds common/src/main/resources/title-rules.tsv)|$(kinds common/src/main/scala/services/titles/TitleNormalizer.scala)|$(kinds test/resources/fixtures/identity-judgements.tsv)"
+check "...a common model, a testkit helper, an identity spec, a capture or a slice is not, though the area runs for it" "||||" \
+  "$(kinds common/src/main/scala/models/FilmId.scala)|$(kinds testkit/src/main/scala/tools/MutableClock.scala)|$(kinds identity/src/test/scala/services/identity/MemoSpec.scala)|$(kinds test/resources/fixtures/identity-unmatched/pl.json.gz)|$(kinds test/resources/fixtures/drift-slices/pl-a/expected.tsv)"
+check "...and one take path among others makes the change one" "identity" "$(kinds web/src/main/scala/A.scala identity/src/main/scala/B.scala)"
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
 check "a file identity-slice drops into old refs compiles the tools into their floors (a fixtures tool: the identity area too)" "driftguards sbt identity oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"

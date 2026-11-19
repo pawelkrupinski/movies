@@ -274,7 +274,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
 # THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
 # check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
-is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--unit-plan|--unit-universe|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
 is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
 case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
 case "$dry_run" in
@@ -412,6 +412,26 @@ is_identity_path() { # <path>
         test/resources/fixtures/identity-*|test/resources/fixtures/corpus/*|test/resources/fixtures/drift-slices/*) return 0 ;;
     esac
     return 1
+}
+# What can MOVE TAKES (agentctl's identity change, checked alone: `--identity-change`): the resolver and its worker
+# adapters, the title rules and words and the normalizer applying them, and the judgements. Narrower than the identity
+# area on purpose (2026-11-19): a spec, a fixture or a common/ change that only runs some identity specs still batches.
+is_take_path() { # <path>
+    case "$1" in
+        identity/src/main/*|worker/src/main/scala/services/identityadapters/*|\
+        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
+        common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
+        test/resources/fixtures/identity-judgements.tsv) return 0 ;;
+    esac
+    return 1
+}
+# One line per path on stdin; prints `identity` when one can move takes (is_take_path), nothing otherwise.
+identity_change() {
+    local path
+    while IFS= read -r path; do
+        is_take_path "$path" && { echo identity; return 0; }
+    done
+    return 0
 }
 # What the identity specs read through their class dependencies alone (2026-11-19: a common/ model or a generic testkit
 # helper -- MutableClock, SpecClock -- started no identity area, though identity specs read them): common's production
@@ -890,6 +910,7 @@ case "${1:-}" in
     --compile-plan) compile_plan; exit 0 ;;
     --coupling-plan) coupling_paths; exit 0 ;;
     --quality-plan) quality_paths; exit 0 ;;
+    --identity-change) identity_change; exit 0 ;;
     --unit-plan)    unit_plan; exit 0 ;;
     --unit-universe) unit_universe; exit 0 ;;
     --source-lints) source_lint_lines "${2:-}"; exit 0 ;;

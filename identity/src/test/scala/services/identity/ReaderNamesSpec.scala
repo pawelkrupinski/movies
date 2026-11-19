@@ -67,4 +67,18 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
     // has an unknown reader, so the selection runs every test
     ReaderNames.tokens("test/resources/fixtures/flicks/x/day.html") should not contain "test/resources/fixtures/flicks"
   }
+
+  "a bookkeeping file" should "be the ratchets' and the build's own tables and the AOT class list, never identity data" in {
+    // the coupling and quality baselines and tables, the worker's AOT class list: regenerated or read only by tools
+    // outside the identity specs, so a change to one seeds no spec and never falls back to every test (2026-11-19: 46
+    // of 100 common/ commits ran every identity spec for a re-recorded coupling-baseline.tsv or aot-classes.txt)
+    Seq("test/resources/coupling-baseline.tsv", "test/resources/coupling-fanout-refs.tsv", "test/resources/coupling-exemptions.tsv",
+      "test/resources/coupling-layers.tsv", "test/resources/complexity-baseline.tsv", "test/resources/length-baseline.tsv",
+      "test/resources/duplication-baseline.tsv", "worker/src/main/resources/aot-classes.txt")
+      .filterNot(ReaderNames.isBookkeeping) shouldBe empty
+    Seq("test/resources/fixtures/identity-judgements.tsv", "test/resources/fixtures/identity-unmatched/expected-matches.tsv",
+      "common/src/main/resources/title-rules.tsv", "test/resources/fixtures/corpus/hard-clusters-seeds.tsv",
+      "test/resources/expected-schedules.txt", "worker/src/main/resources/aot-classes.txt.bak")
+      .filter(ReaderNames.isBookkeeping) shouldBe empty
+  }
 }

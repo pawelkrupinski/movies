@@ -223,8 +223,10 @@ The owner (2026-11-17): "batch whenever there's a backlog, not only on red". Wit
 30-40 min check of its own, most of it waiting for a ci-runner check slot. So at green, with no batch open, 2 or more
 queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTCTL.md`, "THE BACKLOG BATCH"):
 
-- **Who joins**: up to 4, in queue order (`Fixes-Red:` first). Never an identity change (what this hook's `--plan`
-  selects the `identity` area for, or a G5 identity-model commit), a change landed with `agentctl land --no-batch`, a
+- **Who joins**: up to 4, in queue order (`Fixes-Red:` first). Never an identity change (a path that can move takes, what this
+  hook's `--identity-change` names: the resolver and its worker adapters, the title rules, words and normalizer, the
+  judgements -- narrower than the `identity` area, whose specs a common/ change may run and still batch, 2026-11-19 --
+  or a G5 identity-model commit), a change landed with `agentctl land --no-batch`, a
   red fix, or a combined-tree verification round: those are checked alone, beside the batch. A change that does not
   apply on top of the others is left out and checked alone.
 - **The check**: the batch's tip gets the FULL landing check a change gets (`--range`; on ci-runner a precommit-check
@@ -387,7 +389,7 @@ its 14 code reds in five days were there. The laptop's own push never selects th
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in
 `A..B`, judged as a push to main, pushing nothing. A `<remote>/main..HEAD` base reads that remote's runs, so the push
 that follows reuses the pass. Use it before a manual push that may run long: `scripts/hooks/pre-push --range
-origin/main..HEAD`. `--plan`, `--compile-plan`, `--coupling-plan`, `--quality-plan`, `--unit-plan` and `--lint-plan` read paths on stdin and print the plan only.
+origin/main..HEAD`. `--plan`, `--compile-plan`, `--coupling-plan`, `--quality-plan`, `--identity-change`, `--unit-plan` and `--lint-plan` read paths on stdin and print the plan only.
 
 ## Stage 4: the watch after landing
 
