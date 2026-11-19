@@ -61,8 +61,10 @@ class NoUnwiredThreadsAndWaitsSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/roster/CopiedFeedDetector.scala", Rule.PoolBuilt)   -> Workstream,
     ("common/src/main/scala/services/movies/MovieChangeStream.scala", Rule.PoolBuilt)              ->
       (Workstream + " (built inside MongoMovieRepository, the repository workstream's)"),
-    ("common/src/main/scala/services/movies/MovieChangeStream.scala", Rule.ThreadSleep)            ->
-      (Workstream + " (the re-read back-off; built inside MongoMovieRepository, the repository workstream's)"),
+    ("common/src/main/scala/services/movies/FilmRereads.scala", Rule.PoolBuilt)                    ->
+      (Workstream + " (built inside MovieChangeStream, in MongoMovieRepository, the repository workstream's)"),
+    ("common/src/main/scala/services/movies/FilmRereads.scala", Rule.ThreadSleep)                  ->
+      (Workstream + " (the re-read back-off; built inside MovieChangeStream, in MongoMovieRepository, the repository workstream's)"),
     ("common/src/main/scala/services/movies/ChangeStreamReopen.scala", Rule.PoolBuilt)             ->
       (Workstream + " (built inside TaskInsertStream, the task-queue workstream's)"),
     ("common/src/main/scala/tools/PacedHttpFetch.scala", Rule.ThreadSleep)                         -> SleepSeamDefault,
