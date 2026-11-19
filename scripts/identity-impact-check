@@ -19,7 +19,7 @@ never leaves out a test that could fail. Two ways, each in a checkout of its own
               AGREES when the hook made a selection and it names exactly the classes this tool's own selection does;
               NO SELECTION when the hook fell back to every identity test (its why named: 2026-11-19's question,
               whether a check tree's selection silently fails), NO AREA when the hook runs no identity area for the
-              change at all (is_identity_path), DISAGREES otherwise.
+              change at all (is_identity_path, is_identity_reach_path), DISAGREES otherwise.
 
 Usage: scripts/identity-impact-check mutations [--only NAME,...] | hook [--only NAME,...] | replay [-n 50] [--ref REF] [--from N]
 Exit 0 sound, 1 a test the selection left out changed outcome (named; hook: a mutation not AGREES), 2 the check could
@@ -55,7 +55,9 @@ IDENTITY_PATHS = ["identity/", "worker/src/main/scala/services/identityadapters/
                   "testkit/src/main/scala/services/movies/SingleCountryNormalizer.scala",
                   "testkit/src/main/scala/services/movies/NormalizerTrace.scala",
                   ":(glob)test/resources/fixtures/identity-*/**", ":(glob)test/resources/fixtures/identity-*",
-                  "test/resources/fixtures/corpus/", "test/resources/fixtures/drift-slices/"]
+                  "test/resources/fixtures/corpus/", "test/resources/fixtures/drift-slices/",
+                  # what the identity specs read by class alone (pre-push's is_identity_reach_path, 2026-11-19)
+                  "common/src/main/scala/", "common/src/main/java/", "testkit/src/main/scala/"]
 
 
 def say(msg):
@@ -246,6 +248,17 @@ def m_capture_reader(tree):
                              'def fixturePath(country: Country): Path = Directory.resolve(s"${country.code}.json.gz.missing")'))
 
 
+def m_model_year(tree):
+    edit(tree, "common/src/main/scala/models/EmbeddedYear.scala",
+         lambda t: t.replace("case Seq(single) => Some(single)", "case Seq(single) => Some(single + 1)"))
+
+
+def m_mutable_clock(tree):
+    edit(tree, "testkit/src/main/scala/tools/MutableClock.scala",
+         lambda t: t.replace("def advance(d: Duration): Unit          = now = now.plus(d)",
+                             "def advance(d: Duration): Unit          = now = now.plus(d).plus(d)"))
+
+
 MUTATIONS = [
     ("rules-pl-venue", "a Polish venue's title rule (Kino Muza) no longer strips its programme suffix", m_rules_pl_venue),
     ("rules-de-row", "a German-scoped title rule's pattern changed", m_rules_de_row),
@@ -256,6 +269,9 @@ MUTATIONS = [
     ("words-de", "a German event word that every country's titles bill", m_words),
     ("agreement", "AgreementStage corrects no take an apply", m_agreement),
     ("capture-reader", "the capture reader (worker fixtures) names no capture", m_capture_reader),
+    # what the identity specs read by class alone (is_identity_reach_path): a common model, a generic testkit helper
+    ("model-year", "a common model (EmbeddedYear) reads every bracketed year one late", m_model_year),
+    ("mutable-clock", "the testkit's MutableClock advances twice as far as asked", m_mutable_clock),
 ]
 
 

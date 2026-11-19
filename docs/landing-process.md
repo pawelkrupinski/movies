@@ -296,8 +296,10 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
    `test/resources/fixtures/identity-*`; and what the identity specs read beside them, 2026-11-19: their own spec trees
    `*/src/test/scala/services/{identity,titles/rules}/`, `worker/src/test/scala/scripts/`, the hard-cluster ratchet
    and `tools.CountryScope`, the worker's fixtures config `worker/src/fixtures/` (the capture readers), testkit's
-   `services/identity/` doubles and its two normalizers, `test/resources/fixtures/{corpus,drift-slices}/`) selects
-   `identity`, and `sbt` with it (so the basic tests run). The test-impact selection then narrows the area to the
+   `services/identity/` doubles and its two normalizers, `test/resources/fixtures/{corpus,drift-slices}/`) -- or on
+   what the identity specs read by class alone (`is_identity_reach_path`, 2026-11-19: common's production code
+   `common/src/main/{scala,java}/`, models and tools, and the testkit's generic helpers `testkit/src/main/scala/`,
+   MutableClock, SpecClock) -- selects `identity`, and `sbt` with it (so the basic tests run). The test-impact selection then narrows the area to the
    specs the change reaches; one reaching none runs nothing, not even the slice coverage. The page
    paths (`web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`) select `sbt` only: no `page` area since
    2026-11-17. The hook no longer asks for an identity-landing-check LANDABLE.

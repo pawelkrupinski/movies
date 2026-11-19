@@ -88,7 +88,8 @@
 #                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
 #                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
 #                 the basic tests before every merge (once the merge queue's pre-check list)
-#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path): the identity
+#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path) or to what the
+#                 identity specs read by class alone, common's production code and the testkit (is_identity_reach_path): the identity
 #                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
 #                 are main's CI's. FIRST, its `first` line: SLICE ANSWER COVERAGE (scripts/identity-slice-coverage,
 #                 ~30 s warm, ~2.5 min under load) -- every pinned slice case and drift slice replayed at the pushed code, every request one
@@ -409,6 +410,16 @@ is_identity_path() { # <path>
     esac
     return 1
 }
+# What the identity specs read through their class dependencies alone (2026-11-19: a common/ model or a generic testkit
+# helper -- MutableClock, SpecClock -- started no identity area, though identity specs read them): common's production
+# code and the testkit. They select the identity area and nothing else (no drift guards: is_drift_path); the test-impact
+# selection keeps only the specs whose classes reach the changed ones, so most such changes run no identity spec.
+is_identity_reach_path() { # <path>
+    case "$1" in
+        common/src/main/scala/*|common/src/main/java/*|testkit/src/main/scala/*) return 0 ;;
+    esac
+    return 1
+}
 # What shellcheck reads: a .sh, the hooks, and a tool with no extension whose shebang names a shell (sbt-warm,
 # gitops-specs, ...: 50 under scripts/ were never shellchecked, and sbt-warm's SC2046 of d56231908 landed unseen).
 is_shell_path() { # <path>
@@ -516,7 +527,7 @@ plan() {
         case "$tools" in *" $path "*) oldrefs=1 ;; esac
         case "$path" in .github/allow-lists.txt|scripts/ci/commit_rules*.py) allowlists=1 ;; esac
         [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
-        is_identity_path "$path" && identity=1
+        { is_identity_path "$path" || is_identity_reach_path "$path"; } && identity=1
         is_drift_path "$path" && driftguards=1
         case "$path" in
             test/resources/fixtures/identity-flip-backlog.tsv|test/resources/fixtures/identity-flips-struck.tsv|\

@@ -16,7 +16,7 @@ check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 # ...and the sbt check: CinemaRosterAuditSpec reads data/pl/venues.json (its lint-registry row names the file)
 check "a roster source runs the generated-artefact drift check, the roster generators' self-tests, and its reader spec" "drift scripttests sbt" "$(plan data/pl/venues.json)"
-check "a model file runs the drift check AND the sbt lints" "drift sbt" "$(plan common/src/main/scala/models/Cinema.scala)"
+check "a model file runs the drift check AND the sbt lints, and the identity area (narrowed to the specs reading it)" "drift sbt identity" "$(plan common/src/main/scala/models/Cinema.scala)"
 check "a generated geodata table runs the drift check AND the sbt lints" "drift sbt" "$(plan geodata/src/main/scala/models/VenueTowns.scala)"
 check "...and so does a generated table resource" "drift sbt" "$(plan geodata/src/main/resources/generated/venue-towns.tsv)"
 check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
@@ -112,6 +112,15 @@ check "...and so do the hard-cluster seeds" "driftguards sbt identity" "$(plan t
 check "...an identity script spec, the hard-cluster ratchet and the country scope" \
   "driftguards scripttests sbt identity|driftguards scripttests sbt identity|driftguards scripttests sbt identity" \
   "$(plan worker/src/test/scala/scripts/IdentityRefitMeasureAllSpec.scala)|$(plan worker/src/test/scala/tools/HardClusterRatchetSpec.scala)|$(plan worker/src/test/scala/tools/CountryScope.scala)"
+# WHAT THE IDENTITY SPECS READ BY CLASS ALONE (2026-11-19: NO AREA for a common/ model or a generic testkit helper): common's
+# production code and the testkit select the identity area -- the test-impact selection then keeps only the specs whose
+# classes reach the changed ones -- and nothing else of it (no drift guards); common's resources stay read by name only
+check "a common model the identity area runs (no drift guards)" "drift sbt identity" "$(plan common/src/main/scala/models/FilmId.scala)"
+check "...a common tool and a common Java source too" "sbt identity|sbt identity" \
+  "$(plan common/src/main/scala/tools/CacheKey.scala)|$(plan common/src/main/java/tools/A.java)"
+check "...and the testkit's generic helpers, MutableClock and SpecClock" "sbt identity|sbt identity" \
+  "$(plan testkit/src/main/scala/tools/MutableClock.scala)|$(plan testkit/src/main/scala/tools/SpecClock.scala)"
+check "...but not a common resource no identity rule names (its readers are found by name)" "" "$(plan common/src/main/resources/genres.tsv)"
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
 check "a file identity-slice drops into old refs compiles the tools into their floors (a fixtures tool: the identity area too)" "driftguards sbt identity oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
