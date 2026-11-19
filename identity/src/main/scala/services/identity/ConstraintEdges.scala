@@ -1,8 +1,5 @@
 package services.identity
 
-
-import models.ListingKey
-import services.movies.ListingConstraints
 /** The constraint edges between nodes sharing a block key ([[of]]): must-links by tier (0 pinned,
  *  1 same accepted film, 2 same catalogue id or same sanitised title, 3 same search form — unless either title carries
  *  another listing's title beside it — or original title, 4 one's title a delimited segment of the
@@ -10,10 +7,12 @@ import services.movies.ListingConstraints
  *  accepted films; a node denying the other's film; the two listings' own evidence apart; a feed's copied original
  *  title alone joining them; a reused page's copied facts denying the other's feed-linked film). */
 private[identity] final class ConstraintEdges(scoring: CandidateScoring, families: Families, links: TitleLinks) {
-  import scoring.{calibration, pins}
-  import scoring.generation.{candidateOf, nodeById, nodes}
-  import links.{sanitized, searchForm, segmentOf, titlesBeside}
+  import scoring.generation.candidateOf
+  import links.{sanitized, segmentOf}
 
+  private val apart   = new ListingsApart(scoring, families, links)
+  private val sources = new SourcesApart(scoring, families, links, apart)
+  private val pinned  = new PinEdges(scoring)
 
   private def pairsSharingAKey(group: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
     // By position, so indexed: a resolve's first round pairs every node of the region.
@@ -25,67 +24,6 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     }.toSeq.distinct.sorted.map { case (position, otherPosition) => (members(position), members(otherPosition)) }
   }
 
-  // The two listings' own evidence apart: the seasons their titles name, or the learned
-  // "listing-listing" scope when they compare a fact both published.
-  // A pair's own evidence apart reads neither film nor round: asked by the first round over every pair and again by
-  // each family's, it is weighed once per resolve.
-  private val apart = scala.collection.mutable.HashMap.empty[(String, String), Option[String]]
-  private def listingsApart(first: EvidenceNode, second: EvidenceNode): Option[String] =
-    apart.getOrElseUpdate((first.id, second.id), weighApart(first, second))
-
-  /** The search form two nodes' titles share — unless it is only what both bill BESIDE the films they name: a
-   *  festival's spellings of its films all search as the festival's suffix. */
-  private def sharedSearchForm(first: EvidenceNode, second: EvidenceNode): Option[String] =
-    Some(searchForm(first.evidence.cleanTitle))
-      .filter(form => form.nonEmpty && form == searchForm(second.evidence.cleanTitle) && !titlesBeside(first, form) && !titlesBeside(second, form))
-
-  private def weighApart(first: EvidenceNode, second: EvidenceNode): Option[String] = {
-    // Two spellings the same-search-form must-link joins ("Kino Konesera: Róża", "FILMOWY KLUB SENIORA I
-    // SENIORKI: RÓŻA") name their film by that form; their programmes are not what the learned scope
-    // weighs — compared as decorated titles they only overlapped, and the cut kept them apart on that
-    // alone. Their facts are compared as ever.
-    // A double bill shares its first film's form and is neither film ("The Gruffalo + The Gruffalo's Child").
-    val sameForm = sharedSearchForm(first, second)
-      .filterNot(_ => MultiFilmBill.billsTwoWorks(first.evidence.published) || MultiFilmBill.billsTwoWorks(second.evidence.published))
-    def titled(l: IdentityMeasures.Listing) = sameForm.fold(l)(form => l.copy(title = form, rawTitle = None))
-    // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
-    val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))
-    lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
-    ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
-      .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
-      // Two billings of one film-less event ([[oneEvent]]) are kept apart, as one relay's are, by a fact a film would be
-      // told by -- never by the running time each venue books the event for (UK "League of Legends Worlds 26": Odeon's
-      // 420 minutes, Cineworld's 300) or its spelling beside the event's name ("The CBeebies Panto 2026", 75 minutes,
-      // beside the 60 of "CBeebies Panto 2026"). Two that state another edition, other episodes or a session's length
-      // are weighed as ever.
-      .orElse(Option.when((!RelayStage.oneRelaySpeltAlike(first.evidence.measured, second.evidence.measured) && !oneEvent(first, second)) ||
-        relayFactsApart(measures))(LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
-      .map(_.toString)
-  }
-
-  /** The event each node's listings bill ([[agreement.NonFilmEvents.facts]]), read beside what the node's own searches
-   *  found ([[CandidateGeneration.hitsOf]]: a film titled as the marathon it seems to bill), once a node. */
-  private val eventOfNode = scala.collection.mutable.HashMap.empty[String, Option[agreement.NonFilmEvents.Facts]]
-  private def eventOf(node: EvidenceNode) =
-    eventOfNode.getOrElseUpdate(node.id, agreement.NonFilmEvents.facts(node.listings, agreement.NonFilmEvents.titledBy(scoring.generation.hitsOf(node.id))))
-  /** Do both nodes name their event alike ([[agreement.NonFilmEvents.Facts.name]])? */
-  private def sameEventName(first: EvidenceNode, second: EvidenceNode): Boolean =
-    eventOf(first).exists(a => a.name.nonEmpty && eventOf(second).exists(_.name == a.name))
-  /** Do both nodes bill one film-less event ([[agreement.NonFilmEvents.Facts.filmless]]: of a kind no film record is, one
-   *  production billed alike at many venues, [[agreement.NonFilmEvents.Facts.distributed]]), their own facts agreeing on
-   *  it ([[agreement.NonFilmEvents.Facts.apartFrom]])? */
-  private def oneEvent(first: EvidenceNode, second: EvidenceNode): Boolean =
-    (for (a <- eventOf(first); b <- eventOf(second))
-      yield a.filmless && a.distributed && b.filmless && b.distributed && !a.apartFrom(b)).contains(true)
-
-  /** Do two billings of one relay disagree on a fact — two directors, years further apart than one season's two? */
-  private def relayFactsApart(measures: Map[String, IdentityMeasures.Measure]): Boolean =
-    measures.get("director").contains(IdentityMeasures.Category("different")) ||
-      Seq("year.delta", "titleYear.delta", "season.delta").exists(fact => measures.get(fact).exists {
-        case IdentityMeasures.Number(delta) => delta > 1 || (fact == "season.delta" && delta > 0)
-        case _                              => false
-      })
-
   /** Do two nodes bill one house's relay of one stage work in one season ([[RelayStage.oneRelay]]), as their venues
    *  published them? */
   private def oneRelay(first: EvidenceNode, second: EvidenceNode): Boolean =
@@ -96,19 +34,6 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  house's), and Kino 1410's "Jezioro łabędzie | Paris Opera Ballet In Cinemas" is no reason to take it too. */
   private def holdsAnotherHousesRecord(node: EvidenceNode, otherFilm: Option[Int]): Boolean =
     otherFilm.flatMap(candidateOf).exists(candidate => StageRelays.billsAnotherHouse(node.evidence.measured, candidate.film))
-
-  // The pins' own edges between `members`, and the derived edges they leave standing.
-  private val nodeOfListing: Map[ListingKey, EvidenceNode] = nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
-  private def pinEdges(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] = {
-    val here = members.map(_.id).toSet
-    def edge(link: FamilyClosure.Edge[ListingKey], tier: Int) =
-      Option.when(here(nodeOfListing(link.a).id) && here(nodeOfListing(link.b).id) && nodeOfListing(link.a).id != nodeOfListing(link.b).id)(
-        ResolverEdge(nodeOfListing(link.a).id, nodeOfListing(link.b).id, link.must, tier, link.reason))
-    (pins.mustLinks.filter(link => nodeOfListing.contains(link.a) && nodeOfListing.contains(link.b)).flatMap(edge(_, 0)) ++
-      pins.cannotLinks(members.flatMap(_.listings.map(_.key)), listingKey => filmOf(nodeOfListing(listingKey).id)).flatMap(edge(_, 0))).distinct
-  }
-  private def admitted(link: ResolverEdge): Boolean =
-    pins.admits(FamilyClosure.Edge(nodeById(link.a).listings.head.key, nodeById(link.b).listings.head.key, link.must, link.reason))
 
   /** Does the rest of `decorated`'s title name a film of its own, beside the title `whole` — a
    *  candidate it may still take whose naming pieces share no word with `whole`? "Lalka (Dolly)"
@@ -136,102 +61,14 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     keys.nonEmpty && catalogueKeys(second).exists(keys.contains)
   }
 
-  /** Do two nodes meet only through a feed's copied original title — no billed title or search form of theirs alike, every
-   *  original title either carries a feed's copy ([[SourceReliability.copiesOriginalTitle]]) — while `linked`'s TMDB-keyed
-   *  feed links a film that `other`, holding none yet, denies by its own facts? The copy is the linked entry's English
-   *  title restated, so it joins its namesakes to the link's film, not to the venue's. DE Filmmuseum München's 95-minute
-   *  "The Stranger" (Jonah Manibusan) met Cineamo's "Der Fremde" venues only by the "The Stranger" Cineamo copied from
-   *  Ozon's 122-minute "L'Étranger" (1429348m), and took that film. Not where `other` already holds another film than the
-   *  link's: a venue billing a film's English title, whose operator linked a namesake record (Traum-Kino's "TOGETHER
-   *  APART", Andreasstadel's "Departures"), is the copy's film, and that wider form lost 5 right takes to cure CITY 46's
-   *  "THE BLACK HOLE" (recording 38713274617, docs/identity-experiments.md). */
-  private def copiedOriginalJoinsAnotherFilm(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && FeedLink.linked(linked.listings).exists { case (_, film) =>
-      val bothTitles = Seq(linked, other)
-      bothTitles.exists(_.evidence.originalTitle.isDefined) &&
-        bothTitles.forall(node => node.evidence.originalTitle.isEmpty || node.listings.forall(SourceReliability.copiesOriginalTitle)) &&
-        sanitized(linked.evidence.cleanTitle) != sanitized(other.evidence.cleanTitle) && sharedSearchForm(linked, other).isEmpty &&
-        !linkedFilm.exists(_ != film) && otherFilm.isEmpty && families.denies(other, film)
-    }
-
-  /** Does `other`, holding no film, deny the film `linked`'s TMDB-keyed feed links only by the facts of a REUSED page
-   *  ([[Families.readsAsReused]]) — another record's original title, director and year copied onto it? Its title may be
-   *  the linked film's word for word, but its facts are that other record's, and a cluster pooling them vetoes the film
-   *  for every member. DE Bambi's "De Gaulle Zeit des Widerstands" sits on kinoheld's page of Schauder's "Vater, Sohn
-   *  und der Preis des Widerstands" (1675748): joined by its title to E-Werk's, Weltspiegel's and Zeise's billings, which
-   *  Cineamo links to Baudry's De Gaulle (1165366m), it denied them their film (recording 528). */
-  private def reusedPageDeniesLink(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && otherFilm.isEmpty && FeedLink.linked(linked.listings).exists { case (_, film) =>
-      !linkedFilm.exists(_ != film) && !FeedLink.linked(other.listings).exists(_._2 == film) && families.denies(other, film) &&
-        families.readsAsReused(other)
-    }
-
-  /** Do the TMDB-keyed feeds of the two nodes link two different films, neither link overruled by the title's other
-   *  sources ([[FamilyScope.overruled]])? Each operator picked its film's record: two picks are two films, and a title
-   *  alone joining them hands one the other's namesake. DE Universum-City Karlsruhe's "Lauras Stern" (cineamo 903746m,
-   *  the 2021 film, its 75 minutes) joined by its same title the three venues Cineamo links to the 2004 film (12697m)
-   *  and took it (recording 42332112286). An overruled link is the operator's slip against the title's other sources
-   *  (DE "Karla", "Momo"): it keeps apart nothing. Billed alike only: two titles meeting by an original title keep the
-   *  join, the cluster's other spellings reading through it (DE "L'ÂGE D'OR" ×3 lost Buñuel's film when Studio-Kino's
-   *  "Das goldene Zeitalter", linked to a 2025 namesake, was kept apart from its linked sibling). And only a pick each
-   *  node's own evidence holds up -- its link's film rated no lower than the other's: DE Neues Arena's "IN THE MOOD FOR
-   *  LOVE", Cineamo-linked to a 31-minute 2015 short (646676m), is Wong Kar-wai's film beside Kino im DFF's 843m. */
-  private def linkedApart(first: EvidenceNode, second: EvidenceNode): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && sanitized(first.evidence.cleanTitle) == sanitized(second.evidence.cleanTitle) &&
-      ((unoverruledLink(first), unoverruledLink(second)) match {
-        case (Some(one), Some(other)) => one != other && holdsUp(first, one, other) && holdsUp(second, other, one)
-        case _                        => false
-      })
-  /** The film `node`'s TMDB-keyed feed links, unless the title's other sources overrule the link. */
-  private def unoverruledLink(node: EvidenceNode): Option[Int] = {
-    val scope = families.scopeOf(node)
-    scope.feedLinked(node).filter(_ => scope.overruled(node).isEmpty).map(_._2)
-  }
-  /** Does the node's own evidence rate its link's film `own` no lower than the `others`: a pick its own scoring holds up? */
-  private def holdsUp(node: EvidenceNode, own: Int, others: Int): Boolean = {
-    val scored = families.scopeOf(node).of(node)
-    def probability(film: Int) = scored.find(_.candidate.tmdbId == film).filterNot(_.denied).map(_.probability)
-    probability(own).exists(mine => probability(others).forall(mine >= _))
-  }
-
-  /** Does `node`, taking no film alone, credit a director that the film `other` holds was not directed by (`director`
-   *  `different`: no credit of the record's is the same person), its credit standing -- every listing's own statement
-   *  ([[SourceReliability.Fact.Directors]] decided), or a credit naming a record of its very title by that director that
-   *  the billing's own year or running time fits too (a copied credit then names the film its billing is, not a slip)?
-   *  A title alone joining them would lend it a film its own credit contradicts. DE Bambi's "Les Misérables" [2026, 99′]
-   *  {Fred Cavayé, kinoheld's} joined ScharfrichterKino's "Les Misérables - Die Geschichte von Jean Valjean" by a title
-   *  segment and took Besnard's "Jean Valjean" (1376439), beside Cavayé's own "Les Misérables" (2026, 1241803).
-   *
-   *  A copied credit with no year or running time beside it is no such statement: DE Mal seh'n Kino's "THE THING WITH
-   *  FEATHERS" {Anja Oelofse} carries the credit kinoheld copied from Oelofse's 24-minute short of that title, and is
-   *  Southern's film the venue also bills as "Das Ding mit Federn". */
-  private def creditDeniesHeld(node: EvidenceNode, otherFilm: Option[Int], nodeFilm: Option[Int]): Boolean =
-    nodeFilm.isEmpty && otherFilm.exists { held =>
-      lazy val scored = families.scopeOf(node).of(node)
-      node.listings.forall(_.directors.nonEmpty) &&
-        scored.find(_.candidate.tmdbId == held).exists(_.category("director").contains("different")) &&
-        (node.listings.forall(SourceReliability.decides(_, SourceReliability.Fact.Directors)) ||
-          scored.exists(s => s.candidate.tmdbId != held && IdentityMeasures.sameDirector(s.measures) && s.category("title").contains("exact") &&
-            (IdentityMeasures.ownAgreement(s.measures)._1("year") || IdentityMeasures.runtimeGap(s.measures).exists(_ <= Corroboration.RuntimeBand))))
-    }
-
-  /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources
-   *  overrule toward another film ([[FamilyScope.overruled]])? The kept facts keep their own film's details alive; they
-   *  never join a listing whose own sources say it is another film. DE "Eternity", prod-latest 41265286306: Caligari's
-   *  kept kinoheld listing of Freyne's 2025 film joined the bare "Eternity" [2025] Cineamo links to it, which Zazie's and
-   *  kinoheld's 2026 entries credit to Meures, and moved 18 venues onto Freyne's film. */
-  private def keptBesideOverruled(kept: EvidenceNode, other: EvidenceNode): Boolean =
-    !Authority.may(Authority.of(kept), Authority.Act.JoinOverruled) && Authority.of(other) != Authority.Provenance.Kept &&
-      families.scopeOf(other).overruled(other).isDefined
-
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
-    pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
+    pinned.of(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
       val pair = ConstraintEdges.Pair(first, second, filmOf(first.id), filmOf(second.id))
       def edge(must: Boolean, tier: Int, reason: String) = ResolverEdge(first.id, second.id, must, tier, reason)
       val cannots = cannotLinks(pair)
       cannots.map(edge(must = false, 0, _)) ++ mustLinks(pair).sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
-    }.filter(admitted)
+    }.filter(pinned.admitted)
 
   /** Why a pair is kept apart. One chain's one catalogue id is one film (a feed's, under one title: `catalogueKey`): the
    *  facts each venue publishes of it (a bare re-release dated by its title, "9 to 5 (2026)") never keep its listings
@@ -242,12 +79,12 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     else Seq(
       Option.when(firstFilm.isDefined && secondFilm.isDefined)("different-films"),
       Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
-      listingsApart(first, second),
-      Option.when(pair.eitherWay(copiedOriginalJoinsAnotherFilm))(ConstraintEdges.CopiedOriginalApart),
-      Option.when(pair.eitherWay(reusedPageDeniesLink))(ConstraintEdges.ReusedPageApart),
-      Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
-      Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart),
-      Option.when(pair.eitherWay((node, _, nodeFilm, otherFilm) => creditDeniesHeld(node, otherFilm, nodeFilm)))(ConstraintEdges.CreditApart)
+      apart.of(first, second),
+      Option.when(pair.eitherWay(sources.copiedOriginalJoinsAnotherFilm))(ConstraintEdges.CopiedOriginalApart),
+      Option.when(pair.eitherWay(sources.reusedPageDeniesLink))(ConstraintEdges.ReusedPageApart),
+      Option.when(sources.keptBesideOverruled(first, second) || sources.keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
+      Option.when(sources.linkedApart(first, second))(ConstraintEdges.LinkedApart),
+      Option.when(pair.eitherWay((node, _, nodeFilm, otherFilm) => sources.creditDeniesHeld(node, otherFilm, nodeFilm)))(ConstraintEdges.CreditApart)
     ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
   }
 
@@ -264,10 +101,10 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
       Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
         (3, ConstraintEdges.SameRelay)),
-      // One film-less event, however each venue spells it beside its name ([[oneEvent]], the same words an article and
+      // One film-less event, however each venue spells it beside its name ([[ListingsApart.oneEvent]], the same words an article and
       // the edition aside), while neither holds a film: no record joins them, and their titles share no form
       // (UK "CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island", "The CBeebies Panto 2026: …").
-      Option.when(firstFilm.isEmpty && secondFilm.isEmpty && oneEvent(first, second) && sameEventName(first, second))(
+      Option.when(firstFilm.isEmpty && secondFilm.isEmpty && apart.oneEvent(first, second) && apart.sameEventName(first, second))(
         (3, ConstraintEdges.SameEvent))
     ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
   }
