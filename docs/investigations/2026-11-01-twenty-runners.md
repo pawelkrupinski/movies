@@ -1211,6 +1211,14 @@ shared cores, so a check borrows only cores that no job of ours can grow into, a
   measurement queued beside borrowed checks starts on the next tick. Later ones may wait, each until one borrowed
   check ends.
 
+**Superseded 2026-11-19 (measured borrow).** On A2's 14 measure threads the full-share ledger fit no check beside any
+measurement: one light runner and one measurement (5 cores charged, under 2 used), plus the check's 4 and the kept
+measurement's 4, passed 11.9. Of that day's 2151 ticks with a landing check "held by cpu", 1157 read the measure CPUs
+at most 6 of 14 busy and the host at least 10 of 32 idle. A borrow now reads the measure CPUs as every other start does
+(the live reading less `cpu_owed`, a borrowed check still at its whole cap), keeps a measurement's cores only while a
+landing-path measurement is in flight, and a finished runner's CPU leaves the readings at once (`read_readings`,
+RELEASED ON FINISH).
+
 Replaying ci-runner's journal (72 h to 2026-11-16 05:12Z, 8640 ticks) one tick at a time. Each tick's recorded state
 goes through d76c6b1b6 and this change. The new side carries the borrowed checks its earlier ticks started, each at a
 settled check's 2.8 cores and 6 GiB for a check runner's median life (3.5 min). A check that a borrow served leaves the
