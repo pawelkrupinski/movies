@@ -7,7 +7,7 @@ import com.sun.net.httpserver.HttpServer
 import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
-import services.{MongoConnection, MongoTuning}
+import settings.MongoTuning
 import settings.{HealthPort, HeapDumpDirectory, ProcessConfiguration}
 import tools.{AnyThrowable, ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
@@ -119,7 +119,7 @@ object WorkerMain extends Logging {
       // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
       val boot   = new BootSteps("process", stopwatch)
       val budget = boot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
-      val client = boot.step("mongo client")(MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process, settings.ProcessTier.Worker)))
+      val client = boot.step("mongo client")(process.mongoAddress.clientSettings(MongoTuning.from(process, settings.ProcessTier.Worker)).map(tools.MongoClients.shared))
       // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
       // of metric objects (each tagged with a `country` label), shared by every
       // country's wiring. This is what fixes the earlier "primary country's registry

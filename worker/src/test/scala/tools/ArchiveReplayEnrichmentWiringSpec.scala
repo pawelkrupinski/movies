@@ -83,7 +83,6 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     override def post(url: String, body: String, contentType: String): String = { seen.add(url); "posted" }
   }
 
-
   /**
    * Test doubles assembled HERE, in the spec that wants them.
    *
@@ -97,7 +96,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    */
   private class FetchOnlyStorage extends tools.ConvergenceStorage {
     override val describe = "unit-spec doubles (enrichment fetch only)"
-    override lazy val connection  = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
+    override lazy val connection  = new services.MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Optional)
     override lazy val screenings  = new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     override lazy val slots       = new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     override lazy val movies      = new services.movies.InMemoryMovieRepository(
@@ -749,8 +748,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val client = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1")
     try {
       val storage = new FetchOnlyStorage {
-        override lazy val connection = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"),
-            required = services.MongoRequirement.Optional) {
+        override lazy val connection = new services.MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Optional) {
           override def database = Some(client.getDatabase("replay-traces-spec"))
         }
       }

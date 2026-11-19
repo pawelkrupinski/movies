@@ -2,7 +2,6 @@ package controllers
 
 import models.{CityScreening, Country, ResolvedMovie}
 import play.api.mvc.RequestHeader
-import services.MongoConnection
 import services.readmodel.ReadModelReader
 
 import java.util.Locale
@@ -49,7 +48,7 @@ object DebugReadModels {
     mirror match {
       case Some(open) =>
         new DebugReadModels((Country.switchable :+ serving).distinct.map { country =>
-          val db = MongoConnection.mirrorDbFor(country.mongoDb)
+          val db = _root_.settings.MongoMirror.databaseFor(country.mongoDb)
           country -> DebugReadModel(open(db), s"local mirror $db", freshnessOf(db))
         }.toMap, serving)
       case None =>

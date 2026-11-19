@@ -52,6 +52,9 @@ final case class MirrorMongoUri(value: String) extends AnyVal {
 final case class ReviewLabelsFile(value: Path) extends AnyVal
 /** `MONGODB_PROBE_TIMEOUT_SECONDS` — how long a boot waits for Mongo to answer. */
 final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
+/** How long a Mongo request waits for the driver to select a server before failing; unset, the driver's own 30 s,
+ *  what the prod cluster wants to ride out a slow node. A loopback mirror's connection caps it short. */
+final case class MongoServerSelectionTimeout(value: FiniteDuration) extends AnyVal
 /** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */
 final case class MongoMaxPoolSize(value: Int) extends AnyVal
 /** The `appName` a MongoClient sends at its handshake, which mongod's slow-op log lines and

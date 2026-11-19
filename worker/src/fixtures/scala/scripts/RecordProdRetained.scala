@@ -24,7 +24,7 @@ object RecordProdRetained {
     val root    = opt("--root").map(Paths.get(_)).getOrElse(ProdLookupInputs.Root)
     val client  = MongoClient(opt("--mongo").getOrElse("mongodb://127.0.0.1:28017/?directConnection=true"))
     try {
-      val db   = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+      val db   = client.getDatabase(_root_.settings.MongoMirror.databaseFor(country.mongoDb))
       val kept = ProdRetained.read(db, at.toEpochMilli)
       val file = ProdRetained.write(root, country.code, kept)
       println(f"[retained] wrote $file%s — ${kept.size}%d listing(s) prod's model held at $at, ${java.nio.file.Files.size(file) / 1024.0}%.0f KB")

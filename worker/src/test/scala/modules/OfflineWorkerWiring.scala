@@ -11,7 +11,7 @@ import tools.{HttpFetch, ObjectGraph, SameThreadExecutionBudget}
  *  that walk EVERY member a wiring declares build (`CountryIsolationMatrixSpec`, `WorkerWiringLifecycleSpec`). */
 class OfflineWorkerWiring(c: Country) extends WorkerWiring(c, new SameThreadExecutionBudget) {
   override lazy val mongoConnection: MongoConnection =
-    new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("unused"), required = services.MongoRequirement.Optional)
+    new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("unused")), services.MongoRequirement.Optional)
   override protected def realHttpLeaf: HttpFetch = new FailingHttpFetch((_, url) => new java.io.IOException(s"no network in this spec: $url"))
   override lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 

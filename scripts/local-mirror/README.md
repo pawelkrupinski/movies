@@ -66,7 +66,7 @@ as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirr
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.
 
-`MongoConnection.mirrorDbFor` derives the same `_prod_mirror` names on the Scala
+`settings.MongoMirror.databaseFor` derives the same `_prod_mirror` names on the Scala
 side, and `MongoConnectionSpec` fails if the two drift apart or if `/debug`
 starts reading a collection the sync doesn't carry.
 

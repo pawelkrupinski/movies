@@ -1,12 +1,13 @@
 package scripts
 
+
 import services.corpus.CorpusCensus
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.metrics.{ReferenceCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.CaffeineMovieCache
 import services.titles.TitleNormalizer
-import services.{MongoConnection, MongoRequirement}
+import services.MongoConnection
 import settings.{MongoDatabaseName, MongoUri}
 import tools.CommandLine
 
@@ -36,8 +37,8 @@ object CorpusCensusBench {
 
   def main(args: Array[String]): Unit = {
     val Run(country, ticks) = runOf(commandLine.parseOrExit(args))
-    val conn    = new MongoConnection(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
-      MongoDatabaseName(s"${country.mongoDb}_prod_mirror"), MongoRequirement.Required)
+    val conn    = new MongoConnection(settings.MongoConnectionSettings(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
+      MongoDatabaseName(s"${country.mongoDb}_prod_mirror")), services.MongoRequirement.Required)
     val normalizer = TitleNormalizer.forCountry(country)
     val clock      = java.time.Clock.systemUTC()
     val stopwatch  = tools.Stopwatch.System

@@ -39,7 +39,7 @@ trait TestWiring extends WorkerWiring {
   // reproduced on CI (no tunnel there). Disabling it here makes every test
   // wiring deterministic regardless of the local environment.
   override lazy val mongoConnection: MongoConnection =
-    new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
+    new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Optional)
 
   // NO PAID EGRESS, whatever environment the wiring was handed. A test wiring answers from
   // fixtures; an integration or e2e spec hands it the process's Env for its MONGODB_URI and

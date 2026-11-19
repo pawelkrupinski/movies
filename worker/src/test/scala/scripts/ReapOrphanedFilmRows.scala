@@ -52,7 +52,7 @@ object ReapOrphanedFilmRows {
     val arguments = commandLine.parseOrExit(args)
     val apply  = arguments.flag("apply")
     val max    = arguments.requiredInt("max")
-    val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
+    val conn   = new MongoConnection(_root_.settings.ProcessConfiguration.resolve().toolMongoConnection, services.MongoRequirement.Required)
     val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     val dbName = db.name
     try {

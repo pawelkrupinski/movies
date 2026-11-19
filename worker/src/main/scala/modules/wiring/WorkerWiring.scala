@@ -1,12 +1,15 @@
 package modules.wiring
 
+
+import settings.MongoTuning
+
 import org.mongodb.scala.MongoClient
 import models.Country
 import modules.wiring.{AlertingWiring, ChunkScrapeWiring, ClosureWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityModelWiring, IdentityProjectionWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
-import services.{Drainable, MongoConnection, MongoTuning, UptimeMonitor, UptimeTier}
+import services.{Drainable, MongoConnection, UptimeMonitor, UptimeTier}
 import settings.MongoAddress
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
 import modules.wiring.WorkerMetrics
@@ -132,9 +135,8 @@ class WorkerWiring(
   // `MongoClient` when WorkerMain injected one — and claimed for this country before
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
-    MongoConnection.forCountry(country, mongoAddress.copy(database = Some(mongoDbName)),
-      required = MongoConnection.isRequired(testMode = false, optedOut = configuration.mongoOptional),
-      tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedClient = sharedMongoClient)
+    MongoConnection.forCountry(mongoAddress.copy(database = Some(mongoDbName)).connectionFor(country,
+      tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker)), services.MongoRequirement.of(testMode = false, optedOut = configuration.mongoOptional), country, sharedClient = sharedMongoClient)
   }
 
   /** The one clock this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime

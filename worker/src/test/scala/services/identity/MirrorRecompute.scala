@@ -78,7 +78,7 @@ object MirrorRecompute {
     val uri     = "mongodb://127.0.0.1:28017/?directConnection=true"
     val client  = MongoClient(uri)
     try {
-      val db         = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+      val db         = client.getDatabase(_root_.settings.MongoMirror.databaseFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
       val inputs     = ResolveInputs.of(new MongoPinStore(Some(db)).all())
       val started    = tools.Stopwatch.start()

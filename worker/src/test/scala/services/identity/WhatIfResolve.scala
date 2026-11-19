@@ -250,7 +250,7 @@ object WhatIfResolve {
       result
     }
     {
-      val db         = kept.client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+      val db         = kept.client.getDatabase(_root_.settings.MongoMirror.databaseFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
       // the mirror's seed generation (identity-what-if passes it): a corpus loaded off one copy is never served against
       // another, whose listings the same moment replays otherwise

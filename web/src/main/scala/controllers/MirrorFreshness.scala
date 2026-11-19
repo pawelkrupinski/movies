@@ -3,7 +3,6 @@ package controllers
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import play.api.Logging
-import services.MongoConnection
 import services.movies.{MovieRepository, ScreeningsRepository}
 
 import java.time.{Duration => JDuration, Instant}
@@ -96,7 +95,7 @@ object MirrorFreshness {
  * shows in prod too.
  */
 class MongoMirrorFreshness(db: Option[MongoDatabase],
-                           timeout: FiniteDuration = MongoConnection.LocalMirrorTimeout)
+                           timeout: FiniteDuration = _root_.settings.MongoMirror.Timeout)
   extends MirrorFreshness with Logging {
 
   private val Field = "updatedAt"

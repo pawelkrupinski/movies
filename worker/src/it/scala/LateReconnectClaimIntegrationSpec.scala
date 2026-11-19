@@ -22,6 +22,10 @@ import scala.concurrent.duration._
  *  connection reset, as from a dead primary) and restored once the connection is degraded. */
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually with tools.IntegrationMongoSuite {
 
+  /** The default tuning with a connect probe waiting `wait`. */
+  private def probing(wait: FiniteDuration): settings.MongoTuning =
+    settings.MongoTuning.Default.copy(probeTimeout = settings.MongoProbeTimeout(wait))
+
   private val target   = URI.create(mongoTarget.uri.value.replace("mongodb://", "http://"))
   private val patience = PatienceConfig(timeout = SpecTimeouts.Settle, interval = Span(1, Seconds))
 
@@ -33,9 +37,8 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       val forwarder = tools.TcpForwarder.start(target.getHost, target.getPort)
       forwarder.sever()
       val via  = s"mongodb://127.0.0.1:${forwarder.port}/?directConnection=true&connectTimeoutMS=300"
-      def open(country: Country) = new MongoConnection(Some(settings.MongoUri(via)), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
-        probeTimeout = settings.MongoProbeTimeout(2.seconds), serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(500.millis)),
-        onConnected = MongoConnection.claimFor(country))
+      def open(country: Country) = new MongoConnection(settings.MongoConnectionSettings(Some(settings.MongoUri(via)), settings.MongoDatabaseName(db.name), probing(2.seconds), Some(settings.MongoServerSelectionTimeout(500.millis))), services.MongoRequirement.Required,
+        onConnected = services.DatabaseOwner.claimFor(country))
       val german = open(Country.Germany)
       val polish = open(Country.Poland)
       german.database shouldBe None
@@ -52,8 +55,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
         german.restartRequired shouldBe false
         // A LIVE boot: its probe (a count, then the claim) gets one operation's bound, not the severed connections' 2 s,
         // which a loaded 4-CPU runner overran and so bound it degraded (measure run 4051).
-        val bootedLive = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
-          probeTimeout = settings.MongoProbeTimeout(SpecTimeouts.Io), onConnected = MongoConnection.claimFor(Country.Poland))
+        val bootedLive = new MongoConnection(settings.MongoConnectionSettings(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), probing(SpecTimeouts.Io)), services.MongoRequirement.Required, onConnected = services.DatabaseOwner.claimFor(Country.Poland))
         try { bootedLive.boundDegraded shouldBe false; bootedLive.restartRequired shouldBe false } finally bootedLive.close()
       } finally { german.close(); polish.close(); forwarder.close() }
     }
@@ -64,7 +66,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   "a reconnect that meets a failure other than another country's claim" should "keep retrying and recover" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-retry") { db =>
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
-      val connection = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required, probeTimeout = settings.MongoProbeTimeout(2.seconds),
+      val connection = new MongoConnection(settings.MongoConnectionSettings(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), probing(2.seconds)), services.MongoRequirement.Required,
         onConnected = _ => attempts.incrementAndGet() match {
           case 1 => throw new com.mongodb.MongoTimeoutException("unreachable at boot")
           case 2 => throw new IllegalArgumentException("refused once, for a reason no claim gave")
@@ -88,7 +90,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       val finished = new java.util.concurrent.CountDownLatch(1)
       @volatile var connection: MongoConnection = null
       try {
-        connection = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required, probeTimeout = settings.MongoProbeTimeout(2.seconds),
+        connection = new MongoConnection(settings.MongoConnectionSettings(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), probing(2.seconds)), services.MongoRequirement.Required,
           sharedClient = Some(shared),
           startReconnect = (name, body) => MongoConnection.startDaemon(name, () => try body.run() finally finished.countDown()),
           onConnected = _ =>

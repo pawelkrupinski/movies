@@ -131,8 +131,8 @@ object ConvergenceStorage {
     // turns a misconfiguration into a hang. (The production default is deliberately long
     // to ride out a recovering replica-set node; nothing here has one.)
     override lazy val connection = new MongoConnection(
-      uri = Some(settings.MongoUri(uri)), dbName = settings.MongoDatabaseName(name), required = services.MongoRequirement.Required,
-      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(ConvergenceStorage.LocalServerSelectionTimeout)),
+      settings.MongoConnectionSettings(Some(settings.MongoUri(uri)), settings.MongoDatabaseName(name),
+        serverSelectionTimeout = Some(settings.MongoServerSelectionTimeout(ConvergenceStorage.LocalServerSelectionTimeout))), services.MongoRequirement.Required,
       sharedClient = Some(isolated.client))
 
     // Wired with `screenings`/`slots` exactly as `WorkerWiring` does, so a leg exercises

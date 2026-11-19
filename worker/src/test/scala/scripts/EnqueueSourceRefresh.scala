@@ -46,7 +46,7 @@ object EnqueueSourceRefresh {
     val keys      = arguments.positionalsFrom("keys").distinct
     if (!RefreshableSources.Names.contains(source)) arguments.fail(s"no source '$source': ${RefreshableSources.Names.mkString(", ")}")
     if (keys.isEmpty) arguments.fail("name at least one key")
-    val conn = MongoConnection.forProcess(configuration, required = services.MongoRequirement.Required)
+    val conn = new MongoConnection(configuration.toolMongoConnection, services.MongoRequirement.Required)
     val db   = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     try {
       val batches = keys.grouped(RefreshableSources.MaxKeys).toSeq

@@ -53,6 +53,9 @@ final class DatabaseOwner(database: MongoDatabase) {
 object DatabaseOwner {
   val Collection = "database_owner"
   val Id         = "owner"
+
+  /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus: claim the database for it. */
+  def claimFor(country: Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
 }
 
 /** Another country's stamp on the database: reachable, and refused for good — no retry changes

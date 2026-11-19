@@ -69,7 +69,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   class Probe(c: Country, b: ExecutionBudget, e: tools.Env = tools.Env.of())
       extends WorkerWiring(c, b, env = e) {
     override lazy val mongoConnection: MongoConnection =
-      new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("unused"), required = services.MongoRequirement.Optional)
+      new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("unused")), services.MongoRequirement.Optional)
     def dbNameForTest: String              = mongoDbName.value
     def defaultScrapeCitiesForTest: Set[String] = scrapeCitiesDefault
   }
@@ -211,7 +211,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // need either.
   class DetailProbe(c: Country) extends WorkerWiring(c) {
     override lazy val mongoConnection: MongoConnection =
-      new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("unused"), required = services.MongoRequirement.Optional)
+      new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("unused")), services.MongoRequirement.Optional)
     def detailEnricherClassNames: Set[String] = detailEnrichers.map(_.getClass.getSimpleName).toSet
   }
 

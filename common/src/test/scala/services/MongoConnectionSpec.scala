@@ -1,5 +1,7 @@
 package services
 
+import settings.{MongoConnectionSettings, MongoTuning}
+
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -26,14 +28,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
 
   "MongoConnection with required = services.MongoRequirement.Required" should "throw when MONGODB_URI is absent" in {
     val exception = intercept[IllegalStateException] {
-      new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required)
+      new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Required)
     }
     exception.getMessage should include ("required")
   }
 
   it should "throw when the connection can't be established" in {
     val exception = intercept[IllegalStateException] {
-      new MongoConnection(uri = Some(settings.MongoUri(MalformedUri)), dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required)
+      new MongoConnection(settings.MongoConnectionSettings(Some(settings.MongoUri(MalformedUri)), settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Required)
     }
     exception.getMessage should include ("required")
   }
@@ -78,11 +80,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   "MongoConnection with required = services.MongoRequirement.Required against an UNREACHABLE server" should
     "start degraded rather than refuse to boot" in {
     val connection = new MongoConnection(
-      uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
-      dbName                 = settings.MongoDatabaseName("kinowo"),
-      required               = services.MongoRequirement.Required,
-      probeTimeout           = settings.MongoProbeTimeout(3.seconds),
-      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(200.millis)))
+      MongoConnectionSettings(
+        uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
+        database               = settings.MongoDatabaseName("kinowo"),
+        tuning                 = MongoTuning.Default.copy(probeTimeout = settings.MongoProbeTimeout(3.seconds)),
+        serverSelectionTimeout = Some(settings.MongoServerSelectionTimeout(200.millis))), services.MongoRequirement.Required)
     withClue("an unreachable Mongo must leave the app bootable (port bound, degraded) — not crash-loop: ") {
       connection.database shouldBe None
     }
@@ -98,11 +100,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     val died   = new java.util.concurrent.atomic.AtomicReference[Throwable]()
     val thread = new java.util.concurrent.atomic.AtomicReference[Thread]()
     val connection = new MongoConnection(
-      uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
-      dbName                 = settings.MongoDatabaseName("kinowo"),
-      required               = services.MongoRequirement.Required,
-      probeTimeout           = settings.MongoProbeTimeout(3.seconds),
-      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(200.millis)),
+      MongoConnectionSettings(
+        uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
+        database               = settings.MongoDatabaseName("kinowo"),
+        tuning                 = MongoTuning.Default.copy(probeTimeout = settings.MongoProbeTimeout(3.seconds)),
+        serverSelectionTimeout = Some(settings.MongoServerSelectionTimeout(200.millis))), services.MongoRequirement.Required,
       startReconnect         = (name, reconnect) => {
         val t = new Thread(reconnect, name)
         t.setDaemon(true)
@@ -119,13 +121,13 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "MongoConnection with required = services.MongoRequirement.Optional" should "disable (database None) when MONGODB_URI is absent" in {
-    val connection = new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
+    val connection = new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Optional)
     connection.database shouldBe None
     connection.close()  // idempotent no-op when nothing was opened
   }
 
   it should "disable (database None) when the connection can't be established" in {
-    val connection = new MongoConnection(uri = Some(settings.MongoUri(MalformedUri)), dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
+    val connection = new MongoConnection(settings.MongoConnectionSettings(Some(settings.MongoUri(MalformedUri)), settings.MongoDatabaseName("kinowo")), services.MongoRequirement.Optional)
     connection.database shouldBe None
     connection.close()
   }
@@ -135,15 +137,15 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // builds it with required = services.MongoRequirement.Optional so a bad/unreachable mirror degrades to the
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
-  "MongoConnection.fromUri with required = services.MongoRequirement.Optional" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional, MongoTuning.Default)
+  "MongoMirror.fromUri with required = services.MongoRequirement.Optional" should "disable (database None) on an unusable URI instead of throwing" in {
+    val connection = new MongoConnection(settings.MongoMirror.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), MongoTuning.Default), services.MongoRequirement.Optional)
     connection.database shouldBe None
     connection.close()
   }
 
-  "MongoConnection.fromUri with required = services.MongoRequirement.Required" should "throw on an unusable URI" in {
+  "MongoMirror.fromUri with required = services.MongoRequirement.Required" should "throw on an unusable URI" in {
     val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required, MongoTuning.Default)
+      new MongoConnection(settings.MongoMirror.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), MongoTuning.Default), services.MongoRequirement.Required)
     }
     exception.getMessage should include ("required")
   }
@@ -151,13 +153,13 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // The mirror's database comes from its URI's own path, NOT MONGODB_DB — so the
   // /debug mirror (`…/kinowo_prod_mirror`) can live in a different database than
   // the app's working db (used by the prod connection).
-  "MongoConnection.databaseFromUri" should "take the database from the URI path" in {
-    MongoConnection.databaseFromUri(
+  "MongoMirror.databaseFromUri" should "take the database from the URI path" in {
+    settings.MongoMirror.databaseFromUri(
       "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true", "fallback") shouldBe "kinowo_prod_mirror"
   }
 
   it should "fall back to the given database when the URI names no database" in {
-    MongoConnection.databaseFromUri("mongodb://127.0.0.1:28017/?directConnection=true", "fallback") shouldBe "fallback"
+    settings.MongoMirror.databaseFromUri("mongodb://127.0.0.1:28017/?directConnection=true", "fallback") shouldBe "fallback"
   }
 
   // Wire compression earns its CPU only on a SLOW link (the local flyctl proxy
@@ -169,18 +171,18 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   private val ValidUri  = "mongodb://user:pass@127.0.0.1:27017/kinowo?authSource=kinowo"
   private val RemoteUri = "mongodb://user:pass@kinowo-mongo.internal:27017/kinowo?authSource=kinowo"
 
-  "MongoConnection.clientSettings" should "force zlib for a loopback link (the local proxy tunnel) when the URI names none" in {
-    val names = MongoConnection.clientSettings(ValidUri).getCompressorList.asScala.map(_.getName)
+  "MongoConnectionSettings.driverSettings" should "force zlib for a loopback link (the local proxy tunnel) when the URI names none" in {
+    val names = MongoConnectionSettings.driverSettings(ValidUri).getCompressorList.asScala.map(_.getName)
     names should contain ("zlib")
   }
 
   it should "leave compression OFF over a direct 6PN link (fast + encrypted, so zlib would only burn CPU)" in {
-    MongoConnection.clientSettings(RemoteUri).getCompressorList.asScala.map(_.getName) shouldBe empty
+    MongoConnectionSettings.driverSettings(RemoteUri).getCompressorList.asScala.map(_.getName) shouldBe empty
   }
 
   it should "respect compressors the URI specifies rather than forcing zlib" in {
-    val names = MongoConnection
-      .clientSettings(ValidUri + "&compressors=snappy")
+    val names = MongoConnectionSettings
+      .driverSettings(ValidUri + "&compressors=snappy")
       .getCompressorList.asScala.map(_.getName)
     names should contain ("snappy")
     names should not contain "zlib"
@@ -198,11 +200,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // reserve the whole box — which is what exhausted it on 2026-07-18 and, because web
   // boot hydrates off Mongo, stretched boots past flyctl's health-check wait and failed
   // the deploys. Capping the pool is the lever, so its value is pinned here.
-  "MongoConnection.clientSettings" should "bound the connection pool well below the driver's default of 100" in {
-    // Asserted against LITERALS, not MongoConnection.DefaultMaxPoolSize: this must still
+  "MongoConnectionSettings.driverSettings" should "bound the connection pool well below the driver's default of 100" in {
+    // Asserted against LITERALS, not settings.MongoTuning.DefaultMaxPoolSize: this must still
     // compile against the un-capped code so it fails on the VALUE (the driver's 100),
     // rather than failing to compile — a green-from-the-start test proves nothing.
-    val maxSize = MongoConnection.clientSettings(ValidUri).getConnectionPoolSettings.getMaxSize
+    val maxSize = MongoConnectionSettings.driverSettings(ValidUri).getConnectionPoolSettings.getMaxSize
     maxSize shouldBe 25
     maxSize should be <= 30
     maxSize should be > 0
@@ -213,21 +215,21 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   it should "take the pool cap from the resolved configuration" in {
     val cap = tuning("KINOWO_MONGO_MAX_POOL_SIZE" -> "9").maxPoolSize
     cap shouldBe settings.MongoMaxPoolSize(9)
-    MongoConnection.clientSettings(ValidUri, maxPoolSize = cap.value).getConnectionPoolSettings.getMaxSize shouldBe 9
+    MongoConnectionSettings.driverSettings(ValidUri, tuning = MongoTuning.Default.copy(maxPoolSize = cap)).getConnectionPoolSettings.getMaxSize shouldBe 9
     tuning().maxPoolSize shouldBe settings.MongoMaxPoolSize(25)
   }
 
   it should "let a URI that names its own maxPoolSize win, like compressors" in {
-    MongoConnection
-      .clientSettings(ValidUri + "&maxPoolSize=7")
+    MongoConnectionSettings
+      .driverSettings(ValidUri + "&maxPoolSize=7")
       .getConnectionPoolSettings.getMaxSize shouldBe 7
   }
 
   // mongod's slow-op log lines and `currentOp` name a client only by the `appName` it sent at the
   // handshake; without one, every web and worker connection looks alike there.
-  "MongoConnection.clientSettings" should "name the process tier and country as the driver's applicationName" in {
+  "MongoConnectionSettings.driverSettings" should "name the process tier and country as the driver's applicationName" in {
     def appName(tier: settings.ProcessTier, vars: (String, String)*) =
-      MongoConnection.clientSettings(ValidUri, applicationName = tuning(tier, vars*).applicationName).getApplicationName
+      MongoConnectionSettings.driverSettings(ValidUri, tuning = tuning(tier, vars*)).getApplicationName
     appName(settings.ProcessTier.Web, "KINOWO_COUNTRY" -> "pl")                shouldBe "kinowo-web-pl"
     appName(settings.ProcessTier.Worker, "KINOWO_COUNTRIES" -> "de")           shouldBe "kinowo-worker-de"
     appName(settings.ProcessTier.Worker, "KINOWO_COUNTRIES" -> "pl,uk")        shouldBe "kinowo-worker-pl-uk"
@@ -235,8 +237,8 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "let a URI that names its own appName win" in {
-    MongoConnection
-      .clientSettings(ValidUri + "&appName=mongosh", applicationName = tuning(settings.ProcessTier.Web).applicationName)
+    MongoConnectionSettings
+      .driverSettings(ValidUri + "&appName=mongosh", tuning = tuning(settings.ProcessTier.Web))
       .getApplicationName shouldBe "mongosh"
   }
 
@@ -249,14 +251,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     settings.MongoApplicationName.of("kinowo-web-pl").value shouldBe "kinowo-web-pl"
   }
 
-  "MongoConnection.clientSettings" should "leave the driver-default transport (no Netty TransportSettings)" in {
-    MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe null
-    MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe null
+  "MongoConnectionSettings.driverSettings" should "leave the driver-default transport (no Netty TransportSettings)" in {
+    MongoConnectionSettings.driverSettings(ValidUri).getTransportSettings  shouldBe null
+    MongoConnectionSettings.driverSettings(RemoteUri).getTransportSettings shouldBe null
   }
 
-  "MongoConnection.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {
+  "MongoConnectionSettings.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {
     import com.mongodb.ConnectionString
-    def loopback(uri: String) = MongoConnection.isLoopbackLink(new ConnectionString(uri))
+    def loopback(uri: String) = MongoConnectionSettings.isLoopbackLink(new ConnectionString(uri))
     loopback("mongodb://127.0.0.1:27017/db")               shouldBe true
     loopback("mongodb://localhost:27017/db")               shouldBe true
     loopback("mongodb://[::1]:27017/db")                   shouldBe true
@@ -269,43 +271,43 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // 30s default. Prod passes none and keeps that default (the 2026-06-06 incident
   // wants prod tolerant of a slow/recovering node).
   it should "cap server-selection at the given timeout (the /debug mirror) when one is passed" in {
-    val timeoutMs = MongoConnection
-      .clientSettings(ValidUri, serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(3.seconds)))
+    val timeoutMs = MongoConnectionSettings
+      .driverSettings(ValidUri, serverSelectionTimeout = Some(settings.MongoServerSelectionTimeout(3.seconds)))
       .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
     timeoutMs shouldBe 3000L
   }
 
   it should "leave the driver-default server-selection timeout (30s) when none is passed (prod)" in {
-    val timeoutMs = MongoConnection
-      .clientSettings(ValidUri)
+    val timeoutMs = MongoConnectionSettings
+      .driverSettings(ValidUri)
       .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
     timeoutMs shouldBe 30000L
   }
 
-  "MongoConnection.LocalMirrorTimeout" should "be far below the prod default so a dead mirror fails fast" in {
-    MongoConnection.LocalMirrorTimeout should be < MongoConnection.DefaultProbeTimeout
-    MongoConnection.LocalMirrorTimeout.toSeconds should be <= 5L
+  "MongoMirror.Timeout" should "be far below the prod default so a dead mirror fails fast" in {
+    _root_.settings.MongoMirror.Timeout should be < settings.MongoTuning.DefaultProbeTimeout
+    _root_.settings.MongoMirror.Timeout.toSeconds should be <= 5L
   }
 
   // The mode/opt-out → required policy used by Wiring.
-  "MongoConnection.isRequired" should "require Mongo outside test mode by default" in {
-    MongoConnection.isRequired(testMode = false, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Required
+  "MongoRequirement.of" should "require Mongo outside test mode by default" in {
+    MongoRequirement.of(testMode = false, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Required
   }
 
   it should "never require Mongo in test mode" in {
-    MongoConnection.isRequired(testMode = true, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Optional
+    MongoRequirement.of(testMode = true, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Optional
   }
 
   it should "let a local opt-out disable the requirement outside tests" in {
-    MongoConnection.isRequired(testMode = false, optedOut = settings.MongoOptional(true)) shouldBe MongoRequirement.Optional
+    MongoRequirement.of(testMode = false, optedOut = settings.MongoOptional(true)) shouldBe MongoRequirement.Optional
   }
 
   // Boot-probe timeout. The old value was a hard-coded 10s; a slow/recovering
   // Mongo blew past it, crash-looped the boot, and Fly stopped the web machine
   // (2026-06-06). It's now `DefaultProbeTimeout` (30s), overridable via
   // `MONGODB_PROBE_TIMEOUT_SECONDS` (resolved into `MongoTuning`).
-  "MongoConnection.DefaultProbeTimeout" should "stay above the old 10s ceiling that crash-looped the boot" in {
-    MongoConnection.DefaultProbeTimeout.toSeconds should be > 10L
+  "settings.MongoTuning.DefaultProbeTimeout" should "stay above the old 10s ceiling that crash-looped the boot" in {
+    settings.MongoTuning.DefaultProbeTimeout.toSeconds should be > 10L
   }
 
   private def tuning(vars: (String, String)*): MongoTuning = tuning(settings.ProcessTier.Web, vars*)
@@ -315,7 +317,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     tuning(raw.map("MONGODB_PROBE_TIMEOUT_SECONDS" -> _)*).probeTimeout.value
 
   "The Mongo probe timeout" should "default when the override is absent" in {
-    probeTimeout() shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout() shouldBe settings.MongoTuning.DefaultProbeTimeout
   }
 
   it should "honour a positive second count from the override" in {
@@ -323,12 +325,12 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fall back to the default on non-numeric input" in {
-    probeTimeout("soon") shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout("soon") shouldBe settings.MongoTuning.DefaultProbeTimeout
   }
 
   it should "fall back to the default on a non-positive count" in {
-    probeTimeout("0")  shouldBe MongoConnection.DefaultProbeTimeout
-    probeTimeout("-5") shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout("0")  shouldBe settings.MongoTuning.DefaultProbeTimeout
+    probeTimeout("-5") shouldBe settings.MongoTuning.DefaultProbeTimeout
   }
 
   // ── The /debug mirror's cross-language contract ─────────────────────────────
@@ -341,12 +343,12 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   private val mirrorTargetsJs =
     scala.io.Source.fromFile("scripts/local-mirror/mirror-targets.js").mkString
 
-  "MongoConnection.mirrorDbFor" should "suffix rather than reuse prod's database name" in {
+  "MongoMirror.databaseFor" should "suffix rather than reuse prod's database name" in {
     // Reusing the name would let a locally-run worker (which defaults to the
     // `kinowo` database on the same instance) write into the mirrored corpus.
-    MongoConnection.mirrorDbFor("kinowo")    shouldBe "kinowo_prod_mirror"
-    MongoConnection.mirrorDbFor("kinowo_uk") shouldBe "kinowo_uk_prod_mirror"
-    MongoConnection.mirrorDbFor("kinowo")    should not be "kinowo"
+    _root_.settings.MongoMirror.databaseFor("kinowo")    shouldBe "kinowo_prod_mirror"
+    _root_.settings.MongoMirror.databaseFor("kinowo_uk") shouldBe "kinowo_uk_prod_mirror"
+    _root_.settings.MongoMirror.databaseFor("kinowo")    should not be "kinowo"
   }
 
   it should "derive the same name the sync script writes to" in {
@@ -356,7 +358,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     withClue("mirror-targets.js no longer defines mirrorDbFor as a suffix concat: ") {
       jsSuffix shouldBe defined
     }
-    MongoConnection.mirrorDbFor("kinowo_de") shouldBe s"kinowo_de${jsSuffix.get}"
+    _root_.settings.MongoMirror.databaseFor("kinowo_de") shouldBe s"kinowo_de${jsSuffix.get}"
   }
 
   it should "have the sync mirror every collection the /debug stacks read" in {

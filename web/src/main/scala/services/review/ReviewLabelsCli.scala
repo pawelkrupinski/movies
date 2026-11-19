@@ -1,6 +1,5 @@
 package services.review
 
-import services.MongoConnection
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -25,11 +24,11 @@ object ReviewLabelsCli {
   def main(args: Array[String]): Unit = {
     val configuration = settings.ProcessConfiguration.resolve()
     val mirror = configuration.mirrorMongoUri.getOrElse(sys.error("MONGODB_MOVIES_MIRROR_URI is not set: the answers live on the local mirror"))
-    val client = MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)))
+    val client = tools.MongoClients.shared(_root_.settings.MongoMirror.clientSettings(mirror))
     try {
       val answers = new ReviewAnswers(new MongoReviewAnswerStore(client.getDatabase(MongoReviewAnswerStore.Database)))
       val sources: Map[models.Country, ReviewSource] = models.Country.all.map(c =>
-        c -> (new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))): ReviewSource)).toMap
+        c -> (new MongoReviewSource(client.getDatabase(_root_.settings.MongoMirror.databaseFor(c.mongoDb))): ReviewSource)).toMap
       println(run(answers, args.toList, sources, configuration.reviewLabelsFile.map(_.value)))
     } finally client.close()
   }

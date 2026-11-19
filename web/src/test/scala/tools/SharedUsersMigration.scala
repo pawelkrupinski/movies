@@ -2,7 +2,6 @@ package tools
 
 import models.{Country, User, UserState}
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.MongoConnection
 import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs, UserRepository, UserStateRepository, UserStateRows}
 
 import scala.concurrent.Await
@@ -119,7 +118,7 @@ object SharedUsersMigration {
     }
 
     // One client for every database view, the way the app itself does it.
-    val client = MongoConnection.sharedClientAt(process.mongoAddress, services.MongoTuning.from(process, settings.ProcessTier.Tool)).getOrElse {
+    val client = process.mongoAddress.clientSettings(settings.MongoTuning.from(process, settings.ProcessTier.Tool)).map(MongoClients.shared).getOrElse {
       println("MONGODB_URI is not set.")
       sys.exit(1)
     }

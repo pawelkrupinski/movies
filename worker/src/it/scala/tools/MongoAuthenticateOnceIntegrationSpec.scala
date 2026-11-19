@@ -1,4 +1,4 @@
-package services
+package tools
 
 import com.mongodb.event.{CommandListener, CommandSucceededEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
 /**
  * A boot's first reads open the whole pool at once, and every connection that finds the client's
  * credential cache empty derives the password key itself (25 SCRAM derivations, ~4 s of CPU, in a
- * us worker's first minute). [[MongoConnection.authenticateOnce]] completes one authenticated round
+ * us worker's first minute). [[MongoClients.authenticateOnce]] completes one authenticated round
  * trip first, so the cache is filled before the pool opens — and never stalls a boot past its bound.
  */
 class MongoAuthenticateOnceIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
@@ -26,7 +26,7 @@ class MongoAuthenticateOnceIntegrationSpec extends AnyFlatSpec with Matchers wit
       })
       .build())
     try {
-      MongoConnection.authenticateOnce(client)
+      MongoClients.authenticateOnce(client)
       succeeded.asScala.toSeq should contain ("ping")
     } finally client.close()
   }
@@ -35,7 +35,7 @@ class MongoAuthenticateOnceIntegrationSpec extends AnyFlatSpec with Matchers wit
     // The driver's own server selection waits ten times the case's wait bound, so only authenticateOnce's 2 s bound
     // lets the call answer: one that waited on the driver never answers, whatever the machine's load.
     val client = MongoClient(s"mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=${(tools.SpecTimeouts.Io * 10).toMillis}")
-    try tools.Answered.at("authenticateOnce against an unreachable server")(MongoConnection.authenticateOnce(client, 2.seconds))
+    try tools.Answered.at("authenticateOnce against an unreachable server")(MongoClients.authenticateOnce(client, 2.seconds))
     finally client.close()
   }
 }

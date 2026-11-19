@@ -2,7 +2,6 @@ package modules.webwiring
 
 import controllers.{AgentJudgedCards, AgentJudgedController, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewQueueController, ReviewReads, ReviewWhyController, TmdbPosterController}
 import play.api.Mode
-import services.MongoConnection
 import java.nio.file.Paths
 import services.review.{CachingReviewSource, InMemoryReviewAnswerStore, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource, TmdbPosterLookup}
 
@@ -17,12 +16,12 @@ trait ReviewWiring { self: Wiring =>
   protected lazy val reviewMirrorClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod) None
     else processConfiguration.mirrorMongoUri.map(mirror => managedResources.register("review mirror client",
-      MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout))))(_.close()))
+      tools.MongoClients.shared(settings.MongoMirror.clientSettings(mirror)))(_.close()))
 
   lazy val reviewSources: Map[models.Country, ReviewSource] =
     reviewMirrorClient.fold(Map.empty[models.Country, ReviewSource]) { client =>
       models.Country.all.map(c => c -> (new CachingReviewSource(
-        new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))), clock): ReviewSource)).toMap
+        new MongoReviewSource(client.getDatabase(_root_.settings.MongoMirror.databaseFor(c.mongoDb))), clock): ReviewSource)).toMap
     }
 
   lazy val reviewAnswers: ReviewAnswers = new ReviewAnswers(reviewMirrorClient.fold(new InMemoryReviewAnswerStore: services.review.ReviewAnswerStore)(

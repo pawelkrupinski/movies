@@ -2,7 +2,6 @@ package scripts
 
 import services.movies.LatestTitleYear
 
-
 import services.MongoConnection
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -101,7 +100,7 @@ object BackfillReadModel {
     , stopwatch = _root_.tools.Stopwatch.System)
 
   def main(args: Array[String]): Unit = {
-    val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
+    val conn   = new MongoConnection(_root_.settings.ProcessConfiguration.resolve().toolMongoConnection, services.MongoRequirement.Required)
     val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     val dbName = db.name
     try {

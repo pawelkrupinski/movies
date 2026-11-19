@@ -1,7 +1,11 @@
 package modules.webwiring
 
+import services.MongoRequirement
+
+import settings.MongoTuning
+
 import play.api.Mode
-import services.{MongoConnection, MongoRequirement, MongoTuning}
+import services.MongoConnection
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:
@@ -12,7 +16,7 @@ trait MongoWiring { self: Wiring =>
   // (opt back into silent-degrade with MONGODB_OPTIONAL=true) — see
   // `MongoConnection`.
   protected lazy val mongoRequired: MongoRequirement = {
-    MongoConnection.isRequired(environmentMode == Mode.Test, processConfiguration.mongoOptional)
+    MongoRequirement.of(environmentMode == Mode.Test, processConfiguration.mongoOptional)
   }
 
   // ONE MongoClient behind every database view this process opens — this
@@ -27,11 +31,11 @@ trait MongoWiring { self: Wiring =>
   // alone.
   protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] = {
     mongoWriteErrors
-    MongoConnection.sharedClientAt(mongoAddress, mongoTuning)
+    mongoAddress.clientSettings(mongoTuning).map(tools.MongoClients.shared)
   }
 
   lazy val mongoConnection: MongoConnection =
-    MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, mongoTuning, sharedClient = mongoSharedClient)
+    new MongoConnection(mongoAddress.connectionFor(country, mongoTuning), mongoRequired, sharedClient = mongoSharedClient)
 
   /** Where every store of this process counts a failed write or a refused grant ([[tools.MongoWriteErrors]]), on the
    *  tier's one registry, adopted before the client exists. */
@@ -65,7 +69,7 @@ trait MongoWiring { self: Wiring =>
     ownDbName    = mongoAddress.databaseFor(country),
     sharedDbName = settings.UsersDatabase.name(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
     own          = mongoConnection,
-    openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
+    openShared   = database => new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, database, mongoTuning), mongoRequired, sharedClient = mongoSharedClient))
 
   // ── Fleet ─────────────────────────────────────────────────────────────────
   // The database every country's deployment shares with the workers (`services.FleetDatabase`):
@@ -76,5 +80,5 @@ trait MongoWiring { self: Wiring =>
     ownDbName    = mongoAddress.databaseFor(country),
     sharedDbName = services.FleetDatabase.name(processConfiguration.fleetDatabase),
     own          = mongoConnection,
-    openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, MongoRequirement.Optional, mongoTuning, sharedClient = mongoSharedClient))
+    openShared   = database => new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, database, mongoTuning), services.MongoRequirement.Optional, sharedClient = mongoSharedClient))
 }

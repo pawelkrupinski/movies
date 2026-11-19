@@ -12,7 +12,7 @@ class TunnelTunedUriSpec extends AnyFlatSpec with Matchers {
     tuned should startWith ("mongodb://user:pw@127.0.0.1:27018/?")
   }
 
-  // The link is the slow one production compresses on (`MongoConnection.clientSettings`).
+  // The link is the slow one production compresses on (`MongoConnectionSettings.driverSettings`).
   it should "compress the wire, as production's clients do over a tunnel, unless the URI chose" in {
     TunnelTunedUri("mongodb://user:pw@127.0.0.1:27018/") should include ("compressors=zlib")
     val chosen = TunnelTunedUri("mongodb://h/?compressors=snappy")

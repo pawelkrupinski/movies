@@ -82,7 +82,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
   // "unreachable mirror" (its `database` is None, as a failed probe leaves it) and
   // the prod connection — distinct instances we can identity-check.
   private def stubConnection(label: String): MongoConnection =
-    new MongoConnection(uri = None, dbName = settings.MongoDatabaseName(label), required = services.MongoRequirement.Optional)
+    new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName(label)), services.MongoRequirement.Optional)
 
   "Wiring.debugMirrorConnection" should
     "use the configured local mirror unconditionally — no prod fall-back even when unreachable" in {

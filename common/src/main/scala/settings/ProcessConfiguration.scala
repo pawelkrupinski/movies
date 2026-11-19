@@ -99,6 +99,11 @@ final class ProcessConfiguration(val env: Env) {
   /** `MONGODB_URI` / `MONGODB_DB`. */
   def mongoAddress: MongoAddress = MongoAddress(text("MONGODB_URI").map(MongoUri(_)), text("MONGODB_DB").map(MongoDatabaseName(_)))
 
+  /** The process's own corpus connection — its [[mongoAddress]], its country's database, a tool's tuning — for a
+   *  one-off script's `main`, which IS its own composition root; a wiring is handed its address and country instead. */
+  def toolMongoConnection: MongoConnectionSettings =
+    mongoAddress.connectionFor(country, MongoTuning.from(this, ProcessTier.Tool))
+
   /** `MONGODB_USERS_DB`. */
   def usersDatabase: Option[UsersDatabaseName] = text("MONGODB_USERS_DB").map(UsersDatabaseName(_))
 

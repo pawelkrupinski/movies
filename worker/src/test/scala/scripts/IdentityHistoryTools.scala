@@ -37,7 +37,7 @@ object IdentityHistoryTools {
     val uri     = opt("--mongo").getOrElse("mongodb://127.0.0.1:28017/?directConnection=true")
     val client  = MongoClient(uri)
     try {
-      val db     = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+      val db     = client.getDatabase(_root_.settings.MongoMirror.databaseFor(country.mongoDb))
       val reader = new MongoIdentityHistory(db, new tools.TtlIndexMismatches)
       def matches(key: ListingKey) = wanted.forall {
         case venue :: title :: _ => key.venue.toLowerCase(java.util.Locale.ROOT).contains(venue) && key.rawTitle.toLowerCase(java.util.Locale.ROOT).contains(title)

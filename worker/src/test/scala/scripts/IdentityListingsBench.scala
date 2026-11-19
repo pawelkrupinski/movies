@@ -1,11 +1,12 @@
 package scripts
 
+
 import models.{Cinema, Country, ScrapeAttempt}
 import services.identity.IdentityListingIntake
 import services.movies.InMemoryScrapeGuardLedger
 import services.titles.TitleNormalizer
 import services.scrapes.MongoScrapeArchiveRepository
-import services.{MongoConnection, MongoRequirement}
+import services.MongoConnection
 import settings.{MongoDatabaseName, MongoUri}
 
 import java.lang.management.ManagementFactory
@@ -37,8 +38,8 @@ object IdentityListingsBench {
 
   def main(args: Array[String]): Unit = {
     val Run(database, country, passes, churn) = runOf(commandLine.parseOrExit(args))
-    val conn     = new MongoConnection(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
-      MongoDatabaseName(database), MongoRequirement.Required)
+    val conn     = new MongoConnection(settings.MongoConnectionSettings(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
+      MongoDatabaseName(database)), services.MongoRequirement.Required)
     val archive  = new MongoScrapeArchiveRepository(conn.database)
     val accepted = new MongoScrapeArchiveRepository(conn.database, IdentityListingIntake.Collection)
     val intake   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, TitleNormalizer.forCountry(country),

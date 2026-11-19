@@ -86,15 +86,15 @@ trait DebugWiring { self: Wiring =>
   protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
     else processConfiguration.mirrorMongoUri
-      .map(mirror => MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)), mongoTuning.maxPoolSize, mongoTuning.applicationName))
-      .orElse(MongoConnection.sharedClientAt(mongoAddress, mongoTuning))
+      .map(mirror => tools.MongoClients.shared(settings.MongoMirror.clientSettings(mirror, mongoTuning)))
+      .orElse(mongoAddress.clientSettings(mongoTuning).map(tools.MongoClients.shared))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack, Seq[RefreshingSnapshot[?]])] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
           processConfiguration.mirrorMongoUri,
-          MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
-          MongoConnection.forDatabase(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), required = services.MongoRequirement.Optional, mongoTuning, sharedClient = Some(client)))
+          mirror => new MongoConnection(settings.MongoMirror.forDatabase(mirror, country.mongoDb), services.MongoRequirement.Optional, sharedClient = Some(client)),
+          new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), mongoTuning), services.MongoRequirement.Optional, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database, clock = clock, stopwatch = stopwatch)
         val slots      = new services.movies.MongoSlotsRepository(conn.database, clock = clock, stopwatch = stopwatch)
         // THIS stack's country, not the serving one: /debug reads another
@@ -150,8 +150,7 @@ trait DebugWiring { self: Wiring =>
   // Dev, so a spec's wiring (Test) never dials whatever cluster its environment names.
   private lazy val debugMirrorClient: Option[org.mongodb.scala.MongoClient] =
     Option.when(environmentMode == Mode.Dev)(processConfiguration.mirrorMongoUri).flatten.map { mirror =>
-      managedResources.register("debug read-model mirror", MongoConnection.sharedClientFor(mirror.asMongoUri,
-        Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout))))(_.close())
+      managedResources.register("debug read-model mirror", tools.MongoClients.shared(settings.MongoMirror.clientSettings(mirror)))(_.close())
     }
 
   lazy val debugReadModels: DebugReadModels = DebugReadModels.of(country, readModelRepository,

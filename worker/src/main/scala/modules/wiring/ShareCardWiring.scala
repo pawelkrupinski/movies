@@ -1,10 +1,13 @@
 package modules.wiring
 
+
+import settings.MongoTuning
+
 import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardMinimumFree, ShareCardStorageBudget}
 
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
-import services.{MongoConnection, MongoRequirement, MongoTuning}
+import services.MongoConnection
 import services.tasks.{ClaimedEnqueueReaper, Enqueued, TaskHandler}
 import services.tasktypes.TaskType
 
@@ -70,8 +73,8 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  multi-country process, the same client) as the country's own. Optional: unreachable or
    *  refused, it is only the Facebook re-scrapes that stop. */
   lazy val fleetMongoConnection: MongoConnection =
-    MongoConnection.forDatabase(mongoAddress.uri, fleetDatabaseName, MongoRequirement.Optional,
-      MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedMongoClient)
+    new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, fleetDatabaseName,
+      MongoTuning.from(configuration, settings.ProcessTier.Worker)), services.MongoRequirement.Optional, sharedMongoClient)
 
   /** `MONGODB_FLEET_DB`, else `kinowo_fleet` ([[services.FleetDatabase]]). */
   lazy val fleetDatabaseName: settings.MongoDatabaseName = services.FleetDatabase.name(configuration.fleetDatabase)

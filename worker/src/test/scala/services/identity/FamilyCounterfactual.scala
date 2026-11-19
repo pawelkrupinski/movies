@@ -82,7 +82,7 @@ object FamilyCounterfactual {
     val out     = java.nio.file.Path.of(opt("--out").getOrElse(s"target/family-counterfactual-$cc.tsv"))
     val client  = MongoClient("mongodb://127.0.0.1:28017/?directConnection=true")
     try {
-      val db         = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+      val db         = client.getDatabase(_root_.settings.MongoMirror.databaseFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
       val inputs     = ResolveInputs.of(new MongoPinStore(Some(db)).all())
       val started    = tools.Stopwatch.start()

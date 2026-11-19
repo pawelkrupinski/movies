@@ -39,7 +39,7 @@ object TunnelTunedUri {
     "socketTimeoutMS"          -> "45000",
     "connectTimeoutMS"         -> "10000",
     // Wire compression, as production's own clients take over this same kind of link
-    // (`MongoConnection.clientSettings` forces zlib for a loopback tunnel, measured there to
+    // (`MongoConnectionSettings.driverSettings` forces zlib for a loopback tunnel, measured there to
     // shrink a whole-`movies` pull ~6.6x and a 36 s hydrate to ~5 s). These clients are built
     // from the bare URI, so they went without it: the recorder's corpus read crossed the tunnel
     // uncompressed — 59 s of the US leg's critical path for a 296 MB corpus (run 37105119296).

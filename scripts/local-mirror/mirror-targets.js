@@ -30,6 +30,6 @@ const MIRRORED_COLLECTIONS = JSON.parse(require("fs").readFileSync(MIRRORED_COLL
 // bearing: a locally-run worker pointed at the same instance defaults to the
 // `kinowo` database, and without it that worker would write straight into the
 // mirrored corpus (the two-database split the README's `kinowo_local` warning
-// is about). `services.MongoConnection.mirrorDbFor` derives the SAME name on
+// is about). `settings.MongoMirror.databaseFor` derives the SAME name on
 // the Scala side — change one and you must change the other.
 function mirrorDbFor(prodDb) { return prodDb + "_prod_mirror"; }

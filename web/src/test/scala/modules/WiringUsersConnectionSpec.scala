@@ -30,7 +30,7 @@ class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
   // disables itself — so these stand in for real database views with no cluster
   // anywhere near the spec.
   private def disabled(dbName: String) =
-    new MongoConnection(uri = None, dbName = settings.MongoDatabaseName(dbName), required = services.MongoRequirement.Optional)
+    new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName(dbName)), services.MongoRequirement.Optional)
 
   private class RecordingOpen {
     var opened: List[String] = Nil

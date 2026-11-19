@@ -1,5 +1,7 @@
 package services
 
+import settings.MongoTuning
+
 import settings.MongoAddress
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,14 +13,13 @@ import org.scalatest.matchers.should.Matchers
  *  at Poland's database (`.env.local`'s `MONGODB_DB=kinowo`) is refused before it writes. */
 class CountryDatabaseClaimIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-
   "MongoConnection.forCountry" should "refuse a database another country owns, and claim an unowned one" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "country-db-claim") { db =>
-      val polish = MongoConnection.forCountry(Country.Poland, MongoAddress(Some(mongoTarget.uri), Some(settings.MongoDatabaseName(db.name))), required = services.MongoRequirement.Required, MongoTuning.Default)
+      val polish = MongoConnection.forCountry(MongoAddress(Some(mongoTarget.uri), Some(settings.MongoDatabaseName(db.name))).connectionFor(Country.Poland, MongoTuning.Default), services.MongoRequirement.Required, Country.Poland)
       try new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
       finally polish.close()
 
-      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(Country.Germany, MongoAddress(Some(mongoTarget.uri), Some(settings.MongoDatabaseName(db.name))), required = services.MongoRequirement.Required, MongoTuning.Default)
+      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(MongoAddress(Some(mongoTarget.uri), Some(settings.MongoDatabaseName(db.name))).connectionFor(Country.Germany, MongoTuning.Default), services.MongoRequirement.Required, Country.Germany)
       refused.getMessage should include (Country.Poland.code)
     }
 }

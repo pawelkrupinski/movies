@@ -72,7 +72,7 @@ final class ProdMirror(client: MongoClient, val country: Country) extends AutoCl
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
 
-  val database: String = services.MongoConnection.mirrorDbFor(country.mongoDb)
+  val database: String = _root_.settings.MongoMirror.databaseFor(country.mongoDb)
   private val db: MongoDatabase = client.getDatabase(database)
   private val Timeout = SpecTimeouts.Run
   private def find(collection: String, filter: org.bson.conversions.Bson): Seq[BsonDocument] =

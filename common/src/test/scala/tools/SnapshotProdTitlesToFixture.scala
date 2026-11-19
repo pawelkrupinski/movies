@@ -2,7 +2,6 @@ package tools
 
 import services.movies.LatestTitleYear
 
-
 import services.MongoConnection
 import services.movies.MongoMovieRepository
 
@@ -30,7 +29,7 @@ object SnapshotProdTitlesToFixture {
   private val Out = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   def main(args: Array[String]): Unit = {
-    val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
+    val connection = new MongoConnection(_root_.settings.ProcessConfiguration.resolve().toolMongoConnection, services.MongoRequirement.Required)
     val repository = new MongoMovieRepository(connection.database, clock, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
     try {
       val records = repository.findAll()
