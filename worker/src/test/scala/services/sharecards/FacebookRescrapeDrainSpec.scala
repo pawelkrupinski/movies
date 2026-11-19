@@ -25,7 +25,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   private def drainOf(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String], fetches: FacebookFetches,
                       country: String, metrics: ShareCardMetrics, clock: java.time.Clock): FacebookRescrapeDrain =
     new FacebookRescrapeDrain(new RescrapeFilmExpansion(store, pages, fetches, country, clock),
-      new RescrapePageSender(store, graph, new services.facebook.FacebookUsageBrake(store, clock), country, metrics, clock), country, _root_.tools.SpecStopwatch.Frozen,
+      new RescrapePageSender(store, graph, new RescrapeReplies(store, new services.facebook.FacebookUsageBrake(store, clock), metrics, clock), country, metrics, clock), country, _root_.tools.SpecStopwatch.Frozen,
       threadPools = tools.ThreadPools.Unmanaged)
   import services.facebook.AppUsage
   import services.facebook.FacebookUsageBrake.{UsageCeiling, UsageHold}

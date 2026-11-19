@@ -51,4 +51,7 @@ object RescrapeKind {
 final case class RescrapeEntry(country: String, target: RescrapeTarget, notBefore: Instant, attempts: Int = 0) {
   def key: String = target.key
   def kind: RescrapeKind = RescrapeKind.of(target)
+
+  /** The address Facebook is asked to fetch again: a page's URL, else the key. */
+  def url: String = target match { case RescrapeTarget.Page(u, _) => u; case other => other.key }
 }

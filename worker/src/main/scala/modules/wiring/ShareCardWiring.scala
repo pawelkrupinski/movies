@@ -108,7 +108,8 @@ trait ShareCardWiring { self: WorkerWiring =>
     for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled; fetches <- facebookFetches }
     yield new FacebookRescrapeDrain(
       new RescrapeFilmExpansion(store, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, clock),
-      new RescrapePageSender(store, graph, new services.facebook.FacebookUsageBrake(store, clock), country.code, shareCardMetrics, clock),
+      new RescrapePageSender(store, graph,
+        new RescrapeReplies(store, new services.facebook.FacebookUsageBrake(store, clock), shareCardMetrics, clock), country.code, shareCardMetrics, clock),
       country.code, stopwatch, ticks, threadPools = threadPools))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
