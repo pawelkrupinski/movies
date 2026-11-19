@@ -8,7 +8,6 @@ import clients.TmdbClient
 import play.api.Logging
 import services.events.{EventBus, ImdbIdMissing}
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.resolution.TmdbBasis
 import services.tasks.{RatingTasks, TaskWorker}
 
 import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
@@ -103,7 +102,7 @@ class MovieService(
     }
   }
 
-  /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
+  /** Build the resolved `MovieRecord` from a film's TMDB details + the row's `existing`
    *  record — pure (no cache, no lock): how a resolution writes the TMDB-side fields
    *  + `Tmdb` slot while carrying the cinema-side data and score fields forward.
    *
@@ -124,16 +123,12 @@ class MovieService(
    *  (the since-deleted `TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
    *  re-resolve from the new identity.
    *
-   *  @param basis None when the resolution came off the id cache, so the conclusion's real basis
-   *               is unknown here; the row then KEEPS the basis it already recorded rather than
-   *               being downgraded to the weakest one. See `resolveTmdbId`. */
+   *  The row keeps the TMDB basis it already recorded: a fill by id asserts none of its own. */
   private def buildResolvedRecord(
     tmdbId:      Int,
-    hit:         Option[TmdbClient.SearchResult],
     externalIds: TmdbClient.ExternalIds,
-    detailsOpt:  Option[TmdbClient.FullDetails],
-    existing:    MovieRecord,
-    basis:       Option[TmdbBasis]
+    details:     TmdbClient.FullDetails,
+    existing:    MovieRecord
   ): MovieRecord = {
     val sameFilm      = existing.tmdbId.contains(tmdbId)
     val differentFilm = existing.tmdbId.exists(_ != tmdbId)
@@ -150,7 +145,7 @@ class MovieService(
       // title is indistinguishable ever after from an answer a director's
       // filmography confirmed — which is how five wrong resolutions survived weeks
       // in prod on rows that had since acquired the hints to correct them.
-      tmdbBasis         = basis.map(_.toString).orElse(existing.tmdbBasis),
+      tmdbBasis         = existing.tmdbBasis,
       // whether the identity take it resolved is provisional is the projection's, which hands it the record to complete
       tmdbProvisional   = existing.tmdbProvisional,
       wikidataId        = externalIds.wikidataId.orElse(if (sameFilm) existing.wikidataId else None),
@@ -158,16 +153,13 @@ class MovieService(
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
       // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
       // data; without this a fresh resolve would wipe every cinema's slot.
-      data              = existing.data + ((Tmdb: Source) -> resolvedTmdbSlot(tmdbId, hit, detailsOpt, existing, differentFilm))
+      data              = existing.data + ((Tmdb: Source) -> resolvedTmdbSlot(tmdbId, details, existing, differentFilm))
     )
   }
 
-  /** The row's `Tmdb` slot after a resolution to `tmdbId`. The full TMDB record is fetched in a
-   *  single round-trip so the slot carries the localized synopsis, director, cast, runtime, year,
-   *  countries and poster — not just the search-hit-shape fields. On a fetch failure it falls back
-   *  to the search-hit shape so the row at least keeps title + year. */
-  private def resolvedTmdbSlot(tmdbId: Int, hit: Option[TmdbClient.SearchResult],
-                               detailsOpt: Option[TmdbClient.FullDetails],
+  /** The row's `Tmdb` slot after a resolution to `tmdbId`, from its full TMDB record (fetched in a single round-trip),
+   *  so the slot carries the localized synopsis, director, cast, runtime, year, countries and poster. */
+  private def resolvedTmdbSlot(tmdbId: Int, details: TmdbClient.FullDetails,
                                existing: MovieRecord, differentFilm: Boolean): SourceData = {
     val existingTmdbSlot = existing.data.getOrElse(Tmdb, SourceData())
     // TMDB's English release title (en-US `title`, via the same `details` call
@@ -181,27 +173,11 @@ class MovieService(
     // film stays the same; a different film is measured afresh.
     val titleSearches = measureTitleSearches(tmdbId, existing,
       carried = if (differentFilm) Nil else existingTmdbSlot.titleSearches)
-    detailsOpt match {
-      case Some(d) => detailsSlot(d, hit, existingTmdbSlot)
-        .copy(englishTitle = englishTitle, titleSearches = titleSearches)
-      // The search hit's title/originalTitle/year are the fallback when the full
-      // details fetch fails. `hit` is present on a fresh resolution and None on a
-      // cache hit (the cache stores only the id) — in that rare double case the
-      // slot keeps whatever it already had, and the next resolution fills it.
-      case None => existingTmdbSlot.copy(
-        title         = hit.map(_.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
-        originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
-        englishTitle  = englishTitle,
-        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear),
-        titleSearches = titleSearches
-      )
-    }
+    detailsSlot(details, existingTmdbSlot).copy(englishTitle = englishTitle, titleSearches = titleSearches)
   }
 
-  /** The `Tmdb` slot from fetched details `d`, each field falling back to the search hit and then
-   *  to what the slot already held. */
-  private def detailsSlot(d: TmdbClient.FullDetails, hit: Option[TmdbClient.SearchResult],
-                          existingTmdbSlot: SourceData): SourceData = {
+  /** The `Tmdb` slot from fetched details `d`, each field falling back to what the slot already held. */
+  private def detailsSlot(d: TmdbClient.FullDetails, existingTmdbSlot: SourceData): SourceData = {
     // Whether the slot we're merging onto was fetched in the language we're
     // fetching in NOW. When it wasn't — the stale-language re-resolve
     // the since-deleted `UnresolvedTmdbReaper` existed to drive — its LOCALIZED text (title,
@@ -214,13 +190,13 @@ class MovieService(
     def carriedLocalized[A](existing: Option[A]): Option[A] =
       if (existingMatchesLanguage) existing else None
     SourceData(
-      title          = d.title.orElse(hit.map(_.title).filter(_.nonEmpty)).orElse(carriedLocalized(existingTmdbSlot.title)),
-      originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
+      title          = d.title.orElse(carriedLocalized(existingTmdbSlot.title)),
+      originalTitle  = d.originalTitle.orElse(existingTmdbSlot.originalTitle),
       synopsis       = d.synopsis.orElse(carriedLocalized(existingTmdbSlot.synopsis)),
       cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
       director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
       runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-      releaseYear    = d.releaseYear.orElse(hit.flatMap(_.releaseYear)).orElse(existingTmdbSlot.releaseYear),
+      releaseYear    = d.releaseYear.orElse(existingTmdbSlot.releaseYear),
       // Canonicalise TMDB's country names in the SAME language TMDB returned
       // them (the client's deployment language): Poland folds "United States
       // of America" → "USA" to match the strings cinemas write; a non-Polish
@@ -286,7 +262,7 @@ class MovieService(
         case Failure(e) if !TaskWorker.failedDefinitively(e) => None
         case read =>
           val ids = read.getOrElse(TmdbClient.ExternalIds(row.imdbId, row.wikidataId))
-          Some(cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
+          Some(cur => buildResolvedRecord(tmdbId, ids, details, cur))
       }
     }
 }
