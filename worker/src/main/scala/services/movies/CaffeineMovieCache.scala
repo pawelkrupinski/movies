@@ -9,7 +9,6 @@ import services.titles.TitleNormalizer
 import models.{MovieRecord, Source, SourceData, ShowtimesDigest}
 import play.api.Logging
 import tools.Stoppable
-import tools.TickRun
 
 import java.util.concurrent.ConcurrentHashMap
 
@@ -56,9 +55,6 @@ class CaffeineMovieCache(
   // cadence, metrics and boot readers; specs and a lone cache take the defaults.
   mirror: CorpusMirror = CorpusMirror.standalone(tools.Sleep.Blocking)
 ) extends MovieCache with Stoppable with Logging {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
-
   // The resident corpus — the Caffeine map, its index and the funnels that are the only ways into it ([[ResidentCorpus]]).
   private val resident = new ResidentCorpus(repository, normalizer, clock, stringPool)
   import resident.{announce, changed, evict, store, touch}
@@ -74,14 +70,13 @@ class CaffeineMovieCache(
    *  a fresh one for a row this cache is about to create. Ids are never re-derived from
    *  a key — see [[FilmId]]. */
   private def idFor(key: CacheKey): Option[FilmId] =
-    corpusIndex.idOf(key).orElse(repository.findByKeyChecked(key) match {
-      case tools.ReadOutcome.Answered(row)      => Some(row.id)
-      case tools.ReadOutcome.Absent(_) => Some(FilmId.fresh(key, corpusIndex.holdsId))
+    corpusIndex.idOf(key).orElse(repository.findByKeyChecked(key).fold(
+      answered = row => Some(row.id),
+      absent   = Some(FilmId.fresh(key, corpusIndex.holdsId)),
       // The store could not say whether a document holds this key. Minting an id
       // here would write a SECOND document for the key once the store recovers
       // (a failed read is not "absent") — the caller defers instead.
-      case tools.ReadOutcome.Failed(_) => None
-    })
+      failed   = None))
 
   private def deferUnreadableWrite(key: CacheKey): WriteOutcome = {
     logger.warn(s"Deferring write of '${key.cleanTitle}' (${key.year.getOrElse("—")}): the store could not say " +
@@ -237,21 +232,10 @@ class CaffeineMovieCache(
     outcome
   }
 
-  /** Re-kick (as worker tasks) the enrichments whose input fields a merge
-   *  changed — `before` is the pre-merge survivor, `after` the merged record now
-   *  stored under `afterKey`. Pure decision in [[MergeRetrigger]]; the injected
-   *  [[EnrichmentRetrigger]] does the freshness-invalidate + enqueue. */
-  private def retriggerChangedEnrichments(
-    before: MovieRecord, beforeKey: CacheKey, after: MovieRecord, afterKey: CacheKey
-  ): Unit = {
-    val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
-    if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
-  }
-
-  // An enrichment write (Filmweb slot, IMDb slot, …) at a stable key: before/after
-  // share the key, so the merge decision reduces to the input-field deltas.
+  // An enrichment write (Filmweb slot, IMDb slot, …) at a stable key: the injected [[EnrichmentRetrigger]] decides
+  // which enrichments its input-field deltas invalidated and re-kicks them as worker tasks.
   private[services] def retriggerAfterEnrichment(key: CacheKey, before: MovieRecord, after: MovieRecord): Unit =
-    retriggerChangedEnrichments(before, key, after, key)
+    retrigger.retriggerChanged(key, before, after, clock)
 
   /** The film's currently-stored record for `key`: the live cache entry when
    *  resident, else a direct `movies` read. The TMDB resolve's carry-forward
@@ -444,11 +428,9 @@ class CaffeineMovieCache(
    *  [[CorpusMirror]]). An incomplete read changes nothing. */
   def rehydrate(): Int = mirrored.rehydrate()
 
-  /** The change stream's upsert, venue-slots and delete applies ([[CorpusMirror]]). */
-  private[services] def applyUpsert(r: StoredMovieRecord, mark: Long): Unit = mirrored.applyUpsert(r, mark)
-  private[services] def applyVenueSlots(venues: VenueSlots, mark: Long): VenueVerdict = mirrored.applyVenueSlots(venues, mark)
-  private[services] def applyDelete(id: FilmId): Unit = mirrored.applyDelete(id)
-  private[movies] def coldRetryTick(): TickRun = mirrored.coldRetryTick()
+  /** Test seam: how this cache is kept in step with its store -- the change stream's upsert, venue-slots and delete
+   *  applies and the cold-retry tick a spec drives by hand ([[CorpusMirror]]). */
+  private[services] def mirroring: CorpusMirror#Attached = mirrored
 
   def start(): Unit = mirrored.start()
   def stop(): Unit = mirrored.stop()

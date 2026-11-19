@@ -115,7 +115,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned))), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
       val (whole, venue) = (cache(), cache())
       var record = film(rng)
-      whole.applyUpsert(stored(record), FilmWriteFence.Unfenced); venue.applyUpsert(stored(record), FilmWriteFence.Unfenced)
+      whole.mirroring.applyUpsert(stored(record), FilmWriteFence.Unfenced); venue.mirroring.applyUpsert(stored(record), FilmWriteFence.Unfenced)
       (0 until 6).foreach { step =>
         val touched = rng.shuffle(cinemas).take(1 + rng.nextInt(2)).toSet
         record = record.copy(data = record.data.map {
@@ -123,11 +123,11 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
           case other => other
         })
         val now = stored(record)
-        whole.applyUpsert(now, FilmWriteFence.Unfenced)
+        whole.mirroring.applyUpsert(now, FilmWriteFence.Unfenced)
         val atCinemas = touched.map(cinema => cinema -> record.data.toSeq.collect {
           case (s @ CinemaShowing(`cinema`, _), slot) => s -> slot }).toMap
-        if (venue.applyVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas), FilmWriteFence.Unfenced) == services.movies.VenueVerdict.Applied) accepted += 1
-        else { declined += 1; venue.applyUpsert(now, FilmWriteFence.Unfenced) }
+        if (venue.mirroring.applyVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas), FilmWriteFence.Unfenced) == services.movies.VenueVerdict.Applied) accepted += 1
+        else { declined += 1; venue.mirroring.applyUpsert(now, FilmWriteFence.Unfenced) }
         val key = now.cacheKey(titleNormalizer)
         withClue(s"round $round step $step: ") {
           venue.get(key).map(everyField) shouldBe whole.get(key).map(everyField)

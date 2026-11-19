@@ -80,10 +80,10 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.entries should have size 0
 
-    cache.coldRetryTick()          // still failing: still cold
+    cache.mirroring.coldRetryTick()          // still failing: still cold
     cache.entries should have size 0
     repository.failing = false
-    cache.coldRetryTick()
+    cache.mirroring.coldRetryTick()
     cache.entries should have size 1
   }
 
@@ -92,7 +92,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ticks = new _root_.tools.RecordingTickRecorder
     def tick(): Unit = _root_.tools.ScheduledTick.recorded("movie-cache-cold-retry", 1.minute, play.api.Logger(getClass), ticks)(
-      cache.coldRetryTick())
+      cache.mirroring.coldRetryTick())
     tick()
     ticks.completedRuns shouldBe empty   // the read failed again: logged, and not a completed run
     repository.failing = false
@@ -105,7 +105,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     repository.failing = false
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val readsAtBoot = repository.reads.get()
-    cache.coldRetryTick()
+    cache.mirroring.coldRetryTick()
     repository.reads.get() shouldBe readsAtBoot
   }
 

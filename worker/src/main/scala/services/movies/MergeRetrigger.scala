@@ -30,6 +30,14 @@ object RetriggerKind {
  *  cache directly. */
 trait EnrichmentRetrigger {
   def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit
+
+  /** Re-kick the enrichments an enrichment write at a stable `key` invalidated: before and after share
+   *  the key, so the decision ([[MergeRetrigger.changedEnrichments]], its latest year read off `clock`)
+   *  reduces to the input-field deltas. Nothing when no input moved. */
+  final def retriggerChanged(key: CacheKey, before: MovieRecord, after: MovieRecord, clock: java.time.Clock): Unit = {
+    val kinds = MergeRetrigger.changedEnrichments(before, key, after, key)(using LatestTitleYear(clock))
+    if (kinds.nonEmpty) retrigger(key, after, kinds)
+  }
 }
 
 object EnrichmentRetrigger {

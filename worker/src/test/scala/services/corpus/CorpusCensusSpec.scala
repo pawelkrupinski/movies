@@ -114,11 +114,11 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
           val stored = repository.findByIdChecked(cache.idOf(key).get).answered.get
           val record = stored.record.copy(imdbId = None, tmdbId = None)
           repository.upsert(stored.id, key, record)
-          cache.applyUpsert(repository.findByIdChecked(stored.id).answered.get, FilmWriteFence.Unfenced); s"stream upsert of ${key.cleanTitle}"
+          cache.mirroring.applyUpsert(repository.findByIdChecked(stored.id).answered.get, FilmWriteFence.Unfenced); s"stream upsert of ${key.cleanTitle}"
         }
       case 8 => anyKey.fold("—") { key =>
           val id = cache.idOf(key).get
-          repository.delete(id); cache.applyDelete(id); s"stream delete of ${key.cleanTitle}"
+          repository.delete(id); cache.mirroring.applyDelete(id); s"stream delete of ${key.cleanTitle}"
         }
       case 10 => anyKey.fold("—") { key =>
           // another process's change confined to one venue's showtimes, applied from that venue alone
@@ -132,7 +132,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
             repository.upsert(stored.id, key, moved)
             val read = repository.findByIdChecked(stored.id).answered.get.record
             val slots = read.data.toSeq.collect { case (s: CinemaShowing, slot) if s.cinema == at => s -> slot }
-            cache.applyVenueSlots(services.movies.VenueSlots(stored.id, Map(at -> slots)), FilmWriteFence.Unfenced)
+            cache.mirroring.applyVenueSlots(services.movies.VenueSlots(stored.id, Map(at -> slots)), FilmWriteFence.Unfenced)
             s"venue apply at $at of ${key.cleanTitle}"
           }
         }

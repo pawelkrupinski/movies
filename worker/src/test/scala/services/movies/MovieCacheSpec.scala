@@ -34,13 +34,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(key, mkEnrichment("tt-foo"))
     cache.get(key) should not be empty
 
-    cache.applyDelete(cache.idOf(cache.keyOf("Foo", Some(2024))).getOrElse(fail("row has no id")))
+    cache.mirroring.applyDelete(cache.idOf(cache.keyOf("Foo", Some(2024))).getOrElse(fail("row has no id")))
     cache.get(key) shouldBe None
 
     // A delete for an unknown id is a harmless no-op — it must not clear other rows.
     val barKey = cache.keyOf("Bar", Some(2024))
     cache.put(barKey, mkEnrichment("tt-bar"))
-    cache.applyDelete(FilmId("does-not-exist|1900"))
+    cache.mirroring.applyDelete(FilmId("does-not-exist|1900"))
     cache.get(barKey) should not be empty
   }
 
