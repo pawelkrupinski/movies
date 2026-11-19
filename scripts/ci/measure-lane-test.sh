@@ -12,6 +12,7 @@ printf '\033[36m▸\033[0m measure-lane.sh\n'
 lane() { RUNNER_LABELS=$1 bash "$REPO_ROOT/scripts/ci/measure-lane.sh" "$2" 2> /dev/null; }
 marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.LANES_MARKER)")
 explore_marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.EXPLORE_MARKER)")
+stage_marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.STAGE_MARKER)")
 
 check "a red fix's rows ask for the red-fix lane where the scheduler serves it" "label=movies-red-fix" "$(lane "movies,$marker" red-fix)"
 check "a landing check's rows ask for the landing lane" "label=movies-landing" "$(lane "movies,$marker" landing)"
@@ -26,9 +27,13 @@ check "an explorer's rows ask for the explorer lane where the scheduler serves i
 # a scheduler from before the explorer lane serves the other lanes and starts no runner for movies-explore
 check "...and movies-measure where it serves the other lanes only" "label=movies-measure" "$(lane "movies,$marker" explore)"
 check "...or none" "label=movies-measure" "$(lane movies explore)"
+# Stage NixOS closures #102: deploy staging waited 2.5 h on movies-measure; the owner put it between landing and measure
+check "deploy staging asks for the stage lane where the scheduler serves it" "label=movies-stage" \
+  "$(lane "movies,$marker,$stage_marker" stage)"
+check "...and movies-measure where it serves the older lanes only" "label=movies-measure" "$(lane "movies,$marker,$explore_marker" stage)"
 check "an unknown lane is a usage error" "2" "$(lane "movies,$marker" urgent > /dev/null; echo $?)"
 # the labels are the scheduler's own: a lane it starts runners for is a lane this can name
-check "every lane this names is one the scheduler starts runners for" "movies-red-fix movies-landing movies-measure movies-explore" \
+check "every lane this names is one the scheduler starts runners for" "movies-red-fix movies-landing movies-stage movies-measure movies-explore" \
   "$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(' '.join(r.MEASURE_LANES))")"
 
 spec_summary

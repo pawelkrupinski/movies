@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # THE LABEL A MEASUREMENT-SIZED JOB ASKS FOR on ci-runner: `label=<label>` on stdout, for a plan job's $GITHUB_OUTPUT.
 #
-#   scripts/ci/measure-lane.sh <lane>     lane: red-fix | landing | measure | '' (measure) | explore
+#   scripts/ci/measure-lane.sh <lane>     lane: red-fix | landing | stage | measure | '' (measure) | explore
 #
-# ci-runner's scheduler (scripts/ci/runner_scheduler.py, MEASURE_LANES) starts measure-slice runners for three labels,
+# ci-runner's scheduler (scripts/ci/runner_scheduler.py, MEASURE_LANES) starts measure-slice runners for five labels,
 # the highest first: movies-red-fix (a gate-red fix's landing check), movies-landing (any other landing check),
-# movies-measure (everything optional), then movies-explore (the nightly drift and family explorers' rows: none of
+# movies-stage (deploy staging: nix-stage-closures.yml, the owner 2026-11-19), movies-measure (everything optional),
+# then movies-explore (the nightly drift and family explorers' rows: none of
 # them starts while a landing check waits; the owner, 2026-11-18). 2026-11-16: a red fix's pre-push drift check (Identity takes 43816825023) waited
 # 80+ min with 14-27 optional measurement jobs on the one movies-measure label, which GitHub hands to any of them.
 #
@@ -18,12 +19,14 @@
 set -euo pipefail
 marker=movies-lanes # runner_scheduler.py LANES_MARKER (measure-lane-test.sh holds the two alike)
 explore_marker=movies-lanes-explore # runner_scheduler.py EXPLORE_MARKER (likewise)
+stage_marker=movies-lanes-stage # runner_scheduler.py STAGE_MARKER (likewise)
 
 case "${1:-}" in
   red-fix|landing) wanted=movies-$1 ;;
   explore) wanted=movies-explore marker=$explore_marker ;;
+  stage) wanted=movies-stage marker=$stage_marker ;;
   measure|'') echo "label=movies-measure"; exit 0 ;;
-  *) echo "measure-lane.sh: unknown lane '$1' (red-fix, landing, measure or explore)" >&2; exit 2 ;;
+  *) echo "measure-lane.sh: unknown lane '$1' (red-fix, landing, stage, measure or explore)" >&2; exit 2 ;;
 esac
 if [[ ",${RUNNER_LABELS:-}," == *",$marker,"* ]]; then
   echo "label=$wanted"

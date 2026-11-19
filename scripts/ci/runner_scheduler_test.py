@@ -853,6 +853,17 @@ class MeasureLanesTest(unittest.TestCase):
         self.assertEqual(d.starts, ((1, "measure"), (2, "measure")))
         self.assertEqual(dict(d.labels), {1: "movies-red-fix", 2: "movies-landing"})
 
+    # Stage NixOS closures #102 (run 44420633319, 2026-11-19): its nix-stage job waited 2.5 h on movies-measure behind
+    # 23 optional measurements ("STARVED measure: 23 queued, the oldest 300 min, held by cpu"). The owner: a movies-stage
+    # lane between movies-landing and movies-measure.
+    def test_deploy_staging_goes_after_landing_checks_and_before_every_optional_measurement(self):
+        lanes = {"movies-landing": 1, "movies-stage": 1, "movies-measure": 3}
+        d = rs.decide(rs.Config(max_slots=2, check_lane_jobs=0), IDLE, queued(measure=5), [], NOW, ROOMY, lanes)
+        self.assertEqual(dict(d.labels), {1: "movies-landing", 2: "movies-stage"})
+        d = rs.decide(rs.Config(max_slots=1, check_lane_jobs=0), IDLE, queued(measure=4), [], NOW, ROOMY,
+                      {"movies-stage": 1, "movies-measure": 3})
+        self.assertEqual(dict(d.labels), {1: "movies-stage"})
+
     def test_a_measurement_never_takes_a_runner_started_for_a_landing_check(self):
         # the idle movies-measure runner waits for a measurement; the landing check gets one of its own
         lanes = {"movies-landing": 1, "movies-measure": 1}
@@ -1378,7 +1389,7 @@ class HostTest(unittest.TestCase):
         host = self.host(FakeDocker(["Runner.Listener"]))
         host.start(11, "light")
         with open(os.path.join(host.cfg.state_dir, "11.env")) as f:
-            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER},{rs.EXPLORE_MARKER}\n", f.read())
+            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER},{rs.EXPLORE_MARKER},{rs.STAGE_MARKER}\n", f.read())
         light = next(i for i in host.instances(NOW) if i.slot == 11)
         self.assertEqual(light.lane, "movies")
 

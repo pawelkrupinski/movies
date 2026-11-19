@@ -141,6 +141,25 @@ env:
   LANG: C.UTF-8
 
 jobs:
+  # THE PLAN (WorkflowPlanSpec): the run's root, on a light runner, so the one job that reads the ref and the event
+  # whole; `stage` reads these. `stage` is the staging guard below, evaluated here. `lane` is the label both heavy jobs
+  # ask for: ci-runner's movies-stage, after the landing path and before every optional measurement (the owner,
+  # 2026-11-19: Stage NixOS closures #102's nix-stage job waited 2.5 h on movies-measure behind 23 optional
+  # measurements), or movies-measure where its scheduler serves no stage lane (scripts/ci/measure-lane.sh).
+  plan:
+    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+    timeout-minutes: 5
+    outputs:
+      stage: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+      lane: ${{ steps.lane.outputs.label }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/ci
+      - name: Which measure lane do the evaluation and the staging queue in?
+        id: lane
+        run: scripts/ci/measure-lane.sh stage >> "$GITHUB_OUTPUT"
+
   # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
   #
   # It is cheap -- evaluation does not build anything -- and it catches the class of error that is
@@ -150,11 +169,8 @@ jobs:
   # defined"), or a module that does not parse.
   evaluate:
     name: nix-evaluate
-    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
-    # THE PLAN (WorkflowPlanSpec): the run's root, so the one job that reads the ref and the event whole; `stage`
-    # reads these. `stage` is the staging guard below, evaluated here.
-    outputs:
-      stage: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    needs: [ plan ]
+    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (needs.plan.outputs.lane || 'movies-measure') || 'ubuntu-26.04' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -336,7 +352,7 @@ jobs:
 
   stage:
     name: nix-stage
-    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
+    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (needs.plan.outputs.lane || 'movies-measure') || 'ubuntu-26.04' }}
     # NEVER FROM A PULL REQUEST, AND NEVER FROM A BRANCH, and this needs a guard of its own rather
     # than relying on the trigger list. On a host running fleet.autoApply, STAGING IS THE TRIGGER:
     # writing the pin starts the applier within about a second. So a PR that staged would be a PR
@@ -348,10 +364,10 @@ jobs:
     # otherwise have built and copied closures from it with the real signing and ssh keys.
     # (Evaluated in `evaluate`, the plan: `(github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # && github.ref == 'refs/heads/main'`; an evaluate that did not succeed stages nothing either way.)
-    if: needs.evaluate.outputs.stage == 'true'
+    if: needs.plan.outputs.stage == 'true'
     # STAGING WAITS FOR EVALUATION. While nothing activated on its own, staging was harmless
     # whatever a check said -- a copied closure nobody switches to is inert. It is no longer inert.
-    needs: [ evaluate ]
+    needs: [ plan, evaluate ]
     steps:
       # FULL HISTORY, not the default shallow clone. `system.configurationRevision` is read from the
       # flake's own `self.rev` (infra/nix/modules/fleet/deploy-staging.nix), which is what stamps
