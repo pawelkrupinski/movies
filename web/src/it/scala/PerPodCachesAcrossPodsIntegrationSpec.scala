@@ -9,7 +9,8 @@ import play.api.test.Helpers._
 import services.readmodel.{MongoReadModelRepository, TestReadModel}
 import services.users.InMemoryUserRepository
 import tools.ConcurrentInstances
-import tools.Eventually.eventually
+import tools.Eventually
+import tools.Eventually.{awaitStreamLive, eventually}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
@@ -48,10 +49,16 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
       try {
         Seq(a, b).foreach(_.changeTimes.start())
         val userId = UserStatePod.signIn(users, "cached")
-        val first  = a.hide(userId, "Seen on A")
-        status(first) shouldBe OK
-        val lastModified = header("Last-Modified", first).get
-        eventually(a.changeTimes.lastChangeAt(userId) shouldBe defined, timeoutMs = StreamBoundMs)
+        // `start()` opens A's cursor asynchronously, and a write landing before it reaches the server is never
+        // delivered: one write and a wait for it left the cache empty for good whenever the open lagged (itAll beside
+        // testUnit, "None was not defined"). Write again until A's own stream has delivered one.
+        var lastModified = ""
+        awaitStreamLive("pod A's write to its own change-time cache",
+            Eventually.poll(SpecTimeouts.Pace.toMillis)(a.changeTimes.lastChangeAt(userId).isDefined), timeoutMs = StreamBoundMs) { n =>
+          val write = a.hide(userId, if (n == 1) "Seen on A" else s"Seen on A ($n)")
+          status(write) shouldBe OK
+          lastModified = header("Last-Modified", write).get
+        }
         // The positive control: pod A really is answering from its cache, so what follows tests it.
         hiddenAfter(a, userId, lastModified)._1 shouldBe NOT_MODIFIED
         body(a, b, userId, lastModified)
