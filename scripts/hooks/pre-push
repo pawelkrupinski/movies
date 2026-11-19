@@ -185,10 +185,11 @@
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
 # A STRANDED TRAILER REFUSES EVERY PUSH TO MAIN, green or red, a dry run (--checks-only, --fast-only) too: a pushed
-# commit's `Fixes-Red:`, `Red-Unrelated:`, `New-Check:` or `Retires:` line outside the message's closing trailer block
+# commit's `Fixes-Red:`, `Red-Unrelated:`, `New-Check:`, `Retires:` or `Pure-Move:` line outside the message's closing trailer block
 # (a paragraph of its own above `Co-Authored-By:`) is prose to git's trailer parser, the only reader the red gate and
 # agentctl's red bookkeeping have. 38 of main's 204 Fixes-Red commits from 2026-10-20 to 11-02 had theirs there: Main
-# #2164's and #2547's fixes landed unlinked, the reds stayed open and fixers were sent at them again. Bypass:
+# #2164's and #2547's fixes landed unlinked, the reds stayed open and fixers were sent at them again; 2 of 2026-11-19's 3
+# `Pure-Move:` claims were never checked, and paid the identity area a pure move owes none of. Bypass:
 # PREPUSH_SKIP=trailers.
 # A MISPLACED TRAILER WARNS (never refuses): any known key (scripts/ci/trailers.py KNOWN_KEYS -- Coupling, Complexity,
 # Duplication, Length, Pure-Move, Fixes-Red, Identity-Design, Drift-Harness-Refactor) on a line git reads no trailer
@@ -1042,7 +1043,7 @@ check_stranded_trailers() {
     local r commit key declared parsed bad=0
     for r in "$@"; do
         for commit in $(git rev-list "$r"); do
-            for key in Fixes-Red Red-Unrelated New-Check Retires; do
+            for key in Fixes-Red Red-Unrelated New-Check Retires Pure-Move; do
                 declared="$(git log -1 --format=%B "$commit" | grep -ciE "^$key:" || true)"
                 [ "$declared" -gt 0 ] || continue
                 parsed="$(git log -1 --format="%(trailers:key=$key,valueonly)" "$commit" | grep -c . || true)"
@@ -1053,7 +1054,7 @@ check_stranded_trailers() {
         done
     done
     [ "$bad" = 0 ] && return 0
-    warn "neither the red gate nor agentctl sees such a line. Put it in the message's LAST paragraph, beside"
+    warn "neither the red gate, agentctl nor the puremove check sees such a line. Put it in the message's LAST paragraph, beside"
     warn "Co-Authored-By: with no blank line between them (git commit --amend / git rebase on unpushed commits)."
     return 1
 }

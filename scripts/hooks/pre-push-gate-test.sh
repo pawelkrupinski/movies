@@ -80,6 +80,11 @@ scratch_git "$grepo" reset -q --hard "$fixing"
 stranded_ru="$(commit_paths "an unrelated tools change" "Red-Unrelated: 38520439037" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
 check "a stranded Red-Unrelated: is refused as well" "1" "$(all_green push "$fixing..$stranded_ru")"
 scratch_git "$grepo" reset -q --hard "$fixing"
+# ...and a stranded Pure-Move: (2026-11-19: 2 of that day's 3 claimed pure moves had theirs above Co-Authored-By:, so the
+# puremove check never ran and the move paid the identity area it owed none of)
+stranded_pm="$(commit_paths "a tools move" "Pure-Move: verified" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
+check "a stranded Pure-Move: is refused as well" "1" "$(all_green push "$fixing..$stranded_pm")"
+scratch_git "$grepo" reset -q --hard "$fixing"
 # A MISPLACED TRAILER WARNS: a Coupling: line above a blank line is prose to git -- the push lands, the line named.
 misplaced="$(commit_paths "a tools split" "Coupling: split of X" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
 check "a misplaced Coupling: line only warns: the push lands" "0" "$(all_green push "$fixing..$misplaced")"
