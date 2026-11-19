@@ -21,6 +21,6 @@ object EnrichDetailsHandlerOf {
     val schedule = new DetailSchedule(new InMemoryTaskQueue, freshness, dueWindow)
     new EnrichDetailsHandler(enrichersByGroup, schedule,
       new RecordedPageReader(new VenuePageReader(pages, schedule, event => bus.publish(event), clock), uptime),
-      cache, new LandedPages(pages, enrichmentLanguage), screeningTokens, clock)
+      new DetailRowLanding(cache, new LandedPages(pages, enrichmentLanguage), screeningTokens), clock)
   }
 }

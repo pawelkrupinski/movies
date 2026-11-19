@@ -101,8 +101,9 @@ trait TestWiring extends WorkerWiring {
     def publish(event: DomainEvent): Unit = { detailEventBuffer.add(event); () }
   }
   override lazy val enrichDetailsHandler = new EnrichDetailsHandler(detailEnrichersByGroup, detailSchedule,
-    detailPageReader(detailCaptureBus), movieCache, new services.venuepages.LandedPages(venuePageStore, country.language),
-    screeningTokens, clock)
+    detailPageReader(detailCaptureBus),
+    new services.venuepages.DetailRowLanding(movieCache, new services.venuepages.LandedPages(venuePageStore, country.language),
+      screeningTokens), clock)
   // The fixture pipeline drives ONE `detailReaper.tick()` per pass and expects it
   // to enqueue the whole deferred-detail corpus (the prod per-tick cap would
   // truncate the snapshot). The cap is a prod burst-shedding lever, not a

@@ -50,7 +50,7 @@ module-edge	worker->base	81
 module-edge	worker->common	1626
 module-edge	worker->http	176
 module-edge	worker->identity	516
-module-edge	worker->scrapers	149
+module-edge	worker->scrapers	151
 ce	clients	3
 ce	controllers	21
 ce	diagnostics	5
@@ -307,7 +307,8 @@ fanout	services.tasks.RatingRunCensus	12
 fanout	services.tasks.TaskWorker	10
 fanout	services.titles.TitleNormalizer	11
 fanout	services.users.MongoUserStateRepository	15
-fanout	services.venuepages.EnrichDetailsHandler	20
+fanout	services.venuepages.DetailRowLanding	15
+fanout	services.venuepages.EnrichDetailsHandler	10
 fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
 distance	services.identity	43

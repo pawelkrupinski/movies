@@ -1,7 +1,7 @@
 package modules.wiring
 
 import services.tasks.ClaimedEnqueueReaper
-import services.venuepages.{DetailPages, DetailReaper, DetailSchedule, EnrichDetailsHandler, LandedPages, ReadVenuePageHandler,
+import services.venuepages.{DetailPages, DetailReaper, DetailRowLanding, DetailSchedule, EnrichDetailsHandler, LandedPages, ReadVenuePageHandler,
   RecordedPageReader, VenuePageReader}
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
@@ -43,7 +43,7 @@ trait DetailWiring { self: WorkerWiring =>
   def detailPageReader(bus: services.events.EventBus): RecordedPageReader =
     new RecordedPageReader(new VenuePageReader(venuePageStore, detailSchedule, event => bus.publish(event), clock), uptimeMonitor)
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(detailEnrichersByGroup, detailSchedule, detailPageReader(eventBus),
-    movieCache, new LandedPages(venuePageStore, country.language), screeningTokens, clock)
+    new DetailRowLanding(movieCache, new LandedPages(venuePageStore, country.language), screeningTokens), clock)
   /** Reads a venue page into venue_pages for a listing no film row holds yet (a cut-over country's wait). */
   lazy val readVenuePageHandler = new ReadVenuePageHandler(detailEnrichersByGroup, detailPageReader(eventBus), detailSchedule, clock)
   // The detail reaper enqueues every due fetch, phase-spread + capped so a re-key cohort trickles
