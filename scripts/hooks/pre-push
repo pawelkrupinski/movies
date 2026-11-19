@@ -512,7 +512,10 @@ plan() {
         # An artefact a registered spec reads (a file a lint-registry row names: the Dockerfile, the AOT class list,
         # host-memory.json, a fixture): its row selects the spec, so the sbt check that runs it must run (Main
         # #2547/#2550, #2601: a Dockerfile or an AOT-list change selected no sbt check at all).
-        if [ $sbt = 0 ] && [ -n "$registry_files" ] && printf '%s\n' "$registry_files" | grep -qxF -- "$path"; then sbt=1; fi
+        # A here-string, never `printf | grep -q` (here and throughout the hook): under pipefail, grep -q exiting at
+        # its match makes printf's next write die of SIGPIPE, the pipeline false -- the ~6 KB file list is two writes,
+        # and on a loaded Linux container host-memory.json, in the first, selected no sbt check (2026-11-19).
+        if [ $sbt = 0 ] && [ -n "$registry_files" ] && grep -qxF -- "$path" <<< "$registry_files"; then sbt=1; fi
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
@@ -696,7 +699,7 @@ worker_rest_row() {
     local rows prefixes exclusions="" suites="" kind name
     rows="$(worker_rows)"
     prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
-    if [ -z "$prefixes" ] || ! printf '%s\n' "$rows" | grep -q '^rest '; then
+    if [ -z "$prefixes" ] || ! grep -q '^rest ' <<< "$rows"; then
         echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
     fi
     while IFS= read -r name; do exclusions+=" -$name*"; done <<< "$prefixes"
@@ -705,7 +708,7 @@ worker_rest_row() {
         while IFS= read -r prefix; do case "$name" in "$prefix"*) covered=1 ;; esac; done <<< "$prefixes"
         case "$kind" in
             heavy) [ -n "$covered" ] || exclusions+=" -$name" ;;
-            rest) printf '%s\n' "$rows" | grep -qxF "heavy $name" || suites+=" $name" ;;
+            rest) grep -qxF "heavy $name" <<< "$rows" || suites+=" $name" ;;
         esac
     done <<< "$rows"
     echo "worker/testOnly *$exclusions"
@@ -718,7 +721,7 @@ unit_universe() {
     local module rows heavy="" kind name
     for module in base http common identity testkit scrapers repochecks web; do echo "$module/Test/test"; done
     rows="$(worker_rows)"
-    if ! printf '%s\n' "$rows" | grep -q '^heavy '; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
+    if ! grep -q '^heavy ' <<< "$rows"; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
     while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
     echo "worker/testOnly *$heavy"
 }
@@ -732,13 +735,13 @@ source_lint_lines() { # <lints> < plan lines
     local plan module spec cls classes
     plan="$(cat)"
     for module in base http common identity testkit scrapers repochecks web worker; do
-        printf '%s\n' "$plan" | grep -qxF "$module/Test/test" && continue
+        grep -qxF "$module/Test/test" <<< "$plan" && continue
         classes=""
         while IFS= read -r spec; do
             [ -n "$spec" ] || continue
             cls="${spec#"$module"/src/test/scala/}"; cls="${cls%.scala}"; cls="${cls//\//.}"
-            printf '%s\n' "${1:-}" | grep -qxF "$module:$cls" && continue
-            printf '%s\n' "$plan" | grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" && continue
+            grep -qxF "$module:$cls" <<< "${1:-}" && continue
+            grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" <<< "$plan" && continue
             classes+=" $cls"
         done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources|SourceTrees' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
         [ -z "$classes" ] || echo "$module/testOnly${classes}"
@@ -1316,7 +1319,7 @@ fast_select() { # stdin: the checks the paths select -> those --fast-only runs, 
     combined=" $(union_changed | grep -v '^$' | plan | grep -vE "$AreaChecks" | tr '\n' ' ') "
     while IFS= read -r c; do
         [ -n "$c" ] || continue
-        if printf '%s\n' "$c" | grep -qE "$FastChecks"; then echo "$c"
+        if grep -qE "$FastChecks" <<< "$c"; then echo "$c"
         else case "$combined" in *" $c "*) echo "$c" ;; esac; fi
     done
 }
@@ -1327,7 +1330,7 @@ fast_select() { # stdin: the checks the paths select -> those --fast-only runs, 
 # (`--readers`, natively: a rule over files' content, no floor or Linux run) when the combined change touches what
 # they read. A runner from before --readers runs none, as before.
 scripttests_readers=""
-if [ -n "$verify_only" ] && ! printf '%s\n' "$checks" | grep -qx scripttests && [ -n "$changed" ] \
+if [ -n "$verify_only" ] && ! grep -qx scripttests <<< "$checks" && [ -n "$changed" ] \
         && grep -q -e '--readers' scripts/run-script-tests 2>/dev/null; then
     reader_globs="$(scripts/run-script-tests --reads 2>/dev/null)"
     while IFS= read -r path && [ -z "$scripttests_readers" ]; do
@@ -1339,13 +1342,13 @@ if [ -n "$verify_only" ] && ! printf '%s\n' "$checks" | grep -qx scripttests && 
     [ -n "$scripttests_readers" ] && checks="${checks:+$checks$'\n'}scripttests"
 fi
 # --verify-only: the touched modules' unit tests ride the sbt check, which runs whenever there are any
-if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! printf '%s\n' "$checks" | grep -qx sbt; then
+if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! grep -qx sbt <<< "$checks"; then
     checks="sbt${checks:+$'\n'$checks}"
 fi
 # THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: the slice rule reads the message (`Fixes-Red:` and drift/flips), and
 # CI's commit rules judge every pushed commit, so a commit claiming a fix is judged here too, in a third of a second: a
 # scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
-if ! printf '%s\n' "$checks" | grep -qx driftguards; then
+if ! grep -qx driftguards <<< "$checks"; then
     for r in "${ranges[@]}"; do
         [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
         checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
@@ -1363,7 +1366,7 @@ done
 # selected by the paths of the commits WITHOUT that claim alone; the claimed commits' paths still select every other
 # check (sbt, the lints, coupling, ...). agentctl's backlog batch reads the same rule (batch.py identity_change).
 PureMoveAreas='^(identity|itidentity|e2ecorpus)$'
-if printf '%s\n' "$checks" | grep -qE "$PureMoveAreas"; then
+if grep -qE "$PureMoveAreas" <<< "$checks"; then
     unclaimed="" claimed_any=""
     for r in "${ranges[@]}"; do
         for sha in $(git rev-list "$r"); do
@@ -1729,9 +1732,9 @@ check_sbt() {
     # spec reads, seen on main only). A push of the registry or its readers runs the reads check over every row (~8 s);
     # a push of specs alone, over theirs (a second).
     local misses line only=()
-    if printf '%s\n' "$changed" | grep -qE '(/src/test/scala/.*Spec\.scala|^scripts/hooks/lint-registry\.tsv)$' \
+    if grep -qE '(/src/test/scala/.*Spec\.scala|^scripts/hooks/lint-registry\.tsv)$' <<< "$changed" \
         && [ -f scripts/ci/lint_registry_reads.py ]; then
-        if ! printf '%s\n' "$changed" | grep -qE '^scripts/(hooks/lint-registry\.tsv|hooks/pre-push|ci/lint_registry_reads\.py)$'; then
+        if ! grep -qE '^scripts/(hooks/lint-registry\.tsv|hooks/pre-push|ci/lint_registry_reads\.py)$' <<< "$changed"; then
             only=(--only)
             while IFS= read -r line; do only+=("$line"); done < <(printf '%s\n' "$changed" \
                 | sed -nE 's|^([^/]+)/src/test/scala/(.*Spec)\.scala$|\1:\2|p' | tr / .)
@@ -2240,7 +2243,7 @@ live_sbt_in_checkout() {
 isolate_reason="" sbt_client=0
 if ! in_place; then
     isolate_reason="the working tree is not ${head_sha:0:9}"
-elif printf '%s\n' "$checks" | grep -qxE 'sbt|identity' && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
+elif grep -qxE 'sbt|identity' <<< "$checks" && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
     # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
     # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
     if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then

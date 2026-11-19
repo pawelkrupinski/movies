@@ -78,6 +78,15 @@ check "#2564: a gitops push runs NodeMemoryBudgetSpec (scripts/gitops-specs --pl
   "$(has "$(scripts/gitops-specs --plan | tr '\n' ' ')" deploy.NodeMemoryBudgetSpec)"
 check "#2564: host-memory.json and k3s-server.nix run the sbt check, and select NodeMemoryBudgetSpec" "yes yes yes" \
   "$(has "$(plan_of infra/nix/files/host-memory.json)" sbt) $(has "$(plan_of infra/nix/modules/roles/k3s-server.nix)" sbt) $(has "$(gitops_lints infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix)" repochecks:deploy.NodeMemoryBudgetSpec)"
+# 2026-11-19 (landing 668a4cced, Linux): the case above failed for host-memory.json alone. The hook matched a path
+# against its ~6 KB registry file list with `printf | grep -q` under pipefail: grep exiting at a match in printf's first
+# write let the second die of SIGPIPE, and the pipeline read false -- a race only a loaded host lost. A registry padded
+# past the pipe buffer, the hook copied beside it, loses it every time.
+mkdir -p "$scratch/hook/scripts"
+cp -R scripts/hooks "$scratch/hook/scripts/" && cp scripts/hooks-path.sh scripts/tool-conventions.sh "$scratch/hook/scripts/"
+awk 'BEGIN { for (i = 1; i <= 3000; i++) printf "x:Padding%dSpec\tpadding/file-%d.txt\n", i, i }' >> "$scratch/hook/scripts/hooks/lint-registry.tsv"
+check "...however long the registry's file list (no SIGPIPE in the match)" "yes" \
+  "$(has "$(printf 'infra/nix/files/host-memory.json\n' | "$scratch/hook/scripts/hooks/pre-push" --plan 2>/dev/null | tr '\n' ' ')" sbt)"
 # Main #2547/#2550: the weekly bump (251bbc29a) moved the Temurin digest; the image's JAVA_VERSION check failed. A pin's
 # restate (infra/bin/image_pins.py) writes the Dockerfile alone: it runs the sbt check, the JDK and image specs, and the
 # script tests reading the Dockerfile.
