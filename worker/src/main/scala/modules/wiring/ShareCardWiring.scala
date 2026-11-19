@@ -102,7 +102,10 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
   lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] = managedResources.stoppingEach(
     for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled; fetches <- facebookFetches }
-    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock, stopwatch, ticks, threadPools = threadPools))
+    yield new FacebookRescrapeDrain(
+      new RescrapeFilmExpansion(store, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, clock),
+      new RescrapePageSender(store, graph, new services.facebook.FacebookUsageBrake(store, clock), country.code, shareCardMetrics, clock),
+      country.code, stopwatch, ticks, threadPools = threadPools))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
 

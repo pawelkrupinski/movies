@@ -2,7 +2,7 @@ package services.sharecards
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.facebook.{FacebookGraph, FacebookReply, FacebookScrape, InMemoryFacebookFetches}
+import services.facebook.{FacebookFetches, FacebookGraph, FacebookReply, FacebookScrape, InMemoryFacebookFetches}
 import tools.MutableClock
 
 import java.time.Instant
@@ -19,7 +19,14 @@ import scala.util.Try
  * limit.
  */
 class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
-  import FacebookRescrapeDrain.*
+  import RescrapePacing.*
+
+  /** One country's drain as the wiring builds it. */
+  private def drainOf(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String], fetches: FacebookFetches,
+                      country: String, metrics: ShareCardMetrics, clock: java.time.Clock): FacebookRescrapeDrain =
+    new FacebookRescrapeDrain(new RescrapeFilmExpansion(store, pages, fetches, country, clock),
+      new RescrapePageSender(store, graph, new services.facebook.FacebookUsageBrake(store, clock), country, metrics, clock), country, _root_.tools.SpecStopwatch.Frozen,
+      threadPools = tools.ThreadPools.Unmanaged)
   import services.facebook.AppUsage
   import services.facebook.FacebookUsageBrake.{UsageCeiling, UsageHold}
 
@@ -48,7 +55,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     val graph = new RecordingGraph(clock, answer, latency, usage)
     val series = new ShareCardMetrics.Series(Seq("us", "uk"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val drains: Map[String, FacebookRescrapeDrain] = Seq("us", "uk").map(cc =>
-      cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), fetches, cc, series.forCountry(cc), clock, _root_.tools.SpecStopwatch.Frozen, threadPools = tools.ThreadPools.Unmanaged)).toMap
+      cc -> drainOf(store, graph, pagesOf(_, cities, cc), fetches, cc, series.forCountry(cc), clock)).toMap
     /** A re-scrape of a film whose every page Facebook has fetched — shared, so holding a preview. */
     def request(country: String, filmId: String): Unit = {
       fetches.record(pagesOf(filmId, cities, country).map(_ -> clock.instant()).toMap)
@@ -206,9 +213,9 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     val graph = new RecordingGraph(clock)
     val fetches = new InMemoryFacebookFetches
     fetches.record(Map(pagesOf("film", 1).head -> T0))
-    val drain = new FacebookRescrapeDrain(store, graph,
+    val drain = drainOf(store, graph,
       id => if (readable) pagesOf(id, 1) else throw new IllegalStateException("read-model card unreadable"),
-      fetches, "us", ShareCardMetrics.noop, clock, _root_.tools.SpecStopwatch.Frozen, threadPools = tools.ThreadPools.Unmanaged)
+      fetches, "us", ShareCardMetrics.noop, clock)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     // A tick whose film pages could not be read caught that and completed facebook-rescrape-drain all the same, so a
     // read model unreadable for hours never went stale. It is not a completed run now.
@@ -231,8 +238,8 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     val store = new InMemoryFacebookRescrapeStore
     var reads = 0
     val graph = new RecordingGraph(clock)
-    val drain = new FacebookRescrapeDrain(store, graph,
-      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, new InMemoryFacebookFetches, "us", ShareCardMetrics.noop, clock, _root_.tools.SpecStopwatch.Frozen, threadPools = tools.ThreadPools.Unmanaged)
+    val drain = drainOf(store, graph,
+      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, new InMemoryFacebookFetches, "us", ShareCardMetrics.noop, clock)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     (1 to MaxAttempts + 3).foreach { attempt =>
       drain.tick()
