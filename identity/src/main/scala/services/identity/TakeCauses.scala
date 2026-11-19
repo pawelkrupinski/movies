@@ -35,8 +35,8 @@ object TakeCauses {
     take.previousFilm.filter(_ => take.moved).map { film =>
       val slots = reading.stored(film).toSeq.flatMap(ProjectionIndexing.slotsOf)
       val left  = slots.exists {
-        case ProjectionIndexing.Slot(Some(at), _, key) => !reading.publishedAt(at) && key.forall(k => !reading.published(k))
-        case ProjectionIndexing.Slot(None, _, key)     => key.exists(k => !reading.published(k))
+        case StoredSlots.Slot(Some(at), _, key) => !reading.publishedAt(at) && key.forall(k => !reading.published(k))
+        case StoredSlots.Slot(None, _, key)     => key.exists(k => !reading.published(k))
       }
       val stoodOn = slots.iterator.flatMap(_.key) ++ reading.members(take.listing).iterator ++ Iterator(take.listing)
       val moved   = reading.republished.exists(again => stoodOn.exists(again))

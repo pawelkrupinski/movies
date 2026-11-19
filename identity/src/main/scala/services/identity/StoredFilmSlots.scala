@@ -2,7 +2,7 @@ package services.identity
 
 import services.movies.LatestTitleYear
 
-import models.{CinemaShowing, SourceData, EmbeddedYear, ListingKey}
+import models.{CinemaShowing, MovieRecord, Source, SourceData, EmbeddedYear, ListingKey}
 import services.movies.{ListingConstraints, ScrapeListing, StoredMovieRecord}
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
@@ -14,6 +14,9 @@ final case class StoredFilmRef(id: String, tmdbId: Option[Int])
 object StoredFilmRef {
   /** The order a listing's films are picked in (`StoredFilmSlots.pick`: the smallest). */
   given Ordering[StoredFilmRef] = Ordering.by(r => (r.id, r.tmdbId.getOrElse(0)))
+
+  /** The film a listing is the slot of, of the films whose slot it is: the smallest id. */
+  def ownerOf(refs: Set[StoredFilmRef]): Option[StoredFilmRef] = refs.minByOption(_.id)
 }
 
 /**
@@ -29,6 +32,14 @@ object StoredFilmSlots {
                 normalizer: TitleNormalizer)(using Ordering[F], LatestTitleYear): Map[ListingKey, F] = {
     val bySlot = films.flatMap { case (f, slots) => slots.map { case (v, k, sd) => (v, k) -> (f, sd) } }.groupMap(_._1)(_._2)
     listings.flatMap(l => bySlot.get(slotOf(l, normalizer)).flatMap(pick(l, _, normalizer)).map(l.key -> _)).toMap
+  }
+
+  /** Whether `was`'s slot at `source` reads to a listing's [[pick]] as `sd` does: the slot's year, as its titles may carry
+   *  it, and its directors. A source no venue's slot is reads alike. */
+  def pickedAlike(was: MovieRecord, source: Source, sd: SourceData): Boolean = source match {
+    case showing: CinemaShowing => was.data.get(showing).exists(w =>
+      (w eq sd) || (w.releaseYear == sd.releaseYear && w.rawTitle == sd.rawTitle && w.title == sd.title && w.director == sd.director))
+    case _ => true
   }
 
   /** The venue slot `listing` is on: its venue, and the slot key its title folds to. */

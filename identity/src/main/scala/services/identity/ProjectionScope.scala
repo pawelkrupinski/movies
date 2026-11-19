@@ -12,6 +12,11 @@ enum ClusterId {
   case Unmatched(first: ListingKey)
 }
 
+object ClusterId {
+  /** The cluster a decision is part of: its TMDB film's, or for no film its own. */
+  def of(d: ResolverDecision): ClusterId = d.film.fold[ClusterId](ClusterId.Unmatched(d.members.min))(ClusterId.Matched(_))
+}
+
 /** A cluster: its listings published now, the TMDB film the resolver matched them to, and — for none — the fallback source's
  *  film it took instead ([[ResolverDecision.fallback]]). `provisional`: one of its decisions awaits an answer
  *  ([[ResolverDecision.awaits]]: a search, a venue page, a pool record): its take is the model's decision on the inputs as
@@ -20,6 +25,19 @@ enum ClusterId {
  *  over every decision each tick. */
 final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: Option[ResolverDecision.Fallback] = None,
                          provisional: Boolean = false)
+
+object Cluster {
+  /** Cluster `id` of `decisions`, over the listings `published`: none when it publishes none. */
+  def of(id: ClusterId, decisions: Seq[ResolverDecision], published: ListingKey => Boolean): Option[Cluster] = {
+    val members     = decisions.iterator.flatMap(_.members).filter(published).toSet
+    // a decision of its published listings Pending: the take served provisionally (step 6)
+    val provisional = decisions.exists(d => d.awaits.nonEmpty && d.members.exists(published))
+    Option.when(members.nonEmpty)(id match {
+      case ClusterId.Matched(film) => Cluster(members, Some(film), provisional = provisional)
+      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption(), provisional)
+    })
+  }
+}
 
 /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film
  *  ([[ProjectionIndexing.index]]): every listing by key, each listing's previous film (`previousOf` — the film whose

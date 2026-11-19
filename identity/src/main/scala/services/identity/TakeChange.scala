@@ -66,4 +66,13 @@ object TakeChange {
    *  score and refusals against the film it held. */
   final case class Prior(basis: ResolverDecision.Basis, confidence: Double, reason: Option[String], decidedBy: Option[String] = None,
                          runnerUp: Option[Int] = None, node: Option[DecisionTrace.Node] = None)
+
+  object Prior {
+    /** The take `decision` gave listing `key`, as the take before a later decision's. */
+    def of(decision: ResolverDecision, key: ListingKey): Prior = {
+      val node = decision.trace.nodes.get(key)
+      Prior(decision.basis, decision.confidence, decision.explanation.lastOption, Some(DecidedBy.of(decision, key)),
+        node.flatMap(_.runnerUp).map(_.film), node)
+    }
+  }
 }

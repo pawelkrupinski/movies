@@ -298,6 +298,9 @@ object Listing {
       (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
+  /** `l`'s facts alone: its screenings, names and words (what re-publishes it daily, and most of its weight) off. */
+  def factsAlone(l: Listing): Listing = l.copy(screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None)
+
 
   /** The facts `scraped`'s title bills, in its own fields and off its title, as intake gives the slot
    *  (`ScrapeListing.prepare`). */
