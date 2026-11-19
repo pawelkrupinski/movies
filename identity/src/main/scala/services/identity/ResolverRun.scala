@@ -2,13 +2,13 @@ package services.identity
 
 import models.ListingKey
 
-import IdentityResolver.{FamilyCrossing, Mutation, Stages}
+import IdentityResolver.{FamilyCrossing, Mutation}
 
 /** Stage B of a resolve — the global assignment, per family — over `stages`' candidates and families
  *  ([[IdentityResolver]]'s `run`). `pieces`: whether a member billing its cluster's film as one piece beside another thing
- *  is decided apart, as no film ([[IdentityResolver.billedAsPiece]]) — the model's own takes; not a family's verdict
+ *  is decided apart, as no film ([[MembersApart]]) — the model's own takes; not a family's verdict
  *  ([[IdentityResolver.resolveScored]]). */
-private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pieces: Boolean) {
+private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutation, pieces: Boolean) {
   import stages.{acceptance, families, generation, links, ordered, scoring}
   import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
   import families.{familyOf, scopes}
@@ -115,10 +115,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
     // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
     private val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
-    private val billing = bills ++ IdentityResolver.billingUnderBanner(members, bills, filmOf, scope.of)
-    private def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.answered).getOrElse(Nil)
-    // a piece the corpus bills beside two whole titles or more, whatever families they fell in
-    private def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
+    private val apart   = new MembersApart(scope, generation)
+    private val billing = bills ++ apart.billingUnderBanner(members, bills, filmOf, scope.of)
     private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
     private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
 
@@ -147,11 +145,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
 
     /** The members of `unbilled` billing `film` as one piece beside another thing, or beside their screening, with why. */
     private def billedAsPieces(unbilled: Seq[EvidenceNode], film: Option[Int], pinned: Boolean): Map[EvidenceNode, String] =
-      film.filterNot(_ => pinned || !pieces).toSeq.flatMap { film =>
-        val scored       = unbilled.flatMap(node => scope.of(node).find(_.candidate.tmdbId == film).map(node -> _))
-        val corroborated = scored.flatMap(_._2.number("venues.corroborating")).maxOption.getOrElse(0.0)
-        scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
-      }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
+      film.filterNot(_ => pinned || !pieces).fold(Map.empty[EvidenceNode, String])(apart.billedAsPieces(unbilled, _))
 
     // a cluster of bills or pieces alone takes no film its vote reaches either
     private def none(nodes: Seq[EvidenceNode], why: Seq[String], veto: String): ResolverDecision = {

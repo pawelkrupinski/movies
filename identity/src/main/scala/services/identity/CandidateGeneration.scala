@@ -36,6 +36,8 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
   val issued  = mutable.ArrayBuffer.empty[CandidateQuery]
   def ask(query: CandidateQuery): Answer[Seq[Hit]] = answers.getOrElseUpdate(query, { issued += query; lookups.candidates(query) })
+  /** The hits `query` was answered with, none where it was not asked or not answered. */
+  def answeredHits(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.answered).getOrElse(Nil)
   if (lazyLookups) {
     val answeredShapes = mutable.HashSet.empty[String]
     val arrivalNodes = ordered.flatMap(listing => nodes.find(_.listings.contains(listing))).distinct

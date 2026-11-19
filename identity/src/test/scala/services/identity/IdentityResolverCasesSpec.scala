@@ -1527,7 +1527,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val slot  = listing(models.UkRoster("EverymanCinemaIslington"), "Unrestricted View Horror Film Festival 2026: Opening Night")
     val bare  = listing(models.UkRoster("EverymanCinemaIslington"), "Opening Night", Some(1977), Some("John Cassavetes"))
     val table = new FilmTable(films, normalizer)
-    def denied(l: Listing) = IdentityResolver.candidatesOf(Seq(l), table, normalizer, IdentityCalibration.resolver)(_ => true)
+    def denied(l: Listing) = ResolveReports.candidatesOf(Seq(l), table, normalizer, IdentityCalibration.resolver)(_ => true)
       .flatMap(_.candidates).filter(_.denied).map(_.tmdbId).toSet
     denied(slot) shouldBe Set(311764, 33665)
     withClue(shipped(Seq(slot), films).decisionOf(slot.key).render)(shipped(Seq(slot), films).decisionOf(slot.key).film shouldBe None)
@@ -2738,7 +2738,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 120), F(2, "Lalka", 1968, "Wojciech Jerzy Has", 159))
     val focused = listing(Multikino, "Lalka", year = Some(2026), director = Some("Maciej Kawalski"))
     val other   = listing(Helios, "Kurier")
-    val report  = IdentityResolver.candidatesOf(Seq(focused, other), new FilmTable(films, normalizer), normalizer, weights)(_ == focused)
+    val report  = ResolveReports.candidatesOf(Seq(focused, other), new FilmTable(films, normalizer), normalizer, weights)(_ == focused)
     report.map(_.label) shouldBe Seq("'Lalka' [2026] {Maciej Kawalski} ×1")
     val candidates = report.head.candidates
     candidates.map(_.tmdbId) shouldBe Seq(1, 2)
@@ -3082,7 +3082,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       (linked ++ stated).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1555986)))
     // the bare node's own reading: the 16-minute short is untaken — a short beside the feature its title names — or denied,
     // its 2026 no backing beside Limkilde's credit and 85 minutes; and the copied original title's search ranks nothing
-    val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
+    val bare = ResolveReports.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
     withClue(bare.map(_.render).mkString("\n")) {
       bare.filter(_.tmdbId == 1630377).map(candidate => candidate.releasedBeside.isDefined || candidate.untaken.isDefined).distinct shouldBe Seq(true)
       bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
@@ -3139,7 +3139,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films  = Seq(F(946385, "Unspoken", 2021, "Someone Short", 12, 3.0), F(68360, "Unspoken", 2008, "Somebody", 95, 0.5),
       F(1273948, "以父亲之名", 2026, "Somebody Else", 100, 0.5, alternatives = Seq("Unspoken"), searched = false))
     val linked = Seq(fed(listing(KinoMikro, "UNSPOKEN"), "cineamo", "68360m").copy(originalTitle = Some("Unspoken")))
-    val pool   = IdentityResolver.candidatesOf(linked, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
+    val pool   = ResolveReports.candidatesOf(linked, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
     withClue(pool.map(_.render).mkString("\n"))(pool.filter(_.tmdbId == 946385).flatMap(_.denial).filter(_.startsWith("a short, its feed")) shouldBe empty)
   }
 

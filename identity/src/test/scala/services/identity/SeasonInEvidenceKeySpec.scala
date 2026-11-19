@@ -19,7 +19,7 @@ class SeasonInEvidenceKeySpec extends AnyFlatSpec with Matchers {
   private val may     = listing(KinoMuza, "Romeo and Juliet (2027)").copy(screenings = screening(java.time.LocalDate.of(2027, 5, 25)))
   private val october = listing(KinoPalacowe, "Romeo and Juliet (2027)").copy(screenings = screening(java.time.LocalDate.of(2027, 10, 12)))
 
-  private def generation(listings: Seq[Listing]) = new IdentityResolver.Stages(listings, new FilmTable(Nil, normalizer), normalizer,
+  private def generation(listings: Seq[Listing]) = new ResolveStages(listings, new FilmTable(Nil, normalizer), normalizer,
     IdentityCalibration.resolver, IdentityResolver.Mutation.None, PinConstraints(Nil), TitleDecorations.None).generation
 
   private def searchesOf(listings: Seq[Listing], of: Listing): Seq[String] = {

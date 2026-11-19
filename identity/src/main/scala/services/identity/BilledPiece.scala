@@ -8,7 +8,7 @@ import services.identity.IdentityMeasures.Measure
  *  names the film as ONE PIECE beside another thing ([[ListingShape.billedBeside]]) — DE "Jens Wawrczeck - Immer Ärger mit Harry" is an actor's reading, not
  *  Hitchcock's 1955 film; UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY" an amateur company's musical. Not where
  *  what is around the film is the venue's after all:
- *  - its cluster's listings — its own, or those its title joins it to — are backed by [[IdentityResolver.PieceCorroboration]] other venues
+ *  - its cluster's listings — its own, or those its title joins it to — are backed by [[PieceCorroboration]] other venues
  *    or more stating the film's year or crediting its director (`venues.corroborating`, `corroborated`): a film widely
  *    screened, whose local title, subtitle or event a venue bills beside it (PL "Rozważna i romantyczna | DZIEŃ
  *    PRZEPIĘKNYCH KOBIET", joined to the plain title 75 venues bill);
@@ -23,8 +23,8 @@ import services.identity.IdentityMeasures.Measure
  *  - the piece is another title of the film: its title search's first film, or one IMDb lists under it in some language
  *    ([[CandidateQuery.ImdbTitled]]: DE "Épines du Sahel - Die Dornen der Sahelzone");
  *  - the listing states a fact of the film's own: a year, a director or an original title ([[IdentityMeasures.ownAgreement]]),
- *    a running time within [[IdentityResolver.PieceRuntimeAgreement]] minutes, a feed's TMDB link ("Notting Hill - Lady's Night" [1999]);
- *  - the film is a current release, of its screenings' year or the one before ([[IdentityResolver.CurrentRelease]]), or a foreign film
+ *    a running time within [[PieceRuntimeAgreement]] minutes, a feed's TMDB link ("Notting Hill - Lady's Night" [1999]);
+ *  - the film is a current release, of its screenings' year or the one before ([[ScreeningDays.CurrentRelease]]), or a foreign film
  *    TMDB knows by its original title alone, billed first ("Ekmek parası - Geld für's Brot"): the venue's subtitle or
  *    translation beside it — the namesakes a reading or a show is taken for are older catalogue films.
  *  A piece naming a STAGING beside the film — a theatre, a musical, a pantomime ([[ListingShape.StageWords]]); a pantomime even
@@ -37,6 +37,13 @@ import services.identity.IdentityMeasures.Measure
  *  piece (`IdentityResolver.resolveScored`), and [[ofFamilies]] is given the agreed record's TMDB id. Measured on the five convergence legs'
  *  whole-corpus takes (2026-10-14). */
 private[identity] object BilledPiece {
+  /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
+  val PieceRuntimeAgreement = 3
+  /** How many other venues stating the film's facts under the listing's title make it a film screened widely: below the
+   *  30 and more of PL's current releases a programme bills beside its banner (2026-10-14). A staging billed beside the
+   *  film is none of it however widely the film is screened (UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY"). */
+  val PieceCorroboration = 5
+
   /** Why the film is one piece of the billing; `staging`: the piece beside it names a staging of its work. */
   final case class Piece(why: String, staging: Boolean)
 
@@ -57,7 +64,7 @@ private[identity] object BilledPiece {
     // a pantomime's OWN record ([[ListingShape.showsOwnRecord]]) is the show's, an event's: no film the venue screens
     if (ListingShape.showsOwnRecord(evidence.rawTitle, film, read.venues)) Some(OwnRecord)
     else if (read.stated) None
-    else if (corroborated >= IdentityResolver.PieceCorroboration || read.keepsWhatIsAround(keeps)) read.staged
+    else if (corroborated >= PieceCorroboration || read.keepsWhatIsAround(keeps)) read.staged
     else read.staged.orElse(read.besideTheFilm(keeps))
   }
 
@@ -80,16 +87,16 @@ private[identity] object BilledPiece {
     private def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
 
     /** Does the listing state a fact of the film's own: a year, a director or an original title, a running time within
-     *  [[IdentityResolver.PieceRuntimeAgreement]] minutes, a feed's TMDB link? */
+     *  [[PieceRuntimeAgreement]] minutes, a feed's TMDB link? */
     def stated: Boolean = agreed.nonEmpty ||
-      IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
+      IdentityMeasures.runtimeGap(measures).exists(_ <= PieceRuntimeAgreement) ||
       FeedLink.linked(listings).exists(link => tmdbId.contains(link._2))
 
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
     // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)
     private def current = film.year.fold(film.released.isEmpty)(year =>
-      listings.flatMap(_.screenings.firstYear).minOption.exists(year >= _ - IdentityResolver.CurrentRelease))
+      listings.flatMap(_.screenings.firstYear).minOption.exists(year >= _ - ScreeningDays.CurrentRelease))
 
     // a foreign film TMDB knows by no title in the venue's language — its local title is its original — billed first, or
     // under one of its titles after one other piece: what the venue bills beside it is its own translation, subtitle or

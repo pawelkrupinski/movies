@@ -51,64 +51,6 @@ import services.titles.TitleNormalizer
  */
 object IdentityResolver {
 
-  /** The members billing a programme UNDER ITS BANNER: a member whose every listing's words are all words of a member
-   *  billing several films by a word that says so ([[MultiFilmBill]]: a block of shorts, a marathon), with one beside the
-   *  film its cluster took — the programme's banner, not the film's title. It is that programme, as none of its films:
-   *  DE "Pornfilmfestival: The more the merrier" is the block "Pornfilmfestival Warm Up: The more the merrier -
-   *  shortfilms presented by Paulita Pappel", not Stevens' 1943 film. A film's own bare title beside a bill of it
-   *  ("The Dark Knight" beside "The Dark Knight Trilogy") carries no banner, and stays the film. */
-  private[identity] def billingUnderBanner(members: Seq[EvidenceNode], bills: Set[String], filmOf: String => Option[Int],
-                                           scored: EvidenceNode => Seq[services.identity.Scored]): Set[String] = {
-    def words(listing: Listing) = services.titles.TitleContainment.tokens(listing.rawTitle).toSet
-    val programmes = members.filter(node => bills(node.id)).flatMap(_.listings)
-      .filter(listing => MultiFilmBill.marker(Seq(listing.rawTitle, listing.title)).isDefined).map(words)
-    if (programmes.isEmpty) Set.empty
-    else members.filterNot(node => bills(node.id)).flatMap { node =>
-      filmOf(node.id).flatMap(film => scored(node).find(_.candidate.tmdbId == film)).map(_.candidate.film).filter { film =>
-        val titled = film.titles.flatMap(services.titles.TitleContainment.tokens).toSet
-        node.listings.forall(listing => programmes.exists(programme => words(listing).subsetOf(programme)) && (words(listing) -- titled).nonEmpty)
-      }.map(_ => node.id)
-    }.toSet
-  }
-
-  /** Why the film a member's cluster took is none of that member's: its billing names the film as ONE PIECE beside another
-   *  thing, which the venue's own words around a film do not explain ([[BilledPiece]], the agreement stage's rule too).
-   *  `scored`: the member's own scoring of the film, its record and measures. */
-  private[identity] def billedAsPiece(node: EvidenceNode, scored: services.identity.Scored, corroborated: Double,
-                                      recurs: String => Boolean, answered: CandidateQuery => Seq[Hit]): Option[String] = {
-    val film = scored.candidate.film
-    BilledPiece.of(node.evidence, node.listings, node.country, film, Some(scored.candidate.tmdbId), scored.measures, corroborated, recurs, answered)
-      .map(piece => s"no film: one piece of the billing names '${film.title}'${if (piece.staging) " beside a staging" else ""} — ${piece.why}")
-  }
-  /** The members QUOTING their cluster's film within words of their own, at a venue another member of the cluster bills
-   *  the film by itself at — that very title, unquoted, no bill: what that venue screens beside the film — a warm-up, a talk — not the film. The quotes name
-   *  the work (PL "Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", [[ListingShape.billedBeside]]),
-   *  but a venue billing the work on its own as well bills this as another thing: DE Kleines Theater am Weingarten's
-   *  "Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“" beside its "MILES DAVIS: BIRTH OF THE COOL". */
-  private[identity] def besideItsScreening(members: Seq[EvidenceNode]): Seq[(EvidenceNode, String)] = {
-    // the film quoted mid-sentence, a word of the venue's running into the quote ("… als Warm-up zu „…“"): a quote heading
-    // the billing ("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe") or after a break names the evening's film
-    def quotedMidSentence(node: EvidenceNode): Seq[String] =
-      IdentityMeasures.QuotedTitle.findAllMatchIn(node.evidence.rawTitle).toSeq
-        .filter(m => node.evidence.rawTitle.take(m.start).trim.lastOption.exists(_.isLetter)).map(m => IdentityMeasures.key(m.group(1)))
-    members.flatMap { node =>
-      val quoted = quotedMidSentence(node).toSet
-      val venues = node.listings.map(_.cinema).toSet
-      Option.when(quoted.nonEmpty)(()).flatMap(_ => members.find(other => (other ne node) &&
-          ListingShape.Quote.findFirstIn(other.evidence.rawTitle).isEmpty && quoted(IdentityMeasures.key(other.evidence.rawTitle)) &&
-          other.listings.exists(listing => venues(listing.cinema))))
-        .map(other => node -> s"no film: it quotes the film its venue bills by itself as '${other.evidence.rawTitle}'")
-    }
-  }
-  /** How many years before its screenings' a film's may be and still be a current release ([[BilledPiece]]). */
-  val CurrentRelease = 1
-  /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
-  val PieceRuntimeAgreement = 3
-  /** How many other venues stating the film's facts under the listing's title make it a film screened widely: below the
-   *  30 and more of PL's current releases a programme bills beside its banner (2026-10-14). A staging billed beside the
-   *  film is none of it however widely the film is screened (UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY"). */
-  val PieceCorroboration = 5
-
   private[identity] enum Mutation {
     case None
     /** A2 broken: must-links applied in arrival order, first wins. */
@@ -133,45 +75,6 @@ object IdentityResolver {
   def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs): Resolution =
     resolveWith(listings, lookups, normalizer, inputs.calibration, Mutation.None, inputs.pins, inputs.decorations)
 
-  /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
-   *  and for [[candidatesOf]]. */
-  private[identity] final class Stages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-                             calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations,
-                             corpus: Option[CorpusContext] = None) {
-    private val arrival = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins
-    // One listing per key, the smallest by the total order — never the first to arrive.
-    private val all     = listings.toSeq.sorted.distinctBy(_.key)
-    val ordered: Seq[Listing] = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
-    val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups, corpus)
-    val acceptance = new Acceptance(calibration)
-    val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
-    val links      = new TitleLinks(normalizer, pins, generation.context.wholeTitle, generation.context.bannerSegment)
-    val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)
-  }
-
-  /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
-  final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
-                                  denial: Option[String], seasonProduction: Boolean, houseProduction: Boolean, explanation: String,
-                                  untaken: Option[String] = None,
-                                  /** The namesake the release veto denied it beside ([[ReleaseVeto]]). */
-                                  releasedBeside: Option[Int] = None) {
-    def denied: Boolean = denial.isDefined
-    def render: String =
-      f"$tmdbId%8d ${ResolverDecision.percent(probability)}%6s rank ${searchRank.fold("-")(_.toString)}%2s" +
-        s"${denial.fold("")(why => s" DENIED ($why)")}${untaken.fold("")(why => s" UNTAKEN ($why)")}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
-        s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
-  }
-  object CandidateScore {
-    private[identity] def of(scored: services.identity.Scored, calibration: IdentityCalibration): CandidateScore =
-      CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
-        scored.denial.map(_.why), scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures),
-        scored.untaken, scored.denial.flatMap(ReleaseVeto.releasedBeside))
-  }
-
-  /** A focused node, its candidates as its family scores them (best first), and each banner its
-   *  candidates bill it under with the houses contending for that banner, best first, and the one learned. */
-  final case class NodeCandidates(label: String, candidates: Seq[CandidateScore], banners: Seq[String])
-
   /** Why a listing resolved as it did and sits where it does — the resolve's own stages, told:
    *  its node; every family key it has and why, and every title piece it does not block under and
    *  why not; the chain of shared keys linking it to its family's heaviest member (why THIS
@@ -179,7 +82,7 @@ object IdentityResolver {
    *  scored them. */
   final case class ListingExplanation(node: String, family: Int, familyListings: Int, keys: Seq[(String, String)],
                                       dropped: Seq[(String, String)], chain: Seq[(String, String)], decision: ResolverDecision,
-                                      candidates: Seq[CandidateScore]) {
+                                      candidates: Seq[ResolveReports.CandidateScore]) {
     def render: Seq[String] =
       Seq(s"listing in node $node, family $family ($familyListings listing(s))",
           s"  decision: ${decision.render}") ++
@@ -193,7 +96,7 @@ object IdentityResolver {
               calibration: IdentityCalibration = IdentityCalibration.resolver,
               pins: PinConstraints = PinConstraints(Nil),
               decorations: TitleDecorations = TitleDecorations.resolver)(wanted: Set[ListingKey]): Seq[ListingExplanation] = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
+    val stages = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
     import stages.families.{blockKeysOf, familyOf, scopeOf}
     lazy val resolution = run(stages, Mutation.None)
     // One explanation per node holding a wanted listing: a node's listings share everything told.
@@ -220,7 +123,7 @@ object IdentityResolver {
       }
       val decision = resolution.decisionOf(listing)
       ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
-        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(CandidateScore.of(_, calibration)))
+        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(ResolveReports.CandidateScore.of(_, calibration)))
     }
   }
 
@@ -241,26 +144,10 @@ object IdentityResolver {
   def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver,
                     decorations: TitleDecorations = TitleDecorations.resolver)(largest: Int): Seq[FamilyAnatomy] = {
-    val stages   = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
+    val stages   = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
     val anatomy  = new FamilyAnatomies(stages.families.blockKeysOf, stages.generation.context)
     stages.generation.nodes.groupBy(node => stages.families.familyOf(node.id)).values.toSeq
       .sortBy(members => -members.map(_.weight).sum).take(largest).map(anatomy.of)
-  }
-
-  /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
-   *  what the resolve read. */
-  def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-                   calibration: IdentityCalibration = IdentityCalibration.resolver,
-                   pins: PinConstraints = PinConstraints(Nil),
-                   decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
-    import stages.scoring.{houseRanking, houses}
-    focusedScored(stages)(focused).map { case (node, scored) =>
-      val banners = scored.flatMap(candidate => StageRelays.billing(node.evidence.measured, candidate.candidate.film)).map(_.listingHouse).distinct.sorted
-      NodeCandidates(node.label, scored.map(CandidateScore.of(_, calibration)),
-        banners.map(banner => s"banner '$banner' → ${houses.of.getOrElse(banner, "no house")}; contenders: " +
-          houseRanking.getOrElse(banner, Nil).take(4).map(_.render).mkString(", ")))
-    }
   }
 
   /** One candidate as a node's family scored it: the calibrated probability, the search rank, whether the node's own
@@ -278,29 +165,29 @@ object IdentityResolver {
   def evidenceOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                  calibration: IdentityCalibration = IdentityCalibration.resolver,
                  decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeEvidence] =
-    evidenceIn(new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations))(focused)
+    evidenceIn(new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations))(focused)
 
-  private def evidenceIn(stages: Stages)(focused: Listing => Boolean): Seq[NodeEvidence] =
+  private def evidenceIn(stages: ResolveStages)(focused: Listing => Boolean): Seq[NodeEvidence] =
     focusedScored(stages)(focused).map { case (node, scored) =>
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
         s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures, s.denial.flatMap(ReleaseVeto.releasedBeside))))
     }
 
   /** Every node holding a listing `focused` selects, with its candidates as its family scores them (best first). */
-  private def focusedScored(stages: Stages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.Scored])] =
+  private[identity] def focusedScored(stages: ResolveStages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.Scored])] =
     stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scopeOf(node).of(node))
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
    *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. A family's verdict
-   *  (`agreement.Agreement.verdict`, its only caller) takes a film one piece of the billing names ([[billedAsPiece]]): what
+   *  (`agreement.Agreement.verdict`, its only caller) takes a film one piece of the billing names ([[MembersApart]]): what
    *  the families agree on is the agreement stage's to read against the billing (`AgreementStage.pieceOf`), which also keeps
    *  a fill off it. */
-  final class Scored private[IdentityResolver] (val resolution: Resolution, stages: Stages) {
+  final class Scored private[IdentityResolver] (val resolution: Resolution, stages: ResolveStages) {
     lazy val evidence: Seq[NodeEvidence] = evidenceIn(stages)(_ => true)
   }
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
+    val stages = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
     new Scored(run(stages, Mutation.None, pieces = false), stages)
   }
 
@@ -316,7 +203,7 @@ object IdentityResolver {
                                     pins: PinConstraints = PinConstraints(Nil),
                                     decorations: TitleDecorations = TitleDecorations.None,
                                     corpus: Option[CorpusContext] = None): Resolution = {
-    run(new Stages(listings, lookups, normalizer, calibration, mutation, pins, decorations, corpus), mutation)
+    run(new ResolveStages(listings, lookups, normalizer, calibration, mutation, pins, decorations, corpus), mutation)
   }
 
   /** One family of a region's resolve ([[resolveRegion]]): its listings, its decisions, the keys it
@@ -351,7 +238,7 @@ object IdentityResolver {
   private[identity] def resolveRegion(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                                       calibration: IdentityCalibration, pins: PinConstraints, decorations: TitleDecorations,
                                       corpus: CorpusContext): Seq[RegionFamily] = {
-    val stages     = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations, Some(corpus))
+    val stages     = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations, Some(corpus))
     val resolution = run(stages, Mutation.None)
     import stages.{families, generation}
     // Each decision is one family's: filed by its first member's, not filtered out of every decision per family.
@@ -371,6 +258,6 @@ object IdentityResolver {
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
    *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */
-  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true): Resolution =
+  private def run(stages: ResolveStages, mutation: Mutation, pieces: Boolean = true): Resolution =
     new ResolverRun(stages, mutation, pieces).resolution
 }

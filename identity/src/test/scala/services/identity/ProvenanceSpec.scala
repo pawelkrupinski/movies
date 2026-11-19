@@ -66,7 +66,7 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
       val record = FilmTable.F(1462368, "These Violent Delights", 2026, "Christopher Hampson", 70, 0.6)
       val l      = FilmTable.listing(models.KinoMuza, "Scottish Ballet: These Violent Delights", None, directors.headOption, Some(95))
       val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
-      val stages = new IdentityResolver.Stages(Seq(l), new FilmTable(Seq(record), normalizer), normalizer, IdentityCalibration.resolver,
+      val stages = new ResolveStages(Seq(l), new FilmTable(Seq(record), normalizer), normalizer, IdentityCalibration.resolver,
         IdentityResolver.Mutation.None, PinConstraints(Nil), TitleDecorations.None)
       val node   = stages.generation.nodes.head
       stages.families.scopeOf(node).of(node).find(_.candidate.tmdbId == 1462368).get

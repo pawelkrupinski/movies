@@ -76,11 +76,11 @@ private[identity] final class FeedLinkOverrule(pool: FamilyPool, generation: Can
   /** The title groups whose venues back `candidate` for `listing`, by the one title relation ([[TitleRelation.backingGroups]]). */
   private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
     TitleRelation.backingGroups(listing, candidate.film)
-  /** Is a candidate a current release where `node` screens: dated [[IdentityResolver.CurrentRelease]] or fewer years
+  /** Is a candidate a current release where `node` screens: dated [[ScreeningDays.CurrentRelease]] or fewer years
    *  before its first screening's year? */
   private def currentAt(node: EvidenceNode): Candidate => Boolean = {
     val firstYear = node.listings.flatMap(_.screenings.firstYear).minOption
-    candidate => candidate.film.year.exists(year => firstYear.exists(year >= _ - IdentityResolver.CurrentRelease))
+    candidate => candidate.film.year.exists(year => firstYear.exists(year >= _ - ScreeningDays.CurrentRelease))
   }
   /** The one film of the pool `node`'s titles alone name exactly, when they name the linked `film` not at all — never
    *  an older film against a link to a current release whose title carries the venue's whole, as one edge of it

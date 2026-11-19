@@ -236,6 +236,9 @@ final class ScreeningDays private (private val epochDays: Array[Int], private va
 
 object ScreeningDays {
   val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
+  /** How many years before its screenings' a film's may be and still be a current release ([[BilledPiece]], a feed link's
+   *  overrule: [[FeedLinkOverrule]]). */
+  val CurrentRelease = 1
   /** The day standing for "not read" where days travel as showtimes (`models.LeanListing.unread`). */
   val UnreadDay: java.time.LocalDate = models.LeanListing.UnreadDay
   /** The day marking, where days travel as showtimes, the other day as the season's alone (`models.LeanListing.seasonOnly`). */

@@ -54,7 +54,7 @@ object TitleWords {
     case Audience        extends Concept("audience")
     /** `StageRelays.StageHouseWords` and `ListingShape.HouseWords`. */
     case StageHouse      extends Concept("stage-house")
-    /** `ListingShape.HouseWords` and `ListingShape.StageWords` (`IdentityResolver.billedAsPiece`: a staging beside a film). */
+    /** `ListingShape.HouseWords` and `ListingShape.StageWords` (`MembersApart`: a staging beside a film). */
     case Stage           extends Concept("stage")
     /** `ListingShape.StageWords` and `ListingShape.ShowWords` (`BilledPiece`): the staged show itself, a pantomime — a
      *  staging even in the banner's slot, where a strand may name itself by a stage word ("Musical Monday: Grease"). */

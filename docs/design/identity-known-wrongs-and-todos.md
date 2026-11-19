@@ -185,7 +185,7 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [x] **billedBeside keeps differ by stage.** (done: `BilledPiece.of`, read by both; the agreement stage reads its
   `Keeps.Facts` only — the billing's stated facts, other venues stating them: the record keeps (current, untranslated) and
   the venue-word keeps took the families' namesake of the piece in the capture: CBeebies Panto's 2027 Treasure Island,
-  Femme, Dave, Giorgia Fumo, 40 Jahre Lumière) The model's `IdentityResolver.billedAsPiece` keeps a take on six signals
+  Femme, Dave, Giorgia Fumo, 40 Jahre Lumière) The model's `MembersApart.billedAsPiece` keeps a take on six signals
   (≥5 venues, a stated fact, a feed link, a current release, an untranslated title, a recurring banner/tag); the
   agreement's `AgreementStage.pieceOf` calls `ListingShape.billedBeside` with none, so it denies agreed films the model
   keeps. One keep predicate, read by both.
@@ -255,7 +255,7 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   asked of stay each stage's): `FamilyScope.denialByNode` if any listing of the node bills silent,
   `Agreement` per listing. One predicate.
 - [x] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
-  `IdentityResolver.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
+  `MembersApart.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
   counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition. (done: both
   read TMDB's numbers only — a family's resolve decides no piece, `SuspectTakes` reads shipped takes — but
   `Corroboration.facts`' "feed id" ran ungated in a family's resolve, vouching for its film of the link's number; it now
@@ -289,7 +289,7 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   title-words.tsv holds `en tour`/`es gira` in both festival-edition and side-event (and `tour` twice in festival-edition).
 
 ### Review of a083 and the Arsenal client (2026-10-15)
-- [x] **The staging piece outweighs every keep but a stated fact** (138b55d52, `IdentityResolver.billedAsPiece`'s
+- [x] **The staging piece outweighs every keep but a stated fact** (138b55d52, `MembersApart.billedAsPiece`'s
   `staged`): a strand named with a Stage word ("Musical Monday: Grease", "Stage & Screen: …", PL "Scena …") would deny
   the film it bills unless the billing states its year, director or runtime. The 62 prod listings holding such a word
   today move nowhere (slice batches 9f9b41682 vs 6abe17876: UK 1 cure, DE 2 cures, PL/US 0), so it is no regression

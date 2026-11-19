@@ -41,7 +41,7 @@ private[identity] trait CorpusContext {
    *  a programme tag must do beside the rest of a title (`CandidateScoring.namesOnlyATag`). */
   final def recurringSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.TagSpread
   /** Is `sanitised` a piece the corpus bills beside [[CorpusContext.PieceSpread]] whole titles or more, and no listing's whole
-   *  title — the venue's around a film, not another thing beside it (`IdentityResolver.billedAsPiece`: PL Kino Kosmos'
+   *  title — the venue's around a film, not another thing beside it (`MembersApart`: PL Kino Kosmos'
    *  "Nakarmić kruki | Złote gody" beside "Wszyscy ludzie prezydenta | Złote gody")? */
   final def repeatedSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.PieceSpread
   /** Every node carrying title key `key`, with the candidates its own evidence reached, in node order. */
