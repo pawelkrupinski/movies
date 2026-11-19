@@ -27,7 +27,9 @@ object RosterEntry {
  *  in place of the roster's aggregator page — a venue scraped off its own site (ACME
  *  Screening Room, which Flicks dropped) has been dropped only if THAT page is gone. */
 final case class RetirementRequest(entry: RosterEntry, name: String, evidence: String, checks: Seq[LiveCheck],
-                                   page: Option[String] = None)
+                                   page: Option[String] = None) {
+  def directory: RosterDirectory = entry.directory
+}
 
 /** Asks for confirmed-closed venues to be taken off their roster. THROWS when the
  *  request did not go through, so the sweep can try again next time. */

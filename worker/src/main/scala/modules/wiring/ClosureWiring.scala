@@ -13,11 +13,17 @@ trait ClosureWiring { self: WorkerWiring =>
   // gap and is listed on /uptime; it is never retired.
   lazy val closureLedger: services.closure.ClosureLedger =
     mongoConnection.database.fold[services.closure.ClosureLedger](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
-  lazy val closureSweep = new services.closure.ClosureSweep(() => closureCandidates, scrapeArchive, filmwebFallbackStore,
-    new services.closure.VenueChecks(services.scrapes.VenueWebsites.checkedIn, httpFetch), closureLedger, fallbackPager(services.alerts.TelegramAlertKind.VenueClosure),
-    configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
-      java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
-    clock)
+  lazy val closureSweep = {
+    val checks = new services.closure.VenueChecks(services.scrapes.VenueWebsites.checkedIn, httpFetch)
+    val pager  = fallbackPager(services.alerts.TelegramAlertKind.VenueClosure)
+    new services.closure.ClosureSweep(() => closureCandidates, new services.closure.ClosureDrops(scrapeArchive, filmwebFallbackStore),
+      checks, closureLedger, pager,
+      new services.closure.ClosureRetirement(closureLedger, pager,
+        configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
+          java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
+        checks),
+      clock)
+  }
   lazy val closureSchedule = managedResources.stopping(new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
     WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
 }

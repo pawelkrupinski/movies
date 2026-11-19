@@ -1,6 +1,5 @@
 package services.closure
 
-import models.Cinema
 import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal}
 import services.scrapes.{OwnSiteEvidence, VenueClosure, VenueWebsites}
 import tools.HttpFetch
@@ -18,13 +17,17 @@ final case class LiveCheck(kind: String, url: String)
  */
 final class VenueChecks(websites: VenueWebsites, fetch: HttpFetch) {
 
-  def signals(cinema: Cinema, drop: SourceDrop): Seq[VenueSignal] =
+  def signals(candidate: ClosureCandidate, drop: SourceDrop): Seq[VenueSignal] =
     VenueClosure.listingSignal(drop).toSeq ++
-      websites.of(cinema.displayName).map(url => OwnSiteEvidence.read(url, Try(fetch.get(url))))
+      websites.of(candidate.name).map(url => OwnSiteEvidence.read(url, Try(fetch.get(url))))
 
-  /** The pages the live re-check reads again for `cinema`. */
-  def live(cinema: Cinema, drop: SourceDrop): Seq[LiveCheck] =
-    websites.of(cinema.displayName).map(LiveCheck("website", _)).toSeq ++ (drop.fallback match {
+  /** The retirement to ask for of `candidate`, closed on `evidence`: none for a venue in no data-driven roster. */
+  def retirement(candidate: ClosureCandidate, drop: SourceDrop, evidence: String): Option[RetirementRequest] =
+    candidate.rosterEntry.map(RetirementRequest(_, candidate.name, evidence, live(candidate, drop), candidate.page))
+
+  /** The pages the live re-check reads again for `candidate`. */
+  private def live(candidate: ClosureCandidate, drop: SourceDrop): Seq[LiveCheck] =
+    websites.of(candidate.name).map(LiveCheck("website", _)).toSeq ++ (drop.fallback match {
       case FallbackEvidence.Dropped(_, _, _, error) => VenueChecks.UrlIn.findFirstIn(error).map(LiveCheck("listing", _))
       case _                                        => None
     })

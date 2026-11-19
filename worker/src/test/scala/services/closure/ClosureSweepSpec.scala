@@ -47,9 +47,9 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
         if (dispatchFails) throw new IllegalStateException("HTTP 401") else requested += (directory -> venues)
     })
     private val fetch = new ScriptedByUrlHttpFetch(url => { fetched += url; sites(url).fold(throw _, identity) })
-    val sweep = new ClosureSweep(() => candidates, archive, fallbacks,
-      new VenueChecks(venue => websites.get(venue), fetch),
-      ledger, pages += _, dispatch,
+    private val checks = new VenueChecks(venue => websites.get(venue), fetch)
+    val sweep = new ClosureSweep(() => candidates, new ClosureDrops(archive, fallbacks), checks,
+      ledger, pages += _, new ClosureRetirement(ledger, pages += _, dispatch, checks),
       new Clock { def instant(): Instant = clock; def getZone = ZoneOffset.UTC; override def withZone(z: java.time.ZoneId): Clock = this })
 
     def gone(cinema: Cinema, since: Instant): Unit = {
@@ -105,13 +105,13 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
     h.closed()
     h.sweep.sweep()
-    h.clock = now.plus(ClosureSweep.RetirementOverdue).minusSeconds(60)
+    h.clock = now.plus(RaisedClosures.RetirementOverdue).minusSeconds(60)
     h.closed()
     h.sweep.sweep()                                   // not yet overdue
     h.requested should have size 1
     h.pages should have size 1
 
-    h.clock = now.plus(ClosureSweep.RetirementOverdue)
+    h.clock = now.plus(RaisedClosures.RetirementOverdue)
     h.closed()
     h.sweep.sweep()
     h.requested.map(_._2.map(_.entry.id)) shouldBe Seq(Seq("A0609"), Seq("A0609"))
@@ -127,7 +127,7 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)), withDispatch = false)
     h.closed()
     h.sweep.sweep()
-    h.clock = now.plus(ClosureSweep.RetirementOverdue)
+    h.clock = now.plus(RaisedClosures.RetirementOverdue)
     h.closed()
     h.sweep.sweep()
     h.pages should have size 2
@@ -312,10 +312,11 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
   it should "change nothing when the archive could not be read in full" in {
     val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
     h.ledger.record(hochland.displayName, LedgerEntry(LedgerKind.Closed, daysAgo(1), ""))
+    val noChecks = new VenueChecks(VenueWebsites(Map.empty), new ScriptedByUrlHttpFetch(url => fail(url)))
     val broken = new ClosureSweep(() => Seq(ClosureCandidate(hochland, hasFallback = true)),
-      new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.of(whole = false, "unreadable on purpose") },
-      h.fallbacks, new VenueChecks(VenueWebsites(Map.empty), new ScriptedByUrlHttpFetch(url => fail(url))),
-      h.ledger, h.pages += _, h.dispatch, Clock.fixed(now, ZoneOffset.UTC))
+      new ClosureDrops(new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.of(whole = false, "unreadable on purpose") },
+        h.fallbacks), noChecks,
+      h.ledger, h.pages += _, new ClosureRetirement(h.ledger, h.pages += _, h.dispatch, noChecks), Clock.fixed(now, ZoneOffset.UTC))
     // Skipped, it is not a completed run: an archive unreadable every day must go stale.
     val ticks = new tools.RecordingTickRecorder
     tools.ScheduledTick.recorded("venue-closure", scala.concurrent.duration.Duration(1, "day"), play.api.Logger(getClass), ticks)(broken.sweep())

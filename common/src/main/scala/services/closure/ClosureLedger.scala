@@ -36,6 +36,13 @@ trait ClosureLedgerReader {
 trait ClosureLedger extends ClosureLedgerReader {
   def record(cinema: String, entry: LedgerEntry): Unit
   def withdraw(cinema: String): Unit
+
+  /** Record `cinema` closed at `at` on `evidence`. */
+  final def closed(cinema: String, at: Instant, evidence: String): Unit = record(cinema, LedgerEntry(LedgerKind.Closed, at, evidence))
+
+  /** Record `cinema` dropped by its sources, not shown closed, at `at` on `evidence`. */
+  final def sourceDropped(cinema: String, at: Instant, evidence: String): Unit =
+    record(cinema, LedgerEntry(LedgerKind.SourceDropped, at, evidence))
 }
 
 /** The ledger over its rows: Mongo and in-memory differ only in the rows. A read or write that
