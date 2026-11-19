@@ -57,6 +57,17 @@ allow:
       pushes. The fortnight it was written against (2026-10-12..25) had Identity model convergence red
       for 4-9 h stretches seven times and Main twice: the alert reports a red main, which is its job, and
       the budget measures how often main was red rather than how wrong the rule is.
+  # A PER-HOST ALERT OVER ~300 INDEPENDENT THIRD-PARTY HOSTS: the firing fraction is the UNION over every
+  # cinema's ticket host, so it measures how often SOME small site is down, not how wrong the rule is.
+  # Alert backtest #8 (11-04..11-18): with the 6h hold every firing was a real host outage of 6-17 h (uk
+  # folkestonecinema.com enrich 17 h, pl bilety.kinoszczytno.pl 14 h, es tickets.ocinegavarres.es 10 h,
+  # pl www.mdk-myszkow.pl 11 h, ...), 13.0% of the window in all, inside the episode budget. 15% holds that;
+  # the episode budget (7/week) stays the guard against a rule that fires on blips again.
+  WorkerHttpHostCircuitOpen:
+    max_firing_fraction: 0.15
+    reason: >-
+      Per host across every cinema's ticket host: the union of real six-hour-plus third-party outages
+      reached 13% of the fortnight to 2026-11-18. The episode budget still applies.
   EnrichmentApiKeyRefused:
     noisy: true
     reason: >-

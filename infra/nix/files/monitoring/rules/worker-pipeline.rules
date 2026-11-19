@@ -640,7 +640,7 @@ groups:
       # and not yet been answered, and ABSENT otherwise (HttpBreakerMetrics), so it exists only for
       # the outage and its cardinality is the outage's. It is deliberately not `breaker_open_hosts`:
       # that counts hosts inside their cooldown and drops to 0 in every half-open gap, which would
-      # keep resetting a 1h `for:`. `last_over_time[10m]` bridges the ~3 minute scrape gap of a worker
+      # keep resetting the `for:`. `last_over_time[10m]` bridges the ~3 minute scrape gap of a worker
       # restart, which would otherwise restart the hold. A host that heals ends the series; 10m later
       # the alert resolves.
       #
@@ -661,17 +661,24 @@ groups:
       # so the series resumes at the first scrape after the boot, inside the 10m bridge. That replaced
       # 7ae4900ae's `keep_firing_for: 2h`, which held a firing alert through the gap it can no longer
       # have. The `decodo` leg's breakers (ProxyChain) still forget: no episode in 11-08..11-15 was one.
+      #
+      # SIX HOURS, NOT ONE (Alert backtest #8, 2026-11-04..18). With a 1h hold it fired 47 times outside
+      # incidents, on some host 48% of the fortnight: small municipal ticket sites (bilety.dkkozienice.pl,
+      # bilety.kinoszczytno.pl, ...) drop out for 1-4 h every few days, and a cinema's listings held a few
+      # hours are not stale in any way a viewer sees. Six hours is a host really down -- Helios's 8h outage
+      # still fires; 3h left 29%, 6h 13%, every firing a 6-17 h outage (allowlist budget beside it).
+      # The DNS/egress shape is WorkerHttpManyHostsCircuitOpen's, at 30 minutes.
       - alert: WorkerHttpHostCircuitOpen
         expr: max by (country, leg, host) (last_over_time(kinowo_worker_http_circuit_open[10m])) == 1
-        for: 1h
+        for: 6h
         labels:
           severity: warning
           domain: third-party
         annotations:
-          summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
+          summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over six hours -- cinema listings for that host are being held incomplete (nothing pruned)"
           description: >-
-            Every call to {{ $labels.host }} ({{ $labels.leg }} leg) has been fast-failing for an
-            hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped
+            Every call to {{ $labels.host }} ({{ $labels.leg }} leg) has been fast-failing for six
+            hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped
             from that host return incomplete listings, which the ScrapeHealth breadth guard rejects,
             so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25
             Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then
