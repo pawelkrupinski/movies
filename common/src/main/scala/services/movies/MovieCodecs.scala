@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{FilmId, StoredMovieRecord}
+import models.StoredMovieRecord
 
 import services.titles.TitleNormalizer
 
@@ -161,7 +161,7 @@ object StoredMovieDto {
    *  was keyed under, which its record's later slots can outvote — and the read model titles, and splits, the row the
    *  store gives. */
   def readBack(row: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
-    row.storedKey.fold(row)(key => fromStorage(row.id.value, Some(key), row.record, normalizer))
+    row.readBack(row.record.displayTitle(_, normalizer))
 
   /** A document with no `key` field — written before ids existed, its `_id` is its key. */
   def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
@@ -183,13 +183,8 @@ object StoredMovieDto {
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord = {
-    val k        = key.getOrElse(id)
-    val sep      = k.lastIndexOf('|')
-    val idPrefix = if (sep >= 0) k.substring(0, sep) else k
-    val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id), Some(k))
-  }
+  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
+    StoredMovieRecord.fromStorage(id, key, record, record.displayTitle(_, normalizer))
 }
 
 private[movies] final class BackwardCompatibleSourceDataCodec(

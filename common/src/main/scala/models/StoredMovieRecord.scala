@@ -19,6 +19,11 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   /** The cache key this row answers to — the stored key, labelled with the display title. */
   def cacheKey(normalizer: String => String): CacheKey =
     storedKey.fold(CacheKey(title, year, normalizer))(CacheKey.stored(title, _))
+
+  /** This row as a read of it back from the store would give it ([[StoredMovieRecord.fromStorage]]), titled by
+   *  `displayTitle`. */
+  def readBack(displayTitle: String => String): StoredMovieRecord =
+    storedKey.fold(this)(key => StoredMovieRecord.fromStorage(id.value, Some(key), record, displayTitle))
 }
 
 object StoredMovieRecord {
@@ -38,4 +43,15 @@ object StoredMovieRecord {
    *  a different one. */
   def keyFor(k: CacheKey): String =
     s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
+
+  /** A row rebuilt from its persisted `_id` and `key` field (absent on a document written before keys were stored --
+   *  then the `_id` IS the key): the key is `sanitize(title)|year`, so its suffix is the year, and `displayTitle` names
+   *  the row from its key's prefix (`StoredMovieDto.fromStorage`, which names it from the record's slots). */
+  def fromStorage(id: String, key: Option[String], record: MovieRecord, displayTitle: String => String): StoredMovieRecord = {
+    val k        = key.getOrElse(id)
+    val sep      = k.lastIndexOf('|')
+    val idPrefix = if (sep >= 0) k.substring(0, sep) else k
+    val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
+    StoredMovieRecord(displayTitle(idPrefix), year, record, FilmId(id), Some(k))
+  }
 }
