@@ -281,7 +281,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
     // `TestWiring` pins Mongo disabled, so the production repository swallows the
     // seed and the sweep would walk an empty cache — passing whatever the gate did.
-    override lazy val movieRepository: services.movies.MovieRepository =
+    override lazy val movieRepository: services.movies.MovieRepository & services.movies.MovieChangeFeed =
       new services.movies.InMemoryMovieRepository(
         Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678")))), normalizer = titleNormalizer)
 
@@ -325,7 +325,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
    *  not carry a Filmweb slot. */
   it should "refresh a tmdbId-less row that IMDb and Filmweb are still eligible for" in {
     val wiring = new RatingSourceRecordingWiring {
-      override lazy val movieRepository: services.movies.MovieRepository =
+      override lazy val movieRepository: services.movies.MovieRepository & services.movies.MovieChangeFeed =
         new services.movies.InMemoryMovieRepository(Seq(("Brzezina", Some(1970), models.MovieRecord(
           imdbId = Some("tt0068321"), filmwebUrl = Some("https://www.filmweb.pl/film/Brzezina-1970-8085")))), normalizer = titleNormalizer)
     }
@@ -362,7 +362,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
     // Four films rather than one: a single film's four sources would let a serial
     // drain look concurrent if the queue ever handed the same task out twice.
-    override lazy val movieRepository: services.movies.MovieRepository =
+    override lazy val movieRepository: services.movies.MovieRepository & services.movies.MovieChangeFeed =
       new services.movies.InMemoryMovieRepository(Seq(
         ("Diuna",     Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678"))),
         ("Zimna wojna", Some(2018), models.MovieRecord(tmdbId = Some(468622), imdbId = Some("tt6543652"))),

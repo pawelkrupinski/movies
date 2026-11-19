@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
  * process was down. That closes the downtime gap the consumers' periodic backstops
  * (cache rehydrate / sweeper reconcile) exist for.
  *
- * One instance per watched collection: `MongoMovieRepository` owns the `"movies"`
+ * One instance per watched collection: `MongoMovieChangeFeed` owns the `"movies"`
  * token, `MongoScreeningsRepository` the `"screenings"` one — a showtime change
  * writes only `screenings`, so without its own resumable stream a restart drops the
  * showtime edits made while down and only the full reproject catches them (the

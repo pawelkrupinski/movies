@@ -4,7 +4,7 @@ import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{InMemoryMovieRepository, MovieRepository, StoredMovieRecord}
+import services.movies.{InMemoryMovieRepository, MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
 import tools.costs.{CostScaling, Work}
 
 /**
@@ -29,7 +29,7 @@ class ReadModelProjectionCostSpec extends AnyFlatSpec with Matchers {
     val readModel  = new InMemoryReadModelRepository
     val work       = new Work
     val projector  = new ReadModelProjector(
-      Work.counting(classOf[MovieRepository], repository, work),
+      Work.countingAs[MovieRepositoryReader & MovieChangeFeed](repository, work, classOf[MovieRepositoryReader], classOf[MovieChangeFeed]),
       Work.counting(classOf[ReadModelWriter], readModel, work),
       Work.counting(classOf[ReadModelReader], readModel, work), clock = tools.SpecClock.Pinned)
     val sweeper = new ReadModelSweeper(projector.projection)

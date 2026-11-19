@@ -23,7 +23,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  collide, then hydrate. */
 class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
-  private def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
+  private def repositoryOf(rows: StoredMovieRecord*): MovieRepository & MovieChangeFeed =
     new StoredRowsRepository(rows.toSeq, titleNormalizer)
 
   private def row(title: String, cinema: Source): StoredMovieRecord =
@@ -43,7 +43,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   // A boot that finds Mongo not ready yet must retry rather than start empty: the cache starts empty —
   // the row only ever arrives if it's later re-written (via the change stream), so a quiescent row
   // stays Mongo-only and invisible. With retry enabled, boot waits Mongo out.
-  private def flakeyRepository(row: StoredMovieRecord): MovieRepository = {
+  private def flakeyRepository(row: StoredMovieRecord): MovieRepository & MovieChangeFeed = {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     new StoredRowsRepository(if (calls.getAndIncrement() == 0) Seq.empty else Seq(row), titleNormalizer)
   }

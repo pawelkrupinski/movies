@@ -13,7 +13,7 @@ import java.time.{Clock, LocalDateTime}
  *  in-memory store, intake and FilmId map. The resolver is the whole one over lookups that know no film (every
  *  cluster concluded unmatched) unless `resolve` says otherwise, and `details` answers the projection's TMDB fetches. */
 private[identity] final class ProjectionWorld(
-  val repository:    services.movies.MovieRepository,
+  val repository:    services.movies.MovieRepository & services.movies.MovieChangeFeed,
   venues:            Seq[Cinema],
   clock:             Clock,
   resolve:           (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = ProjectionWorld.unmatched,

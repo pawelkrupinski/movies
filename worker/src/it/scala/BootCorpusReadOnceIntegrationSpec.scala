@@ -13,7 +13,7 @@ import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.{WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
-import services.movies.{BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieChangeFeed, BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
 
@@ -79,7 +79,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
 
   private def repositoryOn(db: MongoDatabase) =
     new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)),
-      slots = Some(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      slots = Some(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
 
   /** One worker boot's corpus readers, as `WorkerWiring` builds and starts them, until `done`; how long it took. */
   private def boot(db: MongoDatabase, handOver: Boolean, done: () => Boolean = () => true): Long = {

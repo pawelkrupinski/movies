@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.MovieControllerService
 import services.MongoConnection
-import services.movies.{MongoMovieRepository, MovieRepository}
+import services.movies.{MongoMovieChangeFeed, MongoMovieRepository, MovieChangeFeed, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelStreams, ReadModelUpkeep, WebReadModel}
 
 /** ── Denormalised read model ──────────────────────────────────────────────────
@@ -11,7 +11,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelS
  *  streams (`ReadModelStreams`) and the backstop (`ReadModelUpkeep`). It deliberately does NOT watch `movies` — a showtime edit there
  *  now reaches the web as one small screening-document delta, not a full-record
  *  re-push. `movieRepository` survives only for the on-demand /debug corpus dump
- *  (a one-off `findAll`, no change stream). */
+ *  (a one-off `findAll`) and the /debug live view, whose stream opens only while a viewer watches. */
 trait ReadModelWiring { self: Wiring =>
 
   // Local read-mirror: `/debug`'s `movieRepository.findAll()` is a full `movies`
@@ -57,10 +57,10 @@ trait ReadModelWiring { self: Wiring =>
   lazy val titleNormalizer: services.titles.TitleNormalizer =
     services.titles.TitleNormalizer.forCountry(country)
 
-  lazy val movieRepository: MovieRepository = new MongoMovieRepository(
+  lazy val movieRepository: MovieRepository & MovieChangeFeed = new MongoMovieRepository(
     movieMirrorConnection.database, clock,
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
-    normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
+    normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch) with MongoMovieChangeFeed()
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country))
   lazy val readModelReloadInterval    = processConfiguration.readModelReloadInterval(ReadModelUpkeep.DefaultReloadInterval)

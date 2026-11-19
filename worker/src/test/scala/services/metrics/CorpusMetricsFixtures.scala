@@ -8,7 +8,7 @@ import services.movies.SingleCountryNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCache, MovieRepository, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCache, MovieChangeFeed, MovieRepository, StoredMovieRecord}
 
 import java.time.{Clock, LocalDateTime, ZoneId}
 
@@ -62,7 +62,7 @@ object CorpusMetricsFixtures {
 
   /** A read-only repository over these rows — the in-memory store production's cache
    *  tests already use, so the specs exercise the real `foreachRecord` contract. */
-  def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
+  def repositoryOf(rows: StoredMovieRecord*): MovieRepository & MovieChangeFeed =
     new InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)), normalizer = SingleCountryNormalizer.titleNormalizer)
 
   /** A store split as production's is — showtimes in `screenings`, slots in `movie_slots` — so a cache over it holds
@@ -72,7 +72,7 @@ object CorpusMetricsFixtures {
       normalizer = SingleCountryNormalizer.titleNormalizer)
 
   /** The worker's cache over `repository`, hydrated from it. */
-  def cacheOver(repository: MovieRepository): CaffeineMovieCache =
+  def cacheOver(repository: MovieRepository & MovieChangeFeed): CaffeineMovieCache =
     new CaffeineMovieCache(repository, normalizer = SingleCountryNormalizer.titleNormalizer, clock = clock)
 
   /** The census over `cache`, onto `registry`'s census gauges, reading `at`. Not started: a spec seeds and publishes it. */

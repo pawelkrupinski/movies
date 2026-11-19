@@ -8,7 +8,7 @@ import models.{CityScreening, MovieRecord, ResolvedMovie, ResolvedRatings, Showt
 import org.mongodb.scala.{Document, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieChangeFeed, ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.MongoReadModelRepository
 import services.movies.DecodeFailureMetrics
@@ -44,10 +44,10 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
 
   "the movies change stream" should "deliver a valid write after a movies document it cannot decode" in
     survives("movies") { (db, failures) => seen =>
-      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, decodeFailures = failures, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, decodeFailures = failures, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       repo.watchChanges(r => seen(r.id.value), _ => ()).get
     } { db =>
-      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       n => { repo.upsert(s"Valid $n", Some(2026), MovieRecord()); StoredMovieRecord.keyFor(s"Valid $n", Some(2026), titleNormalizer) }
     }(undecodableFilm)
 

@@ -13,7 +13,7 @@ import scala.util.Try
  * WHY THIS EXISTS. A change stream's `onError` is terminal: the cursor is gone and the
  * driver will not bring it back. Both watchers here only ever cleared their subscription
  * reference and logged *"a reopen resumes from the persisted token"* — but nothing
- * actually drove that reopen. `MongoMovieRepository.ensureWatching` runs on
+ * actually drove that reopen. `MovieChangeStream.ensureWatching` runs on
  * REGISTRATION, and the worker registers its two consumers (`MovieCache`,
  * `ReadModelProjector`) once at boot, so after the last registration the stream had no
  * path back. One terminal error — a network blip, a primary step-down, an unusable

@@ -4,10 +4,11 @@ import scala.annotation.unused
 
 /**
  * The `movies` store's change stream: out-of-band changes delivered to attached consumers,
- * the fence a consumer that also writes applies them under, and the cursors' liveness. Split
- * from [[MovieRepositoryReader]] and the writes of [[MovieRepository]] (which extends all
- * three) so a consumer that only watches — the read-model projector, the sweeper ageing the
- * cursor — says so in its type.
+ * the fence a consumer that also writes applies them under, and the cursors' liveness. A role
+ * of its own beside [[MovieRepositoryReader]] and the writes of [[MovieRepository]], so a
+ * consumer that watches — the read-model projector, the sweeper ageing the cursor, the cache —
+ * says so in its type, and a store nobody watches (a script's) carries no stream. Production's
+ * is [[MongoMovieChangeFeed]], mixed into the Mongo store; the in-memory store is all three.
  */
 trait MovieChangeFeed {
   /** Stream out-of-band changes to persisted rows as they happen, so the cache

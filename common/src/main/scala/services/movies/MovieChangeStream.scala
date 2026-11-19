@@ -7,7 +7,7 @@ import org.mongodb.scala.{Document, MongoCollection, Observer}
 /**
  * The `movies` change-stream SUBSCRIPTION: one shared cursor, decoded once and fanned
  * out to every listener, applied off the driver's I/O loop, resumed from a persisted
- * token and reopened after a terminal error. [[MongoMovieRepository]] composes one and
+ * token and reopened after a terminal error. [[MongoMovieChangeFeed]] builds one over a Mongo store and
  * delegates `watchChanges` to it — the subscription changes for reasons (backpressure,
  * resume, reopen, coalescing) that persistence never does, which is why it lives here.
  *

@@ -44,7 +44,7 @@ class InMemoryMovieRepository(
   // wiring's clock — injected so a spec about AGES can move time by hand. Pinned by default, so a
   // spec that does not care which instant it reads never reads the wall clock.
   clock: java.time.Clock = tools.SpecClock.Pinned
-) extends MovieRepository with KeyAddressedMovieWrites {
+) extends MovieRepository with MovieChangeFeed with KeyAddressedMovieWrites {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
   // Fold titles with the rules the corpus was keyed under, not a process default.

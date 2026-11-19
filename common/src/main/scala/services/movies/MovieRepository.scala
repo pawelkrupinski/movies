@@ -6,16 +6,19 @@ import scala.concurrent.duration._
 
 /**
  * Persistent store for `(title, year) → MovieRecord` records: the writer contract,
- * over the reads of [[MovieRepositoryReader]] and the change stream of [[MovieChangeFeed]].
+ * over the reads of [[MovieRepositoryReader]]. The change stream is NOT part of it: watching is
+ * the role [[MovieChangeFeed]], which a store serving watchers implements beside this one
+ * (`MongoMovieRepository with MongoMovieChangeFeed`; the in-memory store, which notifies with
+ * every write, is both).
  *
  * The trait is what consumers that WRITE (`MovieCache`, scripts, integration tests) see
  * — `MongoMovieRepository` (production) and `InMemoryMovieRepository` (tests) are the two
- * implementations. A caller that only reads takes [[MovieRepositoryReader]] (with
- * [[MovieChangeFeed]] when it also watches). Per CLAUDE.md's DIP guidance: every collaborator is wired
- * via the trait; the concrete type only appears at the composition root
- * (`AppLoader`) and in test setup.
+ * implementations. A caller that only reads takes [[MovieRepositoryReader]]; one that also
+ * watches adds [[MovieChangeFeed]] to its type (`MovieRepositoryReader & MovieChangeFeed`).
+ * Per CLAUDE.md's DIP guidance: every collaborator is wired via the trait; the concrete type
+ * only appears at the composition root (`AppLoader`) and in test setup.
  */
-trait MovieRepository extends MovieRepositoryReader with MovieChangeFeed {
+trait MovieRepository extends MovieRepositoryReader {
   /** The slot map a `movies` document is allowed to carry — showtimes removed once
    *  `screenings` is their authority, kept when there is nowhere else to hold them.
    *

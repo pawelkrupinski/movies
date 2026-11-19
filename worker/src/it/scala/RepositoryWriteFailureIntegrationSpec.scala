@@ -52,7 +52,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   private val screenings = new MongoScreeningsRepository(Some(db), writeMetrics = Recording, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
   private val slots      = new MongoSlotsRepository(Some(db), writeMetrics = Recording, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
   private val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer,
-    screenings = Some(screenings), slots = Some(slots), writeMetrics = Recording, stopwatch = _root_.tools.Stopwatch.System)
+    screenings = Some(screenings), slots = Some(slots), writeMetrics = Recording, stopwatch = _root_.tools.Stopwatch.System) with _root_.services.movies.MongoMovieChangeFeed()
 
   override protected def afterAll(): Unit = {
     repository.close()

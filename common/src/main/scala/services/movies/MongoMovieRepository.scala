@@ -40,10 +40,10 @@ class MongoMovieRepository(
   sharedDb: Option[MongoDatabase],
   // The composition root's clock. Every `updatedAt` is a stamp from one strictly increasing
   // sequence over it ([[stamps]]), never a bare reading.
-  clock: java.time.Clock,
-  // The composition root's monotonic clock: the change stream's resume-token throttle and decoder log, and the
-  // corpus scan's timings.
-  stopwatch: tools.Stopwatch,
+  private[movies] val clock: java.time.Clock,
+  // The composition root's monotonic clock: the corpus scan's timings (and, mixed in, the change stream's
+  // resume-token throttle and decoder log — [[MongoMovieChangeFeed]]).
+  private[movies] val stopwatch: tools.Stopwatch,
   // Cursor page size for the keyset-paged corpus scan shared by `findAll` and
   // `foreachRecord` — the cap on how many rows any ONE cursor delivers before the
   // next `_id`-keyset page. Bounds the async driver's synchronous read-completion
@@ -58,10 +58,6 @@ class MongoMovieRepository(
   // scan is declared incomplete. Injectable so a test can force the exhausted path fast.
   foreachRecordBatchAttempts: Int            = 4,
   foreachRecordBatchBackoff:  FiniteDuration = 500.millis,
-  // Observability sink for the shared change stream — counts events by op and
-  // update-field kind. Noop for scripts/web/tests; the worker injects the
-  // Prometheus-backed sink so /metrics carries change-stream stats.
-  changeStreamMetrics: ChangeStreamMetrics = ChangeStreamMetrics.noop,
   // Showtimes live in the separate `screenings` collection, not embedded in the
   // `movies` document — so a showtime change no longer rewrites the (formerly
   // 1-2MB) film doc the change stream re-decodes on every write. Wiring `screenings`
@@ -84,37 +80,16 @@ class MongoMovieRepository(
   // collection for films whose slots haven't been rewritten since the split landed.
   // Scripts/tests that pass `None` write nothing extra.
   slots: Option[SlotsRepository] = None,
-  // Where the change-stream resume token is kept, so the shared cursor reopens (after a terminal
-  // error or a WORKER RESTART) from where it left off — replaying events that landed while
-  // this process was down, closing the gap the consumers' periodic backstops exist for. The
-  // WORKER (the durable read-model / cache mirror) passes its database's store; web /debug +
-  // scripts keep none, so their ephemeral cursor position cannot clobber the worker's token.
-  resumeTokens: ResumeTokenStore = ResumeTokenStore.Ephemeral,
   // The country whose rules derive a row's `_id` (`sanitize(title)|year`). The
   // document id IS the row's identity, so a repository writing under another
   // country's rules would split or collide rows. REQUIRED, not defaulted: this is
   // a production persistence path, and a silent fallback here is the 2026 incident.
   override val normalizer: TitleNormalizer,
-  // How far each change-stream cursor may run ahead of the apply thread. Injected only
-  // so a spec can prove the bound with a handful of writes instead of a full window's
-  // worth; production never passes it. See [[ChangeStreamDemand]].
-  changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow,
-  // How long a change waits for the rest of its film's burst before the film is
-  // re-read — see `MovieChangeStream.Debounce`. The worker passes its country's; None re-reads at once.
-  changeDebounce: Option[MovieChangeStream.Debounce] = None,
-  // What the SCREENINGS cursor's apply does — its events, and the ones it coalesced away.
-  // Separate from `changeStreamMetrics` (which is the `movies` cursor's) because they are
-  // two different streams answering two different questions; the worker happens to satisfy
-  // both with one object. See [[ScreeningsMetrics]].
-  screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop,
-  // The same for the SLOTS cursor — the third stream on the same projector, counted under
-  // its own collection label. See [[SideCollectionChangeMetrics]].
-  slotsMetrics: SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
   // Where a write that THREW is counted — see [[WriteOutcome]]. Noop for scripts/web/tests.
   writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a `movies` document the codec could not decode is counted — the same counter as the
   // read model's skipped documents. Noop for scripts/web/tests.
-  decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
+  private[movies] val decodeFailures: services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -122,7 +97,7 @@ class MongoMovieRepository(
    *  is a version the dotted-replace guard can trust (two writes in one millisecond no longer
    *  share one) and a cursor the catch-up can trust (its floor is a stamp from this same
    *  sequence — see [[ChangeStreamLiveness.now]]). */
-  private val stamps = new tools.MonotonicStampSequence(clock)
+  private[movies] val stamps = new tools.MonotonicStampSequence(clock)
 
 
   override def hasScreenings: Boolean = screenings.isDefined
@@ -353,81 +328,12 @@ class MongoMovieRepository(
         c.codecRegistry.get(classOf[StoredMovieDto]).decode(new org.bson.BsonDocumentReader(whole), org.bson.codecs.DecoderContext.builder().build()),
         whole))
 
-  // The `movies` change-stream subscription — shared cursor, fan-out, backpressure,
-  // resume token, reopen — lives in [[MovieChangeStream]]; this class only lends it the
-  // by-id re-read. None on a disabled store, so `watchChanges` returns None and the
-  // caller relies on its periodic backstop.
-  private val changeStream: Option[MovieChangeStream] = coll.map { c =>
-    new MovieChangeStream(
-      source              = MovieChangeStream.Source.ofCollection(c),
-      screenings          = screenings,
-      slots               = slots,
-      reread              = id => findByIdChecked(FilmId(id)),
-      fence               = writeFence,
-      // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
-      // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
-      // this process was down — the gap the consumers' periodic backstops exist for. See
-      // [[ChangeStreamResumeToken]]; the `screenings` and `movie_slots` streams each persist
-      // their own sibling token.
-      resumeToken         = new ChangeStreamResumeToken("movies", resumeTokens, stopwatch),
-      changeStreamMetrics = changeStreamMetrics,
-      screeningsMetrics   = screeningsMetrics,
-      slotsMetrics        = slotsMetrics,
-      changeDemandWindow  = changeDemandWindow,
-      clock               = clock,
-      stamps              = stamps,
-      stopwatch           = stopwatch,
-      decodeFailures      = decodeFailures,
-      debounce            = changeDebounce,
-      // Only where both side collections are split out is a venue readable alone.
-      readVenues          = Option.when(screenings.isDefined && slots.isDefined)(readVenues))
-  }
+  /** The `movies` collection, None on a disabled store — what [[MongoMovieChangeFeed]] opens its cursor on. */
+  private[movies] def collection: Option[MongoCollection[StoredMovieDto]] = coll
+  /** The side collections a change stream mixed in ([[MongoMovieChangeFeed]]) watches beside `movies`. */
+  private[movies] def screeningsStore: Option[ScreeningsRepository] = screenings
+  private[movies] def slotsStore: Option[SlotsRepository] = slots
 
-  /** Change events handed to the apply thread but not yet applied — see
-   *  [[MovieChangeStream.applyBacklog]]; 0 on a disabled store. */
-  def changeApplyBacklog: Int = changeStream.fold(0)(_.applyBacklog)
-
-  override def watchChanges(
-    onUpsert: StoredMovieRecord => Unit,
-    onDelete: FilmId => Unit
-  ): Option[AutoCloseable] = changeStream.map(_.watch(onUpsert, id => onDelete(FilmId(id))))
-
-  override def watchChangesFenced(
-    onUpsert: (StoredMovieRecord, Long) => Unit,
-    onDelete: FilmId => Unit
-  ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id))))
-
-  override def watchChangesWithVenues(
-    onUpsert: StoredMovieRecord => Unit,
-    onDelete: FilmId => Unit,
-    onVenues: VenueSlots => VenueVerdict
-  ): Option[AutoCloseable] = changeStream.map(_.watchFenced((film, _) => onUpsert(film), id => onDelete(FilmId(id)), (venues, _) => onVenues(venues)))
-
-  override def watchChangesFencedWithVenues(
-    onUpsert: (StoredMovieRecord, Long) => Unit,
-    onDelete: FilmId => Unit,
-    onVenues: (VenueSlots, Long) => VenueVerdict
-  ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id)), onVenues))
-
-  override def attachChangesWithVenues(
-    onUpsert: StoredMovieRecord => Unit,
-    onDelete: FilmId => Unit,
-    onVenues: VenueSlots => VenueVerdict
-  ): Option[AutoCloseable] = changeStream.map(_.attachFenced((film, _) => onUpsert(film), id => onDelete(FilmId(id)), (venues, _) => onVenues(venues)))
-
-  override def openChanges(): Unit = changeStream.foreach(_.open())
-
-  /** Whether the single shared change-stream cursor is currently running — for
-   *  diagnostics/tests (it starts on the first listener, stops after the last). */
-  def isWatchingChangeStream: Boolean = changeStream.exists(_.isWatching)
-
-  override def changeStreamLiveness: ChangeStreamLiveness =
-    changeStream.fold(unwatchedLiveness)(_.liveness)
-
-  /** A disabled store's: no cursor, nothing ever delivered. */
-  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched(clock)
-  override def heldChanges: Int          = changeStream.fold(0)(_.held)
-  override def releaseHeldChanges(): Unit = changeStream.foreach(_.releaseHeld())
-
-  def close(): Unit = changeStream.foreach(_.close())
+  /** Nothing of its own to release: the client is the composition root's `MongoConnection`'s. */
+  def close(): Unit = ()
 }

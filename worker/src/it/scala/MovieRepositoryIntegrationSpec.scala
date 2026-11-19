@@ -14,7 +14,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore, StoredMovieRecord, FilmId}
+import services.movies.{MongoMovieChangeFeed, ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore, StoredMovieRecord, FilmId}
 import tools.Eventually
 import tools.Eventually.awaitStreamLive
 
@@ -37,7 +37,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // in `afterAll`.
   private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(mongoTarget, "movie-repository-spec")
   private val specDb = isolatedSpecDb.database
-  private val repository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+  private val repository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
 
   /** Poll `accounted` until it reaches `target` or `budgetMs` elapses — a named,
    *  self-documenting call at the two coalescing settle-loops that share this shape,
@@ -54,7 +54,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
    *  `screenings` one: a side-collection write issued before ITS cursor reached the server is
    *  never delivered, and the latch waiting on it can only time out. `change` must write to
    *  `collection` (and differently each pass). */
-  private def awaitCursorLive(repo: MongoMovieRepository, collection: String)(change: Int => Unit): org.scalatest.Assertion =
+  private def awaitCursorLive(repo: MongoMovieChangeFeed, collection: String)(change: Int => Unit): org.scalatest.Assertion =
     awaitStreamLive(s"a warm-up write on the $collection cursor",
       Eventually.poll(SpecTimeouts.Pace.toMillis)(repo.changeStreamLiveness.lastDelivered(collection).isDefined))(change)
 
@@ -68,7 +68,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // even though MONGODB_URI (set for this very spec) names a reachable server. It used to
   // read that variable and open a MongoClient of its own, behind the composition root.
   it should "stay disabled when handed no database, never opening its own connection" in {
-    val unwired = new MongoMovieRepository(None, java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val unwired = new MongoMovieRepository(None, java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     try {
       unwired.enabled shouldBe false
       unwired.findAll() shouldBe empty
@@ -142,7 +142,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     // The title a cinema reports, and the `_id` that title sanitizes to. The gap between
     // them is the whole point: recasing the id gives "Allyouneediskill", nothing like it.
     val title  = "All You Need Is Kill"
@@ -348,7 +348,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // tripping on driver-session-pool errors in the same window. See
     // IsolatedMongoDatabase's own doc comment.
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "movies-resume-spec") { db =>
-      val repo1   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo1   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(resumeTokens = ResumeTokenStore.in(Some(db)))
       val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
       val gotA    = new CountDownLatch(1)
       val handle1 = repo1.watchChanges(r => if (r.id.value == idA) gotA.countDown(), _ => ())
@@ -373,7 +373,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         repo1.upsert("__integration-test-resume-C__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
 
         // A fresh process (empty in-memory state) resumes from the persisted token.
-        val repo2   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        val repo2   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(resumeTokens = ResumeTokenStore.in(Some(db)))
         val idB     = StoredMovieRecord.keyFor("__integration-test-resume-B__", Some(1909), titleNormalizer)
         val idC     = StoredMovieRecord.keyFor("__integration-test-resume-C__", Some(1909), titleNormalizer)
         val seen    = ConcurrentHashMap.newKeySet[String]()
@@ -422,7 +422,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), SpecTimeouts.Io)
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
 
-    val repo1     = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo1     = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(resumeTokens = ResumeTokenStore.in(Some(db)))
     val idA       = StoredMovieRecord.keyFor("__integration-test-dropped-A__", Some(1911), titleNormalizer)
     val warmTitle = "__integration-test-dropped-warm__"
     val warmId    = StoredMovieRecord.keyFor(warmTitle, Some(1911), titleNormalizer)
@@ -450,7 +450,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // The restore: drop the watched collection out from under the saved token.
       Await.ready(db.getCollection(services.movies.MovieRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
 
-      val repo2 = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), resumeTokens = ResumeTokenStore.in(Some(db)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo2 = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(resumeTokens = ResumeTokenStore.in(Some(db)))
       val idD   = StoredMovieRecord.keyFor("__integration-test-dropped-D__", Some(1911), titleNormalizer)
       val gotD  = new CountDownLatch(1)
       val handle2 = repo2.watchChanges(r => if (r.id.value == idD) gotD.countDown(), _ => ())
@@ -609,7 +609,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "drop a MovieCache row when its source is deleted on the change stream" in {
     import services.movies.CaffeineMovieCache
     val db     = specDb
-    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     // The system clock on purpose: the Mongo repositories stamp with it too.
     val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val title  = "__integration-test-cache-delete__"
@@ -644,7 +644,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       def recordUpdateKind(kind: String): Unit = ()
       def recordCoalescedChange(): Unit        = ()
     }
-    val repo  = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), changeStreamMetrics = sink, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo  = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(changeStreamMetrics = sink)
     val title = "__integration-test-changestream-stats__"
     val year  = Some(1903)
     val id    = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -733,7 +733,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val sink   = new RecordingScreeningsMetrics
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr),
-      normalizer = titleNormalizer, screeningsMetrics = sink, stopwatch = _root_.tools.Stopwatch.System)
+      normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(screeningsMetrics = sink)
 
     val title  = "__integration-test-coalesce__"
     val year   = Some(1905)
@@ -827,8 +827,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val movieSink     = new RecordingMovieChangeMetrics
     val screeningsSink = new RecordingScreeningsMetrics
     val scr           = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val repo          = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer,
-      changeStreamMetrics = movieSink, screeningsMetrics = screeningsSink, stopwatch = _root_.tools.Stopwatch.System)
+    val repo          = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(changeStreamMetrics = movieSink, screeningsMetrics = screeningsSink)
 
     val title = "__integration-test-movies-side-coalesce__"
     val year  = Some(1906)
@@ -1121,7 +1120,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val stored = MovieRecord(imdbId = Some("tt0000007"), imdbRating = Some(6.0),
       data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Race"))))
     var raced = false
-    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) {
+    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() {
       override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
         val asRead = super.dottedReplaceRead(c, id)
         if (!raced) {
@@ -1152,7 +1151,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     var raced  = false
     lazy val repo: MongoMovieRepository =
       new MongoMovieRepository(Some(specDb), new tools.MutableClock(java.time.Instant.parse("2026-09-07T12:00:00Z")),
-        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) {
+        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() {
         override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
           val asRead = super.dottedReplaceRead(c, id)
           if (!raced) { raced = true; updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(8.8))) shouldBe true }
@@ -1181,12 +1180,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     var collided: Option[(java.time.Instant, java.time.Instant)] = None
     val repo: MongoMovieRepository =
       new MongoMovieRepository(Some(specDb), new tools.MutableClock(java.time.Instant.parse("2026-09-07T12:00:00Z")),
-        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) {
+        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() {
         override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
           val asRead = super.dottedReplaceRead(c, id)
           if (collided.isEmpty) {
             val readStamp = asRead.getOrElse(fail("row absent")).stored.updatedAt
-            val other = new MongoMovieRepository(Some(specDb), new tools.MutableClock(readStamp.minusMillis(1)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+            val other = new MongoMovieRepository(Some(specDb), new tools.MutableClock(readStamp.minusMillis(1)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
             try {
               other.updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(8.8))) shouldBe true
               val written = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), SpecTimeouts.Io)).getOrElse(fail("row gone")).updatedAt
@@ -1217,7 +1216,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val stored = MovieRecord(imdbId = Some("tt0000150"), imdbRating = Some(6.0),
       data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Always raced"))))
     var races  = 0
-    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) {
+    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() {
       override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
         val asRead = super.dottedReplaceRead(c, id)
         races += 1
@@ -1260,8 +1259,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // and in the shared one every sibling spec's write is decoded by it (see the poison below).
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "split-reads-spec") { db =>
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val plain  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) // no stitch → sees the raw movies doc
+    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
+    val plain  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() // no stitch → sees the raw movies doc
     try {
       val title = "__integration-test-splitreads__"
       val year  = Some(1905)
@@ -1335,7 +1334,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     try {
       val title = "__integration-test-slotsplit__"
       val year  = Some(1907)
@@ -1389,8 +1388,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val legacy = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) // writes the embedded map only
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
+    val legacy = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() // writes the embedded map only
     val title  = "__integration-test-slotread__"
     val year   = Some(1908)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1438,7 +1437,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     // Spaces and a dot, so `sanitize` (which strips both) cannot round-trip the title —
     // exactly the shape 78% of the corpus has, and the reason single-word films
     // ("Interstellar") were the only ones the settle left alone.
@@ -1475,14 +1474,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val year   = Some(1909)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     // Sees the RAW movies doc — no stitching — so it can prove what is actually stored.
-    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     try {
       val slot = SourceData(title = Some("SR"), posterUrl = Some("https://poster/retire.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 3, 19, 0), Some("https://book/rt-1"))))
       val base = MovieRecord(imdbId = Some("tt0000017"), data = Map[Source, SourceData](Multikino -> slot))
 
       // slots land → movies carries NO sourceData, and the film still reads complete
-      val split = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val split = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       split.upsert(title, year, base)
       raw.findById(FilmId(id)).map(_.record.data.size)                                         shouldBe Some(0)
       slots.findForFilm(id)                                                            should not be empty
@@ -1492,7 +1491,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // a slots store that FAILS to write must leave the embedded copy in place, or the
       // film would have no cinemas in either collection
       val degraded = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr),
-        slots = Some(new services.movies.UnwritableSlotsRepository), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        slots = Some(new services.movies.UnwritableSlotsRepository), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       degraded.upsert(title, year, base)
       raw.findById(FilmId(id)).map(_.record.data.size) shouldBe Some(1)   // embedded copy retained
     } finally { raw.delete(title, year); slots.deleteFilm(id) }
@@ -1507,8 +1506,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)   // sees the stored doc, unstitched
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
+    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()   // sees the stored doc, unstitched
     val title  = "__integration-test-slotpatch__"
     val year   = Some(1910)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1544,7 +1543,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title  = "__integration-test-slotfanout__"
     val year   = Some(1911)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1593,7 +1592,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title  = "__integration-test-slotlisting__"
     val year   = Some(1912)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1622,8 +1621,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
+    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title  = "__integration-test-slotexpiry__"
     val year   = Some(1913)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1689,8 +1688,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
+    val raw    = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title  = "__integration-test-slotchurn__"
     val year   = Some(1914)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1732,7 +1731,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title  = "__integration-test-slotparity__"
     val year   = Some(1915)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1766,7 +1765,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val title = "__integration-test-readpath-parity__"
     val year  = Some(1906)
     val id    = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -1835,7 +1834,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val rm     = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val title  = "__integration-test-reconcile-noprune__"
     val year   = Some(1907)
@@ -1962,7 +1961,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     Seq("a", "b", "c", "d", "e").foreach(s =>
       repository.upsert(s"__integration-test-stream-${s}__", None, MovieRecord()))
 
-    val paged    = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val paged    = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val streamed = scala.collection.mutable.ListBuffer.empty[String]
     try paged.foreachRecord(r => streamed += r.id.value) finally paged.close()
 
@@ -1991,7 +1990,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     Seq("a", "b", "c", "d", "e").foreach(s =>
       repository.upsert(s"__integration-test-findall-page-${s}__", None, MovieRecord()))
 
-    val paged = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val paged = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val ids   = try paged.findAll().map(_.id.value) finally paged.close()
 
     ids.size shouldBe ids.distinct.size          // no row re-visited at a page boundary
@@ -2178,7 +2177,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       // Write the film with BOTH cinemas and NO slots repository wired — the un-migrated
       // shape, and exactly what the staging fold's in-transaction write leaves behind.
-      val embeddedOnly = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val embeddedOnly = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       embeddedOnly.upsert(title, year, MovieRecord(imdbId = Some("tt0000079"),
         data = Map[Source, SourceData](
           Multikino   -> SourceData(title = Some("from movies")),
@@ -2186,7 +2185,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // …then let a per-slot delta land for ONE of them, as `updateIfPresent` does.
       slots.replaceFilm(id, Map(Multikino.displayName -> SourceData(title = Some("from movie_slots"))))
 
-      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       val read = repo.findById(FilmId(id)).map(_.record.cinemaData).getOrElse(Map.empty)
       // the stored row wins the key both carry…
       read.get(Multikino).flatMap(_.title)   shouldBe Some("from movie_slots")
@@ -2210,7 +2209,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val year   = Some(1909)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     try {
-      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000080"),
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("live cinema")))))
       // the migrated shape: slots landed, so `movies` dropped its embedded copy
@@ -2219,7 +2218,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       // …now the same row, read through a slots repository whose reads fail.
       val blind: SlotsRepository = new UnreadableSlotsRepository
-      val blindRepo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(blind), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val blindRepo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(blind), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       // A failed read, NOT a record with an empty `data` map. Fails before the fix: `findById`
       // returned a film with zero cinemas, which the projector treats as "delete them all".
       blindRepo.findByIdChecked(FilmId(id)) shouldBe a[tools.ReadOutcome.Failed]
@@ -2241,13 +2240,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val when   = java.time.LocalDateTime.of(2026, 9, 24, 20, 0)
     try {
-      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000082"),
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("live cinema"), showtimes = Seq(Showtime(when, None))))))
       repo.findById(FilmId(id)).map(_.record.data.values.flatMap(_.showtimes).size) shouldBe Some(1)
 
       val blindRepo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(new UnreadableScreeningsRepository(scr)),
-        slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       // None, NOT the film with its cinema and no showtimes.
       blindRepo.findByIdChecked(FilmId(id)) shouldBe a[tools.ReadOutcome.Failed]
     } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
@@ -2271,7 +2270,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val when   = java.time.LocalDateTime.of(2026, 9, 28, 22, 30)
     try {
-      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val repo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000083"),
         data = Map[Source, SourceData](KinoMuranow -> SourceData(title = Some("live cinema"), showtimes = Seq(Showtime(when, None))))))
       val showtimesOf = (r: StoredMovieRecord) => r.record.data.values.flatMap(_.showtimes).size
@@ -2281,7 +2280,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       healthy.map(showtimesOf) shouldBe Seq(1)
 
       val blindRepo = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(new UnreadableScreeningsRepository(scr)),
-        slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       val scans: Seq[(String, (StoredMovieRecord => Unit) => tools.ScanOutcome)] = Seq(
         "foreachRecord"             -> blindRepo.foreachRecord,
         "foreachRecordUpdatedSince" -> blindRepo.foreachRecordUpdatedSince(java.time.Instant.EPOCH))
@@ -2315,7 +2314,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
     try {
       // A live film showing at two cinemas, written through the real repository.
-      val healthy = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      val healthy = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       healthy.upsert(title, year, MovieRecord(imdbId = Some("tt0000082"), tmdbId = Some(4244),
         data = Map[Source, SourceData](
           Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
@@ -2329,7 +2328,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
           Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
           KinoMuranow -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))))))
       val blind = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), slots = Some(slots),
-        screenings = Some(new UnreadableScreeningsRepository(scr)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        screenings = Some(new UnreadableScreeningsRepository(scr)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       blind.upsert(title, year, stripped)
 
       // Neither cinema stopped screening — the read just failed. Before the fix both were
@@ -2353,7 +2352,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val year   = Some(1941)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val when   = java.time.LocalDateTime.now().plusDays(1).withHour(19).withMinute(15).withSecond(0).withNano(0)
-    val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     try {
       val live = MovieRecord(imdbId = Some("tt0033177"), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("RBO Cinema Season 2026-27: Tosca"), showtimes = Seq(Showtime(when, None)))))
@@ -2386,7 +2385,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     val Window = 4
     val Writes = 20
-    val bounded = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, changeDemandWindow = Window, stopwatch = _root_.tools.Stopwatch.System)
+    val bounded = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(changeDemandWindow = Window)
     val release = new CountDownLatch(1)
     val applying = new CountDownLatch(1)
 

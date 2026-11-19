@@ -2,7 +2,7 @@ package integration
 
 import org.mongodb.scala.MongoDatabase
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieChangeFeed, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelBoot, ReadModelProjector, ReadModelProjectorFixtures, ReadModelSweeper}
 import tools.{IntegrationCorpusDatabase, IntegrationMongoTarget}
 
@@ -19,7 +19,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
   val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
-    normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
   val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
   val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
   val boot       = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())

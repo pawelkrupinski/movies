@@ -3,7 +3,7 @@ package modules.webwiring
 import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
 import play.api.Mode
 import services.{MongoConnection, ServiceTags}
-import services.movies.MongoMovieRepository
+import services.movies.{MongoMovieChangeFeed, MongoMovieRepository}
 import services.readmodel.MongoReadModelRepository
 
 /** ── /debug ────────────────────────────────────────────────────────────────
@@ -101,8 +101,9 @@ trait DebugWiring { self: Wiring =>
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
         val normalizer = services.titles.TitleNormalizer.forCountry(country)
+        // Watched: the /debug live view streams the corpus's changes (its cursor position ephemeral).
         val repository = new MongoMovieRepository(conn.database, clock,
-          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch)
+          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch) with MongoMovieChangeFeed()
         val freshness  = mirrorFreshnessOf(conn)
         val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(repository))
         val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(

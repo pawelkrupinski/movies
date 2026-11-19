@@ -16,7 +16,7 @@ import java.util.Locale
  * write funnels and its [[CorpusMirror]] reach the map only through these.
  */
 private[movies] final class ResidentCorpus(
-  val repository: MovieRepository,
+  val repository: MovieRepositoryReader & MovieChangeFeed,
   val normalizer: TitleNormalizer,
   clock: java.time.Clock,
   stringPool: StringPool

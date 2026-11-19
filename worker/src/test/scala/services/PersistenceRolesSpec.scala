@@ -11,7 +11,7 @@ import tools.contracts.ReadOnlyCollaborators.writerTypedIn
  * The worker's read-only collaborators keep the narrow persistence role they were split to
  * (CLAUDE.md, "Interface segregation"): each reads through a reader, a change feed, a producer, a
  * consumer or a monitor, and none takes back the writer — which would compile, since the writer
- * extends every role. A component that has come to need the writes moves off this list in the
+ * extends the reader (and every store a corpus component is handed is the writer). A component that has come to need the writes moves off this list in the
  * same commit, saying why.
  */
 class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
@@ -27,6 +27,13 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
       writerTypedIn(module("services.movies.OrphanFilmStateSweep"), classOf[MovieRepository], "liveTmdbIds"),
       writerTypedIn(module("services.readmodel.ReadModelContentAudit"), classOf[MovieRepository], "differences")
     ).flatten shouldBe empty
+  }
+
+  "the movies store's change stream" should "be a role of its own, not part of the persistence contract" in {
+    // A store nobody watches (a script's, a one-off read) carries no cursor; a watcher says so in its type.
+    classOf[services.movies.MovieChangeFeed].isAssignableFrom(classOf[MovieRepository]) shouldBe false
+    classOf[services.movies.MovieChangeFeed].isAssignableFrom(classOf[services.movies.MongoMovieRepository]) shouldBe false
+    classOf[services.movies.MovieChangeFeed].isAssignableFrom(classOf[services.movies.MongoMovieChangeFeed]) shouldBe true
   }
 
   "the scrape archive's readers" should "take ScrapeArchiveReader, never ScrapeArchiveRepository" in {

@@ -36,7 +36,7 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
       val screenings = new MongoScreeningsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)
       val slots      = new MongoSlotsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)
       val repository = new MongoMovieRepository(Some(db), clock, screenings = Some(screenings), slots = Some(slots),
-        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with _root_.services.movies.MongoMovieChangeFeed()
       try {
         repository.enabled shouldBe true
         val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)

@@ -76,8 +76,12 @@ object Work {
    * are not seen — this counts what its callers ask for, which is what the delegate's real
    * counterpart would be asked.
    */
-  def counting[T](contract: Class[T], delegate: T, work: Work): T =
-    Proxy.newProxyInstance(contract.getClassLoader, Array(contract), new InvocationHandler {
+  def counting[T](contract: Class[T], delegate: T, work: Work): T = countingAs[T](delegate, work, contract)
+
+  /** [[counting]] behind every trait of `contracts` — for a collaborator typed as an intersection
+   *  of roles (`MovieRepositoryReader & MovieChangeFeed`). */
+  def countingAs[T](delegate: T, work: Work, contracts: Class[?]*): T =
+    Proxy.newProxyInstance(contracts.head.getClassLoader, contracts.toArray, new InvocationHandler {
       def invoke(proxy: AnyRef, method: Method, args: Array[AnyRef]): AnyRef = {
         val result =
           try method.invoke(delegate, (if (args == null) Array.empty[AnyRef] else args)*)

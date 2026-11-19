@@ -38,7 +38,7 @@ trait ConvergenceStorage {
   def describe: String
 
   def connection:  MongoConnection
-  def movies:      MovieRepository
+  def movies:      MovieRepository & MovieChangeFeed
   def screenings:  ScreeningsRepository
   def slots:       SlotsRepository
   def readModel:   ReadModelReader & ReadModelWriter
@@ -153,7 +153,7 @@ object ConvergenceStorage {
     // The leg's frozen clock: every store it stamps rows with.
     private lazy val clock       = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)
     override lazy val movies     = new MongoMovieRepository(shared, clock, normalizer = normalizer,
-      screenings = Some(screenings), slots = Some(slots), changeDebounce = changeDebounce, stopwatch = _root_.tools.Stopwatch.System)
+      screenings = Some(screenings), slots = Some(slots), stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed(changeDebounce = changeDebounce)
     override lazy val screenings = new MongoScreeningsRepository(shared, clock = clock, stopwatch = _root_.tools.Stopwatch.System)
     override lazy val slots      = new MongoSlotsRepository(shared, clock = clock, stopwatch = _root_.tools.Stopwatch.System)
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared, stopwatch = _root_.tools.Stopwatch.System)

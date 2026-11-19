@@ -24,7 +24,7 @@ object TestDebugController {
     // The on-demand corpus dump's source; defaults to an in-memory repo holding
     // the same `records`. Override to drive the /debug read path (e.g. to assert
     // the two scans run concurrently).
-    movieRepository: Option[services.movies.MovieRepository] = None,
+    movieRepository: Option[services.movies.MovieRepository & services.movies.MovieChangeFeed] = None,
     ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
     attemptReader: services.attempts.EnrichmentAttemptReader = services.attempts.EnrichmentAttemptReader.empty,
     // The per-country /debug stacks. Defaults to a single-country holder wrapping

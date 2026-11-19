@@ -167,7 +167,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val split = splitRepository()
     films.foreach(r => split.upsert(r.title, r.year, r.record))
     val whole = new InMemoryMovieRepository(films.map(r => (r.title, r.year, r.record)), normalizer = normalizer)
-    def read(over: services.movies.MovieRepository) = {
+    def read(over: services.movies.MovieRepository & services.movies.MovieChangeFeed) = {
       val registry = new PrometheusRegistry()
       val census   = censusOver(cacheOver(over), registry)
       census.seed(); census.publish()

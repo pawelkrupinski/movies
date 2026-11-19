@@ -5,7 +5,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository,
+import services.movies.{MongoMovieChangeFeed, CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository,
                         MongoSlotsRepository, StoredMovieRecord}
 
 /**
@@ -55,7 +55,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
     val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
       screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)),
-      normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val record     = recordShowing(when)
     try {
@@ -102,7 +102,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
     val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
     val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
-      screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+      screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val readModel  = new services.readmodel.MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
     val sweeper    = new services.readmodel.ReadModelSweeper(projector.projection)

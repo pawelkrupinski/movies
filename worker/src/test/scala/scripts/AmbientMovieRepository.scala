@@ -2,7 +2,7 @@ package scripts
 
 import org.mongodb.scala.MongoDatabase
 import services.MongoConnection
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieChangeFeed, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.titles.TitleNormalizer
 
 /** The movies store of the database the script's resolved configuration names (`MONGODB_URI`,
@@ -11,7 +11,7 @@ import services.titles.TitleNormalizer
  *  made. Disabled when `MONGODB_URI` is unset or unreachable (the scripts check
  *  `enabled`); closing the store closes its connection. */
 object AmbientMovieRepository {
-  def open(configuration: _root_.settings.ProcessConfiguration, clock: java.time.Clock): MongoMovieRepository = {
+  def open(configuration: _root_.settings.ProcessConfiguration, clock: java.time.Clock): MongoMovieRepository & MongoMovieChangeFeed = {
     val connection = MongoConnection.forProcess(configuration, required = services.MongoRequirement.Optional)
     over(connection.database, TitleNormalizer.forCountry(configuration.country), clock, onClose = () => connection.close())
   }
@@ -20,11 +20,12 @@ object AmbientMovieRepository {
    *  `sanitize(title)|year`, so another country's rules would split or collide rows) — with its side
    *  collections wired as the worker wires them: under the read/write split a film's slots live in
    *  `movie_slots` and its showtimes in `screenings`, so a store without them reads every film
-   *  venue-less, and a script patching such a row writes that back. */
+   *  venue-less, and a script patching such a row writes that back. Watchable, for a script that
+   *  mirrors the corpus in a cache; its cursor position is ephemeral, never the worker's. */
   def over(database: Option[MongoDatabase], normalizer: TitleNormalizer, clock: java.time.Clock,
-           onClose: () => Unit = () => ()): MongoMovieRepository =
+           onClose: () => Unit = () => ()): MongoMovieRepository & MongoMovieChangeFeed =
     new MongoMovieRepository(database, clock, screenings = Some(new MongoScreeningsRepository(database, clock = clock, stopwatch = _root_.tools.Stopwatch.System)),
-      slots = Some(new MongoSlotsRepository(database, clock = clock, stopwatch = _root_.tools.Stopwatch.System)), normalizer = normalizer, stopwatch = _root_.tools.Stopwatch.System) {
+      slots = Some(new MongoSlotsRepository(database, clock = clock, stopwatch = _root_.tools.Stopwatch.System)), normalizer = normalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed() {
       override def close(): Unit = try super.close() finally onClose()
     }
 }

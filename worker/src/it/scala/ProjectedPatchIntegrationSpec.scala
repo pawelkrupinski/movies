@@ -3,7 +3,7 @@ package integration
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{CaffeineMovieCache, CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository,
+import services.movies.{MongoMovieChangeFeed, CaffeineMovieCache, CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository,
   MongoScreeningsRepository, MongoSlotsRepository, ProjectedPatchCheck}
 
 /** [[ProjectedPatchCheck]] over Mongo: a projected film's patch lands every screening, slot row and field a whole write
@@ -22,7 +22,7 @@ class ProjectedPatchIntegrationSpec extends AnyFlatSpec with Matchers with tools
           val screenings = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
           val slots      = new CountingSlotsRepository(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
           val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings),
-            slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+            slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
           opened += repository
           ProjectedPatchCheck.World(new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
             repository, screenings, slots)

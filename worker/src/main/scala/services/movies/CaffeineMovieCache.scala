@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap
  * [[CorpusMirror]]'s, which reaches the corpus only through those funnels.
  */
 class CaffeineMovieCache(
-  repository: MovieRepository,
+  repository: MovieRepository & MovieChangeFeed,
   // Called after a merge whose inputs changed an enrichment's resolution, to
   // re-kick that enrichment as a worker task (per case). Default no-op for unit
   // tests + non-worker builds; the worker wires `QueueEnrichmentRetrigger`.

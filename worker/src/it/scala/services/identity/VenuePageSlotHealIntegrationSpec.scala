@@ -6,7 +6,7 @@ import models.{CinemaMovie, CinemaShowing, Country, KinoApollo, Movie, MovieReco
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.movies.{CinemaSlotBuilder, FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StringPool}
+import services.movies.{MongoMovieChangeFeed, CinemaSlotBuilder, FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StringPool}
 import services.venuepages.{MongoVenuePageStore, VenuePage, VenuePageKey}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -41,7 +41,7 @@ class VenuePageSlotHealIntegrationSpec extends AnyFlatSpec with Matchers with to
   "A venue slot holding another page's detail under its own page's url" should "be healed by the next projection, and stay healed" in
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "venue-page-slot-heal") { db =>
       val repository = new MongoMovieRepository(Some(db), clock, screenings = Some(new MongoScreeningsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)),
-        slots = Some(new MongoSlotsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)), normalizer = ProjectionWorld.normalizer, stopwatch = _root_.tools.Stopwatch.System)
+        slots = Some(new MongoSlotsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)), normalizer = ProjectionWorld.normalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
       val pages = new MongoVenuePageStore(db)
       Seq(has -> hasRead, kawalski -> kawalskiRead).foreach { case (page, read) =>
         pages.put(VenuePage(VenuePageKey(Apollo.detailGroup, page), VenuePage.Read(read), clock.instant())) shouldBe true

@@ -3,7 +3,7 @@ package modules.wiring
 import scala.concurrent.duration.DurationInt
 import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
-import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ResumeTokenStore, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieChangeFeed, MongoMovieRepository, MovieChangeFeed, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ResumeTokenStore, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, UnscreenedCleanup}
 import services.titles.TitleNormalizer
 import services.corpus.StrandedSideRowsCleanup
 
@@ -47,15 +47,18 @@ trait CorpusWiring { self: WorkerWiring =>
   lazy val titleNormalizer: TitleNormalizer =
     TitleNormalizer.forCountry(country)
 
-  lazy val movieRepository: MovieRepository = new MongoMovieRepository(
-    mongoConnection.database, clock, changeStreamMetrics = corpusMetrics.movies,
-    screeningsMetrics = corpusMetrics, slotsMetrics = corpusMetrics.slots,
+  /** The worker's corpus store, with the change stream its cache and read-model projector watch. */
+  lazy val movieRepository: MovieRepository & MovieChangeFeed = new MongoMovieRepository(
+    mongoConnection.database, clock,
     writeMetrics = corpusMetrics, decodeFailures = corpusMetrics,
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
+    stopwatch = stopwatch) with MongoMovieChangeFeed(
+    changeStreamMetrics = corpusMetrics.movies,
+    screeningsMetrics = corpusMetrics, slotsMetrics = corpusMetrics.slots,
     changeDebounce = MovieChangeStream.Debounce.forCountry(country),
-    resumeTokens = resumeTokens, stopwatch = stopwatch)
+    resumeTokens = resumeTokens)
 
   lazy val movieCache: CaffeineMovieCache = managedResources.stopping(
     new CaffeineMovieCache(movieRepository,
