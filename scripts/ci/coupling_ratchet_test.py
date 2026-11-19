@@ -521,6 +521,143 @@ def frozen_sweeper(harness: RatchetHarness) -> str:
                            SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)}, "the sweeper, frozen at 36")
 
 
+# A RENAME (the owner, 2026-11-19, "rename credit"): the 2026-11-19 renames the ratchet refused -- seven frozen identity
+# classes given names that say what each decides or makes (c72701244, c507af9ab and the FilmRecords lane), each a `git mv`.
+IDENTITY = "identity/src/main/scala/services/identity"
+REAL_RENAMES = (("ListingsApart", "ListingCannotLinks", 15), ("SourcesApart", "SourceCannotLinks", 13),
+                ("MembersApart", "NoFilmMembers", 12), ("ClusterRead", "ClusterDecisionFacts", 16),
+                ("ProjectionDrafting", "ScopeDrafting", 28), ("VenueSlotBuilds", "LeanVenueSlots", 19),
+                ("FilmRecordDrafts", "FilmRecords", 20))
+
+
+def identity_class(cls: str, names=None) -> str:
+    """A frozen identity class, its members named after it unless given (a rename keeps the old class's)."""
+    names = names or tuple(f"{cls[0].lower()}{cls[1:]}{n[0].upper()}{n[1:]}" for n in PLANNED + PASSED)
+    return (f"package services.identity\n\nprivate[identity] final class {cls}(deps: Deps) {{\n"
+            + "".join(member(n) for n in names) + "}\n")
+
+
+def identity_path(cls: str) -> str:
+    return f"{IDENTITY}/{cls}.scala"
+
+
+def members_of(cls: str) -> tuple:
+    return tuple(f"{cls[0].lower()}{cls[1:]}{n[0].upper()}{n[1:]}" for n in PLANNED + PASSED)
+
+
+def frozen_identity(*values) -> str:
+    return rows(*(f"fanout\tservices.identity.{cls}\t{v}" for cls, v in values))
+
+
+class CouplingRenameTest(RatchetHarness):
+    """A frozen class renamed -- git sees its source renamed, or scripts/pure-move-check calls the commit a PURE MOVE --
+    keeps its row under the new name, at or below the old value; a rise, one name gone to two, or a split posing as a
+    rename does not."""
+
+    def setUp(self):
+        super().setUp()
+        self.base = self.commit({BASELINE: frozen_identity(*((old, v) for old, _, v in REAL_RENAMES)),
+                                 **{identity_path(old): identity_class(old) for old, _, _ in REAL_RENAMES}}, "the frozen identity classes")
+
+    def rename(self, pairs, message="rename", values=None, extra=None):
+        values = values or {}
+        kept = [(pairs.get(old, old), values.get(pairs.get(old, old), v)) for old, _, v in REAL_RENAMES]
+        recorded = frozen_identity(*kept, *((extra or {}).items()))
+        files = {BASELINE: recorded}
+        for old, new in pairs.items():
+            files[identity_path(old)] = None
+            files[identity_path(new)] = identity_class(new, members_of(old))
+        return recorded, self.commit(files, message)
+
+    def test_a_pure_rename_keeps_the_frozen_row_under_the_new_name(self):
+        recorded, head = self.rename({"ListingsApart": "ListingCannotLinks"})
+        out = self.assert_passes(recorded, rng=f"{self.base}..{head}")
+        self.assertIn("fanout services.identity.ListingsApart (15) renamed to services.identity.ListingCannotLinks"
+                      f" (git renames {identity_path('ListingsApart')} to {identity_path('ListingCannotLinks')})", out)
+
+    def test_a_rename_at_a_lower_value_keeps_the_lower_row(self):
+        recorded, head = self.rename({"ListingsApart": "ListingCannotLinks"}, values={"ListingCannotLinks": 12})
+        self.assert_passes(recorded, rng=f"{self.base}..{head}")
+
+    def test_a_rename_whose_value_rises_fails(self):
+        recorded, head = self.rename({"ListingsApart": "ListingCannotLinks"}, values={"ListingCannotLinks": 16})
+        self.assert_fails(recorded, "fanout services.identity.ListingCannotLinks added at 16",
+                          "but 16 is past services.identity.ListingsApart's frozen row 15", rng=f"{self.base}..{head}")
+
+    def test_a_rename_not_yet_recorded_in_the_baseline_passes_against_the_measured_rows(self):
+        _, head = self.rename({"ListingsApart": "ListingCannotLinks"})
+        self.commit({BASELINE: frozen_identity(*((old, v) for old, _, v in REAL_RENAMES))}, "the baseline as it was")
+        measured = frozen_identity(*((("ListingCannotLinks" if old == "ListingsApart" else old), v) for old, _, v in REAL_RENAMES))
+        self.assert_passes(measured, rng=f"{self.base}..{head}")
+
+    def test_a_new_class_without_a_rename_gets_no_credit(self):
+        recorded = frozen_identity(*((old, v) for old, _, v in REAL_RENAMES if old != "ListingsApart"), ("ListingCannotLinks", 15))
+        head = self.commit({BASELINE: recorded, identity_path("ListingCannotLinks"): identity_class("ListingCannotLinks", ("other", "unrelated"))},
+                           "a new class, the old one dropped from the baseline")
+        self.assert_fails(recorded, "fanout services.identity.ListingCannotLinks added at 15", rng=f"{self.base}..{head}")
+
+    def test_a_split_posing_as_a_rename_gets_no_rename_credit(self):
+        # the old file renamed (git: R) keeping most of the code, a second new class taking two of its members
+        recorded = frozen_identity(*((old, v) for old, _, v in REAL_RENAMES if old != "ListingsApart"),
+                                   ("ListingCannotLinks", 14), ("ListingPairs", 10))
+        head = self.commit({BASELINE: recorded, identity_path("ListingsApart"): None,
+                            identity_path("ListingCannotLinks"): identity_class("ListingCannotLinks", members_of("ListingsApart")[:7]),
+                            identity_path("ListingPairs"): identity_class("ListingPairs", members_of("ListingsApart")[7:])}, "split it, call it a rename")
+        self.assert_fails(recorded, "a split posing as a rename", "fanout services.identity.ListingCannotLinks added at 14",
+                          rng=f"{self.base}..{head}")
+
+    def test_one_name_gone_to_two_gets_no_rename_credit(self):
+        recorded = frozen_identity(*((old, v) for old, _, v in REAL_RENAMES if old != "ListingsApart"),
+                                   ("ListingCannotLinks", 14), ("ListingPairs", 10))
+        both = identity_class("ListingCannotLinks", members_of("ListingsApart")) + "\nprivate[identity] final class ListingPairs(deps: Deps)\n"
+        head = self.commit({BASELINE: recorded, identity_path("ListingsApart"): None, identity_path("ListingCannotLinks"): both},
+                           "two classes in the renamed file")
+        self.assert_fails(recorded, "a rename has one new name", rng=f"{self.base}..{head}")
+
+    def test_a_split_claim_of_a_rename_reads_as_the_rename(self):
+        # c507af9ab's trailers: `split of ProjectionDrafting into ScopeDrafting`, written to get a rename's row across
+        recorded, head = self.rename({"ListingsApart": "ListingCannotLinks"},
+                                     message="rename\n\nCoupling: split of ListingsApart into ListingCannotLinks")
+        self.assertNotIn("CLAIM IS REFUSED", self.assert_passes(recorded, rng=f"{self.base}..{head}"))
+        recorded, head = self.rename({"SourcesApart": "SourceCannotLinks"}, values={"SourceCannotLinks": 14},
+                                     message="rename\n\nCoupling: split of SourcesApart into SourceCannotLinks")
+        self.assert_fails(recorded, "A `Coupling: split of <X>` CLAIM IS REFUSED", rng=f"{head}^..{head}")
+
+    def test_a_pure_move_commit_credits_a_rename_git_no_longer_sees_over_the_range(self):
+        recorded, moved = self.rename({"ListingsApart": "ListingCannotLinks"}, "the pure rename")
+        rewritten = recorded.replace("ListingCannotLinks\t15", "ListingCannotLinks\t11")
+        head = self.commit({BASELINE: rewritten, identity_path("ListingCannotLinks"):
+                            "package services.identity\n\nprivate[identity] final class ListingCannotLinks(a: A) {\n"
+                            "  def decide(x: X): Boolean = a.cannotLink(x)\n}\n"}, "rewrite it smaller")
+        out = self.assert_passes(rewritten, rng=f"{self.base}..{head}")
+        self.assertIn(f"scripts/pure-move-check calls {moved[:9]} a PURE MOVE", out)
+
+    def test_the_real_renames_of_2026_11_19_keep_their_rows(self):
+        recorded, head = self.rename({old: new for old, new, _ in REAL_RENAMES},
+                                     "Resolver pieces named for what they decide; ScopeDrafting, LeanVenueSlots, FilmRecords")
+        out = self.assert_passes(recorded, rng=f"{self.base}..{head}")
+        for old, new, value in REAL_RENAMES:
+            self.assertIn(f"fanout services.identity.{old} ({value}) renamed to services.identity.{new}", out)
+
+    def test_a_renamed_package_keeps_its_distance_row_and_ceiling(self):
+        base = self.commit({BASELINE: frozen_identity() + "distance\tservices.identity\t30\n" + cap("services.identity", 30) + "\n"},
+                           "frozen identity distance")
+        files = {BASELINE: frozen_identity() + "distance\tservices.resolve\t30\n" + cap("services.resolve", 30) + "\n"}
+        for old, _, _ in REAL_RENAMES:
+            files[identity_path(old)] = None
+            files[f"identity/src/main/scala/services/resolve/{old}.scala"] = identity_class(old).replace(
+                "package services.identity", "package services.resolve").replace("private[identity]", "private[resolve]")
+        head = self.commit(files, "the package renamed")
+        self.assert_passes(files[BASELINE], rng=f"{base}..{head}")
+        loose = files[BASELINE].replace(cap("services.resolve", 30), cap("services.resolve", 32))
+        head = self.commit({BASELINE: loose}, "--update wrote a fresh ceiling")
+        self.assert_fails(loose, "distance-cap services.resolve 32 is past services.identity's 30", rng=f"{base}..{head}")
+        raised = files[BASELINE].replace("services.resolve\t30\n" + "distance-cap", "services.resolve\t31\n" + "distance-cap")
+        head = self.commit({BASELINE: raised}, "it rose")
+        self.assert_fails(raised, "distance services.resolve added at 31", "but 31 is past services.identity's frozen row 30",
+                          rng=f"{base}..{head}")
+
+
 class CouplingSplitTest(RatchetHarness):
     """A frozen class split honestly: `Coupling: split of <X>`, the pieces taking over X's code, each strictly below X's
     frozen value, the union of what they and X's remainder reference within X's frozen reference set at the base --

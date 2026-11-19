@@ -21,7 +21,20 @@
 # and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
 # carrying `Coupling: <why>`. A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
 # A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
-# name gone). A measurement fix (`limit fanout-measure` raised: a count that missed real uses, or charged a class with
+# name gone).
+#
+# A RENAME (the owner, 2026-11-19, "rename credit"; the quality ratchet's moves, quality_ratchet.py, the model): a frozen
+# fan-out row carries over to the class's NEW name -- the old row gone, the new name's row at or below it -- when the
+# range renamed it: git's rename detection (`git diff -M` over the range) renames the old name's source to the new
+# name's, or scripts/pure-move-check calls a commit of the range touching the old source a PURE MOVE, the new name
+# declared after it and the old no longer. A frozen distance row carries over to a package's new name the same way:
+# every source of the old package git (or a PURE commit) renames lands in the new one, and its ceiling goes with it. No
+# trailer is needed (the rename is git's to see, not the author's to claim). Anything else is no rename: a value past
+# the old row, one old name going to several new ones, or another new class taking over the old one's code (a split
+# posing as a rename: the split rule's, `Coupling: split of <X>`). A `split of <X> into <A>` claim of X's one rename is
+# read as the rename.
+#
+# A measurement fix (`limit fanout-measure` raised: a count that missed real uses, or charged a class with
 # another's) re-takes the rows at their true values, as a changed limit does, under its `Coupling:` trailer.
 #
 # A SPLIT (the owner, 2026-11-18; the union rule, 2026-11-18): a frozen class X cut into pieces may freeze the pieces
@@ -137,11 +150,12 @@ def behind(edges: Edges, key: str) -> str:
     return f": {', '.join(refs[:3])}{', ...' if len(refs) > 3 else ''}" if refs else ""
 
 
-def violations(current: Rows, baseline: Rows, ranks: Dict[str, int] = None, edges: Edges = None) -> List[str]:
+def violations(current: Rows, baseline: Rows, ranks: Dict[str, int] = None, edges: Edges = None,
+               renamed: Dict[Tuple[str, str], str] = None) -> List[str]:
     """The measured rows the ratchet refuses -- a package cycle edge, a layer or rank violation, a row past the
-    baseline -- one sentence each."""
+    baseline -- one sentence each. `renamed`: the (kind, key) rows a range's renames carry over (`rename_credit`)."""
     lim = limits(baseline)
-    ranks, edges = ranks or {}, edges or {}
+    ranks, edges, renamed = ranks or {}, edges or {}, renamed or {}
     out = []
     for key, refs in sorted(of_kind(current, "cycle-edge").items()):
         out.append(f"a package cycle edge: {key} ({refs} class references{behind(edges, key)}) -- the package graph has no "
@@ -177,7 +191,7 @@ def violations(current: Rows, baseline: Rows, ranks: Dict[str, int] = None, edge
             if key in base:
                 if value > base[key]:
                     out.append(f"{noun} {key}: {what} {value} past its frozen row {base[key]} -- a frozen row only falls")
-            elif not moved(key, value, base, cur):
+            elif not moved(key, value, base, cur) and (kind, key) not in renamed:
                 out.append(f"{noun} {key}: {what} {value} past the limit {lim[kind]} -- cut it below the limit; only an "
                            f"exemption row admits it ({EXEMPTIONS_PATH}, with `Coupling: <why>`), never --update")
     return out
@@ -187,6 +201,150 @@ def moved(key: str, value: int, old: Dict[str, int], new: Dict[str, int]) -> boo
     """Whether `key` is a frozen row that moved: a row of the same simple name, at or above `value`, gone from `new`."""
     simple = key.rsplit(".", 1)[-1]
     return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value for k, v in old.items())
+
+
+# scripts/pure-move-check's code; COUPLING_PURE_MOVE_CHECK names it for a copy of this tool elsewhere (the mutation test's)
+PURE_MOVE_CHECK = os.environ.get("COUPLING_PURE_MOVE_CHECK") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pure_move_check.py")
+
+
+class RenameEvidence:
+    """What git says a range renamed (A RENAME, the module docstring), read once per range and only when a rename is in
+    question: the range's `git diff -M` renames, and the commits scripts/pure-move-check calls PURE."""
+
+    def __init__(self, rng: str):
+        self.base, head = rng.split("..", 1)
+        self.head = head or "HEAD"
+        self.rng = f"{self.base}..{self.head}"
+        self._renames: Optional[Set[Tuple[str, str]]] = None
+        self._copies: Optional[Set[Tuple[str, str]]] = None
+        self._pure: Dict[str, bool] = {}
+        self._sources: Dict[Tuple[str, str], Optional[str]] = {}
+        self._packages: Dict[Tuple[str, str], str] = {}
+
+    def _read(self) -> None:
+        if self._renames is None:
+            status = git("diff", "-M", "-C", "--name-status", self.base, self.head)
+            pairs = [(cols[0][:1], cols[1], cols[2]) for cols in (line.split("\t") for line in status.splitlines())
+                     if len(cols) == 3 and cols[0][:1] in "RC"]
+            self._renames = {(a, b) for s, a, b in pairs if s == "R"}
+            self._copies = {(a, b) for _, a, b in pairs}
+
+    def renames(self) -> Set[Tuple[str, str]]:
+        self._read()
+        return self._renames
+
+    def copies(self) -> Set[Tuple[str, str]]:
+        self._read()
+        return self._copies
+
+    def source(self, rev: str, cls: str) -> Optional[str]:
+        if (rev, cls) not in self._sources:
+            self._sources[(rev, cls)] = source_of(rev, cls)
+        return self._sources[(rev, cls)]
+
+    def package(self, rev: str, path: str) -> str:
+        if (rev, path) not in self._packages:
+            self._packages[(rev, path)] = package_of(".".join(re.findall(r"^package\s+([\w.]+)", file_at(rev, path), re.M)) + ".X")
+        return self._packages[(rev, path)]
+
+    def pure(self, sha: str) -> bool:
+        """Whether scripts/pure-move-check calls commit `sha` a PURE MOVE (exit 0; NOT PURE and undecidable are not)."""
+        if sha not in self._pure:
+            done = subprocess.run([sys.executable, "-I", PURE_MOVE_CHECK, f"{sha}^..{sha}", "--quiet"], capture_output=True, text=True)
+            self._pure[sha] = done.returncode == 0
+        return self._pure[sha]
+
+    def commits(self, *paths: str) -> List[str]:
+        return git("rev-list", "--reverse", self.rng, "--", *paths).split() if paths else []
+
+    def class_renamed(self, old: str, new: str) -> str:
+        """How the range renamed class `old` to `new` ("" when it did not): git's rename of the one's source to the
+        other's, or a PURE commit after which `new` is declared and `old` no longer is."""
+        origin, dest = self.source(self.base, old), self.source(self.head, new)
+        if origin is None or dest is None:
+            return ""
+        if (origin, dest) in self.renames():
+            return f"git renames {origin} to {dest}"
+        for sha in self.commits(origin):
+            was, now = self.source(f"{sha}^", old), self.source(sha, new)
+            if was and now and not self.source(sha, old) and (was == now or (was, now) in self.commit_renames(sha)) \
+                    and self.pure(sha):
+                return f"scripts/pure-move-check calls {sha[:9]} a PURE MOVE"
+        return ""
+
+    def split_away(self, origin: Optional[str], dest: Optional[str]) -> List[str]:
+        """The other production sources of the range that took over code of `origin` renamed to `dest`: a copy of it
+        (git's detection), or a file gaining MIN_MOVED_MEMBERS+ of the members `origin` declared and `dest` does not --
+        whatever their fan-out (a piece below the limit is a piece too)."""
+        if not origin or not dest:
+            return []
+        left = members(file_at(self.base, origin)) - members(file_at(self.head, dest))
+        changed = git("diff", "--name-only", "--diff-filter=ACMR", "-M", self.base, self.head, "--", "*/src/main/*.scala").split()
+        out = []
+        for path in changed:
+            if path == dest:
+                continue
+            gained = members(file_at(self.head, path)) - members(file_at(self.base, path))
+            if (origin, path) in self.copies() or len(gained & left) >= MIN_MOVED_MEMBERS:
+                out.append(path)
+        return out
+
+    def commit_renames(self, sha: str) -> Set[Tuple[str, str]]:
+        status = git("diff", "-M", "--name-status", f"{sha}^", sha)
+        return {(c[1], c[2]) for c in (line.split("\t") for line in status.splitlines()) if len(c) == 3 and c[0][:1] == "R"}
+
+    def package_renamed(self, old: str, new: str) -> str:
+        """How the range renamed package `old` to `new` ("" when it did not): every source of `old` git (or a PURE
+        commit) renames lands in `new`, and at least one does."""
+        def into(pairs, before, after):
+            moved = [self.package(after, b) for a, b in pairs if a.endswith(".scala") and self.package(before, a) == old]
+            return bool(moved) and all(p == new for p in moved)
+        if into(self.renames(), self.base, self.head):
+            return "git renames its sources"
+        for sha in self.commits(*sorted({a for a, _ in self.renames()} | {a for a, _ in self.copies()})):
+            if into(self.commit_renames(sha), f"{sha}^", sha) and self.pure(sha):
+                return f"scripts/pure-move-check calls {sha[:9]} a PURE MOVE"
+        return ""
+
+
+def rename_credit(kind: str, before: Dict[str, int], after: Dict[str, int],
+                  evidence: RenameEvidence) -> Tuple[Dict[str, str], List[str], List[str]]:
+    """The rows of `after` (of a FROZEN `kind`) that are renames of a row of `before` (A RENAME, the module docstring):
+    new name -> old name, with a note for each credited and why not for each refused. A row of the same simple name is
+    `moved`'s."""
+    gone = {k: v for k, v in before.items() if k not in after}
+    new = {k: v for k, v in after.items() if k not in before and not moved(k, v, before, after)}
+    if not gone or not new:
+        return {}, [], []
+    renamed = evidence.class_renamed if kind == "fanout" else evidence.package_renamed
+    claims: Dict[str, List[Tuple[str, str]]] = {}
+    for key in sorted(new):
+        for old in sorted(gone):
+            how = renamed(old, key)
+            if how:
+                claims.setdefault(old, []).append((key, how))
+    credited, notes, refused = {}, [], []
+    for old, found in sorted(claims.items()):
+        names = [k for k, _ in found]
+        if len(found) > 1:
+            refused.append(f"{kind} {old} ({gone[old]}) went to {', '.join(names)}: a rename has one new name -- several is "
+                           f"a split (`Coupling: split of {old}`, scripts/coupling-report --check-split)")
+            continue
+        key, how = found[0]
+        if new[key] > gone[old]:
+            refused.append(f"{kind} {key} is a rename of {old} ({how}) but {new[key]} is past {old}'s frozen row {gone[old]}"
+                           " -- a rename carries a row at or below its value, never above")
+            continue
+        if kind == "fanout":
+            others = evidence.split_away(evidence.source(evidence.base, old), evidence.source(evidence.head, key))
+            if others:
+                refused.append(f"fanout {old} ({gone[old]}) renamed to {key}, but {', '.join(others)} also took over its code:"
+                               f" a split posing as a rename (`Coupling: split of {old}`, scripts/coupling-report --check-split)")
+                continue
+        credited[key] = old
+        notes.append(f"{kind} {old} ({gone[old]}) renamed to {key} ({how}): its frozen row carries over at {new[key]}")
+    return credited, notes, refused
 
 
 SPLIT_TRAILER = re.compile(r"split of\s+(\S+)(?:\s+into\s+(.+))?$")
@@ -387,13 +545,15 @@ def past_ceiling(key: str, value: int, cap: int) -> str:
             if value > cap else "")
 
 
-def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_packages: Set[str] = frozenset()) -> List[str]:
+def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_packages: Set[str] = frozenset(),
+                  renamed: Dict[Tuple[str, str], str] = None) -> List[str]:
     """The frozen rows the baseline gained or raised from `old` to `new` -- never admitted, whatever the trailer, unless
     the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer), the
     row is a piece of an honest split (`split`, from `split_credit`), or the distance of a package holding one
-    (`split_packages`) rose by DISTANCE_SPLIT_TOLERANCE at most and stays within its ceiling at `old` -- and a ceiling
-    raised (THE CEILING)."""
+    (`split_packages`) rose by DISTANCE_SPLIT_TOLERANCE at most and stays within its ceiling at `old`, or the row is a
+    rename's (`renamed`, (kind, key) from `rename_credit`) -- and a ceiling raised (THE CEILING)."""
     out = []
+    renamed = renamed or {}
     for kind, _, _ in FROZEN:
         if refrozen(old, new, kind):
             continue
@@ -406,7 +566,7 @@ def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_pac
                              and value <= cap)
                 if value > before[key] and not tolerated:
                     out.append(f"{kind} {key} raised {before[key]} -> {value}" + past_ceiling(key, value, cap))
-            elif not moved(key, value, before, after) and not (kind == "fanout" and key in split):
+            elif not moved(key, value, before, after) and not (kind == "fanout" and key in split) and (kind, key) not in renamed:
                 out.append(f"{kind} {key} added at {value}")
     if not refrozen(old, new, "distance"):
         was = ceilings(old)
@@ -414,6 +574,10 @@ def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_pac
             if key in was and cap > was[key]:
                 out.append(f"{DISTANCE_CAP} {key} raised {was[key]} -> {cap} -- a ceiling only falls"
                            + ("" if (DISTANCE_CAP, key) in new else f" (no `{DISTANCE_CAP}` row: scripts/coupling-report --update writes it)"))
+            elif ("distance", key) in renamed and renamed[("distance", key)] in was and cap > was[renamed[("distance", key)]]:
+                old_cap = was[renamed[("distance", key)]]
+                out.append(f"{DISTANCE_CAP} {key} {cap} is past {renamed[('distance', key)]}'s {old_cap}: a renamed package keeps"
+                           f" its ceiling -- set `{DISTANCE_CAP}\t{key}\t{old_cap}` in the baseline")
     return out
 
 
@@ -640,6 +804,32 @@ def refs(current_path: str, fanouts_path: str) -> int:
     return 0
 
 
+def renames_of(ranges: List[str], current: Rows, baseline: Rows) -> Tuple[Dict[Tuple[str, str], str], List[str], List[str]]:
+    """The (kind, key) rows each range's renames carry over (A RENAME), from the base's baseline to the measured rows and
+    to the recorded baseline, with the notes and refusals to say."""
+    renamed: Dict[Tuple[str, str], str] = {}
+    notes: List[str] = []
+    refused: List[str] = []
+    for rng in ranges:
+        before = parse(file_at(rng.split("..")[0], BASELINE_PATH))
+        evidence = RenameEvidence(rng)
+        for kind, _, _ in FROZEN:
+            for after in (current, baseline):
+                credited, n, r = rename_credit(kind, of_kind(before, kind), of_kind(after, kind), evidence)
+                renamed.update({(kind, key): old for key, old in credited.items()})
+                notes += [x for x in n if x not in notes]
+                refused += [x for x in r if x not in refused]
+    return renamed, notes, refused
+
+
+def is_rename(name: str, named: List[str], before: Rows, renamed: Dict[Tuple[str, str], str]) -> bool:
+    """Whether a `Coupling: split of <X> into <A>` claim is a rename the range already credits: X renamed to its one
+    piece (a trailer written before rename credit, 2026-11-19, to get the row across)."""
+    original = resolve(name, of_kind(before, "fanout"))
+    targets = {new for (kind, new), old in renamed.items() if kind == "fanout" and old == original}
+    return bool(targets) and len(named) == 1 and resolve(named[0], targets) is not None
+
+
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
           edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH, fanouts_path: str = "") -> int:
     with open(current_path) as f:
@@ -663,7 +853,10 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
               "`Coupling:` trailer lets one in:")
         for key in recorded:
             print(f"  - cycle-edge {key}")
-    found = violations(current, baseline, ranks, edges)
+    renamed, rename_notes, rename_refused = renames_of(ranges, current, baseline)
+    for note in rename_notes:
+        print(f"coupling: {note}")
+    found = violations(current, baseline, ranks, edges, renamed)
     if found:
         failed = True
         print(f"COUPLING REFUSED (a package cycle, a layer or rank violation, or a row past {baseline_path}):")
@@ -672,10 +865,13 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         print("  Cut the new dependency (scripts/coupling-report shows the class references behind each edge). Only a row past")
         print("  the baseline -- never a cycle, a layer or a rank violation -- may be recorded instead: scripts/coupling-report")
         print("  --update, committed with a `Coupling: <why this coupling is right>` trailer.")
+    for r in rename_refused:
+        print(f"  no rename credit: {r}")
     for rng in ranges:
         base = rng.split("..")[0]
         before = parse(file_at(base, BASELINE_PATH))
-        split, split_packages, notes, refused = split_credit(rng, before, baseline, fanouts)
+        claims = [(name, named) for name, named in split_claims(rng) if not is_rename(name, named, before, renamed)]
+        split, split_packages, notes, refused = split_credit(rng, before, baseline, fanouts, claims)
         for note in notes:
             print(f"coupling: {note} -- each piece frozen at its own value")
         if refused:
@@ -685,7 +881,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
             for r in refused:
                 print(f"  - {r}")
             print(SPLIT_RULE)
-        frozen = frozen_growth(before, baseline, split, split_packages)
+        frozen = frozen_growth(before, baseline, split, split_packages, renamed)
         if frozen:
             failed = True
             print(f"THE COUPLING BASELINE ADMITS A CLASS OR PACKAGE PAST A LIMIT in {rng}: a frozen row only falls, and no"

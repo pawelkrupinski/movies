@@ -31,7 +31,7 @@ mutants=(
             was'
   'a new package has no limit @@ allowed = base_ce.get(key, lim["new-package-ce"]) @@ allowed = base_ce.get(key, 10**9)'
   'a frozen row is not compared @@ if value > base[key]: @@ if False:'
-  'a class or package newly past a limit passes @@ elif not moved(key, value, base, cur): @@ elif False:'
+  'a class or package newly past a limit passes @@ elif not moved(key, value, base, cur) and (kind, key) not in renamed: @@ elif False:'
   'any frozen row counts as moved @@ return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value @@ return any(True'
   'the baseline limits are not read @@ out.update({key: value for (kind, key), value in rows.items() if kind == "limit"}) @@ pass'
   'a raised limit is no growth @@ if new_lim[key] > old_lim.get(key, 0): @@ if False:'
@@ -40,7 +40,7 @@ mutants=(
             out.append(f"ce @@         if False:
             out.append(f"ce'
   'a raised frozen row is admitted @@ if value > before[key] and not tolerated: @@ if False:'
-  'a new frozen row is admitted @@ elif not moved(key, value, before, after) and not (kind == "fanout" and key in split): @@ elif False:'
+  'a new frozen row is admitted @@ elif not moved(key, value, before, after) and not (kind == "fanout" and key in split) and (kind, key) not in renamed: @@ elif False:'
   'a measurement fix takes no rows again @@ LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), @@ LIMIT_KEYS = {"fanout": ("fanout",),'
   'an absent measure row re-freezes every range @@ and key not in MEASURES) @@ and True)'
   'every change re-freezes @@ return any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key) @@ return True or any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key)'
@@ -70,7 +70,7 @@ mutants=(
   'a loosened layer table never fails @@ if unjustified_layers: @@ if False:'
   'the layer table judged by the baseline'"'"'s commits @@ unjustified(rng, LAYERS_PATH, @@ unjustified(rng, BASELINE_PATH,'
   'the exemption table judged by the baseline'"'"'s commits @@ unjustified(rng, EXEMPTIONS_PATH, @@ unjustified(rng, BASELINE_PATH,'
-  'a split piece is never admitted @@ and not (kind == "fanout" and key in split): @@ and True:'
+  'a split piece is never admitted @@ and not (kind == "fanout" and key in split) and @@ and True and'
   'a split claim needs no frozen original @@ if original is None:
             refused.append @@ if original is None:
             admitted |= set(named); continue
@@ -106,6 +106,20 @@ mutants=(
             failed = False'
   'any Coupling trailer claims a split @@ m = SPLIT_TRAILER.match(value) @@ m = re.match(r"(\S+)()", "services.readmodel.ReadModelSweeper") if value else None'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
+  'a rename is never credited @@ credited[key] = old @@ pass'
+  'a renamed row is new in the baseline @@ key in split) and (kind, key) not in renamed: @@ key in split):'
+  'a renamed row past the limit still fails @@ elif not moved(key, value, base, cur) and (kind, key) not in renamed: @@ elif not moved(key, value, base, cur):'
+  'a rename may raise its row @@ if new[key] > gone[old]: @@ if False:'
+  'one name gone to two is a rename @@ if len(found) > 1: @@ if False:'
+  'a split posing as a rename is credited @@             if others:
+                refused.append @@             if False:
+                refused.append'
+  'a new class beside any vanished one is its rename @@ if (origin, dest) in self.renames(): @@ if True:'
+  'a pure commit pairs any two files @@ (was == now or (was, now) in self.commit_renames(sha)) @@ True'
+  'any commit is a pure move @@ self._pure[sha] = done.returncode == 0 @@ self._pure[sha] = True'
+  'a renamed package takes a fresh ceiling @@ elif ("distance", key) in renamed and @@ elif False and'
+  'a split claim of a rename is judged as a split @@ return bool(targets) and len(named) == 1 @@ return False and len(named) == 1'
+
 )
 
 mkdir -p "$work/mutants"
@@ -125,6 +139,7 @@ sys.exit(0 if n == 1 else 1)
 PY
   check "the mutant '$name' is aimed at exactly one check in the tool" 0 "$?"
 done
+export COUPLING_PURE_MOVE_CHECK="$REPO_ROOT/scripts/pure_move_check.py"  # beside the tool, not beside each mutant
 # shellcheck disable=SC2016 # expanded by the inner bash
 seq 1 "$i" | xargs -P 4 -I{} bash -c 'COUPLING_RATCHET_UNDER_TEST="$1/mutants/$2.py" python3 "$3" > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
   _ "$work" {} "$REPO_ROOT/scripts/ci/coupling_ratchet_test.py"

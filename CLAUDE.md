@@ -295,7 +295,11 @@ re-frozen there; elsewhere D never rises. **That 0.02 is cumulative, not per spl
 lowers the ceiling with the row (min(ceiling, row + 0.02)), and nothing raises it -- `--update` keeps it, and over a
 conflicted baseline (agentctl's regen) takes the least of every side's. A package at its ceiling frees D before the next
 split (a leaf value type down to `models` / `tools`, as 84a5db6d1 did for `services.movies`); `scripts/coupling-report
---check-split` says the headroom left.
+--check-split` says the headroom left. **A rename keeps its row** (the owner, 2026-11-19): a frozen `fanout` (or
+`distance`) row carries over to the class's (package's) new name, the old row gone, when git sees the source renamed
+(`git diff -M` over the pushed range) or `scripts/pure-move-check` calls the commit PURE, and the new value is at or below
+the old row; no trailer. A rise, one name gone to two, or another class taking over the old one's code is no rename --
+a split goes through the split rule.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala
