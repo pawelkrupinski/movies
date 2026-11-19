@@ -20,6 +20,9 @@ final case class DigestItem(country: String, venue: String, rawTitle: String, fi
                             agentVerdict: Option[String], flagged: String, evidence: String) {
   def members: Seq[ReviewMember] = Seq(ReviewMember(venue, rawTitle, None))
 
+  /** The item with the film's title as TMDB names it, where the row files none. */
+  def titled(title: Option[String]): DigestItem = if (filmTitle.isDefined) this else copy(filmTitle = title)
+
   /** One id per listing AND film: two films judged for one billing are two items, each answered on its own. */
   def id: String = ReviewClusterId.of(members :+ ReviewMember(ReviewDigest.FilmMember, film.render, None))
 

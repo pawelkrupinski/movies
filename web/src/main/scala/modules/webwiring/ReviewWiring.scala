@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{ReviewAnswerController, ReviewController}
+import controllers.{AgentJudgedCards, AgentJudgedController, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewQueueController, ReviewReads, ReviewWhyController, TmdbPosterController}
 import play.api.Mode
 import services.MongoConnection
 import java.nio.file.Paths
@@ -30,12 +30,25 @@ trait ReviewWiring { self: Wiring =>
 
   private lazy val reviewLabelsPath = processConfiguration.reviewLabelsFile.map(_.value).getOrElse(Paths.get("REVIEW_LABELS_FILE-not-set"))
 
-  lazy val reviewController: ReviewController = new ReviewController(controllerComponents, environmentMode, reviewSources, reviewAnswers,
-    reviewLabelsPath, clock,
-    tmdbPosters = Option.when(environmentMode != Mode.Prod)(processConfiguration.tmdbApiKey.map(new TmdbPosterLookup(httpFetch, _))).flatten,
-    notices = (if (reviewMirrorClient.isEmpty)
+  // A candidate's TMDB poster (and an unnamed film's title) asked live when no stored read gives one; none without a TMDB key.
+  private lazy val reviewTmdbPosters: Option[TmdbPosterLookup] =
+    Option.when(environmentMode != Mode.Prod)(processConfiguration.tmdbApiKey.map(new TmdbPosterLookup(httpFetch, _))).flatten
+  // Why the pages may be empty or answers not kept, for their banner (no mirror, answers in memory, no labels file).
+  private lazy val reviewNotices: Seq[String] = (if (reviewMirrorClient.isEmpty)
       Seq("MONGODB_MOVIES_MIRROR_URI is not set: these pages read only the local mirror (scripts/local-mirror/README.md), so they list nothing, and answers are kept in memory only.")
-    else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewAnswerController.LabelsNotConfigured.capitalize) else Nil))
+    else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewAnswerController.LabelsNotConfigured.capitalize) else Nil)
+  private lazy val reviewReads  = new ReviewReads(reviewSources)
+  private lazy val reviewLabels = new ReviewLabels(reviewLabelsPath)
+  private lazy val reviewCardsPage = new ReviewCardsPage(reviewAnswers, reviewReads, reviewNotices)
+
+  lazy val reviewQueueController: ReviewQueueController =
+    new ReviewQueueController(controllerComponents, environmentMode, reviewReads, reviewLabels, reviewCardsPage, clock)
+  lazy val agentJudgedController: AgentJudgedController = new AgentJudgedController(controllerComponents, environmentMode,
+    reviewAnswers, reviewLabels, reviewReads, new AgentJudgedCards(reviewTmdbPosters), reviewCardsPage)
+  lazy val reviewWhyController: ReviewWhyController = new ReviewWhyController(controllerComponents, environmentMode, reviewReads)
+  lazy val reviewListingController: ReviewListingController =
+    new ReviewListingController(controllerComponents, environmentMode, reviewReads, reviewLabels, reviewNotices)
+  lazy val tmdbPosterController: TmdbPosterController = new TmdbPosterController(controllerComponents, environmentMode, reviewTmdbPosters)
 
   lazy val reviewAnswerController: ReviewAnswerController = new ReviewAnswerController(controllerComponents, environmentMode,
     reviewSources, reviewAnswers, reviewLabelsPath, clock, labelsWritable = processConfiguration.reviewLabelsFile.isDefined)

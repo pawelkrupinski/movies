@@ -20,7 +20,7 @@ import java.time.{Clock, Instant, ZoneOffset}
 class ListingExplainSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
 
   private def controller(mode: Mode, sources: Map[Country, ReviewSource], labels: Path = tempFile("labels", ".tsv")) =
-    new ReviewController(Helpers.stubControllerComponents(), mode, sources, new ReviewAnswers(new InMemoryReviewAnswerStore), labels,
+    new ReviewPages(Helpers.stubControllerComponents(), mode, sources, new ReviewAnswers(new InMemoryReviewAnswerStore), labels,
       Clock.fixed(Instant.parse("2026-10-06T12:00:00Z"), ZoneOffset.UTC))
 
   private val sample = controller(Mode.Dev,
@@ -29,7 +29,7 @@ class ListingExplainSpec extends AnyFlatSpec with Matchers with tools.ScratchDir
   private val rise  = ProdReviewSample.traces("kinowo_uk").find(_.listing.rawTitle == "Rise Fly Fishing Film Tour").get
   private def esc(text: String) = HtmlFormat.escape(text).body
 
-  private def page(c: ReviewController, country: String, venue: Option[String], title: String): String = {
+  private def page(c: ReviewPages, country: String, venue: Option[String], title: String): String = {
     val result = c.listing(country, venue, title)(FakeRequest())
     status(result) shouldBe OK
     contentAsString(result)

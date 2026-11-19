@@ -1,7 +1,7 @@
 package views
 
 import com.sun.net.httpserver.HttpExchange
-import controllers.ReviewController
+import controllers.ReviewPages
 import models.Country
 import controllers.CspFilter
 import org.apache.pekko.actor.ActorSystem
@@ -40,7 +40,7 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   private val now        = Instant.parse("2026-10-06T10:00:00Z")
   private val labels     = tempFile("labels", ".tsv")
-  private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+  private val controller = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
 
   /** The published page as the artifact host serves it: its small reset, then the template verbatim. */

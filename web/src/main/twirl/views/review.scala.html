@@ -21,7 +21,7 @@
 @filmBody(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate]) = {
   @defining(card.films.get(tmdb)) { known =>
     @* no stored read gives this film a poster: asked of TMDB live, the "no TMDB poster" placeholder should none load *@
-    @poster(known.flatMap(_.poster).orElse(Some(controllers.routes.ReviewController.tmdbPoster(tmdb, Some(card.cluster.country.code)).url)), "TMDB")
+    @poster(known.flatMap(_.poster).orElse(Some(controllers.routes.TmdbPosterController.tmdbPoster(tmdb, Some(card.cluster.country.code)).url)), "TMDB")
     <div class="t">
       <b>@known.flatMap(_.title).getOrElse(s"tmdb:$tmdb")</b>@for(k <- known; o <- k.originalTitle if !k.title.contains(o)){ <span class="s">(@o)</span>}
       @for(c <- candidate if c.vetoed){<span class="tag veto">vetoed</span>}
@@ -146,7 +146,7 @@
           }
           @for(c <- item.doubt.confidence if c != "high"){<span class="doubt @c">confidence @c</span>}
           @if(item.doubt.byAlternativeTitle){<span class="doubt alt" title="judged by a title TMDB files beside the film's own, not the billing's own facts">by alternative title</span>}
-          · <a class="explain" href="@routes.ReviewController.listing(item.country, Option.when(item.venue != "*")(item.venue), item.rawTitle).url">explain this listing</a>
+          · <a class="explain" href="@routes.ReviewListingController.listing(item.country, Option.when(item.venue != "*")(item.venue), item.rawTitle).url">explain this listing</a>
           @if(item.venue == "*"){· every venue billing it}
           @if(item.film.tmdb.isEmpty){· the film: @item.film.render}
           <div class="evidence">@item.evidence</div>

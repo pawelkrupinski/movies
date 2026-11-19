@@ -1,6 +1,6 @@
 package integration
 
-import controllers.{ReviewAnswerController, ReviewController}
+import controllers.{ReviewAnswerController, ReviewPages}
 import models.Country
 import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -114,7 +114,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
 
   "an answered cluster" should "leave the queue, and stay out for a fresh store reading the history back" in {
     val answers    = new ReviewAnswers(new MongoReviewAnswerStore(review.database))
-    def controller(a: ReviewAnswers) = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), a,
+    def controller(a: ReviewAnswers) = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), a,
       tempFile("labels", ".tsv"), clock)
     val c          = controller(answers)
     val writes     = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), answers,

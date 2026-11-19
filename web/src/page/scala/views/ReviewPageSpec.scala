@@ -1,7 +1,7 @@
 package views
 
 import com.sun.net.httpserver.HttpExchange
-import controllers.{ReviewAnswerController, ReviewController}
+import controllers.{ReviewAnswerController, ReviewPages, ReviewView}
 import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -38,13 +38,13 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     override def withZone(zone: java.time.ZoneId): Clock = this
     override def instant(): Instant = now.plusMillis(ticks.incrementAndGet())
   }
-  private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+  private val controller = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, ticking)
   private val writes = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, ticking)
 
   /** The pages over the REAL prod sample ([[ProdReviewSample]]), every country at once. */
-  private val sample = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+  private val sample = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
     ProdReviewSample.Databases.map { case (db, country) => country -> (ProdReviewSample.source(db): ReviewSource) },
     new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(ProdReviewSample.newestSlot.plusSeconds(3600), ZoneOffset.UTC))
 
@@ -53,7 +53,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     import models.ListingKey
     val fed = ListingKey.Published("Planken Lichtspiele Mannheim", "Queen", None, Nil)
     val own = ListingKey.Native("Atlantis Kino", "https://atlantis/queen", "Queen")
-    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Germany -> new InMemoryReviewSource(
+    new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Germany -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(Seq(fed, own), None, 0.2, services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()),
       slotsHeld = Map(
         fed -> SlotFacts(VenueFacts(year = Some(2020), directors = Seq("Someone")), now),
@@ -67,7 +67,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val cast = {
     import models.ListingKey
     val fed = ListingKey.Published("Planken Lichtspiele Mannheim", ReviewFixtures.Held.rawTitle, None, Nil)
-    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+    new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(ReviewFixtures.heldDecision.copy(members = Seq(ReviewFixtures.Held, fed))(ReviewFixtures.heldDecision.trace)),
       slotsHeld = Map(
         ReviewFixtures.Held -> SlotFacts(VenueFacts(year = Some(2025), cast = (1 to 7).map(i => s"Venue Actorwithaverylongname $i") :+ "<i>x</i>"), now),
@@ -81,14 +81,14 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val listedPoster = "https://biletyna.pl/file/get/id/414402"
   private val listed = {
     val key = models.ListingKey.Native("Bielański Ośrodek Kultury", "https://biletyna.pl/dla-dzieci/Podrozniczek?eid=701872", "Podróżniczek")
-    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+    new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(Seq(key), None, 0.9, services.identity.ResolverDecision.Basis.NoCandidate, Nil)()),
       feedsHeld = Map((key.venue, key.rawTitle) -> ListingFeed(Nil, 1, None, None, Some(listedPoster))))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
   /** Prod's "Odblask | UFF": the resolver vetoed "Uff" and stored 16878 as the candidate that survived. */
-  private val odblask = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+  private val odblask = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.odblaskSource), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC),
     // no stored read gives its candidates a poster: each is asked of TMDB, which answers every film as it answered 4935
     tmdbPosters = Some(new TmdbPosterLookup(tools.RoutingHttpFetch.getOnly(Seq("/3/movie/" -> TmdbPosterLookupSpec.HowlsAnswer)),
@@ -100,7 +100,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     val keys = (1 to 46).map(i => models.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones"))) ++
       (47 to 50).map(i => models.ListingKey.Native(s"Cinema $i", s"https://cinema$i.example/kandydaci", "Kandydaci śmierci"))
     val film = FilmCard(1703629, None, Some("Kandydaci"), None, Some(2026), Seq("Maciej Kozłowski"), None, None, None)
-    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+    new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(keys, None, 0.3, services.identity.ResolverDecision.Basis.BelowThreshold,
         Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()), filmsHeld = Map(film.tmdb -> film))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
@@ -121,7 +121,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     Files.writeString(ReviewDigest.candidatesPath(digestLabels), ReviewDigest.CandidatesHeader + "\n" + Seq(
       "de\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short's record takes a famous feature's billing; Gatlif's Latcho Drom (1993) is tmdb:47105",
       "de\tKino im Druckluft\tSnake Eyes\ttmdb:1730437\tSnake Eyes (2026)\t2026-10-23\tlooks wrong: a 21′ short's record; De Palma's Snake Eyes (1998) is tmdb:8688").mkString("", "\n", "\n"))
-    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers, digestLabels, ticking)
+    new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers, digestLabels, ticking)
   }
   private lazy val digestWrites = new ReviewAnswerController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers,
     digestLabels, ticking)
@@ -158,15 +158,15 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
       {
-        case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, true)(FakeRequest()))
-        case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/de/review"               => contentAsString(german.queue(Some("de"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), ReviewView.DefaultLimit, false)(FakeRequest()))
+        case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), ReviewView.DefaultLimit, true)(FakeRequest()))
+        case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, ReviewView.DefaultLimit, false)(FakeRequest()))
+        case "/de/review"               => contentAsString(german.queue(Some("de"), ReviewView.DefaultLimit, false)(FakeRequest()))
+        case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewView.DefaultLimit, false)(FakeRequest()))
+        case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewView.DefaultLimit, false)(FakeRequest()))
+        case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewView.DefaultLimit, false)(FakeRequest()))
         case "/digest/review"           => contentAsString(digest.agentJudged(None, None, 20, false)(FakeRequest()))
-        case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewView.DefaultLimit, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
             k -> java.net.URLDecoder.decode(v, StandardCharsets.UTF_8) }.toMap

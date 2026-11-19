@@ -13,7 +13,7 @@ import tools.SpecTimeouts
 import java.nio.file.Files
 import java.time.{Clock, Instant, ZoneOffset}
 
-class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
+class ReviewPagesSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   import ReviewFixtures._
 
   private val now   = Instant.parse("2026-10-06T10:00:00Z")
@@ -23,7 +23,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   private final class ReviewServer(mode: Mode, answers: ReviewAnswers, labels: java.nio.file.Path, clock: Clock,
                                    tmdbPosters: Option[TmdbPosterLookup] = None, labelsWritable: Boolean = true) {
     private val sources: Map[Country, ReviewSource] = Map(Country.Poland -> ReviewFixtures.source(now))
-    val pages  = new ReviewController(Helpers.stubControllerComponents(), mode, sources, answers, labels, clock, tmdbPosters = tmdbPosters)
+    val pages  = new ReviewPages(Helpers.stubControllerComponents(), mode, sources, answers, labels, clock, tmdbPosters = tmdbPosters)
     val writes = new ReviewAnswerController(Helpers.stubControllerComponents(), mode, sources, answers, labels, clock, labelsWritable)
     export pages.{agentJudged, matchable, queue, recent, tmdbPoster}
     export writes.{answer, exportLabels, history}
@@ -210,7 +210,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   }
 
   it should "describe a candidate the corpus lacks from the resolver's own TMDB record, the corpus's poster kept when it has one" in {
-    def queueOver(films: Map[Int, FilmCard], records: Map[Int, FilmCard]) = contentAsString(new ReviewController(
+    def queueOver(films: Map[Int, FilmCard], records: Map[Int, FilmCard]) = contentAsString(new ReviewPages(
       Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision),
         filmsHeld = films, recordsHeld = records)), new ReviewAnswers(new InMemoryReviewAnswerStore),
       tempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
@@ -236,7 +236,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     val venue   = (1 to 7).map(i => s"Venue Actor $i") :+ "<b>Bold</b> & Co"
     val catalog = Seq("Catalogue Actor 1", "Catalogue Actor 2")
     val tmdb    = (1 to 6).map(i => s"TMDB Actor $i")
-    val html = contentAsString(new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+    val html = contentAsString(new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(heldDecision.copy(members = Seq(Held, fed))(heldDecision.trace)),
       slotsHeld = Map(Held -> SlotFacts(VenueFacts(cast = venue), now), fed -> SlotFacts(VenueFacts(year = Some(2025), cast = catalog), now)),
       feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
@@ -310,7 +310,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       None, 0.48, services.identity.ResolverDecision.Basis.BelowThreshold, Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()
     val pooled  = services.identity.ResolverDecision(Seq(models.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
       services.identity.ResolverDecision.Basis.PooledMatch, Nil)()
-    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+    val c = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision, crowded, matchedDecision, pooled))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     val html = contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest()))
@@ -346,7 +346,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       export source.{decisions as _, *}
       def decisions(unmatchedOnly: Boolean) = { barrier.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); source.decisions(unmatchedOnly) }
     }
-    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+    val c = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> meeting(Seq(heldDecision)), Country.UnitedKingdom -> meeting(Nil)),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     val html = contentAsString(c.queue(None, 60, false)(FakeRequest()))
@@ -364,7 +364,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       def decisions(unmatchedOnly: Boolean) = meet(source.decisions(unmatchedOnly))
       def updatedSince(since: Instant)      = meet(source.updatedSince(since))
     }
-    val html = contentAsString(new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> meeting),
+    val html = contentAsString(new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> meeting),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock).recent(Some("pl"), 48, 60, false)(FakeRequest()))
     html should not include "could not read"
     html should include("Klondike")
@@ -394,7 +394,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       export source.{decisions as _, *}
       def decisions(unmatchedOnly: Boolean) = held                                   // the same read until it changes
     }
-    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> rereading),
+    val c = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> rereading),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     held = Seq(vetoedDecision)
@@ -404,11 +404,11 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   }
 
   "every review page" should "show 20 cards unless asked for more, the routes' default the one its links leave out" in {
-    val routes = scala.io.Source.fromResource("routes").getLines().filter(_.contains("controllers.ReviewController.")).toSeq
+    val routes = scala.io.Source.fromResource("routes").getLines().filter(_.contains("/debug/review")).toSeq
     val limits = routes.flatMap(line => """limit: Int \?= (\w+)""".r.findFirstMatchIn(line).map(_.group(1)))
     limits should have size 4                                       // the queue, the matchable, recent and Agent-judged pages
-    limits.distinct shouldBe Seq(ReviewController.DefaultLimit.toString)
-    ReviewController.DefaultLimit shouldBe 20
+    limits.distinct shouldBe Seq(ReviewView.DefaultLimit.toString)
+    ReviewView.DefaultLimit shouldBe 20
   }
 }
 

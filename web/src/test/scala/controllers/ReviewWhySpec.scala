@@ -13,7 +13,7 @@ import java.time.{Clock, ZoneOffset}
 /** A card's "Why" fold-out over REAL prod decisions and traces ([[ProdReviewSample]]): nothing of a listing's trace left out. */
 class ReviewWhySpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
 
-  private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+  private val controller = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
     ProdReviewSample.Databases.map { case (db, country) => country -> (ProdReviewSample.source(db): ReviewSource) },
     new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), Clock.fixed(ProdReviewSample.newestSlot, ZoneOffset.UTC))
 
@@ -37,7 +37,7 @@ class ReviewWhySpec extends AnyFlatSpec with Matchers with tools.ScratchDirector
 
   it should "say so of a cluster no country holds, and 404 in production" in {
     status(controller.why("uk", "no-such-cluster")(FakeRequest())) shouldBe NOT_FOUND
-    status(new ReviewController(Helpers.stubControllerComponents(), Mode.Prod, Map(Country.Poland -> ReviewSource.empty),
+    status(new ReviewPages(Helpers.stubControllerComponents(), Mode.Prod, Map(Country.Poland -> ReviewSource.empty),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), Clock.fixed(java.time.Instant.parse("2026-10-06T12:00:00Z"), java.time.ZoneOffset.UTC))
       .why("pl", vetoed.id)(FakeRequest())) shouldBe NOT_FOUND
   }

@@ -13,7 +13,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * The dev-only review pages' writes (`/debug/review/answer`, `/export`) and the answers' history: an answer goes to
  * the local `review_answers` store and from there into `identity-judgements.tsv`. The pages themselves are
- * [[ReviewController]]'s. Production 404s every route here, like the rest of `/debug`.
+ * [[ReviewQueueController]]'s and [[AgentJudgedController]]'s. Production 404s every route here, like the rest of `/debug`.
  */
 class ReviewAnswerController(cc: ControllerComponents,
                              environment: Mode,
