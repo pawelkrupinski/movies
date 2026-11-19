@@ -9,7 +9,7 @@ import play.api.Logging
  *
  *  Built by the sweeper over the projection it sweeps, and logging under the sweeper's `logger`: a prune reads as
  *  its sweep's, which it is. Every method expects the projection lock held. */
-private[readmodel] final class SweepPrune(projection: ReadModelSweeper.Projection, override protected val logger: play.api.Logger)
+private[readmodel] final class OrphanPrune(projection: ReadModelSweeper.Projection, override protected val logger: play.api.Logger)
     extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.PruneReason
   private val reader  = projection.reader

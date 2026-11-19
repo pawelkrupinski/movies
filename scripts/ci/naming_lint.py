@@ -26,7 +26,6 @@ from typing import Dict, List, Set, Tuple
 MODULES = ("geodata", "base", "http", "common", "identity", "scrapers", "worker", "web")
 # (package, names): a clash allowed while it is renamed -- its owner and why. Struck once the rename lands.
 ALLOWED_PERMUTATIONS = {
-    ("services.readmodel", frozenset({"PruneSweep", "SweepPrune"})): "lane I renames it (2026-11-19)",
 }
 DECLARATION = re.compile(r"^(?:(?:private|protected)(?:\[\w+\])?\s+)?(?:(?:final|sealed|abstract|case|implicit)\s+)*"
                          r"(class|object|trait|enum)\s+([A-Z]\w*)", re.M)

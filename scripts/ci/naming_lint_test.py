@@ -49,8 +49,8 @@ class NamingLintTest(unittest.TestCase):
         self.git("scratch_git", "commit", "-qm", message)
         return self.git("scratch_git", "rev-parse", "HEAD")
 
-    def lint(self, *ranges):
-        args = [sys.executable, "-I", TOOL, "check", "--root", self.repo]
+    def lint(self, *ranges, tool=TOOL):
+        args = [sys.executable, "-I", tool, "check", "--root", self.repo]
         for r in ranges:
             args += ["--range", r]
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -92,17 +92,22 @@ class NamingLintTest(unittest.TestCase):
         self.assertEqual(1, self.lint()[0])
 
     def test_an_allowed_pair_passes_and_a_stale_allow_row_is_said(self):
-        self.commit({"worker/src/main/scala/services/readmodel/PruneSweep.scala": scala("PruneSweep", package="services.readmodel"),
-                     "worker/src/main/scala/services/readmodel/SweepPrune.scala": scala("SweepPrune", package="services.readmodel")},
-                    "being renamed")
-        rc, out = self.lint()
+        # The tool with an allow row of its own: the real table holds only renames under way, and may be empty.
+        with open(TOOL) as f:
+            source = f.read()
+        tool = os.path.join(self.dir.name, "naming_lint.py")
+        with open(tool, "w") as f:
+            f.write(source.replace("ALLOWED_PERMUTATIONS = {\n",
+                                   'ALLOWED_PERMUTATIONS = {\n    ("services.sweeps", frozenset({"CacheSweep", "SweepCache"})): "a rename under way",\n', 1))
+        self.commit({f"{DIR}/CacheSweep.scala": scala("CacheSweep"), f"{DIR}/SweepCache.scala": scala("SweepCache")}, "being renamed")
+        rc, out = self.lint(tool=tool)
         self.assertEqual(0, rc, out)
-        self.assertIn("allowed: lane I", out)
-        self.assertNotIn("no clash matches any more (services.readmodel", out)
-        os.remove(os.path.join(self.repo, "worker/src/main/scala/services/readmodel/SweepPrune.scala"))
-        rc, out = self.lint()
+        self.assertIn("allowed: a rename under way", out)
+        self.assertNotIn("no clash matches any more (services.sweeps", out)
+        os.remove(os.path.join(self.repo, f"{DIR}/SweepCache.scala"))
+        rc, out = self.lint(tool=tool)
         self.assertEqual(0, rc, out)
-        self.assertIn("an ALLOWED_PERMUTATIONS row no clash matches any more (services.readmodel: PruneSweep, SweepPrune)", out)
+        self.assertIn("an ALLOWED_PERMUTATIONS row no clash matches any more (services.sweeps: CacheSweep, SweepCache)", out)
 
     def test_test_sources_are_not_read(self):
         self.commit({"worker/src/test/scala/services/sweeps/CacheSweep.scala": scala("CacheSweep"),

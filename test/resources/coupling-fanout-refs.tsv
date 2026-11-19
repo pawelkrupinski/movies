@@ -2867,7 +2867,7 @@ services.readmodel.PruneSweep	services.readmodel.ReadModelSweeper
 services.readmodel.PruneSweep	services.readmodel.ScreeningRef
 services.readmodel.PruneSweep	services.readmodel.SweepBaseline
 services.readmodel.PruneSweep	services.readmodel.SweepCatchUp
-services.readmodel.PruneSweep	services.readmodel.SweepPrune
+services.readmodel.PruneSweep	services.readmodel.OrphanPrune
 services.readmodel.PruneSweep	services.readmodel.SweepTally
 services.readmodel.PruneSweep	tools.ReadOutcome
 services.readmodel.PruneSweep	tools.ScanOutcome

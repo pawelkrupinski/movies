@@ -7,7 +7,7 @@ import play.api.Logging
 /**
  * One whole-corpus pass of a [[ReadModelSweeper]] — the FULL reconcile (`reproject = true`) or the
  * cheap PRUNE sweep: the source scan, the heal of a ready row missing a card or a venue, the prune of
- * what no live row projects to ([[SweepPrune]]), the rolling content check of one slice
+ * what no live row projects to ([[OrphanPrune]]), the rolling content check of one slice
  * ([[ReadModelSweeper.ContentSlices]]), the catch-up of what a silent change stream failed to deliver
  * ([[SweepCatchUp]]), and the sweep's summary line. The sweeper schedules it and judges its heals.
  *
@@ -23,7 +23,7 @@ private[readmodel] final class PruneSweep(
   import ReadModelProjectionMetrics.{ProjectTrigger, ReconcileKind}
 
   // The destructive half of a complete sweep: the orphans and unlisted venues it deletes.
-  private val pruner  = new SweepPrune(projection, logger)
+  private val orphanPrune = new OrphanPrune(projection, logger)
   // The re-projection of what the `movies` cursor did not deliver, after each prune sweep.
   private val catchUp = new SweepCatchUp(projection, logger)
 
@@ -82,7 +82,7 @@ private[readmodel] final class PruneSweep(
       // destructive prune; the next tick reconciles cleanly once reads recover.
       logger.warn(s"read-model $kind: source scan was incomplete (Mongo read failed mid-scan) — " +
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
-    } else pruner.prune(reproject, kind, baseline, tally)
+    } else orphanPrune.prune(reproject, kind, baseline, tally)
     if (!reproject && scanComplete) checkContentSlice(kind, tally.liveRowIds)
     sweepCount += 1
     if (!reproject) catchUp.catchUpUndelivered(kind)
