@@ -105,6 +105,15 @@
         "Thu *-*-* 05:00:00 UTC"
       ]
     },
+    "mirror-pinned-images": {
+      "crons": [
+        "41 16 * * 1"
+      ],
+      "file": "mirror-pinned-images.yml",
+      "onCalendar": [
+        "Mon *-*-* 16:41:00 UTC"
+      ]
+    },
     "nightly-stress": {
       "crons": [
         "30 1 * * *"
