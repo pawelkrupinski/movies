@@ -144,6 +144,17 @@ class Rollout(unittest.TestCase):
         self.assertIn("coredns_dns_responses_total", problems[0])
         self.assertIn("strike", problems[0])
 
+    def test_a_scoped_run_judges_only_the_conditional_metrics_its_alerts_read(self):
+        conditional = {"coredns_dns_responses_total": {}, "mongodb_collstats_storageStats_count": {}, "never_seen": {}}
+        existing = {"coredns_dns_responses_total", "mongodb_collstats_storageStats_count", "up"}
+        alerts = {"CoreDnsMetricsAbsent": {"expr": "absent(coredns_dns_responses_total)"},
+                  "HostDown": {"expr": "up == 0"}}
+        self.assertEqual(bt.conditional_metrics_to_check(conditional, existing, alerts),
+                         {"coredns_dns_responses_total", "mongodb_collstats_storageStats_count"})
+        self.assertEqual(bt.conditional_metrics_to_check(conditional, existing, alerts, ["CoreDnsMetricsAbsent"]),
+                         {"coredns_dns_responses_total"})
+        self.assertEqual(bt.conditional_metrics_to_check(conditional, existing, alerts, ["HostDown"]), set())
+
     def test_a_conditional_metric_that_comes_and_goes_is_not_stale(self):
         self.assertEqual(bt.stale_conditional_metrics({}, {"kinowo_worker_http_circuit_open"}), [])
 

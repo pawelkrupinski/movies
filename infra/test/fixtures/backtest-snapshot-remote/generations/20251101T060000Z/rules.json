@@ -1,0 +1,18 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "host-health",
+        "file": "host-health.rules",
+        "rules": [
+          {
+            "type": "alerting",
+            "name": "MemoryAvailableLow",
+            "query": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15"
+          }
+        ]
+      }
+    ]
+  }
+}

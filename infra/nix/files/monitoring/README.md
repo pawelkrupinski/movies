@@ -6,7 +6,7 @@ Three layers, each asking a question the one before cannot:
 |---|---|---|
 | `infra/test/test_alert_rules.sh` (promtool) | Does each rule fire on the series its author wrote, and stay quiet on the healthy one? | `infra/bin/check`, CI |
 | `infra/test/test_alert_rule_coverage.py`, `test_label_shapes.py` | Does every alert have both cases? Do its label matchers name values the fleet really emits? | `infra/bin/check`, CI |
-| `infra/bin/backtest-alerts` | What would each rule, **as written in this tree**, have done over the last 14 days of **real** Prometheus data? | daily on ci-runner (`.github/workflows/alert-backtest.yml`), and for a branch before merging a rule change |
+| `infra/bin/backtest-alerts` | What would each rule, **as written in this tree**, have done over the last 14 days of **real** Prometheus data? | daily on ci-runner (`.github/workflows/alert-backtest.yml`), for a branch before merging a rule change, and on the laptop (`infra/bin/backtest-alerts-local`) |
 
 ## Why the backtest exists
 
@@ -31,6 +31,50 @@ an `rrsync -ro` key, no admin API, no restart), with the rules production had lo
 and backtests against that, 16 queries at a time, ending where the copy ends. Against production
 (`--source live`, over `ssh -f -N kinowo-fleet`) a full run took 60-70 min and slowed its rule
 evaluation from 3 s to 21 s: keep that for a quick look at one alert.
+
+### On the laptop: `infra/bin/backtest-alerts-local`
+
+```sh
+infra/bin/backtest-alerts-local --alert MemoryAvailableLow            # one alert, 14 days, no baseline written
+infra/bin/backtest-alerts-local --group host-health.rules --days 3     # a rule file, a shorter window
+infra/bin/backtest-alerts-replay --local --from-run <red run id>       # base=FAIL head=PASS for a red's fix
+```
+
+The same `backtest-alerts --source snapshot`, with the same output and verdict, over a copy of
+ci-runner's copy kept in `~/.cache/movies-backtest-snapshot` (the owner, 2026-11-19: "can alert
+backtest tests be run locally?"). It copies only the blocks the run needs -- the window, widened back
+by the selected alerts' longest range, offset and hold and by the incidents they are catalogued in --
+and blocks are immutable, so each is copied once (read-only, its meta.json checked) and a later run
+copies only the nights since. It refuses a copy that would leave under `--keep-free-gb` (20) free.
+Prometheus is the flake's own `nixpkgs#prometheus` when that is the version production ran, else the
+checksum-verified upstream release; the replay runs over a copy-on-write clone (APFS), so the cache is
+never written, under a governor ticket (`agentctl gov`). `--offline` uses the cache as it is.
+`backtest-alerts-replay --local` (the fix-replay registry's command, `.github/red-workflows.tsv`)
+syncs once for both revisions and runs each one's own `backtest-alerts`.
+
+The copy comes over a read-only key: the account `prometheus-snapshot-read` on ci-runner may only run
+`rrsync -ro /mnt/data/prometheus-snapshot` (bitcashier infra `nix/hosts/ci-runner/prometheus-snapshot.nix`;
+one key file per laptop, `nix/files/prometheus-snapshot-read-laptop.pub`), reached through the store
+tunnel's jump hop. A new laptop: `ssh-keygen -t ed25519 -N '' -f ~/.ssh/prometheus_snapshot_read_ed25519`,
+add its `.pub` to that list, and this block to `~/.ssh/config` (before `Host *`):
+
+```
+Host prometheus-snapshot
+    HostName 10.1.0.3
+    User prometheus-snapshot-read
+    ProxyJump forgejo-tunnel-jump
+    IdentityFile ~/.ssh/prometheus_snapshot_read_ed25519
+    IdentitiesOnly yes
+    IdentityAgent none
+    BatchMode yes
+    StrictHostKeyChecking yes
+```
+
+Measured 2026-11-19 on the 18-core laptop, generation 20261119T013622Z (7 blocks, 2026-10-30..11-18): the first
+sync of a 14-day single-alert run copied all 7 blocks, 6.73 GB, in 1454 s (~4.6 MB/s: idle-class I/O on ci-runner,
+through the jump); warm, the same run took 6 s in all, and `--alert IdentityIncrementalDrift --group
+host-health.rules` (13 alerts) 10 s, with IdentityIncrementalDrift NOISY at 86.9% as the nightly run had it.
+A nightly generation adds a few hundred MB of new (compacted) blocks.
 
 The daily run publishes `alert-backtest.json` to the rolling release `alert-backtest`; commit it over
 `infra/test/alert-backtest.json` to move the checked-in baseline, whose diff is how a rule's

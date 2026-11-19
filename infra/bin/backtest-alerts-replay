@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""Replay a red Alert backtest at two revisions on ci-runner and say whether a fix turned it green.
+"""Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green.
 
-  infra/bin/backtest-alerts-replay --from-run <github run id> [--base REV] [--head REV]
-                                   [--alert A]... [--group G]... [--host ci-runner]
+  infra/bin/backtest-alerts-replay --local --from-run <github run id> [--base REV] [--head REV]
+                                   [--alert A]... [--group G]... [--days N] [--offline]
+  infra/bin/backtest-alerts-replay --from-run <github run id> [--host ci-runner] ...
+
+--local (the fix-replay registry's command, .github/red-workflows.tsv) runs both revisions on this machine:
+infra/bin/backtest-alerts-local syncs, once, the blocks either revision's selected alerts need from ci-runner's copy
+into ~/.cache/movies-backtest-snapshot, picks production's Prometheus version, and each revision's own
+infra/bin/backtest-alerts (from `git archive <rev> infra scripts` in a scratch directory) replays them under a
+governor ticket. A few minutes once the cache is warm; no ci-runner queue and no ssh shell. Without --local, the
+replay runs on --host as described below.
 
 WHY. The nightly Alert backtest takes ~29 min over all 224 alerts; seven fixes were landed on a guess and refuted
 by its next run. A fixer proves a fix BEFORE landing instead: the same backtest over the same nightly Prometheus
@@ -10,7 +18,7 @@ copy, scoped to the alerts the red run named (--from-run fetches that run's log;
 --from-log selects them), run at the base (default origin/main) and at the head (default HEAD). Verdict:
 base=FAIL head=PASS (exit 0) is a fix that fixes; anything else (exit 1) is not one; a harness error is exit 2.
 
-HOW. Per revision: `git archive <rev> infra scripts` (the 1.3 GB whole tree took minutes over ssh, 14 MB takes seconds) is unpacked over ssh into /tmp/backtest-replay-<user>-<pid>-<rev8> on the
+HOW (on --host). Per revision: `git archive <rev> infra scripts` (the 1.3 GB whole tree took minutes over ssh, 14 MB takes seconds) is unpacked over ssh into /tmp/backtest-replay-<user>-<pid>-<rev8> on the
 host and removed after; there infra/bin/backtest-alerts --source snapshot --no-write replays against
 /mnt/data/prometheus-snapshot/current (the tool copies the blocks privately). The host has neither the Prometheus
 binary nor PyYAML: the binary of the copy's version is downloaded once into ~/.cache/backtest-prometheus/<version>/,
@@ -22,10 +30,12 @@ commit trailer agentctl checks. BACKTEST_REPLAY_PROMETHEUS_BINARY names a binary
 """
 
 import argparse
-import getpass
+import importlib.machinery
+import importlib.util
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -128,6 +138,63 @@ def replay(host, rev, sha, log_path, scope, user):
         run(["ssh", host, "rm -rf %s" % remote_dir])
 
 
+def load_local():
+    """infra/bin/backtest-alerts-local as a module: its sync, Prometheus and governor are the local replay's."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backtest-alerts-local")
+    loader = importlib.machinery.SourceFileLoader("backtest_alerts_local", path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+def local_scope(tool, scope, log_path):
+    """The scope flags as the unpacked revision's tool takes them (scope_for's question, asked of a local file)."""
+    if "--from-log" not in scope:
+        return scope
+    at = scope.index("--from-log")
+    rest = scope[:at] + scope[at + 2:]
+    with open(tool, encoding="utf-8") as handle:
+        if "--from-log" in handle.read():
+            return rest + ["--from-log", log_path]
+    with open(log_path, encoding="utf-8") as handle:
+        return rest + [x for name in alerts_named(handle.read()) for x in ("--alert", name)]
+
+
+def local_verdicts(args, revisions, log_path, scope, scratch):
+    """{label: PASS|FAIL|ERROR} with both revisions replayed HERE over one synced copy (backtest-alerts-local)."""
+    local = load_local()
+    trees = {}
+    for label, sha in revisions:
+        tree = os.path.join(scratch, label)
+        os.makedirs(tree)
+        archive = subprocess.Popen(["git", "archive", sha, "infra", "scripts"], stdout=subprocess.PIPE)
+        unpack = run(["tar", "-x", "-C", tree], stdin=archive.stdout)
+        archive.stdout.close()
+        if archive.wait() != 0 or unpack.returncode != 0:
+            return {label: "ERROR"}
+        trees[label] = tree
+    options = local.parse(scope + ["--days", str(args.days)] + (["--offline"] if args.offline else []))
+    tools = {label: os.path.join(tree, "infra", "bin", "backtest-alerts") for label, tree in trees.items()}
+    try:
+        run_dir, snapshot, binary = local.prepare(options, [tools[label] for label, _sha in revisions])
+    except (local.SyncError, OSError) as err:
+        print("could not prepare the local copy: %s" % err, file=sys.stderr)
+        return {"base": "ERROR"}
+    verdicts = {}
+    try:
+        for label, sha in revisions:
+            print("== %s (%s) locally" % (label, sha[:8]), flush=True)
+            flags = local_scope(tools[label], scope, log_path) + ["--days", str(args.days), "--no-write"]
+            command = local.governed(local.backtest_command(tools[label], snapshot, binary, flags))
+            done = run(command, cwd=trees[label])
+            verdicts[label] = {0: "PASS", 1: "FAIL"}.get(done.returncode, "ERROR")
+            print("-- %s: %s" % (label, verdicts[label]), flush=True)
+    finally:
+        shutil.rmtree(run_dir, ignore_errors=True)
+    return verdicts
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -137,9 +204,15 @@ def main(argv=None):
     parser.add_argument("--alert", action="append", default=[])
     parser.add_argument("--group", action="append", default=[])
     parser.add_argument("--host", default="ci-runner")
+    parser.add_argument("--local", action="store_true",
+                        help="replay on this machine over a synced copy (infra/bin/backtest-alerts-local), not --host")
+    parser.add_argument("--offline", action="store_true", help="--local: the cached copy as it is, no sync")
+    parser.add_argument("--days", type=float, default=14, help="--local: the window, as backtest-alerts takes it")
     args = parser.parse_args(argv)
     if not (args.from_run or args.alert or args.group):
         parser.error("name what to replay: --from-run, --alert or --group")
+    if args.local:
+        load_local().ensure_yaml()
 
     with tempfile.TemporaryDirectory(prefix="backtest-replay-") as scratch:
         return verdict(args, argv, scratch)
@@ -153,15 +226,21 @@ def verdict(args, argv, scratch):
     if args.from_run:
         scope += ["--from-log", log_path]
 
-    verdicts = {}
+    revisions = []
     for label, rev in (("base", args.base), ("head", args.head)):
         parsed = run(["git", "rev-parse", "--verify", "--quiet", rev + "^{commit}"], capture_output=True, text=True)
         if parsed.returncode != 0:
             print("unknown revision %s" % rev, file=sys.stderr)
             return 2
-        verdicts[label] = replay(args.host, rev, parsed.stdout.strip(), log_path, scope, getpass.getuser())
-        print("-- %s: %s%s" % (label, verdicts[label], " (harness error: exit 2 or a failed ssh/step)"
-                               if verdicts[label] == "ERROR" else ""), flush=True)
+        revisions.append((label, parsed.stdout.strip()))
+    if args.local:
+        verdicts = local_verdicts(args, revisions, log_path, scope, scratch)
+    else:
+        verdicts = {}
+        for (label, sha), rev in zip(revisions, (args.base, args.head)):
+            verdicts[label] = replay(args.host, rev, sha, log_path, scope, os.environ.get("USER") or str(os.getuid()))
+            print("-- %s: %s%s" % (label, verdicts[label], " (harness error: exit 2 or a failed ssh/step)"
+                                   if verdicts[label] == "ERROR" else ""), flush=True)
     if "ERROR" in verdicts.values():
         return 2
     print("Fix-Replay: %s base=%s head=%s" % (invoked(argv), verdicts["base"], verdicts["head"]))

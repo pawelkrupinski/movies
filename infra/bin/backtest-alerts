@@ -58,7 +58,9 @@ WHERE THE HISTORY COMES FROM (`--source`):
                       torn down: production is never asked anything. The window ends where the copy
                       does, and "deployed?" / "stale recording?" read the rules production had
                       loaded, captured beside the blocks -- not the replay's, which loads none.
-                      .github/workflows/alert-backtest.yml runs it nightly and for any branch.
+                      .github/workflows/alert-backtest.yml runs it nightly and for any branch;
+                      infra/bin/backtest-alerts-local brings the blocks a run needs to the laptop and
+                      runs this over them there.
   live                monitoring-1's own Prometheus over the SOCKS tunnel (`ssh -f -N kinowo-fleet`),
                       for an ad-hoc look at the last hours. A full run this way took 60-70 min and
                       slowed production's rule evaluation from 3 s to 21 s (2026-11-18): don't.
@@ -608,6 +610,18 @@ def replay_arguments(binary, config, data, port, jobs):
             "--log.level=warn"]
 
 
+def private_copy(source, target):
+    """`source` copied to `target` for the replay's Prometheus to own, following symlinks (infra/bin/backtest-alerts-local
+    links its cached blocks in). On macOS a copy-on-write clone (`cp -c`, APFS clonefile): two weeks of blocks cost
+    no time and no space, and the replay's writes land in the clone, never in the cache. Elsewhere, or when the clone
+    fails (another volume), a plain copy, as CI's run has always taken."""
+    if sys.platform == "darwin":
+        if subprocess.run(["cp", "-c", "-R", "-L", source, target], capture_output=True).returncode == 0:
+            return
+        shutil.rmtree(target, ignore_errors=True)
+    shutil.copytree(source, target)
+
+
 class Replay(object):
     """A throwaway Prometheus over a PRIVATE copy of a snapshot, for one run: the copy is taken so the
     snapshot itself (read-only on ci-runner) is never touched, and is removed with the process."""
@@ -620,7 +634,7 @@ class Replay(object):
         self.work = tempfile.mkdtemp(prefix="backtest-replay-")
         data = os.path.join(self.work, "data")
         started = time.time()
-        shutil.copytree(self.snapshot.tsdb, data)
+        private_copy(self.snapshot.tsdb, data)
         config = os.path.join(self.work, "prometheus.yml")
         with open(config, "w", encoding="utf-8") as handle:
             handle.write("global: {}\n")
@@ -725,6 +739,17 @@ def rollout_queries(expr, existing, conditional):
             found.add("%s{%s}" % (selector.name, ",".join(
                 '%s%s%s' % (m.label, m.op, json.dumps(m.value)) for m in labels)))
     return found
+
+
+def conditional_metrics_to_check(conditional, existing, alerts, selected=None):
+    """The conditional_metrics entries to judge for staleness: those with series in the window, and in a scoped run
+    (`selected`) only those its alerts read. An entry no selected alert reads is not that run's question: run on the
+    laptop for one alert (infra/bin/backtest-alerts-local), five unrelated stale entries made every scoped run FAIL,
+    so a fix replay could never read head=PASS."""
+    present = set(conditional) & existing
+    if selected is None:
+        return present
+    return present & set().union(*[metric_names(alerts[name]["expr"]) for name in selected])
 
 
 def stale_conditional_metrics(rollouts, conditional):
@@ -836,8 +861,9 @@ def main(argv=None):
     try:
         snapshot = Snapshot(args.snapshot)
     except (OSError, ValueError, KeyError) as err:
-        print("no usable snapshot at %s (%s). It exists on ci-runner: run this there with\n"
-              "  gh workflow run alert-backtest.yml --ref <branch>\nor ask production with --source live."
+        print("no usable snapshot at %s (%s). It exists on ci-runner: copy what a run needs and run it here with\n"
+              "  infra/bin/backtest-alerts-local --alert <name>\nor run it there with\n"
+              "  gh workflow run alert-backtest.yml --ref <branch>"
               % (args.snapshot, err))
         return 2
     try:
@@ -891,9 +917,6 @@ def run_backtest(args, prom, source):
     if stale:
         print("recordings changed in this tree or not recorded in the window, evaluated as written: %s"
               % ", ".join(sorted(stale)))
-    for name, rule in alerts.items():
-        rule["expr"] = expand_recordings(rule["expr"], records, stale)
-
     scoped = bool(args.alert or args.group or args.from_log)
     unknown = set(args.alert or []) - set(alerts)
     if unknown:
@@ -909,6 +932,14 @@ def run_backtest(args, prom, source):
             log_text = handle.read()
     selected = select_alerts(alerts, args.alert or [], args.group, log_text) or sorted(alerts)
     only = set(selected) if scoped else None
+    # Only the selected alerts are inlined, and one that cannot be is that alert's error, not the run's: a recording
+    # read with matchers has no expression to stand in for it (expand_recordings), and a crash there ended every run.
+    unexpandable = {}
+    for name in selected:
+        try:
+            alerts[name]["expr"] = expand_recordings(alerts[name]["expr"], records, stale)
+        except ValueError as err:
+            unexpandable[name] = str(err)
 
     problems = []
     for name in sorted(set(allowed) - set(alerts)):
@@ -921,13 +952,15 @@ def run_backtest(args, prom, source):
     reads = {n: metric_names(alerts[n]["expr"]) - set(conditional) for n in selected}
     watched = {n: rollout_queries(alerts[n]["expr"], existing, conditional) for n in selected}
     rollouts = metric_rollouts(prom, set().union(*watched.values()), start, end, args.jobs)
-    problems += stale_conditional_metrics(
-        metric_rollouts(prom, set(conditional) & existing, start, end, args.jobs), conditional)
+    checked = conditional_metrics_to_check(conditional, existing, alerts, selected if scoped else None)
+    problems += stale_conditional_metrics(metric_rollouts(prom, checked, start, end, args.jobs), checked)
     excused = excused_windows(catalogue, step)
 
     print("backtesting %d alert(s) over %s .. %s at %ds" % (len(selected), iso(start), iso(end), step))
 
     def run(name):
+        if name in unexpandable:
+            return name, start, {"error": unexpandable[name], "returned_data": False}, None
         clipped = max([start] + [rollouts[m] for m in watched[name] if m in rollouts])
         clipped = snap_up(clipped, step)
         if clipped >= end - step:

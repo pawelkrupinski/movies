@@ -11,5 +11,5 @@
 #
 # A workflow with no row has no replay and may not be dispatched to verify.
 workflow	verify_dispatch	replay	why
-Alert backtest	yes	infra/bin/backtest-alerts-replay --from-run {run}	scoped to the alerts the red run named, ~30 min on ci-runner's own runner over the nightly Prometheus copy, no paid service
+Alert backtest	yes	infra/bin/backtest-alerts-replay --local --from-run {run}	scoped to the alerts the red run named, replayed on the laptop over its cached copy of ci-runner's nightly Prometheus blocks (infra/bin/backtest-alerts-local; minutes once warm), no paid service
 Record scrape fixtures	no	-	scrapes every cinema through paid proxies: wait for the nightly

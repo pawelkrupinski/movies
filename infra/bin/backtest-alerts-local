@@ -1,0 +1,536 @@
+#!/usr/bin/env python3
+"""Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly.
+
+  infra/bin/backtest-alerts-local --alert HostDown [--alert ...] [--group host-health.rules] [--days 14]
+  infra/bin/backtest-alerts-local --from-log backtest.log     # the alerts a red run's log names
+  infra/bin/backtest-alerts-local --offline --alert HostDown   # the cache as it is, no ssh
+
+The owner (2026-11-19): "can alert backtest tests be run locally?". infra/bin/backtest-alerts --source snapshot
+replays a copy of monitoring-1's blocks on a throwaway Prometheus; that copy lived only on ci-runner
+(/mnt/data/prometheus-snapshot, bitcashier infra nix/hosts/ci-runner/prometheus-snapshot.nix), so proving a rule fix
+meant a CI run. This brings the copy here and runs the same tool over it, with the same verdict and output:
+
+  1. SYNC. The newest generation on ci-runner (generations/<stamp>/: tsdb/<ulid>/ blocks, rules.json,
+     buildinfo.json, pull.json) is read over a read-only rrsync key (ssh alias `prometheus-snapshot`, the
+     `prometheus-snapshot-read` account; nix/files/monitoring/README.md has the ~/.ssh/config block). Only the
+     blocks the run needs are copied: those overlapping the window, widened back by the selected alerts'
+     longest range/offset/hold (an `[7d]` or `offset 14d` reads before the window) and by the catalogued
+     incidents they appear in. Blocks are immutable, so each is copied once into ~/.cache/movies-backtest-snapshot
+     /blocks/<ulid>/ and never again; a copy is accepted only when its meta.json is the one listed, its files are
+     made read-only, and an interrupted copy resumes (incoming/, rsync --partial). Free disk is checked first: a
+     copy that would leave under --keep-free-gb is refused before anything is fetched. A block neither of the two
+     newest generations lists (compaction folded it into a bigger one) is dropped, as ci-runner's pull drops it.
+  2. PROMETHEUS. The version production ran (the generation's buildinfo.json): the movies flake's own nixpkgs
+     prometheus (`nix build --inputs-from infra nixpkgs#prometheus`) when it is that version, else the upstream
+     release of it, checksum-verified as .github/workflows/alert-backtest.yml does, kept under the cache.
+     backtest-alerts refuses any other version.
+  3. BACKTEST. infra/bin/backtest-alerts --source snapshot over a run directory whose tsdb/ links the cached
+     blocks; its Replay takes a private copy-on-write clone of them (APFS clonefile), so the replay's Prometheus
+     never writes into the cache. It runs under a governor ticket (scripts/jvm-gate.sh gov_take, `agentctl gov`)
+     like other heavy laptop jobs. --no-write is the default (--write to refresh the checked-in baseline).
+
+Exit status is backtest-alerts' own (0 ok, 1 a problem found, 2 could not run); 2 also when the sync could not
+complete or the disk is short. Environment: BACKTEST_SNAPSHOT_REMOTE (rsync source ending in `:` or `/`, default
+`prometheus-snapshot:`), BACKTEST_LOCAL_CACHE, BACKTEST_PROMETHEUS_BINARY (skip step 2), BACKTEST_ALERTS (the
+backtest tool to run; the self-test's seam), KINOWO_GOVERNOR=0 (no ticket).
+"""
+
+import argparse
+import datetime
+import hashlib
+import importlib.machinery
+import importlib.util
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+INFRA = os.path.dirname(HERE)
+ROOT = os.path.dirname(INFRA)
+DEFAULT_REMOTE = "prometheus-snapshot:"
+DEFAULT_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "movies-backtest-snapshot")
+GENERATION = re.compile(r"^\d{8}T\d{6}Z$")
+ULID = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
+NIX_CANDIDATES = ("nix", "/nix/var/nix/profiles/default/bin/nix", os.path.expanduser("~/.nix-profile/bin/nix"))
+RANGE = re.compile(r"\[(\d+(?:ms|[smhdwy])(?:\d+(?:ms|[smhdwy]))*)(?::[^\]]*)?\]")
+OFFSET = re.compile(r"\boffset\s+(-?\d+(?:ms|[smhdwy])(?:\d+(?:ms|[smhdwy]))*)")
+GIB = 1024 ** 3
+
+
+class SyncError(Exception):
+    """The copy could not be brought up to date; exit 2 with the reason."""
+
+
+def load_backtest(path):
+    """backtest-alerts as a module: its rule loading, selection and duration parsing are this tool's too."""
+    loader = importlib.machinery.SourceFileLoader("backtest_alerts_%d" % (abs(hash(path)) % 10 ** 8), path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+# ── WHAT THE RUN NEEDS ───────────────────────────────────────────────────────────────────────────
+
+
+def lookback(expr, records, seconds, seen=()):
+    """Seconds before an evaluation that `expr` reads: its longest range or subquery plus its longest offset, plus
+    the same of every recording it names (inlined when stale, so its own ranges count). An upper bound."""
+    ranges = [seconds(r) for r in RANGE.findall(expr)]
+    offsets = [seconds(o) for o in OFFSET.findall(expr) if not o.startswith("-")]
+    own = (max(ranges) if ranges else 0) + (max(offsets) if offsets else 0)
+    nested = 0
+    for name, recorded in records.items():
+        if name not in seen and re.search(r"(?<![\w:])%s(?![\w:])" % re.escape(name), expr):
+            nested = max(nested, lookback(recorded, records, seconds, tuple(seen) + (name,)))
+    return own + nested
+
+
+def needed_intervals(backtest, selected, alerts, records, catalogue, end, days):
+    """[(start, end)] epoch seconds the replay will read: the window and each incident naming a selected alert,
+    each widened back by the selected alerts' lookback and hold (an hour of slack for the step grid)."""
+    seconds = backtest.seconds
+    back = max([lookback(alerts[n]["expr"], records, seconds) + seconds(alerts[n].get("for"))
+                + seconds(alerts[n].get("keep_firing_for")) + seconds(alerts[n].get("interval"))
+                for n in selected] or [0]) + 3600
+    intervals = [(end - days * 86400 - back, end)]
+    for incident in catalogue:
+        named = set(incident.get("expect_firing") or []) | set(incident.get("expect_quiet") or [])
+        if named & set(selected):
+            start = backtest.parse_time(incident["start"])
+            stop = backtest.parse_time(incident["end"]) + seconds(incident.get("grace", "1h"))
+            intervals.append((start - back, min(stop, end)))
+    return intervals
+
+
+def blocks_for(metas, intervals):
+    """The ulids whose [minTime, maxTime) (milliseconds) overlaps any interval (seconds)."""
+    return sorted(u for u, m in metas.items()
+                  if any(m["minTime"] < hi * 1000 and m["maxTime"] > lo * 1000 for lo, hi in intervals))
+
+
+# ── RSYNC ────────────────────────────────────────────────────────────────────────────────────────
+
+
+def rsync(*args, capture=True):
+    out = subprocess.run(["rsync"] + list(args), capture_output=capture, text=True)
+    if out.returncode != 0:
+        raise SyncError("rsync %s exited %d: %s" % (" ".join(args), out.returncode,
+                                                       (out.stderr or "").strip()[-600:]))
+    return out.stdout
+
+
+def check_rsync():
+    try:
+        version = subprocess.run(["rsync", "--version"], capture_output=True, text=True).stdout
+    except OSError:
+        raise SyncError("no rsync on PATH: brew install rsync")
+    if not re.match(r"rsync\s+version\s+3\.", version):
+        raise SyncError("rsync on PATH is not rsync 3 (macOS's openrsync lacks --files-from/--partial): "
+                        "brew install rsync, and put it first on PATH")
+
+
+def listing(text):
+    """[(mode, size, name)] of an `rsync --list-only --no-h` listing."""
+    rows = []
+    for line in text.splitlines():
+        fields = line.split(None, 4)
+        if len(fields) == 5 and fields[1].isdigit():
+            rows.append((fields[0], int(fields[1]), fields[4]))
+    return rows
+
+
+def newest_generation(remote):
+    names = [n for mode, _size, n in listing(rsync("--list-only", "--no-h", remote + "generations/"))
+             if mode.startswith("d") and GENERATION.match(n)]
+    if not names:
+        raise SyncError("%sgenerations/ holds no generation: has ci-runner's nightly pull run?" % remote)
+    return max(names)
+
+
+def files_from(directory, lines):
+    path = os.path.join(directory, ".files-%d" % os.getpid())
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("".join(line + "\n" for line in lines))
+    return path
+
+
+class Cache(object):
+    """~/.cache/movies-backtest-snapshot: blocks/<ulid>/ (immutable, read-only files), metas/<ulid>.json,
+    generations/<stamp>/ (rules.json, buildinfo.json, pull.json), incoming/ (an interrupted copy), prometheus/."""
+
+    def __init__(self, root):
+        self.root = root
+        self.blocks = os.path.join(root, "blocks")
+        self.metas = os.path.join(root, "metas")
+        self.generations = os.path.join(root, "generations")
+        self.incoming = os.path.join(root, "incoming")
+        for directory in (self.blocks, self.metas, self.generations, self.incoming):
+            os.makedirs(directory, exist_ok=True)
+
+    def held(self):
+        return {u for u in os.listdir(self.blocks) if ULID.match(u)}
+
+    def meta(self, ulid):
+        with open(os.path.join(self.metas, ulid + ".json"), encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def newest_generation(self):
+        names = sorted(n for n in os.listdir(self.generations) if GENERATION.match(n)
+                       and os.path.exists(os.path.join(self.generations, n, "pull.json")))
+        if not names:
+            raise SyncError("the cache %s holds no generation: run once without --offline" % self.root)
+        return names[-1]
+
+    def read(self, generation, name):
+        with open(os.path.join(self.generations, generation, name), encoding="utf-8") as handle:
+            return json.load(handle)
+
+
+def sync_generation(cache, remote):
+    """The newest remote generation's three JSON files and every block's meta.json not yet known; its name."""
+    generation = newest_generation(remote)
+    target = os.path.join(cache.generations, generation)
+    if not os.path.exists(os.path.join(target, "pull.json")):
+        partial = target + ".partial"
+        os.makedirs(partial, exist_ok=True)
+        base = remote + "generations/" + generation + "/"
+        rsync("-a", "--files-from=" + files_from(partial, ["rules.json", "buildinfo.json", "pull.json"]),
+              base, partial + "/")
+        os.remove(os.path.join(partial, ".files-%d" % os.getpid()))
+        shutil.rmtree(target, ignore_errors=True)
+        os.replace(partial, target)
+    pull = cache.read(generation, "pull.json")
+    unknown = [u for u in pull["blocks"] if not os.path.exists(os.path.join(cache.metas, u + ".json"))]
+    if unknown:
+        scratch = tempfile.mkdtemp(prefix=".metas-", dir=cache.root)
+        try:
+            rsync("-a", "--files-from=" + files_from(scratch, ["%s/meta.json" % u for u in unknown]),
+                  remote + "generations/" + generation + "/tsdb/", scratch + "/")
+            for ulid in unknown:
+                os.replace(os.path.join(scratch, ulid, "meta.json"), os.path.join(cache.metas, ulid + ".json"))
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+    return generation
+
+
+def remote_bytes(remote, generation, ulids, incoming):
+    """Bytes the copy of the named blocks into `incoming` would move: a dry run of that same rsync."""
+    if not ulids:
+        return 0
+    text = rsync("-a", "-r", "--dry-run", "--stats", "--no-h", "--files-from=" + files_from(incoming, ulids),
+                 remote + "generations/" + generation + "/tsdb/", incoming + "/")
+    found = re.search(r"^Total transferred file size: ([\d,]+)", text, re.M)
+    if not found:
+        raise SyncError("rsync --stats printed no transferred size:\n" + text[-400:])
+    return int(found.group(1).replace(",", ""))
+
+
+def check_space(cache_root, need, keep_free):
+    free = shutil.disk_usage(cache_root).free
+    if free - need < keep_free:
+        raise SyncError("not enough disk for the copy: it needs %.1f GB, %.1f GB is free at %s, and %.1f GB must stay "
+                        "free (--keep-free-gb). Free some space, or narrow the run (--alert/--group, fewer --days)."
+                        % (need / GIB, free / GIB, cache_root, keep_free / GIB))
+    return free
+
+
+def make_read_only(directory):
+    for root, _dirs, files in os.walk(directory):
+        for name in files:
+            path = os.path.join(root, name)
+            os.chmod(path, os.stat(path).st_mode & ~0o222)
+
+
+def copy_blocks(cache, remote, generation, ulids):
+    """Copy the named blocks into blocks/, each accepted only when its meta.json is the listed one."""
+    if not ulids:
+        return
+    rsync("-a", "-r", "--partial", "--files-from=" + files_from(cache.incoming, ulids),
+          remote + "generations/" + generation + "/tsdb/", cache.incoming + "/", capture=False)
+    for ulid in ulids:
+        staged = os.path.join(cache.incoming, ulid)
+        with open(os.path.join(staged, "meta.json"), encoding="utf-8") as handle:
+            if json.load(handle) != cache.meta(ulid):
+                shutil.rmtree(staged, ignore_errors=True)
+                raise SyncError("block %s changed between its listing and its copy: run again" % ulid)
+        make_read_only(staged)
+        os.replace(staged, os.path.join(cache.blocks, ulid))
+    for name in os.listdir(cache.incoming):
+        if name.startswith(".files-"):
+            os.remove(os.path.join(cache.incoming, name))
+
+
+def prune(cache, keep=2):
+    """Drop what the newest `keep` generations no longer list: their blocks (compaction replaces a night's small
+    blocks with one bigger one, a new ulid), metas and the generations themselves -- as ci-runner's pull keeps two,
+    so a run that resolved the previous generation keeps its blocks."""
+    generations = sorted(n for n in os.listdir(cache.generations) if GENERATION.match(n))
+    kept = generations[-keep:]
+    listed = set()
+    for generation in kept:
+        listed |= set(cache.read(generation, "pull.json")["blocks"])
+    for ulid in cache.held() - listed:
+        shutil.rmtree(os.path.join(cache.blocks, ulid))
+    for name in os.listdir(cache.metas):
+        if name.endswith(".json") and name[:-5] not in listed:
+            os.remove(os.path.join(cache.metas, name))
+    for generation in generations[:-keep]:
+        shutil.rmtree(os.path.join(cache.generations, generation))
+
+
+def assemble(cache, generation, ulids, into):
+    """A snapshot directory as backtest-alerts reads one: tsdb/<ulid> links to the cached blocks, the generation's
+    rules and build info, and a pull.json whose range is THESE blocks' (the replay's floor must not claim history
+    the run did not copy)."""
+    os.makedirs(os.path.join(into, "tsdb"))
+    for ulid in ulids:
+        os.symlink(os.path.join(cache.blocks, ulid), os.path.join(into, "tsdb", ulid))
+    for name in ("rules.json", "buildinfo.json"):
+        shutil.copyfile(os.path.join(cache.generations, generation, name), os.path.join(into, name))
+    metas = [cache.meta(u) for u in ulids]
+    pull = cache.read(generation, "pull.json")
+    with open(os.path.join(into, "pull.json"), "w", encoding="utf-8") as handle:
+        json.dump({"pulled_at": pull.get("pulled_at"), "generation": generation, "blocks": ulids,
+                   "min_time": min(m["minTime"] for m in metas) / 1000.0,
+                   "max_time": max(m["maxTime"] for m in metas) / 1000.0}, handle, indent=2)
+    return into
+
+
+# ── PROMETHEUS ───────────────────────────────────────────────────────────────────────────────────
+
+
+def find_nix():
+    for candidate in NIX_CANDIDATES:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
+
+
+def nix_prometheus(version):
+    """The movies flake's nixpkgs prometheus, when it is `version`; else None."""
+    nix = find_nix()
+    if not nix:
+        return None
+    common = [nix, "--extra-experimental-features", "nix-command flakes"]
+    flake_version = subprocess.run(common + ["eval", "--raw", "--inputs-from", INFRA, "nixpkgs#prometheus.version"],
+                                   capture_output=True, text=True)
+    if flake_version.returncode != 0 or flake_version.stdout.strip() != version:
+        if flake_version.returncode == 0:
+            print("prometheus: the flake's nixpkgs has %s, production ran %s: using the upstream release"
+                  % (flake_version.stdout.strip(), version))
+        return None
+    built = subprocess.run(common + ["build", "--no-link", "--print-out-paths", "--inputs-from", INFRA,
+                                     "nixpkgs#prometheus"], capture_output=True, text=True)
+    if built.returncode != 0:
+        return None
+    binary = os.path.join(built.stdout.strip().splitlines()[-1], "bin", "prometheus")
+    return binary if os.access(binary, os.X_OK) else None
+
+
+def release_prometheus(version, cache_root):
+    """The upstream release of `version` for this machine, checksum-verified, kept under the cache."""
+    system = platform.system().lower()
+    arch = {"x86_64": "amd64", "amd64": "amd64", "arm64": "arm64", "aarch64": "arm64"}[platform.machine().lower()]
+    name = "prometheus-%s.%s-%s" % (version, system, arch)
+    target = os.path.join(cache_root, "prometheus", name, "prometheus")
+    if os.access(target, os.X_OK):
+        return target
+    base = "https://github.com/prometheus/prometheus/releases/download/v%s/" % version
+    scratch = tempfile.mkdtemp(prefix=".prometheus-", dir=cache_root)
+    try:
+        archive = os.path.join(scratch, name + ".tar.gz")
+        urllib.request.urlretrieve(base + name + ".tar.gz", archive)
+        with urllib.request.urlopen(base + "sha256sums.txt") as response:
+            sums = dict(reversed(line.split()) for line in response.read().decode().splitlines() if line.strip())
+        with open(archive, "rb") as handle:
+            if hashlib.sha256(handle.read()).hexdigest() != sums.get(name + ".tar.gz"):
+                raise SyncError("the downloaded %s.tar.gz does not match the release's sha256sums.txt" % name)
+        with tarfile.open(archive) as tar:
+            tar.extractall(scratch, filter="data")
+        os.makedirs(os.path.dirname(os.path.dirname(target)), exist_ok=True)
+        os.replace(os.path.join(scratch, name), os.path.dirname(target))
+        return target
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def prometheus_for(version, cache_root):
+    override = os.environ.get("BACKTEST_PROMETHEUS_BINARY")
+    if override:
+        return override
+    return nix_prometheus(version) or release_prometheus(version, cache_root)
+
+
+# ── THE RUN ──────────────────────────────────────────────────────────────────────────────────────
+
+
+def governed(command, label="backtest-alerts-local"):
+    """`command` under a governor ticket (scripts/jvm-gate.sh gov_take) where the governor governs: Prometheus over
+    two weeks of blocks takes a few GB and the parallel queries take cores, like an sbt JVM."""
+    gate = os.path.join(ROOT, "scripts", "jvm-gate.sh")
+    if os.environ.get("KINOWO_GOVERNOR") == "0" or not os.path.exists(gate):
+        return command
+    script = ('. "$1"; shift; label="$1"; shift; '
+              'if governor_bin > /dev/null; then gov_take "$label" || { echo "the governor refused a ticket" >&2; '
+              'exit 2; }; fi; exec "$@"')
+    return ["bash", "-c", script, "governed", gate, label] + command
+
+
+def prepare(args, backtest_paths, out=sys.stdout):
+    """Bring the cache up to date for this run and assemble its snapshot: (snapshot directory, prometheus binary).
+    `backtest_paths` are the backtest-alerts whose rules decide what is needed (a replay's base and head)."""
+    started = time.time()
+    cache = Cache(args.cache)
+    remote = args.remote
+    if not args.offline:
+        if not remote.endswith((":", "/")):
+            raise SyncError("the remote must end in ':' or '/', got %r" % remote)
+        check_rsync()
+        generation = sync_generation(cache, remote)
+    else:
+        generation = cache.newest_generation()
+    pull = cache.read(generation, "pull.json")
+    metas = {u: cache.meta(u) for u in pull["blocks"]}
+    end = args.end_time or float(pull["max_time"])
+    needed = set()
+    for path in backtest_paths:
+        backtest = load_backtest(path)
+        alerts = backtest.load_rules()
+        records = {name: rule["expr"] for name, rule in backtest.load_recordings().items()}
+        log_text = open(args.from_log, encoding="utf-8", errors="replace").read() if args.from_log else None
+        selected = select(backtest, alerts, args, log_text)
+        catalogue = [] if args.no_incidents else (backtest.load_yaml(backtest.INCIDENTS, {}).get("incidents") or [])
+        needed |= set(blocks_for(metas, needed_intervals(backtest, selected, alerts, records, catalogue,
+                                                          end, args.days)))
+    needed = sorted(needed)
+    if not needed:
+        raise SyncError("no block of generation %s overlaps the window" % generation)
+    missing = [u for u in needed if u not in cache.held()]
+    if missing and args.offline:
+        raise SyncError("--offline, and %d needed block(s) are not cached: %s" % (len(missing), ", ".join(missing)))
+    copied = 0
+    if missing:
+        copied = remote_bytes(remote, generation, missing, cache.incoming)
+        free = check_space(cache.root, copied, args.keep_free_gb * GIB)
+        print("sync: copying %d of %d block(s), %.2f GB (%.0f GB free)"
+              % (len(missing), len(needed), copied / GIB, free / GIB), file=out, flush=True)
+        copy_blocks(cache, remote, generation, missing)
+    if not args.offline:
+        prune(cache)
+    run_dir = tempfile.mkdtemp(prefix="run-", dir=cache.root)
+    snapshot = assemble(cache, generation, needed, os.path.join(run_dir, "snapshot"))
+    version = cache.read(generation, "buildinfo.json")["data"]["version"]
+    binary = prometheus_for(version, cache.root)
+    print("sync: generation %s, %d block(s) (%d copied, %.2f GB), %s .. %s, in %.0f s; prometheus %s"
+          % (generation, len(needed), len(missing), copied / GIB, iso(min(metas[u]["minTime"] for u in needed)),
+             iso(max(metas[u]["maxTime"] for u in needed)), time.time() - started, version), file=out, flush=True)
+    return run_dir, snapshot, binary
+
+
+def select(backtest, alerts, args, log_text):
+    chooser = getattr(backtest, "select_alerts", None)
+    if chooser:
+        return chooser(alerts, args.alert or [], args.group or [], log_text) or sorted(alerts)
+    return sorted(args.alert) if args.alert else sorted(alerts)
+
+
+def iso(millis):
+    return datetime.datetime.fromtimestamp(millis / 1000.0, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+
+def scope_arguments(args):
+    scope = [x for name in args.alert or [] for x in ("--alert", name)]
+    scope += [x for group in args.group or [] for x in ("--group", group)]
+    if args.from_log:
+        scope += ["--from-log", os.path.abspath(args.from_log)]
+    for flag, value in (("--days", args.days), ("--step", args.step), ("--end", args.end), ("--jobs", args.jobs)):
+        if value is not None:
+            scope += [flag, str(value)]
+    if args.no_incidents:
+        scope.append("--no-incidents")
+    if not args.write:
+        scope.append("--no-write")
+    return scope
+
+
+def backtest_command(tool, snapshot, binary, scope):
+    return [sys.executable, tool, "--source", "snapshot", "--snapshot", snapshot,
+            "--prometheus-binary", binary] + scope
+
+
+def parser():
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("--alert", action="append", default=[], help="only these alerts (repeatable)")
+    p.add_argument("--group", action="append", default=[], help="only the alerts of this rule file (repeatable)")
+    p.add_argument("--from-log", help="only the alerts a failing run's log names")
+    p.add_argument("--days", type=float, default=14)
+    p.add_argument("--step", type=int)
+    p.add_argument("--end", help="window end (ISO, UTC); default where the copy ends")
+    p.add_argument("--jobs", type=int, default=8, help="parallel queries (default 8: a laptop shares its cores)")
+    p.add_argument("--no-incidents", action="store_true")
+    p.add_argument("--write", action="store_true", help="write the baseline (only for a run of every alert)")
+    p.add_argument("--offline", action="store_true", help="use the cache as it is: no ssh")
+    p.add_argument("--keep-free-gb", type=float, default=20, help="refuse a copy leaving less than this free")
+    p.add_argument("--cache", default=os.environ.get("BACKTEST_LOCAL_CACHE", DEFAULT_CACHE))
+    p.add_argument("--remote", default=os.environ.get("BACKTEST_SNAPSHOT_REMOTE", DEFAULT_REMOTE))
+    return p
+
+
+def parse(argv):
+    args = parser().parse_args(argv)
+    args.end_time = None
+    if args.end:
+        args.end_time = datetime.datetime.fromisoformat(args.end.replace("Z", "+00:00")).timestamp()
+    return args
+
+
+def ensure_yaml():
+    """Re-run under a python that imports PyYAML (scripts/python-venv), as CI's job puts one on PATH."""
+    try:
+        import yaml  # noqa: F401
+        return
+    except ImportError:
+        pass
+    if os.environ.get("BACKTEST_LOCAL_REEXEC"):
+        sys.exit("PyYAML is still missing after scripts/python-venv: see its output")
+    venv = subprocess.run([os.path.join(ROOT, "scripts", "python-venv"),
+                           os.path.join(ROOT, "scripts", "pyyaml-requirements.txt"), "yaml"],
+                          capture_output=True, text=True)
+    if venv.returncode != 0:
+        sys.exit("cannot build the PyYAML venv: %s" % venv.stderr.strip()[-400:])
+    os.environ["BACKTEST_LOCAL_REEXEC"] = "1"
+    python = os.path.join(venv.stdout.strip(), "python3")
+    os.execv(python, [python] + sys.argv)
+
+
+def main(argv=None):
+    ensure_yaml()
+    args = parse(sys.argv[1:] if argv is None else argv)
+    tool = os.environ.get("BACKTEST_ALERTS") or os.path.join(HERE, "backtest-alerts")
+    started = time.time()
+    try:
+        run_dir, snapshot, binary = prepare(args, [os.path.join(HERE, "backtest-alerts")])
+    except (SyncError, OSError) as err:
+        print("backtest-alerts-local: %s" % err, file=sys.stderr)
+        return 2
+    try:
+        done = subprocess.run(governed(backtest_command(tool, snapshot, binary, scope_arguments(args))), cwd=ROOT)
+    finally:
+        shutil.rmtree(run_dir, ignore_errors=True)
+    print("backtest-alerts-local: %.0f s in all (sync %s)" % (time.time() - started, "skipped" if args.offline
+                                                              else "included"))
+    return done.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

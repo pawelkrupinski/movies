@@ -1,0 +1,11 @@
+{
+  "status": "success",
+  "data": {
+    "version": "3.12.0",
+    "revision": "fixture",
+    "branch": "",
+    "buildUser": "",
+    "buildDate": "",
+    "goVersion": ""
+  }
+}

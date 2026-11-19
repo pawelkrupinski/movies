@@ -1,0 +1,18 @@
+{
+	"ulid": "01M7SX91BETSE79BNYR7FWNDS9",
+	"minTime": 1761969600000,
+	"maxTime": 1761976740001,
+	"stats": {
+		"numSamples": 480,
+		"numFloatSamples": 480,
+		"numSeries": 4,
+		"numChunks": 4
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01M7SX91BETSE79BNYR7FWNDS9"
+		]
+	},
+	"version": 1
+}
