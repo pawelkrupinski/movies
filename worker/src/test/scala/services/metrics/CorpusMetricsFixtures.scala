@@ -83,5 +83,5 @@ object CorpusMetricsFixtures {
 
   /** The census of exactly `rows`, against `at`. */
   def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CensusReading =
-    CensusReading.of(rows, City.all, at, SingleCountryNormalizer.titleNormalizer)
+    CorpusCensus.read(rows, City.all, at, SingleCountryNormalizer.titleNormalizer)
 }
