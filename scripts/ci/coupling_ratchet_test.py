@@ -9,7 +9,8 @@ range passes only when a commit changing it carries `Coupling: <why>`, and so do
 changed, a contract's member added or dropped); a contract past 8 members (or its grandfathered `contract-size`) fails;
 falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
 code, each below X's row, the union of what they and X's remainder reference within X's frozen reference set) freezes
-its pieces, and lets the distance row of a package holding X or a piece rise by 0.02 at most; nothing else does.
+its pieces, and lets the distance row of a package holding X, a piece or a class they use rise by 0.02 at most;
+nothing else does.
 COUPLING_RATCHET_UNDER_TEST names another copy of the tool (coupling-ratchet-mutation-test.sh's mutants)."""
 
 from __future__ import annotations
@@ -466,17 +467,18 @@ def scala(cls: str, names, extra: str = "") -> str:
     return f"package services.readmodel\n\nfinal class {cls}(deps: Deps) {{\n" + "".join(member(n) for n in names) + extra + "}\n"
 
 
-def split_rows(*pieces: str, sweeper: int = None, readmodel_distance: int = 30, movies_distance: int = 48) -> str:
+def split_rows(*pieces: str, sweeper: int = None, readmodel_distance: int = 30, movies_distance: int = 48,
+               web_distance: int = 40) -> str:
     kept = [f"fanout\t{SWEEPER}\t{sweeper}"] if sweeper else []
     return rows(*kept, *pieces, f"distance\tservices.readmodel\t{readmodel_distance}", f"distance\tservices.movies\t{movies_distance}",
-                drop=("distance\tservices.movies",))
+                f"distance\tservices.web\t{web_distance}", drop=("distance\tservices.movies",))
 
 
 class CouplingSplitTest(RatchetHarness):
     """A frozen class split honestly: `Coupling: split of <X>`, the pieces taking over X's code, each strictly below X's
     frozen value, the union of what they and X's remainder reference within X's frozen reference set at the base --
-    each piece frozen at its own value from then on, and the distance rows of the packages holding X or a piece let rise
-    by 0.02 at most in that range."""
+    each piece frozen at its own value from then on, and the distance rows of the packages holding X, a piece or a class
+    they use let rise by 0.02 at most in that range."""
 
     def setUp(self):
         super().setUp()
@@ -608,7 +610,9 @@ class CouplingSplitTest(RatchetHarness):
                           fanouts={PLANNER: 7, SWEEPER: 36})
 
     # THE DISTANCE TOLERANCE: a split moves types between packages' counts, so a package holding X or a piece may see
-    # its frozen distance rise by 0.02 at most, re-frozen there; nowhere else, and never outside a valid split.
+    # its frozen distance rise by 0.02 at most, re-frozen there; so may a package the split's references reach (each
+    # piece is one more outside class using it: its Ca rises, its instability falls); nowhere else, and never outside a
+    # valid split.
     VALID = {PLANNER: deps(0, 17), PASS: deps(17, 28)}
 
     def test_a_valid_split_may_raise_its_packages_distance_by_two_hundredths(self):
@@ -627,10 +631,21 @@ class CouplingSplitTest(RatchetHarness):
         self.assert_fails(recorded, "distance services.readmodel raised 30 -> 31", rng=f"{self.base}..{head}",
                           fanouts={SWEEPER: deps(0, 36)})
 
-    def test_a_split_cannot_raise_another_packages_distance(self):
-        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=49)
+    def test_a_valid_split_may_raise_the_distance_of_a_package_it_uses_by_two_hundredths(self):
+        # services.movies holds the sweeper's Dep*: two pieces using them are two outside classes where one was
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=50)
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
-        self.assert_fails(recorded, "distance services.movies raised 48 -> 49", rng=f"{self.base}..{head}", fanouts=self.VALID)
+        self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_valid_split_raising_a_used_packages_distance_by_three_hundredths_fails(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=51)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "distance services.movies raised 48 -> 51", rng=f"{self.base}..{head}", fanouts=self.VALID)
+
+    def test_a_split_cannot_raise_the_distance_of_a_package_it_does_not_reach(self):
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", web_distance=41)
+        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(recorded, "distance services.web raised 40 -> 41", rng=f"{self.base}..{head}", fanouts=self.VALID)
 
     def test_a_refused_split_raises_no_distance(self):
         recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=31)

@@ -85,7 +85,8 @@ mutants=(
             elif False:'
   'a split may raise distance without bound @@ value - before[key] <= DISTANCE_SPLIT_TOLERANCE @@ True'
   'the distance tolerance is 3 @@ DISTANCE_SPLIT_TOLERANCE = 2 @@ DISTANCE_SPLIT_TOLERANCE = 3'
-  'a refused split raises distance @@ packages |= {package_of(c) for c in internal} @@ pass'
+  'a refused split raises distance @@ packages |= {package_of(c) for c in internal} | {package_of(t) for t in union if not t.startswith("contract:")} @@ pass'
+  'a split credits no package it uses @@ | {package_of(t) for t in union if not t.startswith("contract:")} @@ | set()'
   'a split may raise any package distance @@ and key in split_packages and value @@ and value'
   'any piece takes over code @@ if not ok:
                 why.append @@ if False:

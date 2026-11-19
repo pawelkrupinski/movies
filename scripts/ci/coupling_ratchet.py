@@ -32,8 +32,9 @@
 # X internal to the split -- lies within X's frozen reference set at the base (test/resources/coupling-fanout-refs.tsv,
 # which `--update` writes beside the baseline, as many entries as X's row; a contract X used covers its members): the
 # split adds no dependency, though the pieces' counts may sum past X's when they share its types. The pieces' rows then
-# fall only, like any frozen row. In that range the frozen distance row of a package holding X or a piece may rise by
-# DISTANCE_SPLIT_TOLERANCE hundredths at most (moving types shifts a package's abstractness), re-frozen at the new value;
+# fall only, like any frozen row. In that range the frozen distance row of a package holding X or a piece, or holding a
+# class the split's references reach, may rise by DISTANCE_SPLIT_TOLERANCE hundredths at most (moving types shifts a
+# package's abstractness; each piece using a package is one more outside class in its Ca), re-frozen at the new value;
 # outside a valid split a distance row never rises. `--fanouts` (couplingReport's fourth output, every class's held
 # fan-out and what it counts) gives each piece's and the remainder's value and references.
 #
@@ -64,7 +65,7 @@ BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
 EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
 REFS_PATH = "test/resources/coupling-fanout-refs.tsv"
-DISTANCE_SPLIT_TOLERANCE = 2  # hundredths a valid split may raise the distance of a package holding X or a piece
+DISTANCE_SPLIT_TOLERANCE = 2  # hundredths a valid split may raise the distance of a package holding X, a piece, or a use
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
 VALUED = ("ce", "fanout", "distance")
 FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
@@ -329,7 +330,9 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
             refused.append(f"{summary}: " + "; ".join(why))
         else:
             admitted |= set(pieces)
-            packages |= {package_of(c) for c in internal}
+            # the packages holding X or a piece, and those the split's references reach: each piece is one more outside
+            # class using them (Ca counts classes), so their instability falls and their distance may rise
+            packages |= {package_of(c) for c in internal} | {package_of(t) for t in union if not t.startswith("contract:")}
             notes.append(f"{summary}: their references ({len(union)}) within {original}'s {frozen[original]}")
     return admitted, packages, notes, refused
 
