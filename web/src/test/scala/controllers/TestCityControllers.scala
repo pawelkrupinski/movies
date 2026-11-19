@@ -9,8 +9,8 @@ import services.readmodel.{TestReadModel, WebReadModel}
  *  the legacy-address redirects ([[legacy]]) — over ONE [[CityRequests]] and ONE read model, as
  *  the composition root wires them, plus that [[WebReadModel]] so a test can
  *  `reload()` to bump the mtime. */
-final case class TestCityControllers(movie: MovieController, api: MovieApiController, crawler: CrawlerController,
-                                    legacy: LegacyRedirectController, readModel: WebReadModel)
+final case class TestCityControllers(movie: MovieController, filmPage: FilmPageController, api: MovieApiController,
+                                    crawler: CrawlerController, legacy: LegacyRedirectController, readModel: WebReadModel)
 
 /** Shared builder for fully-wired [[TestCityControllers]] backed by an in-memory
  *  read model and no live HTTP — the seam every controller spec needs. Pass the
@@ -95,10 +95,11 @@ object TestCityControllers {
       minifier               = tools.Minifier.forMode(mode),
       pageTags               = pageTags,
       recordRender           = recordRender,
-      filmPageServed         = filmPageServed,
       filmCards              = filmCards,
     )
-    TestCityControllers(movie, new MovieApiController(cc, cityRequests, service),
+    val filmPage = new FilmPageController(cc, cityRequests, service, oauthProviders = Set.empty, tools.Minifier.forMode(mode),
+      pageTags, filmPageServed)
+    TestCityControllers(movie, filmPage, new MovieApiController(cc, cityRequests, service),
       new CrawlerController(cc, cityRequests, CrawlerFiles.live(servingCountry, service, readModel_)),
       new LegacyRedirectController(cc, cityRequests), readModel_)
   }

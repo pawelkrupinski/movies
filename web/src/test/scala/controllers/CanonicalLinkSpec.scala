@@ -18,8 +18,9 @@ import play.api.test.Helpers._
  *  both halves. */
 class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def controller(): MovieController =
-    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).movie
+  private def controllers(): TestCityControllers =
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))
+  private def controller(): MovieController = controllers().movie
 
   private def req(path: String) = EdgeRequest(path)
 
@@ -85,11 +86,11 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
     // unindexable by someone deciding it should be.
     robotsOf(contentAsString(controller().index("poznan")(req("/poznan/")))) shouldBe None
     robotsOf(contentAsString(controller().browse("poznan", None, None, None, None)(req("/poznan/movies")))) shouldBe None
-    robotsOf(contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))) shouldBe None
+    robotsOf(contentAsString(controllers().filmPage.filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))) shouldBe None
   }
 
   "the film page" should "self-canonicalise to its own deep-link" in {
-    val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))
+    val html = contentAsString(controllers().filmPage.filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))
     canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/movie/testowy-film")
   }
 }

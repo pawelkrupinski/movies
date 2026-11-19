@@ -91,7 +91,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   "reverse routes" should "carry the mount point on every kind of URL" in {
     new controllers.ReverseLandingController("/uk/").index().url shouldBe "/uk/"
     new controllers.ReverseMovieController("/uk/").index("canterbury").url shouldBe "/uk/canterbury/"
-    new controllers.ReverseMovieController("/uk/").filmBySlug("canterbury", "dune").url shouldBe
+    new controllers.ReverseFilmPageController("/uk/").filmBySlug("canterbury", "dune").url shouldBe
       "/uk/canterbury/movie/dune"
     new controllers.ReverseCrawlerController("/uk/").sitemap.url shouldBe "/uk/sitemap.xml"
     new controllers.ReverseAssets("/uk/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
@@ -121,7 +121,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   it should "be unchanged at the root, so Poland's URLs cannot move" in {
     new controllers.ReverseLandingController("/").index().url shouldBe "/"
     new controllers.ReverseMovieController("/").index("poznan").url shouldBe "/poznan/"
-    new controllers.ReverseMovieController("/").filmBySlug("poznan", "diuna").url shouldBe
+    new controllers.ReverseFilmPageController("/").filmBySlug("poznan", "diuna").url shouldBe
       "/poznan/movie/diuna"
     new controllers.ReverseAssets("/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
       "/assets/js/shared.js"

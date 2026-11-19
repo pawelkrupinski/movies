@@ -36,7 +36,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
     val record = recordShowingIn(title, Helios, CinemaCityWroclavia)
     val ctrl = TestCityControllers.build(Seq((title, Some(2025), record)))
 
-    val result = ctrl.movie.filmBySlug("poznan", "zmierzch").apply(FakeRequest(GET, "/poznan/movie/zmierzch"))
+    val result = ctrl.filmPage.filmBySlug("poznan", "zmierzch").apply(FakeRequest(GET, "/poznan/movie/zmierzch"))
     status(result) shouldBe OK
     val html = contentAsString(result)
 
@@ -53,7 +53,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
     val record = recordShowingIn(title, Helios)
     val ctrl = TestCityControllers.build(Seq((title, Some(2025), record)))
 
-    val html = contentAsString(ctrl.movie.filmBySlug("poznan", "odyseja").apply(FakeRequest(GET, "/poznan/movie/odyseja")))
+    val html = contentAsString(ctrl.filmPage.filmBySlug("poznan", "odyseja").apply(FakeRequest(GET, "/poznan/movie/odyseja")))
 
     // The class NAMES are always present — `_filmDetailStyles` emits their CSS
     // rules on every film page regardless. It's the actual ELEMENTS (the

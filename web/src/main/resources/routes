@@ -13,8 +13,8 @@ GET     /.well-known/assetlinks.json             controllers.WellKnownController
 
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
-GET     /:city/movie                controllers.MovieController.film(city: String, title: String)
-GET     /:city/movie/:slug          controllers.MovieController.filmBySlug(city: String, slug: String)
+GET     /:city/movie                controllers.FilmPageController.film(city: String, title: String)
+GET     /:city/movie/:slug          controllers.FilmPageController.filmBySlug(city: String, slug: String)
 # This city's slice of the crawl map — only actually linked from the country's
 # sitemap index once that country's flat file crosses
 # `SitemapBuilder.CityPartitionThreshold`; harmless (if unlinked) otherwise.

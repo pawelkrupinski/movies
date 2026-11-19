@@ -17,12 +17,12 @@ import play.api.test.Helpers._
  * same fold to the candidate schedule before comparing — otherwise every film
  * with a single-digit Arabic numeral 404s from its own old link.
  */
-class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
+class FilmPageLookupSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(title: String, year: Option[Int]): MovieController = {
+  private def buildController(title: String, year: Option[Int]): FilmPageController = {
     TestCityControllers.build(Seq(TestCityControllers.showing(title, year, imdbId = Some("tt12340108"),
       posterUrl = Some("https://cinema.example/poster.jpg"),
-      otherSources = Map(Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2")))))).movie
+      otherSources = Map(Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2")))))).filmPage
   }
 
   "GET /movie/{slug}" should "resolve a displayed title that contains a single-digit Arabic numeral" in {

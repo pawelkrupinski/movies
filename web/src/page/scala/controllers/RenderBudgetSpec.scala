@@ -59,7 +59,7 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** What each budgeted request asks of a controller. */
   private def listing(c: TestCityControllers)  = served(c.movie.index(city.slug), s"/${city.slug}/")
-  private def filmPage(c: TestCityControllers) = served(c.movie.filmBySlug(city.slug, film.slug.get), s"/${city.slug}/movie/${film.slug.get}")
+  private def filmPage(c: TestCityControllers) = served(c.filmPage.filmBySlug(city.slug, film.slug.get), s"/${city.slug}/movie/${film.slug.get}")
   private def browse(c: TestCityControllers)   = served(c.movie.browse(city.slug, Some(country), None, None, None), s"/${city.slug}/movies?country=$country")
   private def repertoire(c: TestCityControllers) = served(c.api.apiRepertoire(city.slug), s"/${city.slug}/api/repertoire")
   private def details(c: TestCityControllers)  = served(c.api.apiDetails(city.slug), s"/${city.slug}/api/details")

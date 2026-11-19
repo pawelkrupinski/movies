@@ -38,7 +38,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
   "An unknown city slug" should "404 on every city-scoped route" in {
     val ctrl = buildController()
     status(ctrl.movie.index("nieznane")(FakeRequest(GET, "/nieznane/")))               shouldBe NOT_FOUND
-    status(ctrl.movie.film("nieznane", "x")(FakeRequest(GET, "/nieznane/movie?title=x"))) shouldBe NOT_FOUND
+    status(ctrl.filmPage.film("nieznane", "x")(FakeRequest(GET, "/nieznane/movie?title=x"))) shouldBe NOT_FOUND
     status(ctrl.api.apiRepertoire("nieznane")(FakeRequest(GET, "/nieznane/api/repertoire"))) shouldBe NOT_FOUND
     status(ctrl.api.apiDetails("nieznane")(FakeRequest(GET, "/nieznane/api/details"))) shouldBe NOT_FOUND
   }

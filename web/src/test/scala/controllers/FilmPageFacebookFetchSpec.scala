@@ -20,7 +20,7 @@ class FilmPageFacebookFetchSpec extends AnyFlatSpec with Matchers {
     val ctrl = TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))),
       filmPageServed = recorder.served)
     // Facebook's crawler follows a shared link with its own query (`fbclid`): the page it holds is still the film's.
-    val response = ctrl.movie.filmBySlug("poznan", "testowy-film")(
+    val response = ctrl.filmPage.filmBySlug("poznan", "testowy-film")(
       EdgeRequest("/poznan/movie/testowy-film?fbclid=IwAR0abc").withHeaders(USER_AGENT -> userAgent))
     status(response) shouldBe OK
     recorder.stop()

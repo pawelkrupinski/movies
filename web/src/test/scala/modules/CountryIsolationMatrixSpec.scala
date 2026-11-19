@@ -170,7 +170,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       val pages = Seq(
         "landing"      -> body(country, "/", wiring.landingController.index()),
         "listing"      -> listing,
-        "film"         -> body(country, s"/${city.slug}/movie/$slug", mc.filmBySlug(city.slug, slug)),
+        "film"         -> body(country, s"/${city.slug}/movie/$slug", wiring.filmPageController.filmBySlug(city.slug, slug)),
         "browse"       -> body(country, s"/${city.slug}/movies", mc.browse(city.slug, None, None, None, None, None, None, None, None)),
         "support"      -> body(country, "/support", wiring.supportController.support(None)),
         "robots.txt"   -> body(country, "/robots.txt", wiring.crawlerController.robotsTxt),
@@ -187,7 +187,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       val mc      = wiring.movieController
       val listing = body(country, s"/${city.slug}/", mc.index(city.slug))
       val slug    = s"""/${city.slug}/movie/([a-z0-9-]+)""".r.findFirstMatchIn(listing).get.group(1)
-      val film    = body(country, s"/${city.slug}/movie/$slug", mc.filmBySlug(city.slug, slug))
+      val film    = body(country, s"/${city.slug}/movie/$slug", wiring.filmPageController.filmBySlug(city.slug, slug))
       val og      = """<meta property="og:(url|image|locale|site_name)"\s+content="([^"]*)"""".r
         .findAllMatchIn(film).map(m => m.group(1) -> m.group(2)).toMap
       og("url") should startWith (country.webUrl.get + "/")

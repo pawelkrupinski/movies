@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, FilmPageController, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 
 /** ── The public site ───────────────────────────────────────────────────────
  *  The controllers a visitor (or the mobile apps) reach without signing in:
@@ -49,7 +49,10 @@ trait ControllersWiring { self: Wiring =>
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,
-    recordRender = webRenderMetrics.record,
+    recordRender = webRenderMetrics.record)
+  // The film pages, read per render like the listing.
+  lazy val filmPageController = new FilmPageController(controllerComponents, cityRequests, movieControllerService,
+    oauthProviders.keySet, minifier, pageTags = () => controllers.PageTags.from(processConfiguration),
     filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)))
   // The per-city JSON the mobile apps read (`/{city}/api/*`).
   lazy val movieApiController = new MovieApiController(controllerComponents, cityRequests, movieControllerService)

@@ -10,11 +10,11 @@ import play.api.test.Helpers._
  *  the title lookup never had to deal with. */
 class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
-  private def controllerFor(titles: (String, Int)*): MovieController =
+  private def controllerFor(titles: (String, Int)*): TestCityControllers =
     TestCityControllers.build(titles.map { case (title, year) =>
       TestCityControllers.showing(title, Some(year), imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
         posterUrl = Some("https://cinema.example/poster.jpg"))
-    }).movie
+    })
 
   private def titleOf(html: String): String =
     "<title>(.*?)</title>".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")
@@ -22,7 +22,7 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
   "a slug" should "resolve a title whose diacritics and punctuation folded away" in {
     val ctrl = controllerFor(("Diuna: Część druga", 2024))
     val html = contentAsString(
-      ctrl.filmBySlug("poznan", "diuna-czesc-druga").apply(FakeRequest(GET, "/poznan/movie/diuna-czesc-druga"))
+      ctrl.filmPage.filmBySlug("poznan", "diuna-czesc-druga").apply(FakeRequest(GET, "/poznan/movie/diuna-czesc-druga"))
     )
     titleOf(html) should include("Diuna: Część druga")
   }
@@ -34,14 +34,14 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
     // resolver tie-breaks on title instead — "Rocky 2" sorts before "Rocky II".
     val ctrl = controllerFor(("Rocky II", 1979), ("Rocky 2", 1979))
     val html = contentAsString(
-      ctrl.filmBySlug("poznan", "rocky-2").apply(FakeRequest(GET, "/poznan/movie/rocky-2"))
+      ctrl.filmPage.filmBySlug("poznan", "rocky-2").apply(FakeRequest(GET, "/poznan/movie/rocky-2"))
     )
     titleOf(html) should include("Rocky 2")
   }
 
   it should "404 rather than fall back to some near-miss film" in {
     val ctrl = controllerFor(("Diuna", 2024))
-    val result = ctrl.filmBySlug("poznan", "diuna-czesc-druga")
+    val result = ctrl.filmPage.filmBySlug("poznan", "diuna-czesc-druga")
       .apply(FakeRequest(GET, "/poznan/movie/diuna-czesc-druga"))
     status(result) shouldBe NOT_FOUND
   }
@@ -55,9 +55,9 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
     val ctrl = controllerFor(("Zaproszenie", 2026), ("Zaproszenie", 1986))
 
     val newest = contentAsString(
-      ctrl.filmBySlug("poznan", "zaproszenie").apply(FakeRequest(GET, "/poznan/movie/zaproszenie")))
+      ctrl.filmPage.filmBySlug("poznan", "zaproszenie").apply(FakeRequest(GET, "/poznan/movie/zaproszenie")))
     val older = contentAsString(
-      ctrl.filmBySlug("poznan", "zaproszenie-1986").apply(FakeRequest(GET, "/poznan/movie/zaproszenie-1986")))
+      ctrl.filmPage.filmBySlug("poznan", "zaproszenie-1986").apply(FakeRequest(GET, "/poznan/movie/zaproszenie-1986")))
 
     titleOf(newest) should include("2026")
     titleOf(older)  should include("1986")
@@ -65,7 +65,7 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   it should "link each card at the film it actually addresses" in {
     val ctrl = controllerFor(("Zaproszenie", 2026), ("Zaproszenie", 1986))
-    val html = contentAsString(ctrl.index("poznan").apply(FakeRequest(GET, "/poznan/")))
+    val html = contentAsString(ctrl.movie.index("poznan").apply(FakeRequest(GET, "/poznan/")))
 
     val slugs = """data-slug="([^"]*)"""".r.findAllMatchIn(html).map(_.group(1)).toSeq
     slugs should contain allOf ("zaproszenie", "zaproszenie-1986")
@@ -81,7 +81,7 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   "an event-billed film" should "live at its clean title's address, with that as its canonical URL" in {
     val ctrl   = controllerFor((eventBilled, 2026))
-    val result = ctrl.filmBySlug("poznan", "jak-zyc-zeby-nie-zwariowac")
+    val result = ctrl.filmPage.filmBySlug("poznan", "jak-zyc-zeby-nie-zwariowac")
       .apply(FakeRequest(GET, "/poznan/movie/jak-zyc-zeby-nie-zwariowac"))
 
     status(result) shouldBe OK
@@ -91,7 +91,7 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   it should "301 its former billing address onto the clean one" in {
     val ctrl   = controllerFor((eventBilled, 2026))
-    val result = ctrl.filmBySlug("poznan", "kino-na-obcasach-jak-zyc-zeby-nie-zwariowac")
+    val result = ctrl.filmPage.filmBySlug("poznan", "kino-na-obcasach-jak-zyc-zeby-nie-zwariowac")
       .apply(FakeRequest(GET, "/poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac?utm_source=fb"))
 
     status(result)           shouldBe MOVED_PERMANENTLY
@@ -100,7 +100,7 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   it should "link its card at the clean address" in {
     val ctrl = controllerFor((eventBilled, 2026))
-    val html = contentAsString(ctrl.index("poznan").apply(FakeRequest(GET, "/poznan/")))
+    val html = contentAsString(ctrl.movie.index("poznan").apply(FakeRequest(GET, "/poznan/")))
 
     """data-slug="([^"]*)"""".r.findAllMatchIn(html).map(_.group(1)).toSeq shouldBe Seq("jak-zyc-zeby-nie-zwariowac")
   }

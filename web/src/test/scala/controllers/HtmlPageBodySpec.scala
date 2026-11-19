@@ -14,7 +14,7 @@ class HtmlPageBodySpec extends AnyFlatSpec with Matchers {
   private val ctrl = TestCityControllers.build(Seq(TestCityControllers.showing(title, year = Some(2026))))
 
   "a film page" should "answer as UTF-8 HTML" in {
-    val result = ctrl.movie.filmBySlug("poznan", "milczaca-przyjaciolka")(FakeRequest())
+    val result = ctrl.filmPage.filmBySlug("poznan", "milczaca-przyjaciolka")(FakeRequest())
     status(result) shouldBe OK
     contentType(result) shouldBe Some("text/html"); charset(result) shouldBe Some("utf-8")
     contentAsString(result) should include (s"<title>$title")

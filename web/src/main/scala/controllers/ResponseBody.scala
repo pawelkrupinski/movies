@@ -65,6 +65,14 @@ object ResponseBody {
     def plain: ByteString   = tools.ThreadAllocation.measure(record)(body.plain)
   }
 
+  /** The HTML pages' content type. */
+  val HtmlContentType = "text/html; charset=utf-8"
+
+  /** `page` as a 200, its bytes written fragment by fragment ([[html]]) rather than through Play's
+   *  `Writeable[Html]`, which flattens the page into one `String` and then copies it into bytes: two thirds of what a
+   *  Warsaw film page allocated, and most of a browse page. Same bytes, same content type. */
+  def okHtml(page: Html): play.api.mvc.Result = play.api.mvc.Results.Ok(html(page).plain).as(HtmlContentType)
+
   /** A rendered Twirl page, written fragment by fragment. */
   def html(render: => Html): ResponseBody = new ResponseBody {
     def gzipped: ByteString = gzip(out => write(render, out))

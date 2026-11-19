@@ -49,7 +49,7 @@ class UntrustedDataNeutralisedSpec extends AnyFlatSpec with Matchers {
 
   private lazy val pages: Seq[(String, String)] = Seq(
     "listing"   -> listing,
-    "film page" -> page(controller.movie.filmBySlug("poznan", slug).apply(FakeRequest(GET, s"/poznan/movie/$slug"))),
+    "film page" -> page(controller.filmPage.filmBySlug("poznan", slug).apply(FakeRequest(GET, s"/poznan/movie/$slug"))),
     "browse"    -> page(controller.movie.browse("poznan", None, Some("Reżyser"), None, None).apply(FakeRequest(GET, "/poznan/movies"))),
   )
 
