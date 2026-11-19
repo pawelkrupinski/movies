@@ -1,7 +1,6 @@
 package services.corpus
 
 import models.{City, Showtime, ShowtimesDigest, VenueClock}
-import services.metrics.WorkerSourceFilmsMetrics
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneId, ZoneOffset}
 
@@ -35,8 +34,8 @@ private[corpus] final class CensusTally private (windows: Map[String, CensusTall
       }
     }
     cardCities.foreach { case (slug, (anyAhead, anyTomorrow)) =>
-      if (anyAhead) served((slug, WorkerSourceFilmsMetrics.Scope.All)) += 1
-      if (anyTomorrow) served((slug, WorkerSourceFilmsMetrics.Scope.Tomorrow)) += 1
+      if (anyAhead) served((slug, CensusSubsets.ServedAll)) += 1
+      if (anyTomorrow) served((slug, CensusSubsets.ServedTomorrow)) += 1
     }
   }
 }

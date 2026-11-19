@@ -1,12 +1,17 @@
 package services.corpus
 
 import models.MovieRecord
-import services.metrics.WorkerCorpusMetrics
+import services.metrics.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
 import services.movies.LatestTitleYear
 
-/** The corpus subsets of the [[CorpusCensus]] that do not move with the clock, in the order of their bits in
- *  [[FilmCensus.subsets]]. */
+/** The census's series names: the corpus subsets of the [[CorpusCensus]] — those that do not move with the clock
+ *  ([[Static]]) in the order of their bits in [[FilmCensus.subsets]] — and the scopes a city's films are served in. */
 object CensusSubsets {
+  /** Every scope a city's films are served in, and the two a tally counts. */
+  val ServedScopes: Seq[String] = WorkerSourceFilmsMetrics.Scope.all
+  val ServedAll: String         = WorkerSourceFilmsMetrics.Scope.All
+  val ServedTomorrow: String    = WorkerSourceFilmsMetrics.Scope.Tomorrow
+
   val Static: IndexedSeq[(String, MovieRecord => LatestTitleYear ?=> Boolean)] = {
     import WorkerCorpusMetrics.Subset._
     IndexedSeq(

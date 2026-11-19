@@ -2,7 +2,6 @@ package services.corpus
 
 import io.prometheus.metrics.core.metrics.Gauge
 import models.City
-import services.metrics.WorkerSourceFilmsMetrics
 
 import java.time.Instant
 
@@ -16,7 +15,7 @@ private[corpus] final class CensusGauges(corpus: Gauge, served: Gauge, showtimes
    *  back. Each appears with the first complete census instead. */
   def seeded(): Unit = {
     for (c <- cities) {
-      WorkerSourceFilmsMetrics.Scope.all.foreach(scope => served.labelValues(countryCode, c.slug, scope).set(0.0))
+      CensusSubsets.ServedScopes.foreach(scope => served.labelValues(countryCode, c.slug, scope).set(0.0))
       showtimes.labelValues(countryCode, c.slug).set(0.0)
     }
     widest.labelValues(countryCode).set(0.0)
@@ -29,7 +28,7 @@ private[corpus] final class CensusGauges(corpus: Gauge, served: Gauge, showtimes
   def published(now: CensusReading): Unit = {
     now.corpus.foreach { case (subset, n) => corpus.labelValues(countryCode, subset).set(n.toDouble) }
     for (c <- cities) {
-      WorkerSourceFilmsMetrics.Scope.all.foreach(scope =>
+      CensusSubsets.ServedScopes.foreach(scope =>
         served.labelValues(countryCode, c.slug, scope).set(now.served.getOrElse((c.slug, scope), 0).toDouble))
       showtimes.labelValues(countryCode, c.slug).set(now.showtimes.getOrElse(c.slug, 0).toDouble)
     }
