@@ -11,12 +11,12 @@ import services.titles.TitleNormalizer
 import scala.util.Try
 import scala.util.chaining.scalaUtilChainingOps
 
-/** The write of one planned projection ([[IdentityProjection]]): the FilmId map extended, the films that changed
- *  completed (their venue slots built in full by `rebuild` over the projection's index) and written, the ids no film carries retired, a film newly identified announced, and the projection
- *  counted and logged. Logs under the projection's `logger`. */
-private[services] final class ProjectionWrite(cache: MovieCache, filmIds: FilmIdCounterStore, announce: (CacheKey, MovieRecord) => Unit,
-                                              normalizer: TitleNormalizer, slotSource: VenueSlotSource, metrics: IdentityProjectionMetrics,
-                                              agreementBacklog: () => Boolean, logger: play.api.Logger) {
+/** The WRITE stage of THE IDENTITY PROJECTION ([[IdentityProjection]]): the FilmId map extended, the films that changed
+ *  completed (their venue slots built in full by `slotSource` over the projection's index) and written, the ids no film
+ *  carries retired, a film newly identified announced, and the write logged. Logs under the projection's `logger`. */
+final class ProjectionWrite(cache: MovieCache, filmIds: FilmIdCounterStore, announce: (CacheKey, MovieRecord) => Unit,
+                            normalizer: TitleNormalizer, slotSource: VenueSlotSource, agreementBacklog: () => Boolean,
+                            logger: play.api.Logger) {
   private val writes = new ProjectedFilmWrites(cache, logger)
 
   /** The films the last write could not write as planned. */
@@ -55,7 +55,6 @@ private[services] final class ProjectionWrite(cache: MovieCache, filmIds: FilmId
     val declined  = unwritten.size
     announceIdentified(changed, before)
     val seconds = started.seconds
-    metrics.projected(films, listings, plan.regroupings, seconds)
     lastUnwritten = unwritten
     lastParked    = parked
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,

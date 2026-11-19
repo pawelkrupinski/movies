@@ -71,26 +71,29 @@ private[identity] final class ProjectionWorld(
     def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
   }
   private val logger = play.api.Logger(classOf[IdentityProjection])
+  private given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+  private val slotSource = new VenueSlots.FromArchive(normalizer, slots, ScreeningTokens.of(Country.Poland),
+    venues => { rowsRead ++= venues; intake.rowsOf(venues) })
   val projection = new IdentityProjection(
     listings = () => { listingsRead(); intake.projectedByVenue(venues) },
     changedListings = () => { listingsRead(); intake.projectedChanged(venues) },
     resolve = resolve,
     cache = cache, filmIds = filmIds,
-    announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
-    drafter = new services.identityadapters.ProjectionDrafter(
-      { given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
-        new ProjectionDrafts(normalizer, new VenueSlots.FromArchive(normalizer, slots, ScreeningTokens.of(Country.Poland),
-          venues => { rowsRead ++= venues; intake.rowsOf(venues) })) },
-      normalizer, details, fingerprints, logger, slotMemoOf),
+    scoping = new services.identityadapters.ProjectionScoping(normalizer, pagesMoved),
+    drafter = new services.identityadapters.ProjectionDrafter(normalizer, slotSource, details, fingerprints, logger, slotMemoOf),
+    writer = new services.identityadapters.ProjectionWrite(cache, filmIds,
+      (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
+      normalizer, slotSource, backlog, logger),
+    drift = new services.identityadapters.ProjectionDrift(normalizer, metrics, logger),
     // as the worker's: each take kept as the projection moves it (AsyncIdentityHistory writes takes before it returns),
     // the reversal count seeded from them at construction
     takeReports = new services.identityadapters.ProjectionTakeReports(metrics, _ => (),
       new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
       new services.identityadapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
       new TakeReversals(clock, seed = services.identityadapters.TakeHistory.reversalsHeld(history, clock.millis())), logger),
-    normalizer = normalizer, metrics = metrics, clock = clock,
-    scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
-    suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () }, pagesMoved = pagesMoved)
+    metrics = metrics, clock = clock,
+    scopedBetweenWhole = scopedBetweenWhole,
+    suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () })
 
   def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
     archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))

@@ -1,16 +1,14 @@
 package services.identityadapters
 
-import models.{CacheKey, StoredMovieRecord}
+import models.StoredMovieRecord
 
 import services.identity.*
-import services.movies.LatestTitleYear
 
 import java.util.Locale
 
-import models.{Cinema, MovieRecord, ListingKey}
+import models.{Cinema, ListingKey}
 import play.api.Logging
 import services.movies.MovieCache
-import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration.FiniteDuration
@@ -95,19 +93,25 @@ object IdentityProjectionMetrics {
 /**
  * THE IDENTITY PROJECTION (docs/design/identity-resolver.md §2, §8 phase 3 = programme phase 5):
  * it replaced the landing's divert / redirect / re-key, the staging fold, the
- * settle's merges and splits and `UnresolvedTmdbReaper`'s concluding (all since deleted). Each projection:
+ * settle's merges and splits and `UnresolvedTmdbReaper`'s concluding (all since deleted). Each projection runs its
+ * stages in order, and this class holds only what passes between them — which mode it runs in, when it reconciles, how
+ * many shrinks it holds back, what the next projection builds on:
  *
- *  1. reads every venue's accepted listing (`IdentityListingIntake`) — the observations;
- *  2. resolves them (`IdentityResolver`, over the calibrated `IdentityCalibration` and the pins);
- *  3. plans the films ([[IdentityProjectionPlan]]): ids by overlap through the persisted FilmId
- *     map, each film's slots from its listings, every showtime kept;
- *  4. refuses a plan that would empty the site ([[ProjectionGuard]]);
- *  5. fetches, BY ID, the TMDB details of a film new to its record ([[ProjectionDrafter]]);
- *  6. writes the films that changed and retires the ids no film carries (through the cache's
- *     projection funnel, no identity gate), extends the FilmId map, and announces a film whose
- *     TMDB answer changed, once its details are in, to the enrichment chain (`announce`: IMDb-id
- *     recovery, and every rating re-fetched — the record was built afresh, without its former
- *     identity's ratings).
+ *  1. READ every venue's accepted listing (`listings`, `IdentityListingIntake`) — the observations — the stored films
+ *     (`cache`) and the FilmId map (`filmIds`);
+ *  2. RESOLVE them: the identity model's resolution (`resolve`), then the no-matches other film databases agree on
+ *     taken (`agreement`);
+ *  3. SCOPE ([[ProjectionScoping]]): move the index where its inputs moved, and close what moved over every film it
+ *     can reach — the scope this projection drafts (the whole corpus with nothing written to build on);
+ *  4. DRAFT ([[ProjectionDrafter]]): each film of the scope planned ([[IdentityProjectionPlan]]: ids by overlap through
+ *     the FilmId map, its slots from its listings, every showtime kept), its TMDB details fetched BY ID, titled and keyed;
+ *  5. GUARD ([[ProjectionGuard]]): refuse a plan that would empty the site;
+ *  6. WRITE ([[ProjectionWrite]]): extend the FilmId map, write the films that changed and retire the ids no film
+ *     carries (through the cache's projection funnel, no identity gate), and announce a film whose TMDB answer changed,
+ *     once its details are in, to the enrichment chain (IMDb-id recovery, and every rating re-fetched — the record was
+ *     built afresh, without its former identity's ratings);
+ *  7. REPORT: the take changes ([[ProjectionTakeReports]]), a reconcile's drift ([[ProjectionDrift]]) and the
+ *     corpus's suspect takes (`suspects`).
  *
  * `movies` / `movie_slots` / `screenings` keep their shape, so `ReadModelProjector` and every
  * enrichment keyed by the film read them unchanged, and switching the country back leaves rows the
@@ -121,12 +125,12 @@ final class IdentityProjection(
   resolve:     (() => Seq[Listing]) => Option[IdentityProjection.Resolved],
   cache:       MovieCache,
   filmIds:     FilmIdCounterStore,
-  announce:    (CacheKey, MovieRecord) => Unit,
-  /** Each film's draft: its venue slots, TMDB details, title and key. */
+  scoping:     ProjectionScoping,
   drafter:     ProjectionDrafter,
+  writer:      ProjectionWrite,
+  drift:       ProjectionDrift,
   /** How a written projection's take changes are told: the metrics, the change feed, the log and the take history. */
   takeReports: ProjectionTakeReports,
-  normalizer:  TitleNormalizer,
   metrics:     IdentityProjectionMetrics,
   clock:       Clock,
   /** The listings as [[listings]] gives them, read again only where this worker's own scrapes moved them: what a projection
@@ -141,24 +145,11 @@ final class IdentityProjection(
    *  the last projection with a field the model's decisions do not move with (`LiveProjectionIndex.republished`; `None`
    *  when there is no last projection to tell by). */
   agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution,
-  /** Whether the agreement left model takes unread for a later projection (`agreement.AgreementStage.backlog`). */
-  agreementBacklog: () => Boolean = () => false,
   /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
    *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
-  suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => (),
-  /** The venue pages (venue, page) whose read moved since the last call, each given once (`IndexedVenuePageFacts.takeMoved`):
-   *  a venue slot is built from its listing's page ([[CinemaSlotBuilder.pages]]), so a listing whose page moved is a change
-   *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. Read off the one feed
-   *  every input's change comes on; None when it no longer holds every filing since the last call: every listing on a
-   *  page is then a change. */
-  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil)
+  suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => ()
 ) extends Logging {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
-
   private val mapping = new FilmIdMapping(filmIds)
-  private val writer  = new ProjectionWrite(cache, filmIds, announce, normalizer, drafter.slotSource, metrics, agreementBacklog, logger)
-  private val drift   = new ProjectionDrift(normalizer, metrics, logger)
   private var consecutiveShrinks = 0
 
   /** That the last projection wrote everything it planned, and the FilmId map's size once it had. */
@@ -183,14 +174,8 @@ final class IdentityProjection(
    *  publisher reads. Both are shared with the model and the stage, nothing copied. */
   @volatile private var lastTaken: Option[IdentityProjection.Projected] = None
   def lastProjected: Option[IdentityProjection.Projected] = lastTaken
-  /** The index, kept from one projection to the next and moved where its inputs moved — afresh after any projection that
-   *  did not write all it planned. */
-  private var live = new LiveProjectionIndex(normalizer)
   /** The kept index over `counters`: what a spec holds to the index built afresh from the same corpus. */
-  private[services] def keptIndex(counters: FilmIdCounters): ProjectionIndex = synchronized(live.index(counters))
-
-  /** What moved under projections that were refused and wrote nothing: still to project. */
-  private var carried = ProjectionScope.Changes.none
+  private[services] def keptIndex(counters: FilmIdCounters): ProjectionIndex = synchronized(scoping.keptIndex(counters))
 
   /** One projection — of the corpus `whole` when asked, as the hourly reconciliation is, else of what moved. Throws only
    *  what reading its inputs throws. */
@@ -276,63 +261,37 @@ final class IdentityProjection(
         projectResolution(run, counters, planned(run, counters, modelResolution, held))
     }
 
-  /** The resolution as projected, the index moved under it, and the drafts of the scope it moved. */
+  /** The resolution as projected, the scope it moved, and the drafts of that scope. */
   private def planned(run: Run, counters: FilmIdCounters, modelResolution: Resolution,
                       held: Iterable[ListingKey]): IdentityProjection.Planned = {
     val phases = run.phases
     // what a venue re-published with a poster, days or names the model's decisions do not move with — unknown
     // to a projection with nothing to build on, whose index is read afresh
-    val republished = run.previous.map(_ => live.republished(run.byVenue))
+    val republished = run.previous.map(_ => scoping.republished(run.byVenue))
     val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
     phases.all.lastOption.foreach(metrics.agreementPhase(run.mode.label, _))
     lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution, { val venues = run.venues
       () => venues.iterator.flatMap(_._2).map(_.listing) }))
     val at          = clock.instant()
-    phases("seed")(drafter.seed())
-    if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); drafter.forget(); carried = ProjectionScope.Changes.none }
-    // Exactly the listings the resolution decided: one that reached the intake after the
-    // model's snapshot is projected by the next tick, never left out of its film by this one.
-    val updated = phases("index")(live.update(run.byVenue, held, resolution.decisions, run.stored) ++ pageChanges(run))
-    val index   = live.index(counters)
-    // What moved since the last projection, closed over every film a moved one's draft can move: what a projection
-    // of the scope drafts. None when the last one did not write all it planned, the FilmId map is not the one it
-    // left, or a stored film is not numbered yet — each re-decided only by projecting the whole corpus.
-    val changes = run.previous.filter(p => p.counters == counters.size && index.additions.isEmpty).map { _ =>
-      carried ++ updated ++ ProjectionScope.standing(index)
-    }
-    val moved       = changes.map(c => phases("scope")(ProjectionScope.close(index, c)))
+    if (run.previous.isEmpty) { scoping.reset(); drafter.forget() }
+    val scoped      = scoping(run.venues, run.byVenue, held, resolution.decisions, run.stored, counters,
+      building = run.previous.exists(_.counters == counters.size), phases)
     val reconciling = run.mode.reconciles(scopedSinceWhole, scopedBetweenWhole)
-    val reconcile   = moved.isDefined && reconciling
-    val freed       = changes.fold(Set.empty[String])(_.keys)
-    val (scope, draft, detailed, plan) = drafter.drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
-      changes.fold(Set.empty[ListingKey])(_.listings), index, phases)
-    IdentityProjection.Planned(resolution, at, updated, index, changes, moved, freed, reconciling, reconcile, scope, draft, detailed, plan)
-  }
-
-  /** The listings whose venue page moved since the last projection took them ([[pagesMoved]]): each one's slot is built
-   *  from the page as it is read now. Taken before the draft reads a page, so a page moving after is the next one's. */
-  private def pageChanges(run: Run): ProjectionScope.Changes = {
-    val moved = pagesMoved().map(_.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
-    if (moved.exists(_.isEmpty)) ProjectionScope.Changes.none
-    else ProjectionScope.Changes(run.venues.iterator.flatMap { case (cinema, listings) =>
-      // the feed no longer holding every filing since: any page may have moved
-      val pages = moved.fold(Option[String => Boolean](_ => true))(_.get(cinema))
-      pages.fold(Iterator.empty[ListingKey])(onPage => listings.iterator.map(_.listing.key).filter {
-        case ListingKey.Native(_, page, _) => onPage(page)
-        case _                             => false
-      })
-    }.toSet, Set.empty)
+    val reconcile   = scoped.moved.isDefined && reconciling
+    val drafted     = drafter.drafted(scoped.moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), scoped.freed,
+      scoped.listings, scoped.index, run.mode.periodic, phases)
+    IdentityProjection.Planned(resolution, at, scoped, reconciling, reconcile, drafted)
   }
 
   /** The planned projection, held back by the shrink guard or written. */
   private def projectResolution(run: Run, counters: FilmIdCounters,
                                 p: IdentityProjection.Planned): ProjectionTick = {
-    val (slotCounts, misses) = drafter.slotReport(run.mode.periodic, p.scope, run.phases)
-    val scopeStored = if (p.scope.whole) run.stored else run.stored.filter(s => p.scope.films(s.id.value))
-    run.phases("guard")(ProjectionGuard.refusal(p.draft, scopeStored, LocalDateTime.ofInstant(p.at, ZoneOffset.UTC), corpus = run.stored)) match {
+    import p.drafted.scope
+    val scopeStored = if (scope.whole) run.stored else run.stored.filter(s => scope.films(s.id.value))
+    run.phases("guard")(ProjectionGuard.refusal(p.drafted.draft, scopeStored, LocalDateTime.ofInstant(p.at, ZoneOffset.UTC), corpus = run.stored)) match {
       case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
         consecutiveShrinks += 1
-        carried = carried ++ p.updated
+        scoping.carry(p.scoped.updated)
         drafter.discard()
         refuse(run, IdentityProjectionMetrics.Refusal.Shrink, s"$why (refusal $consecutiveShrinks of ${ProjectionGuard.Grace})",
           Some(p.resolution), keep = true)
@@ -340,7 +299,7 @@ final class IdentityProjection(
         shrink.foreach(why => logger.warn(s"identity projection: $why — held ${ProjectionGuard.Grace} projections, now written"))
         consecutiveShrinks = 0
         writePlanned(run, counters, p, scopeStored)
-          .copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses, scoped = !p.scope.whole)
+          .copy(slotsReused = p.drafted.slots._1, slotsBuilt = p.drafted.slots._2, slotMisses = p.drafted.slotMisses, scoped = !scope.whole)
     }
   }
 
@@ -348,27 +307,29 @@ final class IdentityProjection(
    *  move what the next projection builds on. */
   private def writePlanned(run: Run, counters: FilmIdCounters, p: IdentityProjection.Planned,
                            scopeStored: Seq[StoredMovieRecord]): ProjectionTick = {
-    val films = run.stored.size - scopeStored.size + p.plan.films.size
-    val tick  = writer(p.resolution, p.index, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
-      movedElsewhere = p.changes.fold(Set.empty[String])(_.films))
+    import p.drafted.{scope, plan}
+    val films = run.stored.size - scopeStored.size + plan.films.size
+    val tick  = writer(p.resolution, p.scoped.index, p.drafted.detailed, plan, run.stored, run.listed, films, run.started, run.phases, patch = !scope.whole,
+      movedElsewhere = p.scoped.movedElsewhere)
+    metrics.projected(films, run.listed, plan.regroupings, run.started.seconds)
     // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
     // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
-    if (p.scope.whole && run.mode.periodic) Try(suspects(p.resolution, run.read)).failed.foreach(e =>
+    if (scope.whole && run.mode.periodic) Try(suspects(p.resolution, run.read)).failed.foreach(e =>
       logger.warn("identity projection: handing the suspect takes to their count failed", e))
     if (p.reconciling) metrics.reconciled(measured = p.reconcile)
-    if (p.reconcile) p.moved.foreach(drift(_, p.freed, p.index, tick, run.stored))
+    if (p.reconcile) p.scoped.moved.foreach(drift(_, p.scoped.freed, p.scoped.index, tick, run.stored))
     // The index holds what was written: a film written counts as moved next time only if another writer moves it. After a
     // declined write the next projection builds it afresh, so it is moved here only to read the change list off it.
     val written = writer.written(tick.changed)
-    takeReports(live.written(written, p.plan.retired), p.resolution, run.stored, written, live, trigger, ownTakes,
+    takeReports(scoping.live.written(written, plan.retired), p.resolution, run.stored, written, scoping.live, trigger, ownTakes,
       fresh = run.previous.isEmpty)
     if (tick.declined == 0) {
       ownTakes = true
-      drafter.commit(whole = p.scope.whole)
-      carried = ProjectionScope.Changes.none
-      last = Some(Last(counters.size + p.plan.counterAdditions.size))
+      scoping.committed()
+      drafter.commit(whole = scope.whole)
+      last = Some(Last(counters.size + plan.counterAdditions.size))
       // The hour between two reconciles is counted in periodic projections; one run on scrapes counts none.
-      scopedSinceWhole = if (p.scope.whole) 0 else if (run.mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
+      scopedSinceWhole = if (scope.whole) 0 else if (run.mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
     }
     tick
   }
@@ -396,13 +357,11 @@ final class IdentityProjection(
 
 object IdentityProjection {
 
-  /** A projection's plan before the guard: the resolution as projected (at `at`), what the index moved (`updated`), the
-   *  changes and scope they close over (none when the projection is of the whole corpus), and the scope's drafts. */
-  private[services] final case class Planned(resolution: Resolution, at: java.time.Instant, updated: ProjectionScope.Changes,
-                                             index: ProjectionIndex, changes: Option[ProjectionScope.Changes],
-                                             moved: Option[ProjectionScope], freed: Set[String], reconciling: Boolean,
-                                             reconcile: Boolean, scope: ProjectionScope, draft: ProjectionDraft,
-                                             detailed: ProjectionDraft, plan: ProjectionPlan)
+  /** A projection's plan before the guard: the resolution as projected (at `at`), its scope, whether it reconciles
+   *  (`reconciling`: it projects the whole corpus to; `reconcile`: with a scope to measure its drift against), and the
+   *  scope's drafts. */
+  private[services] final case class Planned(resolution: Resolution, at: java.time.Instant, scoped: ProjectionScoping.Scoped,
+                                             reconciling: Boolean, reconcile: Boolean, drafted: ProjectionDrafter.Drafted)
   /** How many periodic projections of a scope run between two of the whole corpus — the reconciliation that would put right
    *  a film a scope missed, and counts it ([[IdentityProjectionMetrics.drifted]]). The worker's projections run on scrapes
    *  and are reconciled by the clock ([[ReconcileEvery]]); this paces [[tick]] alone, which an operator's settle runs. */

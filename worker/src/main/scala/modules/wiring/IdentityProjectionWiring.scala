@@ -45,6 +45,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     // every piece logs under the projection's own logger, as its lines always have
     val logger  = play.api.Logger(classOf[IdentityProjection])
     val metrics = workerMetrics.identityProjection.forCountry(country.code)
+    given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+    // how a film's venue slots are built from the venues' rows: what the draft builds and the write completes them by
+    val slotSource = new services.identity.VenueSlots.FromArchive(titleNormalizer,
+      new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens, identityListingIntake.rowsOf)
     new IdentityProjection(
       listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
       changedListings = () => identityListingIntake.projectedChanged(liveCinemas),
@@ -54,12 +58,12 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
           IdentityProjection.Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings)) },
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
-      announce    = movieService.announceReidentified,
-      drafter     = new services.identityadapters.ProjectionDrafter(
-        { given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
-          new services.identity.ProjectionDrafts(titleNormalizer, new services.identity.VenueSlots.FromArchive(titleNormalizer,
-            new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens, identityListingIntake.rowsOf)) },
-        titleNormalizer, movieService.withFilmDetails, venueSlotFingerprints, logger),
+      scoping     = new services.identityadapters.ProjectionScoping(titleNormalizer, venuePageFacts.takeMoved),
+      drafter     = new services.identityadapters.ProjectionDrafter(titleNormalizer, slotSource, movieService.withFilmDetails,
+        venueSlotFingerprints, logger),
+      writer      = new services.identityadapters.ProjectionWrite(movieCache, filmIdCounterStore, movieService.announceReidentified,
+        titleNormalizer, slotSource, () => agreementStage.backlog, logger),
+      drift       = new services.identityadapters.ProjectionDrift(titleNormalizer, metrics, logger),
       takeReports = new services.identityadapters.ProjectionTakeReports(metrics,
         changeFeed = { val projections = new java.util.concurrent.atomic.AtomicLong
           changes => {
@@ -71,16 +75,13 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
           listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
         takeHistory = new services.identityadapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
         reversals   = new services.identity.TakeReversals(clock, seed = identityReversalsHeld()), logger = logger),
-      normalizer  = titleNormalizer,
       metrics     = metrics,
       clock       = clock,
       adopt       = identityListingIntake.adopt,
       // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw)
       agreement   = (resolution, listingOf, republished) =>
         services.identity.TakeJudgements.withdraw(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished), judged),
-      agreementBacklog = () => agreementStage.backlog,
-      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      pagesMoved  = venuePageFacts.takeMoved)
+      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) })
   }
 
   /** This country's hand judgements of takes, as the worker was built with them ([[BundledJudgements]]). */

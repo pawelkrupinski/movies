@@ -94,13 +94,12 @@ ce	tools	0
 fanout	services.corpus.CorpusCensus	10
 fanout	services.identity.ConstraintEdges	10
 fanout	services.identity.FamilyScope	12
-fanout	services.identity.ProjectionDrafting	11
 fanout	services.identity.ResolverRun	11
 fanout	services.identity.agreement.AgreementStage	17
 fanout	services.identity.agreement.AgreementStageComposition	11
 fanout	services.identityadapters.AgreementAsker	12
 fanout	services.identityadapters.IdentityModelService	13
-fanout	services.identityadapters.IdentityProjection	18
+fanout	services.identityadapters.IdentityProjection	16
 fanout	services.identityadapters.LookupFill	16
 fanout	services.identityadapters.ProjectionDrafter	10
 fanout	services.movies.CaffeineMovieCache	14

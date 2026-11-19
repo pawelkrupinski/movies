@@ -9,7 +9,7 @@ import services.titles.TitleNormalizer
 
 /** The drift a reconciling projection of the whole corpus finds ([[IdentityProjection]]): the films it wrote or retired
  *  that a scoped projection would have left wrong, counted and named. Logs under the projection's `logger`. */
-private[services] final class ProjectionDrift(normalizer: TitleNormalizer, metrics: IdentityProjectionMetrics, logger: play.api.Logger) {
+final class ProjectionDrift(normalizer: TitleNormalizer, metrics: IdentityProjectionMetrics, logger: play.api.Logger) {
 
   /** A reconciling projection of the whole corpus, checked against the scope its changes alone gave it — closed over key
    *  collisions too, read off this projection's own keys, which the scope's drafts would have had — so a film it wrote
