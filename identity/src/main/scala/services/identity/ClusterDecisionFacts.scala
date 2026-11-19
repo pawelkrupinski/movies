@@ -8,9 +8,9 @@ private[identity] final class ClusterDecisionFacts(scoring: CandidateScoring, fa
   import scoring.generation.{awaitsAnswer, queriesOf}
   import families.pinnedFilm
 
-  val pinned   = film.isDefined && cluster.exists(node => pinnedFilm.contains(node.id))
+  private val pinned   = film.isDefined && cluster.exists(node => pinnedFilm.contains(node.id))
   val scored   = scope.pooled(cluster)
-  val eligible = scored.filterNot(_.denied)
+  private val eligible = scored.filterNot(_.denied)
   private val ownMatch = cluster.exists(node => accepted.contains(node.id))
   val unknown  = cluster.flatMap(node => queriesOf(node.id)).distinct.count(query => awaitsAnswer(query))
 

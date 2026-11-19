@@ -56,7 +56,7 @@ private[identity] final class SourceCannotLinks(scoring: CandidateScoring, famil
   private def unoverruledLink(node: EvidenceNode): Option[Int] = families.scopeOf(node).standingFeedLink(node)
   /** Does the node's own evidence rate its link's film `own` no lower than the `others`: a pick its own scoring holds up? */
   private def holdsUp(node: EvidenceNode, own: Int, others: Int): Boolean = {
-    val scored = families.scopeOf(node).of(node)
+    val scored = families.scoredOf(node)
     def probability(film: Int) = scored.find(_.candidate.tmdbId == film).filterNot(_.denied).map(_.probability)
     probability(own).exists(mine => probability(others).forall(mine >= _))
   }
@@ -74,7 +74,7 @@ private[identity] final class SourceCannotLinks(scoring: CandidateScoring, famil
    *  Southern's film the venue also bills as "Das Ding mit Federn". */
   def creditDeniesHeld(node: EvidenceNode, otherFilm: Option[Int], nodeFilm: Option[Int]): Boolean =
     nodeFilm.isEmpty && otherFilm.exists { held =>
-      lazy val scored = families.scopeOf(node).of(node)
+      lazy val scored = families.scoredOf(node)
       node.listings.forall(_.directors.nonEmpty) &&
         scored.find(_.candidate.tmdbId == held).exists(_.category("director").contains("different")) &&
         (node.listings.forall(SourceReliability.decides(_, SourceReliability.Fact.Directors)) ||

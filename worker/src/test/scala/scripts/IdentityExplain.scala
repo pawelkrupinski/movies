@@ -1,7 +1,7 @@
 package scripts
 
 import models.Country
-import services.identity.{IdentityResolver, Listing, OlderRefs, ResolverDecision}
+import services.identity.{Listing, OlderRefs, ResolverDecision}
 import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{IdentityJudgements, UnmatchedClusters}
@@ -22,7 +22,7 @@ import java.util.Locale
  *  - the verdict `identity-judgements.tsv` gives the take.
  *
  * Self-contained on purpose: the script copies this one file into an older ref's tree to explain that ref, so it reads
- * only [[UnmatchedClusters]] and [[IdentityResolver.explain]].
+ * only [[UnmatchedClusters]] and the listing explanations ([[OlderRefs.explanations]]).
  *
  * {{{
  *   IdentityExplain <cc> [--venue S] [--title S] [--fixture <cc>.json.gz] [--labels identity-judgements.tsv] [--no-resolve] [--limit N]
@@ -73,8 +73,8 @@ object IdentityExplain {
     val agreedOf  = outcome.agreed.decisionOf
     val wanted    = chosen.map(_.key).toSet
     val explained = if (options.resolve)
-      IdentityResolver.explain(capture.listings, new UnmatchedClusters.Replay(capture), TitleNormalizer.forCountry(country))(wanted)
-        .map(e => e.decision.members.filter(wanted).toSet -> e).toSeq
+      OlderRefs.explanations(capture.listings, new UnmatchedClusters.Replay(capture), TitleNormalizer.forCountry(country))(wanted)
+        .map { case (decision, lines) => decision.members.filter(wanted).toSet -> (decision, lines) }
     else Nil
     val byCluster = chosen.groupBy(l => agreedOf.get(l.key).orElse(modelOf.get(l.key)).map(_.members.toSet).getOrElse(Set(l.key)))
     println(s"# ${country.code}: ${chosen.size} listing(s) in ${byCluster.size} cluster(s) of $fixture (${capture.listings.size} listings captured)")
@@ -91,14 +91,14 @@ object IdentityExplain {
       }
       val key = first.key
       modelOf.get(key).foreach(d => println(s"model (captured, whole corpus): ${d.render}"))
-      explained.find(_._1.contains(key)).foreach { case (_, e) =>
+      explained.find(_._1.contains(key)).foreach { case (_, (decision, lines)) =>
         println("re-resolved by this code over the capture's listings:")
-        e.render.foreach(line => println(s"  $line"))
-        e.decision.trace.rulesOf(key).filter(_.nonEmpty) match {
+        lines.foreach(line => println(s"  $line"))
+        decision.trace.rulesOf(key).filter(_.nonEmpty) match {
           case Nil   => ()
           case rules => println(s"  rules: ${rules.mkString(", ")}")
         }
-        e.decision.trace.nodes.get(key).foreach { node =>
+        decision.trace.nodes.get(key).foreach { node =>
           node.searched.foreach(s => println(s"  searched: $s"))
           node.refusals.foreach(r => println(s"  refused by ${r.rule}: ${r.why}${r.film.fold("")(f => s" (tmdb $f)")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))
           node.blocker.foreach(b => println(s"  blocker: $b"))

@@ -2,54 +2,20 @@ package services.identity
 
 import models.ListingKey
 
-import IdentityResolver.{FamilyCrossing, Mutation}
+import IdentityResolver.Mutation
 
-/** Stage B of a resolve — the global assignment, per family — over `stages`' candidates and families
- *  ([[IdentityResolver]]'s `run`). `pieces`: whether a member billing its cluster's film as one piece beside another thing
- *  is decided apart, as no film ([[NoFilmMembers]]) — the model's own takes; not a family's verdict
- *  ([[IdentityResolver.resolveScored]]). */
+/** Stage B of a resolve ([[IdentityResolver]]), per family: it SEQUENCES the stages and owns none of their steps --
+ *  [[Clustering]]'s round A, [[ClusterVoting]]'s votes for the clusters no member took a film alone in, Clustering's final
+ *  round over those films, and [[Deciding]]'s decisions of the final clusters. `pieces`: whether a member billing its
+ *  cluster's film as one piece beside another thing is decided apart ([[Deciding]]). */
 private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutation, pieces: Boolean) {
-  import stages.{acceptance, families, generation, links, ordered, scoring}
-  import generation.{candidateOf, issued, nodeById, nodes}
+  import stages.{families, generation}
+  import generation.{candidateOf, issued, nodes}
   import families.{familyOf, scopes}
 
-  // ── B. global assignment, per family ─────────────────────────────────────────────────
-  private val edges     = new ConstraintEdges(scoring, families, links)
-  private val voting    = new ClusterVoting(scoring, families, acceptance)
-  private val decisions = new ResolverDecisions(scoring, families, acceptance)
-
-  private def solve(members: Seq[EvidenceNode], edges: Seq[ResolverEdge], filmOf: String => Option[Int],
-                    ambiguousTogether: Boolean = false): Seq[Seq[EvidenceNode]] = {
-    val constraints = edges.map(edge => ConstraintSolver.Constraint(edge.a, edge.b, edge.must, edge.tier, edge.reason))
-    val presentation = if (mutation == Mutation.FirstWins) ConstraintSolver.Presentation.AsGiven else ConstraintSolver.Presentation.Canonical
-    val presented = if (mutation == Mutation.FirstWins) {
-      val position = ordered.zipWithIndex.map { case (listing, index) => listing.sortKey -> index }.toMap
-      members.sortBy(node => node.listings.map(listing => position(listing.sortKey)).min)
-    } else members
-    val orderedConstraints = if (mutation == Mutation.FirstWins) {
-      val position = presented.zipWithIndex.map { case (node, index) => node.id -> index }.toMap
-      constraints.sortBy(constraint => (math.min(position(constraint.a), position(constraint.b)), math.max(position(constraint.a), position(constraint.b))))
-    } else constraints
-    ConstraintSolver.solveAs(presented.map(_.id), orderedConstraints, presentation, members.flatMap(node => filmOf(node.id).map(node.id -> _)).toMap,
-      ambiguousTogether)
-      .map(_.map(nodeById))
-  }
-
-  private val ownFilms: Map[String, Int] = families.bestOf.map { case (id, (scored, _)) => id -> scored.candidate.tmdbId }
-  // Nodes one chain lists under ONE catalogue id that accepted different films, each on its own
-  // evidence: neither acceptance stands, so the id's must-link unites them and the cluster votes on
-  // its pooled evidence. Showcase's "9 to 5 (2026)" credits Colin Higgins at two venues; its two
-  // bare venues, dated only by the re-release, had taken a two-minute 2026 short.
-  private val contested: Set[String] =
-    nodes.flatMap(node => edges.catalogueKeys(node).map(_ -> node.id)).groupMap(_._1)(_._2).values
-      .flatMap(ids => if (ids.distinct.flatMap(ownFilms.get).distinct.sizeIs > 1) ids else Nil).toSet
-  private val acceptedAll: Map[String, Int] = ownFilms.filterNot { case (id, _) => contested(id) } ++ families.pinnedFilm
-  // Round A's edges over EVERY pair of nodes sharing a block key, then the family check: an
-  // edge between two families means the scoping would silently drop it, so the resolve stops.
-  private val roundAEdges = edges.of(nodes, acceptedAll.get)
-  private val crossings = FamilyClosure.crossings(familyOf, roundAEdges.map(edge => FamilyClosure.Edge(edge.a, edge.b, edge.must, edge.reason)))
-  if (crossings.nonEmpty) throw new FamilyCrossing(crossings.size, s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
-  private val roundAByFamily = roundAEdges.groupBy(edge => familyOf(edge.a))
+  private val clustering = new Clustering(stages, mutation)
+  private val voting     = new ClusterVoting(stages.scoring, families, stages.acceptance)
+  private val deciding   = new Deciding(stages, voting, pieces)
 
   /** The resolution: every family's decisions, and the resolve's counts. */
   def resolution: Resolution = {
@@ -76,98 +42,19 @@ private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutat
   /** One family's assignment: round A's clusters, the votes of those no member matched alone, the final clusters, and
    *  each cluster's decisions. */
   private final class FamilyRun(family: Int, members: Seq[EvidenceNode]) {
-    private val scope   = scopes(family)
-    private val accepted: Map[String, Int] = members.flatMap(node => acceptedAll.get(node.id).map(node.id -> _)).toMap
-
-    private val roundA = solve(members, roundAByFamily.getOrElse(family, Nil), accepted.get)
-    // Group-level voting over the clusters no member matched alone.
-    private val unaccepted = roundA.filter(_.forall(node => !accepted.contains(node.id)))
-    // A facts-free cluster in a split title family follows the family's clear majority
-    // (`ClusterVoting.familyMajority`); every other cluster votes on its pooled evidence.
-    // The title family: the round's title must-links (same title, search form, original title, segment), however the
-    // solver then split the nodes they join.
-    private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
-    private val familyTaken: Map[String, (Int, Double, String)] =
-      if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
-    /** Each listing of a facts-free cluster whose title family backs two films or more by its siblings' own statements
-     *  ([[ClusterVoting.ownBacked]]), with those films and their venues: report only. */
-    def contested: Seq[(ListingKey, Map[Int, Set[String]])] = unaccepted.flatMap { cluster =>
-      val backed = voting.ownBacked(cluster, members, accepted, titleEdges)
-      if (backed.sizeIs < 2) Nil else cluster.flatMap(_.listings.map(_.key -> backed))
-    }
+    private val scope      = scopes(family)
+    private val accepted   = clustering.acceptedIn(members)
+    private val roundA     = clustering.roundA(family, members, accepted)
+    private val unaccepted = roundA.clusters.filter(_.forall(node => !accepted.contains(node.id)))
     private val votes: Map[String, ResolverDecisions.Vote] =
-      if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap { cluster =>
-        if (cluster.exists(node => familyTaken.contains(node.id)))
-          cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
-        else voting.vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
-      }.toMap
+      if (mutation == Mutation.NoVoting) Map.empty else voting.votes(unaccepted, members, accepted, roundA.titleEdges, scope)
+    /** Each listing of a facts-free cluster whose title family backs two films or more by its siblings' own statements
+     *  ([[ClusterVoting.contested]]), with those films and their venues: report only. */
+    def contested: Seq[(ListingKey, Map[Int, Set[String]])] = voting.contested(unaccepted, members, accepted, roundA.titleEdges)
     private val filmOf: String => Option[Int] = id => accepted.get(id).orElse(votes.get(id).map(_.film))
-    private val familyEdges = edges.of(members, filmOf)
-    // the final partition groups the bare spellings an ambiguity left alone (ConstraintSolver rule 4); round A, which
-    // the votes read, leaves each alone, so each voted on its own evidence
-    private val clusters    = solve(members, familyEdges, filmOf, ambiguousTogether = true)
+    private val finalRound = clustering.finalRound(members, filmOf)
+    private val decisions  = deciding.of(Deciding.Clustered(members, scope, accepted, votes, filmOf, finalRound))
 
-    private val clusterIndex = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap
-    private val violations   = familyEdges.count(edge => !edge.must && clusterIndex(edge.a) == clusterIndex(edge.b))
-    // A member billing several works is none of them, whichever film its cluster took or voted
-    // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
-    // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
-    private val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
-    private val apart   = new NoFilmMembers(scope, generation)
-    private val billing = bills ++ apart.billingUnderBanner(members, bills, filmOf, scope.of)
-    private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
-    private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
-
-    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decide), violations)
-
-    /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
-     *  one piece beside another thing, or take it uncorroborated — the rest's, and each such group's as none. */
-    private def decide(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
-      val (bills, unbilled) = cluster.partition(node => billing(node.id))
-      // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
-      val film   = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
-      val pinned = cluster.exists(node => families.pinnedFilm.contains(node.id))
-      val piecesOf = billedAsPieces(unbilled, film, pinned)
-      val placed = unbilled.filterNot(piecesOf.contains)
-      // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
-      val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, linked, familyEdges, backed)).toMap
-      val rest   = placed.filterNot(weak.contains)
-      if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
-        Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
-      else
-        restDecided(rest, film) ++
-          Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), DecisionTrace.BillsBoth)) ++
-          Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, DecisionTrace.BilledAsPiece)) ++
-          Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, DecisionTrace.Uncorroborated))
-    }
-
-    /** The members of `unbilled` billing `film` as one piece beside another thing, or beside their screening, with why. */
-    private def billedAsPieces(unbilled: Seq[EvidenceNode], film: Option[Int], pinned: Boolean): Map[EvidenceNode, String] =
-      film.filterNot(_ => pinned || !pieces).fold(Map.empty[EvidenceNode, String])(apart.billedAsPieces(unbilled, _))
-
-    // a cluster of bills or pieces alone takes no film its vote reaches either
-    private def none(nodes: Seq[EvidenceNode], why: Seq[String], veto: String): ResolverDecision = {
-      val neither = decisions.of(nodes, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
-      neither.copy(explanation = why ++ neither.explanation)(neither.trace.copy(vetoed = Some(DecisionTrace.Veto(veto, None))))
-    }
-
-    /** The decision of a cluster's `rest`, its members decided apart as none of `film` taken out. A member decided apart
-     *  as none of the film lends the rest nothing: when the film was the cluster's pooled vote (no member of the rest took
-     *  it alone, no pin, no family majority), the rest vote again on their own evidence and keep the film only if it still
-     *  wins. DE: KAP-Torgau's "TACHELES – Kurzfilmprogramm" (a bill, kinoheld page endlich-tacheles) carried Endlich
-     *  Tacheles onto the bare "Kurzfilmprogramm" billings. */
-    private def restDecided(rest: Seq[EvidenceNode], film: Option[Int]): Seq[ResolverDecision] = {
-      val pooledOnly = rest.exists(node => votes.contains(node.id)) && rest.forall(node => !accepted.contains(node.id) &&
-        !families.pinnedFilm.contains(node.id) && votes.get(node.id).forall(_.majority.isEmpty))
-      val restVotes =
-        if (!pooledOnly) votes
-        else votes -- rest.map(_.id) ++ voting.vote(rest, scope).collect {
-          case (id, (taken, probability)) if film.contains(taken) => id -> ResolverDecisions.Vote(taken, probability, None)
-        }
-      val restFilm: String => Option[Int] = id => accepted.get(id).orElse(restVotes.get(id).map(_.film))
-      Option.when(rest.nonEmpty)(decisions.of(rest, scope, restFilm, accepted, restVotes, familyEdges, clusterIndex)).toSeq
-    }
+    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (finalRound.edges, decisions.all, finalRound.violations)
   }
 }

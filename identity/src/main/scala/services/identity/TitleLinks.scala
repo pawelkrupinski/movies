@@ -73,7 +73,7 @@ private[identity] object TitleLinks {
     new Cut(node, normalizer, pins, wholeTitle, bannerSegment).keys
 
   /** A node's family keys, each with WHY it has it, and the title pieces it does NOT block under,
-   *  each with why not — what [[titleKeys]] decides, told (`IdentityResolver.explain`). */
+   *  each with why not — what [[titleKeys]] decides, told (`ListingExplanation.of`). */
   final case class Keyed(kept: Seq[(String, String)], dropped: Seq[(String, String)]) {
     def keys: Set[String] = kept.map(_._1).toSet
   }

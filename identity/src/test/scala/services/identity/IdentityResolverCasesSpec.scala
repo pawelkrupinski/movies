@@ -2816,7 +2816,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val verity   = listing(Helios, "Verity - Sensory Friendly Screening")
     val plain    = listing(Multikino, "Coraline", Some(2009), Some("Henry Selick"))
     val plainToo = listing(KinoMuza, "Coraline", Some(2009), Some("Henry Selick"))
-    val told = IdentityResolver.explain(Seq(sensory, verity, plain, plainToo), new FilmTable(films, normalizer), normalizer, weights)(Set(sensory.key)).head
+    val told = ListingExplanation.of(Seq(sensory, verity, plain, plainToo), new FilmTable(films, normalizer), normalizer, weights)(Set(sensory.key)).head
     val coraline = "t:" + normalizer.sanitize("Coraline")
     told.keys.toMap.get(coraline) shouldBe Some("a piece of its title that a listing carries whole")
     told.dropped.map(_._1) should contain ("'Sensory Friendly Screening'")
@@ -2830,7 +2830,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films   = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162))
     val plain   = listing(Helios, "Lalka", Some(2026), Some("Maciej Kawalski"))
     val premier = listing(Multikino, "Oficjalna premiera: Lalka")
-    val anatomy = IdentityResolver.familyAnatomy(Seq(plain, premier), new FilmTable(films, normalizer), normalizer, weights)(1).head
+    val anatomy = FamilyAnatomy.largest(Seq(plain, premier), new FilmTable(films, normalizer), normalizer, weights)(1).head
     anatomy.listings shouldBe 2
     anatomy.nodes shouldBe 2
     val glue = "t:" + normalizer.sanitize("Lalka")

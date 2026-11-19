@@ -63,6 +63,18 @@ object OlderRefs {
       .flatMap(read => call(read, "corpus", byCinema, normalizer)).map(_.asInstanceOf[Seq[Listing]])
       .getOrElse(Listing.corpus(byCinema, normalizer))
 
+  /** Why each listing `wanted` selects resolved as it did -- each explanation's decision and its rendered lines --, unpinned
+   *  under the resolver's calibration and decorations: `ListingExplanation.of` where the ref has it (2026-11-19), else
+   *  `IdentityResolver.explain`, which it was before. */
+  def explanations(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: services.titles.TitleNormalizer)(
+      wanted: Set[models.ListingKey]): Seq[(ResolverDecision, Seq[String])] = {
+    val (owner, name) = scala.util.Try(Class.forName("services.identity.ListingExplanation$").getField("MODULE$").get(null)).toOption
+      .fold[(AnyRef, String)](IdentityResolver -> "explain")(_ -> "of")
+    call(owner, name, listings, lookups, normalizer, IdentityCalibration.resolver, PinConstraints(Nil), TitleDecorations.resolver, wanted)
+      .getOrElse(throw new IllegalStateException(s"this ref has no $name of seven arguments")).asInstanceOf[Seq[Product & AnyRef]]
+      .map(explanation => field(explanation, "decision").get.asInstanceOf[ResolverDecision] -> call(explanation, "render").get.asInstanceOf[Seq[String]])
+  }
+
   /** The resolve's inputs over `pins` (its calibration, pins and title decorations) as production builds them:
    *  `ResolveInputs.of` where the ref has it (2026-10-25), the one builder the worker and the drift checks use, else as an
    *  older ref's resolve defaulted them. An input this tool does not pass on (a field of `ResolveInputs` beyond these

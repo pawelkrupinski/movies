@@ -46,6 +46,17 @@ import services.titles.TitleForms
  * holds by construction — every edge joins two nodes sharing a block key — and is CHECKED: a
  * crossing edge fails the resolve rather than scoping it.
  *
+ * THE RUN'S STAGES, each behind its own class, each owning its steps; the orchestrators read the stages, never a stage's
+ * steps:
+ *  - CANDIDATES ([[ResolveStages]], stage A): candidate generation, scoring and families, wired once;
+ *  - CLUSTERING ([[Clustering]]): a family's constraint edges and the solver's clusters -- round A over the films its
+ *    nodes took alone, the final round over those and the votes';
+ *  - VOTING ([[ClusterVoting.votes]]): the films the clusters no member took a film alone in vote for;
+ *  - DECIDING ([[Deciding]]): each final cluster's decision, its bills, pieces and uncorroborated members apart.
+ * [[ResolverRun]] sequences them per family (clustering, voting, clustering, deciding) and builds the [[Resolution]];
+ * this object runs stage A then the run ([[resolve]], [[resolveRegion]] for the incremental model). The reports read the
+ * stages through their own types' companions ([[ListingExplanation.of]], [[FamilyAnatomy.largest]], [[NodeCandidates.of]]).
+ *
  * `Mutation` is for the teeth tests only: each variant breaks exactly one of the properties the
  * specs prove, and the specs must catch it.
  */
@@ -75,81 +86,6 @@ object IdentityResolver {
   def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs): Resolution =
     resolveWith(listings, lookups, normalizer, inputs.calibration, Mutation.None, inputs.pins, inputs.decorations)
 
-  /** Why a listing resolved as it did and sits where it does — the resolve's own stages, told:
-   *  its node; every family key it has and why, and every title piece it does not block under and
-   *  why not; the chain of shared keys linking it to its family's heaviest member (why THIS
-   *  family); its decision with the decision's own explanation; and its candidates as its family
-   *  scored them. */
-  final case class ListingExplanation(node: String, family: Int, familyListings: Int, keys: Seq[(String, String)],
-                                      dropped: Seq[(String, String)], chain: Seq[(String, String)], decision: ResolverDecision,
-                                      candidates: Seq[NodeCandidates.CandidateScore]) {
-    def render: Seq[String] =
-      Seq(s"listing in node $node, family $family ($familyListings listing(s))",
-          s"  decision: ${decision.render}") ++
-        keys.map { case (key, why) => s"  key $key — $why" } ++
-        dropped.map { case (piece, why) => s"  not a key: $piece — $why" } ++
-        (if (chain.isEmpty) Seq("  the family's heaviest node itself") else s"  in this family by:" +: chain.map { case (key, next) => s"    —$key→ $next" }) ++
-        candidates.take(8).map(candidate => s"  candidate ${candidate.render}")
-  }
-
-  def explain(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
-              calibration: IdentityCalibration = IdentityCalibration.resolver,
-              pins: PinConstraints = PinConstraints(Nil),
-              decorations: TitleDecorations = TitleDecorations.resolver)(wanted: Set[ListingKey]): Seq[ListingExplanation] = {
-    val stages = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
-    import stages.families.{blockKeysOf, familyOf, scopeOf}
-    lazy val resolution = run(stages, Mutation.None)
-    // One explanation per node holding a wanted listing: a node's listings share everything told.
-    stages.generation.nodes.filter(_.listings.exists(listing => wanted(listing.key))).map { node =>
-      val listing  = node.listings.find(listing => wanted(listing.key)).get.key
-      val context  = stages.generation.context
-      val keyed    = TitleLinks.keyed(node, normalizer, pins, context.wholeTitle, context.bannerSegment)
-      val titled   = keyed.keys
-      val accepted = blockKeysOf(node.id).toSeq.sorted.filterNot(titled).map(key => key -> "a film it, or a node sharing its keys, accepted")
-      val members  = stages.generation.nodes.filter(member => familyOf(member.id) == familyOf(node.id))
-      val anchor   = members.minBy(member => (-member.weight, member.id))
-      // Breadth-first over shared keys from the node to the anchor: the links that put it here.
-      val byKey    = members.flatMap(member => blockKeysOf(member.id).map(_ -> member)).groupMap(_._1)(_._2)
-      val via      = scala.collection.mutable.HashMap(node.id -> Option.empty[(String, EvidenceNode)])
-      val queue    = scala.collection.mutable.Queue(node)
-      while (queue.nonEmpty && !via.contains(anchor.id)) {
-        val current = queue.dequeue()
-        blockKeysOf(current.id).toSeq.sorted.foreach(key => byKey.getOrElse(key, Nil).foreach { next =>
-          if (!via.contains(next.id)) { via(next.id) = Some(key -> current); queue.enqueue(next) } })
-      }
-      def path(at: EvidenceNode): List[(String, String)] = via.get(at.id).flatten match {
-        case Some((key, from)) => path(from) :+ (key -> at.label)
-        case None              => Nil
-      }
-      val decision = resolution.decisionOf(listing)
-      ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
-        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(NodeCandidates.CandidateScore.of(_, calibration)))
-    }
-  }
-
-  /** One of the largest families, taken apart: its size, the block keys holding the most of its
-   *  nodes, and for each of those the nodes the family's largest piece keeps once that key is dropped
-   *  — a key that alone glues the family together leaves a small piece. For a report finding why
-   *  a family grew far past one film. */
-  final case class FamilyAnatomy(listings: Int, nodes: Int, keys: Seq[(String, Int)], withoutKey: Seq[(String, Int)],
-                                 connectors: Seq[(String, Seq[String])] = Nil, withoutKind: Seq[(String, Int)] = Nil) {
-    def render: Seq[String] =
-      s"family of $listings listing(s) in $nodes node(s)" +:
-        (s"  keys by nodes: ${keys.map { case (key, count) => s"$key ×$count" }.mkString(", ")}" +:
-          (withoutKind.map { case (kind, largest) => s"  without every $kind key: largest piece $largest node(s)" } ++
-            withoutKey.map { case (key, largest) => s"  without $key: largest piece $largest node(s)" } ++
-            connectors.map { case (node, shared) => s"  connector $node: ${shared.mkString(", ")}" }))
-  }
-
-  def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
-                    calibration: IdentityCalibration = IdentityCalibration.resolver,
-                    decorations: TitleDecorations = TitleDecorations.resolver)(largest: Int): Seq[FamilyAnatomy] = {
-    val stages   = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
-    val anatomy  = new FamilyAnatomies(stages.families.blockKeysOf, stages.generation.context)
-    stages.generation.nodes.groupBy(node => stages.families.familyOf(node.id)).values.toSeq
-      .sortBy(members => -members.map(_.weight).sum).take(largest).map(anatomy.of)
-  }
-
   /** One candidate as a node's family scored it: the calibrated probability, the search rank, whether the node's own
    *  evidence denies it, whether the title names it, and whether its record is the listing's season or house production
    *  — the model's side of the unified evidence model's signals ([[UnifiedEvidence]]) — the measures it was scored
@@ -175,7 +111,7 @@ object IdentityResolver {
 
   /** Every node holding a listing `focused` selects, with its candidates as its family scores them (best first). */
   private[identity] def focusedScored(stages: ResolveStages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.Scored])] =
-    stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scopeOf(node).of(node))
+    stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scoredOf(node))
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
    *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. A family's verdict
@@ -268,6 +204,6 @@ object IdentityResolver {
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
    *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */
-  private def run(stages: ResolveStages, mutation: Mutation, pieces: Boolean = true): Resolution =
+  private[identity] def run(stages: ResolveStages, mutation: Mutation, pieces: Boolean = true): Resolution =
     new ResolverRun(stages, mutation, pieces).resolution
 }

@@ -170,6 +170,11 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     nodes.map(node => node.id -> keysOf(node, round.matchedIds)).toMap
 
   def scopeOf(node: EvidenceNode): FamilyScope = scopes(familyOf(node.id))
+  /** `node`'s candidates as its family's scope scored them, best first ([[FamilyScope.of]]). */
+  def scoredOf(node: EvidenceNode): Seq[Scored] = scopeOf(node).of(node)
+  /** `node`'s evidence as its family's scope reads it ([[FamilyScope.evidenceOf]]): its titles alone when its feed link is
+   *  overruled, else its own. */
+  def evidenceOf(node: EvidenceNode): Evidence = scopeOf(node).evidenceOf(node)
 
   /** Does `node`'s page read as REUSED ([[Acceptance.copiedBeyondItsBilling]]): a record its copied original title and the
    *  director it credits name stands in its pool, though its billing says more than that record's titles? Its facts are
@@ -180,9 +185,9 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
    *  evidence against the film's record? */
   def denies(node: EvidenceNode, film: Int): Boolean =
-    scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(scoring.pinDenies(node, film) || {
+    scoredOf(node).find(_.candidate.tmdbId == film).fold(scoring.pinDenies(node, film) || {
       candidateOf(film).exists { candidate =>
-        val stated = scopeOf(node).evidenceOf(node).measured
+        val stated = evidenceOf(node).measured
         evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,
           node.country), node.country)
       }

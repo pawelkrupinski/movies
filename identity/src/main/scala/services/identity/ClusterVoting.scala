@@ -100,6 +100,29 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
     })
   }
 
+  /** The VOTING stage of a family ([[IdentityResolver]]): each node's vote among round A's `unaccepted` clusters -- those no
+   *  member took a film alone in (`accepted`) --, a facts-free cluster in a split title family following the family's clear
+   *  majority ([[familyMajority]]), every other cluster its pooled evidence ([[vote]]). */
+  def votes(unaccepted: Seq[Seq[EvidenceNode]], members: Seq[EvidenceNode], accepted: Map[String, Int], titleEdges: Seq[ResolverEdge],
+            scope: FamilyScope): Map[String, ResolverDecisions.Vote] = {
+    val familyTaken = unaccepted.flatMap(cluster =>
+      familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
+    unaccepted.flatMap { cluster =>
+      if (cluster.exists(node => familyTaken.contains(node.id)))
+        cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
+      else vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
+    }.toMap
+  }
+
+  /** Each listing of an `unaccepted` facts-free cluster whose title family backs two films or more by its siblings' own
+   *  statements ([[ownBacked]]), with those films and their venues: report only. */
+  def contested(unaccepted: Seq[Seq[EvidenceNode]], members: Seq[EvidenceNode], accepted: Map[String, Int],
+                titleEdges: Seq[ResolverEdge]): Seq[(models.ListingKey, Map[Int, Set[String]])] =
+    unaccepted.flatMap { cluster =>
+      val backed = ownBacked(cluster, members, accepted, titleEdges)
+      if (backed.sizeIs < 2) Nil else cluster.flatMap(_.listings.map(_.key -> backed))
+    }
+
   /** The films a facts-free cluster's TITLE FAMILY backs by OWN statements, each with the venues backing it: the siblings a
    *  title must-link of round A joins it to ([[familyMajority]]'s) that publish a fact of their own (a year, a director,
    *  a runtime) and took a film ALONE on it (`accepted`), a season's billing apart. Empty for a cluster publishing a
