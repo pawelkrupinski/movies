@@ -80,7 +80,7 @@ identityWalkDigest := {
     val paths   = TestImpact.reach(repo, units, stamps, tracked,
       Set("worker/src/test/scala/services/identity/PopulationMonotonicitySpec.scala"),
       p => slices.exists(p.startsWith) || p == "test/resources/fixtures/identity-population-flips-known.tsv")
-    IO.write(out, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(repo / path)))
+    IO.write(out, kinowo.build.SourceDigest.of(paths, kinowo.build.SourceDigest.tracked(repo)))
     IO.writeLines(file(args(0) + ".paths"), paths)
     streams.value.log.info(s"identityWalkDigest: ${paths.size} path(s) to ${args(0)}")
   }

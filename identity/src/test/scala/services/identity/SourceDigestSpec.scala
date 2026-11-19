@@ -110,6 +110,16 @@ class SourceDigestSpec extends AnyFlatSpec with Matchers {
     SourceDigest.key("test/resources/fixtures/identity-judgements.tsv") shouldBe "test/resources/fixtures/identity-judgements.tsv"
   }
 
+  it should "read a tracked symlink as git stores it, its target, even one naming a directory" in {
+    tools.TempDirectories.within("source-digest") { repo =>
+      java.nio.file.Files.createDirectories(repo.resolve("generations/one"))
+      java.nio.file.Files.createSymbolicLink(repo.resolve("current"), java.nio.file.Paths.get("generations/one"))
+      java.nio.file.Files.write(repo.resolve("plain.txt"), "text".getBytes("UTF-8"))
+      new String(SourceDigest.tracked(repo.toFile)("current"), "UTF-8") shouldBe "generations/one"
+      new String(SourceDigest.tracked(repo.toFile)("plain.txt"), "UTF-8") shouldBe "text"
+    }
+  }
+
   private def digest(files: Map[String, String]): String =
     SourceDigest.of(files.keys.toSeq.sorted, path => files(path).getBytes("UTF-8"))
 }
