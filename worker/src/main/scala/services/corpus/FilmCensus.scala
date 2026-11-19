@@ -1,7 +1,8 @@
 package services.corpus
 
 import services.movies.LatestTitleYear
-import models.{MovieRecord, Source, SourceData}
+import models.{MovieRecord, Source}
+import services.movies.StoredMovieDto
 import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 import services.readmodel.ReadModelProjection
@@ -28,7 +29,7 @@ object FilmCensus {
     val record   = stored.record
     val bySource = slotParts(record, prior, normalizer)
     val ready    = record.readyToProject
-    val anchor   = Option.when(ready)(ReadModelProjection.anchorKeyOf(stored.asReadBack(normalizer), normalizer))
+    val anchor   = Option.when(ready)(ReadModelProjection.anchorKeyOf(StoredMovieDto.readBack(stored, normalizer), normalizer))
     prior.filter(p => (p.bySource eq bySource) && p.ready == ready && p.anchor == anchor) match {
       case Some(p) => new FilmCensus(subsetsOf(record), ready, bySource.size, bySource, p.cards, p.screenable, anchor)
       case None    => fresh(subsetsOf(record), ready, bySource, anchor)
@@ -44,11 +45,10 @@ object FilmCensus {
    *  slots — derived anew on every change of a film, they were kept until its next one, so promoted and left to die
    *  old. */
   private def slotParts(record: MovieRecord, prior: Option[FilmCensus], normalizer: TitleNormalizer): Map[Source, SlotCensus] = {
-    val held    = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
-    val cinemas = record.data.iterator.collect { case (source, slot) if Source.cinemaOf(source).isDefined => source -> slot }.toSeq
-    val gone    = held.keysIterator.filterNot(record.data.contains).toSeq
-    cinemas.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
-      if (map.get(source).exists(_.slot eq slot)) map else map.updated(source, SlotCensus(slot, Source.cinemaOf(source).get, normalizer))
+    val held = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
+    val gone = held.keysIterator.filterNot(record.data.contains).toSeq
+    record.data.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
+      if (map.get(source).exists(_.slot eq slot)) map else SlotCensus.at(source, slot, normalizer).fold(map)(map.updated(source, _))
     }
   }
 

@@ -1754,7 +1754,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val oneProjection = hitsOf(counting)(ReadModelProjection.projectAll(row, counting))
     onePartition should be > 0                                              // the counter sees the partition at all
 
-    // The scan itself re-derives each row's display title (`StoredMovieRecord.fromStorage`)
+    // The scan itself re-derives each row's display title (`StoredMovieDto.fromStorage`)
     // — the repository's cost, measured apart so a sweep is charged only for what the
     // projection asks on top of it.
     val slotsScan = hitsOf(counting)(repository.foreachRecordWithSlots(_ => ()))

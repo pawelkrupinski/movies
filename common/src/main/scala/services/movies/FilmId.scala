@@ -1,7 +1,5 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
 /**
  * The identity of a film row: the `_id` of its `movies` document, and the `filmId`
  * its `movie_slots`, `screenings` and read-model rows are filed under.
@@ -42,6 +40,6 @@ object FilmId {
   /** The id a row created BEFORE ids existed carries: its old `_id`, which was the
    *  key. Also what an in-memory row synthesised without storage answers to. */
   def legacy(key: CacheKey): FilmId = FilmId(StoredMovieRecord.keyFor(key))
-  def legacy(title: String, year: Option[Int], normalizer: TitleNormalizer): FilmId =
+  def legacy(title: String, year: Option[Int], normalizer: String => String): FilmId =
     FilmId(StoredMovieRecord.keyFor(title, year, normalizer))
 }

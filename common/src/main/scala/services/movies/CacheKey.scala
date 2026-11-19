@@ -1,14 +1,12 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
 /**
  * Normalised `(title, year)` lookup key. Diacritics stripped, lowercased,
  * whitespace squashed — so "Drzewo Magii" and "drzewo magii" don't end up as
  * two cache entries. Equality uses the normalised form; `cleanTitle` retains
  * the original casing for display in snapshots.
  */
-private[services] case class CacheKey private (cleanTitle: String, year: Option[Int], normalized: String) {
+case class CacheKey private (cleanTitle: String, year: Option[Int], normalized: String) {
   override def hashCode(): Int = (normalized, year).hashCode()
   override def equals(other: Any): Boolean = other match {
     case k: CacheKey => k.normalized == normalized && k.year == year
@@ -21,7 +19,7 @@ private[services] case class CacheKey private (cleanTitle: String, year: Option[
   def atYear(other: Option[Int]): CacheKey = new CacheKey(cleanTitle, other, normalized)
 }
 
-private[services] object CacheKey {
+object CacheKey {
   /** Build a key under ONE country's rules. `normalized` is computed here and
    *  carried, rather than derived in the constructor body as it used to be:
    *  identity depends on the rule set, so a key that normalises itself silently
@@ -31,9 +29,11 @@ private[services] object CacheKey {
    *  `BoundedParallel`'s executor, neither of which any caller-side scope
    *  reaches. Taking the normalizer as a context parameter puts the choice back
    *  where the country is known, and leaves existing call sites unchanged
-   *  wherever a `given` is already in scope. */
-  def apply(cleanTitle: String, year: Option[Int], normalizer: TitleNormalizer): CacheKey =
-    new CacheKey(cleanTitle, year, normalizer.sanitize(cleanTitle))
+   *  wherever a `given` is already in scope. `normalizer` is that country's
+   *  `TitleNormalizer`, taken as the fold it is (`String => String`) so a key
+   *  names nothing above the film row's values. */
+  def apply(cleanTitle: String, year: Option[Int], normalizer: String => String): CacheKey =
+    new CacheKey(cleanTitle, year, normalizer(cleanTitle))
 
   /** The key a stored row answers to: its `key` field AS STORED (`normalized|year`), with
    *  the display title as its label. The stored key is the lookup identity; re-deriving

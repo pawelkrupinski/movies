@@ -83,7 +83,7 @@ private[movies] final class MovieSideStitch(
     if (storedSlots.isEmpty) r
     else {
       val stitched = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots))
-      StoredMovieRecord.fromStorage(r.id.value, Some(r.key(normalizer)), stitched, normalizer)
+      StoredMovieDto.fromStorage(r.id.value, Some(r.key(normalizer)), stitched, normalizer)
     }
 
   /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes

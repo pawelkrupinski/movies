@@ -7,6 +7,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.StoredMovieDto
 import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
@@ -62,7 +63,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         showtimes = Seq(at("2026-08-31T20:00")))))
 
   private val renamedStored =
-    StoredMovieRecord.fromStorage("terminator2dziensadu|1991", renamedVenue, titleNormalizer)
+    StoredMovieDto.fromStorage("terminator2dziensadu|1991", renamedVenue, titleNormalizer)
 
   "two slots of one venue that compose the same screenings id" should "yield ONE row carrying every showtime" in {
     val rows = ReadModelProjection.screeningsAll(renamedStored, titleNormalizer).flatten
@@ -77,7 +78,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not depend on which of the two slots the record happens to hold first" in {
-    val reversed = StoredMovieRecord.fromStorage(
+    val reversed = StoredMovieDto.fromStorage(
       "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
 
     ReadModelProjection.screeningsAll(reversed, titleNormalizer).flatten.map(r => (r._id, r.showtimes)) shouldBe
@@ -88,7 +89,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   // so the view must be the row's own city and showtime SET — order apart — or the census and the
   // read model it is compared against would count different things.
   it should "count, off its venue view, the city and showtime set its row lists" in {
-    val reversed = StoredMovieRecord.fromStorage(
+    val reversed = StoredMovieDto.fromStorage(
       "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
     Seq(renamedStored, reversed, stored).foreach { row =>
       ReadModelProjection.partition(row, titleNormalizer).venuesAll.flatten.foreach { venue =>
@@ -129,7 +130,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     val expected = renamedVenue.data.toSeq
       .flatMap { case (source, slot) => services.movies.StoredSlotDto.listingKeyOf(source.displayName, slot) }.sorted
     expected should have size 2
-    val reversed = StoredMovieRecord.fromStorage(
+    val reversed = StoredMovieDto.fromStorage(
       "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
     Seq(renamedStored, reversed).foreach { stored =>
       ReadModelProjection.screeningsAll(stored, titleNormalizer).flatten.map(_.listingKeys) shouldBe Seq(expected)
@@ -137,7 +138,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   private val id     = s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
-  private val stored = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
+  private val stored = StoredMovieDto.fromStorage(id, record, titleNormalizer)
 
   private val (movie, screenings) = ReadModelProjection.project(stored, titleNormalizer)
 
@@ -165,7 +166,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Wrocławski opis kina.\n\nAkapit drugi."), showtimes = Seq(at("2026-06-12T19:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieDto.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsis shouldBe Some("Opis z TMDB.")                              // city-independent fallback (no cinema)
     m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw")
     m.synopsisFor(Poznan).get  should (include ("Poznański")  and not include ("Wrocławski"))
@@ -187,7 +188,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some(kosmos), showtimes = Seq(at("2026-06-12T19:00"))),
       Tmdb -> SourceData(title = Some("Frances Ha"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("francesha|", rec, titleNormalizer), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieDto.fromStorage("francesha|", rec, titleNormalizer), titleNormalizer)
     m.synopsis shouldBe Some("Opis z TMDB.")                       // fallback carries no cinema text
     m.synopsisByCity.keySet shouldBe Set("poznan", "katowice")
     m.synopsisFor(Poznan).get   should (include ("Słodko-gorzki") and not include ("Kosmos"))
@@ -204,7 +205,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB."), showtimes = Seq(at("2026-06-12T19:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieDto.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsisByCity.keySet shouldBe Set("wroclaw")
     m.synopsisFor(Poznan)  shouldBe Some("Opis z TMDB.")
     m.synopsisFor(Wroclaw) shouldBe Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB.")
@@ -226,7 +227,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Warszawski opis kina, wyraźnie dłuższy niż blurb z TMDB."), showtimes = Seq(at("2026-06-12T20:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieDto.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsis shouldBe Some("Opis z TMDB.")                              // shared, memoised, fallback
     m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw", "warszawa")
     m.synopsisFor(Poznan).get   should (include ("Poznański")  and not include ("Wrocławski") and not include ("Warszawski"))
@@ -268,7 +269,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
 
   it should "drop cinema slots with no showtimes" in {
     val noShows = record.copy(data = record.data + (Rialto -> SourceData(showtimes = Seq.empty)))
-    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows, titleNormalizer))
+    val s = ReadModelProjection.screenings(StoredMovieDto.fromStorage(id, noShows, titleNormalizer))
     s.map(_.cinema) should not contain "Kino Rialto"
   }
 
@@ -282,7 +283,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("X"), releaseYear = Some(2025)),
       Tmdb      -> SourceData(title = Some("X"), releaseYear = Some(2026))))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", record, titleNormalizer), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieDto.fromStorage("x|2026", record, titleNormalizer), titleNormalizer)
     m.releaseYear shouldBe Some(2026)
   }
 
@@ -296,13 +297,13 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2025),
         showtimes = Seq(at("2026-06-12T18:00"))),
       Tmdb      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
-    val stored  = StoredMovieRecord.fromStorage("f0123456789abcdef", Some("kumotry|2025"), record, titleNormalizer)
+    val stored  = StoredMovieDto.fromStorage("f0123456789abcdef", Some("kumotry|2025"), record, titleNormalizer)
     val (m, ss) = ReadModelProjection.project(stored, titleNormalizer)
     m._id shouldBe "f0123456789abcdef"
     m.releaseYear shouldBe Some(2026)
     ss.map(_.filmId).distinct shouldBe Seq("f0123456789abcdef")
     // A row created before ids existed carries its old key as its id — still opaque here.
-    ReadModelProjection.filmId(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer)) shouldBe "kumotry|2025"
+    ReadModelProjection.filmId(StoredMovieDto.fromStorage("kumotry|2025", record, titleNormalizer)) shouldBe "kumotry|2025"
   }
 
   // One film, one stored record (one tmdbId), screened under two different shown
@@ -326,7 +327,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         genres = Seq("Dramat"))
     )
   )
-  private val twoTitleStored = StoredMovieRecord.fromStorage("iwangrozny|1944", twoTitleRecord, titleNormalizer)
+  private val twoTitleStored = StoredMovieDto.fromStorage("iwangrozny|1944", twoTitleRecord, titleNormalizer)
 
   "projectAll" should "split one record into a card per shown title" in {
     val cards = ReadModelProjection.projectAll(twoTitleStored, titleNormalizer)
@@ -350,7 +351,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         Tmdb                -> SourceData(title = Some("The Killer"), releaseYear = Some(1989))))
     // Germany's rules keep the article where the listing put it (Poland's fold it, so these share a key there).
     val german = TitleNormalizer.forCountry(Country.Germany)
-    val stored = StoredMovieRecord.fromStorage("thekiller|1989", record, german)
+    val stored = StoredMovieDto.fromStorage("thekiller|1989", record, german)
     german.sanitize("Killer, The (1989)") should not be german.sanitize("The Killer")
     ReadModelProjection.filmIds(stored, german) shouldBe Seq("thekiller|1989")
     val cards = ReadModelProjection.projectAll(stored, german)
@@ -372,7 +373,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         Filmweb   -> SourceData(originalTitle = Some("Toki o Kakeru Shōjo"))
       )
     )
-    val movie = ReadModelProjection.resolve(StoredMovieRecord.fromStorage("odziewczynieskaczacejprzezczas|2006", record, titleNormalizer), titleNormalizer)
+    val movie = ReadModelProjection.resolve(StoredMovieDto.fromStorage("odziewczynieskaczacejprzezczas|2006", record, titleNormalizer), titleNormalizer)
     movie.searchTitles shouldBe Seq("時をかける少女", "Toki o kakeru shôjo", "Toki o Kakeru Shōjo", "The Girl Who Leapt Through Time")
   }
 
@@ -383,7 +384,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     def genresOf(cinema: Cinema, metadata: Map[Source, SourceData], venueGenres: Seq[String] = Nil) = {
       val record = MovieRecord(tmdbId = Some(1), data = metadata + (CinemaShowing(cinema, "film") ->
         SourceData(title = Some("Film"), genres = venueGenres, showtimes = Seq(at("2026-06-12T18:00")))))
-      ReadModelProjection.resolve(StoredMovieRecord.fromStorage("film|2020", record, titleNormalizer), titleNormalizer).genres
+      ReadModelProjection.resolve(StoredMovieDto.fromStorage("film|2020", record, titleNormalizer), titleNormalizer).genres
     }
     val german = Country.Germany.cities.flatMap(_.cinemas).head
     genresOf(Multikino, Map(Tmdb -> SourceData(genres = Seq("Fantasy", "film TV"))))              shouldBe Seq("Fantasy", "Film TV")
@@ -402,7 +403,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         Filmweb   -> SourceData(originalTitle = Some("  "))
       )
     )
-    ReadModelProjection.resolve(StoredMovieRecord.fromStorage("dune|2021", record, titleNormalizer), titleNormalizer).searchTitles shouldBe Nil
+    ReadModelProjection.resolve(StoredMovieDto.fromStorage("dune|2021", record, titleNormalizer), titleNormalizer).searchTitles shouldBe Nil
   }
 
   it should "scope a split row's spellings to each card's own title" in {
@@ -492,7 +493,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(tmdbId = Some(9), data = Map[models.Source, models.SourceData](
       models.Multikino -> models.SourceData(title = Some("Minions"), releaseYear = Some(2026)),
       models.Helios    -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026))))
-    val stored = StoredMovieRecord.fromStorage("fminions", Some("minions|2026"), record, titleNormalizer)
+    val stored = StoredMovieDto.fromStorage("fminions", Some("minions|2026"), record, titleNormalizer)
     val pl = ReadModelProjection.filmIds(stored, TitleNormalizer.forCountry(models.Country.Poland))
     val de = ReadModelProjection.filmIds(stored, TitleNormalizer.forCountry(models.Country.Germany))
     pl should contain ("fminions~minionsimonster")

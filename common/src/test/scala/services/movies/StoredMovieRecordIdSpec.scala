@@ -30,7 +30,7 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
 
   it should "agree with fromStorage's round-trip (the id rebuilds to the same id)" in {
     val id      = StoredMovieRecord.keyFor("Diuna", Some(2021), titleNormalizer)
-    val rebuilt = StoredMovieRecord.fromStorage(id, MovieRecord(), titleNormalizer)
+    val rebuilt = StoredMovieDto.fromStorage(id, MovieRecord(), titleNormalizer)
     rebuilt.id.value shouldBe id
   }
 
@@ -43,8 +43,8 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
     // onto the first. Both rows then render the same `data-id` and the live
     // view's first-match lookup opens whichever row comes first. The id must be
     // the persisted `_id`, which is unique, not the round-trip re-derivation.
-    val baked = StoredMovieRecord.fromStorage("zabriskiepoint1970|1970", MovieRecord(), titleNormalizer)
-    val clean = StoredMovieRecord.fromStorage(
+    val baked = StoredMovieDto.fromStorage("zabriskiepoint1970|1970", MovieRecord(), titleNormalizer)
+    val clean = StoredMovieDto.fromStorage(
       "zabriskiepoint|1970",
       MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Zabriskie Point (1970)")))), titleNormalizer)
 

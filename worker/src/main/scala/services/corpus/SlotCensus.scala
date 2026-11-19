@@ -1,6 +1,6 @@
 package services.corpus
 
-import models.{Cinema, City, SourceData, VenueClock, ShowtimesDigest}
+import models.{City, Source, SourceData, VenueClock, ShowtimesDigest}
 import services.titles.TitleNormalizer
 import services.readmodel.ReadModelProjection
 import java.time.{ZoneId, ZoneOffset}
@@ -28,7 +28,9 @@ final class SlotCensus private (val slot: SourceData, val titleKey: Option[Strin
 }
 
 object SlotCensus {
-  def apply(slot: SourceData, cinema: Cinema, normalizer: TitleNormalizer): SlotCensus =
-    new SlotCensus(slot, ReadModelProjection.titleKeyOf(slot, normalizer), City.forCinema(cinema).map(_.slug),
-      VenueClock.zoneOf(cinema, ZoneOffset.UTC), ShowtimesDigest.startMinutes(slot))
+  /** The part of the slot at `source`, or `None` when `source` is no venue's: only venue slots take part. */
+  def at(source: Source, slot: SourceData, normalizer: TitleNormalizer): Option[SlotCensus] =
+    Source.cinemaOf(source).map(cinema =>
+      new SlotCensus(slot, ReadModelProjection.titleKeyOf(slot, normalizer), City.forCinema(cinema).map(_.slug),
+        VenueClock.zoneOf(cinema, ZoneOffset.UTC), ShowtimesDigest.startMinutes(slot)))
 }

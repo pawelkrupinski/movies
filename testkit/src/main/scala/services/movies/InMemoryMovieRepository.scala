@@ -93,7 +93,7 @@ class InMemoryMovieRepository(
     // showtimes back. A fake that dispatched the stripped record would have every
     // change-stream consumer (the cache, the read-model projector) see films with no
     // cinemas the moment the split was wired.
-    changes.dispatchUpsert(StoredMovieRecord.fromStorage(id, Some(keyOf(t, y)), e.copy(data = stitchSides(
+    changes.dispatchUpsert(StoredMovieDto.fromStorage(id, Some(keyOf(t, y)), e.copy(data = stitchSides(
       id, e.data,
       slots.map(_.findAll()).getOrElse(Map.empty),
       screenings.map(_.findAll()).getOrElse(Map.empty))), normalizer))
@@ -115,7 +115,7 @@ class InMemoryMovieRepository(
   def enabled: Boolean = true
 
   // Re-derive `title`/`year` from the stored `_id` + record via
-  // `StoredMovieRecord.fromStorage` on read — EXACTLY as `MongoMovieRepository`'s
+  // `StoredMovieDto.fromStorage` on read — EXACTLY as `MongoMovieRepository`'s
   // codec does (Mongo persists only `_id` + `sourceData`, dropping the title/
   // year columns). A faithful fake must do the same: returning the verbatim
   // upsert title instead hid two real bugs — title `_id`-drift (a row whose
@@ -139,7 +139,7 @@ class InMemoryMovieRepository(
           // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
           // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
           // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
-          val row = StoredMovieRecord.fromStorage(id, Some(s.key(normalizer)),
+          val row = StoredMovieDto.fromStorage(id, Some(s.key(normalizer)),
             s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)), normalizer)
           readMemo.update(id, InMemoryMovieRepository.ReadMemo(s, filmSlots, filmScreenings, row))
           row

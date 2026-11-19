@@ -1465,7 +1465,7 @@ abstract class CountryConvergenceBehaviour(
    *    winner is written.
    *
    *  - KEY DRIFT against the persisted `_id`. A row's `_id` is `sanitize(title)|year`, and
-   *    every reader re-derives the title from the record (`StoredMovieRecord.fromStorage`).
+   *    every reader re-derives the title from the record (`StoredMovieDto.fromStorage`).
    *    When the derived title re-sanitizes to a different prefix the two disagree, and that
    *    gap is load-bearing twice over: `MovieCache.rehydrate` files the row under the derived
    *    key and migrates it, deleting the old `_id`, while `MixedFilmSplitter` looks the row up

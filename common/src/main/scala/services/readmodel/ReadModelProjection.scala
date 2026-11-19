@@ -61,7 +61,7 @@ object ReadModelProjection {
   }
 
   /** Materialise the merged metadata view. `stored.title` is the cache-key
-   *  anchor (`StoredMovieRecord.fromStorage` derives it from the `_id`); we
+   *  anchor (`StoredMovieDto.fromStorage` derives it from the `_id`); we
    *  pass it through `displayTitle` exactly as the web's `toSchedules` does so
    *  the resolved title is byte-identical to the pre-split output. */
   def resolve(stored: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): ResolvedMovie = {

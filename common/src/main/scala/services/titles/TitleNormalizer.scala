@@ -32,7 +32,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
                       val facts: TitleFacts.Rules = TitleFacts.Rules.none,
                       /** The country [[TitleNormalizer.forCountry]] built it for: what a [[TitleNormalizer.Reader]] names its
                        *  readings by. Empty for one built any other way. */
-                      val country: String = "") {
+                      val country: String = "") extends (String => String) {
 
   // Each public reading tells the reader set on the companion, when one is (a measurement's: never in a served process),
   // what it read: one volatile read a call otherwise.
@@ -258,6 +258,11 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String = seen("sanitize", Array(title))(sanitizeCache.get(title, computeSanitize))
+
+  /** [[sanitize]], as the function the film row's keys take (`models.CacheKey`, `models.StoredMovieRecord.keyFor`,
+   *  `models.FilmId`): they sit with the row's other values below the title logic, so they name no normalizer, only
+   *  the fold. */
+  def apply(title: String): String = sanitize(title)
 
   /** The slot key for a cinema's report of a film under `title`. The ONE rule for
    *  deriving a cinema slot key, shared by the scrape ingest, the staging write,

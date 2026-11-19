@@ -30,7 +30,7 @@ case class StoredMovieDto(
   // The lookup key `sanitize(title)|year` — a FIELD, because `_id` is the permanent
   // `FilmId` and a retitle moves the key, not the document. Optional on the wire: a
   // document written before ids existed has none, and its `_id` IS its key
-  // (`StoredMovieRecord.fromStorage`); `MongoMovieRepository` backfills it at boot.
+  // (`StoredMovieDto.fromStorage`); `MongoMovieRepository` backfills it at boot.
   key:               Option[String],
   imdbId:            Option[String],
   imdbRating:        Option[Double],
@@ -148,8 +148,45 @@ object StoredMovieDto {
                             .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) }
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
-    // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).
-    StoredMovieRecord.fromStorage(dto._id, dto.key, record, normalizer)
+    // `fromStorage` (shared with the in-memory repository).
+    fromStorage(dto._id, dto.key, record, normalizer)
+  }
+
+  // A row as the store gives it back: titled with the display title its record votes for under its stored key
+  // ([[CinemaSlotReadings]]' `displayTitle`). Here, not on [[StoredMovieRecord]] (a plain value in models, below the
+  // title logic), because naming a row from its slots is title logic.
+  /** `row` as a read of it back from the store would give it ([[fromStorage]]). A row the cache holds keeps the title it
+   *  was keyed under, which its record's later slots can outvote — and the read model titles, and splits, the row the
+   *  store gives. */
+  def readBack(row: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
+    row.storedKey.fold(row)(key => fromStorage(row.id.value, Some(key), row.record, normalizer))
+
+  /** A document with no `key` field — written before ids existed, its `_id` is its key. */
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
+    fromStorage(id, None, record, normalizer)
+
+  /** Rebuild a stored row from its persisted `_id`, its `key` field (absent on a
+   *  document written before keys were stored — then the `_id` IS the key) and its
+   *  `MovieRecord`, deriving the display `title` and `year` rather than reading pinned
+   *  columns — used by the Mongo codec (`MovieCodecs.toDomain`), whose BSON drops the
+   *  `title`/`year` fields. The key is `sanitize(title)|year`: `sanitize` never emits
+   *  `|`, so the suffix is the year and the prefix is the cache key's sanitized form.
+   *  Every spelling in a row sanitizes to that prefix (the `CacheKey` identity), so
+   *  `displayTitle(prefix)` sanitizes back to it.
+   *
+   *  CALL IT WITH A COMPLETE RECORD. `displayTitle` names the film from its SLOTS,
+   *  so a record whose slots have not been stitched back in yet has nothing to name
+   *  it with and falls through to the key prefix — a real title only by accident
+   *  ("Interstellar"), otherwise a mangled "Thecabinetofdrcaligari". That is exactly
+   *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
+   *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
+   *  once the record is whole. */
+  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord = {
+    val k        = key.getOrElse(id)
+    val sep      = k.lastIndexOf('|')
+    val idPrefix = if (sep >= 0) k.substring(0, sep) else k
+    val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
+    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id), Some(k))
   }
 }
 
