@@ -63,7 +63,7 @@ trait EgressWiring { self: WorkerWiring =>
   // of a brand's traffic onto one IP+cookie jar; fine at Vue's ~88-venue/420-min
   // volume, well under Decodo's concurrent-auth cap.
   //
-  // The proxy leg is circuit-broken (ProxyChain.breakerGuarded), unlike every
+  // The proxy leg is circuit-broken (ProxyMeters.breakerGuarded), unlike every
   // other leg of this chain: it is the only one built from raw RealHttpFetch
   // shards with none of HttpWiring's protective wrapping (no
   // HostCircuitBreakerHttpFetch, no per-host pacing). Without it, a Decodo
@@ -78,7 +78,8 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback)(ProxyChain.proxyPrimary(_, fallback, clock, stopwatch, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
+    proxyShards.fold(fallback)(ProxyChain.proxyPrimary(_, fallback, clock, stopwatch, warmUrl, keyOf,
+      tools.ProxyMeters(decodoMeter, decodoBreakerMeter, recordProxyOutcome)))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to direct
@@ -114,8 +115,8 @@ trait EgressWiring { self: WorkerWiring =>
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch =
-    proxyShards.fold(httpFetch)(ProxyChain.proxyPrimary(_, httpFetch, clock, stopwatch, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
-      breakerMeter = decodoBreakerMeter))
+    proxyShards.fold(httpFetch)(ProxyChain.proxyPrimary(_, httpFetch, clock, stopwatch, Some(MultikinoClient.HomeUrl),
+      meters = tools.ProxyMeters(decodoMeter, decodoBreakerMeter)))
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set), for
   // the one venue whose origin blocks the Decodo proxy too (see CinemaScraperCatalog).
   // Never a fallback behind the proxy — see feedback_zyte_is_decodo_fallback_only.
@@ -155,14 +156,14 @@ trait EgressWiring { self: WorkerWiring =>
   // each Decodo failure: 459 of the 461 Odeon 403s of 2026-10-29..11-12, every one
   // behind a proxy-side 503 / tunnel 502 / connect timeout.
   lazy val odeonFetch: HttpFetch =
-    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch, meter = decodoMeter, onOutcome = recordProxyOutcome,
-      breakerMeter = decodoBreakerMeter))
+    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch,
+      meters = tools.ProxyMeters(decodoMeter, decodoBreakerMeter, recordProxyOutcome)))
   // Odeon's POSTERS (vwc.odeon.co.uk/CDN, refused to the worker's IP like the data): the
   // same proxy-only route, but on a breaker of its own and off the "Residential proxy"
   // /uptime row, as Multikino's posters are — a poster the CDN fails must not open the
   // breaker every Odeon scrape goes through, nor read as the proxy failing.
   lazy val odeonPosterFetch: HttpFetch =
-    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch, meter = decodoMeter, breakerMeter = decodoBreakerMeter))
+    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch, meters = tools.ProxyMeters(decodoMeter, decodoBreakerMeter)))
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL

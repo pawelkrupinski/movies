@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
-/** `ProxyChain.breakerGuarded` is what stands between a Decodo-account-wide
+/** `ProxyMeters.breakerGuarded` is what stands between a Decodo-account-wide
  *  outage (every tunnel 503ing, 2026-09-10) and a worker task queue backlog:
  *  before it existed, the proxy leg was a bare `RealHttpFetch` with none of
  *  `HttpWiring`'s protective wrapping, so every venue call paid the full
@@ -23,7 +23,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
 
   "breakerGuarded" should "let the first few failures reach the delegate, then stop calling it" in {
     val deadProxy = new CountingFailingFetch(tunnelFailed)
-    val guarded   = ProxyChain.breakerGuarded(deadProxy, SpecClock.Pinned)
+    val guarded   = ProxyMeters.breakerGuarded(deadProxy, SpecClock.Pinned)
 
     // The default breaker opens after 4 consecutive trip-worthy failures
     // (HostCircuitBreakerHttpFetch's failureThreshold) — each of these reaches
@@ -44,7 +44,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
     val fallback  = new GetOnlyHttpFetch {
       override def get(url: String): String = { working.incrementAndGet(); "ok" }
     }
-    val chain = new FallbackHttpFetch(Seq("proxy" -> ProxyChain.breakerGuarded(deadProxy, SpecClock.Pinned), "fallback" -> fallback), new _root_.tools.Stopwatch(() => 0L))
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ProxyMeters.breakerGuarded(deadProxy, SpecClock.Pinned), "fallback" -> fallback), new _root_.tools.Stopwatch(() => 0L))
 
     // Trip the breaker.
     (1 to 4).foreach(_ => chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
@@ -63,7 +63,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
     val healthy = new GetOnlyHttpFetch {
       override def get(url: String): String = "ok"
     }
-    val guarded = ProxyChain.breakerGuarded(healthy, SpecClock.Pinned)
+    val guarded = ProxyMeters.breakerGuarded(healthy, SpecClock.Pinned)
     (1 to 20).foreach(_ => guarded.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
   }
 
@@ -71,10 +71,10 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
   // reached the proxy is counted with its outcome, a breaker fast-fail (~0ms, no
   // request made) is not — otherwise an open breaker would read as a proxy
   // failing at 100%.
-  "meteredProxyLeg" should "count the attempts that reached the proxy, and not the breaker's fast-fails" in {
+  "ProxyMeters.meteredLeg" should "count the attempts that reached the proxy, and not the breaker's fast-fails" in {
     val outcomes  = mutable.ListBuffer.empty[String]
     val deadProxy = new CountingFailingFetch(tunnelFailed)
-    val leg       = ProxyChain.meteredProxyLeg(deadProxy, (o: String) => outcomes += o, SpecClock.Pinned)
+    val leg       = ProxyMeters(attempts = (o: String) => outcomes += o).meteredLeg(deadProxy, SpecClock.Pinned)
 
     (1 to 4).foreach(_ => an[java.io.IOException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x"))
     a[CircuitOpenException] should be thrownBy leg.get("https://vwc.odeon.co.uk/y")
@@ -84,8 +84,8 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
 
   it should "count a 401 from the origin behind the proxy as the 401 it is" in {
     val outcomes = mutable.ListBuffer.empty[String]
-    val leg = ProxyChain.meteredProxyLeg(
-      new CountingFailingFetch(url => new HttpStatusException(401, "GET", url, None)), (o: String) => outcomes += o, SpecClock.Pinned)
+    val leg = ProxyMeters(attempts = (o: String) => outcomes += o).meteredLeg(
+      new CountingFailingFetch(url => new HttpStatusException(401, "GET", url, None)), SpecClock.Pinned)
     an[HttpStatusException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x")
     outcomes.toList shouldBe List(HttpOutcome.Http401)
   }
