@@ -26,7 +26,7 @@ echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/24.04/prod noble ma
 printf 'Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\n' > "$sources/azure-cli.sources"
 echo 'deb http://ppa.launchpadcontent.net/git-core/ppa/ubuntu noble main' > "$sources/git-core.list"
 
-PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" \
+PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" APT_SOURCES_LIST="$stub_dir/sources.list" \
   bash "$REPO_ROOT/scripts/ci/install-playwright.sh" chromium webkit > "$stub_dir/out" 2>&1
 status=$?
 
@@ -39,14 +39,14 @@ check "the browsers reach playwright install --with-deps" "playwright install --
   "$(cat "$STUB_LOG")"
 
 : > "$STUB_LOG"
-PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" \
+PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" APT_SOURCES_LIST="$stub_dir/sources.list" \
   bash "$REPO_ROOT/scripts/ci/install-playwright.sh" chromium > "$stub_dir/out" 2>&1
 check "a runner with no Microsoft sources left to drop still installs" "0" "$?"
 
 # install <failing calls> -> exit status, with STUB_LOG holding one line per attempt
 install() {
   : > "$STUB_LOG"
-  STUB_FAIL_CALLS="$1" PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" PLAYWRIGHT_RETRY_PAUSE_SECONDS=0 \
+  STUB_FAIL_CALLS="$1" PATH="$stub_dir:$PATH" APT_SOURCES_DIR="$sources" APT_SOURCES_LIST="$stub_dir/sources.list" PLAYWRIGHT_RETRY_PAUSE_SECONDS=0 \
     bash "$REPO_ROOT/scripts/ci/install-playwright.sh" chrome > "$stub_dir/out" 2>&1
   echo "$?"
 }

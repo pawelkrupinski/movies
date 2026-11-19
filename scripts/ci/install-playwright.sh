@@ -3,7 +3,8 @@
 # Usage: scripts/ci/install-playwright.sh <browser>...   (run from page-tests-playwright/)
 #
 # `--with-deps` runs `apt-get update`, so the runner's packages.microsoft.com sources go
-# first (see drop-microsoft-apt-sources.sh).
+# first (see drop-microsoft-apt-sources.sh), and security.ubuntu.com is fetched through the image's own archive
+# mirror (ubuntu-security-via-mirror.sh: its outage failed every attempt, Main #2680).
 #
 # Each install is retried: Chrome comes from one 136 MB download off dl.google.com, and a
 # stream dropped mid-way fails the whole page-test job ("curl: (92) HTTP/2 stream 1 was not
@@ -13,6 +14,7 @@
 set -euo pipefail
 
 "$(dirname "${BASH_SOURCE[0]}")/drop-microsoft-apt-sources.sh"
+"$(dirname "${BASH_SOURCE[0]}")/ubuntu-security-via-mirror.sh"
 attempts="${PLAYWRIGHT_INSTALL_ATTEMPTS:-3}"
 for attempt in $(seq 1 "$attempts"); do
   npx playwright install --with-deps "$@" && exit 0
