@@ -503,7 +503,9 @@ incidents:
 
   - id: us-duplicate-venue-listing-2026-11-17
     description: >-
-      DuplicateVenueListing held for us over two stretches of 5 and 17 hours.
+      DuplicateVenueListing held for us over two stretches of 5 and 17 hours: flicks.us listed Sequoyah 9's
+      sessions for Southgate Cinema 6 Liberal, a real copied feed. Fixed by 2721992e8 (Southgate scraped off its own
+      site, landed 11-18 06:10Z); the alert cleared at 07:42Z.
     source: DuplicateVenueListing{country="us"} firing 2026-11-17T00:12Z..05:02Z and 14:14Z..11-18T07:42Z (Alert backtest #8)
     start: 2026-11-17T00:12:00Z
     end: 2026-11-18T07:42:00Z
@@ -524,7 +526,8 @@ incidents:
     description: >-
       Five builds each lost a film's listings net: pl "Andre rieu. Pada śnieg" (9a9dd087, 11-07), uk "Dune: Part
       Two" (1f671442, 11-13), de "Lieblingsmenschen" (2c8f97d7, 11-13/14), uk "Sathyavin Savithri" (b257090d, 11-17),
-      uk "Bts world tour 'arirang' in kaohsiung" (4ec992b4, 11-18).
+      uk "Bts world tour 'arirang' in kaohsiung" (4ec992b4, 11-18). Real regressions, not corrections: the Rieu,
+      Dune: Part Two and Lieblingsmenschen takes were judged RIGHT afterwards (identity-judgements.tsv, 11-13/14).
     source: kinowo_identity_film_net_lost by build, country, title over 2026-11-07T14:50Z..11-18T18:21Z, five episodes of 4-6 h (Alert backtest #8)
     start: 2026-11-07T14:50:00Z
     end: 2026-11-18T18:21:00Z
@@ -545,7 +548,10 @@ incidents:
   - id: identity-incremental-drift-2026-11-04
     description: >-
       The nightly live-drift check found 5 or more listings whose live take differed from a whole resolve: de and
-      pl almost every night 11-04..11-16, uk 11-04..08 and 11-14, es 11-14..16, us 11-15. Quiet from 11-17.
+      pl almost every night 11-04..11-16, uk 11-04..08 and 11-14, es 11-14..16, us 11-15. Quiet from 11-17. Part of
+      it was the check itself: it compared prod with a whole resolve that kept hand-judged-wrong takes prod withdraws
+      (es "Pavarotti 90th", de Lauras Stern and four more), fixed by 3460d6106 (11-15 21:45Z); the rest is the
+      known drift backlog (test/resources/fixtures/identity-flip-backlog.tsv).
     source: sum by (country) (kinowo_identity_drift_listings) >= 5, held 26 h after each nightly check, 2026-11-04T20:00Z..11-17T00:52Z (Alert backtest #8)
     start: 2026-11-04T20:00:00Z
     end: 2026-11-17T00:52:00Z
