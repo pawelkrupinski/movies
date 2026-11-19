@@ -463,6 +463,26 @@ class SourceSwitch(unittest.TestCase):
         self.assertEqual(self.constructed, [("http://p:9090", "s:1")])
 
 
+class MetricNamesFromTheSnapshot(unittest.TestCase):
+    """Alert backtest #5/#6: five conditional_metrics entries outlived their deploys, and striking one needs
+    metric-names.json to hold its metric -- written only by snapshot-label-values from production's Prometheus. The
+    snapshot the backtest replays is a copy of that history: the backtest writes the same file from it."""
+
+    def test_the_names_the_window_holds_are_written_as_snapshot_label_values_writes_them(self):
+        work = tempfile.mkdtemp()
+        try:
+            out = os.path.join(work, "metric-names.json")
+            end = bt.parse_time("2026-11-19T00:00:00Z")
+            bt.refresh_metric_names({"coredns_dns_responses_total", "up", "no_rule_reads_this_metric"}, 14, end, out)
+            with open(out) as f:
+                written = json.load(f)
+            self.assertEqual((written["taken"], written["window_days"]), ("2026-11-19", 14))
+            self.assertIn("coredns_dns_responses_total", written["names"])
+            self.assertNotIn("no_rule_reads_this_metric", written["names"])
+        finally:
+            shutil.rmtree(work)
+
+
 class IncidentsEndWithTheHistory(unittest.TestCase):
     def test_an_incident_window_is_clipped_to_the_end_of_the_history_not_the_wall_clock(self):
         asked = []

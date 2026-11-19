@@ -65,6 +65,9 @@ jobs:
                   set -e
                   cat "$RUNNER_TEMP/backtest.log"
                   cp infra/test/alert-backtest.json "$RUNNER_TEMP/alert-backtest.json"
+                  # metric-names.json from the snapshot's window (backtest-alerts refresh_metric_names): commit it to
+                  # refresh the names test_metric_names.py checks, without asking production
+                  cp infra/test/metric-names.json "$RUNNER_TEMP/metric-names.json"
                   {
                       echo '### Alert backtest'
                       echo '```'
@@ -72,7 +75,7 @@ jobs:
                       echo '```'
                       echo '### Against the checked-in baseline'
                       echo '```'
-                      git diff --stat -- infra/test/alert-backtest.json
+                      git diff --stat -- infra/test/alert-backtest.json infra/test/metric-names.json
                       echo '```'
                   } >> "$GITHUB_STEP_SUMMARY"
                   exit "$status"
@@ -84,6 +87,7 @@ jobs:
                   overwrite: true
                   path: |
                       ${{ runner.temp }}/alert-backtest.json
+                      ${{ runner.temp }}/metric-names.json
                       ${{ runner.temp }}/backtest.log
                   if-no-files-found: ignore
             - name: Publish the nightly baseline

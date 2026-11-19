@@ -76,6 +76,8 @@ import argparse
 import concurrent.futures
 import datetime
 import glob
+import importlib.machinery
+import importlib.util
 import json
 import os
 import re
@@ -982,6 +984,8 @@ def run_backtest(args, prom, source):
             }, handle, indent=2, sort_keys=True)
             handle.write("\n")
         print("wrote %s" % os.path.relpath(BASELINE))
+        refresh_metric_names(existing, args.days, end)
+        print("wrote infra/test/metric-names.json from the window's metric names")
 
     print("backtest took %.0f s with %d parallel queries" % (time.time() - started, args.jobs))
     if problems:
@@ -994,6 +998,19 @@ def run_backtest(args, prom, source):
         return 1
     print("\nok")
     return 0
+
+
+def refresh_metric_names(names, days, end, path=None):
+    """metric-names.json from the window's metric names, as snapshot-label-values --names-only writes it (its own
+    writer): the snapshot is a copy of the fleet Prometheus's history, so a conditional_metrics entry whose metric has
+    arrived can be struck without asking production (Alert backtest #5/#6: five such entries, the file 9 days old)."""
+    loader = importlib.machinery.SourceFileLoader("snapshot_label_values", os.path.join(HERE, "snapshot-label-values"))
+    spec = importlib.util.spec_from_loader("snapshot_label_values", loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    if path:
+        module.NAMES_OUTPUT = path
+    module.write_metric_names(names, days, end)
 
 
 def check_incidents(prom, alerts, catalogue, step, floor, only, end):
