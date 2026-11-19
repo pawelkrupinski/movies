@@ -7,7 +7,7 @@ import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
 /** How a projection's [[ProjectionIndex]] is built afresh from the whole listing set, the resolution and the stored films
- *  — each a pass over the corpus — by the readings of slots ([[StoredSlots]]) and clusters ([[Cluster.of]]) the kept
+ *  — each a pass over the corpus — by the readings of slots ([[StoredFilmListings]]) and clusters ([[Cluster.of]]) the kept
  *  index ([[LiveProjectionIndex]]) applies entry by entry. */
 object ProjectionIndexing {
 
@@ -19,15 +19,7 @@ object ProjectionIndexing {
     val storedById = stored.map(r => r.id.value -> r).toMap
 
     // The stored films as listing sets, numbered.
-    // A listing is on the stored film whose slot it IS (the slot's own listing key); a listing no slot
-    // names — one a venue's same-title fold hid behind another's slot — on the film holding its slot.
-    val slotOwner: Map[ListingKey, StoredFilmRef] = stored.flatMap { r =>
-      val ref = StoredFilmRef(r.id.value, r.record.tmdbId)
-      slotsOf(r).flatMap(_.key.map(_ -> ref))
-    }.groupMap(_._1)(_._2).flatMap { case (k, refs) => StoredFilmRef.ownerOf(refs.toSet).map(k -> _) }
-    val previousOf: Map[ListingKey, StoredFilmRef] =
-      StoredFilmSlots.of(byKey.values.map(_.listing).toSeq, stored, normalizer) ++ slotOwner.filter { case (k, _) => byKey.contains(k) }
-    val listingsOf = previousOf.toSeq.groupMap(_._2.id)(_._1).view.mapValues(_.toSet).toMap
+    val (previousOf, listingsOf) = StoredFilmListings.of(byKey, stored, normalizer)
     val (covered, additions) = counters.cover(listingsOf.toSeq.map { case (id, ls) => IdSeeding.Film(id, ls) })
 
     // Clusters, one per film: the resolver's, with the clusters of one TMDB film joined.
@@ -55,7 +47,4 @@ object ProjectionIndexing {
     twice.foreach { case (key, rows) => first(key) = rows.minBy(p => (p.listing, p.row)).copy(showtimes = rows.map(_.showtimes).sorted.##) }
     first.toMap
   }
-
-  /** Every slot of a stored film ([[StoredSlots.slotOf]]). */
-  def slotsOf(r: StoredMovieRecord): Seq[StoredSlots.Slot] = r.record.data.toSeq.map { case (source, sd) => StoredSlots.slotOf(source, sd) }
 }
