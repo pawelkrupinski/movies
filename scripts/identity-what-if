@@ -68,8 +68,18 @@
 # A PURE MOVE (scripts/pure-move-check: files, packages and classes renamed, nothing else) is not resolved at all: it
 # prints "PURE MOVE: what-if skipped (scripts/pure-move-check)", records a `pure-move` verdict a country and exits 0.
 #
+# A MIRROR CHANGING UNDER THE RUN IS A HARNESS ERROR, never takes moved (2026-11-19: lane C's US what-if reported 87k
+# takes moved off a base read while the mirror re-seeded, 16k of its live asks failed; a rerun moved none). Both sides
+# read the mirror's CURRENT listings (the snapshot moment replays identity history over them), so the run is pinned to
+# the mirror's seed generation (scripts/local-mirror/freshness --generation): refused while a seed is in flight or due,
+# and exit 2 when it is not the same before the base, between the sides and after the head. Kept base sides and the kept
+# JVM's corpora are keyed by it, so nothing resolved off one copy is served against another. A side whose live asks
+# failed past $KINOWO_WHAT_IF_MAX_FAILED_ASKS (25) is exit 2 too, and is not kept: an unanswered question is a gap the
+# side takes as pending, and the diff would read every one as a move.
+#
 # Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
-# side failed. Every JVM takes a slot of scripts/jvm-gate.sh.
+# side failed / HARNESS ERROR (mirror not ready, re-seeded during the run, answers failed). Every JVM takes a slot of
+# scripts/jvm-gate.sh.
 set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
@@ -194,6 +204,47 @@ mkdir -p "$out"
 tools_hash=$(identity_tools_hash "${TOOL_FILES[@]}")
 cache=$IDENTITY_CACHE/what-if
 
+max_failed_asks=${KINOWO_WHAT_IF_MAX_FAILED_ASKS:-25}
+harness_error() { identity_log "HARNESS ERROR: $*"; echo "HARNESS ERROR: $*" >&2; }
+# mirror_generation <cc> -> the mirror's seed generation for <cc> (freshness --generation; its report to stderr), or
+# exit 2 when the mirror does not answer
+mirror_generation() {
+  local report rc=0 gen
+  report=$(scripts/local-mirror/freshness "$1" --quiet --generation) || rc=$?
+  grep -v '^GENERATION ' <<< "$report" >&2 || true
+  [ "$rc" != 2 ] || { identity_log "$1: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
+  gen=$(awk -v cc="$1" '$1 == "GENERATION" && $2 == cc { print $3 }' <<< "$report")
+  [ -n "$gen" ] || { harness_error "$1: mirror not ready: freshness reported no seed generation"; exit 2; }
+  printf '%s\n' "$gen"
+}
+# mirror_ready <cc> -> the generation a run of <cc> pins itself to; exit 2 while a seed is in flight or due
+mirror_ready() {
+  local gen; gen=$(mirror_generation "$1") || exit 2
+  case "$gen" in
+    seeding) harness_error "$1: mirror not ready: a seed is in flight (or died, leaving a torn copy): its collections are fragments until it finishes -- wait for scripts/local-mirror/freshness $1 to stop warning, then run again"; exit 2 ;;
+    reseed-due) harness_error "$1: mirror not ready: its stream state is gone and a re-seed is due -- wait for it to finish (scripts/local-mirror/freshness $1), then run again"; exit 2 ;;
+  esac
+  printf '%s\n' "$gen"
+}
+# mirror_unchanged <cc> <pinned generation> <when> -> 0, or exit 2 when the mirror re-seeded (or began to) since
+mirror_unchanged() {
+  local now; now=$(mirror_generation "$1") || exit 2
+  [ "$now" = "$2" ] && return 0
+  harness_error "$1: the mirror was re-seeded during the run (generation $2 before the base, $now $3): the sides read different corpora, so no take is reported moved and nothing is recorded -- run again once scripts/local-mirror/freshness $1 is quiet"
+  return 2
+}
+# answers_ok <side dir> <label> -> 0, or 2 when the side's live asks failed past the bound (answers.txt: WhatIfAnswers'
+# `N live request(s) (...; F failed) ...`)
+answers_ok() {
+  local line failed asked
+  line=$(cat "$1/answers.txt" 2>/dev/null || true)
+  failed=$(sed -nE 's/.*; ([0-9]+) failed\).*/\1/p' <<< "$line"); failed=${failed:-0}
+  asked=$(sed -nE 's/^([0-9]+) live request.*/\1/p' <<< "$line"); asked=${asked:-0}
+  [ "$failed" -gt "$max_failed_asks" ] || return 0
+  harness_error "$cc: answers failed: $failed of $asked live ask(s) of the $2 side failed (more than $max_failed_asks, KINOWO_WHAT_IF_MAX_FAILED_ASKS): their questions are gaps the side took as pending, not moves -- the mirror not ready, or a service refusing; the side is not kept"
+  return 2
+}
+
 seconds() { python3 -I -c 'import time; print(f"{time.time():.1f}")'; }
 elapsed() { python3 -I -c "import sys; print(f'{float(sys.argv[2]) - float(sys.argv[1]):.0f}')" "$1" "$(seconds)"; }
 
@@ -260,8 +311,10 @@ served() {
 }
 
 # The newest snapshot moment <sha> was already resolved at for <cc> within --max-age hours, if any.
+# The directory <sha>'s sides of <cc> are kept under: per tool files, answers and the mirror's seed generation
+side_root() { echo "$cache/$1/$2-$tools_hash-$side_answers-mirror$mirror_gen"; } # <cc> <sha>
 cached_at() { # <cc> [sha]
-  local root=$cache/$1/${2:-$base_sha}-$tools_hash-$side_answers
+  local root; root=$(side_root "$1" "${2:-$base_sha}")
   [ -d "$root" ] || return 0
   python3 -I - "$root" "$max_age" "$final" <<'PY'
 import datetime, os, sys
@@ -280,13 +333,16 @@ whole_side() {
   # a JVM of its own, never a kept one: the side it resolves is kept on disk and never asked of that JVM again, which
   # would only have held a JVM slot idle for its 10 minutes (2026-11-15: a what-if queued 390 s behind two such)
   local sha=$1 cc=$2 snapshot=$3 dir tree serve=0
-  dir=$cache/$cc/$sha-$tools_hash-$side_answers/$snapshot
+  dir=$(side_root "$cc" "$sha")/$snapshot
   if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
-      tree=$(tree_of "$sha") || return 2
+    tree=$(tree_of "$sha") || return 2
     identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
-    resolve "$tree" "$cc" "$dir.part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} >&2 || return 2
+    resolve "$tree" "$cc" "$dir.part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
+      --mirror-generation "$mirror_gen" >&2 || return 2
+    answers_ok "$dir.part" "${sha:0:12}" || { rm -rf "$dir.part"; return 2; }
     rm -rf "$dir"; mv "$dir.part" "$dir"
   fi
+  answers_ok "$dir" "${sha:0:12}" || { rm -rf "$dir"; return 2; }
   printf '%s\n' "$dir"
 }
 
@@ -300,7 +356,7 @@ if [ -n "$bisect_good" ]; then
   serve=0
   good=$(git -C "$repo" rev-parse --verify "$bisect_good^{commit}") || { echo "--bisect: no commit $bisect_good" >&2; exit 2; }
   bad=$(git -C "$repo" rev-parse --verify "$bisect_bad^{commit}") || { echo "--bisect: no commit $bisect_bad" >&2; exit 2; }
-  scripts/local-mirror/freshness "$cc" --quiet >&2 || [ "$?" != 2 ] || { identity_log "$cc: the local prod mirror does not answer"; exit 2; }
+  mirror_gen=$(mirror_ready "$cc") || exit 2
   snapshot=${at:-$(cached_at "$cc" "$bad")}; snapshot=${snapshot:-$(date -u +%Y-%m-%dT%H:%M:00Z)}
   commits=("$good"); while IFS= read -r c; do commits+=("$c"); done < <(git -C "$repo" rev-list --first-parent --reverse "$good..$bad")
   take_args=(take); [ -z "$bisect_listing" ] || take_args+=(--listing "$bisect_listing")
@@ -316,6 +372,7 @@ if [ -n "$bisect_good" ]; then
     echo "  no commit of the range moves it at $snapshot: the code takes alike. ${bad:0:12} at $since: $before"
     [ "$before" = "$last" ] && echo "  CORPUS: the take stood alike at $since too -- neither the code nor the corpus moved it in that window" \
       || echo "  CORPUS: the corpus moved it between $since and $snapshot (scripts/identity-replay / identity-why name the input)"
+    mirror_unchanged "$cc" "$mirror_gen" "after the bisect" || exit 2
     echo "  wall $(elapsed "$started")s"
     exit 0
   fi
@@ -326,6 +383,7 @@ if [ -n "$bisect_good" ]; then
     echo "  step $step: ${commits[$mid]:0:12} $([ "$t" = "$first" ] && echo good || echo bad): $t"
     if [ "$t" = "$first" ]; then lo=$mid; else hi=$mid; fi
   done
+  mirror_unchanged "$cc" "$mirror_gen" "after the bisect" || exit 2
   echo "  FIRST MOVED BY $(git -C "$repo" log -1 --format='%h %s' "${commits[$hi]}")"
   echo "    before: $(take_at "${commits[$lo]}" "$snapshot")"
   echo "    after:  $(take_at "${commits[$hi]}" "$snapshot")"
@@ -360,15 +418,17 @@ compile_head_beside() {
 }
 status=0
 for cc in "${ccs[@]}"; do
-  fresh_rc=0; scripts/local-mirror/freshness "$cc" --quiet >&2 || fresh_rc=$?
-  [ "$fresh_rc" != 2 ] || { identity_log "$cc: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
+  mirror_gen=$(mirror_ready "$cc") || exit 2
   started=$(seconds)
   snapshot=${at:-$(cached_at "$cc")}
   if [ -z "$snapshot" ]; then snapshot=$(date -u +%Y-%m-%dT%H:%M:00Z); fi
-  base_state=$([ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
-    [ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
+  base_root=$(side_root "$cc" "$base_sha")
+  base_state=$([ -f "$base_root/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
+    [ -f "$base_root/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
   [ "$base_state" = kept ] || compile_head_beside
   base_dir=$(whole_side "$base_sha" "$cc" "$snapshot") || exit 2
+  # a base resolved here off a copy that changed under it is not kept: it is no side of either generation
+  mirror_unchanged "$cc" "$mirror_gen" "after the base" || { [ "$base_state" = kept ] || rm -rf "$base_dir"; exit 2; }
   base_seconds=$(elapsed "$started")
   head_dir=$out/$cc
   rm -rf "$head_dir"; mkdir -p "$head_dir"
@@ -392,8 +452,10 @@ for cc in "${ccs[@]}"; do
     [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }
     resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
       --base-takes "$base_dir/takes.tsv" --threads "$threads" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
-      ${more[@]+"${more[@]}"} || exit 2
+      ${more[@]+"${more[@]}"} --mirror-generation "$mirror_gen" || exit 2
+    answers_ok "$head_dir" head || exit 2
   fi
+  mirror_unchanged "$cc" "$mirror_gen" "after the head" || { [ "$base_state" = kept ] || rm -rf "$base_dir"; exit 2; }
   head_seconds=$(elapsed "$head_started")
   diff_args=(diff --cc "$cc" --base "$base_dir" --head "$head_dir" --judgements "$judgements" --tsv "$out/takes-diff-$cc.tsv")
   [ "$verify" = 0 ] || diff_args+=(--verify)

@@ -89,6 +89,16 @@ scripts/local-mirror/freshness uk --quiet --not-before 2026-10-13T07:35:22Z --ma
 
 `--not-before` is the recording the caller will mix the mirror with; `--need` the collections it reads.
 
+A WARN is not a refusal, and freshness is a moment's look: a seed can start the minute after it. A reader that runs
+for minutes and compares two reads (`scripts/identity-what-if`'s base and head) pins itself to the **seed generation**
+instead: `--generation` adds a `GENERATION <cc> <token>` line a country -- `seeding` while `<db>:seed` is set (a seed
+in flight, or one that died and left a torn copy), `reseed-due` when `<db>`'s state is gone (the tailer lost its token),
+else the last whole seed's `startAtOperationTime` as `<seconds>.<increment>`, which only `seed.js` rewrites (the tailer
+`$set`s its resume token beside it). The what-if refuses to start on `seeding`/`reseed-due` and exits 2 (HARNESS ERROR)
+when the token is not the same before its base, between its sides and after its head; its kept sides are keyed by it.
+That is what lane C's 87k false "takes moved" (2026-11-19) was: freshness WARNed "a seed is in flight", exit 3, and the
+what-if went on, since it stopped only on exit 2.
+
 Not fresh means: synced more than `--max-lag-hours` ago, synced BEFORE `--not-before` (the reader would mix two
 moments), a seed in flight (`<db>:seed` in `__mirror_state` — the copy is a fragment), or a `--need`ed
 collection holding nothing (a collection newly added to `debug-mirror-collections.json` stays empty until the RUNNING

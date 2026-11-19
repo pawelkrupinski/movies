@@ -6,7 +6,8 @@
 //
 // Per database: the sync moment (the cluster time of the last change the tailer applied, from its resume token in
 // `__mirror_state`; the seed's pre-copy operation time when it has applied none yet), and per mirrored collection its
-// document count and its newest write where the collection stamps one. Exits 3 when any database is not fresh
+// document count and its newest write where the collection stamps one. With GENERATION, a `GENERATION <cc> <token>` line
+// a database: its seed generation (freshness-rule.js's seedGeneration). Exits 3 when any database is not fresh
 // (freshness-rule.js), 2 when one is absent.
 
 // The field each collection stamps its writes with, where it has one: Dates, ISO strings or epoch-millis longs.
@@ -41,7 +42,8 @@ CCS.forEach(cc => {
   }
   const mdb = local.getDB(name);
   const state = mdb.getCollection("__mirror_state");
-  const saved = state.findOne({ _id: prodDb }) || {};
+  const savedState = state.findOne({ _id: prodDb });
+  const saved = savedState || {};
   const fromToken = resumeTokenMs(saved.resumeToken && saved.resumeToken._data);
   const syncedAtMs = fromToken !== null ? fromToken
     : saved.startAtOperationTime ? saved.startAtOperationTime.getHighBits() * 1000 : null;
@@ -62,6 +64,7 @@ CCS.forEach(cc => {
   const lag = verdict.lagMs === null ? "?" : formatDuration(verdict.lagMs);
   print(`${cc}  ${name}: synced ${iso(syncedAtMs)} (${lag} ago${fromToken === null && syncedAtMs !== null ? ", seed start — no change applied yet" : ""}) — ` +
     (verdict.fresh ? "fresh" : "WARN: " + verdict.warnings.join("; ")));
+  if (typeof GENERATION !== "undefined" && GENERATION) print(`GENERATION ${cc} ${seedGeneration(savedState, seedIncomplete)}`);
   if (!QUIET) rows.forEach(r => print(`      ${r.c.padEnd(24)} ${String(r.count).padStart(8)}  ${r.newest === null ? "" : "newest " + iso(r.newest)}`));
   if (!verdict.fresh) worst = Math.max(worst, 3);
 });

@@ -20,6 +20,20 @@ function prodDbOf(cc) {
   return code === "pl" ? "kinowo" : "kinowo_" + code;
 }
 
+// THE SEED GENERATION a reader pins its run to (scripts/identity-what-if reads it before its base, between its sides and
+// after its head, and refuses a run it changed under): seed.js marks `<db>:seed` while it drops and refills, and only on
+// its last collection replaces `<db>`'s state with the snapshot's own startAtOperationTime -- which the tailer never
+// touches (it $sets resumeToken beside it). So `seeding` while a seed is in flight (or died, leaving a torn copy),
+// `reseed-due` when the state is gone (tail.js deleted it: a lost resume token, the re-seed not begun), `t.i` of the last
+// whole seed's start otherwise, `untracked` for a state that predates the stamp. `saved` is `<db>`'s state or null.
+function seedGeneration(saved, seedIncomplete) {
+  if (seedIncomplete) return "seeding";
+  if (!saved) return "reseed-due";
+  const t = saved.startAtOperationTime;
+  if (!t) return "untracked";
+  return `${t.getHighBits()}.${t.getLowBits()}`;
+}
+
 // observed: { syncedAtMs, nowMs, maxLagMs, notBeforeMs?, seedIncomplete?, missing? } — the sync moment (null when the
 // database was never tailed), the wall clock, the lag allowed, the moment the mirror must not predate (the recording's),
 // whether a seed is in flight, and the collections the reader needs that the mirror holds nothing of.

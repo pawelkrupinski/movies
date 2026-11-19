@@ -196,7 +196,7 @@ object WhatIfResolve {
   }
 
   /** What a kept JVM holds between requests (`--serve`): the mirror's client, and each loaded corpus with its context and
-   *  pins, by (country, moment, answers) -- the two newest, the dear part of a run (a corpus and its context are most of
+   *  pins, by (country, moment, answers, mirror seed generation) -- the two newest, the dear part of a run (a corpus and its context are most of
    *  a head's wall time). The code is the JVM's own: one kept JVM per ref's tree. */
   final class Kept {
     val uri = "mongodb://127.0.0.1:28017/?directConnection=true"
@@ -252,7 +252,10 @@ object WhatIfResolve {
     {
       val db         = kept.client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
-      val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse("")).mkString("|")
+      // the mirror's seed generation (identity-what-if passes it): a corpus loaded off one copy is never served against
+      // another, whose listings the same moment replays otherwise
+      val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse(""),
+        opt("--mirror-generation").getOrElse("")).mkString("|")
       val (loaded, warm) = kept.loaded(loadKey) { WhatIfAnswers.patient(Pause) {
         val inputs  = ResolveInputs.of(new MongoPinStore(Some(db)).all())
         val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, answering(args.toSeq, country, clock)))

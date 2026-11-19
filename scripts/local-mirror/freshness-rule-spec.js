@@ -42,6 +42,16 @@ fresh("a seed in flight is not fresh", { ...synced, seedIncomplete: true }, fals
 fresh("a collection the reader needs that the mirror lacks is not fresh", { ...synced, missing: ["identity_agreements"] }, false);
 check("the lag is reported", freshnessVerdict(synced).lagMs, 5 * 60 * 1000);
 
+// The seed generation a what-if pins its run to: it must change on every seed, and on nothing the tailer does.
+// a BSON Timestamp as mongosh decodes one (the spec also runs under plain Node, nodb.js, with no BSON types)
+const ts = { getHighBits: () => 1763500000, getLowBits: () => 7 };
+check("a whole seed's generation is its start's t.i", seedGeneration({ _id: "kinowo_us", startAtOperationTime: ts }, false), "1763500000.7");
+check("...the tailer's resume token beside it does not move it",
+  seedGeneration({ _id: "kinowo_us", startAtOperationTime: ts, resumeToken: { _data: "826ACE076B0000005D2B042C0100" } }, false), "1763500000.7");
+check("a seed in flight is `seeding`, whatever the state", seedGeneration({ _id: "kinowo_us", startAtOperationTime: ts }, true), "seeding");
+check("no state (a lost resume token, its re-seed not begun) is `reseed-due`", seedGeneration(null, false), "reseed-due");
+check("a state with no seed stamp is `untracked`", seedGeneration({ _id: "kinowo_us", resumeToken: {} }, false), "untracked");
+
 check("cc pl is prod's kinowo", prodDbOf("pl"), "kinowo");
 check("any other cc is kinowo_<cc>", prodDbOf("UK"), "kinowo_uk");
 
