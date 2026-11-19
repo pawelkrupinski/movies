@@ -44,11 +44,11 @@ class ClusterVotingSpec extends AnyFlatSpec with Matchers {
     val withdrawn = node(lantern)
     val scope     = families.scopeOf(withdrawn)
     // the premise: Magic Lantern took the Hunchback alone and a sibling withdrew it; Plough and Quad took nothing alone
-    withClue((scope.of(withdrawn).take(3).map(ResolveReports.CandidateScore.of(_, IdentityCalibration.resolver).render) ++ acceptance.refusals(scope.of(withdrawn)).map(_.toString)).mkString("\n"))(scope.takenAlone(withdrawn).map(_._1._1.candidate.tmdbId) shouldBe Some(11594))
+    withClue((scope.of(withdrawn).take(3).map(NodeCandidates.CandidateScore.of(_, IdentityCalibration.resolver).render) ++ acceptance.refusals(scope.of(withdrawn)).map(_.toString)).mkString("\n"))(scope.takenAlone(withdrawn).map(_._1._1.candidate.tmdbId) shouldBe Some(11594))
     families.bestOf.get(withdrawn.id) shouldBe empty
     Seq(plough, quad).map(node).flatMap(n => scope.takenAlone(n).map(taken => n.id -> (taken._1._1.candidate.tmdbId, taken._2))) shouldBe empty
     val cluster = Seq(lantern, riverside, plough, quad).map(node).distinct
     val votes   = new ClusterVoting(scoring, families, acceptance).vote(cluster, scope)
-    withClue(scope.pooled(cluster).take(3).map(ResolveReports.CandidateScore.of(_, IdentityCalibration.resolver).render).mkString("\n"))(votes.map(_._2._1).distinct should not contain 11594)
+    withClue(scope.pooled(cluster).take(3).map(NodeCandidates.CandidateScore.of(_, IdentityCalibration.resolver).render).mkString("\n"))(votes.map(_._2._1).distinct should not contain 11594)
   }
 }

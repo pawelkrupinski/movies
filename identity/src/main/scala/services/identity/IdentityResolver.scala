@@ -82,7 +82,7 @@ object IdentityResolver {
    *  scored them. */
   final case class ListingExplanation(node: String, family: Int, familyListings: Int, keys: Seq[(String, String)],
                                       dropped: Seq[(String, String)], chain: Seq[(String, String)], decision: ResolverDecision,
-                                      candidates: Seq[ResolveReports.CandidateScore]) {
+                                      candidates: Seq[NodeCandidates.CandidateScore]) {
     def render: Seq[String] =
       Seq(s"listing in node $node, family $family ($familyListings listing(s))",
           s"  decision: ${decision.render}") ++
@@ -123,7 +123,7 @@ object IdentityResolver {
       }
       val decision = resolution.decisionOf(listing)
       ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
-        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(ResolveReports.CandidateScore.of(_, calibration)))
+        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(NodeCandidates.CandidateScore.of(_, calibration)))
     }
   }
 

@@ -5,7 +5,7 @@ import services.titles.TitleForms
 import IdentityResolver.Mutation
 
 /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
- *  and for [[ResolveReports.candidatesOf]]. */
+ *  and for [[NodeCandidates.of]]. */
 private[identity] final class ResolveStages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                          calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations,
                                          corpus: Option[CorpusContext] = None) {

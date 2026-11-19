@@ -110,7 +110,7 @@ object IdentityResolveDump {
       val focused = listings.filter(l => f.covers(tokens(l))).map(_.key).toSet
       val trace   = mutable.ListBuffer.empty[String]
       IdentityResolver.explain(listings, lookups, c.normalizer, IdentityCalibration.resolver)(focused).foreach(_.render.foreach(trace += _))
-      ResolveReports.candidatesOf(listings, lookups, c.normalizer, IdentityCalibration.resolver)(l => focused(l.key)).foreach { node =>
+      NodeCandidates.of(listings, lookups, c.normalizer, IdentityCalibration.resolver)(l => focused(l.key)).foreach { node =>
         trace += node.label
         node.banners.foreach(b => trace += s"  $b")
         node.candidates.take(8).foreach(cand => trace += s"  ${cand.render}")

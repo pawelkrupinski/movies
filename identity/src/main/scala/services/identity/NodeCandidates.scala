@@ -2,9 +2,11 @@ package services.identity
 
 import services.titles.TitleForms
 
-/** The resolve's own stages told for a report: each candidate as a node's family scored it, a focused node's candidates
- *  and banners ([[candidatesOf]]). */
-object ResolveReports {
+/** A node's candidates as its family scored them, and its banners with the houses they are read as: what a report reading
+ *  why a listing took what it took prints of a focused node ([[NodeCandidates.of]]). */
+final case class NodeCandidates(label: String, candidates: Seq[NodeCandidates.CandidateScore], banners: Seq[String])
+
+object NodeCandidates {
 
   /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
   final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
@@ -25,16 +27,13 @@ object ResolveReports {
         scored.untaken, scored.denial.flatMap(_.releasedBeside))
   }
 
-  /** A focused node, its candidates as its family scores them (best first), and each banner its
-   *  candidates bill it under with the houses contending for that banner, best first, and the one learned. */
-  final case class NodeCandidates(label: String, candidates: Seq[CandidateScore], banners: Seq[String])
-
-  /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
-   *  what the resolve read. */
-  def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
-                   calibration: IdentityCalibration = IdentityCalibration.resolver,
-                   pins: PinConstraints = PinConstraints(Nil),
-                   decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {
+  /** Every node holding a listing `focused` selects -- the resolve's own candidate pipeline, so the report shows what the
+   *  resolve read: its candidates as its family scores them (best first), and each banner its candidates bill it under
+   *  with the houses contending for that banner, best first, and the one learned. */
+  def of(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
+         calibration: IdentityCalibration = IdentityCalibration.resolver,
+         pins: PinConstraints = PinConstraints(Nil),
+         decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {
     val stages = new ResolveStages(listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None, pins, decorations)
     import stages.scoring.{houseRanking, houses}
     IdentityResolver.focusedScored(stages)(focused).map { case (node, scored) =>
