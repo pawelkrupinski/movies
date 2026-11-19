@@ -1,0 +1,3 @@
+@(country: models.Country, cards: Seq[controllers.GalleryCard], directory: java.nio.file.Path)
+@* Dev-only: every city card of `country` and its home card (ShareCardGalleryController.cities). *@
+@_shareCardGallery("cities", country, directory, s"${country.displayName}: the home card and ${cards.size - 1} city cards.", cards)

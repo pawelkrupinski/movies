@@ -106,6 +106,9 @@ object RenderSafetyLintSpec {
     "review.scala.html"                   -> "/debug/review* — ReviewController.devOnly",
     "reviewWhy.scala.html"                -> "/debug/review/why — ReviewController.devOnly",
     "reviewListing.scala.html"            -> "/debug/review/listing — ReviewController.devOnly",
+    "shareCardCities.scala.html"          -> "/debug/share-cards/cities — ShareCardGalleryController, DevMode.gate",
+    "shareCardMovies.scala.html"          -> "/debug/share-cards/movies — ShareCardGalleryController, DevMode.gate",
+    "_shareCardGallery.scala.html"        -> "rendered only into shareCardCities / shareCardMovies.scala.html",
   )
 
   /** Raw `Html(…)` splices in (non-dev) templates whose text is ours. (file, argument) → why. */

@@ -163,6 +163,8 @@ trait DebugWiring { self: Wiring =>
   lazy val cadenceController = { debugSnapshotTicker; new CadenceController(controllerComponents, debugCountries, environmentMode, clock) }
   lazy val debugReadModelController = new DebugReadModelController(controllerComponents, environmentMode, debugReadModels, clock)
   lazy val tuneController = new TuneController(controllerComponents, environmentMode, cityRequests)
+  lazy val shareCardGalleryController = new controllers.ShareCardGalleryController(controllerComponents, environmentMode,
+    debugReadModels, new controllers.ShareCardFiles(processConfiguration.shareCardDirectory))
   // The one /debug endpoint that runs in prod: admin-gated, it reloads the read-model caches.
   lazy val rehydrateController = new RehydrateController(controllerComponents, cityRequests, webReadModel, adminAction)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's

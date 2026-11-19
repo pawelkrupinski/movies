@@ -46,6 +46,10 @@
 # which runs this in the review worktree with that file set -- not this script from the root checkout (the Claude
 # root-checkout guard refuses that).
 #
+# SHARE CARDS. The dev-only /debug/share-cards pages show the cards in KINOWO_SHARE_CARD_DIR ({cc}: the country), by
+# default ~/.cache/kinowo/share-cards/{cc}: the worker draws them only in the cluster, so a copy of production's goes there
+# (the pages print the rsync).
+#
 # STALE EXPORTERS. Zinc invalidates by name, so a member added to an object another object wildcard-exports
 # (IdentityMeasures' `export CreditMeasures.*`) leaves the exporter's forwarders stale in a warm target/, and the next
 # compile fails "value X is not a member of object IdentityMeasures" though a clean build compiles. The exporters'
@@ -60,6 +64,8 @@ cd "$(dirname "$0")/.."
 export MONGODB_URI="${MONGODB_URI:-$(local_mongo_uri)}"
 export MONGODB_DB="${MONGODB_DB:-kinowo_local}"
 export MONGODB_MOVIES_MIRROR_URI="${MONGODB_MOVIES_MIRROR_URI:-$(local_mongo_uri kinowo_prod_mirror)}"
+default_share_card_dir="$HOME/.cache/kinowo/share-cards/{cc}"
+export KINOWO_SHARE_CARD_DIR="${KINOWO_SHARE_CARD_DIR:-$default_share_card_dir}"
 if [ -z "${DEV_SERVER_MONGO_UP:-}" ] && ! (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
   scripts/local-mirror/start-local-mongo.sh >&2
 fi

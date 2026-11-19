@@ -1,0 +1,3 @@
+@(country: models.Country, cards: Seq[controllers.GalleryCard], showing: Int, directory: java.nio.file.Path)
+@* Dev-only: the share cards of the first films `country` is showing (ShareCardGalleryController.movies). *@
+@_shareCardGallery("movies", country, directory, s"${country.displayName}: the first ${cards.size} of the $showing films showing, by title (?limit= for more).", cards)

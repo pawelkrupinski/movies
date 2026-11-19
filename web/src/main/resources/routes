@@ -80,6 +80,12 @@ GET     /debug/cadence              controllers.CadenceController.cadence()
 # 404 in prod like the rest of /debug.
 GET     /debug/identity/staging      controllers.IdentityStagingController.index()
 GET     /debug/identity/staging/data controllers.IdentityStagingController.data(since: Option[String] ?= None)
+# Dev-only share-card galleries: every city card of ?country= (default pl) plus its home card, and the cards of the
+# first ?limit= films it is showing; each card from this machine's KINOWO_SHARE_CARD_DIR through the file route
+# (production's Caddy serves /share-cards/ itself), "not drawn yet" when absent. 404 in prod like the rest of /debug.
+GET     /debug/share-cards/cities          controllers.ShareCardGalleryController.cities()
+GET     /debug/share-cards/movies          controllers.ShareCardGalleryController.movies(limit: Option[Int] ?= None)
+GET     /debug/share-cards/:country/:file  controllers.ShareCardGalleryController.file(country: String, file: String)
 # Dev-only SSE feed of `movies` change-stream events so the /debug table live-
 # updates (merged rows vanish, new films appear). 404 in prod — the stream is
 # only ever opened in dev, never watching the worker's collection 24/7.

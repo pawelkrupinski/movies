@@ -67,6 +67,20 @@ check "with no TMDB_API_KEY set, web/run gets it from the vault (the review card
 check "an exported TMDB_API_KEY wins, with no vault lookup" \
   "TMDB=mine VAULT=" \
   "$(tmdb_key env TMDB_API_KEY=mine "$DEV/scripts/dev-server.sh")"
+# The share-card galleries' directory: a per-country cache by default, an exported one as it is.
+share_card_dir() {
+  cat > "$FAKE/sbt" <<'SBT'
+#!/usr/bin/env bash
+printf 'CARDS=%s' "${KINOWO_SHARE_CARD_DIR-}"
+SBT
+  run "$@"
+}
+check "with no KINOWO_SHARE_CARD_DIR, the share-card galleries read a per-country cache in the home directory" \
+  "CARDS=/home/dev/.cache/kinowo/share-cards/{cc}" \
+  "$(share_card_dir env -u KINOWO_SHARE_CARD_DIR HOME=/home/dev "$DEV/scripts/dev-server.sh")"
+check "an exported KINOWO_SHARE_CARD_DIR wins" \
+  "CARDS=/cards/{cc}" \
+  "$(share_card_dir env KINOWO_SHARE_CARD_DIR='/cards/{cc}' "$DEV/scripts/dev-server.sh")"
 # Zinc misses a member added behind a wildcard export, so a warm target/ fails with "value X is not a member of object
 # IdentityMeasures" until the exporter's classes go (scripts/ci/sbt-invalidate-exporters.sh, which CI runs after a restore).
 mkdir -p "$STALE_DIR" && : > "$STALE_DIR/IdentityMeasures.class" || exit 1

@@ -1,0 +1,55 @@
+@(active: String, country: models.Country, directory: java.nio.file.Path, summary: String, cards: Seq[controllers.GalleryCard])
+@*
+  The page both dev-only share-card galleries share (ShareCardGalleryController): a nav between the city and film
+  pages, a country switch, where this server looks for the cards and how to get them there, and the card grid.
+  A card whose file is not on this machine is a "not drawn yet" placeholder linking to production's copy.
+*@
+@citiesUrl(c: models.Country) = @{ controllers.routes.ShareCardGalleryController.cities().url + "?country=" + c.code }
+@moviesUrl(c: models.Country) = @{ controllers.routes.ShareCardGalleryController.movies(None).url + "?country=" + c.code }
+@pageUrl(c: models.Country) = @{ if (active == "movies") moviesUrl(c) else citiesUrl(c) }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share cards · @active · @country.code</title>
+  <style>
+    body { margin: 0; padding: 1rem; background: #0d0d22; color: #ccd; font: 13px system-ui, sans-serif; }
+    nav { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+    nav a { color: #99b; background: #1a1a2e; border: 1px solid #2a2a3e; padding: .25rem .7rem; border-radius: 3px; text-decoration: none; }
+    nav a.is-active { color: #aad4ff; border-color: #3a3a6e; }
+    .hint { color: #889; margin: .3rem 0 1rem; }
+    .hint code { color: #ffd479; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    figure { margin: 0; }
+    figure img, .not-drawn { width: 100%; aspect-ratio: 1200 / 630; border-radius: 4px; display: block; }
+    .not-drawn { display: flex; align-items: center; justify-content: center; background: #1a1a2e;
+                 border: 1px dashed #3a3a6e; color: #889; }
+    figcaption { margin-top: .3rem; }
+    figcaption a { color: #66aadd; margin-left: .4rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="@citiesUrl(country)" class="@if(active == "cities"){is-active}">Cities</a>
+    <a href="@moviesUrl(country)" class="@if(active == "movies"){is-active}">Movies</a>
+    @for(c <- models.Country.all) {
+      <a href="@pageUrl(c)" class="@if(c == country){is-active}">@c.code</a>
+    }
+  </nav>
+  <p>@summary</p>
+  <p class="hint">Cards are read from <code>@directory</code> (<code>KINOWO_SHARE_CARD_DIR</code>). The worker draws them only in the
+    cluster; to see them here, copy production's: <code>rsync -a k3s-worker-1:/var/lib/kinowo/share-cards/@country.code/ @directory/</code></p>
+  <div class="grid">
+    @for(card <- cards) {
+      <figure>
+        @card.localUrl match {
+          case Some(src) => { <img src="@src" alt="@card.label" loading="lazy"> }
+          case None => { <div class="not-drawn">@if(card.productionUrl.isDefined){not drawn yet} else {no share card in the read model}</div> }
+        }
+        <figcaption>@card.label @for(url <- card.productionUrl){<a href="@url">production ↗</a>}</figcaption>
+      </figure>
+    }
+  </div>
+</body>
+</html>
