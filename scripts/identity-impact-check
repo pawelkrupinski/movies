@@ -14,8 +14,15 @@ never leaves out a test that could fail. Two ways, each in a checkout of its own
               outcome differs. Country scopes are reported; the commits' specs predate tools.CountryScope, so the
               mutations are the proof of those.
 
-Usage: scripts/identity-impact-check mutations [--only NAME,...] | replay [-n 50] [--ref REF] [--from N]
-Exit 0 sound, 1 a test the selection left out changed outcome (named), 2 the check could not be made.
+  hook        each MUTATION committed in the checkout -- detached, its own TMPDIR: a landing check's tree -- and the
+              pre-push hook's own identity area run there with PREPUSH_IDENTITY_PLAN (the plan alone, nothing run):
+              AGREES when the hook made a selection and it names exactly the classes this tool's own selection does;
+              NO SELECTION when the hook fell back to every identity test (its why named: 2026-11-19's question,
+              whether a check tree's selection silently fails), DISAGREES otherwise.
+
+Usage: scripts/identity-impact-check mutations [--only NAME,...] | hook [--only NAME,...] | replay [-n 50] [--ref REF] [--from N]
+Exit 0 sound, 1 a test the selection left out changed outcome (named; hook: a mutation not AGREES), 2 the check could
+not be made.
 Results: <tree>.results/<mode>.tsv, one row per mutation or commit; each step's logs beside it.
 """
 
@@ -278,6 +285,64 @@ def mutations(tree, out, only):
     return rows, unsound, ["mutation", "verdict", "selected", "of", "countries", "failed", "missed", "outOfScopeFailed"]
 
 
+# ── the hook's own selection, from a check tree ─────────────────────────────────────────────────────────────────────
+
+def plan_classes(lines):
+    """{module: classes} the sbt lines name (`<module>/testOnly A B -- -D...`); a whole `<module>/test` as `*`."""
+    out = {}
+    for line in lines:
+        words = line.split()
+        if not words or "/" not in words[0]:
+            continue
+        module, task = words[0].split("/", 1)
+        if task == "test":
+            out.setdefault(module, set()).add("*")
+        elif task.startswith("testOnly"):
+            out.setdefault(module, set()).update(w for w in words[1:] if w != "--" and not w.startswith("-D"))
+    return out
+
+
+def hook_plan(tree, log, plan_file, hook_tmp):
+    """(summary, sbt lines) of the hook's identity area at the tree's HEAD~1..HEAD (PREPUSH_IDENTITY_PLAN)."""
+    os.makedirs(hook_tmp, exist_ok=True)
+    env = {**os.environ, "TMPDIR": hook_tmp, "PREPUSH_ONLY": "identity", "PREPUSH_IDENTITY_PLAN": plan_file,
+           "PREPUSH_SKIP": "eslint lintspecs"}
+    if os.path.exists(plan_file):
+        os.remove(plan_file)
+    with open(log, "w") as fh:
+        rc = subprocess.run(["bash", "scripts/hooks/pre-push", "--checks-only", "HEAD~1..HEAD"], cwd=tree, env=env,
+                            stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL).returncode
+    if rc != 0 or not os.path.exists(plan_file):
+        raise RuntimeError(f"the hook wrote no identity plan (exit {rc}): {log}")
+    lines = [l.rstrip("\n") for l in open(plan_file, encoding="utf-8") if l.strip()]
+    return next((l[2:] for l in lines if l.startswith("# ")), ""), [l for l in lines if not l.startswith("#")]
+
+
+def hook(tree, out, only):
+    rows, unsound = [], []
+    head = git(REPO, "rev-parse", "HEAD").strip()
+    for name, what, apply in MUTATIONS:
+        if only and name not in only:
+            continue
+        say(f"hook {name}: {what}")
+        prepare(tree, head)
+        apply(tree)
+        git(tree, "-c", "user.name=identity-impact-check", "-c", "user.email=identity-impact-check@localhost",
+            "commit", "-qam", f"identity-impact-check: {name}")  # a detached commit: the hook's range, as a check's
+        why, chosen, every, countries = select(tree, "HEAD~1", "HEAD", f"{out}/{name}")
+        mine = plan_classes(identity_impact.plan(set_lines(tree), why, chosen, countries, every_test=every if why else None))
+        summary, lines = hook_plan(tree, f"{out}/{name}.hook.log", f"{out}/{name}.hook.plan", f"{out}/{name}.hook-tmp")
+        theirs = plan_classes(lines)
+        verdict = "NO SELECTION" if summary.startswith("no test-impact selection") else \
+            ("AGREES" if theirs == mine else "DISAGREES")
+        if verdict != "AGREES":
+            unsound.append(name)
+        rows.append([name, verdict, str(len(flat(theirs))), str(len(flat(mine))), summary[:160]])
+        say(f"  {verdict}: the hook {rows[-1][2]} classes, this tool {rows[-1][3]}; {summary[:160]}")
+    prepare(tree, head)
+    return rows, unsound, ["mutation", "verdict", "hookClasses", "toolClasses", "hookSummary"]
+
+
 # ── the replay ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def replay(tree, out, n, ref, start):
@@ -318,7 +383,7 @@ def replay(tree, out, n, ref, start):
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("mode", choices=["mutations", "replay"])
+    ap.add_argument("mode", choices=["mutations", "hook", "replay"])
     ap.add_argument("--tree", default=os.path.expanduser("~/.cache/kinowo-identity/impact-check"))
     ap.add_argument("--only", default="")
     ap.add_argument("-n", type=int, default=50)
@@ -327,10 +392,11 @@ def main(argv):
     a = ap.parse_args(argv)
     out = a.tree + ".results"  # beside the checkout: a reset cleans its untracked files
     try:
-        if a.mode == "mutations":
+        if a.mode in ("mutations", "hook"):
             prepare(a.tree, git(REPO, "rev-parse", "HEAD").strip())
             os.makedirs(out, exist_ok=True)
-            rows, unsound, header = mutations(a.tree, out, set(filter(None, a.only.split(","))))
+            rows, unsound, header = (mutations if a.mode == "mutations" else hook)(
+                a.tree, out, set(filter(None, a.only.split(","))))
         else:
             prepare(a.tree, a.ref)
             os.makedirs(out, exist_ok=True)

@@ -249,6 +249,22 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(ii.plan(["Test/compile"] + SET, [], {}, None), ["Test/compile"])
 
 
+class PlanCommandTest(unittest.TestCase):
+    """`identity_impact.py plan` with no impact file -- identityImpact gave no answer -- says so in one line and exits
+    1, never a traceback (2026-11-19: the landing checks' failure dump showed the hook self-test's tracebacks, read as
+    the identity selection failing in a check tree)."""
+
+    def test_a_missing_impact_file_is_one_line_not_a_traceback(self):
+        with tempfile.TemporaryDirectory() as d:
+            missing = os.path.join(d, "identity.impact")
+            r = subprocess.run([sys.executable, os.path.join(HERE, "identity_impact.py"), "plan", "--impact", missing],
+                               input="identity/test\n", capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertEqual(r.stderr.strip().splitlines(),
+                         [f"identity_impact.py: no answer from identityImpact: {missing} was not written"])
+
+
 def local_identity_lines():
     """The identity set's sbt lines of the checked-in scripts/hooks/local-tests.txt."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "local-tests.txt")

@@ -259,8 +259,11 @@ def countries(base, head, paths, tree="."):
 # ── the plan ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def read_impact(path):
-    """(reasons for ALL, {module: set of test classes})."""
+    """(reasons for ALL, {module: set of test classes}); no file -- identityImpact gave no answer -- exits 1, saying so
+    in one line (the hook then runs every identity test)."""
     why, tests = [], {}
+    if not os.path.isfile(path):
+        raise SystemExit(f"identity_impact.py: no answer from identityImpact: {path} was not written")
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()

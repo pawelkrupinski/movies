@@ -38,8 +38,12 @@ export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from
 # Every case below runs the hook as a push to main, which reads the gating workflows' verdicts first: a stub `gh`
 # answers `gh run list --workflow W` from $GH_MAIN / $GH_IMC / $GH_REC (Verify scrape recording; JSON, default none) through the hook's own
 # --jq filter, so no case reads the real repository's runs.
-# One temporary root for everything below, removed however the spec exits.
+# One temporary root for everything below, removed however the spec exits -- the hook runs' own temporary directories
+# too (TMPDIR): a failing run keeps its $tmp for its logs, and outside the root a landing check's failure dump (every
+# *.log under the hook's TMPDIR) showed the stub runs' logs as if the check had written them (2026-11-19: a missing
+# identity.impact traceback, read as the identity selection failing in the check tree).
 testroot="$(mktemp -d)"
+export TMPDIR="$testroot/tmp"; mkdir -p "$TMPDIR"
 ghstub="$testroot/gh"; mkdir -p "$ghstub"
 cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash

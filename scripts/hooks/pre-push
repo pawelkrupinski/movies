@@ -1363,7 +1363,7 @@ if [ "${PREPUSH_LIST:-}" = 1 ]; then printf '%s\n' "$checks" | grep -v '^$' || t
 # own inherited the landing check's PREPUSH_ONLY / _HEAVY_MONGODB_URI and judged another job's share (landing check run
 # 44246845439). Kept as this shell's variables (heavy_row and the identity shard still read theirs).
 export -n PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS PREPUSH_HEAVY_MONGODB_URI PREPUSH_HEAVY_MONGODB_DB \
-    PREPUSH_IDENTITY_SHARD 2>/dev/null || true
+    PREPUSH_IDENTITY_SHARD PREPUSH_IDENTITY_PLAN 2>/dev/null || true
 
 # ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
 # A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote
@@ -1770,11 +1770,18 @@ local_test_lines() { # <set> <kind>
 # An area's local tests: its first lines (each a fast check whose failure names everything at once: it fails the area
 # there, nothing else run), its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
 # compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
+# THE IDENTITY PLAN ALONE: PREPUSH_IDENTITY_PLAN=<file> makes the identity area write the sbt lines its TEST-IMPACT
+# SELECTION picked (a `# ` line first: the selection's summary, or why there was none and every identity test is the
+# plan) and run nothing -- no first line, no spec. scripts/identity-impact-check's `hook` mode reads it from a detached
+# checkout of its own, as a landing check's tree is (2026-11-19: tracebacks of a missing identity.impact in a landing
+# check's failure dump, which were the hook self-test's stub runs, not the check's selection).
 run_local_tests() { # <set>
-    local cmds=() line rc=0 sh_lines=1
+    local cmds=() line rc=0 sh_lines=1 plan_only=""
+    [ "$1" != identity ] || plan_only="${PREPUSH_IDENTITY_PLAN:-}"
     need_jvm "$1" || return 1
     # the first lines: once, never sharded (shard 1 runs them, as the sh lines)
-    if [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
+    if [ -n "$plan_only" ]; then :
+    elif [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
         while IFS= read -r line; do
             [ -n "$line" ] || continue
             if ! bash -c "$line" < /dev/null > "$tmp/$1.first.log" 2>&1; then
@@ -1788,14 +1795,22 @@ run_local_tests() { # <set>
     while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
         local selected=()
+        local said
         if select_identity_tests "${cmds[@]}" > "$tmp/identity.plan" 2> "$tmp/identity.select.log"; then
             while IFS= read -r line; do [ -n "$line" ] && selected+=("$line"); done < "$tmp/identity.plan"
-            log "identity: $(tr '\n' ';' < "$tmp/identity.summary" | sed 's/;$//; s/;/; /')"
+            said="$(tr '\n' ';' < "$tmp/identity.summary" | sed 's/;$//; s/;/; /')"
+            log "identity: $said"
             cmds=(${selected[@]+"${selected[@]}"})
-            if [ "${#cmds[@]}" -eq 0 ]; then log "identity: the change reaches no identity spec"; return 0; fi
         else
-            warn "identity: no test-impact selection ($(tail -1 "$tmp/identity.select.log")) -- every identity test"
+            said="no test-impact selection ($(tail -1 "$tmp/identity.select.log")) -- every identity test"
+            warn "identity: $said"
         fi
+        if [ -n "$plan_only" ]; then
+            { printf '# %s\n' "$said"; [ "${#cmds[@]}" -eq 0 ] || printf '%s\n' "${cmds[@]}"; } > "$plan_only"
+            log "identity: the plan alone, to $plan_only (PREPUSH_IDENTITY_PLAN): nothing run"
+            return 0
+        fi
+        if [ "${#cmds[@]}" -eq 0 ]; then log "identity: the change reaches no identity spec"; return 0; fi
     fi
     # THE IDENTITY SHARDS (precommit-check.yml's `check (identity k/n)` jobs): PREPUSH_IDENTITY_SHARD=<k>/<n> runs shard k of
     # the selected lines (scripts/ci/shard_tests.py: every class in exactly one shard, under its own line's command and
@@ -1892,18 +1907,20 @@ test_impact() {
     git diff --name-only --no-renames "$mb" "$head_sha" > "$tmp/$1.changed" || return 1
     scripts/sbt-warm "identityImpact $tmp/$1.changed $tmp/$1.impact" > "$tmp/$1.impact.log" 2>&1 \
         || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact failed"; return 1; }
+    # an exit 0 that wrote nothing (a kept server answering for a command it never ran) is no answer, said as one
+    [ -f "$tmp/$1.impact" ] || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact wrote no answer"; return 1; }
 }
 select_identity_tests() { # <the set's sbt lines>...
     local mb countries every_test=()
-    test_impact identity || return 1
+    test_impact identity >&2 || return 1 # its why on stderr: stdout is the plan
     [ ! -s "$tmp/identity.impact.tests" ] || every_test=(--every-test "$tmp/identity.impact.tests")
     mb="$(git merge-base "$base_sha" "$head_sha")" || return 1
     countries="$(python3 scripts/ci/identity_impact.py countries "$mb" "$head_sha" < "$tmp/identity.changed")" \
-        || { echo "the countries could not be read"; return 1; }
+        || { echo "the countries could not be read" >&2; return 1; }
     # ALL (every test) runs each class once and by name (--every-test: identityImpact's list of every test class), so
     # identity's specs no longer run twice and the landing check's shards split it by class
     printf '%s\n' "$@" | python3 scripts/ci/identity_impact.py plan --impact "$tmp/identity.impact" --countries "$countries" \
-        ${every_test[@]+"${every_test[@]}"} || { echo "no plan"; return 1; }
+        ${every_test[@]+"${every_test[@]}"} || { echo "no plan" >&2; return 1; }
     if grep -q '^ALL' "$tmp/identity.impact"; then
         echo "every identity spec: $(grep -m1 '^ALL' "$tmp/identity.impact" | cut -c5-)"
     else echo "the specs the change reaches ($(grep -c . "$tmp/identity.impact") test classes in every module)"

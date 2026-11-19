@@ -595,6 +595,8 @@ basic_ran() { grep -cE '(\[|; )Test/compile(\]|;)' "$AREA_CALLS"; } # the basic 
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala)"
 check "an identity change runs the identity set in one sbt-warm call, then its sh lines, and the basic set in the sbt check's run" "0 1 1 1 1" \
   "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(calls stdin-reader) $(calls area-sh-line) $(basic_ran)"
+check "...identityImpact writing no answer said in one line, every identity test run: no traceback, here or in its logs" "1 0" \
+  "$(grep -c 'no test-impact selection (sbt identityImpact wrote no answer) -- every identity test' "$testroot/area-out") $(cat "$testroot/area-out" $(find "$TMPDIR" -name '*.log') 2>/dev/null | grep -c Traceback)"
 check "...the sh lines after the sbt lines" "area-sh-line" "$(grep -E '^area-sh-line$|\[identity/test\]' "$AREA_CALLS" | tail -1)"
 check "...its first line before the area's sbt lines" "first-check" "$(grep -E '^first-check$|\[identity/test\]' "$AREA_CALLS" | head -1 | cut -c1-11)"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala FIRST_FAILS=1)"
@@ -629,6 +631,25 @@ code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPAC
 check "...and none at all when it reaches no identity spec, said" "0 0 1" \
   "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
 check "...and no population walk against the base while no slice is a candidate" "0" "$(calls population-walk-diff)"
+# FROM A CHECK TREE (scripts/identity-impact-check `hook` runs the real one): the identity selection in a detached
+# worktree of the clone, its TMPDIR elsewhere, as a landing check's checkout is; PREPUSH_IDENTITY_PLAN writes the plan
+# and runs nothing.
+checktree="$testroot/checktree"; checktmp="$testroot/checktmp"; mkdir -p "$checktmp"
+scratch_git "$area" worktree add -q --detach "$checktree" HEAD
+cp "$area/scripts/sbt-warm" "$checktree/scripts/sbt-warm"
+check_tree_plan() { # [env...]: the hook's identity plan for the area's last commit, from the check tree; prints its exit code
+  : > "$AREA_CALLS"; rm -f "$testroot/plan"
+  (cd "$checktree" && env PATH="$areabin:$PATH" TMPDIR="$checktmp" PREPUSH_SKIP="eslint lintspecs" PREPUSH_ONLY=identity \
+     PREPUSH_IDENTITY_PLAN="$testroot/plan" "$@" bash scripts/hooks/pre-push --checks-only HEAD~1..HEAD > "$testroot/area-out" 2>&1)
+  echo $?
+}
+code="$(check_tree_plan IMPACT_LINES='identity services.identity.ResolverSpec\n')"
+check "PREPUSH_IDENTITY_PLAN from a check tree: the selection's plan written, its summary first, nothing run" "0 1 1 0 0" \
+  "$code $(grep -c '^# the specs the change reaches (1 test classes in every module); countries in scope' "$testroot/plan") $(grep -cE '^identity/testOnly services.identity.ResolverSpec( |$)' "$testroot/plan") $(calls '/testOnly') $(calls first-check)"
+code="$(check_tree_plan)"
+check "...and no answer from identityImpact there: said, every identity line the plan, no traceback" "0 1 2 0" \
+  "$code $(grep -c '^# no test-impact selection (sbt identityImpact wrote no answer) -- every identity test' "$testroot/plan") $(grep -vc '^#' "$testroot/plan") $(cat "$testroot/area-out" $(find "$checktmp" -name '*.log') 2>/dev/null | grep -c Traceback)"
+scratch_git "$area" worktree remove --force "$checktree"
 # --verify-only (agentctl's combined tree) through the checkout's KEPT server: the touched modules' unit tests narrowed by
 # the same selection -- the worker's whole rest row cost a worker-touching verification ~70-90 s for the few specs the
 # change reaches. A process standing in for the kept server (its cwd the checkout, `--detach-stdio` in its arguments).
