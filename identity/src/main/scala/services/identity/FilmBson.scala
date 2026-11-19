@@ -14,8 +14,6 @@ object FilmBson {
   def encode(film: IdentityMeasures.Film): BsonDocument = {
     val d = new BsonDocument("title", BsonString(film.title))
     def put(name: String, value: Option[BsonValue]): Unit = value.foreach(d.append(name, _))
-    def strings(values: Seq[String]) = new BsonArray(values.map(v => BsonString(v): BsonValue).asJava)
-    def ints(values: Seq[Int])       = new BsonArray(values.map(v => BsonInt32(v): BsonValue).asJava)
     put("originalTitle", film.originalTitle.map(BsonString(_)))
     put("alternativeTitles", Option.when(film.alternativeTitles.nonEmpty)(strings(film.alternativeTitles)))
     put("year", film.year.map(BsonInt32(_)))
@@ -36,16 +34,21 @@ object FilmBson {
     d
   }
 
+  private def strings(values: Seq[String]) = new BsonArray(values.map(v => BsonString(v): BsonValue).asJava)
+  private def ints(values: Seq[Int])       = new BsonArray(values.map(v => BsonInt32(v): BsonValue).asJava)
+
   def decode(d: BsonDocument): IdentityMeasures.Film = {
-    def opt(name: String): Option[BsonValue] = Option(d.get(name)).filterNot(_.isNull)
-    def string(name: String)  = opt(name).map(_.asString.getValue)
-    def int(name: String)     = opt(name).map(_.asInt32.getValue)
-    def strings(name: String) = opt(name).map(BsonFields.stringsOf)
-    IdentityMeasures.Film(d.getString("title").getValue, string("originalTitle"), strings("alternativeTitles").getOrElse(Nil),
-      int("year"), int("runtime"), strings("directors"), strings("countries"), opt("popularity").map(_.asNumber.doubleValue),
+    def string(name: String) = opt(d, name).map(_.asString.getValue)
+    def int(name: String)    = opt(d, name).map(_.asInt32.getValue)
+    IdentityMeasures.Film(d.getString("title").getValue, string("originalTitle"), stringList(d, "alternativeTitles").getOrElse(Nil),
+      int("year"), int("runtime"), stringList(d, "directors"), stringList(d, "countries"), opt(d, "popularity").map(_.asNumber.doubleValue),
       int("imdbNumber").getOrElse(0), string("released").map(java.time.LocalDate.parse), string("releaseCountries"),
-      opt("alternativeRuntimes").map(BsonFields.intsOf).getOrElse(Nil), string("releases"), int("taglineKey").getOrElse(0),
+      opt(d, "alternativeRuntimes").map(BsonFields.intsOf).getOrElse(Nil), string("releases"), int("taglineKey").getOrElse(0),
       string("certificates"), string("originalLanguage").map(_.intern), int("genreBits").getOrElse(0),
-      opt("cast").flatMap(cast => FilmCast.ofPairs(cast.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf))))
+      opt(d, "cast").flatMap(cast => FilmCast.ofPairs(cast.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf))))
   }
+
+  /** `d`'s field `name`, none when it is absent or null. */
+  private def opt(d: BsonDocument, name: String): Option[BsonValue] = Option(d.get(name)).filterNot(_.isNull)
+  private def stringList(d: BsonDocument, name: String): Option[Seq[String]] = opt(d, name).map(BsonFields.stringsOf)
 }

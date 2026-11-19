@@ -204,25 +204,10 @@ object IdentityListingIntake {
      *  another object or that were `written`, or all of them when `whole`; empty when a read could not complete. */
     def refresh(repository: ScrapeArchiveReader, wanted: Map[String, Cinema], written: Set[String], read: Read,
                 project: (Cinema, Seq[(CinemaMovie, Int)]) => Seq[ProjectedListing]): Map[String, Option[Seq[ProjectedListing]]] = {
-      val current: Cinema => Boolean = c => wanted.get(c.displayName).exists(_ eq c)
       val (keep, reread) = read match {
-        case Read.Whole => (Map.empty[String, Entry], current)
-        case Read.Changed =>
-          // Only what this intake knows moved: what it took a scrape of, a venue now another roster object, one it
-          // holds nothing of (a venue the archive has no row of is never fetched, `scanLean` reading by id).
-          val keep = entries.filter { case (name, entry) => wanted.get(name).exists(_ eq entry.cinema) && !written(name) && !unread(entry) }
-          (keep, (c: Cinema) => current(c) && !keep.contains(c.displayName))
-        case Read.Stamped =>
-          val stamps = repository.contentStamps()
-          // No stamps is a read that failed or an empty archive: either way read it whole, which answers both.
-          if (stamps.isEmpty) (Map.empty[String, Entry], current)
-          else {
-            val present = stamps.collect { case (name, models.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
-            val keep = entries.filter { case (name, entry) =>
-              present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name) && !unread(entry)
-            }
-            (keep, (c: Cinema) => present.contains(c.displayName) && !keep.contains(c.displayName) && current(c))
-          }
+        case Read.Whole   => (Map.empty[String, Entry], current(wanted))
+        case Read.Changed => changed(wanted, written)
+        case Read.Stamped => stamped(repository, wanted, written)
       }
       val fresh    = Map.newBuilder[String, Entry]
       // Nothing to read again — the usual tick — is no scan at all: even one that fetches no row first reads every
@@ -235,6 +220,31 @@ object IdentityListingIntake {
         })
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
+    }
+
+    /** Is a venue's object the one `wanted` names it by? */
+    private def current(wanted: Map[String, Cinema]): Cinema => Boolean = c => wanted.get(c.displayName).exists(_ eq c)
+
+    /** The entries a [[Read.Changed]] keeps, and the venues it reads again: only what this intake knows moved — what it
+     *  took a scrape of, a venue now another roster object, one it holds nothing of (a venue the archive has no row of is
+     *  never fetched, `scanLean` reading by id). */
+    private def changed(wanted: Map[String, Cinema], written: Set[String]): (Map[String, Entry], Cinema => Boolean) = {
+      val keep = entries.filter { case (name, entry) => wanted.get(name).exists(_ eq entry.cinema) && !written(name) && !unread(entry) }
+      (keep, (c: Cinema) => current(wanted)(c) && !keep.contains(c.displayName))
+    }
+
+    /** The entries a [[Read.Stamped]] keeps — those whose row's stamp has not moved — and the venues it reads again. No
+     *  stamps is a read that failed or an empty archive: either way read it whole, which answers both. */
+    private def stamped(repository: ScrapeArchiveReader, wanted: Map[String, Cinema], written: Set[String]): (Map[String, Entry], Cinema => Boolean) = {
+      val stamps = repository.contentStamps()
+      if (stamps.isEmpty) (Map.empty[String, Entry], current(wanted))
+      else {
+        val present = stamps.collect { case (name, models.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
+        val keep = entries.filter { case (name, entry) =>
+          present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name) && !unread(entry)
+        }
+        (keep, (c: Cinema) => present.contains(c.displayName) && !keep.contains(c.displayName) && current(wanted)(c))
+      }
     }
 
     /** `read`, a venue read again, holding the object `held` holds for each listing read as it was — the same row and

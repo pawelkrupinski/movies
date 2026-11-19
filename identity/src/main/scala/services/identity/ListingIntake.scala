@@ -60,30 +60,37 @@ object ListingIntake {
     // (Kino Parczew's closed-day notice "Kino 01.11.2026/ nieczynne", a page with no run). The scrape is judged
     // without it.
     val offer = scraped.copy(films = scraped.films.filter(_.showtimes.nonEmpty))
-    def added = union(cinema, known, offer.films)
     if (offer.films.isEmpty) Verdict(known, guard, Outcome.Kept)
-    else if (offer.viaFallback) Verdict(added, guard, Outcome.Added)
+    else if (offer.viaFallback) Verdict(union(cinema, known, offer.films), guard, Outcome.Added)
     else {
       val landed = ScrapeGuardState(sourceKey = offer.sourceKey.orElse(guard.sourceKey))
       if (known.nonEmpty && ScrapeHealth.isRewire(guard.sourceKey, offer.sourceKey)) Verdict(offer.films, landed, Outcome.Replaced)
-      else {
-        def upcoming(films: Seq[CinemaMovie]) = films.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum
-        def slots(films: Seq[CinemaMovie])    = films.map(cm => ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)).distinct.size
-        ScrapeHealth.depth(upcoming(known), upcoming(offer.films), guard.depthRejections, maxRejections) match {
-          case ScrapeHealth.Depth.Reject(consecutive) =>
-            Verdict(known, guard.copy(depthRejections = consecutive), Outcome.Kept, Seq(Guarded.DepthReject))
-          case depth =>
-            val deep = depth match { case ScrapeHealth.Depth.AcceptDegraded(_) => Seq(Guarded.DepthAccept); case _ => Nil }
-            ScrapeHealth.breadth(slots(known), slots(offer.films), offer.listingIsComplete, guard.breadthRejections, maxRejections, depth) match {
-              case ScrapeHealth.Breadth.Reject(consecutive) =>
-                Verdict(added, landed.copy(breadthRejections = consecutive), Outcome.Added, deep :+ Guarded.BreadthReject)
-              case ScrapeHealth.Breadth.AcceptDegraded(_) => Verdict(offer.films, landed, Outcome.Replaced, deep :+ Guarded.BreadthAccept)
-              case ScrapeHealth.Breadth.Healthy           => Verdict(offer.films, landed, Outcome.Replaced, deep)
-            }
-        }
-      }
+      else guarded(cinema, known, offer, guard, landed, now, maxRejections, normalizer)
     }
   }
+
+  /** A scrape of the venue's own source, as the depth guard and then the breadth guard judge it. */
+  private def guarded(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, landed: ScrapeGuardState,
+                      now: LocalDateTime, maxRejections: Int, normalizer: TitleNormalizer): Verdict =
+    ScrapeHealth.depth(upcomingShowtimes(known, now), upcomingShowtimes(offer.films, now), guard.depthRejections, maxRejections) match {
+      case ScrapeHealth.Depth.Reject(consecutive) =>
+        Verdict(known, guard.copy(depthRejections = consecutive), Outcome.Kept, Seq(Guarded.DepthReject))
+      case depth =>
+        val deep = depth match { case ScrapeHealth.Depth.AcceptDegraded(_) => Seq(Guarded.DepthAccept); case _ => Nil }
+        ScrapeHealth.breadth(slotCount(cinema, known, normalizer), slotCount(cinema, offer.films, normalizer), offer.listingIsComplete,
+            guard.breadthRejections, maxRejections, depth) match {
+          case ScrapeHealth.Breadth.Reject(consecutive) =>
+            Verdict(union(cinema, known, offer.films), landed.copy(breadthRejections = consecutive), Outcome.Added, deep :+ Guarded.BreadthReject)
+          case ScrapeHealth.Breadth.AcceptDegraded(_) => Verdict(offer.films, landed, Outcome.Replaced, deep :+ Guarded.BreadthAccept)
+          case ScrapeHealth.Breadth.Healthy           => Verdict(offer.films, landed, Outcome.Replaced, deep)
+        }
+    }
+
+  /** The showtimes `films` hold after `now`. */
+  private def upcomingShowtimes(films: Seq[CinemaMovie], now: LocalDateTime): Int = films.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum
+  /** The venue slots `films` land in. */
+  private def slotCount(cinema: Cinema, films: Seq[CinemaMovie], normalizer: TitleNormalizer): Int =
+    films.map(cm => ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)).distinct.size
 
   /** `known` with `fresh` added, a fresh row replacing the known one of its [[ListingKey]]. */
   private def union(cinema: Cinema, known: Seq[CinemaMovie], fresh: Seq[CinemaMovie]): Seq[CinemaMovie] = {

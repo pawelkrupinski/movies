@@ -39,16 +39,8 @@ object StableNames {
 
   private[identity] def assignWith(previous: Iterable[(Long, Iterable[ListingKey])], next: IndexedSeq[Iterable[ListingKey]],
                                    nextFresh: Long, tieBreak: TieBreak): Named = {
-    // Each cluster by its position, never by the set itself: a set's hash walks every member, and keying maps by the
-    // clusters hashed each one again per lookup — most of a US projection's draft.
     val smallest = next.map(_.min(using ListingKey.ordering))
-    val owner    = new java.util.HashMap[ListingKey, Integer]()
-    next.indices.foreach(i => next(i).foreach(owner.put(_, i)))
-    val pairs = previous.iterator.flatMap { case (name, members) =>
-      val overlaps = mutable.HashMap.empty[Int, Int]
-      members.foreach { listing => val n = owner.get(listing); if (n != null) overlaps(n) = overlaps.getOrElse(n, 0) + 1 }
-      overlaps.iterator.map { case (n, overlap) => (name, n, overlap) }
-    }.toSeq
+    val pairs    = overlaps(previous, next)
     val ordered = tieBreak match {
       case TieBreak.Canonical  => pairs.sortBy { case (name, n, overlap) => (name, -overlap, smallest(n)) }
       case TieBreak.InputOrder => pairs.sortBy { case (name, n, overlap) => (name, -overlap, n) }
@@ -61,5 +53,18 @@ object StableNames {
     var counter  = nextFresh
     next.indices.filter(names(_) < 0).sortBy(smallest)(using ListingKey.ordering).foreach { n => names(n) = counter; counter += 1 }
     Named(names.toIndexedSeq, absorbed, counter)
+  }
+
+  /** Every (previous name, next cluster's index, listings they share) of clusters sharing a listing. Each cluster by its
+   *  position, never by the set itself: a set's hash walks every member, and keying maps by the clusters hashed each one
+   *  again per lookup — most of a US projection's draft. */
+  private def overlaps(previous: Iterable[(Long, Iterable[ListingKey])], next: IndexedSeq[Iterable[ListingKey]]): Seq[(Long, Int, Int)] = {
+    val owner = new java.util.HashMap[ListingKey, Integer]()
+    next.indices.foreach(i => next(i).foreach(owner.put(_, i)))
+    previous.iterator.flatMap { case (name, members) =>
+      val overlaps = mutable.HashMap.empty[Int, Int]
+      members.foreach { listing => val n = owner.get(listing); if (n != null) overlaps(n) = overlaps.getOrElse(n, 0) + 1 }
+      overlaps.iterator.map { case (n, overlap) => (name, n, overlap) }
+    }.toSeq
   }
 }

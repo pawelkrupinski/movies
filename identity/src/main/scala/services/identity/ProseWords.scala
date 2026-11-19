@@ -41,33 +41,52 @@ object ProseWords {
   private def endsASentence(c: Char): Boolean = c == '.' || c == '!' || c == '?' || c == ':' || c == ';' || c == '\n' || c == '\r'
 
   private def of(texts: Iterable[String], capitalisedOnly: Boolean, sentenceFirst: Boolean): ProseWords = {
-    var found = new Array[Int](16)
-    var count = 0
-    texts.foreach { text =>
-      var first = true   // the next word opens a sentence
-      var i     = 0
-      val n     = text.length
-      while (i < n) {
-        val c = text.charAt(i)
-        if (Character.isLetter(c)) {
-          var j = i
-          while (j < n && Character.isLetter(text.charAt(j))) j += 1
-          if (j - i >= Shortest && (!capitalisedOnly || Character.isUpperCase(c)) && (sentenceFirst || !first)) {
-            // the folded stem's hash, as its String's would be, built char by char: no word is copied
-            var h = 0
-            var k = i
-            while (k < i + Stem && k < j) { h = 31 * h + VenueNames.fold(text.charAt(k)); k += 1 }
-            if (count == found.length) found = java.util.Arrays.copyOf(found, count * 2)
-            found(count) = h; count += 1
-          }
-          first = false
-          i = j
-        } else {
-          if (endsASentence(c)) first = true
-          i += 1
-        }
+    val stems = new Stems
+    texts.foreach(text => read(text, capitalisedOnly, sentenceFirst, stems))
+    held(stems.sortedDistinct)
+  }
+
+  /** The stems' hashes as they are found: grown as needed, never boxed. */
+  private final class Stems {
+    private var found = new Array[Int](16)
+    private var count = 0
+    def add(hash: Int): Unit = {
+      if (count == found.length) found = java.util.Arrays.copyOf(found, count * 2)
+      found(count) = hash; count += 1
+    }
+    def sortedDistinct: Array[Int] = SortedHashes.sortedDistinct(found, count)
+  }
+
+  /** Each word of `text` read ([[reads]]) to `stems`, as its stem's hash. */
+  private def read(text: String, capitalisedOnly: Boolean, sentenceFirst: Boolean, stems: Stems): Unit = {
+    var first = true   // the next word opens a sentence
+    var i     = 0
+    val n     = text.length
+    while (i < n) {
+      val c = text.charAt(i)
+      if (Character.isLetter(c)) {
+        var j = i
+        while (j < n && Character.isLetter(text.charAt(j))) j += 1
+        if (reads(j - i, c, first, capitalisedOnly, sentenceFirst)) stems.add(stemHash(text, i, j))
+        first = false
+        i = j
+      } else {
+        if (endsASentence(c)) first = true
+        i += 1
       }
     }
-    held(SortedHashes.sortedDistinct(found, count))
+  }
+
+  /** Is a word of `length` letters opening with `initial` read — opening a sentence when `first`? */
+  private def reads(length: Int, initial: Char, first: Boolean, capitalisedOnly: Boolean, sentenceFirst: Boolean): Boolean =
+    length >= Shortest && (!capitalisedOnly || Character.isUpperCase(initial)) && (sentenceFirst || !first)
+
+  /** The folded stem's hash of the word `text(from until to)`, as its String's would be, built char by char: no word is
+   *  copied. */
+  private def stemHash(text: String, from: Int, to: Int): Int = {
+    var h = 0
+    var k = from
+    while (k < from + Stem && k < to) { h = 31 * h + VenueNames.fold(text.charAt(k)); k += 1 }
+    h
   }
 }

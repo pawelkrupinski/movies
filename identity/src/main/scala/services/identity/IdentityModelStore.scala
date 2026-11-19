@@ -184,35 +184,41 @@ object MongoIdentityModelStore {
       case "queries"   => queries = readQueries(reader)
       case "films"     => films = BsonFields.intSet(reader)
       case "reads"     => reads = readReads(reader)
-      case "nodes"     => nodes = {
-        val all = Vector.newBuilder[(ListingKey, String)]
-        BsonFields.bucketed(reader) {
-          var key: ListingKey = null
-          var node: String    = null
-          BsonFields.document(reader) {
-            case "listing" => key = ListingKeyBson.read(reader)
-            case "node"    => node = reader.readString()
-            case _         => reader.skipValue()
-          }
-          all += BsonFields.required(key, "listing") -> BsonFields.required(node, "node")
-        }
-        all.result()
-      }
+      case "nodes"     => nodes = readNodes(reader)
       case "digest"    => digest = reader.readInt64()
       case _           => reader.skipValue()
     }
-    // One instance of each listing key and each node text per family: the `nodes` pairs repeat the
-    // `listings` keys, and a node's text repeats for each of its listings — decoded as they stand,
-    // every restore kept a second key and a node text per listing for the model's lifetime.
-    val held  = BsonFields.required(listings, "listings")
-    val keyOf = held.iterator.map(key => key -> key).toMap
-    val pairs = BsonFields.required(nodes, "nodes")
-    val texts = new java.util.HashMap[String, String](pairs.size * 2)
+    val held = BsonFields.required(listings, "listings")
     StoredFamily(BsonFields.required(id, "_id"), IdentityResolver.RegionFamily(
       held, BsonFields.required(decisions, "decisions"), BsonFields.required(blockKeys, "blockKeys"),
       BsonFields.required(queries, "queries"), BsonFields.required(films, "films"), BsonFields.required(reads, "reads"),
-      pairs.iterator.map { case (key, text) => keyOf.getOrElse(key, key) -> texts.computeIfAbsent(text, identity) }.toMap),
+      sharedNodes(held, BsonFields.required(nodes, "nodes"))),
       BsonFields.required(digest, "digest").longValue)
+  }
+
+  /** One instance of each listing key and each node text per family: the `nodes` pairs repeat the `listings` keys
+   *  (`held`), and a node's text repeats for each of its listings — decoded as they stand, every restore kept a second
+   *  key and a node text per listing for the model's lifetime. */
+  private def sharedNodes(held: Set[ListingKey], pairs: Vector[(ListingKey, String)]): Map[ListingKey, String] = {
+    val keyOf = held.iterator.map(key => key -> key).toMap
+    val texts = new java.util.HashMap[String, String](pairs.size * 2)
+    pairs.iterator.map { case (key, text) => keyOf.getOrElse(key, key) -> texts.computeIfAbsent(text, identity) }.toMap
+  }
+
+  /** A family's `nodes`: each listing's evidence node, bucketed. */
+  private def readNodes(reader: org.bson.BsonReader): Vector[(ListingKey, String)] = {
+    val all = Vector.newBuilder[(ListingKey, String)]
+    BsonFields.bucketed(reader) {
+      var key: ListingKey = null
+      var node: String    = null
+      BsonFields.document(reader) {
+        case "listing" => key = ListingKeyBson.read(reader)
+        case "node"    => node = reader.readString()
+        case _         => reader.skipValue()
+      }
+      all += BsonFields.required(key, "listing") -> BsonFields.required(node, "node")
+    }
+    all.result()
   }
 
   private def readQueries(reader: org.bson.BsonReader): Set[CandidateQuery] =

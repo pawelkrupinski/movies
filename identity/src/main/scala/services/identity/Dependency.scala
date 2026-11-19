@@ -101,12 +101,14 @@ object Dependency {
     case Asked(question)     => s"$AskedId|${question.id.getOrElse("?")}"
     case Year                => YearId
     case Unparsed(id)        => id
-    case Lookup(via, aspect, question) => question match {
-      case Question.VenuePage(listing) => s"${via.label}|detail|${ListingKey.serialised(listing)}"
-      case Question.Candidate(query)   => s"${via.label}|candidates|${queryId(query)}"
-      case Question.FilmRecord(film)   => s"${via.label}|${KindOf(aspect)}|$film"
-      case other                       => s"${via.label}|?|${other.id.getOrElse("?")}"
-    }
+    case Lookup(via, aspect, question) => s"${via.label}|${lookupId(aspect, question)}"
+  }
+  /** A lookup's kind and argument, as [[encode]] writes them after its `via`. */
+  private def lookupId(aspect: Aspect, question: Question): String = question match {
+    case Question.VenuePage(listing) => s"detail|${ListingKey.serialised(listing)}"
+    case Question.Candidate(query)   => s"candidates|${queryId(query)}"
+    case Question.FilmRecord(film)   => s"${KindOf(aspect)}|$film"
+    case other                       => s"?|${other.id.getOrElse("?")}"
   }
 
   /** The dependency `id` encodes ([[encode]]); one it does not, [[Unparsed]]. */

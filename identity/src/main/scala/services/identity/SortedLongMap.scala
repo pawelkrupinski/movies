@@ -38,26 +38,41 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
     if (size == 0 && overlay.isEmpty) SortedLongMap.of(added) else mergedOver(added, removed)
 
   private def mergedOver(added: scala.collection.Map[Long, V], removed: Long => Boolean): SortedLongMap[V] = {
-    var next  = overlay
-    var count = size
+    val change = new SortedLongMap.Change(overlay, size)
     added.foreachEntry { (k, v) =>
       val held = lookup(k)
-      if (!((held eq v) || (held != null && held == v))) { next = next.updated(k, v); if (held == null) count += 1 }
+      if (!((held eq v) || (held != null && held == v))) change.put(k, v, isNew = held == null)
     }
-    def remove(k: Long): Unit = if (removed(k) && !added.contains(k)) {
-      next = if (inBase(k) >= 0) next.updated(k, null) else next - k
-      count -= 1
-    }
+    removeHeld(change, k => removed(k) && !added.contains(k))
+    rebuilt(change.overlay, change.size)
+  }
+
+  /** Every key this map holds that is `gone`, removed in `change`. */
+  private def removeHeld(change: SortedLongMap.Change, gone: Long => Boolean): Unit = {
     var i = 0
-    while (i < keys.length) { val k = keys(i); if (!overlaid(k)) remove(k); i += 1 }   // no boxing of 200k keys
-    overlay.foreach { case (k, v) => if (v != null) remove(k) }
+    while (i < keys.length) { val k = keys(i); if (!overlaid(k) && gone(k)) change.remove(k, inBase = true); i += 1 }   // no boxing of 200k keys
+    overlay.foreach { case (k, v) => if (v != null && gone(k)) change.remove(k, inBase(k) >= 0) }
+  }
+
+  /** This map's arrays with `next` beside them: this map itself when nothing changed, the arrays built again once `next`
+   *  holds [[SortedLongMap.compactAt]] changes. */
+  private def rebuilt(next: LongMap[AnyRef], count: Int): SortedLongMap[V] =
     if (next eq overlay) this
     else if (next.size >= SortedLongMap.compactAt(keys.length)) SortedLongMap.compact(keys, values, next, count)
     else new SortedLongMap[V](keys, values, next, count)
-  }
 }
 
 private[identity] object SortedLongMap {
+  /** A merge's changes as it makes them: the overlay it builds (a removed key of the arrays as null) and the entries the
+   *  map will hold. */
+  private final class Change(var overlay: LongMap[AnyRef], var size: Int) {
+    def put(key: Long, value: AnyRef, isNew: Boolean): Unit = { overlay = overlay.updated(key, value); if (isNew) size += 1 }
+    def remove(key: Long, inBase: Boolean): Unit = {
+      overlay = if (inBase) overlay.updated(key, null) else overlay - key
+      size -= 1
+    }
+  }
+
   def empty[V <: AnyRef]: SortedLongMap[V] = new SortedLongMap[V](Array.emptyLongArray, Array.emptyObjectArray, LongMap.empty, 0)
 
   /** `entries` as arrays, built straight from them: what [[SortedLongMap.merged]] of an empty map is. Folded through the

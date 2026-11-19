@@ -20,20 +20,31 @@ private[identity] object ContentHash {
     // (`IncrementalResolver.rulesVersion`), so a change rebuilds every family. Walked per listing,
     // they were 9.5 s of a US take-up's digests.
     case _: TitleDecorations => 0xdL
+    case None                => 0x7L
+    case Some(x)             => mix(of(x) + 0x8L)
+    case c: Iterable[?]      => ofCollection(c)
+    case p: Product          => p.productIterator.foldLeft(of(p.productPrefix))((acc, e) => mix(acc * 31 + of(e)))
+    case other               => ofScalar(other)
+  }
+
+  /** Maps and sets order-free, every other collection in order. */
+  private def ofCollection(c: Iterable[?]): Long = c match {
+    case m: scala.collection.Map[?, ?] =>
+      mix(m.foldLeft(m.size.toLong * 0x9L) { case (acc, (k, v)) => acc + mix(of(k) * 31 + of(v)) })
+    case s: scala.collection.Set[?] =>
+      mix(s.foldLeft(s.size.toLong * 0xaL)((acc, e) => acc + mix(of(e))))
+    case s                   => s.foldLeft(0xbL)((acc, e) => mix(acc * 31 + of(e)))
+  }
+
+  /** A value neither an option, a collection nor a product: strings and numbers by value, anything else by its hash.
+   *  None of these is a product or a collection, so [[of]] reaching them last is the order they were matched in. */
+  private def ofScalar(value: Any): Long = value match {
     case s: String           => (MurmurHash3.stringHash(s, 0x1b873593).toLong << 32) ^ (MurmurHash3.stringHash(s, 0x5bd1e995) & 0xffffffffL)
     case i: Int              => mix(i.toLong ^ 0x1L)
     case l: Long             => mix(l ^ 0x2L)
     case d: Double           => mix(java.lang.Double.doubleToLongBits(d) ^ 0x3L)
     case b: Boolean          => if (b) 0x4L else 0x5L
     case c: Char             => mix(c.toLong ^ 0x6L)
-    case None                => 0x7L
-    case Some(x)             => mix(of(x) + 0x8L)
-    case m: scala.collection.Map[?, ?] =>
-      mix(m.foldLeft(m.size.toLong * 0x9L) { case (acc, (k, v)) => acc + mix(of(k) * 31 + of(v)) })
-    case s: scala.collection.Set[?] =>
-      mix(s.foldLeft(s.size.toLong * 0xaL)((acc, e) => acc + mix(of(e))))
-    case s: Iterable[?]      => s.foldLeft(0xbL)((acc, e) => mix(acc * 31 + of(e)))
-    case p: Product          => p.productIterator.foldLeft(of(p.productPrefix))((acc, e) => mix(acc * 31 + of(e)))
     case other               => mix(other.hashCode.toLong ^ 0xcL)
   }
 

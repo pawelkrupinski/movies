@@ -208,28 +208,39 @@ object SuspectTakes {
     // a current release billed with words of its own beside its title is its subtitle, its local title, its event: a
     // namesake a fragment names is an older film ("World Premiere" 1941, "Follow the Sun" 1951, "Out of Office" 2022)
     else if (film.year.forall(_ >= screens - 1)) None
-    else {
-      val words  = pieces.flatMap(_.words).toIndexedSeq
-      val people = film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).toSet
-      val titled = film.titles.flatMap(TitleContainment.tokens).toSet
-      // a word of another work's title: no decoration, not the film's director nor of any of its titles, not one the
-      // corpus bills widely
-      def own(word: String) = !decoration(word) && !people(word) && !titled(word) && !billings.widely(word)
-      // no title of the film runs in the billing: TMDB's record holds no title in the billing's language — the title
-      // relation the take rests on is the resolver's to weigh, not a fragment
-      run(words, film).flatMap { case (start, length) =>
-        val ends   = pieces.scanLeft(0)(_ + _.words.size)
-        val placed = pieces.zip(ends.zip(ends.tail))
-        // a piece beside the film's: a work's title unless it is a banner the corpus bills beside other titles, or holds a
-        // decoration word; the film's own piece: the words its title leaves
-        val (beside, within) = placed.partition { case (_, (from, to)) => to <= start || from >= start + length }
-        val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(DecorationWords.billedAround) || DecorationWords.namesAnEvent(p.words)).flatMap(_.words).filter(own)
-        val inPiece = within.flatMap { case (p, (from, _)) =>
-          p.words.indices.filter(i => from + i < start || from + i >= start + length).map(p.words) }.filter(own)
-        Option.when(rest.sizeIs >= FragmentRest || (inPiece.sizeIs >= FragmentRest && inPiece.size > length))(
-          Suspicion(Signal.Fragment, s"'${film.title}' is $length of the billing's words; '${(rest ++ inPiece).mkString(" ")}' is no banner or decoration"))
-      }
+    else billsAnotherWork(pieces, film, billings)
+
+  /** Does the billing name another work beside the film's title: words of no decoration, banner, credit or title of the
+   *  film's, around the run of the film's title in it? */
+  private def billsAnotherWork(pieces: Seq[Piece], film: IdentityMeasures.Film, billings: Billings): Option[Suspicion] = {
+    val words  = pieces.flatMap(_.words).toIndexedSeq
+    val people = film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).toSet
+    val titled = film.titles.flatMap(TitleContainment.tokens).toSet
+    // a word of another work's title: no decoration, not the film's director nor of any of its titles, not one the
+    // corpus bills widely
+    def own(word: String) = !decoration(word) && !people(word) && !titled(word) && !billings.widely(word)
+    // no title of the film runs in the billing: TMDB's record holds no title in the billing's language — the title
+    // relation the take rests on is the resolver's to weigh, not a fragment
+    run(words, film).flatMap { case (start, length) =>
+      val (rest, inPiece) = wordsAround(pieces, start, length, billings)
+      val (restOwn, inPieceOwn) = (rest.filter(own), inPiece.filter(own))
+      Option.when(restOwn.sizeIs >= FragmentRest || (inPieceOwn.sizeIs >= FragmentRest && inPieceOwn.size > length))(
+        Suspicion(Signal.Fragment, s"'${film.title}' is $length of the billing's words; '${(restOwn ++ inPieceOwn).mkString(" ")}' is no banner or decoration"))
     }
+  }
+
+  /** The words billed around the film's title, which runs `length` words from the billing's `start`th: those of the
+   *  pieces beside the film's — a work's title unless it is a banner the corpus bills beside other titles, or holds a
+   *  decoration word — and those its own piece holds beside its title. */
+  private def wordsAround(pieces: Seq[Piece], start: Int, length: Int, billings: Billings): (Seq[String], Seq[String]) = {
+    val ends   = pieces.scanLeft(0)(_ + _.words.size)
+    val placed = pieces.zip(ends.zip(ends.tail))
+    val (beside, within) = placed.partition { case (_, (from, to)) => to <= start || from >= start + length }
+    val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(DecorationWords.billedAround) || DecorationWords.namesAnEvent(p.words)).flatMap(_.words)
+    val inPiece = within.flatMap { case (p, (from, _)) =>
+      p.words.indices.filter(i => from + i < start || from + i >= start + length).map(p.words) }
+    (rest, inPiece)
+  }
 
   // ── (b) era ──────────────────────────────────────────────────────────────────────────────
 

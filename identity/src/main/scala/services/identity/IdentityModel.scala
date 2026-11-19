@@ -168,14 +168,20 @@ final case class Listing(
   }
 
   override def equals(other: Any): Boolean = other match {
-    case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
-      year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
-      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
-      screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate &&
-      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && anniversaryScreeningYear == that.anniversaryScreeningYear &&
-      airDays == that.airDays && kept == that.kept)
+    case that: Listing => (this eq that) || (sameTitles(that) && sameFacts(that) && sameReadings(that))
     case _ => false
   }
+  // [[equals]] in three parts, compared in this order: its names first, which tell most listings apart, then the facts it
+  // states, then the years and days it is read by (lazy, built on demand)
+  private def sameTitles(that: Listing): Boolean =
+    key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle && cinema == that.cinema &&
+      originalTitle == that.originalTitle && searchTitle == that.searchTitle && properTitle == that.properTitle
+  private def sameFacts(that: Listing): Boolean =
+    year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && countries == that.countries &&
+      catalogueIds == that.catalogueIds && listedCast == that.listedCast && certificate == that.certificate && kept == that.kept
+  private def sameReadings(that: Listing): Boolean =
+    yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && screenedSeason == that.screenedSeason &&
+      anniversaryScreeningYear == that.anniversaryScreeningYear && airDays == that.airDays
   override def hashCode: Int = {
     import scala.util.hashing.MurmurHash3.{finalizeHash, mix, mixLast}
     val fields = Array(cinema.##, key.##, rawTitle.##, title.##, cleanTitle.##, year.##, directors.##, runtime.##, page.##, originalTitle.##,

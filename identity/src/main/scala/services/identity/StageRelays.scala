@@ -346,15 +346,19 @@ object StageRelays {
    *  was learned as: UK "NT Live" was learned as itself, from one record filing "NT Live: …" among its alternatives, and
    *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
    *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
-  private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean = {
-    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.titles.StageHouse.UninitialledWords(word))
-    def short(name: Seq[String]) = words(name) match {
-      case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
-      case _                                             => None
-    }
-    def initials(name: Seq[String]) = Option(words(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
-    short(a).exists(initials(b).contains) || short(b).exists(initials(a).contains)
+  private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean =
+    shortName(a).exists(initialsOf(b).contains) || shortName(b).exists(initialsOf(a).contains)
+  /** A house name's words an abbreviation spells: no number, relay word or word houses never initial. */
+  private def initialledWords(name: Seq[String]): Seq[String] =
+    name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.titles.StageHouse.UninitialledWords(word))
+  /** The one short word a house name is, as an abbreviation ([[abbreviates]]). */
+  private def shortName(name: Seq[String]): Option[String] = initialledWords(name) match {
+    case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
+    case _                                             => None
   }
+  /** The initials of a house name of several words. */
+  private def initialsOf(name: Seq[String]): Option[String] =
+    Option(initialledWords(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
 
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?

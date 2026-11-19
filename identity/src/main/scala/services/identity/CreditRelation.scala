@@ -43,9 +43,10 @@ object CreditRelation {
    *  are other names ("Jan"/"Jon"), not spellings. */
   private def spelledAlike(a: Seq[String], b: Seq[String]): Boolean =
     a.sizeIs >= 2 && a.size == b.size && a.sizeIs <= MaxOrderedWords && a != b &&
-      b.permutations.exists(p => a.zip(p).forall { case (x, y) =>
-        x == y || (x.length >= 5 && y.length >= 5 && tools.EditDistance.within(x, y, 1)) || (x.length >= 4 && y.length >= 4 && transliterated(x, y))
-      })
+      b.permutations.exists(p => a.zip(p).forall { case (x, y) => wordSpelledAlike(x, y) })
+  /** One word of [[spelledAlike]]'s credits against the other's: the same, a letter apart, or transliterated. */
+  private def wordSpelledAlike(x: String, y: String): Boolean =
+    x == y || (x.length >= 5 && y.length >= 5 && tools.EditDistance.within(x, y, 1)) || (x.length >= 4 && y.length >= 4 && transliterated(x, y))
 
   /** Two one-word credits (a mononym: Tamil and Telugu directors are often billed by one name) of
    *  six letters or more, one [[transliterated]] spelling of the other: UK Cineworld's "John Doe"

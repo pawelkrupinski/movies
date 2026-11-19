@@ -49,25 +49,37 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
     val key    = take.listing
     // The last explanation first: a stage that took or corrected the film after the resolver appends its own why.
     val reason = decision.fold("no decision")(d => (d.basis.toString +: (d.explanation.lastOption.toSeq ++ d.explanation.headOption).distinct).mkString(": "))
-    val node   = decision.flatMap(_.trace.nodes.get(key))
     val repro  = reproOf(key)
-    val score  = node.flatMap(_.score)
-    val rival  = node.flatMap(_.runnerUp)
     val pinned = decision.exists(_.basis == ResolverDecision.Basis.Pinned) || prior.exists(_.basis == ResolverDecision.Basis.Pinned)
     val message = s"identity take change: ${take.kind.label} ${key.venue} | ${key.rawTitle}: " +
       s"${film(take.before, was)} -> ${film(take.after, now.map(_._2))} (${take.previousFilm.getOrElse("new")}); reason $reason" +
       prior.fold("")(p => s"; before ${p.basis} (${ResolverDecision.percent(p.confidence)})${p.reason.fold("")(r => s": $r")}") +
       take.cause.fold("")(c => s"; cause ${c.label}") + s"; explain: $repro"
-    Line(message, Seq(
-      "kind"                   -> take.kind.label,
-      "venue"                  -> key.venue,
-      "listing"                -> key.rawTitle,
-      "film_before"            -> take.previousFilm,
-      "film_after"             -> now.map(_._1),
-      "tmdb_before"            -> take.before,
-      "tmdb_after"             -> take.after,
-      "title_before"           -> was,
-      "title_after"            -> now.map(_._2),
+    Line(message, moveFields(take, was, now) ++ decisionFields(key, decision, listing) ++
+      historyFields(take, prior, if (pinned) Some("review") else trigger) ++ listingFields(listing) ++ Seq(
+      "repro"                  -> repro,
+      "members"                -> decision.map(_.members.size),
+      "reads"                  -> listing.map(reads).filter(_.nonEmpty).map(_.take(ReadsLogged).mkString("; "))))
+  }
+
+  /** The move itself: which listing, from which film to which. */
+  private def moveFields(take: TakeChange, was: Option[String], now: Option[(String, String)]): Seq[(String, Any)] = Seq(
+    "kind"                   -> take.kind.label,
+    "venue"                  -> take.listing.venue,
+    "listing"                -> take.listing.rawTitle,
+    "film_before"            -> take.previousFilm,
+    "film_after"             -> now.map(_._1),
+    "tmdb_before"            -> take.before,
+    "tmdb_after"             -> take.after,
+    "title_before"           -> was,
+    "title_after"            -> now.map(_._2))
+
+  /** Why it moved: the decision taking it, the stage and rules deciding it, and how close it was. */
+  private def decisionFields(key: models.ListingKey, decision: Option[ResolverDecision], listing: Option[Listing]): Seq[(String, Any)] = {
+    val node  = decision.flatMap(_.trace.nodes.get(key))
+    val score = node.flatMap(_.score)
+    val rival = node.flatMap(_.runnerUp)
+    Seq(
       "basis"                  -> decision.map(_.basis.toString),
       "confidence"             -> decision.map(d => rounded(d.confidence)),
       "reason_first"           -> decision.flatMap(_.explanation.headOption),
@@ -83,23 +95,26 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "score"                  -> score.map(rounded),
       "runner_up_tmdb"         -> rival.map(_.film),
       "runner_up_score"        -> rival.map(r => rounded(r.score)),
-      "margin"                 -> score.zip(rival).map { case (s, r) => rounded(s - r.score) },
-      "trigger"                -> (if (pinned) Some("review") else trigger),
-      "cause"                  -> take.cause.map(_.label),
-      "previous_basis"         -> prior.map(_.basis.toString),
-      "previous_confidence"    -> prior.map(p => rounded(p.confidence)),
-      "previous_reason"        -> prior.flatMap(_.reason),
-      "previous_decided_by"    -> prior.flatMap(_.decidedBy),
-      "previous_runner_up_tmdb" -> prior.flatMap(_.runnerUp),
-      "runner_up_won"          -> prior.flatMap(_.runnerUp).map(was => take.after.contains(was)),
-      "listing_year"           -> listing.flatMap(_.year),
-      "listing_runtime"        -> listing.flatMap(_.runtime),
-      "listing_director"       -> listing.map(_.directors).filter(_.nonEmpty).map(_.mkString("; ")),
-      "listing_original_title" -> listing.flatMap(_.originalTitle),
-      "repro"                  -> repro,
-      "members"                -> decision.map(_.members.size),
-      "reads"                  -> listing.map(reads).filter(_.nonEmpty).map(_.take(ReadsLogged).mkString("; "))))
+      "margin"                 -> score.zip(rival).map { case (s, r) => rounded(s - r.score) })
   }
+
+  /** What set it off and why, and the take before it. */
+  private def historyFields(take: TakeChange, prior: Option[TakeChange.Prior], trigger: Option[String]): Seq[(String, Any)] = Seq(
+    "trigger"                -> trigger,
+    "cause"                  -> take.cause.map(_.label),
+    "previous_basis"         -> prior.map(_.basis.toString),
+    "previous_confidence"    -> prior.map(p => rounded(p.confidence)),
+    "previous_reason"        -> prior.flatMap(_.reason),
+    "previous_decided_by"    -> prior.flatMap(_.decidedBy),
+    "previous_runner_up_tmdb" -> prior.flatMap(_.runnerUp),
+    "runner_up_won"          -> prior.flatMap(_.runnerUp).map(was => take.after.contains(was)))
+
+  /** The listing's own facts. */
+  private def listingFields(listing: Option[Listing]): Seq[(String, Any)] = Seq(
+    "listing_year"           -> listing.flatMap(_.year),
+    "listing_runtime"        -> listing.flatMap(_.runtime),
+    "listing_director"       -> listing.map(_.directors).filter(_.nonEmpty).map(_.mkString("; ")),
+    "listing_original_title" -> listing.flatMap(_.originalTitle))
 
   /** The tick's summary: how many takes moved (`takes`, its match changes, [[TakeChange.moved]]) by kind and by basis
    *  (each one's [[TakeChange.basisAfter]], none when no decision names it), and how many of them were logged a line each. */

@@ -7,7 +7,6 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	800
-method-lines	identity/src/main/scala/services/identity/TakeChangeLines.scala:TakeChangeLines.of	56
 method-lines	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.main	57
 method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59
 method-lines	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.renderBase	59
