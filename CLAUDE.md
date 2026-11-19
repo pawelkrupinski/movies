@@ -272,7 +272,13 @@ an unrelated class claims nothing), each is strictly below X's row, and the UNIO
 reference (their references to each other aside) lies within X's frozen reference set at the base
 (`test/resources/coupling-fanout-refs.tsv`, written by `--update`): the split adds no dependency, though pieces sharing
 X's types may sum past its row. The pieces' rows then only fall, and a piece at 9 or less needs none. In that commit
-the frozen distance row of a package holding X or a piece may rise by 0.02 at most, re-frozen there; elsewhere D never rises.
+the frozen distance row of a package holding X or a piece, or one their references reach, may rise by 0.02 at most,
+re-frozen there; elsewhere D never rises. **That 0.02 is cumulative, not per split** (the owner, 2026-11-19): each
+`distance` row carries a fixed ceiling, its `distance-cap` row (its 2026-11-19 value + 0.02); a split stops there, a fall
+lowers the ceiling with the row (min(ceiling, row + 0.02)), and nothing raises it -- `--update` keeps it, and over a
+conflicted baseline (agentctl's regen) takes the least of every side's. A package at its ceiling frees D before the next
+split (a leaf value type down to `models` / `tools`, as 84a5db6d1 did for `services.movies`); `scripts/coupling-report
+--check-split` says the headroom left.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala

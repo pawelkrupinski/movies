@@ -423,9 +423,14 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val rows = lines.filterNot(l => l.startsWith("#") || l.trim.isEmpty).map(_.split("\t", -1).toSeq)
     all(rows.map(_.size)) shouldBe 3
     rows.map(_.head).distinct.toSet should contain allElementsOf Set("limit", "module-edge", "ce")
-    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance") shouldBe empty // no cycle-edge: the graph has none
+    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance", "distance-cap") shouldBe empty // no cycle-edge: the graph has none
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
+    // every frozen distance row carries its ceiling (scripts/ci/coupling_ratchet.py, THE CEILING), at or above the row
+    val distance = rows.collect { case Seq("distance", pkg, d) => pkg -> d.toInt }.toMap
+    val caps = rows.collect { case Seq("distance-cap", pkg, c) => pkg -> c.toInt }.toMap
+    caps.keySet shouldBe distance.keySet
+    all(distance.map { case (pkg, d) => caps(pkg) - d }) should (be >= 0 and be <= 2)
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe
       Map("fanout" -> Coupling.DefaultFanOutLimit, "fanout-measure" -> Coupling.FanOutMeasure, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
         "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes)

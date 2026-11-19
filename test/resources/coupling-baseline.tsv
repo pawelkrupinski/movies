@@ -15,6 +15,9 @@
 #                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption
 #                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit
 #   distance     <package>, its D in hundredths past the limit: frozen the same way
+#   distance-cap <package>, its frozen distance row's CEILING (hundredths): its value on 2026-11-19 + 2; a split's
+#                +0.02 stops there, a fall lowers it with the row (min(ceiling, row + 2)) and nothing raises it;
+#                scripts/ci/coupling_ratchet.py update writes it (not couplingReport, whose rows carry none)
 #   layer-violation <from>-><to>, a package edge into a higher layer (test/resources/coupling-layers.tsv): never
 #                held here -- the ratchet fails on any (cut it, or allow it in the layer table with its why)
 #   rank-violation <from>-><to>, inside an ordered layer an edge to a higher-ranked package, or <package>->? for a
@@ -306,5 +309,8 @@ fanout	services.venuepages.EnrichDetailsHandler	20
 fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
 distance	services.identity	43
+distance-cap	services.identity	45
 distance	services.metrics	38
+distance-cap	services.metrics	40
 distance	services.movies	28
+distance-cap	services.movies	30

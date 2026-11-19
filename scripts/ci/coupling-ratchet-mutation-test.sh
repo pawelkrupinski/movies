@@ -84,6 +84,11 @@ mutants=(
   'an unmeasured piece is trusted @@ union |= targets[piece]
             else: @@ union |= targets.get(piece, set())
             elif False:'
+  'a split may raise distance past its ceiling @@ and value <= cap) @@ and True)'
+  'a raised ceiling passes @@ if key in was and cap > was[key]: @@ if False:'
+  'a row without a ceiling has none @@ caps.get(pkg, d + DISTANCE_SPLIT_TOLERANCE) @@ caps.get(pkg, 10**6)'
+  'update forgets the ceiling @@ min([c[pkg] for c in caps if pkg in c] + @@ min(['
+  'update reads no side of a conflict @@ for stage in (1, 2, 3): @@ for stage in ():'
   'a split may raise distance without bound @@ value - before[key] <= DISTANCE_SPLIT_TOLERANCE @@ True'
   'the distance tolerance is 3 @@ DISTANCE_SPLIT_TOLERANCE = 2 @@ DISTANCE_SPLIT_TOLERANCE = 3'
   'a refused split raises distance @@ packages |= {package_of(c) for c in internal} | {package_of(t) for t in union if not t.startswith("contract:")} @@ pass'

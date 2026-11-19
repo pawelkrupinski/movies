@@ -510,6 +510,11 @@ def split_rows(*pieces: str, sweeper: int = None, readmodel_distance: int = 30, 
                 f"distance\tservices.web\t{web_distance}", drop=("distance\tservices.movies",))
 
 
+def cap(pkg: str, value: int) -> str:
+    """A ceiling row (THE CEILING): what --update writes after each frozen distance row."""
+    return f"distance-cap\t{pkg}\t{value}"
+
+
 def frozen_sweeper(harness: RatchetHarness) -> str:
     """The split tests' base: the sweeper frozen at 36, its references recorded."""
     return harness.commit({BASELINE: split_rows(sweeper=36), REFS: SWEEPER_REFS,
@@ -657,7 +662,7 @@ class CouplingSplitTest(RatchetHarness):
     VALID = {PLANNER: deps(0, 17), PASS: deps(17, 28)}
 
     def test_a_valid_split_may_raise_its_packages_distance_by_two_hundredths(self):
-        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=32)
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=32) + cap("services.readmodel", 32) + "\n"
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
         self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
 
@@ -674,7 +679,7 @@ class CouplingSplitTest(RatchetHarness):
 
     def test_a_valid_split_may_raise_the_distance_of_a_package_it_uses_by_two_hundredths(self):
         # services.movies holds the sweeper's Dep*: two pieces using them are two outside classes where one was
-        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=50)
+        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", movies_distance=50) + cap("services.movies", 50) + "\n"
         head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
         self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
 
@@ -742,6 +747,7 @@ class SplitCheckTest(RatchetHarness):
                      f"of them outside {SWEEPER}'s set: 0 (a subset)", "distance services.readmodel: 30 -> 32 -- rose within",
                      f"commit it with: Coupling: split of {SWEEPER} into {PLANNER}, {PASS}"):
             self.assertIn(said, out)
+        recorded += cap("services.readmodel", 32) + "\n"  # as --update writes it
         head = self.commit({BASELINE: recorded}, f"split the sweeper\n\nCoupling: split of {SWEEPER} into {PLANNER}, {PASS}")
         self.assert_passes(recorded, rng=f"{self.base}..{head}", fanouts=self.VALID)
 
@@ -774,6 +780,148 @@ class SplitCheckTest(RatchetHarness):
         before = status()
         self.split_check(split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11"), self.VALID, "SweepPlanner", "SweepPass")
         self.assertEqual(before, status())
+
+
+class DistanceCeilingTest(RatchetHarness):
+    """THE CEILING (the owner, 2026-11-19): each frozen distance row has a fixed ceiling, its value when the cap came in
+    + 0.02 (a `distance-cap` row; a row without one is read at its own value + 0.02). A split may raise D by its 0.02
+    only while D stays at or under the ceiling; a fall lowers the ceiling with the row (min(ceiling, row + 2)), so it
+    only tightens; `update` (what scripts/coupling-report --update writes) carries it, and over a conflicted baseline
+    takes the minimum of every side's."""
+
+    VALID = CouplingSplitTest.VALID
+
+    def setUp(self):
+        super().setUp()
+        self.base = frozen_sweeper(self)
+
+    def update(self, measured: str) -> str:
+        """`update` over the measured rows in the scratch repository: the baseline it writes."""
+        path = os.path.join(self.dir.name, "measured.tsv")
+        with open(path, "w") as f:
+            f.write(measured)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+        done = subprocess.run([sys.executable, "-I", TOOL, "update", "--current", path, "--baseline", BASELINE],
+                              cwd=self.repo, env=env, capture_output=True, text=True)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        return self.baseline()
+
+    def baseline(self) -> str:
+        with open(os.path.join(self.repo, BASELINE)) as f:
+            return f.read()
+
+    def split(self, readmodel_distance: int) -> str:
+        """The sweeper split honestly into its two pieces, the read model's D measured at `readmodel_distance`, the
+        baseline `update` writes committed: the range's head."""
+        recorded = self.update(split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=readmodel_distance))
+        return self.commit({BASELINE: recorded, SWEEPER_PATH: None, PLANNER_PATH: scala("SweepPlanner", PLANNED),
+                            PASS_PATH: scala("SweepPass", PASSED)}, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+
+    def refreeze(self) -> str:
+        """Another frozen sweeper on top of the recorded baseline: the next split's base."""
+        kept = [line for line in self.baseline().splitlines()
+                if not line.startswith(f"fanout\t{PLANNER}") and not line.startswith(f"fanout\t{PASS}")]
+        return self.commit({BASELINE: "\n".join(kept + [f"fanout\t{SWEEPER}\t36"]) + "\n", PLANNER_PATH: None, PASS_PATH: None,
+                            SWEEPER_PATH: scala("ReadModelSweeper", PLANNED + PASSED)}, "another frozen sweeper")
+
+    def test_three_splits_in_a_row_cannot_raise_a_distance_past_its_ceiling(self):
+        # the read model frozen at 30: its ceiling 32. Each split's +0.01 is within the split's 0.02, but the third
+        # would take D past the ceiling.
+        head = self.split(31)
+        self.assert_passes(self.baseline(), rng=f"{self.base}..{head}", fanouts=self.VALID)
+        self.assertIn(cap("services.readmodel", 32), self.baseline())
+        base = self.refreeze()
+        head = self.split(32)
+        self.assert_passes(self.baseline(), rng=f"{base}..{head}", fanouts=self.VALID)
+        self.assertIn(cap("services.readmodel", 32), self.baseline())
+        base = self.refreeze()
+        head = self.split(33)
+        self.assert_fails(self.baseline(), "distance services.readmodel raised 32 -> 33, past its ceiling 32",
+                          "free 0.01 of its D", "a leaf value type", rng=f"{base}..{head}", fanouts=self.VALID)
+
+    def test_a_fall_tightens_the_ceiling(self):
+        fell = self.update(split_rows(sweeper=36, readmodel_distance=27))
+        self.assertIn(cap("services.readmodel", 29), fell)
+        base = self.commit({BASELINE: fell}, "the read model fell")
+        self.assert_passes(fell, rng=f"{self.base}..{base}")
+        head = self.split(29)
+        self.assert_passes(self.baseline(), rng=f"{base}..{head}", fanouts=self.VALID)
+        base = self.refreeze()
+        head = self.split(30)  # the old ceiling, 32, would have let it through
+        self.assert_fails(self.baseline(), "distance services.readmodel raised 29 -> 30, past its ceiling 29",
+                          rng=f"{base}..{head}", fanouts=self.VALID)
+
+    def test_a_ceiling_far_above_its_row_still_lets_one_split_add_only_two_hundredths(self):
+        base = self.commit({BASELINE: split_rows(sweeper=36) + cap("services.readmodel", 40) + "\n"}, "a loose ceiling")
+        head = self.commit({BASELINE: split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=33)
+                            + cap("services.readmodel", 35) + "\n", SWEEPER_PATH: None,
+                            PLANNER_PATH: scala("SweepPlanner", PLANNED), PASS_PATH: scala("SweepPass", PASSED)},
+                           f"split the sweeper\n\nCoupling: split of {SWEEPER}")
+        self.assert_fails(self.baseline(), "distance services.readmodel raised 30 -> 33", rng=f"{base}..{head}",
+                          fanouts=self.VALID)
+
+    def test_update_keeps_the_ceiling(self):
+        base = self.commit({BASELINE: split_rows(sweeper=36, readmodel_distance=31) + cap("services.readmodel", 32) + "\n"},
+                           "a ceiling below the row's own + 2")
+        written = self.update(split_rows(sweeper=36, readmodel_distance=31))
+        self.assertIn(cap("services.readmodel", 32), written)
+        self.assertNotIn(cap("services.readmodel", 33), written)
+        self.assertIn(cap("services.movies", 50), written)  # a row without a ceiling is read at its own + 2
+        self.assertTrue(written.startswith("# a comment\n"), written)
+        head = self.commit({BASELINE: written}, "recorded")
+        self.assert_passes(written, rng=f"{base}..{head}")
+
+    def test_a_raised_or_dropped_ceiling_fails_whatever_the_trailer(self):
+        base = self.commit({BASELINE: split_rows(sweeper=36) + cap("services.readmodel", 32) + "\n"}, "a ceiling")
+        head = self.commit({BASELINE: split_rows(sweeper=36) + cap("services.readmodel", 34) + "\n"},
+                           "loosen it\n\nCoupling: room for one more split")
+        self.assert_fails(self.baseline(), "distance-cap services.readmodel raised 32 -> 34", rng=f"{base}..{head}")
+        # a dropped row is read at the row's own + 2 again: past a ceiling that had fallen below it
+        tightened = self.commit({BASELINE: split_rows(sweeper=36) + cap("services.readmodel", 31) + "\n"}, "tighten it")
+        head = self.commit({BASELINE: split_rows(sweeper=36)}, "drop it\n\nCoupling: no ceiling")
+        self.assert_fails(self.baseline(), "distance-cap services.readmodel raised 31 -> 32", rng=f"{tightened}..{head}")
+
+    def test_the_merge_takes_the_min(self):
+        # main and a change both lowered the read model's ceiling; the rebase conflicts in the baseline, agentctl's
+        # regen checks main's side out and runs --update over the combined code: every side's ceiling is read
+        self.commit({BASELINE: split_rows(sweeper=36, readmodel_distance=30) + cap("services.readmodel", 32) + "\n"},
+                    "a ceiling")
+        self.scratch("scratch_git", "checkout", "-qb", "change")
+        change = self.commit({BASELINE: split_rows(sweeper=36, readmodel_distance=28) + cap("services.readmodel", 30) + "\n"},
+                             "the change lowers it")
+        self.scratch("scratch_git", "checkout", "-q", "main")
+        self.commit({BASELINE: split_rows(sweeper=36, readmodel_distance=29) + cap("services.readmodel", 31) + "\n"},
+                    "main lowers it")
+        picked = subprocess.run(["bash", "-c", '. "$1"; scratch_git "$2" cherry-pick "$3"', "_", SCRATCH_GIT, self.repo, change],
+                                capture_output=True, text=True)
+        self.assertNotEqual(0, picked.returncode, "the pick must conflict in the baseline")
+        self.scratch("scratch_git", "checkout", "--ours", "--", BASELINE)
+        written = self.update(split_rows(sweeper=36, readmodel_distance=29))  # the combined code measures main's 29
+        self.assertIn(cap("services.readmodel", 30), written)
+        self.assertNotIn(cap("services.readmodel", 31), written)
+
+    def test_split_check_reports_the_headroom_left(self):
+        os.remove(os.path.join(self.repo, SWEEPER_PATH))
+        for path, cls, names in ((PLANNER_PATH, "SweepPlanner", PLANNED), (PASS_PATH, "SweepPass", PASSED)):
+            with open(os.path.join(self.repo, path), "w") as f:
+                f.write(scala(cls, names))
+        current, fanouts = os.path.join(self.dir.name, "current.tsv"), os.path.join(self.dir.name, "fanouts.tsv")
+        with open(current, "w") as f:
+            f.write(split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t11", readmodel_distance=31))
+        with open(fanouts, "w") as f:
+            f.write("".join(fanout_line(c, n) for c, n in self.VALID.items()))
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+                   GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        done = subprocess.run([sys.executable, "-I", TOOL, "split-check", "--current", current, "--fanouts", fanouts,
+                               "--split", "ReadModelSweeper", "--into", "SweepPlanner", "--into", "SweepPass",
+                               "--base", self.base], cwd=self.repo, env=env, capture_output=True, text=True)
+        out = done.stdout + done.stderr
+        self.assertEqual(0, done.returncode, out)
+        self.assertIn("distance services.readmodel: 30 -> 31 -- rose within the split's 2: tolerated; ceiling 32, "
+                      "headroom 0.01 left", out)
+        self.assertIn("distance services.movies: 48 -- ceiling 50, headroom 0.02 left", out)
 
 
 class CouplingRefsTest(unittest.TestCase):

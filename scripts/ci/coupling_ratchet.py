@@ -36,7 +36,14 @@
 # fall only, like any frozen row. In that range the frozen distance row of a package holding X or a piece, or holding a
 # class the split's references reach, may rise by DISTANCE_SPLIT_TOLERANCE hundredths at most (moving types shifts a
 # package's abstractness; each piece using a package is one more outside class in its Ca), re-frozen at the new value;
-# outside a valid split a distance row never rises. `--fanouts` (couplingReport's fourth output, every class's held
+# outside a valid split a distance row never rises.
+#
+# THE CEILING (the owner, 2026-11-19): that +0.02 is no ratchet upward. Each frozen distance row has a fixed ceiling, a
+# `distance-cap` row: its value on 2026-11-19 + 0.02 (a row without one is read at its own value + DISTANCE_SPLIT_TOLERANCE).
+# A split may raise D only while it stays at or under the ceiling; a fall lowers the ceiling with the row (min(ceiling,
+# row + 0.02)), so it only tightens, and no trailer raises it (a changed distance limit aside, which re-takes the rows).
+# `update` carries it -- over a conflicted baseline (agentctl's regen of a generated file both sides changed) the
+# minimum of every side's. `--fanouts` (couplingReport's fourth output, every class's held
 # fan-out and what it counts) gives each piece's and the remainder's value and references.
 #
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
@@ -51,6 +58,10 @@
 #       commit of the working tree, the measured rows standing for the baseline `--update` would write. Says each
 #       piece's fan-out against X's row, the union of their references against X's at REV, each distance row the split
 #       may move, and the trailer to commit it under; exit 0 accepted, 1 refused (scripts/coupling-report --check-split).
+#   coupling_ratchet.py update --current <rows> [--baseline <file>]
+#       writes the baseline: the measured rows, each frozen distance row followed by its ceiling (THE CEILING) -- the
+#       least of the file's own, of every side of it git holds while it is unmerged, and the measured row + 0.02.
+#       What scripts/coupling-report --update writes.
 #   coupling_ratchet.py refs --current <rows> --fanouts <file>
 #       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
 #       scripts/coupling-report --update writes to test/resources/coupling-fanout-refs.tsv.
@@ -73,6 +84,9 @@ LAYERS_PATH = "test/resources/coupling-layers.tsv"
 EXEMPTIONS_PATH = "test/resources/coupling-exemptions.tsv"
 REFS_PATH = "test/resources/coupling-fanout-refs.tsv"
 DISTANCE_SPLIT_TOLERANCE = 2  # hundredths a valid split may raise the distance of a package holding X, a piece, or a use
+DISTANCE_CAP = "distance-cap"  # a frozen distance row's ceiling (THE CEILING): it only falls
+DISTANCE_CUT = ("move a leaf value type down to models or tools, or a trait to the seam"
+                " (84a5db6d1 took services.movies from 0.39 to 0.28 so)")
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
 VALUED = ("ce", "fanout", "distance")
 FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
@@ -362,24 +376,87 @@ def refrozen(old: Rows, new: Rows, kind: str) -> bool:
                for key in LIMIT_KEYS[kind])
 
 
+def ceilings(rows: Rows) -> Dict[str, int]:
+    """Each frozen distance row's ceiling (THE CEILING): its `distance-cap` row, else the row + DISTANCE_SPLIT_TOLERANCE."""
+    caps = of_kind(rows, DISTANCE_CAP)
+    return {pkg: caps.get(pkg, d + DISTANCE_SPLIT_TOLERANCE) for pkg, d in of_kind(rows, "distance").items()}
+
+
+def past_ceiling(key: str, value: int, cap: int) -> str:
+    return (f", past its ceiling {cap}: free {(value - cap) / 100:.2f} of its D (the ceiling only falls) -- {DISTANCE_CUT}"
+            if value > cap else "")
+
+
 def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_packages: Set[str] = frozenset()) -> List[str]:
     """The frozen rows the baseline gained or raised from `old` to `new` -- never admitted, whatever the trailer, unless
     the kind's limit itself changed (`refrozen`: the rows are taken again, and the limit change carries the trailer), the
     row is a piece of an honest split (`split`, from `split_credit`), or the distance of a package holding one
-    (`split_packages`) rose by DISTANCE_SPLIT_TOLERANCE at most."""
+    (`split_packages`) rose by DISTANCE_SPLIT_TOLERANCE at most and stays within its ceiling at `old` -- and a ceiling
+    raised (THE CEILING)."""
     out = []
     for kind, _, _ in FROZEN:
         if refrozen(old, new, kind):
             continue
         before, after = of_kind(old, kind), of_kind(new, kind)
+        caps = ceilings(old)
         for key, value in sorted(after.items()):
             if key in before:
-                tolerated = kind == "distance" and key in split_packages and value - before[key] <= DISTANCE_SPLIT_TOLERANCE
+                cap = caps.get(key, before[key]) if kind == "distance" else value
+                tolerated = (kind == "distance" and key in split_packages and value - before[key] <= DISTANCE_SPLIT_TOLERANCE
+                             and value <= cap)
                 if value > before[key] and not tolerated:
-                    out.append(f"{kind} {key} raised {before[key]} -> {value}")
+                    out.append(f"{kind} {key} raised {before[key]} -> {value}" + past_ceiling(key, value, cap))
             elif not moved(key, value, before, after) and not (kind == "fanout" and key in split):
                 out.append(f"{kind} {key} added at {value}")
+    if not refrozen(old, new, "distance"):
+        was = ceilings(old)
+        for key, cap in sorted(ceilings(new).items()):
+            if key in was and cap > was[key]:
+                out.append(f"{DISTANCE_CAP} {key} raised {was[key]} -> {cap} -- a ceiling only falls"
+                           + ("" if (DISTANCE_CAP, key) in new else f" (no `{DISTANCE_CAP}` row: scripts/coupling-report --update writes it)"))
     return out
+
+
+def with_ceilings(measured_text: str, sides: List[Rows]) -> str:
+    """The baseline `update` writes: the measured rows, each frozen distance row followed by its ceiling -- the least of
+    each side's (`sides`: the baselines it replaces) and the row + DISTANCE_SPLIT_TOLERANCE."""
+    measured = parse(measured_text)
+    caps = [ceilings(side) for side in sides]
+    out = []
+    for line in measured_text.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0] == DISTANCE_CAP:
+            continue
+        out.append(line)
+        if len(parts) == 3 and parts[0] == "distance":
+            pkg, d = parts[1], of_kind(measured, "distance")[parts[1]]
+            out.append(f"{DISTANCE_CAP}\t{pkg}\t{min([c[pkg] for c in caps if pkg in c] + [d + DISTANCE_SPLIT_TOLERANCE])}")
+    return "\n".join(out) + "\n"
+
+
+def sides_of(path: str) -> List[Rows]:
+    """The baselines an update replaces: the file as it stands and, while git holds it unmerged (a rebase's conflict
+    that agentctl's regen resolves), each stage of it -- the base, ours and theirs."""
+    sides = []
+    if os.path.exists(path):
+        with open(path) as f:
+            text = f.read()
+        if "\n<<<<<<< " not in "\n" + text:
+            sides.append(parse(text))
+    for stage in (1, 2, 3):
+        found = subprocess.run(["git", "show", f":{stage}:{path}"], capture_output=True, text=True)
+        if found.returncode == 0:
+            sides.append(parse(found.stdout))
+    return sides
+
+
+def update(current_path: str, baseline_path: str) -> int:
+    with open(current_path) as f:
+        measured = f.read()
+    text = with_ceilings(measured, sides_of(baseline_path))
+    with open(baseline_path, "w") as f:
+        f.write(text)
+    return 0
 
 
 def growth(old: Rows, new: Rows) -> List[str]:
@@ -677,8 +754,14 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
 SPLIT_RULE = ("  The rule (the union rule, 0545f3a27; the D tolerance, 2cfa0ee95): every piece strictly below X's frozen fan-out,"
               " each taking over X's code,\n  the UNION of what the pieces and X's remainder reference within X's"
               f" reference set at the base ({REFS_PATH}),\n  and a distance row of a package the split holds or reaches"
-              f" rising by {DISTANCE_SPLIT_TOLERANCE} hundredths at most. Check a split before committing it:\n"
+              f" rising by {DISTANCE_SPLIT_TOLERANCE} hundredths at most, and never past its ceiling\n  (its `{DISTANCE_CAP}` row: the"
+              " 2026-11-19 value + 0.02, only falling). Check a split before committing it:\n"
               "  scripts/coupling-report --check-split <X> <piece>...")
+
+
+def file_text(path: str) -> str:
+    with open(path) as f:
+        return f.read()
 
 
 def snapshot() -> str:
@@ -705,9 +788,8 @@ def split_check(current_path: str, fanouts_path: str, original: str, pieces: Lis
     """`split-check` (the module docstring): the ratchet's own split_credit and frozen_growth over base..<the working
     tree>, explained."""
     base = base or default_base()
-    with open(current_path) as f:
-        measured = parse(f.read())
     before = parse(file_at(base, BASELINE_PATH))
+    measured = parse(with_ceilings(file_text(current_path), [before]))  # what --update would write
     fanouts = read_fanouts(fanouts_path)
     rng = f"{base}..{snapshot()}"
     explain: List[dict] = []
@@ -728,19 +810,26 @@ def split_check(current_path: str, fanouts_path: str, original: str, pieces: Lis
               + (f" ({', '.join(e['new'][:5])}{', ...' if len(e['new']) > 5 else ''})" if e["new"] else " (a subset)"))
     reached = packages or ({package_of(c) for c in pieces + [original]})
     old_d, new_d = of_kind(before, "distance"), of_kind(measured, "distance")
+    caps = ceilings(before)
     for pkg in sorted(set(old_d) | set(new_d)):
         a, b = old_d.get(pkg), new_d.get(pkg)
+        room = f"ceiling {caps[pkg]}, headroom {(caps[pkg] - (a if b is None else b)) / 100:.2f} left" if pkg in caps else ""
         if a == b:
+            if pkg in reached:
+                print(f"  distance {pkg}: {a} -- {room}")
             continue
         if a is None:
             verdict = "NEW past the limit: refused"
         elif b is None or b < a:
             verdict = "fell"
-        elif pkg in packages and b - a <= DISTANCE_SPLIT_TOLERANCE:
+        elif pkg in packages and b - a <= DISTANCE_SPLIT_TOLERANCE and b <= caps[pkg]:
             verdict = f"rose within the split's {DISTANCE_SPLIT_TOLERANCE}: tolerated"
+        elif pkg in packages and b - a <= DISTANCE_SPLIT_TOLERANCE:
+            verdict = f"rose past its ceiling: refused -- free {(b - caps[pkg]) / 100:.2f} of its D: {DISTANCE_CUT}"
         else:
             verdict = "rose: refused" + ("" if pkg in reached else " (a package the split does not reach)")
-        print(f"  distance {pkg}: {'-' if a is None else a} -> {'-' if b is None else b} -- {verdict}")
+        print(f"  distance {pkg}: {'-' if a is None else a} -> {'-' if b is None else b} -- {verdict}"
+              + (f"; {room}" if room and a is not None else ""))
     grown = frozen_growth(before, measured, admitted, packages)
     ours = {original, *pieces} | reached
     mine = [g for g in grown if g.split(" ")[1] in ours]
@@ -779,11 +868,16 @@ def main(argv: List[str]) -> int:
     s.add_argument("--split", required=True)
     s.add_argument("--into", action="append", required=True)
     s.add_argument("--base", default="")
+    u = sub.add_parser("update")
+    u.add_argument("--current", required=True)
+    u.add_argument("--baseline", default=BASELINE_PATH)
     r = sub.add_parser("refs")
     r.add_argument("--current", required=True)
     r.add_argument("--fanouts", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "update":
+            return update(args.current, args.baseline)
         if args.command == "refs":
             return refs(args.current, args.fanouts)
         if args.command == "split-check":
