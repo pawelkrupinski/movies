@@ -9,5 +9,3 @@
 limit	cognitive	15
 limit	cyclomatic	10
 limit	inner-defs	2
-cyclomatic	scrapers/src/main/scala/services/cinemas/PolishScraperCatalog.scala:PolishScraperCatalog.scraper	15
-cyclomatic	scrapers/src/main/scala/services/cinemas/UkScraperCatalog.scala:UkScraperCatalog.scraper	15

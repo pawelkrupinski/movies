@@ -9496,6 +9496,7 @@ services.cinemas.pl.PolishVenue$Biletyna
 services.cinemas.pl.PolishVenue$Biletyna$
 services.cinemas.pl.PolishVenue$BiletynaHalls
 services.cinemas.pl.PolishVenue$BiletynaHalls$
+services.cinemas.pl.PolishVenue$Chain
 services.cinemas.pl.PolishVenue$CinemaCity
 services.cinemas.pl.PolishVenue$CinemaCity$
 services.cinemas.pl.PolishVenue$Ekobilet
@@ -9512,6 +9513,7 @@ services.cinemas.pl.PolishVenue$NoveKino
 services.cinemas.pl.PolishVenue$NoveKino$
 services.cinemas.pl.PolishVenue$OwnClient
 services.cinemas.pl.PolishVenue$OwnClient$
+services.cinemas.pl.PolishVenue$Platform
 services.cinemas.pl.PolishVenue$Route
 services.cinemas.pl.PolishVenue$Route$
 services.cinemas.pl.PolishVenue$Route$$anon$1
@@ -9825,6 +9827,8 @@ services.cinemas.uk.TicketsolveClient$Slot$
 services.cinemas.uk.UkFeed
 services.cinemas.uk.UkFeed$
 services.cinemas.uk.UkFeed$BfiSouthbank$
+services.cinemas.uk.UkFeed$BoxOffice
+services.cinemas.uk.UkFeed$Chain
 services.cinemas.uk.UkFeed$Cineworld
 services.cinemas.uk.UkFeed$Cineworld$
 services.cinemas.uk.UkFeed$Everyman

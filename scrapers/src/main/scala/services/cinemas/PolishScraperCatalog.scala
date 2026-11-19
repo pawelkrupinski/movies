@@ -72,9 +72,20 @@ final class PolishScraperCatalog(
   }
 
   private def scraper(venue: PolishVenue): CinemaScraper = venue match {
+    case chain: PolishVenue.Chain       => chainScraper(chain)
+    case platform: PolishVenue.Platform => platformScraper(platform)
+    case PolishVenue.OwnClient(build)   => build(kit)
+  }
+
+  /** A chain venue's scraper, over the chain's shared detail cache. */
+  private def chainScraper(venue: PolishVenue.Chain): CinemaScraper = venue match {
     case PolishVenue.CinemaCity(cinemaId, cinema) => new CinemaCityScraper(cinemaCityClient, cinemaId, cinema)
     case PolishVenue.Multikino(cinemaId, cinema)  => new MultikinoClient(mkFetch, cinemaId, cinema, titles)
     case PolishVenue.Helios(config)               => new HeliosClient(http, config, today, Some(heliosDetailHttp), titles = titles)
+  }
+
+  /** A platform venue's scraper, over the egress its platform's host needs. */
+  private def platformScraper(venue: PolishVenue.Platform): CinemaScraper = venue match {
     case PolishVenue.Bilety24Organizer(organizerUrl, cinema) =>
       new Bilety24OrganizerClient(http, organizerUrl, cinema, titles = titles)
     case PolishVenue.Bilety24Subdomain(cinema, url) => new Bilety24Client(http, url, cinema, titles = titles)
@@ -88,12 +99,10 @@ final class PolishScraperCatalog(
     case PolishVenue.Biletyna(cinema, page) =>
       new BiletynaClient(bnFetch, page, cinema, nationalFeed = Some(biletynaNationalFeed))
     case PolishVenue.BiletynaHalls(cinema, halls) =>
-      new MultiListingScraper(cinema, halls.map { case (page, hall) =>
-        new BiletynaClient(bnFetch, page, cinema, room = Some(hall), nationalFeed = Some(biletynaNationalFeed))
-      })
+      new MultiListingScraper(cinema, halls.map((page, hall) =>
+        new BiletynaClient(bnFetch, page, cinema, room = Some(hall), nationalFeed = Some(biletynaNationalFeed))))
     case PolishVenue.SystemBiletowy(cinema, portal, institution, filmGroup) =>
       new SystemBiletowyClient(http, portal, cinema, titles = titles, filmGroups = filmGroup.toSet, institution = institution)
-    case PolishVenue.OwnClient(build) => build(kit)
   }
 
   /** Every Polish venue's scraper, in `venues`' order — each page's scrape order. */

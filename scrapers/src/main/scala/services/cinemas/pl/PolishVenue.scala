@@ -16,38 +16,43 @@ import java.time.LocalDate
 sealed trait PolishVenue
 
 object PolishVenue {
+  /** A national chain's venue, read off the chain's own API by the chain's id for it. */
+  sealed trait Chain extends PolishVenue
+  /** A venue listed on a shared ticketing platform (or Filmweb's seances), read by that platform's client. */
+  sealed trait Platform extends PolishVenue
+
   /** A Cinema City venue, by the chain's cinema id. */
-  final case class CinemaCity(cinemaId: String, cinema: Cinema) extends PolishVenue
+  final case class CinemaCity(cinemaId: String, cinema: Cinema) extends Chain
   /** A Multikino venue, by the chain's cinema id. */
-  final case class Multikino(cinemaId: String, cinema: Cinema) extends PolishVenue
+  final case class Multikino(cinemaId: String, cinema: Cinema) extends Chain
   /** A Helios venue ([[HeliosNuxt]] names each one). */
-  final case class Helios(config: HeliosCinema) extends PolishVenue
+  final case class Helios(config: HeliosCinema) extends Chain
   /** An organiser listing on bilety24.pl itself. */
-  final case class Bilety24Organizer(organizerUrl: String, cinema: Cinema) extends PolishVenue
+  final case class Bilety24Organizer(organizerUrl: String, cinema: Cinema) extends Platform
   /** A venue on its own `<venue>.bilety24.pl` subdomain. */
-  final case class Bilety24Subdomain(cinema: Cinema, url: String) extends PolishVenue
+  final case class Bilety24Subdomain(cinema: Cinema, url: String) extends Platform
   /** An ekobilet.pl venue, by its slug. */
-  final case class Ekobilet(slug: String, cinema: Cinema) extends PolishVenue
+  final case class Ekobilet(slug: String, cinema: Cinema) extends Platform
   /** A NoveKino venue, by its slug. */
-  final case class NoveKino(slug: String, cinema: Cinema) extends PolishVenue
+  final case class NoveKino(slug: String, cinema: Cinema) extends Platform
   /** Filmweb's seances, by Filmweb's internal cinema id. */
-  final case class Filmweb(filmwebCinemaId: Int, cinema: Cinema) extends PolishVenue
+  final case class Filmweb(filmwebCinemaId: Int, cinema: Cinema) extends Platform
   /** An MSI / VisualTicket portal: `mvcPath` / `titlePrefix` / `titleSuffix` / `filmLabel` / `otherVenueLocations` are
    *  the per-install quirks [[MsiClient]] documents; `route` the egress its host needs ([[Route]]). */
   final case class Msi(cinema: Cinema, baseUrl: String, mvcPath: String, titlePrefix: Option[String],
                        titleSuffix: Option[String], filmLabel: Option[String], otherVenueLocations: Set[String],
-                       route: Route) extends PolishVenue
+                       route: Route) extends Platform
   /** A biletyna.pl place page. biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so every biletyna venue
    *  routes through the biletyna egress — the residential proxy in prod, the fixture fake in tests — and reads the
    *  one national event feed all of them share. */
-  final case class Biletyna(cinema: Cinema, page: BiletynaPlacePage) extends PolishVenue
+  final case class Biletyna(cinema: Cinema, page: BiletynaPlacePage) extends Platform
   /** One cinema whose halls are each on a biletyna place page of their own, every showtime tagged with its hall. */
-  final case class BiletynaHalls(cinema: Cinema, halls: Seq[(BiletynaPlacePage, String)]) extends PolishVenue
+  final case class BiletynaHalls(cinema: Cinema, halls: Seq[(BiletynaPlacePage, String)]) extends Platform
   /** A systembiletowy.pl install, by portal base URL; `institution` scopes an instance that also sells someone else's
    *  events to the venue's own, `filmGroup` keeps a feed mixing films with a stage programme to the films' category
    *  (see [[SystemBiletowyClient]]). */
   final case class SystemBiletowy(cinema: Cinema, portal: VisualSoftPortal, institution: Option[Institution],
-                                  filmGroup: Option[EventCategory]) extends PolishVenue
+                                  filmGroup: Option[EventCategory]) extends Platform
   /** A venue with a client of its own, built from what every such client shares ([[PolishScraperKit]]). */
   final case class OwnClient(build: PolishScraperKit => CinemaScraper) extends PolishVenue
 
