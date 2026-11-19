@@ -25,7 +25,7 @@ import sys
 from collections import Counter
 
 IDLE_GAP_SECONDS = 180
-POLL = re.compile(r"\bsleep\s+\d|\buntil\b|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b"
+POLL = re.compile(r"\bsleep\s+\d|(?<!-)\buntil\b(?!-)|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b"
                   r"|(?:^|[\s/;&|])wait-for\b")
 RUN_ID = re.compile(r"\b3\d{10}\b")
 TASK_OUTPUT = re.compile(r"tasks/(b[a-z0-9]+)\.output")
@@ -51,8 +51,16 @@ def sbt_shape(command: str) -> str:
     return "sbt: other"
 
 
+LAND = re.compile(r"\bagentctl (land|inbox wait|status|wait)\b|\breland\b|\bwaitland")
+WHAT_IF = "identity-what-if"
+
+
 def launch_kind(command: str) -> str:
     """What a background command was, for the waits on it."""
+    if LAND.search(command):
+        return "land"
+    if WHAT_IF in command:
+        return "what-if"
     if "identity-measure" in command:
         return "measure"
     if "identity-slice" in command:
@@ -106,6 +114,10 @@ def wait_kind(command: str) -> str | None:
     if not wait:
         return None
     target, pattern = wait.group(1), wait.group(2) or ""
+    if re.search(r"(^|/)(re)?land[^/]*$", target, re.I) or re.search(r"\bLANDED\b", pattern) and "LANDABLE" not in pattern:
+        return "land"
+    if re.search(r"what-?if", target, re.I):
+        return "what-if"
     if re.search(r"measure", target, re.I) or "LANDABLE" in pattern:
         return "measure"
     if re.search(r"slice", target, re.I):
@@ -152,6 +164,8 @@ def bash_bucket(command: str, launches: Launches) -> str:
         kind = wait_kind(command)
         if kind:
             return "poll: " + kind
+        if LAND.search(command):
+            return "poll: land"
         if "identity-measure" in command:
             return "poll: measure"
         if "identity-slice" in command:
@@ -165,6 +179,10 @@ def bash_bucket(command: str, launches: Launches) -> str:
         return "poll: other"
     if "git push" in command:
         return "pre-push (git push)"
+    if LAND.search(command):
+        return "land (foreground)"
+    if WHAT_IF in command:
+        return "what-if (foreground)"
     if "identity-measure" in command:
         return "measure (foreground)"
     if re.search(r"identity-slice|identity-explain", command):
@@ -251,8 +269,9 @@ def background_launches(events: list, launches: Launches) -> None:
 
 
 class Agent:
-    def __init__(self, agent_id: str, events: list, launches: Launches):
+    def __init__(self, agent_id: str, events: list, launches: Launches, since=None):
         self.id = agent_id
+        self.since = since  # count only the seconds after it (a datetime), None: all
         self.buckets = Counter()
         self.steps = []  # (start, seconds, bucket, what)
         self.span = (events[-1][0] - events[0][0]).total_seconds() if events else 0.0
@@ -279,11 +298,14 @@ class Agent:
                     monitors.update(re.findall(r"\b(b[a-z0-9]{7,})\b", text))
                 if tool_id in open_calls:
                     start, bucket, what = open_calls.pop(tool_id)
-                    self.steps.append((start, (at - start).total_seconds(), bucket, what))
+                    if self.since is None or start >= self.since:
+                        self.steps.append((start, (at - start).total_seconds(), bucket, what))
             if following is None:
                 break
             gap = (following[0] - at).total_seconds()
             if gap <= 0:
+                continue
+            if self.since is not None and at < self.since:
                 continue
             if open_calls:
                 bucket = min(open_calls.values(), key=lambda call: call[0])[1]
@@ -300,7 +322,7 @@ class Agent:
             self.buckets[bucket] += gap
 
 
-def load(tasks_dir: str) -> list:
+def load(tasks_dir: str, since=None) -> list:
     transcripts = {}
     launches = Launches()
     sessions = set()
@@ -316,7 +338,8 @@ def load(tasks_dir: str) -> list:
     for session in sessions:
         if os.path.isfile(session):
             background_launches(read_events(session), launches)
-    return [Agent(agent_id, events, launches) for agent_id, events in transcripts.items()]
+    agents = [Agent(agent_id, events, launches, since) for agent_id, events in transcripts.items()]
+    return [a for a in agents if sum(a.buckets.values()) > 0] if since is not None else agents
 
 
 def hours(seconds: float) -> str:
@@ -375,13 +398,14 @@ def main(argv: list) -> int:
     parser.add_argument("tasks_dir", nargs="?", help="a session's tasks directory (default: the newest session's)")
     parser.add_argument("--agent", help="one agent's slowest steps (its id, or a prefix of it)")
     parser.add_argument("--top", type=int, default=20, help="steps --agent lists (default 20)")
+    parser.add_argument("--since", help="count only the time after this ISO instant (e.g. 2026-11-19T00:00Z)")
     parser.add_argument("--longest", type=int, default=10, help="agents the summary lists (default 10)")
     args = parser.parse_args(argv)
     tasks_dir = args.tasks_dir or default_tasks_dir()
     if not tasks_dir or not os.path.isdir(tasks_dir):
         print(f"agent-time: no tasks directory ({tasks_dir or 'none found for this checkout'})", file=sys.stderr)
         return 2
-    agents = load(tasks_dir)
+    agents = load(tasks_dir, timestamp(args.since) if args.since else None)
     if args.agent:
         matching = [a for a in agents if a.id.startswith(args.agent)]
         if len(matching) != 1:

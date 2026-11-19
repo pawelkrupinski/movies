@@ -194,5 +194,49 @@ class WaitForTest(unittest.TestCase):
         self.assertEqual(self.bucket("scripts/wait-for /w/movies-y/target/out/m.log done", launches), "poll: other")
 
 
+class LandAndWhatIfTest(unittest.TestCase):
+    """2026-11-19: 39% of a session's agent-hours read `bg wait: other`, most of it `agentctl land` and the waits on
+    its log or inbox -- the biggest bucket of a refactoring lane, unnamed. Landing and what-if are buckets of their own."""
+
+    def bucket(self, command, launches=None):
+        return agent_time.bash_bucket(command, launches or agent_time.Launches())
+
+    def test_a_land_and_the_waits_on_it_are_land(self):
+        self.assertEqual(agent_time.launch_kind("cd /w && ~/bin/agentctl land --until-done > /s/land-b1.log 2>&1"), "land")
+        self.assertEqual(agent_time.launch_kind("~/bin/agentctl inbox wait --kinds LANDED,NOT_LANDED --timeout 3600"),
+                         "land")
+        self.assertEqual(agent_time.launch_kind("bash /s/tools/reland.sh /w/movies-b1 /s/land-b1-r4.log"), "land")
+        self.assertEqual(self.bucket('scripts/wait-for /s/land-f3b.log --contains "LANDED" --timeout 60'), "poll: land")
+        self.assertEqual(self.bucket("for i in $(seq 1 40); do l=$(~/bin/agentctl status 2>&1 | grep tick); "
+                                     "sleep 30; done"), "poll: land")
+        self.assertEqual(self.bucket("~/bin/agentctl land --until-done"), "land (foreground)")
+
+    def test_a_what_if_is_what_if(self):
+        self.assertEqual(agent_time.launch_kind("scripts/identity-what-if --countries pl,de > /s/whatif1.log 2>&1"),
+                         "what-if")
+        self.assertEqual(self.bucket("scripts/identity-what-if --countries es"), "what-if (foreground)")
+        self.assertEqual(self.bucket("scripts/wait-for /s/whatif-us.log --contains 'final:' --timeout 60"),
+                         "poll: what-if")
+
+    def test_since_counts_only_what_came_after(self):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        os.makedirs(os.path.join(root, "p", "s", "subagents"))
+        tasks = os.path.join(root, "tasks")
+        os.makedirs(tasks)
+        path = os.path.join(root, "p", "s", "subagents", "agent-aone000000000001.jsonl")
+        with open(path, "w") as f:
+            f.writelines(json.dumps(r) + "\n" for r in AGENT_ONE)
+        os.symlink(path, os.path.join(tasks, "aone000000000001.output"))
+        whole = agent_time.load(tasks)[0]
+        cut = agent_time.load(tasks, since=agent_time.timestamp(at(2114)))[0]
+        self.assertEqual(sum(whole.buckets.values()), 2184)
+        self.assertEqual(dict(cut.buckets), {"model": 20, "pre-push (git push)": 50})
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(agent_time.main([tasks, "--since", at(2114)]), 0)
+        self.assertIn("1 agents, 0.0 agent-hours", out.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
