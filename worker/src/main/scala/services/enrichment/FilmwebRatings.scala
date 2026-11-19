@@ -54,7 +54,7 @@ final class FilmwebRatings(
    *  crew and the cinemas' credits. An undated URL is not evidence.
    *
    *  A stored URL the row holds no Filmweb slot for is read whole, as a discovery is: a page the projection linked
-   *  (the resolver's Filmweb fallback, `ProjectionDrafting.heldLinks`, drops the slot of the page it replaces) arrives
+   *  (the resolver's Filmweb fallback, `FilmRecordDrafts.heldLinks`, drops the slot of the page it replaces) arrives
    *  as a URL alone, and a rating-only read never fills its content -- PL "Flow" (2024) showed no original title,
    *  genres or plot, which the same page found by a title search first had stored. */
   def read(key: CacheKey, row: MovieRecord, url: String): PageRead[Double] =

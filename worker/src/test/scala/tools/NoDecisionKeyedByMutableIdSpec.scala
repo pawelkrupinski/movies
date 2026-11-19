@@ -58,7 +58,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   private val PerApply   = "a field of AgreementStage.Pass, built per apply"
   private val PerRefresh = "a field of LiveCorpus's Refresh, built per refresh"
   private val PerRound   = "a field of LookupFillBudget, built per fill round"
-  private val PerDraft   = "a field of ProjectionDrafting, built per draft"
+  private val PerDraft   = "a field of VenueSlotBuilds, built per draft (ProjectionDrafting)"
   private val Lookups    = "a field of Agreement's FamilyLookups, built per resolve"
   private val CorpusIndex = "LiveCorpus's structure index, moved as nodes are linked, unlinked and rebuilt"
 
@@ -181,8 +181,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}LiveProjectionIndex.scala#slots"         -> Name("each slot's published listings and stored films, moved with entries"),
     s"${I}LiveProjectionIndex.scala#decisionsOf"   -> Name("each cluster's current decisions"),
     s"${I}LiveProjectionIndex.scala#afterWrites"   -> Name("the listings moved by writes, consumed by the next update"),
-    s"${I}ProjectionDrafting.scala#slotsByFilm"    -> Pass(PerDraft),
-    s"${I}ProjectionDrafting.scala#venueSlots"     -> Pass(PerDraft),
+    s"${I}VenueSlotBuilds.scala#slotsByFilm"       -> Pass(PerDraft),
+    s"${I}VenueSlotBuilds.scala#venueSlots"        -> Pass(PerDraft),
     s"${I}VenueSlots.scala#current"                -> Content("by the hash of the venue's rows, priors, keys and pages"),
     s"${I}VenueSlots.scala#seenNow"                -> Content("by the venue's listings, its value the full content key"),
     s"${I}IdentityProjectionPlan.scala#drafted"    -> Digested("members", "FilmShape.members and its venues' inputs are compared before a shape is reused"),

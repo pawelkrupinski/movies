@@ -172,7 +172,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   // A page the projection linked -- the resolver's Filmweb fallback for a film TMDB has no record of
-  // (ProjectionDrafting.heldLinks, which drops the slot of the page it replaces) -- arrives as a URL alone. The
+  // (FilmRecordDrafts.heldLinks, which drops the slot of the page it replaces) -- arrives as a URL alone. The
   // rating-only refresh never read its content, so PL "Flow" (2024) showed no original title, genres or plot; the
   // same page found by a title search first kept them. A URL with no slot is read whole, as a discovery is.
   it should "read the whole page of a stored URL the row holds no Filmweb slot for" in {

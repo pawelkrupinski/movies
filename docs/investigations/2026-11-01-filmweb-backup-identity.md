@@ -27,7 +27,7 @@ The question assumes a new design, but most of it is on main already.
 - **Filmweb is already a fallback identity, in Poland only.** The agreement stage
   (`AgreementStage`, `IdentityProjectionWiring.identities`) lets a film stand on Wikidata's id everywhere, and on
   Filmweb's id in Poland only, through `ResolverDecision.Fallback("filmweb", id, …)`. It is used only when at least
-  three film-database families agree on the film. `ProjectionDrafting` then links that Filmweb page and rating.
+  three film-database families agree on the film. `FilmRecordDrafts` then links that Filmweb page and rating.
   - It was measured on 2026-10-05 and gained PL "Płazy. Pionierzy życia na lądzie" with nothing wrong.
 - **Filmweb is already evidence.**
   - `VoterFamily.Filmweb` is one agreement voter in PL, DE and ES.

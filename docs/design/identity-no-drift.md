@@ -377,7 +377,7 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
   - `thisYear` (:642).
 - **Projection.**
   - `IdAssigner`/`FilmIdCounters` hand out ids by path, on purpose.
-  - `ProjectionDrafting` keeps the previous record's data (:146-157), and `heldLinks` keeps what it holds (:204).
+  - `FilmRecordDrafts` keeps the previous record's data (`filmDraftOf`), and `heldLinks` keeps what it holds.
   - VenueSlots reads the previous film's slots.
   - `LiveProjectionIndex` is already a proven cache (`ScopedProjectionEquivalenceSpec`).
 
