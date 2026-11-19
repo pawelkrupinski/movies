@@ -64,7 +64,7 @@ private[readmodel] final class SweepCatchUp(projection: ReadModelSweeper.Project
         })
 
     private def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
-      if (row.record.readyToProject)
+      if (row.readyToProject)
         continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
           if (counted(projection.projectRow(row, ProjectTrigger.CatchUp))) caughtUp += 1 }.getOrElse { failed = true }
   }

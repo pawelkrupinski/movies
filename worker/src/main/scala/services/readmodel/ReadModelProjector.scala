@@ -141,32 +141,14 @@ class ReadModelProjector(
    *  change leaves every card as it is. */
   def onVenueSlots(venues: services.movies.VenueSlots): services.movies.VenueVerdict = lock.synchronized {
     val rowId = venues.filmId.value
-    planVenues(rowId, venues) match {
+    VenuePlans.plan(lastGroups.get(rowId), venues, normalizer.sanitize, lastScreenings.contains,
+                    held = shareCardGate.holds, published = lastMovie.contains) match {
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
         sweep.noteApplied(rowId)
         byCard.foreach(screeningRows.applyVenues)
         if (shareCardGate.holdsAny) releaseExpired()
         services.movies.VenueVerdict.Applied
-    }
-  }
-
-  /** Caller holds `lock`. The venues [[onVenueSlots]] rebuilds, by card — or the first reason it
-   *  cannot vouch that they are all a whole-film projection would change (see there). */
-  private def planVenues(rowId: String, venues: services.movies.VenueSlots): VenuePlans.Plan = {
-    import services.movies.ChangeStreamMetrics.VenueDecline as Why
-    import VenuePlans.refuse
-    scala.util.boundary {
-      val groups  = lastGroups.getOrElse(rowId, refuse(Why.ProjectorRowUnprojected))
-      val cards   = groups.cardByGroup.values.toSeq.distinct
-      val planned = venues.atCinemas.toSeq.flatMap { case (cinema, slots) =>
-        VenuePlans.ofCinema(groups, cards, cinema, slots, normalizer.sanitize, lastScreenings.contains) }
-      val byCard  = planned.groupMap(_._1)(_._2)
-      byCard.keys.foreach { card =>
-        if (shareCardGate.holds(card)) refuse(Why.ProjectorCardHeld)
-        if (!lastMovie.contains(card)) refuse(Why.ProjectorCardUnpublished)
-      }
-      Right(byCard)
     }
   }
 
@@ -198,7 +180,7 @@ class ReadModelProjector(
    *  anything the change stream missed. */
   private def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = {
     val rowId = partition.stored.id.value
-    if (!partition.stored.record.readyToProject) { retireUnready(rowId); return 0 }
+    if (!partition.stored.readyToProject) { retireUnready(rowId); return 0 }
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently.
@@ -345,11 +327,10 @@ class ReadModelProjector(
     val now  = clock.millis()
     val rows = shareCardGate.expiredRows(now)
     rows.filter { row =>
-      movieRepository.findByIdChecked(models.FilmId(row)) match {
-        case tools.ReadOutcome.Answered(whole)     => projectRow(whole, ProjectTrigger.HoldRelease); false
-        case tools.ReadOutcome.Absent(_)  => shareCardGate.dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
-        case tools.ReadOutcome.Failed(_)  => true                                                       // unreadable: keep the hold
-      }
+      movieRepository.findByIdChecked(models.FilmId(row)).fold(
+        answered = whole => { projectRow(whole, ProjectTrigger.HoldRelease); false },
+        absent   = { shareCardGate.dropHoldsNotProducedBy(row, Set.empty); false },   // gone: nothing to publish
+        failed   = true)                                                              // unreadable: keep the hold
     }
   }
 
@@ -431,7 +412,7 @@ class ReadModelProjector(
    *  screens), a variant card that appears or goes (a derivation that moves those is not
    *  cards-only), and a row that lost its readiness. */
   private def projectCards(partition: ReadModelProjection.Partition): Int = {
-    if (!partition.stored.record.readyToProject) return 0
+    if (!partition.stored.readyToProject) return 0
     val cards = timedProjection(ProjectTrigger.Derivation)(projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1))
     cards.filter(card => lastMovie.contains(card._id) && !shareCardGate.holds(card._id)).count { projected =>
       val movie   = shareCardGate.withShareCard(projected)
@@ -484,7 +465,7 @@ class ReadModelProjector(
       val repaired = absentCards.exists(lastMovie.contains) || absentVenues.exists(written)
       val phantoms = absentVenues.filterNot(written).toSet
       if (phantoms.nonEmpty) healedClean.update(id.value, (metadataHash, memo.phantomsOf(id.value, metadataHash) ++ phantoms))
-      Option.when(whole.record.readyToProject)(repaired)
+      Option.when(whole.readyToProject)(repaired)
     }
   }
 

@@ -42,7 +42,7 @@ final class BootCorpusStudy(normalizer: TitleNormalizer, derivationWait: FiniteD
     // Only while the boot reads have not yet looked for it. If they have, they read for themselves,
     // and deriving it now would only cost CPU.
     if (state.compareAndSet(State.Open, State.Studying(study.get.future)) || state.get.isInstanceOf[State.Studying])
-      derived = derived.map(_ ++ rows.collect { case row if row.record.readyToProject =>
+      derived = derived.map(_ ++ rows.collect { case row if row.readyToProject =>
         val partition = ReadModelProjection.partition(row, normalizer)
         BootRow(row.id, partition.filmIds, partition.screeningIds, ReadModelProjection.metadataHash(row), Lesson.of(partition))
       })(using ExecutionContext.global)

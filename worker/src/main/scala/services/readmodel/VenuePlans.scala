@@ -8,11 +8,29 @@ private[readmodel] object VenuePlans {
   /** Why the plan declines, or the venues it rebuilds, by card. */
   type Plan = Either[String, Map[String, Seq[ReadModelProjection.VenueScreening]]]
 
-  def refuse(reason: String)(using scala.util.boundary.Label[Plan]): Nothing = scala.util.boundary.break(Left(reason))
+  /** The venues [[ReadModelProjector.onVenueSlots]] rebuilds, by card -- or the first reason it cannot vouch that they
+   *  are all a whole-film projection would change (see there). `groups` is the row's as last projected, None when this
+   *  process has not projected it; `held` and `published` say of a card whether the share-card gate holds it and
+   *  whether the read model serves it. */
+  def plan(groups: Option[RowGroups], venues: services.movies.VenueSlots, sanitize: String => String,
+           served: (String, String) => Boolean, held: String => Boolean, published: String => Boolean): Plan =
+    scala.util.boundary {
+      val known   = groups.getOrElse(refuse(Why.ProjectorRowUnprojected))
+      val cards   = known.cardByGroup.values.toSeq.distinct
+      val planned = venues.atCinemas.toSeq.flatMap { case (cinema, slots) => ofCinema(known, cards, cinema, slots, sanitize, served) }
+      val byCard  = planned.groupMap(_._1)(_._2)
+      byCard.keys.foreach { card =>
+        if (held(card)) refuse(Why.ProjectorCardHeld)
+        if (!published(card)) refuse(Why.ProjectorCardUnpublished)
+      }
+      Right(byCard)
+    }
+
+  private def refuse(reason: String)(using scala.util.boundary.Label[Plan]): Nothing = scala.util.boundary.break(Left(reason))
 
   /** One venue's rebuilt screening per card it shows — refused unless each is a screening the card already serves
    *  (`served(card, id)`) under the same id, from one slot. */
-  def ofCinema(groups: RowGroups, cards: Seq[String], cinema: models.Cinema,
+  private def ofCinema(groups: RowGroups, cards: Seq[String], cinema: models.Cinema,
                slots: Seq[(models.CinemaShowing, models.SourceData)], sanitize: String => String,
                served: (String, String) => Boolean)
               (using scala.util.boundary.Label[Plan]): Seq[(String, ReadModelProjection.VenueScreening)] = {

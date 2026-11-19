@@ -57,6 +57,14 @@ sealed trait ReadOutcome[+A] {
     case Failed(cause)    => throw cause.exception
   }
 
+  /** The three cases for a caller that tells them apart but needs neither the absence's reason nor
+   *  the failure's cause: it names neither type (a match on `Absent(_)` / `Failed(_)` depends on both). */
+  def fold[B](answered: A => B, absent: => B, failed: => B): B = this match {
+    case Answered(value) => answered(value)
+    case _: Absent       => absent
+    case _: Failed       => failed
+  }
+
   /** Whether the read taught us nothing — not an answer, not an absence. */
   def isFailed: Boolean = this.isInstanceOf[Failed]
 

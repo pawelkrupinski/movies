@@ -117,7 +117,7 @@ private[readmodel] final class PruneSweep(
   /** Caller holds the projection lock. One row of a sweep's scan: note its live ids and the venues it no longer
    *  lists, then re-project it (a reproject sweep) or heal what it is missing (a prune sweep). */
   private def sweepRow(row: StoredMovieRecord, reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit =
-    if (row.record.readyToProject) {
+    if (row.readyToProject) {
       // Card ids, venue ids and the projection all come off ONE partition of the row.
       val partition = projection.partition(row)
       val ids = partition.filmIds

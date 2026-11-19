@@ -20,6 +20,10 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   def cacheKey(normalizer: String => String): CacheKey =
     storedKey.fold(CacheKey(title, year, normalizer))(CacheKey.stored(title, _))
 
+  /** Whether the read model may project this row: its record's [[MovieRecord.readyToProject]], asked of the row so
+   *  a reader of rows (the projector, its sweeps and boot) need not reach into the record for it. */
+  def readyToProject: Boolean = record.readyToProject
+
   /** A copy of this row with every source's `showtimes` dropped — the shared rule behind
    *  `MovieRepositoryReader.findAllForListing`. `MongoMovieRepository` strips the same field server-side; this keeps the
    *  in-memory store's listing view byte-for-byte equivalent so both impls honour the same "no showtimes" contract (the

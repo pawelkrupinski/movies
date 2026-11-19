@@ -114,11 +114,10 @@ final class ReadModelBoot(
       rows.foreach { rowId =>
         val id = models.FilmId(rowId)
         continuing(s"read model: applying the change to $rowId held through the boot reads failed") {
-          projection.movieRepository.findByIdChecked(id) match {
-            case tools.ReadOutcome.Answered(row) => projector.onMovieUpsert(row)
-            case tools.ReadOutcome.Absent(_)     => projector.onMovieDelete(id)
-            case tools.ReadOutcome.Failed(_)     => logger.warn(s"read model: $rowId changed during the boot reads and could not be read — the prune sweep heals it.")
-          }
+          projection.movieRepository.findByIdChecked(id).fold(
+            answered = projector.onMovieUpsert,
+            absent   = projector.onMovieDelete(id),
+            failed   = logger.warn(s"read model: $rowId changed during the boot reads and could not be read — the prune sweep heals it."))
         }
       }
       rows = bootHold.take()
@@ -152,7 +151,7 @@ final class ReadModelBoot(
    *  re-read whole, as it would be anyway. */
   private[readmodel] def learnFromCorpus(): Unit = {
     val read = projection.movieRepository.foreachRecord { row =>
-      if (row.record.readyToProject)
+      if (row.readyToProject)
         Try(Lesson.of(projection.partition(row))).foreach(lesson =>
           memo.lock.synchronized(if (memo.seeded) memo.learnFrom(row.id.value, lesson)))
     }

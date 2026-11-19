@@ -77,4 +77,12 @@ class ReadOutcomeSpec extends AnyFlatSpec with Matchers {
     val failed: ReadOutcome[Int] = ReadOutcome.of(throw status(500))
     failed.map(_ * 2) shouldBe failed
   }
+
+  "fold" should "take the branch of its case, and evaluate only that one" in {
+    def branch(read: ReadOutcome[Int]): String = read.fold(n => s"answered $n", "absent", "failed")
+    branch(Answered(3)) shouldBe "answered 3"
+    branch(ReadOutcome.of(throw status(404))) shouldBe "absent"
+    branch(ReadOutcome.of(throw status(503))) shouldBe "failed"
+    Answered(1).fold(identity, fail("absent evaluated"), fail("failed evaluated")) shouldBe 1
+  }
 }

@@ -36,7 +36,7 @@ object ReadModelContentAudit {
   def differences(cardId: String, movies: MovieRepositoryReader, reader: ReadModelReader,
                   ratingGate: RatingGate = RatingGate.off)(using LatestTitleYear): Option[Seq[String]] = {
     for {
-      stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.record.readyToProject)
+      stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.readyToProject)
       expected <- ReadModelProjection.projectAll(stored, movies.normalizer).find(_._1._id == cardId)
       card     <- reader.findCard(cardId).answered
       movie    <- card.movie

@@ -54,4 +54,10 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
     clean.id.value shouldBe "zabriskiepoint|1970"
     baked.id.value should not be clean.id.value
   }
+
+  "readyToProject" should "be its record's: held back until the TMDB stage concludes" in {
+    def row(record: MovieRecord) = StoredMovieRecord("Diuna", Some(2021), record, models.FilmId("diuna|2021"))
+    row(MovieRecord()).readyToProject shouldBe false
+    row(MovieRecord(tmdbId = Some(438631))).readyToProject shouldBe true
+  }
 }

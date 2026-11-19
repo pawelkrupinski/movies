@@ -71,7 +71,7 @@ private[readmodel] final class ReadModelBootHeal(projection: ReadModelSweeper.Pr
         missing += MissingAtBoot(id, metadataHash, absentCards, absentVenues, absentCards.isEmpty && absentVenues.forall(refiled(filmIds, _)))
     }
     val complete = cardIds.isDefined && study.fold(movieRepository.foreachRecordWithSlots { row =>
-      if (row.record.readyToProject) {
+      if (row.readyToProject) {
         val partition = projection.partition(row)
         check(row.id, partition.filmIds, partition.screeningIds, ReadModelProjection.metadataHash(row))
       }
