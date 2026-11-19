@@ -926,7 +926,24 @@ jobs:
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true" "-J-XX:FlightRecorderOptions=stackdepth=1024")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
+                  # Under the memory guard (scripts/ci/memory-guard.sh): it ends the suite's process tree before the
+                  # runner runs out of memory, and the step fails naming why. A US order row's runner starved 49
+                  # minutes in instead -- "lost communication with the server", the step's timeout never firing, the
+                  # job's whole log gone (Identity model convergence #1262; US rows peak at 12-14 GB of 16).
+                  guard_reason="$RUNNER_TEMP/suite-memory-guard.txt"
+                  rm -f "$guard_reason"
+                  ( sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log ) &
+                  suite_pid=$!
+                  MEMORY_GUARD_LABEL="${{ inputs.country }} ${{ matrix.phase }} memory guard" scripts/ci/memory-guard.sh "$suite_pid" "$guard_reason" convergence.log &
+                  guard=$!
+                  wait "$suite_pid" || suite=$?
+                  # a guard that is ending the suite finishes (its KILL pass); an idle one stops now
+                  [ -s "$guard_reason" ] || kill "$guard" 2> /dev/null
+                  wait "$guard" 2> /dev/null || true
+                  if [ -s "$guard_reason" ]; then
+                      echo "::error::the ${{ inputs.country }} ${{ matrix.phase }} suite was ended before the runner ran out of memory: $(cat "$guard_reason")"
+                      [ "${suite:-0}" != 0 ] || suite=1
+                  fi
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   scripts/ci/mongo-exec.sh du -sh /data/db || true

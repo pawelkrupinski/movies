@@ -190,6 +190,19 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       Seq("if: \"!startsWith(matrix.phase, 'takes')\"")
   }
 
+  /** The suite runs under the memory guard (scripts/ci/memory-guard.sh). A US order row's runner starved 49 minutes
+   *  into its suite: "The hosted runner lost communication with the server", the step's 30-minute timeout never firing
+   *  and the job's whole log lost (Identity model convergence #1262; US rows peak at 12-14 GB of the runner's 16 with
+   *  a 10g heap). The guard ends the suite's process tree before the machine runs out, and the step fails naming why. */
+  it should "run the suite under the memory guard, and fail naming the guard's reason" in {
+    val suite = RepoFile.withoutComments(RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep))
+    suite should include("""scripts/ci/memory-guard.sh "$suite_pid" "$guard_reason" convergence.log &""")
+    suite should include("""wait "$suite_pid" || suite=$?""")
+    suite should include("""if [ -s "$guard_reason" ]; then""")
+    suite should include("::error::")
+    suite.indexOf("memory-guard.sh") should be < suite.indexOf("""wait "$suite_pid"""")
+  }
+
   /** What every leg keeps of the sample it no longer runs: the corpus-shape specs over the recorded corpus
    *  (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence suite itself does not assert. A
    *  HERMETIC leg's takes row runs them at the base and the head and fails only on a finding the head made
@@ -846,7 +859,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   "every sbt run of a leg" should "sample the runner's whole CPU beside it, so a phase's idle cores can be named" in {
     // The phase log carries the JVM's CPU alone; mongod, I/O wait and an idle runner look the same there.
     val lines = leg.linesIterator.toVector
-    val runs  = lines.indices.filter(i => lines(i).trim.startsWith("sbt -J-Xmx"))
+    val runs  = lines.indices.filter(i => lines(i).trim.stripPrefix("( ").startsWith("sbt -J-Xmx"))
     runs should not be empty
     // The `run:` block holding each sbt line, up to that line.
     val blocks = runs.map(i => lines.slice(lines.lastIndexWhere(_.trim == "run: |", i), i).mkString("\n"))
@@ -855,8 +868,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val suite = RepoFile.step(RepoFile.block(leg, "convergence"), "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
     suite should include ("scripts/ci/mongo-top.sh start")
     suite should include ("scripts/ci/mongo-top.sh report")
-    // ...on a red suite too: under the step's `bash -e`, a failing `sbt | tee` ended the script before them.
-    suite should include ("2>&1 | tee convergence.log || suite=$?")
+    // ...on a red suite too: under the step's `bash -e`, a failing `sbt | tee` ended the script before them. The
+    // pipeline runs in the background, under the memory guard, and its failure is the `wait`'s.
+    suite should include ("2>&1 | tee convergence.log ) &")
+    suite should include ("wait \"$suite_pid\" || suite=$?")
     RepoFile.positionOf(suite, "scripts/ci/mongo-top.sh report") should be < RepoFile.positionOf(suite, "exit \"${suite:-0}\"")
   }
 
