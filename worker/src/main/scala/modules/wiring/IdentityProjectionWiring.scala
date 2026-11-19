@@ -290,7 +290,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     managedResources.executor("identity host recovery")(tools.DaemonExecutors.boundedPool(s"identity-host-recovery-${country.code}",
       threads = 1, queueCapacity = 256, tools.WhenFull.RunOnCaller))
   /** The agreement's questions as queue tasks, and the tasks of the types before them still queued. */
-  lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = agreementAsker +: agreementAsker.oldQueued
+  lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = agreementAsker +: agreementAsker.retired
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */
   lazy val identityProjectionTrigger: services.identity.EventTrigger = {

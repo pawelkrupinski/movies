@@ -214,24 +214,22 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     enqueues.toSeq shouldBe Seq("tmdb-record" -> true, "tmdb-record" -> false, "tmdb-record" -> true)
   }
 
-  // the four task types AskQuestion replaced: their tasks still queued at its deploy are asked as its own are
-  "a task of a type before AskQuestion" should "be asked as the question its payload names" in {
+  // the four task types AskQuestion replaced, retired: a task of one still queued is completed, never handed back
+  // unhandled, and asks nothing -- the stage asks what it still wants as an AskQuestion
+  "a task of a type before AskQuestion" should "be completed unasked" in {
     val store = world()
     val found = scala.collection.mutable.Buffer.empty[String]; val reread = scala.collection.mutable.Buffer.empty[Int]
     val catalogue = new CatalogueAnswerStore(store, clock, Nil)
     val mapped = scala.collection.mutable.Buffer.empty[Seq[CatalogueId]]
     val old = AgreementAskers.over(store, clock)(sources = Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb)),
       find = id => { found += id; () }, reread = film => { reread += film; () }, catalogue = catalogue,
-      mapping = ids => { mapped += ids; Map.empty }).oldQueued.map(handler => handler.taskType -> handler).toMap
+      mapping = ids => { mapped += ids; Map.empty }).retired.map(handler => handler.taskType -> handler).toMap
     old.keySet shouldBe Set(TaskType.AgreementQuestion, TaskType.AgreementFind, TaskType.AgreementPoster, TaskType.AgreementCatalogue)
     def asked(taskType: TaskType, payload: (String, String)*) = old(taskType).handle(Task("t", taskType, "old", payload.toMap, 1))
     asked(TaskType.AgreementQuestion, "family" -> "imdb", "question" -> "title|Klondike") shouldBe HandlerOutcome.Done
     asked(TaskType.AgreementFind, "imdbId" -> "tt16315948") shouldBe HandlerOutcome.Done
     asked(TaskType.AgreementFind, "tmdbRecord" -> "1703624") shouldBe HandlerOutcome.Done
     asked(TaskType.AgreementCatalogue, "source" -> "webedia", "ids" -> "1,2") shouldBe HandlerOutcome.Done
-    (store.answers(VoterFamily.Imdb).titled("Klondike").answered.map(_.size), found.toSeq, reread.toSeq, mapped.toSeq) shouldBe
-      ((Some(1), Seq("tt16315948"), Seq(1703624), Seq(Seq(CatalogueId("webedia", "1"), CatalogueId("webedia", "2")))))
-    AgreementQuestions.questionsOf(Task("t", TaskType.AgreementPoster, "old", Map("filmPoster" -> "7"), 1)) shouldBe
-      Seq(Question.Poster(services.identity.agreement.AgreementStage.PosterQuestion.Film(7)))
+    (store.answers(VoterFamily.Imdb).titled("Klondike").answered, found.toSeq, reread.toSeq, mapped.toSeq) shouldBe ((None, Nil, Nil, Nil))
   }
 }

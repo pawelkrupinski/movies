@@ -28,7 +28,7 @@ import tools.{CircuitOpenException, RequestedHost}
  * failed [[QuestionPolicies.PosterGiveUpAttempts]] times in a row is given up on: filed as unread, as the stage reads it,
  * and remembered for [[QuestionPolicies.PosterUnreadAge]].
  *
- * The queue's handler of [[TaskType.AskQuestion]] — and, through [[oldQueued]], of the four task types before it — and
+ * The queue's handler of [[TaskType.AskQuestion]] — the four task types before it [[retired]] — and
  * what [[InlineFamilyAsks]] asks a new cluster's family questions through.
  */
 final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], find: String => Unit, reread: Int => Unit,
@@ -41,13 +41,14 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
 
   def handle(task: Task): HandlerOutcome = ask(AgreementQuestions.questionsOf(task))
 
-  /** The four task types before [[TaskType.AskQuestion]], their tasks still queued when it was deployed: each decoded
-   *  into its questions and asked as one. Old queued tasks only; remove after 2026-11-07. */
-  def oldQueued: Seq[TaskHandler] =
+  /** The four task types before [[TaskType.AskQuestion]], RETIRED: a task of one still queued is completed unasked —
+   *  never left unhandled, which the queue would hand straight back (2026-10-04: one leftover task claimed 24,759 times)
+   *  — and whatever it asked the stage asks again as an AskQuestion while it still wants it. */
+  def retired: Seq[TaskHandler] =
     Seq(TaskType.AgreementQuestion, TaskType.AgreementFind, TaskType.AgreementPoster, TaskType.AgreementCatalogue).map { old =>
       new TaskHandler {
         val taskType: TaskType = old
-        def handle(task: Task): HandlerOutcome = AgreementAsker.this.handle(task)
+        def handle(task: Task): HandlerOutcome = HandlerOutcome.Done
       }
     }
 

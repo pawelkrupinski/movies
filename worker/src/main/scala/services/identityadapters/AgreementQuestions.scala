@@ -1,7 +1,6 @@
 package services.identityadapters
 
 import services.identity.*
-import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.tasks.{Enqueued, Task, TaskQueue}
 import services.tasktypes.TaskType
@@ -22,12 +21,6 @@ object AgreementQuestions {
   private val QuestionsKey = "questions"
   /** Between the ids of a task's questions: a catalogue batch's are many, and no id holds a line break. */
   private val Separator    = "\n"
-  private val FamilyKey   = "family"
-  private val QuestionKey = "question"
-  private val ImdbId   = "imdbId"
-  private val TmdbRecord = "tmdbRecord"
-  private val VenuePoster = "venuePoster"
-  private val FilmPoster  = "filmPoster"
 
   /** How far behind every other task an agreement question is claimed: the pipeline's own work — scrapes, ratings, share
    *  cards — always first, the agreement's backlog on what the pool has spare (prod PL 2026-10-04: 5,864 questions queued
@@ -107,10 +100,6 @@ object AgreementQuestions {
    *  their payloads. */
   def questionsOf(task: Task): Seq[Question] = task.taskType match {
     case TaskType.AskQuestion        => task.payload.get(QuestionsKey).toSeq.flatMap(_.split(Separator)).flatMap(Question.parse)
-    case TaskType.AgreementQuestion  => (for { family <- familyOf(task); question <- questionOf(task) } yield Question.Family(family, question)).toSeq
-    case TaskType.AgreementFind      => imdbIdOf(task).map(Question.Find(_)).orElse(tmdbRecordOf(task).map(Question.Record(_))).toSeq
-    case TaskType.AgreementPoster    => posterOf(task).map(Question.Poster(_)).toSeq
-    case TaskType.AgreementCatalogue => AgreementCatalogueQuestions.of(task).map(Question.Catalogue(_))
     case _                           => Nil
   }
 
@@ -133,12 +122,4 @@ object AgreementQuestions {
     }
     outcome
   }
-
-  // The payloads of the four task types before AskQuestion. Old queued tasks only; remove after 2026-11-07.
-  def familyOf(task: Task): Option[VoterFamily] = task.payload.get(FamilyKey).flatMap(label => VoterFamily.values.find(_.label == label))
-  def questionOf(task: Task): Option[String]    = task.payload.get(QuestionKey)
-  def imdbIdOf(task: Task): Option[String]      = task.payload.get(ImdbId)
-  def tmdbRecordOf(task: Task): Option[Int]     = task.payload.get(TmdbRecord).flatMap(_.toIntOption)
-  def posterOf(task: Task): Option[PosterQuestion] =
-    task.payload.get(VenuePoster).map(PosterQuestion.Venue(_)).orElse(task.payload.get(FilmPoster).flatMap(_.toIntOption).map(PosterQuestion.Film(_)))
 }
