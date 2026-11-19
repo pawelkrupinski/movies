@@ -139,11 +139,15 @@ jobs:
                   if tr ' ' '\n' <<< "$checks" | grep -qxE 'itrest|itidentity'; then echo "mongo=true"; else echo "mongo=false"; fi >> "$GITHUB_OUTPUT"
             - name: Start MongoDB (single-node replica set, for change streams), for the heavy rows
               if: steps.share.outputs.mongo == 'true'
-              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
+              uses: ./.github/actions/pull-pinned-image
+              with:
+                  image: mongo
+                  then: scripts/ci/start-mongo-replset.sh
+                  background: mongo-start
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
             # sbt, the JDK and main's landing-check build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
               if: steps.share.outputs.checks != ''

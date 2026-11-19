@@ -1,0 +1,59 @@
+# The one way a workflow or action pulls an image .github/pinned-images.tsv pins (CiPinnedImageSpec): by digest, from this
+# repo's GHCR mirror first, then mirror.gcr.io, then Docker Hub -- scripts/ci/pull-pinned-image.sh, which says why.
+#
+# Every pull is bounded inside the script (`timeout` on each `docker pull` and `docker login`), so the step needs no
+# `timeout-minutes` of its own -- which a composite step cannot have anyway (CompositeActionStepKeysSpec).
+name: Pull a pinned image
+description: Pull an image .github/pinned-images.tsv pins, by digest, GHCR first; optionally run a command with it after.
+
+inputs:
+  image:
+    description: The pin's name (.github/pinned-images.tsv's first column), e.g. `mongo`.
+    required: true
+  token:
+    description: >-
+      A token GHCR takes for this repo's packages: the job's own GITHUB_TOKEN, which needs `packages: read` while the
+      package is private. Anonymous when it is refused.
+    required: false
+    default: ${{ github.token }}
+  dockerhub-username:
+    description: Docker Hub account for the last fallback, should GHCR and mirror.gcr.io both fail. A composite action cannot read secrets itself.
+    required: false
+    default: ''
+  dockerhub-token:
+    description: That account's read-only access token.
+    required: false
+    default: ''
+  then:
+    description: >-
+      A bash command run once the image is here, with PINNED_IMAGE set to its ref (e.g.
+      scripts/ci/start-mongo-replset.sh); it fails the step as it would have. Empty pulls only.
+    required: false
+    default: ''
+  background:
+    description: >-
+      A name to run the pull (and `then`) under in the background (scripts/ci/in-background.sh start <name>), collected
+      later with `in-background.sh wait <name>`. Empty runs it in this step.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Pull ${{ inputs.image }} by digest (GHCR, then mirror.gcr.io, then Docker Hub)
+      shell: bash
+      env:
+          IMAGE: ${{ inputs.image }}
+          THEN: ${{ inputs.then }}
+          BACKGROUND: ${{ inputs.background }}
+          GHCR_TOKEN: ${{ inputs.token }}
+          DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+          DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+      run: |
+          pull=("$GITHUB_WORKSPACE/scripts/ci/pull-pinned-image.sh" "$IMAGE")
+          [ -z "$THEN" ] || pull+=(-- bash -c "$THEN")
+          if [ -n "$BACKGROUND" ]; then
+            "$GITHUB_WORKSPACE/scripts/ci/in-background.sh" start "$BACKGROUND" "${pull[@]}"
+          else
+            "${pull[@]}"
+          fi

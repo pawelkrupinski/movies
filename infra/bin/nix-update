@@ -112,7 +112,10 @@ def choose(current, available):
 
 MONGODB_FILE = "nix/modules/roles/mongodb.nix"
 # The containers MongoServerVersionParitySpec holds to the same release (paths from the checkout).
-MONGODB_TAG_FILES = ("scripts/ci/start-mongo-replset.sh", "scripts/convergence-local.sh")
+# CI's is the `mongo` row of .github/pinned-images.tsv (tag AND digest; CiPinnedImageSpec), which
+# start-mongo-replset.sh reads, its native /opt/mongodb/<tag> home included.
+MONGODB_TAG_FILES = (".github/pinned-images.tsv", "scripts/convergence-local.sh")
+PINNED_IMAGES = ".github/pinned-images.tsv"
 
 MONGODB_VERSION_LINE = re.compile(r'^(\s*mongodbVersion = ")([^"]+)(";)', re.M)
 URL_HASH = re.compile(r'(url = ")([^"]+)(";\s*\n\s*hash = ")(sha256-[A-Za-z0-9+/=]+)(";)')
@@ -141,19 +144,12 @@ def rewrite_mongodb(text, version, hashes):
     return URL_HASH.sub(lambda m: m.group(1) + m.group(2) + m.group(3) + hashes[m.group(2)] + m.group(5), text)
 
 
-def native_home(version):
-    # The CI job image's own mongod (start-mongo-replset.sh's MONGO_NATIVE_HOME), which the spec holds to the
-    # same release: `/opt/mongodb/<tag>`.
-    return re.compile(r"(/opt/mongodb/)" + re.escape(version) + r"(?![\w.])")
-
-
 def rewrite_tags(text, current, version):
-    """Every `mongo:<current>` and native `/opt/mongodb/<current>` made `<version>`. Refuses a file naming no tag."""
+    """Every `mongo:<current>` made `<version>`. Refuses a file naming no tag."""
     pattern = mongo_tag(current)
     if not pattern.search(text):
         raise ValueError(f"names no mongo:{current}")
-    text = pattern.sub(lambda m: m.group(1) + version, text)
-    return native_home(current).sub(lambda m: m.group(1) + version, text)
+    return pattern.sub(lambda m: m.group(1) + version, text)
 
 
 def mongodb_releases():
@@ -168,15 +164,27 @@ def mongodb_releases():
     return out
 
 
-def docker_hub_has(version):
+def docker_hub_digest(version):
+    """The digest Docker Hub's `mongo:<version>` points at (its index), None when there is no such tag."""
     try:
         with urllib.request.urlopen(request(
-                f"https://hub.docker.com/v2/repositories/library/mongo/tags/{version}"), timeout=60):
-            return True
+                f"https://hub.docker.com/v2/repositories/library/mongo/tags/{version}"), timeout=60) as r:
+            digest = json.loads(r.read()).get("digest")
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return False
+            return None
         raise
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest or ""):
+        raise ValueError(f"Docker Hub's mongo:{version} names no digest ({digest!r})")
+    return digest
+
+
+def rewrite_pinned_digest(text, version, digest):
+    """The pins table with `mongo:<version>`'s digest made `digest` (after rewrite_tags moved the tag)."""
+    pattern = re.compile(r"((?:[\w.-]+/)*mongo:" + re.escape(version) + r")@sha256:[0-9a-f]{64}")
+    if not pattern.search(text):
+        raise ValueError(f"pins no mongo:{version}@sha256:<digest>")
+    return pattern.sub(lambda m: m.group(1) + "@" + digest, text)
 
 
 def header_comment(text, line_pattern):
@@ -204,8 +212,10 @@ def bump_mongodb():
     newer, later = choose(current, releases)
     found = {"name": "mongodb", "path": f"infra/{MONGODB_FILE}", "current": current, "take": None,
              "later": later, "header": header_comment(text, MONGODB_VERSION_LINE), "notes": []}
+    digest = None
     for v in newer:
-        if docker_hub_has(v):
+        digest = docker_hub_digest(v)
+        if digest:
             found["take"] = v
             break
         found["notes"].append(f"mongodb {v}: Docker Hub has no `mongo:{v}` yet, and CI's mongod must run "
@@ -225,15 +235,17 @@ def bump_mongodb():
         hashes[template] = "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode()
     tag_files = {p: (ROOT / p).read_text() for p in MONGODB_TAG_FILES}
     rewritten = {p: rewrite_tags(t, current, take) for p, t in tag_files.items()}
+    rewritten[PINNED_IMAGES] = rewrite_pinned_digest(rewritten[PINNED_IMAGES], take, digest)
     (REPO / MONGODB_FILE).write_text(rewrite_mongodb(text, take, hashes))
     for p, t in rewritten.items():
         (ROOT / p).write_text(t)
     found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
-        ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + " moved with it"
-    if any(native_home(current).search(t) for t in tag_files.values()):
-        found["notes"].append(f"mongodb {take}: the CI job image bakes its native mongod at `/opt/mongodb/{current}` "
-                              "(bitcashier/infra `nix/files/movies-job-image/Dockerfile`); until it bakes "
-                              f"`/opt/mongodb/{take}` too, CI starts the `mongo:{take}` container instead (slower, same release)")
+        ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + f" moved with it (CI's pin to Docker Hub's {digest}; " \
+        "mirror-pinned-images.yml copies it to GHCR once this lands, CI pulling it from mirror.gcr.io until then)"
+    # start-mongo-replset.sh looks for a job image's native mongod at /opt/mongodb/<the pin's tag>
+    found["notes"].append(f"mongodb {take}: a CI job image baking its native mongod at `/opt/mongodb/{current}` "
+                          "(bitcashier/infra `nix/files/movies-job-image/Dockerfile`) must bake "
+                          f"`/opt/mongodb/{take}` too; until then CI starts the `mongo:{take}` container (slower, same release)")
     return found
 
 
@@ -497,9 +509,8 @@ def self_test():
     check("tags", rewrite_tags("image=mirror.gcr.io/library/mongo:8.3.11\nrun mongo:8.3.11 --x\nmongo:8.3.111\n",
                                "8.3.11", "8.3.13"),
           "image=mirror.gcr.io/library/mongo:8.3.13\nrun mongo:8.3.13 --x\nmongo:8.3.111\n")
-    check("native home moves with the tags", rewrite_tags("home=/opt/mongodb/8.3.11\nimage=mongo:8.3.11\n/opt/mongodb/8.3.111\n",
-                                                          "8.3.11", "8.3.13"),
-          "home=/opt/mongodb/8.3.13\nimage=mongo:8.3.13\n/opt/mongodb/8.3.111\n")
+    pin = "mongo\tdocker.io/library/mongo:8.3.13@sha256:" + "a" * 64 + "\tghcr.io/o/mongo\n"
+    check("pinned digest", rewrite_pinned_digest(pin, "8.3.13", "sha256:" + "b" * 64), pin.replace("a" * 64, "b" * 64))
     check("diff line", DIFF_LINE.match("openssl: 3.5.1 → 3.5.2, +4.1 KiB")["change"], "3.5.1 → 3.5.2")
     check("coloured size dropped", DIFF_LINE.match(ANSI.sub("", "libgcrypt: 1.12.2 → 1.12.4, \x1b[31;1m+9.6 KiB\x1b[0m"))["change"],
           "1.12.2 → 1.12.4")
@@ -512,7 +523,9 @@ def self_test():
         header_comment((REPO / MONGODB_FILE).read_text(), MONGODB_VERSION_LINE)
         for p in MONGODB_TAG_FILES:
             try:
-                rewrite_tags((ROOT / p).read_text(), current, "0.0.0")
+                moved = rewrite_tags((ROOT / p).read_text(), current, "0.0.0")
+                if p == PINNED_IMAGES:
+                    rewrite_pinned_digest(moved, "0.0.0", "sha256:" + "0" * 64)
             except ValueError as e:
                 failures.append(f"{p}: {e}")
     except ValueError as e:

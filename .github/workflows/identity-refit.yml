@@ -142,11 +142,14 @@ jobs:
             # The hard clusters' Mongo and the page snapshots' Chrome, ready for scripts/identity-refit's checks (run only
             # when a step is kept).
             - name: Start MongoDB (single-node replica set, for the hard clusters)
-              run: scripts/ci/start-mongo-replset.sh
+              uses: ./.github/actions/pull-pinned-image
+              with:
+                  image: mongo
+                  then: scripts/ci/start-mongo-replset.sh
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
             - uses: browser-actions/setup-chrome@v1
               id: setup-chrome

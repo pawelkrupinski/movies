@@ -1,0 +1,16 @@
+# THE IMAGES CI PULLS BY DIGEST, one row each: the single source of truth for what is pulled and from where.
+#
+#   <name> TAB <upstream image: registry/repository:tag@sha256:digest> TAB <GHCR mirror repository>
+#
+# scripts/ci/pull-pinned-image.sh <name> pulls the row's digest from the GHCR mirror first (this repo's own packages,
+# read with the job's GITHUB_TOKEN), then mirror.gcr.io, then Docker Hub, and refuses an image whose digest is not the
+# pin; every workflow and action pulls through ./.github/actions/pull-pinned-image (CiPinnedImageSpec). The mirror is
+# filled and checked by .github/workflows/mirror-pinned-images.yml (scripts/ci/mirror-pinned-images.sh): weekly, on
+# dispatch, and on every push to main that changes this file.
+#
+# Why (2026-11-19, Identity model convergence #1286, run 44526198751): a leg could not pull mongo at all -- mirror.gcr.io
+# stalled past 120 s, Docker Hub refused the CI account's expired token, and Docker Hub's anonymous pull stalled too.
+#
+# mongo's tag is production's mongod release (MongoServerVersionParitySpec); infra/bin/nix-update moves the tag and the
+# digest together, and the mirror workflow copies the new digest when that lands.
+mongo	docker.io/library/mongo:8.3.17@sha256:05b334b0a7a78fe913caac0cd2e1ecccf4da515d9a3a44be911b6ea3734c17cd	ghcr.io/pawelkrupinski/mongo

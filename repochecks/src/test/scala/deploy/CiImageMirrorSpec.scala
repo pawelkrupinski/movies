@@ -12,8 +12,8 @@ import org.scalatest.matchers.should.Matchers
  * endpoint answering 504 / timing out: buildx booting `moby/buildkit`, and the Dockerfile's
  * `ubuntu` base (run 37993027475). A login does not help the second -- the login IS that endpoint.
  * The mirror serves the same images with neither failure, so any pull that goes back to Docker Hub
- * brings both back. (start-mongo-replset.sh and build-image.sh may still fall back to Docker Hub when the mirror
- * refuses; its first choice is what this checks.)
+ * brings both back. (build-image.sh may still fall back to Docker Hub when the mirror refuses; its first choice is what
+ * this checks.) The images CI pulls by digest -- mongo -- come from this repo's GHCR mirror first: CiPinnedImageSpec.
  */
 class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
   private val Mirror = "mirror.gcr.io/"
@@ -59,9 +59,5 @@ class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
     }.map(_.getName)
     withClue("build images with scripts/ci/build-image.sh: ")(byHand shouldBe empty)
     RepoFile.read("scripts/ci/build-image.sh") should include("FROM docker.io/library/")
-  }
-
-  "the CI mongod" should "be pulled from the mirror first" in {
-    """(?m)^image=(\S+)""".r.findFirstMatchIn(RepoFile.read("scripts/ci/start-mongo-replset.sh")).map(_.group(1)).getOrElse("") should startWith(Mirror)
   }
 }

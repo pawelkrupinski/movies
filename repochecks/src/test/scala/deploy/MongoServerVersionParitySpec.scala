@@ -20,8 +20,9 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
 
   private val role = "infra/nix/modules/roles/mongodb.nix"
 
+  // CI's image is .github/pinned-images.tsv's `mongo` row (CiPinnedImageSpec), which every CI start pulls
   private val dockerStarts = Seq(
-    "scripts/ci/start-mongo-replset.sh",
+    ".github/pinned-images.tsv",
     "scripts/convergence-local.sh"
   )
 
@@ -31,9 +32,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       .map(_.group(1))
       .getOrElse(fail(s"$role no longer names `mongodbVersion = \"x.y.z\"`"))
 
-  // Every `mongo:<tag>` image reference, bare or registry-qualified (`mirror.gcr.io/library/mongo:`,
-  // `docker.io/library/mongo:`): the CI script names its image in a variable, a mirror first and
-  // Docker Hub as the fallback, and both must be the production release.
+  // Every `mongo:<tag>` image reference, bare or registry-qualified (`docker.io/library/mongo:`, the pin's).
   private def dockerTags(path: String): Seq[String] =
     """(?<![\w.-])(?:[\w.-]+/)*mongo:([0-9][0-9.]*)""".r.findAllMatchIn(RepoFile.read(path)).map(_.group(1)).toSeq
 
@@ -47,14 +46,12 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   }
 
   // The NATIVE mongod a job image bakes (start-mongo-replset.sh's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
-  // copied out of the same mongo:<version> image): the same release, or the
-  // script would start another one wherever the image carries it.
+  // copied out of the same mongo:<version> image): the same release, or the script would start another one wherever
+  // the image carries it. The script names no version: it reads the pin's tag, which the spec above holds.
   "the job image's native mongod" should "be the exact server release production runs" in {
-    val homes = """/opt/mongodb/([0-9][0-9.]*)""".r.findAllMatchIn(RepoFile.read("scripts/ci/start-mongo-replset.sh")).map(_.group(1)).toSeq
-    withClue(s"scripts/ci/start-mongo-replset.sh must start the native mongod $productionVersion: ") {
-      homes should not be empty
-      all(homes) shouldBe productionVersion
-    }
+    val script = RepoFile.withoutComments(RepoFile.read("scripts/ci/start-mongo-replset.sh"))
+    """/opt/mongodb/[0-9]""".r.findFirstIn(script) shouldBe None
+    script should include("/opt/mongodb/$(\"$here/pull-pinned-image.sh\" --pin mongo tag)")
   }
 
   /** mongod 8.3 refuses to start on Linux 6.19 through 7.0.13 ("Linux kernel versions 6.19 and newer has a

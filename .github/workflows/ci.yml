@@ -455,15 +455,19 @@ jobs:
             # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores below, which it shares nothing with
             # (~20 s of every row's start, 2026-10-23), and waited for just before itAll ("Wait for MongoDB").
             - name: Start MongoDB (single-node replica set, for change streams)
-              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
+              uses: ./.github/actions/pull-pinned-image
+              with:
+                  image: mongo
+                  then: scripts/ci/start-mongo-replset.sh
+                  background: mongo-start
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
               # A majority write acknowledged once applied, not once synced to the journal: every
               # write the app makes is `w: majority`, and on a database that dies with the runner a
               # disk sync per write (~7 ms against ~0.2 ms) buys nothing. Same as the convergence
               # legs (convergence-setup); see the script.
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # it scope (every module's main + test + it), in a family of its own: the action's default
             # `sbt-target-<os>-` family is also every dispatched identity workflow's, whose entries compile

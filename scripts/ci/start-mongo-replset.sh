@@ -31,13 +31,10 @@
 # a core busier than the JVM and mongod together (run 37581348550). The image's mongod binds every
 # interface, so 127.0.0.1:27017 reaches it directly.
 #
-# The image is pulled through mirror.gcr.io, Google's pull-through cache of Docker Hub's official
-# images, not from Docker Hub itself: GitHub's runners pull anonymously and share egress IPs, so
-# Docker Hub's per-IP anonymous limit refused the pull outright ("toomanyrequests", run 37989550418)
-# and failed the job before a single test ran. Should the mirror refuse it too, the image comes from
-# Docker Hub after all -- logged in as the CI account when DOCKERHUB_USERNAME/DOCKERHUB_TOKEN are set
-# (repo secrets; a fork's PR has none and pulls anonymously), so the pull counts against that
-# account's limit instead of the shared IP's. The token goes to `docker login` on stdin, never argv.
+# The image is .github/pinned-images.tsv's `mongo`, pulled BY DIGEST by scripts/ci/pull-pinned-image.sh: GitHub's own
+# registry first (this repo's GHCR mirror of it), then mirror.gcr.io, then Docker Hub. In CI the job pulls it through
+# ./.github/actions/pull-pinned-image, which runs this script after the pull with PINNED_IMAGE set to what it pulled
+# (CiPinnedImageSpec); without PINNED_IMAGE (locally, a test) this script runs the pull itself.
 #
 # NATIVE WHERE THE JOB IMAGE BAKES IT: a job image may carry this very release's mongod and mongosh, copied out
 # of the mongo image, at MONGO_NATIVE_HOME (/opt/mongodb/<version>). There it runs on
@@ -58,7 +55,8 @@ started=$SECONDS
 # gone between the two fails the chown, which kills the container before mongod starts. A tmpfs data
 # directory starts root-owned, so the entrypoint walks it every time (run 37586335937, Poland: "chown:
 # cannot access '/data/db/.mongodb/mongosh/am-unknown.json.lock'", never reachable).
-native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/8.3.17}
+# The pin's tag is the release (MongoServerVersionParitySpec), so the baked home is /opt/mongodb/<that tag>.
+native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/$("$here/pull-pinned-image.sh" --pin mongo tag)}
 marker=${MONGO_NATIVE_MARKER:-/tmp/kinowo-mongo-native}
 export MONGO_NATIVE_MARKER=$marker
 log=${MONGO_NATIVE_LOG:-/tmp/mongod.log}
@@ -136,36 +134,8 @@ fi
 
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
-image=mirror.gcr.io/library/mongo:8.3.17
-hub_image=docker.io/library/mongo:8.3.17
-# EVERY PULL IS BOUNDED, and a stalled one falls through to the next source like a refused one. github.com convergence
-# 41216580092, `takes-drift-1 (united-states)`: the pull from mirror.gcr.io hung -- this script printed nothing for 9
-# minutes, so the leg's 240 s wait for it failed -- while the same image came down in 24-75 s on every other leg of
-# the run. A pull is ~300 MB: MONGO_PULL_SECONDS (default 120) is several times a slow one, not a race with a good one.
-pull() {
-    echo "pulling $1 (at most ${MONGO_PULL_SECONDS:-120}s)"
-    local status pulled=$SECONDS
-    timeout -k 10 "${MONGO_PULL_SECONDS:-120}" docker pull -q "$1"
-    status=$?
-    echo "the pull of $1 ended (status $status) after $((SECONDS - pulled))s"
-    [ "$status" -eq 124 ] && echo "::warning::the pull of $1 stalled past ${MONGO_PULL_SECONDS:-120}s"
-    return "$status"
-}
-# A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: a job's dockerd may be
-# pointed at a pull-through cache, which serves Docker
-# Hub's name from local disk instead of an internet pull. Only a
-# Docker Hub name goes through a daemon's mirror; GitHub's runners have none and skip this.
-if [ -n "$(docker info --format '{{range .RegistryConfig.Mirrors}}{{.}} {{end}}' 2>/dev/null)" ] &&
-    pull "$hub_image"; then
-    image="$hub_image"
-elif ! pull "$image"; then
-    echo "::warning::$image refused or stalled the pull; falling back to Docker Hub"
-    image="$hub_image"
-    if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
-        printf '%s' "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || true
-    fi
-    pull "$image" || exit 1
-fi
+image=${PINNED_IMAGE:-}
+[ -n "$image" ] || image=$("$here/pull-pinned-image.sh" mongo) || exit 1
 docker run -d --name mongo --network host ${storage[@]+"${storage[@]}"} "$image" --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
 mongosh_eval "rs.initiate({_id:\"rs0\",writeConcernMajorityJournalDefault:$majority_journal,members:[{_id:0,host:\"127.0.0.1:27017\"}]})" || exit 1

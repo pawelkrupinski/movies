@@ -11,9 +11,8 @@ stub_dir="$(mktemp -d)"
 trap 'rm -rf "$stub_dir"' EXIT
 # STUB_MONGO: `healthy` answers ping and reports PRIMARY after rs.initiate; `down` never answers
 # a ping (and its container cannot be inspected); `exited` is a container whose mongod died at start, its log's
-# fatal line saying why; `secondary` answers but never becomes PRIMARY. STUB_MIRROR=down refuses every pull from
-# mirror.gcr.io. STUB_DAEMON_MIRROR is the daemon's own Docker Hub mirror (`docker info`), none when
-# empty. A `login` records what it read on stdin in $STUB_LOGIN.
+# fatal line saying why; `secondary` answers but never becomes PRIMARY. A pull succeeds and `image inspect` then names
+# the pulled ref (its digest with it); where the pull's sources fall back is scripts/ci/pull-pinned-image-test.sh's.
 cat > "$stub_dir/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
@@ -23,10 +22,9 @@ case "$1" in
           '{"t":{},"s":"F","c":"CONTROL","msg":"MongoDB cannot start: Linux kernel versions 6.19 and newer has a known incompatibility"}'
         exit 0 ;;
   inspect) case "$STUB_MONGO" in exited) echo "false 14" ;; healthy|secondary) echo "true 0" ;; *) exit 1 ;; esac; exit 0 ;;
-  pull) [ "${STUB_MIRROR:-up}" = down ] && [[ "$*" == *mirror.gcr.io* ]] && exit 1
-        [ "${STUB_MIRROR:-up}" = stalls ] && [[ "$*" == *mirror.gcr.io* ]] && exec sleep 600; exit 0 ;;
-  info) [ -n "${STUB_DAEMON_MIRROR:-}" ] && echo "$STUB_DAEMON_MIRROR"; exit 0 ;;
-  login) cat > "$STUB_LOGIN"; exit 0 ;;
+  pull) echo "${*: -1}" >> "$STUB_LOG.pulled"; exit 0 ;;
+  image) grep -qxF -- "${*: -1}" "$STUB_LOG.pulled" 2>/dev/null && echo "${*: -1}"; exit 0 ;;
+  info) exit 0 ;;
 esac
 eval_arg="${*: -1}"
 case "$STUB_MONGO:$eval_arg" in
@@ -36,12 +34,12 @@ esac
 exit 0
 STUB
 chmod +x "$stub_dir/docker"
-export STUB_LOG="$stub_dir/log" STUB_LOGIN="$stub_dir/login"
+export STUB_LOG="$stub_dir/log"
 
 # start <stub state> [args...] -> "<exit status>"
 start() {
   export STUB_MONGO="$1"; shift
-  : > "$STUB_LOG"; : > "$STUB_LOGIN"
+  : > "$STUB_LOG"; : > "$STUB_LOG.pulled"
   PATH="$stub_dir:$PATH" MONGO_START_TIMEOUT_SECONDS=2 MONGO_NATIVE_HOME="${NATIVE_HOME:-$stub_dir/no-native}" \
     MONGO_NATIVE_MARKER="$stub_dir/marker" MONGO_NATIVE_LOG="$stub_dir/mongod.log" MONGO_NATIVE_DBPATH="$stub_dir/db" \
     bash "$REPO_ROOT/scripts/ci/start-mongo-replset.sh" "$@" > "$stub_dir/out" 2>&1
@@ -55,33 +53,17 @@ check "extra mongod args reach docker run" "1" \
 check "majority writes wait for the journal by default" "1" "$(grep -c 'writeConcernMajorityJournalDefault:true' "$STUB_LOG")"
 check "...and only for the journal when asked not to" "1" \
   "$(MONGO_MAJORITY_JOURNAL=false start healthy >/dev/null; grep -c 'writeConcernMajorityJournalDefault:false' "$STUB_LOG")"
+pinned="$(bash "$REPO_ROOT/scripts/ci/pull-pinned-image.sh" --pin mongo mirror)@$(bash "$REPO_ROOT/scripts/ci/pull-pinned-image.sh" --pin mongo digest)"
 check "mongod listens on the runner's own network, not behind docker-proxy" "1" \
-  "$(start healthy >/dev/null; grep -c -- '^run -d --name mongo --network host mirror.gcr.io/library/mongo:' "$STUB_LOG")"
+  "$(start healthy >/dev/null; grep -cxF -- "run -d --name mongo --network host $pinned --replSet rs0" "$STUB_LOG")"
 check "...publishing no port to relay" "0" "$(grep -c -- ' -p ' "$STUB_LOG")"
-check "the image comes from Google's Docker Hub mirror, not Docker Hub's rate-limited anonymous pulls" "1" \
-  "$(start healthy >/dev/null; grep -c -- ' mirror.gcr.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
-check "...without logging in to Docker Hub while the mirror serves it" "0" "$(grep -c '^login' "$STUB_LOG")"
-check "a mirror that refuses the pull falls back to Docker Hub" "0" \
-  "$(STUB_MIRROR=down DOCKERHUB_USERNAME=ci-user DOCKERHUB_TOKEN=s3cret start healthy)"
-check "...running Docker Hub's image" "1" "$(grep -c -- ' docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
-check "...logged in as the CI account" "1" "$(grep -c -- '^login -u ci-user --password-stdin$' "$STUB_LOG")"
-check "...the token handed over on stdin" "s3cret" "$(cat "$STUB_LOGIN")"
-check "...and never on a command line" "0" "$(grep -c s3cret "$STUB_LOG")"
-check "a mirror whose pull stalls falls back to Docker Hub within its bound (run 41216580092)" "0" \
-  "$(STUB_MIRROR=stalls MONGO_PULL_SECONDS=1 start healthy)"
-check "...running Docker Hub's image" "1" "$(grep -c -- ' docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
-check "...saying the mirror stalled" "1" "$(grep -c 'stalled past 1s' "$stub_dir/out")"
-check "with no Docker Hub token the fallback still pulls, anonymously" "0" "$(STUB_MIRROR=down start healthy)"
-check "...without a login" "0" "$(grep -c '^login' "$STUB_LOG")"
-check "a daemon with a Docker Hub mirror of its own pulls Docker Hub's name, through that mirror" "1" \
-  "$(STUB_DAEMON_MIRROR=http://mirror.internal:3012/ start healthy >/dev/null; grep -c -- '^run .* docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
-# The script's own tag, so a mongod bump (infra/bin/nix-update's) needs no edit here.
-hub_image="$(sed -n 's/^hub_image=//p' "$REPO_ROOT/scripts/ci/start-mongo-replset.sh")"
-check "...trying no other registry first" "pull -q $hub_image" "$(grep '^pull' "$STUB_LOG" | head -1)"
-check "...without logging in to Docker Hub" "0" "$(grep -c '^login' "$STUB_LOG")"
+check "...the pinned image by digest, pulled from the GHCR mirror first (pull-pinned-image.sh)" "pull -q $pinned" \
+  "$(grep '^pull' "$STUB_LOG" | head -1)"
+check "an image the job already pulled (pull-pinned-image's PINNED_IMAGE) runs as it is" "0 0 run -d --name mongo --network host pulled@sha256:x --replSet rs0" \
+  "$(PINNED_IMAGE=pulled@sha256:x start healthy) $(grep -c '^pull' "$STUB_LOG") $(grep '^run' "$STUB_LOG")"
 check "the data directory is on disk by default" "0" "$(start healthy >/dev/null; grep -c -- '--tmpfs' "$STUB_LOG")"
 check "...and on a RAM-backed tmpfs of the size asked for" "1" \
-  "$(MONGO_TMPFS=6g start healthy >/dev/null; grep -c -- '^run -d --name mongo --network host --tmpfs /data/db:rw,size=6g mirror.gcr.io/library/mongo:' "$STUB_LOG")"
+  "$(MONGO_TMPFS=6g start healthy >/dev/null; grep -c -- '^run -d --name mongo --network host --tmpfs /data/db:rw,size=6g ghcr.io/' "$STUB_LOG")"
 check "every probe keeps mongosh's state out of the data directory" "0" \
   "$(start healthy >/dev/null; grep '^exec ' "$STUB_LOG" | grep -vc '^exec -e HOME=/tmp mongo mongosh ')"
 check "a mongod that never answers fails, bounded, instead of waiting forever" "1" "$(start down)"

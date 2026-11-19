@@ -65,10 +65,12 @@ jobs:
             # A single-node replica set, as ci.yml's integration-test job starts it (change
             # streams and transactions need one).
             - name: Start MongoDB (single-node replica set)
-              run: scripts/ci/start-mongo-replset.sh
-              env:
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+              uses: ./.github/actions/pull-pinned-image
+              with:
+                  image: mongo
+                  then: scripts/ci/start-mongo-replset.sh
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # Read-only use of the integration-test job's zinc cache (the action's default key): this job
             # compiles the same scopes, and has no business writing a key the push-time jobs own.

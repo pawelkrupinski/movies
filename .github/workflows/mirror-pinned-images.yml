@@ -1,0 +1,87 @@
+name: Mirror pinned images
+
+# Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages BY DIGEST, and checks GHCR serves
+# exactly the pin (scripts/ci/mirror-pinned-images.sh): GitHub's own registry is where CI pulls them from first
+# (./.github/actions/pull-pinned-image), so a pull depends on neither mirror.gcr.io nor Docker Hub. Identity model
+# convergence #1286 (run 44526198751, 2026-11-19) lost a leg to both: mirror.gcr.io stalled, Docker Hub refused the CI
+# account's expired token and then stalled anonymously.
+#
+# WEEKLY, it re-checks the digests: GHCR serving anything but the pin (DRIFT -- a bumped pin not yet copied, a tag
+# pushed over) is copied again, and a copy that cannot fix it fails the run, which the report job turns into an issue.
+# ON A PUSH TO MAIN CHANGING THE PINS (infra/bin/nix-update's mongod bump), it copies the new digest at once; until then
+# CI's pulls fall back to mirror.gcr.io and Docker Hub for that image. ON DISPATCH, the same.
+#
+# The package is published with the job's own GITHUB_TOKEN, which links it to this repository: its workflows read it
+# with their GITHUB_TOKEN (`packages: read`) while it is private, anonymously once it is public.
+
+on:
+    schedule:
+        - cron: '41 5 * * 1'
+    push:
+        branches: [main]
+        paths:
+            - .github/pinned-images.tsv
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: mirror-pinned-images
+    cancel-in-progress: false
+
+jobs:
+    mirror:
+        # github.com's hosted image carries skopeo; the job writes GHCR with this repo's GITHUB_TOKEN.
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  show-progress: false
+                  sparse-checkout: |
+                      .github
+                      scripts
+
+            - name: Self-test the mirror and the pull
+              run: |
+                  bash scripts/ci/mirror-pinned-images-test.sh
+                  bash scripts/ci/pull-pinned-image-test.sh
+
+            - name: Copy every pinned image to GHCR by digest, and check GHCR serves the pin
+              env:
+                  GHCR_TOKEN: ${{ github.token }}
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+              run: |
+                  command -v skopeo > /dev/null || scripts/ci/install-apt-package.sh skopeo
+                  scripts/ci/mirror-pinned-images.sh
+
+            # What CI's own pull does, end to end: the pinned digest from GHCR, verified (pull-pinned-image.sh).
+            - name: Pull each pinned image from GHCR as CI does
+              env:
+                  GHCR_TOKEN: ${{ github.token }}
+                  PINNED_GHCR_ATTEMPTS: '1'
+              run: |
+                  awk -F'\t' '$1 !~ /^(#|$)/ { print $1 }' .github/pinned-images.tsv | while read -r name; do
+                    ref=$(scripts/ci/pull-pinned-image.sh "$name") || exit 1
+                    case "$ref" in ghcr.io/*) echo "$name: pulled $ref" ;; *) echo "::error::$name came from $ref, not GHCR"; exit 1 ;; esac
+                  done
+
+    report:
+        name: report (scheduled run)
+        needs: [mirror]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

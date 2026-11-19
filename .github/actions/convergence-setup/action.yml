@@ -45,7 +45,7 @@ inputs:
     required: false
     default: ''
   dockerhub-username:
-    description: Docker Hub account the MongoDB image is pulled as, should mirror.gcr.io refuse it (scripts/ci/start-mongo-replset.sh).
+    description: Docker Hub account the MongoDB image is pulled as, should GHCR and mirror.gcr.io both refuse it (scripts/ci/pull-pinned-image.sh).
     required: false
     default: ''
   dockerhub-token:
@@ -124,19 +124,23 @@ runs:
     # to the journal (MONGO_MAJORITY_JOURNAL, see the script): every write the app makes is
     # `w: majority`, and a disk sync each — most of a US take-up's 160,000 store writes — buys
     # durability for a database that dies with the runner.
-    # IN THE BACKGROUND: pulling the image, booting mongod and electing the one-node replica set is
+    # IN THE BACKGROUND: pulling the pinned image (./.github/actions/pull-pinned-image, GHCR first), booting mongod
+    # and electing the one-node replica set is
     # ~20 s of waiting that nothing before the suite needs — the JDK, the caches and the fixture unpack
     # below run meanwhile, and the last step of this action waits for it (and fails as it would have),
     # both through scripts/ci/in-background.sh.
     - name: Start MongoDB (single-node replica set, for change streams)
       if: inputs.replay == 'true'
-      shell: bash
-      env:
-          MONGO_MAJORITY_JOURNAL: 'false'
-          MONGO_TMPFS: ${{ inputs.mongo-tmpfs }}
-          DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
-          DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
-      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}'
+      uses: ./.github/actions/pull-pinned-image
+      with:
+          image: mongo
+          background: mongo-start
+          # the start's settings as the command's own, so they ride the background chain into the script
+          then: >-
+            MONGO_MAJORITY_JOURNAL=false MONGO_TMPFS='${{ inputs.mongo-tmpfs }}'
+            "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}
+          dockerhub-username: ${{ inputs.dockerhub-username }}
+          dockerhub-token: ${{ inputs.dockerhub-token }}
 
     # A RECORDING leg's tunnel to prod Mongo relays through `socat`, which the runner image lacks:
     # an `apt-get update` and install that took 9-17 s of every recording's critical path inside

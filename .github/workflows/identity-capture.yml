@@ -111,11 +111,14 @@ jobs:
             - uses: ./.github/actions/setup-sbt-build
 
             - name: Start MongoDB (single-node replica set, the capture's throwaway pipeline database)
-              run: scripts/ci/start-mongo-replset.sh
+              uses: ./.github/actions/pull-pinned-image
+              with:
+                  image: mongo
+                  then: scripts/ci/start-mongo-replset.sh
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # The CI end of the read-only route to prod Mongo; it exports KINOWO_CONVERGENCE_SCRAPES_URI.
             - name: Tunnel to prod Mongo

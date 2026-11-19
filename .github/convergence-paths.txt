@@ -105,6 +105,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
 .github/actions/order-compare/action.yml
+.github/actions/pull-pinned-image/action.yml
 .github/actions/report-scheduled-run/action.yml
 .github/actions/run-page-test/action.yml
 .github/actions/sbt-deps-key/action.yml
@@ -116,6 +117,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/gating-checks.tsv
 .github/harness-aa-paths.txt
 .github/identity-drift-gate-paths.txt
+.github/pinned-images.tsv
 .github/scripts/convergence-fill.sh
 .github/scripts/convergence-findings-summary.sh
 .github/scripts/convergence-publish.sh
@@ -172,6 +174,7 @@ scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/population-walk-diff
 scripts/ci/population_walk_diff.py
+scripts/ci/pull-pinned-image.sh
 scripts/ci/recording_health.py
 scripts/ci/release-store-prune.sh
 scripts/ci/runner_cache.py
