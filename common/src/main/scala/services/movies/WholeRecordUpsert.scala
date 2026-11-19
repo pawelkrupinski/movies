@@ -22,6 +22,7 @@ import scala.util.Try
  *  @param slotsForStorage the repository's [[MovieRepository.slotsForStorage]] — what of a record's slots `movies`
  *                         keeps under the split. */
 private[movies] final class WholeRecordUpsert(
+  movies:          MongoCollection[StoredMovieDto],
   screenings:      Option[ScreeningsRepository],
   slots:           Option[SlotsRepository],
   slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
@@ -30,8 +31,8 @@ private[movies] final class WholeRecordUpsert(
   logger:          play.api.Logger
 ) {
 
-  /** Write the film `film` as `e` into `c` and its side collections — see [[MovieRepository.upsert]]. */
-  def upsert(c: MongoCollection[StoredMovieDto], film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = {
+  /** Write the film `film` as `e` into `movies` and its side collections — see [[MovieRepository.upsert]]. */
+  def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = {
     val id    = film.value
     val key   = StoredMovieRecord.keyFor(cacheKey)
     val label = s"MovieRepository.upsert(${cacheKey.cleanTitle}, ${cacheKey.year})"
@@ -42,8 +43,8 @@ private[movies] final class WholeRecordUpsert(
     // that FAILED and a document that is ABSENT both write, but only one of them is "no such
     // film", and the decision is where that is pinned. Read here, beside the replace it feeds,
     // so `NoUnguardedReadModifyWriteSpec` sees the pair (and its allowlisted WHY).
-    val stored   = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
-    if (collidesWithAnother(c, id, key, e, stored.toOption.flatten)) {
+    val stored   = Try(Await.result(movies.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
+    if (collidesWithAnother(id, key, e, stored.toOption.flatten)) {
       logIdentityHeld(label, e, "")
       WriteOutcome.IdentityHeld
     } else {
@@ -54,7 +55,7 @@ private[movies] final class WholeRecordUpsert(
       val plan        = MoviesUpsert.plan(id, key, e, restitch.data, slotsWrite.contains(WriteOutcome.Written), slotsForStorage, stored, stamps.next())
       val moviesWrite = RepositoryWrite.attempt(MovieRepository.Collection, "upsert", label, writeMetrics, logger) {
         val moviesLanded = plan.unchanged ||
-          Try(Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, new ReplaceOptions().upsert(true)).toFuture(), MovieRepository.WriteTimeout))
+          Try(Await.result(movies.replaceOne(Filters.eq("_id", id), plan.document, new ReplaceOptions().upsert(true)).toFuture(), MovieRepository.WriteTimeout))
             .map(_ => true).recover {
               // The pre-check above catches every collision its read could see; this remains as
               // defence for the residual race it cannot — a sibling document landing the same
@@ -97,10 +98,10 @@ private[movies] final class WholeRecordUpsert(
    *  as "never even tried"). Checking for that sibling before either write means a real collision
    *  refuses the whole upsert — slots included — leaving the film exactly as it was, instead of
    *  leaving the two collections disagreeing about it forever. */
-  private def collidesWithAnother(c: MongoCollection[StoredMovieDto], id: String, key: String, e: MovieRecord,
+  private def collidesWithAnother(id: String, key: String, e: MovieRecord,
                                   storedDoc: Option[StoredMovieDto]): Boolean =
     MoviesUpsert.identityChanging(storedDoc.map(d => MoviesUpsert.Identity(d.key, d.tmdbId)), key, e.tmdbId) &&
-      Try(Await.result(c.find(Filters.and(
+      Try(Await.result(movies.find(Filters.and(
         Filters.ne("_id", id),
         Filters.or(List(Some(Filters.eq("key", key)), e.tmdbId.map(t => Filters.eq("tmdbId", t))).flatten*)
       )).limit(1).toFuture(), 10.seconds)).toOption

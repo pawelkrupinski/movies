@@ -4,7 +4,6 @@ import models.{CacheKey, FilmId, StoredMovieRecord}
 
 import com.mongodb.client.model.UpdateOptions
 import models.{MovieRecord, Source, SourceData}
-import org.bson.conversions.Bson
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
@@ -22,6 +21,7 @@ import scala.concurrent.Await
  *
  *  @param slotsForStorage the repository's [[MovieRepository.slotsForStorage]]. */
 private[movies] final class InPlaceMovieUpdate(
+  movies:          MongoCollection[StoredMovieDto],
   screenings:      Option[ScreeningsRepository],
   slots:           Option[SlotsRepository],
   slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
@@ -29,11 +29,11 @@ private[movies] final class InPlaceMovieUpdate(
   stamps:          tools.MonotonicStampSequence,
   writeMetrics:    RepositoryWriteMetrics,
   logger:          play.api.Logger,
-  readWhole:       (MongoCollection[StoredMovieDto], String) => Option[InPlaceMovieUpdate.ReadDocument]
+  readWhole:       String => Option[InPlaceMovieUpdate.ReadDocument]
 )(using LatestTitleYear) {
 
-  /** Update the stored row of `film` in `c` from `before` to `after` — see [[MovieRepository.updateIfPresent]]. */
-  def updateIfPresent(c: MongoCollection[StoredMovieDto], film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = {
+  /** Update the stored row of `film` from `before` to `after` — see [[MovieRepository.updateIfPresent]]. */
+  def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = {
     val id     = film.value
     val update = planUpdate(before, after)
     // `false` for an absent row AND for a failed write — both mean the store does not hold
@@ -44,7 +44,7 @@ private[movies] final class InPlaceMovieUpdate(
       // Present when the movies write matched, OR a side-collection-only change (no movies
       // write, None); false only on Some(0) — the row is absent, so don't apply the
       // side-collection deltas (no orphan rows) and report not-present.
-      if (!patchMovies(c, id, StoredMovieRecord.keyFor(cacheKey), update.patch).forall(_ > 0)) WriteOutcome.Declined("absent")
+      if (!patchMovies(id, StoredMovieRecord.keyFor(cacheKey), update.patch).forall(_ > 0)) WriteOutcome.Declined("absent")
       else applySideWrites(id, update)
     } == WriteOutcome.Written
   }
@@ -82,10 +82,10 @@ private[movies] final class InPlaceMovieUpdate(
    *  MongoDB update-operator paths treat '.' as a nesting separator, so a per-source `$set` on
    *  `sourceData.<displayName>` is rejected when a source's displayName has a dot ("Helios Ostrów
    *  Wlkp."); that patch falls back to [[dottedReplace]]. */
-  private def patchMovies(c: MongoCollection[StoredMovieDto], id: String, key: String, patch: MovieRecordPatch): Option[Long] =
+  private def patchMovies(id: String, key: String, patch: MovieRecordPatch): Option[Long] =
     Option.when(!patch.isEmpty) {
-      if (patch.data.keysIterator.exists(_.displayName.contains('.'))) dottedReplace(c, id, key, patch)
-      else Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), MovieRepository.WriteTimeout)
+      if (patch.data.keysIterator.exists(_.displayName.contains('.'))) dottedReplace(id, key, patch)
+      else Await.result(movies.updateOne(Filters.eq("_id", id), MovieUpdates.of(patch, stamps.next()), new UpdateOptions().upsert(false)).toFuture(), MovieRepository.WriteTimeout)
         .getMatchedCount
     }
 
@@ -103,12 +103,12 @@ private[movies] final class InPlaceMovieUpdate(
    *  its `updatedAt` alone — this process's stamps are strictly increasing, but another process's (a
    *  second worker mid-rollout, a script) can equal the one read, and that write would then be taken
    *  for the row as read. On a mismatch the patch is applied again to the document as it now is. */
-  private def dottedReplace(c: MongoCollection[StoredMovieDto], id: String, key: String, patch: MovieRecordPatch): Long =
-    tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => readWhole(c, id)) { asRead =>
+  private def dottedReplace(id: String, key: String, patch: MovieRecordPatch): Long =
+    tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => readWhole(id)) { asRead =>
       InPlaceMovieUpdate.dottedReplaceRecord(asRead.map(read => StoredMovieDto.toDomain(read.stored, normalizer).record), patch)
     } { (asRead, merged) =>
       // An absent row decided nothing above, so only a row as read reaches here.
-      asRead.exists(read => services.MongoGuard.replaceIfUnchanged(c,
+      asRead.exists(read => services.MongoGuard.replaceIfUnchanged(movies,
         services.MongoGuard.wholeUnchanged(BsonString(id), read.whole),
         StoredMovieDto.fromDomain(id, key, merged, stamps.next()), MovieRepository.WriteTimeout, insert = false))
     } match {
@@ -125,10 +125,6 @@ private[movies] final class InPlaceMovieUpdate(
       slots.toSeq.flatMap(s =>
         s.upsertSlots(id, update.slots.collect { case (k, Some(sd)) => k -> sd }.toMap) +:
           update.slots.collect { case (k, None) => s.deleteSlot(id, k) }.toSeq))
-
-  /** Visible to the package so `MovieRecordFieldWiringSpec` can assert that every field the
-   *  patch carries actually reaches the WIRE — see [[MovieUpdates]]. */
-  def patchToUpdate(p: MovieRecordPatch): Bson = MovieUpdates.of(p, stamps.next())
 }
 
 object InPlaceMovieUpdate {

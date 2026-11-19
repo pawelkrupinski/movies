@@ -109,13 +109,13 @@ class MongoMovieRepository(
   private val stitch = new MovieSideStitch(screenings, slots, normalizer, logger)
   // How every corpus scan pages the `movies` collection by `_id`.
   private val pages = new MoviesKeysetPages(findAllBatchSize, foreachRecordBatchAttempts, foreachRecordBatchBackoff, decodeFailures)
-  // How a whole record is written over `movies` and its side collections.
   // How every corpus scan reads `movies` a page at a time and stitches each page whole.
-  private val scan = new StitchedCorpusScan(pages, stitch, normalizer, stopwatch, logger)
-  private val upserts = new WholeRecordUpsert(screenings, slots, slotsForStorage, stamps, writeMetrics, logger)
-  // How a stored row is updated field by field, its dotted-name fallback reading through this class's seam.
-  private val updates = new InPlaceMovieUpdate(screenings, slots, slotsForStorage, normalizer, stamps, writeMetrics, logger,
-    readWhole = dottedReplaceRead(_, _))
+  private val scan = new StitchedCorpusScan(coll, pages, stitch, normalizer, stopwatch, logger)
+  // How a whole record is written over `movies` and its side collections; none without a store.
+  private lazy val upserts = coll.map(new WholeRecordUpsert(_, screenings, slots, slotsForStorage, stamps, writeMetrics, logger))
+  // How a stored row is updated field by field, its dotted-name fallback reading through this class's seam; none without a store.
+  private lazy val updates = coll.map(c => new InPlaceMovieUpdate(c, screenings, slots, slotsForStorage, normalizer, stamps, writeMetrics,
+    logger, readWhole = dottedReplaceRead(c, _)))
 
   /** The film's slots at `cinemas`, read from those venues alone — see [[MovieSideStitch.readVenues]]. */
   private[movies] def readVenues(filmId: String, cinemas: Set[models.Cinema]): Option[VenueSlots] = stitch.readVenues(filmId, cinemas)
@@ -175,13 +175,13 @@ class MongoMovieRepository(
   override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = coll match {
     case Some(_) =>
       val buf = Vector.newBuilder[StoredMovieRecord]
-      scan.scanStitched(coll, batch => buf ++= batch).collected(buf.result())
+      scan.scanStitched(batch => buf ++= batch).collected(buf.result())
     case None => tools.ReadOutcome.Answered(Seq.empty)
   }
 
   /** The stitched scan's own pages, as each is read — see the trait. */
   override def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = coll match {
-    case Some(_) => scan.scanStitched(coll, onPage)
+    case Some(_) => scan.scanStitched(onPage)
     case None    => onPage(Seq.empty); tools.ScanOutcome.complete
   }
 
@@ -275,22 +275,22 @@ class MongoMovieRepository(
    *  `web_screenings`), and `WorkerShowtimesMetrics` counts them. Prune-safety +
    *  bounded-heap guarantees live in `StitchedCorpusScan.scanStitched`. */
   override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scan.scanStitched(coll, _.foreach(f))
+    scan.scanStitched(_.foreach(f))
 
   /** Count-only scan: pages the movies cursor WITHOUT the `screenings` load [[foreachRecord]]
    *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
    *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
   override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scan.scanByKeyset(coll, Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
+    scan.scanByKeyset(Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
   override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scan.scanStitched(coll, _.foreach(f), withShowtimes = false)
+    scan.scanStitched(_.foreach(f), withShowtimes = false)
 
   /** The `updatedAt` range read, through the same stitched scan as [[foreachRecord]] — the
    *  catch-up re-projects what it reads, so a row from here must be as whole as one the
    *  change stream would have delivered. */
   override def foreachRecordUpdatedSince(since: Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome =
-    scan.scanStitched(coll, _.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
+    scan.scanStitched(_.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
 
   /** Remove the film `id` with its side-collection rows. */
   def delete(id: FilmId): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
@@ -316,11 +316,11 @@ class MongoMovieRepository(
 
   /** The whole-record write every scrape merge takes — see [[WholeRecordUpsert]]. */
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome =
-    coll.fold[WriteOutcome](WriteOutcome.Declined("no-store"))(upserts.upsert(_, film, cacheKey, e))
+    upserts.fold[WriteOutcome](WriteOutcome.Declined("no-store"))(_.upsert(film, cacheKey, e))
 
   /** The field-level update of a stored row — see [[InPlaceMovieUpdate]]. */
   def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean =
-    coll.exists(updates.updateIfPresent(_, film, cacheKey, before, after))
+    updates.exists(_.updateIfPresent(film, cacheKey, before, after))
 
   /** The stored document the dotted-name fallback of [[InPlaceMovieUpdate]] patches — a seam a spec uses to land
    *  another write between this read and the replace. */

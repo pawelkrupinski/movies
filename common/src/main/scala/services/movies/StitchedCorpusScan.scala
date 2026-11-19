@@ -17,7 +17,7 @@ import scala.concurrent.duration.Duration
  *
  *  Built by the repository over its own paging, stitch, title rules and stopwatch, and logging under the
  *  repository's `logger`: a scan's timing and refusals read as the repository's, which they are. */
-private[movies] final class StitchedCorpusScan(pages: MoviesKeysetPages, stitch: MovieSideStitch, normalizer: services.titles.TitleNormalizer,
+private[movies] final class StitchedCorpusScan(movies: => Option[MongoCollection[StoredMovieDto]], pages: MoviesKeysetPages, stitch: MovieSideStitch, normalizer: services.titles.TitleNormalizer,
                                                stopwatch: tools.Stopwatch, logger: play.api.Logger)(using LatestTitleYear) {
 
   /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
@@ -40,14 +40,14 @@ private[movies] final class StitchedCorpusScan(pages: MoviesKeysetPages, stitch:
    *  peak is one page's films, whatever the corpus grows to. Completeness still gates the whole scan,
    *  not the page: a caller that PRUNES on a row's absence must not act on a partial view, so one
    *  failed side read fails the scan exactly as a failed `movies` batch does. */
-  def scanStitched(collection: Option[MongoCollection[StoredMovieDto]], onBatch: Seq[StoredMovieRecord] => Unit,
+  def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit,
                    withShowtimes: Boolean = true, filter: Bson = Filters.empty()): tools.ScanOutcome = {
     var sideReadsComplete = true
     val timing = new ScanTiming
     var films  = 0
     // One pool for the scan: equal instants, rooms and formats across its pages are one object ([[ShowtimePool]]).
     val shared = new ShowtimePool
-    val moviesComplete = scanByKeyset(collection, filter) { batch =>
+    val moviesComplete = scanByKeyset(filter) { batch =>
       val ids = batch.map(_._id).toSet
       val (pageScr, pageSlots) = readPageSides(ids, withShowtimes, timing)
       // A page whose side read failed is NOT handed on, stitched from the empty answer: its
@@ -106,6 +106,6 @@ private[movies] final class StitchedCorpusScan(pages: MoviesKeysetPages, stitch:
   }
 
   /** The `movies` documents matching `filter`, keyset-paged by `_id` ([[MoviesKeysetPages]]). */
-  def scanByKeyset(collection: Option[MongoCollection[StoredMovieDto]], filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome =
-    pages.documents(collection, filter)(onBatch)
+  def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): tools.ScanOutcome =
+    pages.documents(movies, filter)(onBatch)
 }

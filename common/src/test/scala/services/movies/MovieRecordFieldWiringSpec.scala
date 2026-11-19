@@ -21,7 +21,7 @@ import java.time.Instant
  *   2. `MovieRecordPatch`        — or the field-level `$set` path (`updateIfPresent`)
  *                                  drops it, while whole-document writes keep it, so
  *                                  the value survives some writes and not others.
- *   3. `InPlaceMovieUpdate.patchToUpdate` — or the patch carries it and the wire doesn't.
+ *   3. `MovieUpdates.of` — or the patch carries it and the wire doesn't.
  *   4. `ChangeStreamMetrics`     — or a change to it reads as the `other` catch-all
  *                                  and the change-stream metric quietly mis-labels.
  *
@@ -130,15 +130,12 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "patchToUpdate" should "put every field the patch carries onto the wire" in {
+  "MovieUpdates.of" should "put every field the patch carries onto the wire" in {
     // The fourth place, and the one the other guards cannot see: a field present in
     // `MovieRecordPatch` but missing here satisfies `applyTo` — so every test backed by
     // `InMemoryMovieRepository` passes — while Mongo never receives it. Asserted against
     // the field names the update document actually emits.
-    val updates = new InPlaceMovieUpdate(screenings = None, slots = None, slotsForStorage = identity, normalizer = titleNormalizer,
-      stamps = new _root_.tools.MonotonicStampSequence(_root_.tools.SpecClock.Pinned), writeMetrics = RepositoryWriteMetrics.noop,
-      logger = play.api.Logger(getClass), readWhole = (_, _) => None)
-    val update = updates.patchToUpdate(MovieRecordPatch.diff(MovieRecord(), everyFieldSet))
+    val update = MovieUpdates.of(MovieRecordPatch.diff(MovieRecord(), everyFieldSet), _root_.tools.SpecClock.Pinned.instant())
       .toBsonDocument(classOf[BsonDocument], MovieCodecs.registry)
 
     // `{ $set: { a: …, b.c: … }, $unset: { d: … } }` — collect every field path either
