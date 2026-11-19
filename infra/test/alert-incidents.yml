@@ -485,3 +485,69 @@ incidents:
     end: 2026-11-17T16:55:00Z
     grace: 10m
     expect_firing: [SwapTrafficSustained]
+
+  # Alert backtest #5-#8 (window 2026-11-04T20:00Z..11-18T20:00Z): the episodes below were each alert's firing
+  # outside every catalogued incident, read from the run's alert-backtest.json `noisy_episodes` (series and times).
+  # Each is a real production state the alert reported correctly. None is a rule misfire.
+
+  - id: nixos-auto-apply-reboot-owed-2026-11-16
+    description: >-
+      Every host's auto-apply refused the new closure because a reboot was owed (reason="reboot_owed" on
+      k3s-worker-1, mongo-1 and monitoring-1 at once) for 15 hours, to 11-17T15:15Z. Refusing is the alert's
+      purpose: a change auto-apply may not make waits for a hand apply (docs/deploying-nixos-hosts.md).
+    source: nixos_auto_apply_blocked_reason{reason="reboot_owed"} on k3s-worker-1, mongo-1 and monitoring-1, 2026-11-16T23:51Z..11-17T15:15Z (Alert backtest #8)
+    start: 2026-11-16T23:51:00Z
+    end: 2026-11-17T15:15:00Z
+    grace: 10m
+    expect_firing: [AutoApplyRefusingChange]
+
+  - id: us-duplicate-venue-listing-2026-11-17
+    description: >-
+      DuplicateVenueListing held for us over two stretches of 5 and 17 hours.
+    source: DuplicateVenueListing{country="us"} firing 2026-11-17T00:12Z..05:02Z and 14:14Z..11-18T07:42Z (Alert backtest #8)
+    start: 2026-11-17T00:12:00Z
+    end: 2026-11-18T07:42:00Z
+    grace: 10m
+    expect_firing: [DuplicateVenueListing]
+
+  - id: identity-build-net-losses-2026-11-04
+    description: >-
+      Two worker builds lost listings net against their predecessors, cause="code": build 9b70c710 in pl ("Bts world
+      tour 'arirang' in kaohsiung: live viewing") and build 1cdb8ec0 in us ("Game").
+    source: kinowo_identity_build_net_lost{build="9b70c710...",country="pl"} 2026-11-04T20:00Z..11-05T09:13Z; {build="1cdb8ec0...",country="us"} 2026-11-09T16:01Z..11-10T15:46Z (Alert backtest #8)
+    start: 2026-11-04T20:00:00Z
+    end: 2026-11-10T15:46:00Z
+    grace: 10m
+    expect_firing: [IdentityBuildNetLosses]
+
+  - id: identity-film-listings-lost-2026-11-07
+    description: >-
+      Five builds each lost a film's listings net: pl "Andre rieu. Pada śnieg" (9a9dd087, 11-07), uk "Dune: Part
+      Two" (1f671442, 11-13), de "Lieblingsmenschen" (2c8f97d7, 11-13/14), uk "Sathyavin Savithri" (b257090d, 11-17),
+      uk "Bts world tour 'arirang' in kaohsiung" (4ec992b4, 11-18).
+    source: kinowo_identity_film_net_lost by build, country, title over 2026-11-07T14:50Z..11-18T18:21Z, five episodes of 4-6 h (Alert backtest #8)
+    start: 2026-11-07T14:50:00Z
+    end: 2026-11-18T18:21:00Z
+    grace: 10m
+    expect_firing: [IdentityFilmListingsLost]
+
+  - id: identity-suspect-takes-and-oscillation-2026-11-05
+    description: >-
+      Identity takes oscillated and suspect takes rose in de, pl, uk and es over two stretches: 11-05..06 (uk, de,
+      pl oscillating; de suspect takes rising three times) and 11-10..12 (es, de, pl, uk oscillating; pl suspect
+      takes rising 11-12).
+    source: IdentityTakeOscillating{country=~"uk|de|pl|es"} 11 episodes 2026-11-05T08:00Z..11-12T15:59Z; IdentitySuspectTakesRising{country="de"} 11-05T09:29Z..11-06T22:54Z, {country="pl"} 11-12T13:05Z..19:55Z (Alert backtest #8)
+    start: 2026-11-05T08:00:00Z
+    end: 2026-11-12T19:55:00Z
+    grace: 10m
+    expect_firing: [IdentityTakeOscillating, IdentitySuspectTakesRising]
+
+  - id: identity-incremental-drift-2026-11-04
+    description: >-
+      The nightly live-drift check found 5 or more listings whose live take differed from a whole resolve: de and
+      pl almost every night 11-04..11-16, uk 11-04..08 and 11-14, es 11-14..16, us 11-15. Quiet from 11-17.
+    source: sum by (country) (kinowo_identity_drift_listings) >= 5, held 26 h after each nightly check, 2026-11-04T20:00Z..11-17T00:52Z (Alert backtest #8)
+    start: 2026-11-04T20:00:00Z
+    end: 2026-11-17T00:52:00Z
+    grace: 10m
+    expect_firing: [IdentityIncrementalDrift]
