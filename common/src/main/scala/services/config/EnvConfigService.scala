@@ -19,7 +19,7 @@ import scala.concurrent.duration._
  *    env var);
  *  - on a periodic tick: refreshes the override cache (picks up flips made on the
  *    other process) and republishes this process's non-secret knobs + their
- *    current values to the shared registry ([[EnvRegistryStore.publishFrom]]).
+ *    current values to the shared registry.
  *
  * The web process additionally serves the admin views and the operator actions
  * over the same stores ([[EnvConfigAdmin]]). Secrets are excluded everywhere — at
@@ -54,7 +54,10 @@ class EnvConfigService(
    *  failed (each logs it) — flips stop arriving, or the admin page stops seeing this process's knobs. */
   private[config] def publishTick(): TickRun = {
     val refreshed = overrides.refresh()
-    TickRun.completedWhen(registry.publishFrom(app, env) && refreshed)
+    val knobs = env.knobs.filterNot(k => EnvKnobClassifier.isSecret(k.key)).map { k =>
+      RegisteredKnob(app, k.key, k.kind, k.default, env.currentValue(k.key))
+    }
+    TickRun.completedWhen(registry.publish(app, knobs) && refreshed)
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }

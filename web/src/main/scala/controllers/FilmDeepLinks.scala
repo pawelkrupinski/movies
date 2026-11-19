@@ -73,6 +73,11 @@ final class FilmDeepLinks(readModel: WebReadModel, schedules: MovieControllerSer
       }
   }
 
+  /** The same film's page in every other city of `city`'s country currently showing it
+   *  ([[MovieControllerService.citiesShowing]]), each with its address. */
+  def otherCities(schedule: FilmSchedule, city: City): Seq[(City, String)] =
+    schedules.citiesShowing(schedule, city).map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
+
   /** Resilience for film deep-links: a title the read model KNOWS but that has no
    *  live schedule in this city right now must not 404 a shared/bookmarked link.
    *  Render the movie with an empty showings list instead. Almost every hit is an
@@ -85,11 +90,6 @@ final class FilmDeepLinks(readModel: WebReadModel, schedules: MovieControllerSer
    *  `web_screenings` arrive over two change streams), which reads the same and
    *  self-heals on the next load. A title the read model has never seen still
    *  returns None. */
-  /** The same film's page in every other city of `city`'s country currently showing it
-   *  ([[MovieControllerService.citiesShowing]]), each with its address. */
-  def otherCities(schedule: FilmSchedule, city: City): Seq[(City, String)] =
-    schedules.citiesShowing(schedule, city).map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
-
   private def knownMovieFallback(city: City, title: String, decoded: Option[String]): Option[FilmSchedule] = {
     // Newest first, per `FilmTitles`: a same-title pair with no live schedule
     // here resolves to the film that holds the bare slug.
