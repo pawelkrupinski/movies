@@ -71,6 +71,7 @@ worker:deploy.ConvergenceLegWiringSpec	@repo *.scala
 repochecks:deploy.ConvergencePublishMainOnlySpec	@repo
 repochecks:deploy.ConvergenceReuseSpec	@repo
 repochecks:deploy.ConvergenceRunnerMemorySpec	@repo
+repochecks:deploy.CouplingExemptionsWorkflowSpec	@repo
 repochecks:deploy.CoursierLauncherSpec	@repo
 repochecks:deploy.DebugMirrorListSpec	@repo
 repochecks:deploy.DeployImageReuseSpec	@repo Dockerfile
