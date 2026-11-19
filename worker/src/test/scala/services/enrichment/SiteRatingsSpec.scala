@@ -28,7 +28,7 @@ class SiteRatingsSpec extends AnyFlatSpec with Matchers {
     val events = new ConcurrentLinkedQueue[String]
     val name      = "Fake"
     val walkLabel = "Fake refresh"
-    val columns: SiteRatings.Columns[Int] = MetascoreRatings.Columns.copy(
+    val columns: SiteRatings.Columns[Int] = RatingColumns.Metacritic.copy(
       withScore = (row, score) => { events.add(s"persist ${row.metacriticUrl.get}"); row.copy(metascore = score) },
       badge     = score => s"$score!")
 
@@ -56,7 +56,7 @@ class SiteRatingsSpec extends AnyFlatSpec with Matchers {
     val site = new RecordingSite(
       scores   = Map(urlA -> Some(9), urlB -> Some(2), urlC -> Some(7)),
       discover = Map(keyOf("C") -> Success(urlC)))
-    val refresher = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen, (key, tmdbId, value) => cadence.add((key, tmdbId, value)))
+    val refresher = new SiteRatings(cache, site, site.columns, tools.SpecStopwatch.Frozen, (key, tmdbId, value) => cadence.add((key, tmdbId, value)))
 
     val result = refresher.refreshAll()
 
@@ -92,7 +92,7 @@ class SiteRatingsSpec extends AnyFlatSpec with Matchers {
       scores   = Map(urlA -> Some(6)),
       discover = Map(key -> Failure(new RuntimeException("soft-blocked"))))
 
-    val result = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen).refreshAll()
+    val result = new SiteRatings(cache, site, site.columns, tools.SpecStopwatch.Frozen).refreshAll()
 
     site.events.asScala.toSeq shouldBe Seq(s"resolve ${key.cleanTitle}", s"fetch $urlA", s"persist $urlA")
     cache.get(key).flatMap(_.metascore) shouldBe Some(6)
@@ -107,7 +107,7 @@ class SiteRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key = cache.keyOf("F", None)
     val site = new RecordingSite(scores = Map.empty, discover = Map.empty)
-    val refresher = new SiteRatings(cache, site, tools.SpecStopwatch.Frozen)
+    val refresher = new SiteRatings(cache, site, site.columns, tools.SpecStopwatch.Frozen)
 
     refresher.persistIfMoved(key, urlA, stored = Some(5), fresh = 5) shouldBe None
     site.events.asScala shouldBe empty

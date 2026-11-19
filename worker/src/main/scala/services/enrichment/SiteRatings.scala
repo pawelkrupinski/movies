@@ -22,12 +22,12 @@ import scala.util.{Failure, Success, Try}
 class SiteRatings[A](
   movieCache: MovieCache,
   site: SiteRatings.Site[A],
+  // Where the site's link, score and content slot live on the row ([[RatingColumns]]): what this flow writes.
+  columns: SiteRatings.Columns[A],
   // Times the walk, read off the wiring's clock source (tools.Stopwatch).
   stopwatch: Stopwatch,
   recordBulkChange: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(movieCache, recordBulkChange) {
-
-  private val columns = site.columns
 
   override protected def sourceName: String = site.name
 
@@ -247,12 +247,13 @@ object SiteRatings {
   /**
    * THE PORT of a URL-keyed rating site (Metacritic, Rotten Tomatoes, Filmweb): what only the site knows -- how to find
    * a film's page on it (`find`: its search, slug ladder and same-film guards), and how to read a page (`read`: fetch,
-   * parse, and whether the page is this film's at all) -- and where its link and score live on the row (`columns`).
+   * parse, and whether the page is this film's at all). Where its link and score live on the row is the flow's to
+   * write ([[Columns]], one per site in [[RatingColumns]]), handed to it beside the port.
    *
    * Everything else, the flow every site shares, is the class's: the per-row refresh (a stored link read, a missing
    * one found first), the full-corpus walk and the operator's re-check, what a denied page drops, what a moved score
    * reports to the adaptive cadence, the summaries. A new rating site is one more implementation of this port, plus its
-   * `RatingSource` entry (`services.tasks.RatingSources`).
+   * columns and its `RatingSource` entry (`services.tasks.RatingSources`).
    *
    * Neither `find` nor `read` writes anything: the flow does, through the cache's per-title lock. A failed read (the site
    * down, a soft-block) THROWS out of either, and the flow counts the row as failed (tools.ReadOutcome); a site that has
@@ -265,9 +266,6 @@ object SiteRatings {
 
     /** The full-corpus walk's log prefix, which also names its pool (`"RT refresh"`). */
     def walkLabel: String
-
-    /** Where the site's link, score and content slot live on the row, and the badge a score shows as. */
-    def columns: Columns[A]
 
     /** How many rows the walk asks the site about at once (tools.BoundedParallel); lower for a site that soft-blocks. */
     def walkConcurrency: Int = 8

@@ -26,7 +26,12 @@ object TmdbLessRatingLinks {
   /** The film's year as its cinemas publish it: the key's, a year the title itself dates
    *  ("Tabu (1987)"), else one a slot published. */
   def yearOf(key: CacheKey, row: MovieRecord)(using LatestTitleYear): Option[Int] =
-    key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: row.evidence.titles.toSeq, LatestTitleYear.current)).orElse(row.evidence.years.headOption)
+    titledYear(key, row).orElse(row.evidence.years.headOption)
+
+  /** The film's year as its key or its titles give it: the key's, else a delimited year the row's own or any cinema's
+   *  title brackets ("Konwicki: Lawa (1989)"). */
+  def titledYear(key: CacheKey, row: MovieRecord)(using LatestTitleYear): Option[Int] =
+    key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: row.evidence.titles.toSeq, LatestTitleYear.current))
 
   /** The titles a site is searched under, STRIPPED: the cinemas' original titles first (the
    *  international title the sites index), then the cinema title without its programme decoration
@@ -60,4 +65,16 @@ object TmdbLessRatingLinks {
       confirm: A => Option[B])(using LatestTitleYear): Option[B] =
     Option.when(checkable(key, row))(()).flatMap(_ =>
       ask(titlesOf(key, row, normalizer), searchYear(key, row), TmdbLessEligibility.directorsOf(row))).flatMap(confirm)
+
+  /** [[discover]] for a site searched one title at a time: each of the row's titles asked of the site in turn (`ask`,
+   *  with the row's year and its cinemas' directors), and the first page that corroborates the row taken -- the page's
+   *  year and credits read off it by `pageYear` and `pageDirectors`. None when the row is not checkable. */
+  def discoverEach[A](key: CacheKey, row: MovieRecord, normalizer: TitleNormalizer)(ask: (String, Option[Int], Set[String]) => Option[A])(
+      pageYear: A => Option[Int], pageDirectors: A => Set[String])(using LatestTitleYear): Option[A] =
+    Option.when(checkable(key, row))(()).flatMap { _ =>
+      val directors = TmdbLessEligibility.directorsOf(row)
+      titlesOf(key, row, normalizer).iterator
+        .flatMap(title => ask(title, yearOf(key, row), directors))
+        .find(page => corroborated(key, row, pageYear(page), pageDirectors(page)))
+    }
 }

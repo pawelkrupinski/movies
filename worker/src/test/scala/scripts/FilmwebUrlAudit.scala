@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 
 import clients.HttpTmdbClient
-import services.enrichment.{FilmwebClient, FilmwebRatings, SiteRatings}
+import services.enrichment.{FilmwebClient, FilmwebRatings, RatingColumns, RatingSiteFilms, SiteRatings}
 import services.movies.{CaffeineMovieCache, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
@@ -51,7 +51,8 @@ object FilmwebUrlAudit {
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val tmdb    = new HttpTmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
-    val ratings = new SiteRatings(cache, new FilmwebRatings(tmdb, filmweb, cache.normalizer), tools.Stopwatch.System)
+    val ratings = new SiteRatings(cache, new FilmwebRatings(new RatingSiteFilms(tmdb, cache.normalizer), filmweb, cache.normalizer),
+      RatingColumns.Filmweb, tools.Stopwatch.System)
 
     val candidates = repository.findAll()
       .filter(_.record.filmwebUrl.isDefined)

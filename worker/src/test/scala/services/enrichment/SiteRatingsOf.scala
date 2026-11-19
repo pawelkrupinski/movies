@@ -10,17 +10,23 @@ object SiteRatingsOf {
   type Cadence = (CacheKey, Option[Int], Option[String]) => Unit
   private val silent: Cadence = (_, _, _) => ()
 
+  /** The film every site searches by, over the cache's title rules, as the wiring builds it. */
+  def films(cache: MovieCache, tmdb: TmdbClient)(using LatestTitleYear): RatingSiteFilms = new RatingSiteFilms(tmdb, cache.normalizer)
+
   def metacritic(cache: MovieCache, tmdb: TmdbClient, metacritic: MetacriticClient,
                  mcLinkCache: ResolutionCache = ResolutionCache.passthrough, cadenceRecorder: Cadence = silent)(using LatestTitleYear): SiteRatings[Int] =
-    new SiteRatings(cache, new MetascoreRatings(tmdb, metacritic, cache.normalizer, mcLinkCache), tools.SpecStopwatch.Frozen, cadenceRecorder)
+    new SiteRatings(cache, new MetascoreRatings(films(cache, tmdb), metacritic, cache.normalizer, mcLinkCache), RatingColumns.Metacritic,
+      tools.SpecStopwatch.Frozen, cadenceRecorder)
 
   def rottenTomatoes(cache: MovieCache, tmdb: TmdbClient, rt: RottenTomatoesClient,
                      rtLinkCache: ResolutionCache = ResolutionCache.passthrough, cadenceRecorder: Cadence = silent)(using LatestTitleYear): SiteRatings[Int] =
-    new SiteRatings(cache, new RottenTomatoesRatings(tmdb, rt, cache.normalizer, rtLinkCache), tools.SpecStopwatch.Frozen, cadenceRecorder)
+    new SiteRatings(cache, new RottenTomatoesRatings(films(cache, tmdb), rt, cache.normalizer, rtLinkCache), RatingColumns.RottenTomatoes,
+      tools.SpecStopwatch.Frozen, cadenceRecorder)
 
   def filmweb(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient,
               filmwebLinkCache: ResolutionCache = ResolutionCache.passthrough,
               onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
               cadenceRecorder: Cadence = silent)(using LatestTitleYear): SiteRatings[Double] =
-    new SiteRatings(cache, new FilmwebRatings(tmdb, filmweb, cache.normalizer, filmwebLinkCache, onImdbIdMissing), tools.SpecStopwatch.Frozen, cadenceRecorder)
+    new SiteRatings(cache, new FilmwebRatings(films(cache, tmdb), filmweb, cache.normalizer, filmwebLinkCache, onImdbIdMissing),
+      RatingColumns.Filmweb, tools.SpecStopwatch.Frozen, cadenceRecorder)
 }

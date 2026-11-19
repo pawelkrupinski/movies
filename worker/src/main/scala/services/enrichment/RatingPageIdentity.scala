@@ -1,6 +1,7 @@
 package services.enrichment
 
 import services.movies.LatestTitleYear
+import services.movies.CinemaSlotReadings.evidence
 
 import models.MovieRecord
 
@@ -40,6 +41,24 @@ object RatingPageIdentity {
       !MetacriticClient.directorsCompatible(slot, pageDirectors) &&
       !MetacriticClient.directorsCompatible(slot ++ row.tmdbId.toSeq.flatMap(tmdbDirectors), pageDirectors)
   }
+
+  /** Is a page dated `pageYear`, crediting `pageDirectors`, another film's BY ITS YEAR -- the row's own year
+   *  (`rowYear`) positively contradicts it and the credits do not agree? A year decades apart with the director agreeing
+   *  is a retrospective's screening year (see [[directorsAgree]]); an undated page is no evidence. Rotten Tomatoes reads
+   *  the page's year, Filmweb its URL's. */
+  def otherFilmsYear(rowYear: Option[Int], row: MovieRecord, pageYear: Option[Int], pageDirectors: Set[String],
+                     tmdbDirectors: Int => Set[String])(using LatestTitleYear): Boolean =
+    !MetacriticClient.yearsCompatible(rowYear, pageYear) && !directorsAgree(row, pageDirectors, tmdbDirectors)
+
+  /** Every director the film is credited with: TMDB's full crew and each cinema's reported director -- what a site
+   *  searched one candidate at a time (Filmweb) disambiguates same-titled films across years by. */
+  def creditedDirectors(row: MovieRecord, tmdbDirectors: Int => Set[String])(using LatestTitleYear): Set[String] =
+    row.tmdbId.map(tmdbDirectors).getOrElse(Set.empty) ++ row.evidence.directors.toSet
+
+  /** TMDB's synopsis of the film, held or retained: a same-year, same-title tie a site's own plot can break (Filmweb's
+   *  Polish `plot` is in the language of TMDB's Polish blurb). */
+  def referenceSynopsis(row: MovieRecord): Option[String] =
+    row.data.get(models.Tmdb).flatMap(_.synopsis).orElse(row.retainedSynopses.get(models.Tmdb))
 
   private def slotDirectors(row: MovieRecord): Set[String] =
     row.data.get(models.Tmdb).toSeq.flatMap(_.director).toSet

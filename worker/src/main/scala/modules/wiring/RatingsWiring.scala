@@ -4,7 +4,7 @@ import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfi
 
 import services.attempts.{EnrichmentAttemptStore, MongoEnrichmentAttemptStore}
 import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
-import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings, SiteRatings}
+import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RatingColumns, RatingSiteFilms, RottenTomatoesRatings, SiteRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
 import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
@@ -25,17 +25,19 @@ trait RatingsWiring { self: WorkerWiring =>
   // which a later per-row refresh would otherwise mis-read as a fresh change.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating, clock),
     enrichmentLanguage = country.language)
-  // Every URL-keyed rating site is its port (`*Site`: find, read) run by the one shared flow (SiteRatings).
+  // Every URL-keyed rating site is its port (`*Ratings`: find, read) and its row columns, run by the one shared flow
+  // (SiteRatings); every site searches and judges pages by the same film, the row and what TMDB knows of it.
+  lazy val ratingSiteFilms = new RatingSiteFilms(tmdbClient, movieCache.normalizer)
   lazy val rottenTomatoesRatings = new SiteRatings(movieCache,
-    new RottenTomatoesRatings(tmdbClient, rottenTomatoesClient, movieCache.normalizer, rtLinkCache), stopwatch,
-    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
+    new RottenTomatoesRatings(ratingSiteFilms, rottenTomatoesClient, movieCache.normalizer, rtLinkCache), RatingColumns.RottenTomatoes,
+    stopwatch, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
   lazy val metascoreRatings = new SiteRatings(movieCache,
-    new MetascoreRatings(tmdbClient, metacriticClient, movieCache.normalizer, mcLinkCache), stopwatch,
-    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
+    new MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer, mcLinkCache), RatingColumns.Metacritic,
+    stopwatch, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
   lazy val filmwebRatings = new SiteRatings(movieCache,
-    new FilmwebRatings(tmdbClient, filmwebClient, movieCache.normalizer, filmwebLinkCache,
-      onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle))), stopwatch,
-    BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating, clock))
+    new FilmwebRatings(ratingSiteFilms, filmwebClient, movieCache.normalizer, filmwebLinkCache,
+      onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle))), RatingColumns.Filmweb,
+    stopwatch, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating, clock))
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it

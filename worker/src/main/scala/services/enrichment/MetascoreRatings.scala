@@ -1,9 +1,8 @@
 package services.enrichment
 
-import clients.TmdbClient
 import models.MovieRecord
-import services.enrichment.SiteRatings.{Columns, Found, PageRead}
-import services.movies.{CacheKey, LatestTitleYear}
+import services.enrichment.SiteRatings.{Found, PageRead}
+import services.movies.CacheKey
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.titles.TitleNormalizer
 
@@ -11,27 +10,27 @@ import services.titles.TitleNormalizer
  * Metacritic behind the rating-site port: `metacriticUrl` discovery (slug probe, cleanTitle fallback, the lazy
  * `englishTitle` fallback for non-English films) and the Metascore read off the page. [[SiteRatings]] runs the flow.
  *
- * Discovery needs TMDB data (release year, English title) that the row alone doesn't carry — `tmdb.details(tmdbId)`
- * is asked only when a row needs its page found, never for a row that already has a link.
+ * Discovery needs TMDB data (release year, English title) that the row alone doesn't carry — TMDB's details are asked
+ * ([[RatingSiteFilms]]) only when a row needs its page found, never for a row that already has a link.
  */
 final class MetascoreRatings(
-  tmdb:       TmdbClient,
+  films:      RatingSiteFilms,
   metacritic: MetacriticClient,
   normalizer: TitleNormalizer,
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough
-)(using LatestTitleYear) extends SiteRatings.Site[Int] {
+) extends SiteRatings.Site[Int] {
 
   val name      = "Metacritic"
   val walkLabel = "Metascore refresh"
-  val columns: Columns[Int] = MetascoreRatings.Columns
 
   /** A canonical /movie/ URL, probed with TMDB's title data, and the Metascore the probe already parsed off the page
    *  (on a link-cache MISS, where the page was just fetched; on a HIT the flow reads it). */
-  def find(key: CacheKey, row: MovieRecord): Option[Found[Int]] =
-    row.tmdbId.fold(findWithoutTmdb(key, row)) { tmdbId =>
-      val titles = RatingSiteTitles.derive(key.cleanTitle, row, tmdb.details(tmdbId), normalizer)
+  def find(key: CacheKey, row: MovieRecord): Option[Found[Int]] = {
+    val film = films.of(key, row)
+    row.tmdbId.fold(findWithoutTmdb(film)) { tmdbId =>
+      val titles = film.titles(tmdbId)
       // The link cache stores the URL only; the Metascore the resolving probe parsed is threaded out-of-band, set ONLY
       // when the resolve closure actually ran.
       var freshScore: Option[Int] = None
@@ -44,18 +43,19 @@ final class MetascoreRatings(
         // `directorsFor`, NOT the row's `Tmdb` slot: the slot keeps only the localised credit, so an anime directed by
         // 秋本賢一郎 would never meet Metacritic's "Kenichiro Akimoto"; `directorsFor` returns the localised AND
         // native-script spellings.
-        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, tmdb.directorsFor(tmdbId))
+        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, film.tmdbDirectors(tmdbId))
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }
       url.map(Found.Link(_, freshScore))
     }
+  }
 
   // A film TMDB has no record of: searched under its stripped cinema titles and taken only when
   // the page positively agrees with what the cinemas publish (`TmdbLessRatingLinks`).
-  private def findWithoutTmdb(key: CacheKey, row: MovieRecord): Option[Found[Int]] =
-    TmdbLessRatingLinks.discover(key, row, normalizer)(metacritic.resolveAcross(_, None, _, _))(resolved =>
-      metacritic.pageFor(resolved.url).filter(page => TmdbLessRatingLinks.corroborated(key, row, page.year, page.directors))
+  private def findWithoutTmdb(film: RatingSiteFilms.Film): Option[Found[Int]] =
+    film.withoutTmdb(metacritic.resolveAcross(_, None, _, _))(resolved =>
+      metacritic.pageFor(resolved.url).filter(page => film.corroboratedBy(page.year, page.directors))
         .map(page => Found.Link(resolved.url, page.metascore, " without TMDB")))
 
   /** The Metascore on `url`'s page, or `Denied` when the page credits a director the row's film does not.
@@ -68,21 +68,8 @@ final class MetascoreRatings(
    *  nothing else would ever replace it (see `RatingPageIdentity`). */
   def read(key: CacheKey, row: MovieRecord, url: String): PageRead[Int] = {
     val page = metacritic.pageFor(url)
-    if (page.exists(p => RatingPageIdentity.directorDenies(row, p.directors, tmdb.directorsFor)))
+    if (page.exists(p => films.of(key, row).deniedBy(p.directors)))
       PageRead.Denied(s"page credits ${page.toSeq.flatMap(_.directors).mkString(", ")}")
     else PageRead.Scored(page.flatMap(_.metascore))
   }
-}
-
-object MetascoreRatings {
-  val Columns: SiteRatings.Columns[Int] = SiteRatings.Columns[Int](
-    noun      = "metascore",
-    plural    = "score(s)",
-    url       = _.metacriticUrl,
-    score     = _.metascore,
-    withUrl   = (row, url) => row.copy(metacriticUrl = Some(url)),
-    withScore = (row, score) => row.copy(metascore = score),
-    withPage  = (row, page) => row.copy(metascore = page.score),
-    cleared   = _.copy(metacriticUrl = None, metascore = None),
-    badge     = _.toString)
 }

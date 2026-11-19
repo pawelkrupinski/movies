@@ -229,8 +229,8 @@ after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `Fak
 - Single responsibility: one reason to change per class (`ImdbIdResolver` vs `ImdbRatings`); treat
   `Manager`/`Handler`/`Util`/`Helper`/`Processor` names as a smell.
 - Open/closed: a new cinema is a new `CinemaXClient` on the scrape contract (`ScrapeReaper` unchanged); a new rating
-  site is a `*Ratings` class on the rating-site port (`SiteRatings.Site`: its find and read; `SiteRatings` unchanged)
-  plus one `RatingSource` entry in `RatingSources`.
+  site is a `*Ratings` class on the rating-site port (`SiteRatings.Site`: its find and read; `SiteRatings` unchanged),
+  its row columns in `RatingColumns`, plus one `RatingSource` entry in `RatingSources`.
 - Liskov: an `InMemoryMovieRepository` honours `MovieRepository`'s write-through contract; callers never need
   `isInstanceOf`.
 - Interface segregation: `MovieRepository` stays the persistence contract (`findAll`, `upsert`, `updateIfPresent`,
