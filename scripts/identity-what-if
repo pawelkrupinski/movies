@@ -78,7 +78,8 @@
 # side takes as pending, and the diff would read every one as a move.
 #
 # Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
-# side failed / HARNESS ERROR (mirror not ready, re-seeded during the run, answers failed). Every JVM takes a slot of
+# side failed / HARNESS ERROR (mirror not ready, re-seeded during the run, answers failed, or a head of the base's very
+# tree -- a control -- moving any take: 2026-11-19, lane E2's control moved the same 462 US takes as its change). Every JVM takes a slot of
 # scripts/jvm-gate.sh.
 set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
@@ -402,6 +403,8 @@ record_verdict() { # <cc> <diff exit>
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
 tree_of "$base_sha" > /dev/null || exit 2
 head_tree=$(tree_of "$head_sha") || exit 2
+# HEAD = BASE (the same tree): a control, whose every moved take is the harness's own (below)
+same_code=0; [ "$head_sha" = . ] || ! git -C "$repo" diff --quiet "$base_sha" "$head_sha" -- || same_code=1
 judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.tsv}
 # Whether the head resolves at all: the code alone says whether any change reaches a take (identity_what_if.py reaches).
 # None (docs, tests, scripts, comments) and no --all/--verify: the selection is empty, so the head is not compiled
@@ -461,6 +464,15 @@ for cc in "${ccs[@]}"; do
   [ "$verify" = 0 ] || diff_args+=(--verify)
   [ "$json" = 0 ] || diff_args+=(--json)
   rc=0; python3 -I "$repo/scripts/identity_what_if.py" "${diff_args[@]}" || rc=$?
+  if [ "$same_code" = 1 ]; then
+    moved=$(cat "$out/takes-diff-$cc.tsv" "$out/final-diff-$cc.tsv" 2>/dev/null | grep -cv '^country' || true)
+    if [ "$moved" -gt 0 ]; then
+      # the base side is dropped whether kept or not: one of the two read other inputs, and a kept one is the suspect
+      rm -rf "$base_dir"
+      harness_error "$cc: the same code moved $moved take(s) (head ${head_label} = base ${base_sha:0:12}): the sides read different inputs -- a mirror changed under a kept base side, or live answers one side had and the other did not (answers above); nothing recorded, the base side dropped -- run again"
+      exit 2
+    fi
+  fi
   [ "$rc" = 0 ] || status=$rc
   record_verdict "$cc" "$rc"
   region=$(tail -n 1 "$head_dir/region.tsv" | awk -F'\t' '{print $2 " listings in " $3 " group(s), " $4 " round(s)"}')

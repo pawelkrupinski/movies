@@ -86,7 +86,8 @@ echo "java-start $(basename "$PWD")" >> "$STUB/calls"; sleep 2
 key=$'Pthe venue\x1ethe film'
 mkdir -p "$out"
 printf 'key\tvenue\trawTitle\tfamily\ttake\trules\n' > "$out/takes.tsv"
-if [ -z "$select" ] || [ -s "$select" ]; then printf '%s\tThe Venue\tThe Film\t%s\ttmdb:5\t\n' "$key" "$key" >> "$out/takes.tsv"; fi
+take=tmdb:5; [ -z "$select" ] || take=${STUB_HEAD_TAKE:-tmdb:5}
+if [ -z "$select" ] || [ -s "$select" ]; then printf '%s\tThe Venue\tThe Film\t%s\t%s\t\n' "$key" "$key" "$take" >> "$out/takes.tsv"; fi
 printf 'key\tfinal\tbasis\n%s\ttmdb:5\tAgreed\n' "$key" > "$out/final.tsv"
 if [ -z "$select" ]; then
   printf 'family\tblockKeys\n%s\t\n' "$key" > "$out/families.tsv"
@@ -190,5 +191,15 @@ check "...and the base side holding those failures is not kept" "no" \
 out=$(STUB_ANSWERS="400 live request(s) (api.themoviedb.org 400; 3 failed) in 30s, ~13.3 req/s" \
   what_if "$c0" "$c4" 2026-11-06T18:00:00Z --no-serve); rc=$?
 check "a few failed asks (3, within the bound) still diff" "0 yes" "$rc $(grep -q CLEAN <<<"$out" && echo yes || echo "no: $(cat "$work/err")")"
+
+# HEAD = BASE MUST MOVE NOTHING (2026-11-19, lane E2: a control with head = base reported the same 462 US moves as the
+# change): when both sides run the same code, any moved take is the harness's, a HARNESS ERROR, never a verdict
+out=$(what_if "$c0" "$c0" 2026-11-06T19:00:00Z --all --no-serve); rc=$?
+check "head = base taking alike: CLEAN, 0" "0 yes" "$rc $(grep -q CLEAN <<<"$out" && echo yes || echo "no: $(cat "$work/err")")"
+out=$(STUB_HEAD_TAKE=tmdb:6 what_if "$c0" "$c0" 2026-11-06T20:00:00Z --all --no-serve); rc=$?
+check "head = base taking otherwise: exit 2, the same code moved takes" "yes" \
+  "$(if [ "$rc" = 2 ] && grep -q 'HARNESS ERROR.*same code.*moved' "$work/err"; then echo yes; else echo "no: exit $rc, err: $(cat "$work/err")"; fi)"
+check "...and the base side kept from that run is not kept" "no" \
+  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T20:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 
 spec_summary
