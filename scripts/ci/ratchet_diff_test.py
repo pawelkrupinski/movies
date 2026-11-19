@@ -15,6 +15,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "ratchet_diff.py")
 WRAPPER = os.path.join(os.path.dirname(HERE), "ratchet-diff")
+SCRATCH_GIT = os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts/scratch-git.sh")
 
 COMPLEXITY = "test/resources/complexity-baseline.tsv"
 LENGTH = "test/resources/length-baseline.tsv"
@@ -59,17 +60,16 @@ class RatchetDiffTest(unittest.TestCase):
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         self.env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                         GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        os.makedirs(self.repo)
-        self.git("init", "-q")
+        self.scratch("scratch_repo", "-q")
         self.base = self.commit(BASE_FILES, "base")
         self.head = self.commit(HEAD_FILES, "head")
 
     def tearDown(self):
         self.dir.cleanup()
 
-    def git(self, *args):
-        return subprocess.run(["git", "-c", "commit.gpgsign=false", *args], cwd=self.repo, env=self.env, check=True,
-                              capture_output=True, text=True).stdout.strip()
+    def scratch(self, helper, *args):
+        return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", SCRATCH_GIT, helper, self.repo, *args],
+                              env=self.env, check=True, capture_output=True, text=True).stdout.strip()
 
     def commit(self, files, message):
         for path, text in files.items():
@@ -80,9 +80,9 @@ class RatchetDiffTest(unittest.TestCase):
             os.makedirs(os.path.dirname(full), exist_ok=True)
             with open(full, "w") as f:
                 f.write(text)
-        self.git("add", "-A")
-        self.git("commit", "-qm", message)
-        return self.git("rev-parse", "HEAD")
+        self.scratch("scratch_git", "add", "-A")
+        self.scratch("scratch_git", "commit", "-qm", message)
+        return self.scratch("scratch_git", "rev-parse", "HEAD")
 
     def run_tool(self, *args):
         done = subprocess.run([sys.executable, "-I", TOOL, "--base", self.base, *args], cwd=self.repo, env=self.env,
