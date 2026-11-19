@@ -148,7 +148,7 @@ trait TestWiring extends WorkerWiring {
     for {
       row <- movieService.get(title, year)
       _   <- row.tmdbId if row.imdbId.isEmpty
-    } imdbIdResolver.resolveSync(title, year, row.originalTitle.getOrElse(title))
+    } imdbIdRecovery.resolve(title, year, row.originalTitle.getOrElse(title))
     imdbRatings.refreshOneSync(title, year)
     rottenTomatoesRatings.refreshOneSync(title, year)
     metascoreRatings.refreshOneSync(title, year)

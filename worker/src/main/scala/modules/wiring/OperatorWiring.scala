@@ -63,7 +63,7 @@ trait OperatorWiring { self: WorkerWiring =>
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
-    new ResolveImdbIdHandler(imdbIdResolver),
+    new ResolveImdbIdHandler(imdbIdRecovery),
     new services.refresh.RefreshSourceHandler(refreshableSources, bulkTaskResultStore, clock)
   ) ++
     // The Filmweb bulk-refresh button only when this country's Filmweb path is on.

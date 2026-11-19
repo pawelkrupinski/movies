@@ -2,7 +2,7 @@ package modules.wiring
 
 import settings.SettleInterval
 
-import services.enrichment.{CinemetaClient, ImdbIdResolver}
+import services.enrichment.{CinemetaClient, ImdbCrossReferences, ImdbIdLadder, ImdbIdRecovery, ImdbIdResolver, ImdbSuggestions}
 import services.corpus.MovieService
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.tasks.SettleReaper
@@ -25,15 +25,17 @@ trait ResolutionWiring { self: WorkerWiring =>
   lazy val rtLinkCache: ResolutionCache      = resolutionCache("resolve_rt",      UnresolvedPolicy.Remember)
   lazy val mcLinkCache: ResolutionCache      = resolutionCache("resolve_mc",      UnresolvedPolicy.Remember)
   lazy val filmwebLinkCache: ResolutionCache = resolutionCache("resolve_filmweb", UnresolvedPolicy.Remember)
-  lazy val imdbIdResolver = managedResources.stopping(new ImdbIdResolver(movieCache, imdbClient,
-    backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
-    wikidata = Some(wikidataClient),
-    letterboxdIdResolver = Some(letterboxdIdResolver),
-    // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
-    omdb = configuration.omdbApiKey.map(_ => omdbClient),
-    // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(enrichmentFetch)), retriesFailures = imdbIdRetriesFailures, stopwatch = stopwatch,
-    retries = threadPools.scheduler("imdb-id-retry"), sleep = sleep))
+  /** One row's missing IMDb id, looked up on every rung and written back. */
+  lazy val imdbIdRecovery = new ImdbIdRecovery(movieCache, new ImdbIdLadder(
+    new ImdbSuggestions(imdbClient, imdbIdCache, movieCache.normalizer),
+    new ImdbCrossReferences(wikidata = Some(wikidataClient), letterboxdIdResolver = Some(letterboxdIdResolver),
+      // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
+      omdb = configuration.omdbApiKey.map(_ => omdbClient),
+      // Cinemeta needs no key — always wired as the final free rung.
+      cinemeta = Some(new CinemetaClient(enrichmentFetch)))))
+  lazy val imdbIdResolver = managedResources.stopping(new ImdbIdResolver(imdbIdRecovery,
+    backgroundBudget.executionContext("imdb-id-resolver"), retries = threadPools.scheduler("imdb-id-retry"),
+    retriesFailures = imdbIdRetriesFailures, stopwatch = stopwatch, sleep = sleep))
   /** Whether a failed IMDb-id lookup is asked again later ([[ImdbIdResolver]]'s `retriesFailures`): always, but over a
    *  hermetic replay, which overrides it. */
   protected def imdbIdRetriesFailures: Boolean = true

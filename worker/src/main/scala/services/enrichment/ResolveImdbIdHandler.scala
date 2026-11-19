@@ -9,17 +9,17 @@ import services.tasktypes.TaskType
  * event; this lets the merge-retrigger path re-kick it as a proper queue task
  * (deduped, retried, metered) when a merge changed the id-resolution inputs.
  *
- * `ImdbIdResolver.resolveSync` writes the id through the cache; the
+ * `ImdbIdRecovery.resolve` writes the id through the cache; the
  * `EnrichmentReaper` then enqueues the now-eligible IMDb rating on its next pass.
  */
-class ResolveImdbIdHandler(resolver: ImdbIdResolver) extends TaskHandler {
+class ResolveImdbIdHandler(recovery: ImdbIdRecovery) extends TaskHandler {
   override val taskType: TaskType = TaskType.ResolveImdbId
 
   override def handle(task: Task): HandlerOutcome = {
     val title       = EnrichTaskKeys.titleOf(task.payload)
     val year        = EnrichTaskKeys.yearOf(task.payload)
     val searchTitle = EnrichTaskKeys.searchTitleOf(task.payload).getOrElse(title)
-    resolver.resolveSync(title, year, searchTitle)
+    recovery.resolve(title, year, searchTitle)
     HandlerOutcome.Done
   }
 }

@@ -258,7 +258,7 @@ object TaskWorker {
    *  fixture harness throws, and treats as permanent (see `tools.RetryingHttpFetch.recoverable`). Anything
    *  else — an outage, a rate limit, a timeout, a 401 on a bad key — is about the source, never the
    *  film, and must not conclude it. Read by the TMDB side's writes (`services.corpus.MovieService`) and the IMDb id
-   *  resolver's retries (`services.enrichment.ImdbIdResolver.definitive`). */
+   *  resolver's retries (`services.enrichment.ImdbIdRetryPolicy.definitive`). */
   def failedDefinitively(failure: Throwable): Boolean =
     tools.ReadOutcome.isAbsent(failure) || isDeterministic(failure) || failure.isInstanceOf[java.io.FileNotFoundException]
 
