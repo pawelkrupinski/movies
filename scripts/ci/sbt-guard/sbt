@@ -11,6 +11,16 @@
 # the build: a run that failed on the stale read and was NOT retried by the plugin drops the stale classes
 # (`staleTastyDrop`) and runs once more. A run the plugin already retried is left failed: a second retry would only
 # repeat it.
+#
+# AND A DEPENDENCY A REMOTE REPOSITORY FAILED TO SERVE. lm-coursier 2.1.13 retries only a timeout or a 5xx
+# (scripts/ci/sbt-deps-resolve.sh), so one wrong answer from Maven Central failed the job: a 429 (PR #275, run
+# 44250628374) or a 404 for a pom it served every other row of the same run that minute (Main #2678, e2e (rest):
+# `not found: https://repo1.maven.org/.../sentry-logback-8.65.0.pom`). A run that failed with lm-coursier's
+# `Error downloading` naming a remote URL as not found, forbidden or a download error runs again after each backoff
+# (SBT_GUARD_DOWNLOAD_BACKOFF, seconds, default "30 60 120"; empty, never), every attempt keeping what the ones before
+# it downloaded. Before each, coursier's negative records go (coursier-forget-errors.sh): a 404 for a jar whose pom
+# is cached leaves a `.<jar>.error` that coursier answers from without asking again, which would make the retry
+# repeat the failure from disk. A failure naming only a local path, or any other failure, is not retried.
 set -uo pipefail
 
 guard_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
@@ -42,8 +52,22 @@ run() {
   return "$status"
 }
 
+# Whether the run's log shows lm-coursier failing to download from a remote repository.
+download_failed() {
+  grep -qF 'Error downloading ' "$log" && grep -qE '(not found|forbidden|download error)[^:]*: .*https?://' "$log"
+}
+
 run "$@"
 status=$?
+read -r -a backoff <<< "${SBT_GUARD_DOWNLOAD_BACKOFF-30 60 120}"
+for wait in ${backoff[@]+"${backoff[@]}"}; do
+  if [ "$status" -eq 0 ] || ! download_failed; then break; fi
+  echo "sbt-guard: the run failed downloading a dependency from a remote repository: running it again in ${wait}s" >&2
+  "$guard_dir/../coursier-forget-errors.sh" >&2 || true
+  sleep "$wait"
+  run "$@"
+  status=$?
+done
 [ "$status" -ne 0 ] || exit 0
 grep -qF "$stale_read" "$log" || exit "$status"
 if grep -qF "$plugin_retried" "$log"; then exit "$status"; fi

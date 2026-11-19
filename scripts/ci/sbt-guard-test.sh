@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# scripts/ci/sbt-guard/sbt against a stand-in sbt: it passes arguments, output and status through, and runs a batch once
-# more (after `staleTastyDrop`) only when it failed on a stale TASTy read that the build's own retry did not take.
+# scripts/ci/sbt-guard/sbt against a stand-in sbt: it passes arguments, output and status through, runs a batch once
+# more (after `staleTastyDrop`) only when it failed on a stale TASTy read that the build's own retry did not take, and
+# runs a command again after each backoff while it fails only on downloading a dependency from a remote repository
+# (coursier's negative records forgotten first).
 # Run: bash scripts/ci/sbt-guard-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -24,11 +26,23 @@ case "$(sed -n "${n}p" "$FAKE_SBT_DIR/script")" in
   stale)   echo "[warn] Ignoring analyses of \$anonfun due to error in reading TASTy."; exit 1 ;;
   retried) echo "[warn] Ignoring analyses of x due to error in reading TASTy."
            echo "[warn] [stale TASTy] running the batch again: compile"; exit 1 ;;
+  # lm-coursier's failures, as Main #2678 (a 404 from Central) and PR #275's run (a 429) printed them
+  dl404)   echo "[error] sbt.librarymanagement.ResolveException: Error downloading io.sentry:sentry-logback:8.65.0"
+           echo "[error]   Not found"
+           echo "[error]   not found: /home/runner/.ivy2/localio.sentry/sentry-logback/8.65.0/ivys/ivy.xml"
+           echo "[error]   not found: https://repo1.maven.org/maven2/io/sentry/sentry-logback/8.65.0/sentry-logback-8.65.0.pom"
+           exit 1 ;;
+  dl429)   echo "[error] sbt.librarymanagement.ResolveException: Error downloading io.sentry:sentry-logback:8.65.0"
+           echo "[error]   download error: Caught java.io.IOException (Server returned HTTP response code: 429 for URL: https://repo1.maven.org/maven2/io/sentry/sentry-logback/8.65.0/sentry-logback-8.65.0.pom) while downloading"
+           exit 1 ;;
+  local)   echo "[error] sbt.librarymanagement.ResolveException: Error downloading com.example:missing:1.0"
+           echo "[error]   not found: /home/runner/.ivy2/localcom.example/missing/1.0/ivys/ivy.xml"
+           exit 1 ;;
   *)       exit 9 ;;
 esac
 EOF
 chmod +x "$work/bin/sbt"
-export FAKE_SBT_DIR="$work"
+export HOME="$work/home" FAKE_SBT_DIR="$work" COURSIER_CACHE="$work/coursier" SBT_GUARD_DOWNLOAD_BACKOFF="0 0"
 
 guard() {
   rm -f "$work/calls" "$work/args"
@@ -57,6 +71,29 @@ check "a rerun that fails again keeps its failure" "3 1" "$(calls) $(cat "$work/
 
 guard retried
 check "a stale read the build already retried: left failed, no second retry" "1 1" "$(calls) $(cat "$work/status")"
+
+# A dependency Central failed to serve: lm-coursier retries neither a 404 nor a 429, so the guard does.
+mkdir -p "$COURSIER_CACHE/v1/x"
+: > "$COURSIER_CACHE/v1/x/.a-1.0.jar.error"; : > "$COURSIER_CACHE/v1/x/a-1.0.pom"
+guard dl404 ok
+check "a dependency Central answered 404 for: run again after the backoff, passing" "2 0" "$(calls) $(cat "$work/status")"
+check "...the same arguments again" "-batch set x := 1 compile|-batch set x := 1 compile" "$(paste -sd'|' - < "$work/args")"
+check "...coursier's negative records forgotten before it, the cache kept" "a-1.0.pom" \
+  "$(find "$COURSIER_CACHE/v1/x" -mindepth 1 -exec basename {} \; | sort | paste -sd' ' -)"
+check "...and it says why" "1" "$(grep -c 'sbt-guard: the run failed downloading a dependency' "$work/stderr")"
+guard dl429 dl404 ok
+check "a 429, then a 404: retried through both backoffs" "3 0" "$(calls) $(cat "$work/status")"
+guard dl404 dl429 dl404
+check "failing on every attempt: one more than its backoffs, then its own status" "3 1" "$(calls) $(cat "$work/status")"
+guard local
+check "a dependency no remote repository was asked for: not retried" "1 1" "$(calls) $(cat "$work/status")"
+guard dl404 fail
+check "a retry that fails otherwise keeps that failure, no further retry" "2 1" "$(calls) $(cat "$work/status")"
+rm -f "$work/calls" "$work/args"
+printf '%s\n' dl404 ok > "$work/script"
+PATH="$REPO_ROOT/scripts/ci/sbt-guard:$work/bin:$PATH" SBT_GUARD_DOWNLOAD_BACKOFF="" sbt compile > /dev/null 2>&1
+status=$?
+check "SBT_GUARD_DOWNLOAD_BACKOFF empty: no retry" "1 1" "$(calls) $status"
 
 rm -f "$work/calls" "$work/args"
 printf '%s\n' stale ok ok > "$work/script"

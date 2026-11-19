@@ -158,5 +158,12 @@ class SbtDependencyFanOutSpec extends AnyFlatSpec with Matchers {
       condition should include("steps.lookup.outputs.cache-hit != 'true'")
       condition should not include "refs/heads/main"
     }
+    // The resolve ends by deleting coursier's negative records (coursier-forget-errors.sh): a 404 one runner got from
+    // Central must not be saved as the answer of every job restoring the entry. So nothing runs between it and the save.
+    val all = steps(warmer)
+    withClue("the warmer saves right after its resolve, which leaves no coursier negative record behind: ") {
+      all.indexWhere(_.get("run").exists(_.trim == Resolve)) shouldBe all.indexOf(save.get) - 1
+    }
+    RepoFile.read(Resolve) should include("coursier-forget-errors.sh")
   }
 }
