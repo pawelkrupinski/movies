@@ -76,12 +76,13 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     Measurement admission now leaves `check_lane_jobs` checks' slots, memory and cores free, less the checks running:
     a queued check starts on the next tick whenever bitcashier is not saturated. Checks past the lane compete as before.
   * BORROWED CHECKS (the owner, 2026-11-16: "let landing checks borrow the idle measurement CPUs"): a check its own
-    cpuset cannot hold may start in the measure slice (RUNNER_SLICE; its label stays movies-check) when every job of
-    ours there at its whole cap, plus the check's and one measurement's, fits cpu_start_below of the measure CPUs and
-    the live reading holds them too -- the check gets its full share, never the 2026-11-03 oversubscription (a check's
-    test phase 6 -> 16 min beside measurements) -- only while every queued red-fix or landing measurement has its
-    runner, at most borrow_max_checks at once, and always leaving one measurement's cores, memory, slice cap and slot
-    (borrow_check). Optional measurements (movies-measure) wait behind a borrow (the owner, 2026-11-17, "A3").
+    cpuset cannot hold may start in the measure slice (RUNNER_SLICE; its label stays movies-check) when the live
+    reading of the measure CPUs, less what our runners there owe it (cpu_owed), holds the check's cores -- measured
+    CPU, as every other start; a ledger of every job there at its whole cap never let a check borrow beside any
+    measurement on 14 threads (2026-11-19) -- only while every queued red-fix or landing measurement has its runner,
+    at most borrow_max_checks at once, and always leaving one measurement's memory, slice cap and slot, and its cores
+    while a landing-path measurement is in flight (borrow_check). Optional measurements (movies-measure) wait behind a
+    borrow (the owner, 2026-11-17, "A3").
   * CHECK CAPACITY (the owner, 2026-11-17, "A1-3": checks waited ~20 min for a slot and ran ~10): a check is charged 3
     cores, not its JVM's 4 (a settled one used 2.6 at the median), its cpuset is 18 threads (bitcashier infra), and
     its own cpuset never holds more checks than its threads fit at their p90, check_peak_cpus (the 2026-11-03 lesson).
@@ -242,8 +243,9 @@ class Config:
     # the rest, the old refs and identity's shards beside it, and 2-4 check jobs ran at once on most busy ticks.
     check_lane_jobs: int = 2
     # BORROWED CHECKS (the owner, 2026-11-16): a landing check its own cpuset cannot hold may run in the measure slice,
-    # at most this many at once, and only while the measure pool keeps measure_reserve_jobs measurements' cores,
-    # memory, slice caps and slots past it (borrow_check: what holds one, and the bound on a measurement's delay).
+    # at most this many at once, and only while the measure pool keeps measure_reserve_jobs measurements' memory, slice
+    # caps and slots past it, and their cores while a landing-path measurement is in flight (borrow_check: what holds
+    # one, and the bound on a measurement's delay).
     # Four (the owner, 2026-11-17, "A3": more than 2): the cores and the kept measurement bind first.
     borrow_max_checks: int = 4
     measure_reserve_jobs: int = 1
@@ -697,31 +699,36 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         """BORROWED CHECKS (the owner, 2026-11-16): a queued check its own cpuset could not hold starts in the measure
         slice, on CPUs measurements leave idle -- without the 2026-11-03 slowdown (a check's test phase 6 -> 16 min
         beside measurements on shared cores) and without holding a measurement back:
-          * FULL SHARE, NO OVERSUBSCRIPTION: every runner of ours on the measure CPUs at its whole cap (job_cpus),
-            plus this check's, plus measure_reserve_jobs measurements', fits cpu_start_below of those CPUs -- so no job
-            of ours there can grow into the check's cores -- AND the live reading (cpu_owed, a borrowed check at its
-            whole cap) holds the check and the kept measurements.
+          * MEASURED CPU, AS EVERY OTHER START: the live reading of the measure CPUs, less what our runners there are
+            charged past it (cpu_owed: every settling runner and every borrowed check the rest of its whole cap, one
+            settled job ramping up), holds this check at its job_cpus and the kept measurements' cores. No ledger of
+            every job there at its whole cap (2026-11-16..19): on A2's 14 threads one light runner and one measurement,
+            charged 5 cores while they used under 2, plus the check's 4 and a kept measurement's 4 passed 0.85 x 14,
+            so a check never borrowed beside any measurement -- on 2026-11-19, of the 2151 ticks a landing check waited
+            "held by cpu", 1157 read the measure CPUs at most 6 of 14 busy and the host at least 10 of 32 idle.
           * LANDING-PATH MEASUREMENTS FIRST: none starts while a queued red-fix or landing measurement
             (LANDING_MEASURE_LANES) has no runner, an idle borrowed runner is stopped when one queues with no runner
             (_idle_to_stop), and at most borrow_max_checks run at once. An optional measurement (movies-measure) is
             admitted AFTER the borrows (the owner, 2026-11-17, "A3": a landing check ahead of optional measurements).
-          * THE BOUND: each borrow leaves measure_reserve_jobs measurements' cores, memory, slice caps and slots --
+          * THE BOUND: while a landing-path measurement runs or starts (its run's next rows may queue any tick), each
+            borrow leaves measure_reserve_jobs measurements' cores, and always their memory, slice caps and slots --
             optional measurements too leave them while a borrowed check runs -- so a landing-path measurement queued
             beside borrowed checks starts on the next tick whatever they do; only measurements beyond those may wait,
             each for at most the end of one borrowed check (a landing-check job, under 20 min), and only where the
-            CPUs would have held them -- never more of them than borrow_max_checks."""
+            CPUs would have held them -- never more of them than borrow_max_checks. With no landing-path measurement
+            in flight the cores are not kept for one that may come: a queued landing check is of the same class
+            (lane-policy.tsv) and holds them for one job at most (2026-11-19 20:02:53Z: five checks queued 33 min,
+            "held by cpu", the measure CPUs 2 of 14 busy and no measurement queued or running)."""
         if share_cpus(r, "check", "measure") or "measure" not in r.class_cpu:
             return  # one cpuset (or unknown ones): nothing to borrow
-        measure_cpus = len(r.class_cpu["measure"].cpus)
-        check_cores, keep_cores = cfg.job_cpus["check"], cfg.measure_reserve_jobs * cfg.job_cpus["measure"]
+        check_cores = cfg.job_cpus["check"]
+        landing_rows = (any(i.cls == "measure" and i.lane in LANDING_MEASURE_LANES for i in alive)
+                        or any(label in LANDING_MEASURE_LANES for label in labels.values()))
+        keep_cores = cfg.measure_reserve_jobs * cfg.job_cpus["measure"] if landing_rows else 0
         keep_gib = cfg.measure_reserve_jobs * cfg.job_expected_gib["measure"]
         need = unserved("check")
         while need and len(slots) > cfg.measure_reserve_jobs:
-            # every job of ours on the measure CPUs, alive or starting this tick, at its whole cap
-            ledger = (sum(cfg.job_cpus[i.cls] for i in alive if share_cpus(r, "measure", i.runs_in))
-                      + sum(cfg.job_cpus[c] for s, c in starts if c != "check" or s in borrowed))
             if (unserved("measure", LANDING_MEASURE_LANES) or sum(1 for i in alive if i.borrowed) + len(borrowed) >= cfg.borrow_max_checks
-                    or ledger + check_cores + keep_cores > cfg.cpu_start_below * measure_cpus
                     or cpu["measure"] - keep_cores < check_cores
                     or memory - keep_gib < cfg.job_expected_gib["check"]
                     or (held["measure"] is not None and held["measure"] - keep_gib < cfg.job_expected_gib["check"])
@@ -974,11 +981,13 @@ class CpuMeter:
     def span_seconds(self) -> float | None:
         return self.samples[-1][0] - self.samples[0][0] if len(self.samples) >= 2 else None
 
-    def busy_cores(self, cores: int) -> float | None:
+    def busy_cores(self, cores: int, released_seconds: float = 0.0) -> float | None:
+        """The busy cores over the window, less `released_seconds` of CPU time the window holds of jobs that have ended
+        (RELEASED ON FINISH, RunnerUsage.ended_seconds)."""
         if len(self.samples) < 2 or self.samples[-1][2] == self.samples[0][2]:
             return None
         (_, b0, t0), (_, b1, t1) = self.samples[0], self.samples[-1]
-        return cores * (b1 - b0) / (t1 - t0)
+        return max(0.0, cores * (b1 - b0) / (t1 - t0) - released_seconds / self.span_seconds())
 
 
 class CpuMeters:
@@ -1002,7 +1011,12 @@ def class_cpusets(cfg: Config) -> dict:
     return {cls: cpus for cls, cpus in sets.items() if cpus}
 
 
-def read_readings(cfg: Config, cpu: CpuMeters, now: float) -> Readings:
+def read_readings(cfg: Config, cpu: CpuMeters, now: float, ended: "RunnerUsage | None" = None) -> Readings:
+    """The host now. RELEASED ON FINISH (2026-11-19): the CPU a runner of ours used inside the window before it ended
+    (`ended`: what its container's own cgroup showed up to its last tick) is taken out of the busy cores of the CPUs it
+    ran on and the host's -- a check job's cores read busy for up to cpu_window_seconds after it ended, while the next
+    one starting in its slot was charged its whole cap on top (ci-runner's journal, 2026-11-19: a p90 of 4.6 such
+    cores on the check CPUs of the ticks a landing check waited "held by cpu")."""
     meminfo = _read(os.path.join(cfg.proc, "meminfo")) or ""
     available_kb = next((int(l.split()[1]) for l in meminfo.splitlines() if l.startswith("MemAvailable:")), 0)
     stat = _read(os.path.join(cfg.proc, "stat"))
@@ -1013,13 +1027,22 @@ def read_readings(cfg: Config, cpu: CpuMeters, now: float) -> Readings:
             cpu.of(cpus).add(now, *cpu_times(stat, cpus))
     cpu.sets = {cpus: meter for cpus, meter in cpu.sets.items() if cpus in sets.values()}
     cores = sum(1 for l in (stat or "").splitlines() if l.startswith("cpu") and l[3:4].isdigit()) or os.cpu_count() or 1
+
+    def released(meter: CpuMeter, cpus: frozenset | None) -> float:
+        """CPU seconds the meter's window holds of our ended runners on `cpus` (None: anywhere, the host's)."""
+        if ended is None or meter.span_seconds() is None:
+            return 0.0
+        return sum(seconds for cls, seconds in ended.ended_seconds(cfg, meter.samples[0][0]).items()
+                   if cpus is None or sets.get(cls) == cpus)
     classes = {cls: headroom_gib(cfg.class_cgroup.format(cls=cls)) for cls in CLASSES}
     limits = {cls: memory_max_gib(cfg.class_cgroup.format(cls=cls)) for cls in CLASSES}
     busy = [working_set_bytes(d) for d in busy_units(cfg.builder_cgroups, cfg.proc)]
     return Readings(available_kb / 2**20, headroom_gib(cfg.ci_cgroup),
-                    {c: v for c, v in classes.items() if v is not None}, cpu.host.busy_cores(cores), cores,
+                    {c: v for c, v in classes.items() if v is not None},
+                    cpu.host.busy_cores(cores, released(cpu.host, None)), cores,
                     tuple(b / 2**30 for b in busy if b is not None), cpu.host.span_seconds(),
-                    {cls: ClassCpu(cpus, cpu.of(cpus).busy_cores(len(cpus))) for cls, cpus in sets.items()},
+                    {cls: ClassCpu(cpus, cpu.of(cpus).busy_cores(len(cpus), released(cpu.of(cpus), cpus)))
+                     for cls, cpus in sets.items()},
                     {c: v for c, v in limits.items() if v is not None})
 
 
@@ -1032,11 +1055,14 @@ def cpu_usage_seconds(cgroup_dir: str) -> float | None:
 
 class RunnerUsage:
     """Each runner's container, read off its own cgroup every tick: its working set now, its CPU time in all, and the
-    cores it used over the last `window_seconds` (from the samples a tick apart; None from one sample)."""
+    cores it used over the last `window_seconds` (from the samples a tick apart; None from one sample). A container
+    gone since the last tick keeps its samples while they reach into the window: its CPU there is still in the CPU
+    readings, which release it (read_readings, ended_seconds)."""
 
     def __init__(self, window_seconds: int):
         self.window = window_seconds
         self.samples: dict = {}  # cgroup directory -> [(time, cpu seconds)]
+        self.ended: dict = {}  # an ended container's cgroup directory -> its samples, up to its last tick
 
     def read(self, cgroup_dir: str, now: float) -> tuple:
         """(mem_gib, cpu_cores, cpu_seconds) of the cgroup, each None when unreadable."""
@@ -1050,8 +1076,22 @@ class RunnerUsage:
         (t0, s0), (t1, s1) = kept[0], kept[-1]
         return mem, ((s1 - s0) / (t1 - t0) if t1 > t0 else None), seconds
 
-    def keep_only(self, cgroup_dirs: set) -> None:
+    def keep_only(self, cgroup_dirs: set, now: float) -> None:
+        """Forget the containers not in `cgroup_dirs`, but for the CPU their samples show inside the window."""
+        self.ended.update({d: v for d, v in self.samples.items() if d not in cgroup_dirs})
+        self.ended = {d: v for d, v in self.ended.items() if d not in cgroup_dirs and v[-1][0] > now - self.window}
         self.samples = {d: v for d, v in self.samples.items() if d in cgroup_dirs}
+
+    def ended_seconds(self, cfg: Config, since: float) -> dict:
+        """The CPU seconds each class's slice's ended containers used after `since`, as far as their samples tell (the
+        last tick to their end is not seen): class -> seconds."""
+        out = {}
+        for d, samples in self.ended.items():
+            cls = next((c for c in CLASSES if os.path.dirname(d) == cfg.class_cgroup.format(cls=c)), None)
+            inside = [s for t, s in samples if t >= since]
+            if cls is not None and len(inside) >= 2:
+                out[cls] = out.get(cls, 0.0) + inside[-1] - inside[0]
+        return out
 
 
 def _run(cmd: list, timeout: int = 30) -> subprocess.CompletedProcess:
@@ -1099,7 +1139,7 @@ class Host:
             out.append(Instance(slot, cls, busy, since, started, *usage, slice_class=slice_class,
                                 label="" if label == LABELS.get(cls) else label,
                                 pin=next((l for l in registered if l.startswith(PIN_PREFIX)), "")))
-        self.usage.keep_only(seen)
+        self.usage.keep_only(seen, now)
         return out
 
     def container_cgroup(self, slot: int, slice_class: str) -> str | None:
@@ -1206,8 +1246,8 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     jobs = reader.queued_jobs()
     demand, lanes, queue, coming = demand_of(jobs), lane_demand_of(jobs), queue_of(jobs), anticipated_of(jobs)
-    r = read_readings(cfg, cpu, now)
-    instances = host.instances(now)
+    instances = host.instances(now)  # first: a container ended since the last tick releases its CPU in the readings
+    r = read_readings(cfg, cpu, now, host.usage)
     d = decide(cfg, bc, demand, instances, now, r, queue=queue, anticipated=coming)
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
     cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731

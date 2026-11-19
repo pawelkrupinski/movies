@@ -386,10 +386,12 @@ class HalfIdleCpusetsTest(unittest.TestCase):
         self.assertEqual(d.starts, ())
 
     def test_124239_checks_past_their_cap_on_a_full_cpuset_still_hold_a_third(self):
-        # 12:42:39Z: two settled checks at 5.2 cores each, the check CPUs 11 of 12 busy: saturated, nothing starts
+        # 12:42:39Z: two settled checks at 5.2 cores each, the check CPUs 11 of 12 busy: saturated, nothing starts on
+        # them (without borrowing, which since 2026-11-16 takes the measure CPUs' room: BorrowedCheckTest)
         ours = [self.settled(1, "check", 6, 5.2), self.settled(3, "check", 6, 5.2),
                 *(self.settled(s, "measure", 8, 2.2) for s in (2, 4, 5))]
-        d = self.at(11, 8, 79, 64, 66, ours, queued(check=5), bc=1)
+        d = self.at(11, 8, 79, 64, 66, ours, queued(check=5), bc=1,
+                    cfg=dataclasses.replace(BEFORE_A1, borrow_max_checks=0))
         self.assertEqual(d.starts, ())
         self.assertEqual(rs.starved(CFG, d, queued(check=5), {"check": 1200}),
                          ["STARVED check: 5 queued, the oldest 20 min, held by cpu"])
@@ -410,11 +412,11 @@ LANDING_ROW = {"movies-landing": 1}  # one queued measurement, a landing check's
 class BorrowedCheckTest(unittest.TestCase):
     """The owner, 2026-11-16: landing checks borrow the measure cpuset's idle CPUs (4 / 7 / 10 of its 20 threads busy at
     p10 / p50 / p90 over 2026-11-15/16) while their own 12 are full. The 2026-11-03 split stays the rule it was made
-    for: a check's test phase went 6 -> 16 min beside measurements on shared cores. So a check borrows only cores no
-    job of ours can grow into (every runner on the measure cpuset at its whole cap, plus the check's, within
-    cpu_start_below of it, and the live reading holding it too), only while no measurement waits without a runner,
-    never more than borrow_max_checks, and always leaving measure_reserve_jobs measurements' cores, memory, slice caps
-    and slots free."""
+    for: a check's test phase went 6 -> 16 min beside measurements on shared cores. So a check borrows only cores the
+    live reading holds past what our runners there owe it (cpu_owed; until 2026-11-19 every runner there at its whole
+    cap: MeasuredBorrowTest), only while no landing-path measurement waits without a runner, never more than
+    borrow_max_checks, and always leaving measure_reserve_jobs measurements' memory, slice caps and slots free -- and
+    their cores while a landing-path measurement is in flight."""
 
     def at(self, ours, demand, check_busy=11, measure_busy=3, measure_free=80, cfg=BEFORE_A1, lanes=None):
         r = rs.Readings(100, 95, {"measure": measure_free}, check_busy + measure_busy, CORES, (), 300,
@@ -461,17 +463,18 @@ class BorrowedCheckTest(unittest.TestCase):
         d = self.at(ours, queued(measure=5), measure_busy=5, lanes={"movies-landing": 5})
         self.assertEqual(d.starts, ((4, "measure"), (5, "measure")))
 
-    def test_every_job_on_the_measure_cpus_is_counted_at_its_cap_for_a_borrow(self):
-        # two measurements reading 1 core each on a quiet cpuset: 2 x 4 + 4 for the check + 4 kept for a measurement
-        # = 16 of 17 holds one; three: 20 > 17, none, however idle the reading
+    def test_a_borrow_reads_the_measure_cpus_not_every_jobs_cap(self):
+        # optional measurements reading 1 core each on a quiet cpuset (3 of 20 busy): 17 - 3 - 3 (one of them ramping
+        # to its cap) = 11 holds two 4-core checks, borrow_max_checks -- with two measurements or three. (Was: every
+        # job there at its whole cap, plus the check's 4 and 4 kept for a measurement: 16 of 17 held one, 20 none.)
         two = [self.settled(s, "measure", 1.0) for s in (3, 4)]
-        self.assertEqual(self.at(self.two_full_checks() + two, queued(check=3)).borrowed, (5,))
+        self.assertEqual(self.at(self.two_full_checks() + two, queued(check=3)).borrowed, (5, 6))
         three = two + [self.settled(5, "measure", 1.0)]
-        self.assertEqual(self.at(self.two_full_checks() + three, queued(check=3)).borrowed, ())
+        self.assertEqual(self.at(self.two_full_checks() + three, queued(check=3)).borrowed, (6, 7))
 
     def test_a_busy_measure_reading_holds_a_borrow_back(self):
-        # nothing of ours there, but 10 of 20 busy (bitcashier, a light job): 17 - 10 - 4 kept = 3 < 4
-        self.assertEqual(self.at(self.two_full_checks(), queued(check=3), measure_busy=10).borrowed, ())
+        # nothing of ours there, but 14 of 20 busy (bitcashier, a light job): 17 - 14 = 3 < 4
+        self.assertEqual(self.at(self.two_full_checks(), queued(check=3), measure_busy=14).borrowed, ())
 
     def test_never_more_than_borrow_max_checks(self):
         borrowed = [self.settled(s, "check", 2.0, pool="measure") for s in (3, 4)]
@@ -527,6 +530,58 @@ class BorrowedCheckTest(unittest.TestCase):
         self.assertEqual(d.borrowed, ())
 
 
+class MeasuredBorrowTest(unittest.TestCase):
+    """2026-11-19, ci-runner's journal: landing checks waited 20-33 min "held by cpu" while 1-3 of the 10 movies runners
+    were busy. Of the 2151 ticks a check waited held by its CPU, 1157 read the measure CPUs at most 6 of 14 busy and the
+    host at least 10 of 32 idle: the borrow charged every job on the measure CPUs its whole cap and kept a measurement's
+    4 cores for one neither queued nor running, and on A2's 14 threads that fit no check beside any measurement. A borrow
+    now reads the measure CPUs as every other start does (cpu_owed), and keeps a measurement's cores only while a
+    landing-path measurement is in flight."""
+
+    # ci-runner's schedulerConfig (bitcashier infra, movies-runners.nix): a check charged its JVM's 4 cores
+    CI_RUNNER = dataclasses.replace(CFG, job_cpus={"check": 4, "measure": 4, "light": 1}, warm_light_runners=1)
+
+    def at(self, ours, demand, check_busy, measure_busy, lanes=None):
+        r = rs.Readings(103, 94, {"measure": 93}, check_busy + measure_busy, CORES, (4.0,), 300,
+                        on_cpusets(check_busy, measure_busy, CHECK_CPUS_A2, MEASURE_CPUS_A2), {"measure": 96})
+        return rs.decide(self.CI_RUNNER, rs.Bitcashier(1, 1), demand, ours, NOW, r, lanes)
+
+    @staticmethod
+    def settled(slot, cls, cores, pool="", label=""):
+        return rs.Instance(slot, cls, True, NOW, NOW - 900, mem_gib=6, cpu_cores=cores, cpu_seconds=cores * 900,
+                           slice_class=pool, label=label)
+
+    def tick_200253(self):
+        # 2026-11-19 20:02:53Z: three checks at home (4.1, 3.0 and one just started), one borrowed at 2.1, the warm light
+        # runner idle; the check CPUs 8 of 18 busy, the measure CPUs 2 of 14, the host 9 of 32; five checks queued, the
+        # oldest 33 min, no measurement queued or running
+        return [self.settled(1, "check", 4.1), self.settled(2, "check", 3.0),
+                self.settled(3, "check", 2.1, pool="measure"),
+                rs.Instance(4, "check", True, NOW, NOW - 20, mem_gib=0),
+                rs.Instance(11, "light", False, NOW - 600, NOW - 600, cpu_cores=0.0, cpu_seconds=0)]
+
+    def test_200253_a_check_borrows_the_idle_measure_cpus(self):
+        # 11.9 - 2 - (1.9, the borrowed check's rest of 4, + 1, the idle light runner's) = 7 holds one 4-core check, and
+        # its own 4 then leave 3: one starts (was: 1 + 4 + 4 + 4 kept = 13 of 11.9 charged at whole caps, none)
+        d = self.at(self.tick_200253(), queued(check=5), check_busy=8, measure_busy=2)
+        self.assertEqual((d.starts, d.borrowed), (((5, "check"),), (5,)))
+
+    def beside_a_measurement(self, label):
+        # the same tick with no borrowed check, and a measurement settled at 2 cores on the measure CPUs (4 of 14 busy):
+        # 11.9 - 4 - (1, the idle light runner's, + 2, the measurement's rest of 4) = 4.9 holds one check
+        ours = [i for i in self.tick_200253() if not i.borrowed] + [self.settled(6, "measure", 2.0, label=label)]
+        return self.at(ours, queued(check=5), check_busy=8, measure_busy=4)
+
+    def test_an_optional_measurement_keeps_no_cores_from_a_landing_check(self):
+        self.assertEqual(self.beside_a_measurement("").borrowed, (3,))
+
+    def test_a_running_landing_path_measurement_keeps_its_runs_next_rows_cores(self):
+        # a landing check's (or a red fix's) measurement running there: 4.9 - 4 kept < 4, the check waits, and that
+        # run's next row starts on the next tick whatever borrowed checks do
+        self.assertEqual(self.beside_a_measurement("movies-landing").borrowed, ())
+        self.assertEqual(self.beside_a_measurement("movies-red-fix").borrowed, ())
+
+
 class ChargedCheckTest(unittest.TestCase):
     """The owner, 2026-11-17 ("A1", "A2"): checks waited ~20 min for a slot and ran ~10. Their 12 threads held three,
     each charged its JVM's 4 cores, though a settled check used 2.6 at the median (ci-runner's journal, 2026-11-15..17,
@@ -575,14 +630,13 @@ class ChargedCheckTest(unittest.TestCase):
         self.assertEqual(self.home_starts(d), [])
 
     def test_more_than_two_borrow_where_the_measure_cpus_hold_them(self):
-        # borrow_max_checks 4 (A3: more than 2): on the old 20 measure threads, idle, four borrow -- 4 x 3 + 4 kept
-        # = 16 of 17 -- and the cap holds a fifth. On A2's 14 the cores and the kept measurement allow two: 3 x 3 + 4
-        # = 13 > 11.9.
+        # borrow_max_checks 4 (A3: more than 2): on the old 20 measure threads, idle, four borrow -- 17 - 1 - 4 x 3 =
+        # 4 -- and the cap holds a fifth. On A2's 14 the cores allow three: 11.9 - 1 - 3 x 3 = 1.9 < 3.
         full = [self.check(1, 5.2), self.check(2, 5.2)]
         d = self.at(full, 6, check_busy=11, measure_busy=1, cfg=dataclasses.replace(CFG, check_peak_cpus=4.0),
                     check_cpus=CHECK_CPUS, measure_cpus=MEASURE_CPUS)
         self.assertEqual(d.borrowed, (3, 4, 5, 6))
-        self.assertEqual(self.at(full, 6, check_busy=17, measure_busy=1).borrowed, (3, 4))
+        self.assertEqual(self.at(full, 6, check_busy=17, measure_busy=1).borrowed, (3, 4, 5))
 
 
 class DriftBurstTest(unittest.TestCase):
@@ -1021,8 +1075,9 @@ class ExplorerLaneTest(unittest.TestCase):
     """2026-11-17 21:15-21:40Z (ci-runner's movies-runner-scheduler journal): the nightly drift explorer's rows queued 6-9
     deep on movies-measure and held the 14 measure threads, while precommit-check run 44177877990's jobs queued with the
     checks' own 18 threads full ("held by cpu", borrowed []). Each time an explorer row ended (21:27:30, 21:31:00) the
-    freed measure slot went to the next explorer row, never to a borrowed check: the borrow needs every job on the
-    measure CPUs at its whole cap to fit beside the check, and the refilled rows never let it. The explorers now ask for
+    freed measure slot went to the next explorer row, never to a borrowed check: the borrow then needed every job on the
+    measure CPUs at its whole cap to fit beside the check (measured since 2026-11-19: MeasuredBorrowTest), and the
+    refilled rows never let it. The explorers now ask for
     movies-explore, the lowest measure lane, and none of it starts while a check waits for a runner: the explorer's
     running rows yield the measure CPUs as they end."""
 
@@ -1039,22 +1094,22 @@ class ExplorerLaneTest(unittest.TestCase):
         return [recorded(1, "check", 1, 0.9, 60, EXPLORER_RUN), recorded(2, "measure", 7, 1.7, 1080, label=label),
                 recorded(3, "measure", 6, 2.4, 750, label=label), recorded(5, "check", 8, 8.4, 660, EXPLORER_RUN)]
 
-    def test_212730_before_an_explorer_row_took_the_freed_measure_slot(self):
-        # the journal: start [(4, 'measure')] lanes [(4, 'movies-measure')] borrowed []
-        d = self.tick(self.at_212730(""), 5, "movies-measure")
-        self.assertEqual((d.starts, d.labels, d.borrowed), (((4, "measure"),), ((4, "movies-measure"),), ()))
-
-    def test_212730_now_no_explorer_row_starts_while_the_check_waits(self):
-        d = self.tick(self.at_212730("movies-explore"), 5, "movies-explore")
-        self.assertEqual((d.starts, d.borrowed), ((), ()))
+    def test_212730_the_check_borrows_the_freed_measure_room_ahead_of_any_row(self):
+        # the journal: start [(4, 'measure')] lanes [(4, 'movies-measure')] borrowed [] -- the whole-cap ledger (2 x 4 +
+        # the check's + a kept measurement's) held the borrow. Read as measured, 11.9 - 5 - 2.3 (one row ramping) = 4.6
+        # holds the 3-core check, before an explorer row or an optional measurement takes the room
+        for label in ("", "movies-explore"):
+            d = self.tick(self.at_212730(label), 5, label or "movies-measure")
+            self.assertEqual((d.starts, d.borrowed), (((4, "check"),), (4,)))
 
     def test_213100_with_the_rows_yielding_the_check_borrows_the_measure_cpus(self):
         # 21:31:00 had both checks (1: 3.3 cores, 5: 7.6) and the row started at 21:27:30 (2.6 of the 6 busy measure
         # cores). Without that row, the two older rows ended and the checks' threads as full as at 21:26:30 (13 of 18),
-        # the check borrows the idle measure CPUs -- with the row there (the old order), the measure CPUs held no borrow
+        # the check borrows the idle measure CPUs -- and with the row there too, read as measured (11.9 - 6 - 2.2, the
+        # young row's rest of its cap, = 3.7)
         ours = [recorded(1, "check", 5, 3.3, 270, EXPLORER_RUN), recorded(5, "check", 8, 7.6, 870, EXPLORER_RUN)]
         refilled = ours + [recorded(4, "measure", 7, 2.6, 210)]
-        self.assertEqual(self.tick(refilled, 6, "movies-measure", check_busy=13).borrowed, ())
+        self.assertEqual(self.tick(refilled, 6, "movies-measure", check_busy=13).borrowed, (2,))
         d = self.tick(ours, 3.4, "movies-explore", check_busy=13)
         self.assertIn((2, "check"), d.starts)
         self.assertEqual((d.borrowed, dict(d.pins)[2]), ((2,), f"{rs.PIN_PREFIX}{EXPLORER_RUN}"))
@@ -1071,10 +1126,11 @@ class ExplorerLaneTest(unittest.TestCase):
 
     def test_an_idle_explorer_runner_gives_way_to_a_waiting_check(self):
         # the check lane full (two checks at 9 cores on the 18 threads) and the idle explorer runner's unshown cap all
-        # that holds a borrow back: it goes at once, not after idle_stop_seconds -- and stays while no check waits
+        # that holds a borrow back (11.9 - 6 - 4 < 3 <= 11.9 - 6): it goes at once, not after idle_stop_seconds -- and
+        # stays while no check waits
         checks = [recorded(1, "check", 8, 9, 900, EXPLORER_RUN), recorded(5, "check", 8, 9, 900, EXPLORER_RUN)]
         ours = checks + [lane_runner(3, "movies-explore")]
-        d = self.tick(ours, 2, "movies-explore", explorers=1, check_busy=18)
+        d = self.tick(ours, 6, "movies-explore", explorers=1, check_busy=18)
         self.assertEqual((d.borrowed, d.stops), ((), (3,)))
         r = rs.Readings(97, 86, {"measure": 82}, 20, CORES, (), 300, on_cpusets(18, 2, CHECK_CPUS_A2, MEASURE_CPUS_A2),
                         {"measure": 96})
@@ -1498,30 +1554,33 @@ class ReadingsTest(unittest.TestCase):
         self.assertEqual(rs.parse_cpu_list("3\n"), frozenset({3}))
         self.assertEqual(rs.parse_cpu_list(""), frozenset())
 
-    def test_each_class_reads_the_busy_cores_of_its_own_cpuset(self):
-        # four CPUs: the check slice on 0-1, measure and light on 2-3; over the window CPU 0 is idle, 1 half busy,
-        # 2 and 3 fully busy -- the measure CPUs 2 of 2, the check CPUs 0.5 of 2, the host 2.5 of 4
+    def cpusets(self):
+        """Four CPUs: the check slice on 0-1, measure and light on 2-3."""
         slices = "ci.slice/ci-movies.slice/ci-movies-{}.slice"
         for cls, text in (("check", "0-1"), ("measure", "2-3"), ("light", "2-3")):
             d = self.cgroup(slices.format(cls), 0, 0, 0)
             with open(os.path.join(d, "cpuset.cpus.effective"), "w") as f:
                 f.write(text + "\n")
         self.cgroup("ci.slice", 115 * GIB, 0, 0)
-        stat = os.path.join(self.root, "proc", "stat")
 
-        def write_stat(per_cpu):
-            self.proc(58 * 2**20, user=0, idle=0)
-            total = [sum(x) for x in zip(*per_cpu)]
-            with open(stat, "w") as f:
-                f.write(f"cpu  {total[0]} 0 0 {total[1]} 0 0 0 0 0 0\n")
-                for n, (busy, idle) in enumerate(per_cpu):
-                    f.write(f"cpu{n} {busy} 0 0 {idle} 0 0 0 0 0 0\n")
+    def write_stat(self, per_cpu):
+        """/proc/stat with each CPU's (busy, idle) jiffies."""
+        self.proc(58 * 2**20, user=0, idle=0)
+        total = [sum(x) for x in zip(*per_cpu)]
+        with open(os.path.join(self.root, "proc", "stat"), "w") as f:
+            f.write(f"cpu  {total[0]} 0 0 {total[1]} 0 0 0 0 0 0\n")
+            for n, (busy, idle) in enumerate(per_cpu):
+                f.write(f"cpu{n} {busy} 0 0 {idle} 0 0 0 0 0 0\n")
 
+    def test_each_class_reads_the_busy_cores_of_its_own_cpuset(self):
+        # over the window CPU 0 is idle, 1 half busy, 2 and 3 fully busy -- the measure CPUs 2 of 2, the check CPUs 0.5
+        # of 2, the host 2.5 of 4
+        self.cpusets()
         cpu = rs.CpuMeters(window_seconds=300)
-        write_stat([(0, 0)] * 4)
+        self.write_stat([(0, 0)] * 4)
         first = rs.read_readings(self.cfg(), cpu, NOW - 30)
         self.assertIsNone(first.class_cpu["measure"].busy_cores)  # one sample: no rate yet
-        write_stat([(0, 100), (50, 50), (100, 0), (100, 0)])
+        self.write_stat([(0, 100), (50, 50), (100, 0), (100, 0)])
         r = rs.read_readings(self.cfg(), cpu, NOW)
         self.assertEqual(r.class_cpu["measure"].cpus, frozenset({2, 3}))
         self.assertAlmostEqual(r.class_cpu["measure"].busy_cores, 2.0)
@@ -1529,6 +1588,32 @@ class ReadingsTest(unittest.TestCase):
         self.assertAlmostEqual(r.cpu_busy_cores, 2.5)
         self.assertEqual(len(cpu.sets), 2)  # measure and light share one meter
 
+    def test_an_ended_runners_cpu_leaves_the_readings_at_once(self):
+        # RELEASED ON FINISH: a check's container burned one core from NOW - 60 to its last tick at NOW - 30 and has ended
+        # since; over the 60 s window CPU 0 read fully busy. Its 30 s of CPU go: the check CPUs read 0.5 of 2, not 1.0,
+        # and the host 0.5 of 4 -- not a job's cores for cpu_window_seconds after it ended, under the next one's charge
+        self.cpusets()
+        cfg = self.cfg()
+        cpu, unreleased, usage = rs.CpuMeters(window_seconds=300), rs.CpuMeters(window_seconds=300), rs.RunnerUsage(300)
+        container = self.cgroup("ci.slice/ci-movies.slice/ci-movies-check.slice/docker-c0ffee.scope", 0, 0, 0)
+        for at, seconds in ((NOW - 60, 0), (NOW - 30, 30)):
+            with open(os.path.join(container, "cpu.stat"), "w") as f:
+                f.write(f"usage_usec {seconds * 10**6}\n")
+            usage.read(container, at)
+        self.write_stat([(0, 0)] * 4)
+        rs.read_readings(cfg, cpu, NOW - 60, usage)
+        rs.read_readings(cfg, unreleased, NOW - 60)
+        usage.keep_only(set(), NOW)  # the tick after it ended
+        self.write_stat([(60, 0), (0, 60), (0, 60), (0, 60)])
+        r = rs.read_readings(cfg, cpu, NOW, usage)
+        self.assertAlmostEqual(r.class_cpu["check"].busy_cores, 0.5)
+        self.assertAlmostEqual(r.class_cpu["measure"].busy_cores, 0.0)
+        self.assertAlmostEqual(r.cpu_busy_cores, 0.5)
+        # without the ended runner's samples (the scheduler before RELEASED ON FINISH), its whole core reads busy
+        self.assertAlmostEqual(rs.read_readings(cfg, unreleased, NOW).class_cpu["check"].busy_cores, 1.0)
+        # and once its last sample is older than the window, it is forgotten
+        usage.keep_only(set(), NOW + 300)
+        self.assertEqual(usage.ended, {})
 
 if __name__ == "__main__":
     unittest.main()
