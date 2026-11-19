@@ -717,6 +717,17 @@ def rollout_queries(expr, existing, conditional):
     return found
 
 
+def stale_conditional_metrics(rollouts, conditional):
+    """A conditional metric (published only in an exceptional state) comes and goes; one ROLLED OUT inside the
+    window -- absent, then present for the rest of it -- is a metric that was waiting for a deploy, and its entry
+    outlived it: rollout clipping skips a conditional metric, so the absent()-style alerts reading it are blamed
+    for the days before (Alert backtest #3: CoreDnsMetricsAbsent, IdentityRetainedSizeAbsent)."""
+    return ["%s: listed in conditional_metrics but rolled out at %s and present since -- refresh metric-names.json"
+            " (infra/bin/snapshot-label-values --names-only, which test_metric_names.py reads in its place) and"
+            " strike its entry in %s" % (m, iso(rollouts[m]), os.path.basename(ALLOWLIST))
+            for m in sorted(conditional) if m in rollouts]
+
+
 def metric_rollouts(prom, metrics, start, end, jobs):
     """{metric or selector: rollout time} for each one in `metrics` (rollout_queries) deployed inside the window."""
     step = 900
@@ -859,6 +870,8 @@ def run_backtest(args, prom, source):
     reads = {n: metric_names(alerts[n]["expr"]) - set(conditional) for n in selected}
     watched = {n: rollout_queries(alerts[n]["expr"], existing, conditional) for n in selected}
     rollouts = metric_rollouts(prom, set().union(*watched.values()), start, end, args.jobs)
+    problems += stale_conditional_metrics(
+        metric_rollouts(prom, set(conditional) & existing, start, end, args.jobs), conditional)
     excused = excused_windows(catalogue, step)
 
     print("backtesting %d alert(s) over %s .. %s at %ds" % (len(selected), iso(start), iso(end), step))

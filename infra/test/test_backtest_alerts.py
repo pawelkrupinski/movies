@@ -135,6 +135,18 @@ class Rollout(unittest.TestCase):
         g = grid(100)
         self.assertIsNone(bt.rollout_start(set(g[40:45]) | set(g[80:85]), g))
 
+    # Alert backtest #3 (run 44420765653): CoreDnsMetricsAbsent and IdentityRetainedSizeAbsent still failed after the
+    # selector rollouts, because their metrics were listed as conditional_metrics -- excused from rollout clipping
+    # -- while their exporters waited to be deployed, and the entries outlived the deploys (11-12, 11-07).
+    def test_a_conditional_metric_rolled_out_in_the_window_is_a_stale_entry(self):
+        problems = bt.stale_conditional_metrics({"coredns_dns_responses_total": 1762951560}, {"coredns_dns_responses_total"})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("coredns_dns_responses_total", problems[0])
+        self.assertIn("strike", problems[0])
+
+    def test_a_conditional_metric_that_comes_and_goes_is_not_stale(self):
+        self.assertEqual(bt.stale_conditional_metrics({}, {"kinowo_worker_http_circuit_open"}), [])
+
     # Alert backtest #1 (run 44404703989): CoreDnsMetricsAbsent and IdentityRetainedSizeAbsent "fired" until the
     # SELECTOR they read appeared (11-12, 11-07) and production never fired them: their metric NAMES were present
     # from the start under other labels (another job, other collections), so a rollout read by name alone missed it.
