@@ -7,11 +7,6 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	800
-method-lines	identity/src/main/scala/services/identity/AcceptanceTitleRules.scala:AcceptanceTitleRules.imdbSuggestedWhy	59
-method-lines	identity/src/main/scala/services/identity/ConstraintSolver.scala:ConstraintSolver.solveAs	71
-method-lines	identity/src/main/scala/services/identity/IncrementalResolver.scala:IncrementalResolver.update	73
-method-lines	identity/src/main/scala/services/identity/ResolverDecisionBson.scala:ResolverDecisionBson.read	51
-method-lines	identity/src/main/scala/services/identity/ResolverDecisions.scala:ResolverDecisions.of	99
 method-lines	identity/src/main/scala/services/identity/TakeChangeLines.scala:TakeChangeLines.of	56
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.corrected	73
 method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	72
