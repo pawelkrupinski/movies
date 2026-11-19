@@ -864,6 +864,17 @@ class MeasureLanesTest(unittest.TestCase):
                       {"movies-stage": 1, "movies-measure": 3})
         self.assertEqual(dict(d.labels), {1: "movies-stage"})
 
+    # Record scrape fixtures #198 (run 44423518717): the UK order-independence row, which waits for the corpus its own
+    # convergence row uploads, took a movies-measure runner at 00:10Z while that convergence row waited until 01:41Z,
+    # and idled until its 1800-s queued bound failed it. The owner: a consumer lane just below movies-measure.
+    def test_a_consumer_row_takes_a_runner_only_after_every_optional_measurement_its_producer_queues_among(self):
+        d = rs.decide(rs.Config(max_slots=1, check_lane_jobs=0), IDLE, queued(measure=2), [], NOW, ROOMY,
+                      {"movies-consumer": 1, "movies-measure": 1})
+        self.assertEqual(dict(d.labels), {1: "movies-measure"})
+        d = rs.decide(rs.Config(max_slots=1, check_lane_jobs=0), IDLE, queued(measure=2), [], NOW, ROOMY,
+                      {"movies-consumer": 1, "movies-explore": 1})
+        self.assertEqual(dict(d.labels), {1: "movies-consumer"})
+
     def test_a_measurement_never_takes_a_runner_started_for_a_landing_check(self):
         # the idle movies-measure runner waits for a measurement; the landing check gets one of its own
         lanes = {"movies-landing": 1, "movies-measure": 1}
@@ -1389,7 +1400,7 @@ class HostTest(unittest.TestCase):
         host = self.host(FakeDocker(["Runner.Listener"]))
         host.start(11, "light")
         with open(os.path.join(host.cfg.state_dir, "11.env")) as f:
-            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER},{rs.EXPLORE_MARKER},{rs.STAGE_MARKER}\n", f.read())
+            self.assertIn(f"RUNNER_LABELS=movies,{rs.LANES_MARKER},{rs.EXPLORE_MARKER},{rs.STAGE_MARKER},{rs.CONSUMER_MARKER}\n", f.read())
         light = next(i for i in host.instances(NOW) if i.slot == 11)
         self.assertEqual(light.lane, "movies")
 

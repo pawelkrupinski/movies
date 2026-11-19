@@ -114,6 +114,11 @@ jobs:
             # The capture's legs on ci-runner's measurement slots (the owner, 2026-11-06: off main's critical path, so
             # off GitHub's 20); ubuntu-22.04 (mongod's kernel, MongoServerVersionParitySpec) while ci-runner is off.
             runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
+            # The UK's order-independence row CONSUMES the corpus its convergence row uploads: it asks for ci-runner's
+            # consumer lane, just below movies-measure, so a free measure start goes to that convergence row first (the
+            # owner, 2026-11-19: Record scrape fixtures #198's order row took a runner at 00:10Z, its convergence row
+            # only at 01:41Z, and it idled until its wait failed). movies-measure where the scheduler serves no such lane.
+            consumer-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (steps.lane.outputs.label || 'movies-measure') || 'ubuntu-22.04' }}
             # Only main's recording hands its run to the hermetic verify.
             on-main: ${{ github.ref == 'refs/heads/main' }}
             # A key OMDb or TMDB refuses is an ALERT (scripts/ci/alert-step.sh): the legs are skipped, the run green,
@@ -124,6 +129,9 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: scripts/ci
+            - name: Which measure lane does a consumer row queue in?
+              id: lane
+              run: scripts/ci/measure-lane.sh consumer >> "$GITHUB_OUTPUT"
             # One request each to OMDb and TMDB: a refused key ended 5 of the week's 14 failed recordings 22-125 min in
             # (runs 335, 408, 528, 563, 2507), after every leg had started. OMDb's spent daily quota only warns: OMDb is
             # the recording's best-effort origin (recording_health.py), and failing on it made the nightly #2426 red.
@@ -213,6 +221,7 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             heap: ${{ matrix.heap }}
             runner: ${{ needs.preflight.outputs.runner }}
+            consumer-runner: ${{ needs.preflight.outputs.consumer-runner }}
         # TMDB_API_KEY / OMDB_API_KEY for the live fills, the GITHUB_TOKEN the setup reads, and
         # MONGO_CI_SSH_KEY / MONGO_CI_SSH_HOST_KEY — which the leg maps into its "Tunnel to prod
         # Mongo" step's env and no other.

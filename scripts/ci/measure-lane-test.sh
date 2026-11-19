@@ -13,6 +13,7 @@ lane() { RUNNER_LABELS=$1 bash "$REPO_ROOT/scripts/ci/measure-lane.sh" "$2" 2> /
 marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.LANES_MARKER)")
 explore_marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.EXPLORE_MARKER)")
 stage_marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.STAGE_MARKER)")
+consumer_marker=$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(r.CONSUMER_MARKER)")
 
 check "a red fix's rows ask for the red-fix lane where the scheduler serves it" "label=movies-red-fix" "$(lane "movies,$marker" red-fix)"
 check "a landing check's rows ask for the landing lane" "label=movies-landing" "$(lane "movies,$marker" landing)"
@@ -31,9 +32,13 @@ check "...or none" "label=movies-measure" "$(lane movies explore)"
 check "deploy staging asks for the stage lane where the scheduler serves it" "label=movies-stage" \
   "$(lane "movies,$marker,$stage_marker" stage)"
 check "...and movies-measure where it serves the older lanes only" "label=movies-measure" "$(lane "movies,$marker,$explore_marker" stage)"
+# Record scrape fixtures #198: an order row took a runner before the convergence row whose upload it waits for
+check "a consumer row asks for the consumer lane where the scheduler serves it" "label=movies-consumer" \
+  "$(lane "movies,$marker,$consumer_marker" consumer)"
+check "...and movies-measure where it serves the older lanes only" "label=movies-measure" "$(lane "movies,$marker,$stage_marker" consumer)"
 check "an unknown lane is a usage error" "2" "$(lane "movies,$marker" urgent > /dev/null; echo $?)"
 # the labels are the scheduler's own: a lane it starts runners for is a lane this can name
-check "every lane this names is one the scheduler starts runners for" "movies-red-fix movies-landing movies-stage movies-measure movies-explore" \
+check "every lane this names is one the scheduler starts runners for" "movies-red-fix movies-landing movies-stage movies-measure movies-consumer movies-explore" \
   "$(python3 -c "import sys; sys.path.insert(0, '$REPO_ROOT/scripts/ci'); import runner_scheduler as r; print(' '.join(r.MEASURE_LANES))")"
 
 spec_summary

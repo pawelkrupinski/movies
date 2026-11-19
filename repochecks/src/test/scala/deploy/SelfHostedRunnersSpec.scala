@@ -65,7 +65,15 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   /** Every job's label in `file`, and every reusable call's jobs under `<calling job> / <job>`, read with the inputs the
    *  call passes: a called workflow runs where its CALLER's ref and inputs put it, not where a dispatch of it would. */
   private def labels(file: String, at: RunnerLabel.Context): Map[String, String] =
-    runsOn(file).map((job, runner) => job -> RunnerLabel(runner, at)) ++
+    runsOn(file).flatMap { (job, runner) =>
+      // a matrix job whose runs-on reads its phase (country-convergence-leg.yml: a recording's consumer rows below its
+      // convergence row, Record scrape fixtures #198) is one label per phase: its producer's and a consumer's
+      // -- split only where the phases' labels differ, so a job they agree on keeps its one key
+      val perPhase = Seq("convergence", "order-independence")
+        .map(phase => phase -> RunnerLabel(runner, at.copy(matrix = Map("phase" -> phase))))
+      if (perPhase.map(_._2).distinct.size == 1) Seq(job -> perPhase.head._2)
+      else perPhase.map((phase, label) => s"$job [$phase]" -> label)
+    } ++
       calls(file).flatMap { (job, callee, passed) =>
         val read   = runnerInputs(callee)
         val inputs = passed.collect { case (key, value) if read(key) => key -> RunnerLabel(value, at) }
@@ -185,6 +193,20 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
         .collectFirst { case l if l.startsWith("runner:") => l.drop("runner:".length).trim }.get
       withClue(s"$f: ")(RunnerLabel(runner, onMain) shouldBe "movies-measure")
     }
+  }
+
+  /** Record scrape fixtures #198 (run 44423518717): the UK order-independence row, which waits for the corpus its own
+   *  convergence row uploads, took a movies-measure runner at 00:10Z while that convergence row waited until 01:41Z, and
+   *  idled until its wait failed. The owner (2026-11-19): a consumer lane just below movies-measure. */
+  "a recording's consumer rows" should "queue in the consumer lane, below the convergence row whose upload they wait for" in {
+    val record = labels("record-scrape-fixtures.yml", ctx(RunnerLabel.Main).copy(steps = Map("lane.label" -> "movies-consumer")))
+    val phases = record.filter((job, _) => job.endsWith("]"))
+    phases should not be empty
+    all(phases.filter((job, _) => job.endsWith("[convergence]")).values) shouldBe "movies-measure"
+    all(phases.filter((job, _) => job.endsWith("[order-independence]")).values) shouldBe "movies-consumer"
+    // where ci-runner's scheduler serves no consumer lane, measure-lane.sh writes movies-measure: the row still runs
+    all(labels("record-scrape-fixtures.yml", ctx(RunnerLabel.Main)).filter((job, _) => job.endsWith("]")).values) shouldBe
+      "movies-measure"
   }
 
   /** THE DRIFT EXPLORER CALLS Identity takes on main (2026-11-15), and a called workflow reads its caller's ref: picked by

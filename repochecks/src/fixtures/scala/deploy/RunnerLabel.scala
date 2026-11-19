@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `github.run_id`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `startsWith(a, b)` (GitHub's: ignoring case), `format(fmt, args...)` (`{N}` placeholders), `fromJSON(s)` of a string or an array of strings (a job asking for several labels, read back as them joined by `,`), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `github.run_id`, `github.workflow` (the caller's name, in a reusable workflow), `github.event.workflow_run.<field>` (the run a `workflow_run` reports; unset outside one), `inputs.<name>`, `matrix.<name>` (a matrix job's own entry), `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `steps.<id>.outputs.<name>` (a plan job's own step, in its `outputs:`), `startsWith(a, b)` (GitHub's: ignoring case), `format(fmt, args...)` (`{N}` placeholders), `fromJSON(s)` of a string or an array of strings (a job asking for several labels, read back as them joined by `,`), `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -26,7 +26,9 @@ object RunnerLabel {
       workflow: String = "",
       workflowRun: Map[String, String] = Map.empty,
       steps: Map[String, String] = Map.empty,
-      runId: String = "1"
+      runId: String = "1",
+      // a matrix job's own entry (`matrix.<name>`): a job whose runs-on reads one is evaluated once per entry
+      matrix: Map[String, String] = Map.empty
   )
 
   private enum Value {
@@ -131,6 +133,7 @@ object RunnerLabel {
       case "github.workflow"                  => Str(ctx.workflow)
       case s"github.event.workflow_run.$field" => ctx.workflowRun.get(field).fold(Null)(Str(_))
       case s"inputs.$name"                    => ctx.inputs.get(name).fold(Null)(Str(_))
+      case s"matrix.$name"                    => ctx.matrix.get(name).fold(Null)(Str(_))
       case s"vars.$name"                      => Str(ctx.vars.getOrElse(name, ""))
       case s"needs.$job.outputs.$name"        => ctx.outputs.get(s"$job.$name").fold(Null)(Str(_))
       case s"steps.$step.outputs.$name"       => ctx.steps.get(s"$step.$name").fold(Null)(Str(_))

@@ -89,7 +89,7 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     on movies-measure -- ran 1-3 rows at a time for 80+ min while 14-27 optional measurement jobs shared the label;
     GitHub hands a runner to any job its labels match). A measurement runner registers ONE lane's label
     (MEASURE_LANES): movies-red-fix, movies-landing, movies-stage (deploy staging, the owner 2026-11-19), movies-measure,
-    movies-explore (below). Each free measure start
+    movies-consumer (a row waiting on another row's upload, the owner 2026-11-19), movies-explore (below). Each free measure start
     goes to the highest lane with a job no runner of that lane waits for, so a landing check's rows take the next measure slot ahead of every
     optional measurement, a gate-red fix's ahead of those. In everything else a lane is a measurement: size, slice,
     admission, caps. Light runners also register LANES_MARKER, which says to a plan job (scripts/ci/measure-lane.sh)
@@ -171,7 +171,12 @@ LABELS = {"check": "movies-check", "measure": "movies-measure", "light": "movies
 # landing path and before every optional measurement -- Stage NixOS closures #102's nix-stage job waited 2.5 h on
 # movies-measure behind 23 of them ("STARVED measure: 23 queued, the oldest 300 min, held by cpu").
 STAGE_LANE = "movies-stage"
-MEASURE_LANES = ("movies-red-fix", "movies-landing", STAGE_LANE, LABELS["measure"], "movies-explore")
+# THE CONSUMER LANE (the owner, 2026-11-19): a row that waits for an artifact another row of its run uploads -- Record's
+# order-independence rows, which replay the corpus their convergence row records -- asks for movies-consumer, just below
+# movies-measure, so a free measure start goes to the producer first. Record scrape fixtures #198's UK order row took a
+# movies-measure runner at 00:10Z while its convergence row waited until 01:41Z, and idled until its bound failed it.
+CONSUMER_LANE = "movies-consumer"
+MEASURE_LANES = ("movies-red-fix", "movies-landing", STAGE_LANE, LABELS["measure"], CONSUMER_LANE, "movies-explore")
 EXPLORE_LANE = MEASURE_LANES[-1]
 # The extra label a light runner of a scheduler serving the lanes registers: a workflow's plan job, on a light runner,
 # asks for a lane only where its own RUNNER_LABELS name this (a lane no scheduler serves would wait forever).
@@ -182,6 +187,8 @@ EXPLORE_MARKER = "movies-lanes-explore"
 # ...and the one that says it serves the stage lane (measure-lane.sh `stage`): an older scheduler's light runner lacks it,
 # and deploy staging then asks for movies-measure, which that scheduler serves
 STAGE_MARKER = "movies-lanes-stage"
+# ...and the consumer lane's (measure-lane.sh `consumer`), likewise
+CONSUMER_MARKER = "movies-lanes-consumer"
 # THE CHECK LANES (2026-11-17: red fix 20261117-110122-...-2ed6cd, Fixes-Red 2564, was still checking 41 min after it
 # was queued: agentctl puts a red fix first in its own queue, but its precommit-check jobs then waited ~9.5 min a job
 # for a `movies-check` runner like every other landing's). The same as the measure lanes, for the check class: a check
@@ -195,7 +202,7 @@ PIN_PREFIX = "movies-run-"
 # The measure lanes on a landing's path (a gate-red fix's rows, a landing check's): served ahead of a borrowed check.
 # The optional ones are not (the owner, 2026-11-17, "A3"): a landing check borrows ahead of them, and of the explorers'.
 LANDING_MEASURE_LANES = MEASURE_LANES[:2]
-OPTIONAL_MEASURE_LANES = (STAGE_LANE, LABELS["measure"])
+OPTIONAL_MEASURE_LANES = (STAGE_LANE, LABELS["measure"], CONSUMER_LANE)
 # THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): the job whose run's later check jobs are known before they queue --
 # precommit-check's plan, which the identity shards and the old refs `need` (decide's warm_check)
 WARM_WORKFLOW = "Pre-commit check"
@@ -1110,7 +1117,7 @@ class Host:
         measure lanes (LANES_MARKER)."""
         labels = (label or LABELS[cls]) + (f",{pin}" if pin else "")
         if cls == "light":
-            labels += f",{LANES_MARKER},{EXPLORE_MARKER},{STAGE_MARKER}"
+            labels += f",{LANES_MARKER},{EXPLORE_MARKER},{STAGE_MARKER},{CONSUMER_MARKER}"
         os.makedirs(self.cfg.state_dir, mode=0o700, exist_ok=True)
         with open(os.path.join(self.cfg.state_dir, f"{slot}.env"), "w") as f:
             f.write(f"RUNNER_CLASS={cls}\nRUNNER_LABELS={labels}\n"

@@ -241,6 +241,13 @@ on:
                 required: false
                 type: string
                 default: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+            consumer-runner:
+                description: >-
+                    The label a RECORDING's rows other than convergence run on: they wait for the corpus the convergence row
+                    uploads, so they ask for a lane below it (record-scrape-fixtures.yml's preflight). Empty: `runner`.
+                required: false
+                type: string
+                default: ''
             # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`) — the corpus capture,
             # the pre-suite fill and the suite; not a bisect the leg requests, which replays with the
             # bisect's own settings: how a hand-dispatched run tries a JVM setting on the runner it would ship to.
@@ -468,7 +475,8 @@ jobs:
             max-parallel: ${{ inputs.max-parallel }}
             matrix:
                 phase: ${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa-pass0","takes-drift-aa-pass1","takes-aa"' || '')) }}
-        runs-on: ${{ inputs.runner }}
+        # A recording's consumer rows below the convergence row whose upload they wait for (`consumer-runner`)
+        runs-on: ${{ (inputs.mode == 'record' && matrix.phase != 'convergence' && inputs.consumer-runner) || inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
         # because the corpus was mis-sized (Poland's films-per-venue ratio applied

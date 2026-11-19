@@ -899,7 +899,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // ...and a hand-dispatched runner label reaches every leg, x64 unless asked.
     caller should include ("runner:                        ${{ needs.preflight.outputs.runner }}")
     caller should include ("runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}")
-    leg should include ("runs-on: ${{ inputs.runner }}")
+    // (but a recording's consumer rows, which take the lane below their convergence row when the caller names one:
+    // Record scrape fixtures #198, SelfHostedRunnersSpec "a recording's consumer rows")
+    leg should include ("runs-on: ${{ (inputs.mode == 'record' && matrix.phase != 'convergence' && inputs.consumer-runner) || inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")
   }
