@@ -42,7 +42,7 @@ object ProseWords {
 
   private def of(texts: Iterable[String], capitalisedOnly: Boolean, sentenceFirst: Boolean): ProseWords = {
     val stems = new Stems
-    texts.foreach(text => read(text, capitalisedOnly, sentenceFirst, stems))
+    texts.foreach(text => collectStems(text, capitalisedOnly, sentenceFirst, stems))
     held(stems.sortedDistinct)
   }
 
@@ -57,8 +57,8 @@ object ProseWords {
     def sortedDistinct: Array[Int] = SortedHashes.sortedDistinct(found, count)
   }
 
-  /** Each word of `text` read ([[reads]]) to `stems`, as its stem's hash. */
-  private def read(text: String, capitalisedOnly: Boolean, sentenceFirst: Boolean, stems: Stems): Unit = {
+  /** The stem of each word of `text` it counts ([[isCounted]]), added to `stems` as its hash. */
+  private def collectStems(text: String, capitalisedOnly: Boolean, sentenceFirst: Boolean, stems: Stems): Unit = {
     var first = true   // the next word opens a sentence
     var i     = 0
     val n     = text.length
@@ -67,7 +67,7 @@ object ProseWords {
       if (Character.isLetter(c)) {
         var j = i
         while (j < n && Character.isLetter(text.charAt(j))) j += 1
-        if (reads(j - i, c, first, capitalisedOnly, sentenceFirst)) stems.add(stemHash(text, i, j))
+        if (isCounted(j - i, c, first, capitalisedOnly, sentenceFirst)) stems.add(stemHash(text, i, j))
         first = false
         i = j
       } else {
@@ -77,8 +77,8 @@ object ProseWords {
     }
   }
 
-  /** Is a word of `length` letters opening with `initial` read — opening a sentence when `first`? */
-  private def reads(length: Int, initial: Char, first: Boolean, capitalisedOnly: Boolean, sentenceFirst: Boolean): Boolean =
+  /** Is a word of `length` letters opening with `initial` counted — one opening a sentence when `first`? */
+  private def isCounted(length: Int, initial: Char, first: Boolean, capitalisedOnly: Boolean, sentenceFirst: Boolean): Boolean =
     length >= Shortest && (!capitalisedOnly || Character.isUpperCase(initial)) && (sentenceFirst || !first)
 
   /** The folded stem's hash of the word `text(from until to)`, as its String's would be, built char by char: no word is

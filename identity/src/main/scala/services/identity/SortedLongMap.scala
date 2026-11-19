@@ -38,7 +38,7 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
     if (size == 0 && overlay.isEmpty) SortedLongMap.of(added) else mergedOver(added, removed)
 
   private def mergedOver(added: scala.collection.Map[Long, V], removed: Long => Boolean): SortedLongMap[V] = {
-    val change = new SortedLongMap.Change(overlay, size)
+    val change = new SortedLongMap.PendingMerge(overlay, size)
     added.foreachEntry { (k, v) =>
       val held = lookup(k)
       if (!((held eq v) || (held != null && held == v))) change.put(k, v, isNew = held == null)
@@ -48,7 +48,7 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
   }
 
   /** Every key this map holds that is `gone`, removed in `change`. */
-  private def removeHeld(change: SortedLongMap.Change, gone: Long => Boolean): Unit = {
+  private def removeHeld(change: SortedLongMap.PendingMerge, gone: Long => Boolean): Unit = {
     var i = 0
     while (i < keys.length) { val k = keys(i); if (!overlaid(k) && gone(k)) change.remove(k, inBase = true); i += 1 }   // no boxing of 200k keys
     overlay.foreach { case (k, v) => if (v != null && gone(k)) change.remove(k, inBase(k) >= 0) }
@@ -65,7 +65,7 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
 private[identity] object SortedLongMap {
   /** A merge's changes as it makes them: the overlay it builds (a removed key of the arrays as null) and the entries the
    *  map will hold. */
-  private final class Change(var overlay: LongMap[AnyRef], var size: Int) {
+  private final class PendingMerge(var overlay: LongMap[AnyRef], var size: Int) {
     def put(key: Long, value: AnyRef, isNew: Boolean): Unit = { overlay = overlay.updated(key, value); if (isNew) size += 1 }
     def remove(key: Long, inBase: Boolean): Unit = {
       overlay = if (inBase) overlay.updated(key, null) else overlay - key

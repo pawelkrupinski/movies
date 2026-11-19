@@ -65,12 +65,12 @@ object ListingIntake {
     else {
       val landed = ScrapeGuardState(sourceKey = offer.sourceKey.orElse(guard.sourceKey))
       if (known.nonEmpty && ScrapeHealth.isRewire(guard.sourceKey, offer.sourceKey)) Verdict(offer.films, landed, Outcome.Replaced)
-      else guarded(cinema, known, offer, guard, landed, now, maxRejections, normalizer)
+      else judgedByGuards(cinema, known, offer, guard, landed, now, maxRejections, normalizer)
     }
   }
 
   /** A scrape of the venue's own source, as the depth guard and then the breadth guard judge it. */
-  private def guarded(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, landed: ScrapeGuardState,
+  private def judgedByGuards(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, landed: ScrapeGuardState,
                       now: LocalDateTime, maxRejections: Int, normalizer: TitleNormalizer): Verdict =
     ScrapeHealth.depth(upcomingShowtimes(known, now), upcomingShowtimes(offer.films, now), guard.depthRejections, maxRejections) match {
       case ScrapeHealth.Depth.Reject(consecutive) =>
