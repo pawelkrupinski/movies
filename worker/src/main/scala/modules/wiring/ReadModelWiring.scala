@@ -31,7 +31,7 @@ trait ReadModelWiring { self: WorkerWiring =>
     configuration.shareCardFirstHold(ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
   // The whole-corpus passes over the projector's read model — its boot heal, the prune sweep and the
   // derivation pass — under its lock. The worker's boot schedules them once the projector watches.
-  lazy val readModelSweeper: ReadModelSweeper = new ReadModelSweeper(readModelProjector.projection,
+  lazy val readModelSweeper: ReadModelSweeper = ReadModelSweeper(readModelProjector.projection,
     pruneInterval  = configuration.readModelPruneInterval(ReadModelSweeper.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelSweeper.DefaultPruneBootDelay),
     awaitStreamApplied = StreamApplyWait.await(_, sleep),

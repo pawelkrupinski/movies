@@ -36,23 +36,21 @@ import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
  * `projection` by the composition root (`ReadModelWiring`), which also schedules its paced passes
  * ([[schedule]]); the projector runs its boot heal ([[healMissingCards]]) between its boot reads.
  */
-class ReadModelSweeper(
+class ReadModelSweeper private[readmodel] (
   projection:      ReadModelSweeper.Projection,
   // How often the id-only orphan prune runs, and how long after boot the first one waits
   // (`KINOWO_READMODEL_PRUNE_SECONDS` / `…_BOOT_DELAY_SECONDS`, resolved by the worker's root).
-  pruneInterval:   ReadModelPruneInterval  = ReadModelSweeper.DefaultPruneInterval,
-  pruneBootDelay:  ReadModelPruneBootDelay = ReadModelSweeper.DefaultPruneBootDelay,
-  // Blocks until the change stream has applied what it had in flight when a sweep let go of the
-  // lock — what tells a heal the stream would have made anyway from a real miss (see [[SweepVerdict]]).
-  // The root passes the wait on its own `sleep`; the default serves the specs that build a sweeper bare.
-  awaitStreamApplied: ChangeStreamLiveness => Unit = StreamApplyWait.Blocking,
+  pruneInterval:   ReadModelPruneInterval,
+  pruneBootDelay:  ReadModelPruneBootDelay,
   // The derivation pass the first complete sweep arms, and `schedule` paces; `None` owes no pass.
-  derivationPass: Option[ReadModelDerivationPass] = None
-) extends Logging {
+  derivationPass:  Option[ReadModelDerivationPass],
   // The boot heal, run over the same projection before the first prune.
-  private val bootHeal        = new ReadModelBootHeal(projection)
+  bootHeal:        ReadModelBootHeal,
   // What the stream did while a prune sweep held the lock, and so which of its heals and rewrites were misses.
-  private val verdict         = new SweepVerdict(projection, () => awaitStreamApplied(projection.movieRepository.changeStreamLiveness), logger)
+  verdict:         SweepVerdict,
+  // One pass over the corpus: the scan, heals, prune, content check and catch-up ([[PruneSweep]]).
+  passes:          PruneSweep
+) extends Logging {
 
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
   // drops must clear within a tick). The expensive full re-projection is no longer
@@ -63,8 +61,6 @@ class ReadModelSweeper(
   // second scan onto the cache hydrate + first scrape on a cold JVM (the boot CPU drain).
   private[readmodel] val PruneBootDelaySeconds = pruneBootDelay.value.toSeconds
 
-  // One pass over the corpus: the scan, heals, prune, content check and catch-up ([[PruneSweep]]).
-  private val passes = new PruneSweep(projection, derivationPass, PruneSeconds, logger)
   /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices,
    *  each completed tick reported to `ticks` (`ScheduledTickStale`). The worker's root calls it once
    *  the projector's stream watch is up. */
@@ -128,6 +124,25 @@ class ReadModelSweeper(
 }
 
 object ReadModelSweeper {
+  /** A sweeper over `projection` and the parts of its passes — the boot heal, the verdict on a sweep's heals, the
+   *  corpus pass ([[PruneSweep.apply]]) — as the worker's composition root and the specs build it. Every
+   *  part logs as the sweeper: a sweep's lines read as the sweeper's, which they are. */
+  def apply(
+    projection:     Projection,
+    pruneInterval:  ReadModelPruneInterval  = DefaultPruneInterval,
+    pruneBootDelay: ReadModelPruneBootDelay = DefaultPruneBootDelay,
+    // Blocks until the change stream has applied what it had in flight when a sweep let go of the
+    // lock — what tells a heal the stream would have made anyway from a real miss (see [[SweepVerdict]]).
+    // The root passes the wait on its own `sleep`; the default serves the specs that build a sweeper bare.
+    awaitStreamApplied: ChangeStreamLiveness => Unit = StreamApplyWait.Blocking,
+    derivationPass: Option[ReadModelDerivationPass] = None
+  ): ReadModelSweeper = {
+    val logger  = play.api.Logger(classOf[ReadModelSweeper])
+    val verdict = new SweepVerdict(projection, () => awaitStreamApplied(projection.movieRepository.changeStreamLiveness), logger)
+    val passes  = PruneSweep(projection, derivationPass, pruneInterval.value.toSeconds, logger)
+    new ReadModelSweeper(projection, pruneInterval, pruneBootDelay, derivationPass, new ReadModelBootHeal(projection), verdict, passes)
+  }
+
   /** What a sweep asks of the projector it sweeps: its lock, its per-row projection, and the memo
    *  of what it last wrote — which a sweep reads and corrects, since the read model, not the memo,
    *  is the truth. Every method but the stores, `exclusively` and `partition` expects the lock held. */

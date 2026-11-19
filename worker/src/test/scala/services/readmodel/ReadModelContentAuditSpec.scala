@@ -78,7 +78,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Bar", Some(2024), record(6.0, Seq(at("2026-06-14T20:00"))))
     val checker = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
     val checkerBoot = new ReadModelBoot(checker, ReadModelProjectorFixtures.scheduler())
-    val checkerSweeper = new ReadModelSweeper(checker.projection)
+    val checkerSweeper = ReadModelSweeper(checker.projection)
     checkerBoot.start(checkerSweeper)
 
     val card = cardOf(repository)
@@ -112,7 +112,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     val writer     = new DroppingWriter(rm, throwing)
     val projector  = ReadModelProjector(repository, writer, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
-    val sweeper = new ReadModelSweeper(projector.projection)
+    val sweeper = ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     repository.upsert("Foo", Some(2024), record(9.9, Seq(at("2026-07-20T18:00"))))

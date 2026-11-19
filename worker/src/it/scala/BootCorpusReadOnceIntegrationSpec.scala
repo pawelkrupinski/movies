@@ -89,7 +89,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val study      = new BootCorpusStudy(titleNormalizer)
     val projector  = ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = _root_.tools.SpecClock.Pinned)
     val projectorBoot = new services.readmodel.ReadModelBoot(projector, services.readmodel.ReadModelProjectorFixtures.scheduler(), bootStudy = Some(study))
-    val sweeper    = new ReadModelSweeper(projector.projection)
+    val sweeper    = ReadModelSweeper(projector.projection)
     val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned,
       mirror = new services.movies.CorpusMirror(bootReaders = readers, threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking))
@@ -117,7 +117,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     // The last process projected the corpus: the boot's check finds nothing to heal, so every
     // `movies` document a boot reads is one of its corpus scans.
     val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
-    new ReadModelSweeper(ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
+    ReadModelSweeper(ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
     repository.close()
 
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it

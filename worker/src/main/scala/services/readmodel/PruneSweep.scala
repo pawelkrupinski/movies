@@ -18,14 +18,13 @@ private[readmodel] final class PruneSweep(
   projection:     ReadModelSweeper.Projection,
   derivationPass: Option[ReadModelDerivationPass],
   pruneSeconds:   Long,
+  // The destructive half of a complete sweep: the orphans and unlisted venues it deletes.
+  orphanPrune:    OrphanPrune,
+  // The re-projection of what the `movies` cursor did not deliver, after each prune sweep.
+  catchUp:        SweepCatchUp,
   override protected val logger: play.api.Logger
 ) extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.{ProjectTrigger, ReconcileKind}
-
-  // The destructive half of a complete sweep: the orphans and unlisted venues it deletes.
-  private val orphanPrune = new OrphanPrune(projection, logger)
-  // The re-projection of what the `movies` cursor did not deliver, after each prune sweep.
-  private val catchUp = new SweepCatchUp(projection, logger)
 
   // Numbered by the clock, not from zero: a counter each process starts afresh checks
   // slice 0 again after every deploy, and on a day of hourly deploys the rest of the corpus
@@ -204,4 +203,11 @@ private[readmodel] final class PruneSweep(
       else
         reprojectSlice(rowIds, slice, "derivation pass", projection.movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Derivation))
   }
+}
+
+private[readmodel] object PruneSweep {
+  /** A pass over `projection` with its orphan prune and catch-up, every part logging under the sweeper's `logger`. */
+  def apply(projection: ReadModelSweeper.Projection, derivationPass: Option[ReadModelDerivationPass], pruneSeconds: Long,
+            logger: play.api.Logger): PruneSweep =
+    new PruneSweep(projection, derivationPass, pruneSeconds, new OrphanPrune(projection, logger), new SweepCatchUp(projection, logger), logger)
 }

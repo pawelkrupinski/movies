@@ -53,7 +53,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val projector = ReadModelProjector(repository, rm, rm, metrics, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history)
-    val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))
+    val sweeper   = ReadModelSweeper(projector.projection, derivationPass = Some(pass))
     projectorBoot.start(sweeper)   // seeds its memo from the store, as a restart does
     (projectorBoot, sweeper, pass)
   }
@@ -332,7 +332,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val projector = ReadModelProjector(repository, rm, rm, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned, shareCardGate = new ShareCardGate(ledger, settings.ShareCardFirstHold(ShareCardGate.DefaultFirstCardHold)))
     val projectorBoot = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
     val pass      = new ReadModelDerivationPass(projector.projection, derivationMarker = marker, derivationHistory = history(DerivationScope.Cards))
-    val sweeper   = new ReadModelSweeper(projector.projection, derivationPass = Some(pass))
+    val sweeper   = ReadModelSweeper(projector.projection, derivationPass = Some(pass))
     projectorBoot.start(sweeper)
     sweeper.pruneOrphans()
     (1 to 48).foreach(_ => pass.advance())

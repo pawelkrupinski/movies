@@ -23,7 +23,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
   val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
   val projector  = ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
   val boot       = new ReadModelBoot(projector, ReadModelProjectorFixtures.scheduler())
-  val sweeper    = new ReadModelSweeper(projector.projection)
+  val sweeper    = ReadModelSweeper(projector.projection)
 
   private def close(): Unit = { readModel.close(); repository.close(); slots.close(); screenings.close() }
 }

@@ -106,7 +106,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
     val readModel  = new services.readmodel.MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val projector  = services.readmodel.ReadModelProjector(repository, readModel, readModel, stopwatch = _root_.tools.SpecStopwatch.Frozen, clock = tools.SpecClock.Pinned)
-    val sweeper    = new services.readmodel.ReadModelSweeper(projector.projection)
+    val sweeper    = services.readmodel.ReadModelSweeper(projector.projection)
     try {
       repository.upsert(title, year, recordShowing(when))
       counting.reset(); countSlots.reset()
