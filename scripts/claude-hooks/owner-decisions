@@ -6,40 +6,43 @@ showed only in his status line; the sessions he talks to never surfaced it, so d
 The orchestrator's `agentctl inbox wait --forever` Monitor was lost after every compaction and other sessions never
 ran one. Run as Claude Code hooks from .claude/settings.json:
 
-  prompt         UserPromptSubmit: reads the unread owner alerts (agentctl's alert index directly, ~1 ms; without
-                 one, `agentctl inbox --audience owner --unread --json`) and adds, as context, each
-                 unread owner alert that is a DECISION (its verdict says WAITING ON YOU / BLOCKED ON OWNER or carries
-                 an `agentctl decide` command) -- the question, why, and the exact `! ~/bin/agentctl decide ...` line --
-                 telling the model to put each to the user verbatim at the top of its reply. Other owner alerts
-                 (invariants, budgets) stay the orchestrator's notifier's. Dedupe: an item is shown once per session,
-                 again only when its verdict changes, after REMIND_SECONDS (30 min), or after a compaction; an acked
-                 or closed alert is no longer unread and drops out by itself.
+  prompt         UserPromptSubmit: reads agentctl's pending owner decisions from its snapshot's STRUCTURED `asks`
+                 (state.json, written by every tick: ~/bin lib/agentctl/ask.py owner_asks -- each told ask of an
+                 OWNER_ONLY category, with its question and the exact `! ~/bin/agentctl decide ...` line) and adds them
+                 as context, telling the model to put each to the user verbatim at the top of its reply. Never read out
+                 of inbox text (2026-11-19: an open agentctl issue QUOTING a red's "WAITING ON YOU: ..." was put to the
+                 owner as a pending decision though no red waited on him). A snapshot older than STALE_SECONDS says
+                 nothing. Dedupe: a block is shown once per session, again only when its question changes, after
+                 REMIND_SECONDS (30 min), or after a compaction; an answered or lapsed ask leaves the snapshot by itself.
   session-start  SessionStart: after a compaction (or /clear) says to start the owner inbox notifier -- a one-shot
                  `agentctl inbox wait` under Bash run_in_background, never a Monitor (a Monitor expires after at most
                  30 minutes, so it was re-armed every half hour, 2026-11-18) -- and forgets the
                  session's shown items (the summary may have lost them); on startup/resume only in the root checkout
                  (the orchestrator's). Silent elsewhere.
 
-Never blocks a prompt: a missing, slow or failing agentctl, or garbage anywhere, prints nothing and exits 0.
-Env (tests): AGENTCTL_INBOX_DIR (agentctl's own), OWNER_DECISIONS_AGENTCTL, OWNER_DECISIONS_STATE_DIR, OWNER_DECISIONS_REMIND_SECONDS.
+Never blocks a prompt, and BOUNDED: stdin is read for at most STDIN_SECONDS (a terminal is never read: run by hand
+from a shell the hook used to wait on the tty for ever) and the whole run is cut at DEADLINE_SECONDS. A missing or
+stale snapshot, or garbage anywhere, prints nothing and exits 0.
+Env (tests): AGENTCTL_STATE_FILE / AGENTCTL_STATE_ROOT (agentctl's own), OWNER_DECISIONS_STATE_DIR,
+OWNER_DECISIONS_REMIND_SECONDS.
 """
 import hashlib
 import json
 import os
 import re
+import select
+import signal
 import subprocess
 import sys
 import time
 
-AGENTCTL = os.environ.get("OWNER_DECISIONS_AGENTCTL", os.path.expanduser("~/bin/agentctl"))
 STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
 REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
 STATE_TTL_SECONDS = 7 * 24 * 3600
+STALE_SECONDS = 3600     # a snapshot no tick (or mirror) refreshed for this long is not believed
+STDIN_SECONDS = 2
+DEADLINE_SECONDS = 4     # under the 5 s hook timeout in .claude/settings.json
 NOTIFIER = "~/bin/agentctl inbox wait --since-ack --audience owner --timeout 43200"
-DECISION = re.compile(r"WAITING ON YOU|BLOCKED ON OWNER|agentctl decide ")
-QUESTION = re.compile(r"WAITING ON YOU:\s*(.*?)(?:\s+Answer:|\s+Why:|$)", re.S)
-WHY = re.compile(r"\bWhy:\s*(.*?)(?:\s+Look:|\s+Auto-clears|$)", re.S)
-COMMAND = re.compile(r"`(!\s*~/bin/agentctl decide [^`]*)`")
 
 
 def emit(event, text):
@@ -74,68 +77,46 @@ def save_state(session, state):
             pass
 
 
-def owner_alerts_from_index():
-    """The unread owner alerts read straight from agentctl's alert index (item -> live entry, `<inbox>.alerts/
-    index.json`, beside `acked/`) in ~1 ms: the set `inbox --audience owner --unread` lists. None when there is no
-    index to read; then the CLI (~0.3-0.5 s) answers."""
-    inbox = os.environ.get("AGENTCTL_INBOX_DIR") or os.path.expanduser("~/.cache/agentctl/inbox")
+def snapshot_path():
+    if os.environ.get("AGENTCTL_STATE_FILE"):
+        return os.environ["AGENTCTL_STATE_FILE"]
+    return os.path.join(os.environ.get("AGENTCTL_STATE_ROOT") or os.path.expanduser("~/.cache/agentctl"), "state.json")
+
+
+def pending_decisions(now):
+    """The told owner asks of agentctl's snapshot (state.json `asks`), [] when it has none, is stale or unreadable."""
     try:
-        with open(inbox + ".alerts/index.json") as f:
-            items = json.load(f)["items"]
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
-    entries = []
-    for entry_id in items.values():
-        if not isinstance(entry_id, str) or os.path.exists(os.path.join(inbox, "acked", entry_id)):
-            continue
-        try:
-            with open(os.path.join(inbox, entry_id + ".json")) as f:
-                entry = json.load(f)
-        except (OSError, ValueError):
-            continue
-        if isinstance(entry, dict) and entry.get("audience") == "owner":
-            entries.append(entry)
-    return entries
+        with open(snapshot_path()) as f:
+            snap = json.load(f)
+        fresh = max(float(snap.get(k) or 0) for k in ("tick_at", "fetched_at"))
+        asks = snap.get("asks") or []
+    except (OSError, ValueError, TypeError, AttributeError):
+        return []
+    if now - fresh > STALE_SECONDS or not isinstance(asks, list):
+        return []
+    return [a for a in asks if isinstance(a, dict) and a.get("q") and a.get("how")]
 
 
-def owner_alerts_from_cli():
-    out = subprocess.run([AGENTCTL, "inbox", "--audience", "owner", "--unread", "--json", "--limit", "0"],
-                         capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL)
-    return json.loads(out.stdout) if out.returncode == 0 else []
-
-
-def pending_decisions():
-    entries = owner_alerts_from_index()
-    if entries is None:
-        entries = owner_alerts_from_cli()
-    return [e for e in entries if isinstance(e, dict) and not e.get("read") and DECISION.search(e.get("verdict") or "")]
-
-
-def describe(entry):
-    verdict = " ".join((entry.get("verdict") or "").split())
-    question, why, command = (m.group(1).strip() if m else None
-                              for m in (QUESTION.search(verdict), WHY.search(verdict), COMMAND.search(verdict)))
-    if not question:
-        return "- " + verdict[:800]
-    lines = ["- WAITING ON YOU: " + question[:600]]
-    if why:
-        lines.append("  Why: " + why[:400])
-    if command:
-        lines.append("  Answer: `" + command + "`")
+def describe(ask):
+    reds = ", ".join(str(r) for r in ask.get("reds") or []) or ", ".join(str(k) for k in ask.get("keys") or [])
+    lines = ["- WAITING ON YOU [%s]: %s%s" % (ask.get("category"), reds + ": " if reds else "", str(ask["q"])[:600]),
+             "  How: " + str(ask["how"])[:400]]
+    if ask.get("until"):
+        lines.append("  Auto-clears when " + str(ask["until"])[:200])
     return "\n".join(lines)
 
 
 def prompt(hook):
     session = str(hook.get("session_id") or "unknown")
     state, now, shown = load_state(session), time.time(), []
-    for entry in pending_decisions():
-        key = str(entry.get("item") or entry.get("id"))
-        digest = hashlib.sha1((entry.get("verdict") or "").encode()).hexdigest()[:16]
+    for ask in pending_decisions(now):
+        key = str(ask.get("block") or ask.get("keys"))
+        digest = hashlib.sha1(json.dumps([ask.get("q"), ask.get("how"), ask.get("keys")]).encode()).hexdigest()[:16]
         seen = state.get(key)
         if seen and seen.get("digest") == digest and now - seen.get("at", 0) < REMIND_SECONDS:
             continue
         state[key] = {"at": now, "digest": digest}
-        shown.append(describe(entry))
+        shown.append(describe(ask))
     if not shown:
         return
     save_state(session, state)
@@ -171,9 +152,31 @@ def session_start(hook):
          "scripts/claude-hooks/owner-decisions." % NOTIFIER)
 
 
+def read_stdin():
+    """The hook's JSON input, read for at most STDIN_SECONDS; {} from a terminal or a writer that never finishes."""
+    if sys.stdin is None or sys.stdin.isatty():
+        return {}
+    data, end = b"", time.monotonic() + STDIN_SECONDS
+    fd = sys.stdin.fileno()
+    while True:
+        left = end - time.monotonic()
+        if left <= 0 or not select.select([fd], [], [], left)[0]:
+            return {}
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            return json.loads(data or b"{}")
+        data += chunk
+
+
+def give_up(_signum, _frame):
+    os._exit(0)
+
+
 def main():
+    signal.signal(signal.SIGALRM, give_up)
+    signal.alarm(DEADLINE_SECONDS)
     try:
-        hook = json.load(sys.stdin)
+        hook = read_stdin()
         if not isinstance(hook, dict):
             return
         {"prompt": prompt, "session-start": session_start}[sys.argv[1]](hook)

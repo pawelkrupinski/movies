@@ -116,8 +116,9 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   failure's log. ~450 hand-written `gh run list/view --json jobs/--log` calls a week (2026-11) asked exactly these.
   `gh run rerun` is denied by `scripts/claude-hooks/gh-run-guard` (a rerun is never a fix); list/view/watch are advised.
 - **Owner decisions reach every session:** `scripts/claude-hooks/owner-decisions` (UserPromptSubmit) adds each
-  unread agentctl owner decision (WAITING ON YOU / BLOCKED ON OWNER, with its `! ~/bin/agentctl decide ...` line) to
-  the prompt's context -- put it to the user verbatim at the top of your reply; once per session, again when it
+  pending agentctl owner decision -- read from its snapshot's structured `asks` (`~/.cache/agentctl/state.json`: each
+  told ask of an owner-only category, with its `! ~/bin/agentctl decide ...` line), never from inbox text that may
+  quote "WAITING ON YOU" -- to the prompt's context -- put it to the user verbatim at the top of your reply; once per session, again when it
   changes, after 30 min or after a compaction. It fires only when the owner sends a prompt and carries only
   decisions, so it does not replace the orchestrator's notifier, which wakes an idle session for every owner alert.
   Its SessionStart half says, after a compaction and on startup in the root checkout (the orchestrator), to start it.
