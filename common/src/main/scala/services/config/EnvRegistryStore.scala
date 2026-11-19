@@ -23,6 +23,13 @@ trait EnvRegistryStore {
   def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean
   /** Every knob every app has published. Throws when the store cannot be read. */
   def all(): Seq[RegisteredKnob]
+
+  /** [[publish]] the knobs `env` has read, as `app`'s, each with the value it currently reads -- the secrets left out
+   *  ([[EnvKnobClassifier]]), so a credential is never shown. */
+  final def publishFrom(app: String, env: Env): Boolean =
+    publish(app, env.knobs.filterNot(k => EnvKnobClassifier.isSecret(k.key)).map { k =>
+      RegisteredKnob(app, k.key, k.kind, k.default, env.currentValue(k.key))
+    })
 }
 
 object EnvRegistryStore {

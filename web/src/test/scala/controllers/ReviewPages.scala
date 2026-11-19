@@ -18,7 +18,6 @@ final class ReviewPages(cc: ControllerComponents, environment: Mode, sources: Ma
   private val cards  = new ReviewCardsPage(answers, reads, notices)
   val queues      = new ReviewQueueController(cc, environment, new ReviewQueues(reads, labels, clock), cards)
   val agentJudgedPages = { val judged = new AgentJudgedCards(tmdbPosters); new AgentJudgedController(cc, environment, new AgentJudgedTakes(answers, labels, judged), reads, judged, cards) }
-  val whys        = new ReviewWhyController(cc, environment, listingReads)
   val listings    = new ReviewListingController(cc, environment, listingReads, labels, notices)
   val posters     = new TmdbPosterController(cc, environment, tmdbPosters)
 
@@ -29,7 +28,7 @@ final class ReviewPages(cc: ControllerComponents, environment: Mode, sources: Ma
   def agentJudged(country: Option[String], kind: Option[String], limit: Int, answered: Boolean) =
     agentJudgedPages.agentJudged(country, kind, limit, answered)
   def digestMoved(country: Option[String]) = agentJudgedPages.digestMoved(country)
-  def why(country: String, cluster: String) = whys.why(country, cluster)
+  def why(country: String, cluster: String) = listings.why(country, cluster)
   def listing(country: String, venue: Option[String], title: String) = listings.listing(country, venue, title)
   def tmdbPoster(tmdbId: Int, country: Option[String]) = posters.tmdbPoster(tmdbId, country)
 }

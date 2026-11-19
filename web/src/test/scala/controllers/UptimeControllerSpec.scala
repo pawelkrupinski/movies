@@ -32,7 +32,8 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private def controllerFor(country: models.Country) = {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
-      new UptimeBars(monitor, country.zone, _root_.tools.SpecClock.Pinned), fallbackStore, closures, country)
+      new UptimeBars(monitor, country.zone, _root_.tools.SpecClock.Pinned), new UptimeTriage(country),
+      new UptimePage(fallbackStore, closures, country))
   }
   private val controller = controllerFor(models.Country.Poland)
   private val triage     = new UptimeTriage(models.Country.Poland)
@@ -378,7 +379,8 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val monitor  = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val outsider = new UptimeController(Helpers.stubControllerComponents(),
       TestAdminAction(allow = Set("someone-else@example.com")), monitor,
-      new UptimeBars(monitor, models.Country.Poland.zone, _root_.tools.SpecClock.Pinned), fallbackStore, closures, models.Country.Poland)
+      new UptimeBars(monitor, models.Country.Poland.zone, _root_.tools.SpecClock.Pinned), new UptimeTriage(models.Country.Poland),
+      new UptimePage(fallbackStore, closures, models.Country.Poland))
     status(outsider.index(adminSession)) shouldBe FORBIDDEN
   }
 

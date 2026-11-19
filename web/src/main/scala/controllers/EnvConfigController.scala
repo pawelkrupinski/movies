@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.config.{EnvConfigRow, EnvConfigService, TimeKnobFormat}
+import services.config.{EnvConfigAdmin, EnvConfigRow, TimeKnobFormat}
 
 /**
  * Admin page at `/admin/config` to view and flip the non-secret config knobs
@@ -15,7 +15,7 @@ import services.config.{EnvConfigRow, EnvConfigService, TimeKnobFormat}
  * title-rules editor. Secrets never reach here — the service excludes them at
  * publish, merge, and write — so there's nothing sensitive to render.
  */
-class EnvConfigController(cc: ControllerComponents, adminAction: AdminAction, config: EnvConfigService)
+class EnvConfigController(cc: ControllerComponents, adminAction: AdminAction, config: EnvConfigAdmin)
     extends AbstractController(cc) {
 
   def index: Action[AnyContent] = adminAction { Ok(views.html.admin.envConfig()) }

@@ -133,6 +133,9 @@ sealed abstract class Country(
    *  Pennsylvania on `/us/`, and there is no global namespace to search. */
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
+  /** Whether `slug` is one of this country's own city pages (not a redirect to one). */
+  def hasCity(slug: String): Boolean = bySlug.contains(slug)
+
   /** Slugs a city of this country USED to answer at → the one it answers at now:
    *  its retired pages, each pointing at the page holding the town it was named
    *  after (else most of its venues), and the slugs its pages were qualified to

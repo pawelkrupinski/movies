@@ -5,20 +5,20 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
-import services.config.{EnvConfigService, InMemoryEnvOverrideStore, InMemoryEnvRegistryStore, RegisteredKnob}
+import services.config.{EnvConfigAdmin, InMemoryEnvOverrideStore, InMemoryEnvRegistryStore, RegisteredKnob}
 import tools.Env
 
 /**
  * The /admin/config page serves a static shell and exposes the knobs via
  * `/admin/config/data`; Set/Reset are JSON POSTs that write the override store.
- * Driven through the real [[EnvConfigService]] + in-memory stores so the
+ * Driven through the real [[EnvConfigAdmin]] + in-memory stores so the
  * controller↔service contract (merge, validation, secret exclusion, auth) is
  * exercised end to end.
  */
 class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
 
   private def serviceWith(over: InMemoryEnvOverrideStore, reg: InMemoryEnvRegistryStore) =
-    new EnvConfigService("web", over, reg, Env.of(), threadPools = tools.ThreadPools.Unmanaged)
+    new EnvConfigAdmin(over, reg)
 
   private def fixture() = {
     val over = new InMemoryEnvOverrideStore

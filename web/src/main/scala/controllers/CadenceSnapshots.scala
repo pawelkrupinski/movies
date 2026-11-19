@@ -6,13 +6,13 @@ import java.time.Instant
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.DurationInt
 
-/** What the dev-only rating cadence page shows of one country's [[DebugStack]] ([[CadenceController]]). */
-object CadencePage {
+/** The rating cadence report read from one country's [[DebugStack]] snapshots ([[CadenceController]]'s page). */
+object CadenceSnapshots {
 
   /** The per-(rating source, film) cadence report, its films named from the corpus-listing snapshot `/debug` renders,
    *  and the mirror badge of the OLDER of the two snapshots' stamps at `now`: the page is as behind as its stalest half.
    *  The two reads run side by side. */
-  def read(stack: DebugStack, now: Instant)(using ExecutionContext): (Seq[CadenceReport.Group], Option[MirrorFreshness.Age]) = {
+  def report(stack: DebugStack, now: Instant)(using ExecutionContext): (Seq[CadenceReport.Group], Option[MirrorFreshness.Age]) = {
     val recordsFuture = Future(stack.ratingCadence())
     val listingFuture = Future(stack.listing())
     val (records, listing) = Await.result(recordsFuture.zip(listingFuture), 70.seconds)

@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AdminAction, EnvConfigController, ImageEventController, TaskRunController, TasksController, UptimeBars, UptimeController, UptimeStreamController}
+import controllers.{AdminAction, EnvConfigController, ImageEventController, TaskRunController, TasksController, UptimeBars, UptimeController, UptimePage, UptimeStreamController, UptimeTriage}
 import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
@@ -44,20 +44,25 @@ trait AdminWiring { self: Wiring =>
   lazy val closureLedger: services.closure.ClosureLedgerReader =
     mongoConnection.database.fold[services.closure.ClosureLedgerReader](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
   private lazy val uptimeBars = new UptimeBars(uptimeMonitor, country.zone, clock)
-  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, uptimeBars, filmwebFallbackStore, closureLedger, country)
+  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, uptimeBars,
+    new UptimeTriage(country), new UptimePage(filmwebFallbackStore, closureLedger, country))
   lazy val uptimeStreamController = new UptimeStreamController(controllerComponents, adminAction, uptimeMonitor, uptimeBars)(using materializer)
   // Not behind the admin gate: every visitor's browser reports its poster loads (ImageEventController.imgEvent says why).
   lazy val imageEventController = new ImageEventController(controllerComponents, new controllers.ImageLoadBeacon(uptimeMonitor))
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
   lazy val taskRunController = new TaskRunController(controllerComponents, adminAction, taskQueue, clock)
   // Live config: install the override cache as Env's source + publish web's knobs
-  // to the shared registry, and serve the /admin/config page (see EnvConfigService).
+  // to the shared registry (see EnvConfigService), and serve the /admin/config page over the same stores
+  // (EnvConfigAdmin).
+  lazy val envOverrideStore = new services.config.MongoEnvOverrideStore(mongoConnection.database)
+  lazy val envRegistryStore = new services.config.MongoEnvRegistryStore(mongoConnection.database)
   lazy val envConfigService = managedResources.stopping(new services.config.EnvConfigService(
     app          = "web",
-    overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
-    registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
+    overrides    = envOverrideStore,
+    registry     = envRegistryStore,
     env          = env,
     tickInterval = processConfiguration.configRefreshInterval(
       settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))), threadPools = threadPools))
-  lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
+  lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction,
+    new services.config.EnvConfigAdmin(envOverrideStore, envRegistryStore))
 }

@@ -18,7 +18,7 @@ class CadenceController(cc: ControllerComponents, debugCountries: DebugCountries
     DevMode.gate(environment) {
       val country = debugCountries.resolve(request)
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val (report, mirror) = CadencePage.read(debugCountries.stackFor(country), clock.instant())
+      val (report, mirror) = CadenceSnapshots.report(debugCountries.stackFor(country), clock.instant())
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
       Ok(views.html.cadence(report, clock.instant(), current = country, sameOrigin = debugCountries.switchable, mirror = mirror))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)

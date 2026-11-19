@@ -149,7 +149,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val userState   = new UserStateController(cc, null, null,
       users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val account     = new AccountController(cc, null, users)
-    val uptime      = new UptimeController(cc, adminAction, null, null, null, null, models.Country.Poland)
+    val uptime      = new UptimeController(cc, adminAction, null, null, new UptimeTriage(models.Country.Poland), null)
     val uptimeFeed  = new UptimeStreamController(cc, adminAction, null, null)(using Components.materializer)
     val imageEvents = new ImageEventController(cc, null)
     val taskRuns    = new TaskRunController(cc, adminAction, null, clock = _root_.tools.SpecClock.Pinned)

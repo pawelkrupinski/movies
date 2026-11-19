@@ -242,7 +242,7 @@ GET     /debug/review                    controllers.ReviewQueueController.queue
 GET     /debug/review/matchable          controllers.ReviewQueueController.matchable(country: Option[String] ?= None, min: Double ?= 0.5, basis: Option[String] ?= None, limit: Int ?= 20, answered: Boolean ?= false)
 GET     /debug/review/recent             controllers.ReviewQueueController.recent(country: Option[String] ?= None, hours: Int ?= 48, limit: Int ?= 20, answered: Boolean ?= false)
 GET     /debug/review/digest             controllers.AgentJudgedController.digestMoved(country: Option[String] ?= None)
-GET     /debug/review/why                controllers.ReviewWhyController.why(country: String, cluster: String)
+GET     /debug/review/why                controllers.ReviewListingController.why(country: String, cluster: String)
 # The review digest: the takes agents judged (AGENT-JUDGED) or flagged (identity-review-candidates.tsv) for the user.
 GET     /debug/review/agent-judged       controllers.AgentJudgedController.agentJudged(country: Option[String] ?= None, kind: Option[String] ?= None, limit: Int ?= 20, answered: Boolean ?= false)
 # One listing explained: its take, the LogsQL query of its take history, the latest trace, its judgements.

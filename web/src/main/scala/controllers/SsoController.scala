@@ -194,7 +194,7 @@ class SsoController(
   // which case the visitor lands directly on it instead of being asked again.
   private def ssoFinishLanding(request: RequestHeader): Result = {
     val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
-    val citySlug = request.getQueryString(LandingController.CityParam).filter(country.bySlug.contains)
+    val citySlug = request.getQueryString(LandingController.CityParam).filter(country.hasCity)
     Redirect(
       citySlug.map(s => s"${country.pathPrefix}/$s/").getOrElse(
         SsoController.switchTarget(request.getQueryString("next")).map(_ + "/")
@@ -297,6 +297,6 @@ object SsoController {
     for {
       s       <- slug
       country <- models.Country.switchable.find(_.webUrl.contains(target))
-      if country.bySlug.contains(s)
+      if country.hasCity(s)
     } yield s
 }

@@ -19,10 +19,10 @@ import scala.concurrent.duration._
  *    env var);
  *  - on a periodic tick: refreshes the override cache (picks up flips made on the
  *    other process) and republishes this process's non-secret knobs + their
- *    current values to the shared registry.
+ *    current values to the shared registry ([[EnvRegistryStore.publishFrom]]).
  *
- * The web process additionally serves the admin views ([[rows]]) and the
- * operator actions ([[set]] / [[reset]]). Secrets are excluded everywhere — at
+ * The web process additionally serves the admin views and the operator actions
+ * over the same stores ([[EnvConfigAdmin]]). Secrets are excluded everywhere — at
  * publish, at merge, and at write — so a credential can neither be shown nor
  * flipped (see [[EnvKnobClassifier]]).
  */
@@ -34,7 +34,6 @@ class EnvConfigService(
   // read knobs is what gets published.
   env:            Env,
   tickInterval:   ConfigRefreshInterval = ConfigRefreshInterval(30.seconds),
-  isSecret:       String => Boolean = EnvKnobClassifier.isSecret,
   // Where each completed publish is reported (`ScheduledTickStale`).
   ticks:          TickRecorder = TickRecorder.Unrecorded,
   threadPools:    ThreadPools
@@ -55,59 +54,7 @@ class EnvConfigService(
    *  failed (each logs it) — flips stop arriving, or the admin page stops seeing this process's knobs. */
   private[config] def publishTick(): TickRun = {
     val refreshed = overrides.refresh()
-    val knobs = env.knobs.filterNot(k => isSecret(k.key)).map { k =>
-      RegisteredKnob(app, k.key, k.kind, k.default, env.currentValue(k.key))
-    }
-    TickRun.completedWhen(registry.publish(app, knobs) && refreshed)
-  }
-
-  // ── admin (web) ──────────────────────────────────────────────────────────────
-  /** Every non-secret knob, merged across apps, with its active override —
-   *  sorted by key for a stable page. */
-  def rows(): Seq[EnvConfigRow] = {
-    val overrideMap = overrides.all()
-    registry.all()
-      .filterNot(k => isSecret(k.key))
-      .groupBy(_.key)
-      .toVector
-      .sortBy(_._1)
-      .map { case (key, knobs) =>
-        val sorted = knobs.sortBy(_.app)
-        EnvConfigRow(
-          key           = key,
-          kind          = sorted.head.kind,
-          default       = sorted.flatMap(_.default).headOption,
-          apps          = sorted.map(k => AppValue(k.app, k.current)),
-          overrideValue = overrideMap.get(key)
-        )
-      }
-  }
-
-  /** Apply an override. Rejected (returns false) for an unknown or secret key, or
-   *  for a value that doesn't parse for the knob's numeric type — so the page
-   *  can't poke a non-numeric value into an Int/Long knob or flip a credential. */
-  def set(key: String, value: String): Boolean =
-    knobKind(key) match {
-      case None => false
-      case Some(kind) =>
-        if (!validValue(kind, value)) false
-        else { overrides.set(key, value.trim); true }
-    }
-
-  /** Remove an override ("reset to default / env"). Returns false for a secret /
-   *  unknown key. Idempotent for a key with no override. */
-  def reset(key: String): Boolean =
-    if (knobKind(key).isEmpty) false else { overrides.clear(key); true }
-
-  /** The registered kind for a known, non-secret key. */
-  private def knobKind(key: String): Option[Env.Kind] =
-    if (isSecret(key)) None
-    else registry.all().find(_.key == key).map(_.kind)
-
-  private def validValue(kind: Env.Kind, value: String): Boolean = kind match {
-    case Env.Kind.Int  => value.trim.toIntOption.isDefined
-    case Env.Kind.Long => value.trim.toLongOption.isDefined
-    case Env.Kind.Str  => value.nonEmpty
+    TickRun.completedWhen(registry.publishFrom(app, env) && refreshed)
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
