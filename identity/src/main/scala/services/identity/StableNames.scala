@@ -62,9 +62,8 @@ object StableNames {
     val owner = new java.util.HashMap[ListingKey, Integer]()
     next.indices.foreach(i => next(i).foreach(owner.put(_, i)))
     previous.iterator.flatMap { case (name, members) =>
-      val overlaps = mutable.HashMap.empty[Int, Int]
-      members.foreach { listing => val n = owner.get(listing); if (n != null) overlaps(n) = overlaps.getOrElse(n, 0) + 1 }
-      overlaps.iterator.map { case (n, overlap) => (name, n, overlap) }
+      members.iterator.flatMap(listing => Option(owner.get(listing))).toSeq.groupMapReduce(_.intValue)(_ => 1)(_ + _)
+        .map { case (n, overlap) => (name, n, overlap) }
     }.toSeq
   }
 }
