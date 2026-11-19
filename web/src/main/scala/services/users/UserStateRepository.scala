@@ -1,5 +1,7 @@
 package services.users
 
+import tools.ChangeStreamLiveness
+
 import com.mongodb.{ErrorCategory, MongoServerException}
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
@@ -8,7 +10,7 @@ import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, B
 import org.mongodb.scala.model.{Aggregates, Field, Filters}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{ChangeEventDecoder, ChangeStreamLiveness, ChangeStreamReopen}
+import services.movies.{ChangeEventDecoder, ChangeStreamReopen}
 
 import scala.concurrent.Await
 import java.time.Instant

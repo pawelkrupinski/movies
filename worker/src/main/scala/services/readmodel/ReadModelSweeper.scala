@@ -1,11 +1,13 @@
 package services.readmodel
 
+import tools.ChangeStreamLiveness
+
 import models.StoredMovieRecord
 
 import tools.{ScheduledTick, TickRecorder, TickRun}
 
 import play.api.Logging
-import services.movies.{ChangeStreamLiveness, MovieChangeFeed, MovieRepositoryReader}
+import services.movies.{MovieChangeFeed, MovieRepositoryReader}
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}

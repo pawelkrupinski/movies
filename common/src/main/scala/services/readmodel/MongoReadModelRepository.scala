@@ -1,5 +1,7 @@
 package services.readmodel
 
+import tools.ChangeStreamCallback
+
 import services.movies.DecodeFailureMetrics
 
 import com.mongodb.WriteConcern
@@ -12,7 +14,7 @@ import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Aggregates, CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{ChangeStreamCallback, RepositoryWrite}
+import services.movies.RepositoryWrite
 import tools.KeysetScan
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}

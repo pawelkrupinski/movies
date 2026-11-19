@@ -1,9 +1,10 @@
 package services.tasks
 
+import tools.ChangeStreamLiveness
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.tasks.WorkerTaskMetrics.CountryQueueSample
-import services.movies.ChangeStreamLiveness
 import services.tasktypes.TaskType
 
 import java.time.Instant

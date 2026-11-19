@@ -1,8 +1,9 @@
 package services.readmodel
 
+import tools.ChangeStreamLiveness
+
 import tools.SpecClock.given
 
-import services.movies.ChangeStreamLiveness
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._

@@ -156,7 +156,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
   }
 
   private class DroppingUserStateRepository extends UserStateRepository {
-    val changeStreamLiveness                          = services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned)
+    val changeStreamLiveness                          = tools.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned)
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
     def setLanguage(userId: String, language: Option[String], now: java.time.Instant): Option[UserState] = None

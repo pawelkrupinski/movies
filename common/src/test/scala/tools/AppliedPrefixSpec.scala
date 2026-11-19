@@ -1,4 +1,4 @@
-package services.movies
+package tools
 
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec

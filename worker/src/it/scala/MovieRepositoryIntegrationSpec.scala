@@ -1,5 +1,7 @@
 package integration
 
+import tools.ChangeStreamLiveness
+
 import models.{FilmId, StoredMovieRecord}
 
 import tools.SpecClock.given
@@ -16,7 +18,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{MongoMovieChangeFeed, ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore}
+import services.movies.{MongoMovieChangeFeed, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore}
 import tools.Eventually
 import tools.Eventually.awaitStreamLive
 

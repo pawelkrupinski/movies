@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.ChangeStreamLiveness
+
 import models.{FilmId, StoredMovieRecord}
 
 import tools.SpecTimeouts

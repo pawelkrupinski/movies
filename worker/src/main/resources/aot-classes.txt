@@ -10360,8 +10360,6 @@ services.movies.ChangeStreamFanout
 services.movies.ChangeStreamFanout$$anon$1
 services.movies.ChangeStreamFanout$Listener
 services.movies.ChangeStreamFanout$Listener$
-services.movies.ChangeStreamLiveness
-services.movies.ChangeStreamLiveness$
 services.movies.ChangeStreamMetrics
 services.movies.ChangeStreamMetrics$
 services.movies.ChangeStreamMetrics$$anon$1
@@ -12699,6 +12697,8 @@ sun.util.resources.provider.NonBaseLocaleDataMetaInfo
 sun.util.spi.CalendarProvider
 tools.CacheOccupancy
 tools.CacheOccupancy$
+tools.ChangeStreamLiveness
+tools.ChangeStreamLiveness$
 tools.CircuitOpenException
 tools.ConcurrentCandidateProbe$
 tools.ConcurrentCandidateProbe$$anon$1

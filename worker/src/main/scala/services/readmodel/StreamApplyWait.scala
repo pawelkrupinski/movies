@@ -1,6 +1,7 @@
 package services.readmodel
 
-import services.movies.ChangeStreamLiveness
+import tools.ChangeStreamLiveness
+
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}

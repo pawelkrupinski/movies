@@ -1,9 +1,11 @@
 package services.tasks
 
+import tools.ChangeStreamCallback
+
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, Observer, Subscription}
 import play.api.Logging
-import services.movies.{ChangeStreamCallback, ChangeStreamReopen}
+import services.movies.ChangeStreamReopen
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference

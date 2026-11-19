@@ -145,9 +145,9 @@ object FixpointPass {
     awaitQuiet(w.movieRepository.changeStreamLiveness, () => w.movieRepository.heldChanges,
       () => w.movieRepository.releaseHeldChanges(), quiet, within)
 
-  private[tools] def awaitQuiet(liveness: services.movies.ChangeStreamLiveness, held: () => Int, releaseHeld: () => Unit,
+  private[tools] def awaitQuiet(liveness: tools.ChangeStreamLiveness, held: () => Int, releaseHeld: () => Unit,
                                 quiet: FiniteDuration, within: FiniteDuration): Unit = {
-    val watched  = services.movies.ChangeStreamLiveness.Collections.filter(liveness.isWatching)
+    val watched  = tools.ChangeStreamLiveness.Collections.filter(liveness.isWatching)
     val deadline = System.nanoTime() + within.toNanos
     // Quiet is measured in REAL time, not on the liveness's clock: Mongo delivers on its own
     // thread in real time, while the liveness's clock is its owner's — in a harness a pinned one

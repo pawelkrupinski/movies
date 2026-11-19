@@ -1,8 +1,10 @@
 package services.metrics
 
+import tools.ChangeStreamLiveness
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.movies.{ChangeStreamLiveness, ChangeStreamMetrics, ScreeningsMetrics}
+import services.movies.{ChangeStreamMetrics, ScreeningsMetrics}
 
 import java.time.Instant
 
@@ -15,7 +17,7 @@ final class ChangeStreamSeries(countryCodes: Seq[String], registry: PrometheusRe
   // on every scrape, so a cursor that stalls draws a straight diagonal instead of freezing
   // at whatever it last said. The event COUNTERS beside it cannot tell a stalled cursor
   // from a quiet night — both are a flat rate — and a dead stream after a Mongo migration
-  // once sat behind them for hours. See [[services.movies.ChangeStreamLiveness]].
+  // once sat behind them for hours. See [[tools.ChangeStreamLiveness]].
   private val changeStreamLastEventAge = Gauge.builder()
     .name("kinowo_worker_change_stream_last_event_age_seconds")
     .help("Seconds since each change-stream cursor (collection=movies|screenings|movie_slots) last DELIVERED an event to the worker, by country; since boot when it never has. Recomputed on every scrape, so an open-but-silent cursor climbs in a straight line. Read against the country's scrape cadence: the movies cursor is quiet for at most one sweep while ratings and scrapes are being written; longer than that with kinowo_worker_corpus_movies moving means the stream is not delivering the writes.")
@@ -25,7 +27,7 @@ final class ChangeStreamSeries(countryCodes: Seq[String], registry: PrometheusRe
   // The APPLY side of the same three cursors, also computed at scrape time: an event delivered
   // on time can still wait behind the single apply thread, and until 2026-09-23 the resume token
   // was saved at delivery, so a restart skipped whatever was waiting — with nothing to show how
-  // much that was. See [[services.movies.ChangeStreamLiveness.queued]].
+  // much that was. See [[tools.ChangeStreamLiveness.queued]].
   private val changeStreamApplyPending = Gauge.builder()
     .name("kinowo_worker_change_stream_apply_pending")
     .help("Change events each cursor (collection=movies|screenings|movie_slots) handed to the worker's apply thread that have not been applied yet, by country. Bounded by the cursor's demand window (256); near zero in steady state because an apply is one stitch read. Pinned near the window means the apply thread cannot keep up, and every one of these is a change the read model has not seen. Coalesced events ride an apply already queued and are not counted twice.")

@@ -116,7 +116,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     // Written long before this boot, as a corpus derived by an older release is, and delivered
     // since — so the silent-cursor catch-up, overlap and all, has no reason to read it again.
     clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
-    repository.changeStreamLiveness.delivered(services.movies.ChangeStreamLiveness.Movies)
+    repository.changeStreamLiveness.delivered(tools.ChangeStreamLiveness.Movies)
     val (boot, sweeper, pass) = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelDerivation.current.value)))
 
     sweeper.pruneOrphans()   // repairs one slice at most

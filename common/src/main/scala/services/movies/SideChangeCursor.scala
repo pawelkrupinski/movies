@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.ChangeStreamLiveness
+
 import java.util.concurrent.atomic.AtomicReference
 import scala.util.Try
 

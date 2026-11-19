@@ -1,12 +1,13 @@
 package services.tasks
 
+import tools.ChangeStreamLiveness
+
 import services.metrics.ChangeStreamSeries
 import services.metrics.CorpusWriteSeries
 import services.metrics.PrometheusExposition
 import services.metrics.ReadModelSeries
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.ChangeStreamLiveness
 
 import java.time.Instant
 
