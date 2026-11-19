@@ -66,4 +66,17 @@ object CatalogueAnswers {
 enum CatalogueQuestion {
   case Page(url: String)
   case Id(id: CatalogueId)
+
+  /** Its kind of [[Question]]: a page's links or an id's mapping, each paced and kept on its own. */
+  def kind: QuestionKind = this match {
+    case Page(_) => QuestionKind.CataloguePage
+    case Id(_)   => QuestionKind.CatalogueId
+  }
+
+  /** The id it is asked under on the queue ([[Question.id]]): `catalogue|<source>|<id>` (`CatalogueAnswerStore.idOf`), or
+   *  `catalogue-page|<url>` (`pageId`). */
+  def questionId: String = this match {
+    case Page(url) => s"catalogue-page|$url"
+    case Id(of)    => s"catalogue|${of.source}|${of.id}"
+  }
 }

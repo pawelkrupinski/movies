@@ -24,7 +24,6 @@ cyclomatic	identity/src/main/scala/services/identity/IdentityModel.scala:Listing
 cyclomatic	identity/src/main/scala/services/identity/IdentityModelStore.scala:MongoIdentityModelStore.read	13
 cyclomatic	identity/src/main/scala/services/identity/ListingIntake.scala:ListingIntake.decide	11
 cyclomatic	identity/src/main/scala/services/identity/ProseWords.scala:ProseWords.of	14
-cyclomatic	identity/src/main/scala/services/identity/Question.scala:Question.kind	11
 cyclomatic	identity/src/main/scala/services/identity/SortedLongMap.scala:SortedLongMap.mergedOver	14
 cyclomatic	identity/src/main/scala/services/identity/StableNames.scala:StableNames.assignWith	13
 cyclomatic	identity/src/main/scala/services/identity/SuspectTakes.scala:SuspectTakes.fragment	16

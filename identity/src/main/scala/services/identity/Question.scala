@@ -47,10 +47,8 @@ enum Question {
     case Find(_)                                 => QuestionKind.Find
     case Record(_)                               => QuestionKind.Record
     case Poster(_)                               => QuestionKind.Poster
-    case Catalogue(CatalogueQuestion.Page(_))    => QuestionKind.CataloguePage
-    case Catalogue(CatalogueQuestion.Id(_))      => QuestionKind.CatalogueId
+    case Catalogue(question)                     => question.kind
   }
-
 
   /** The id an agreement question is asked under on the queue, the form its store files or names it by:
    *  `<family>|<question>` (`FamilyAnswerStore.questionId`), `find|<imdbId>` (`TmdbStore.findId`),
@@ -63,8 +61,7 @@ enum Question {
     case Find(imdbId)                             => Some(s"find|$imdbId")
     case Record(tmdbId)                           => Some(s"tmdb|record|$tmdbId")
     case Poster(question)                         => Some(PosterAnswers.idOf(question))
-    case Catalogue(CatalogueQuestion.Id(of))      => Some(s"catalogue|${of.source}|${of.id}")
-    case Catalogue(CatalogueQuestion.Page(url))   => Some(s"catalogue-page|$url")
+    case Catalogue(question)                      => Some(question.questionId)
     case Candidate(_) | FilmRecord(_) | Person(_) | VenuePage(_) => None
   }
 }
