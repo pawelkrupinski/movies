@@ -43,14 +43,11 @@ class MovieController( cc: ControllerComponents,
 
   private implicit val fragments: FilmCardFragments = filmCards
 
-  // A city listing's JSON-LD, kept under what it is built from (origin, city and the
-  // films it names): rebuilding its JSON tree for every film was ~1.3 MB a New York
-  // render, and it changes only when the city's films do.
-  private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
-    tools.BoundedCache.ofSize(512).build[StructuredData.CityPageKey, String]()
+  private val cityStructuredData = new CityStructuredData
+  private val renders            = new ListingRenders(recordRender)
 
   /** How many listings' JSON-LD this controller is holding — for the spec. */
-  private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
+  private[controllers] def structuredDataHeld: Long = cityStructuredData.size
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // EVERY visitor at a given cache version — signed in or not, which is the whole
@@ -166,7 +163,7 @@ class MovieController( cc: ControllerComponents,
   private def listingBody(city: City, request: RequestHeader): ResponseBody = {
     implicit val c: City = city
     implicit val messages: play.api.i18n.Messages = deploymentMessages
-    ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender(services.metrics.WebRenderMetrics.Listing, _))
+    renders.listing(ResponseBody.html(renderIndexHtml(city, request)))
   }
 
   private def renderIndexHtml(city: City, request: RequestHeader)(implicit c: City, messages: play.api.i18n.Messages): play.twirl.api.Html = {
@@ -176,7 +173,7 @@ class MovieController( cc: ControllerComponents,
     val now         = movieControllerService.nowIn(city)
     // Measured on its own as well as within the whole render, so the histogram says how
     // much of a listing's cost is building its schedules (`listing_schedules`).
-    val schedules   = tools.ThreadAllocation.measure(recordRender(services.metrics.WebRenderMetrics.ListingSchedules, _))(movieControllerService.toSchedules(city, now))
+    val schedules   = renders.schedules(movieControllerService.toSchedules(city, now))
     val meta        = FilterDescription.forIndex(city, request.queryString, schedules)
     val isLargeCity = MovieControllerService.totalShowtimes(schedules) > MovieControllerService.LargeCityShowtimeThreshold
     val pageUrl     = PageMeta.canonicalUrl(request)
@@ -194,8 +191,7 @@ class MovieController( cc: ControllerComponents,
       // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
       canonicalUrl    = PageMeta.origin(request) + CityPath(city) + "/",
-      structuredData  = Some(cityStructuredData.get(StructuredData.CityPageKey(
-        StructuredData.originOf(pageUrl, city), city, StructuredData.cityEntries(schedules)), StructuredData.cityPage)),
+      structuredData  = Some(cityStructuredData.of(pageUrl, city, schedules)),
     )
   }
 
