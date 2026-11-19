@@ -28,7 +28,7 @@ final class DetailSchedule(queue: TaskProducer, freshness: FreshnessStore, dueWi
    *  period instead of dumping it in one tick. What the enqueue came to: [[Enqueued.Zero]] when not due. */
   def enqueueIfDue(dedupKey: String, payload: => Map[String, String], now: Instant): Enqueued =
     if (!isDue(dedupKey, now)) Enqueued.Zero
-    else Enqueued.of(queue.enqueue(TaskType.EnrichDetails, dedupKey, payload, submittedAt = now))
+    else queue.enqueued(TaskType.EnrichDetails, dedupKey, payload, submittedAt = now)
 
   /** Stamp the page asked under `dedupKey`: asked at `now`. */
   def asked(dedupKey: String, now: Instant): Unit = freshness.markFresh(dedupKey, FreshnessKind.DetailEnrich, now)

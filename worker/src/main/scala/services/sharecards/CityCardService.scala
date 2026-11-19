@@ -61,7 +61,7 @@ class CityCardService(
     val missing = ready.iterator.collect { case (city, None) => city }
     val due     = ready.iterator.collect { case (city, at @ Some(_)) if schedule.isDue(dedupKey(city), at, now) => city }
     (missing ++ due).take(maxEnqueuePerTick).foldLeft(Enqueued.Zero) { (sum, city) =>
-      sum + Enqueued.of(queue.enqueue(TaskType.RenderCityCard, dedupKey(city), Map(CityKey -> city.slug), submittedAt = now))
+      sum + queue.enqueued(TaskType.RenderCityCard, dedupKey(city), Map(CityKey -> city.slug), submittedAt = now)
     }
   }
 

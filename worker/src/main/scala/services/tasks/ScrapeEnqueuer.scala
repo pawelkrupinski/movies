@@ -42,8 +42,8 @@ final class ScrapeEnqueuer(queue: TaskProducer, admission: ScrapeAdmission, cloc
     var spent    = 0.0
     due.iterator.takeWhile { case (key, _) => enqueued.added < cap && room.fits(spent, key, first = enqueued.added == 0) }
       .foreach { case (key, displayName) =>
-        val result = Enqueued.of(queue.enqueue(TaskType.ScrapeCinema, key,
-          Map(ScrapeCinemaHandler.CinemaKey -> displayName), submittedAt = clock.instant()))
+        val result = queue.enqueued(TaskType.ScrapeCinema, key,
+          Map(ScrapeCinemaHandler.CinemaKey -> displayName), submittedAt = clock.instant())
         if (result.added > 0) spent += admission.costOf(key)
         enqueued += result
       }

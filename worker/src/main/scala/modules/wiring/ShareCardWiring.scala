@@ -153,7 +153,7 @@ trait ShareCardWiring { self: WorkerWiring =>
     if (!shareCardsEnabled) Nil
     else {
       def enqueue(taskType: TaskType, key: String, payload: Map[String, String]): () => Enqueued =
-        () => Enqueued.of(taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()))
+        () => taskQueue.enqueued(taskType, key, payload, submittedAt = clock.instant())
       Seq(
         new ClaimedEnqueueReaper("share-card-budget",
           enqueue(TaskType.PruneShareCards, "share-card-budget", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)),

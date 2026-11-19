@@ -82,7 +82,7 @@ class RatingEnqueuer(
         // key. (Drop the fallback once no legacy stamps remain — see EnrichmentReaper.)
         val lastFetched = freshness.lastFetchedAt(dedupKey).orElse(freshness.lastFetchedAt(legacyKey))
         if (dueWindow.isDue(dedupKey, lastFetched, now))
-          enqueued += Enqueued.of(queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key), submittedAt = now))
+          enqueued += queue.enqueued(s.taskType, dedupKey, RatingTasks.payload(key), submittedAt = now)
       }
     }
     enqueued

@@ -7,7 +7,7 @@ import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
 import services.enrichment.{FilmwebRatings, ImdbRatings, ImdbRowUpdates, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, OmdbBackoff, OmdbSearch, RatingColumns, RatingSiteFilms, RottenTomatoesRatings, SiteRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
-import services.tasks.{BulkCadenceRecorder, ClaimedEnqueueReaper, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
+import services.tasks.{BulkCadenceRecorder, ClaimedEnqueueReaper, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
 import services.tasktypes.TaskType
 
 import scala.concurrent.duration.DurationInt
@@ -69,7 +69,7 @@ trait RatingsWiring { self: WorkerWiring =>
     configuration.omdbBackfillInterval(OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval))
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] = managedResources.stoppingEach(
     omdbBackfill.map(_ => new OmdbBackfillReaper(
-      () => Enqueued.of(taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant())),
+      () => taskQueue.enqueued(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant()),
       interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools)))
 
   // Rating refresh as queue tasks. The handlers reuse each rating refresher's

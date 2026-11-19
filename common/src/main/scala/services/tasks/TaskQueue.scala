@@ -140,6 +140,11 @@ trait TaskProducer {
     claimAhead:  FiniteDuration      = Duration.Zero
   ): EnqueueResult
 
+  /** [[enqueue]], counted as what it came to ([[Enqueued]]): one added, none for a duplicate, one failed. */
+  final def enqueued(taskType: TaskType, dedupKey: String, payload: Map[String, String] = Map.empty, submittedAt: Instant,
+      notBefore: Option[Instant] = None): Enqueued =
+    Enqueued.of(enqueue(taskType, dedupKey, payload, submittedAt, notBefore))
+
   /** Merge `fields` into the payload of the WAITING task under `dedupKey` — for a caller
    *  whose [[enqueue]] came back Duplicate but whose request carries something the queued
    *  task lacks (a resolve re-try arriving while a plain resolve is queued). A worked-on

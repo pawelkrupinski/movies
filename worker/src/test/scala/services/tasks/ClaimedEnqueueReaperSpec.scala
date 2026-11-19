@@ -52,8 +52,8 @@ class ClaimedEnqueueReaperSpec extends AnyFlatSpec with Matchers {
     val clock     = new MutableClock(Instant.parse("2026-09-26T00:09:00Z"))
     val scheduler = new ManualScheduler(clock)
     val ticks     = new RecordingTickRecorder
-    val reaper    = new ClaimedEnqueueReaper("job", () => Enqueued.of(queue.enqueue(TaskType.AuditReadModelContent, "job",
-      submittedAt = clock.instant())), 1.hour, 0.minutes, new InMemoryScheduledRunStore, clock, ticks = ticks, threadPools = SpecThreadPools.scheduling(scheduler))
+    val reaper    = new ClaimedEnqueueReaper("job", () => queue.enqueued(TaskType.AuditReadModelContent, "job",
+      submittedAt = clock.instant()), 1.hour, 0.minutes, new InMemoryScheduledRunStore, clock, ticks = ticks, threadPools = SpecThreadPools.scheduling(scheduler))
     LogCapture.capture(classOf[ClaimedEnqueueReaper].getName) {
       reaper.start()
       scheduler.advance(java.time.Duration.ZERO)
