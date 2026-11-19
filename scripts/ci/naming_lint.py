@@ -27,8 +27,6 @@ MODULES = ("geodata", "base", "http", "common", "identity", "scrapers", "worker"
 # (package, names): a clash allowed while it is renamed -- its owner and why. Struck once the rename lands.
 ALLOWED_PERMUTATIONS = {
     ("services.readmodel", frozenset({"PruneSweep", "SweepPrune"})): "lane I renames it (2026-11-19)",
-    ("services.facebook", frozenset({"FacebookGraphHttp", "HttpFacebookGraph"})):
-        "found by the lint's first run, 2026-11-19 (common's Graph HTTP client vs the worker's re-scrape): a rename owed",
 }
 DECLARATION = re.compile(r"^(?:(?:private|protected)(?:\[\w+\])?\s+)?(?:(?:final|sealed|abstract|case|implicit)\s+)*"
                          r"(class|object|trait|enum)\s+([A-Z]\w*)", re.M)

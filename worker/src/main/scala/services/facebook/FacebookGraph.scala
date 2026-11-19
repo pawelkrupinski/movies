@@ -54,7 +54,7 @@ object FacebookScrape {
  *  travels in the form body, not the query string, so no URL that reaches a log carries it. */
 class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.FacebookAppSecret, tls: javax.net.ssl.SSLContext,
                         endpoint: URI = HttpFacebookGraph.Endpoint) extends FacebookGraph {
-  private val graph = new FacebookGraphHttp(tls)
+  private val graph = new FacebookGraphClient(tls)
 
   def scrape(url: String): FacebookReply = {
     def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)

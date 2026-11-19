@@ -1,7 +1,7 @@
 package services.auth
 
 import play.api.Logging
-import services.facebook.{AppUsage, FacebookGraphHttp, FacebookUsageBrake}
+import services.facebook.{AppUsage, FacebookGraphClient, FacebookUsageBrake}
 import tools.{GetOnlyHttpFetch, HttpStatusException}
 
 import java.net.URI
@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
  * `RealHttpFetch`'s does, after its usage is reported: Facebook reports it on refusals too.
  */
 class FacebookGraphFetch(brake: FacebookUsageBrake, tls: javax.net.ssl.SSLContext) extends GetOnlyHttpFetch with Logging {
-  private val graph = new FacebookGraphHttp(tls)
+  private val graph = new FacebookGraphClient(tls)
 
   def get(url: String): String = {
     val response = graph.send(HttpRequest.newBuilder(URI.create(url)).GET())

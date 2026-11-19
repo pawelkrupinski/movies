@@ -14,17 +14,17 @@ final case class FacebookGraphResponse(status: Int, body: String, usage: Option[
  * answer read with the [[AppUsage]] its `X-App-Usage` header carries. What a caller does with the
  * usage is its own: the worker hands it to its drain, the web to the [[FacebookUsageBrake]].
  */
-final class FacebookGraphHttp(tls: javax.net.ssl.SSLContext) {
-  private val client = HttpClient.newBuilder().connectTimeout(FacebookGraphHttp.ConnectTimeout).sslContext(tls).build()
+final class FacebookGraphClient(tls: javax.net.ssl.SSLContext) {
+  private val client = HttpClient.newBuilder().connectTimeout(FacebookGraphClient.ConnectTimeout).sslContext(tls).build()
 
-  /** Send `request` with [[FacebookGraphHttp.RequestTimeout]]; throws what `HttpClient.send` throws. */
+  /** Send `request` with [[FacebookGraphClient.RequestTimeout]]; throws what `HttpClient.send` throws. */
   def send(request: HttpRequest.Builder): FacebookGraphResponse = {
-    val response = client.send(request.timeout(FacebookGraphHttp.RequestTimeout).build(), HttpResponse.BodyHandlers.ofString())
+    val response = client.send(request.timeout(FacebookGraphClient.RequestTimeout).build(), HttpResponse.BodyHandlers.ofString())
     FacebookGraphResponse(response.statusCode(), response.body(), AppUsage.of(response.headers()))
   }
 }
 
-object FacebookGraphHttp {
+object FacebookGraphClient {
   val ConnectTimeout: Duration = Duration.ofSeconds(10)
   val RequestTimeout: Duration = Duration.ofSeconds(20)
 }
