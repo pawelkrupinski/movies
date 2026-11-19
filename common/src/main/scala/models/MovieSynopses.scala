@@ -117,11 +117,7 @@ private[models] final class MovieSynopses(record: MovieRecord) {
    *  what gets `sanitize`d. Memoised on the raw string — the projection asks for the same
    *  candidate across every city the film screens in. */
   private def processedSynopsisCandidate(raw: String): Option[(String, String)] =
-    synopsisProcessCache.computeIfAbsent(raw, (rawValue: String) => {
-      val processed = tools.TextNormalization.stripUrls(tools.SynopsisMarkdown.collapseRepeats(rawValue))
-      if (processed.isEmpty) None
-      else Some(processed -> tools.SynopsisMarkdown.strip(processed))
-    })
+    synopsisProcessCache.computeIfAbsent(raw, (rawValue: String) => tools.SynopsisMarkdown.comparable(rawValue))
 
   /** Synopsis candidates whose source passes `keep`, in source-priority order —
    *  each source's live slot synopsis followed by its retained (post-prune) one.

@@ -1,6 +1,5 @@
 package models
 
-import java.util.Locale
 
 /**
  * Cross-cinema metadata about a film — ratings, IDs, and the per-source
@@ -229,11 +228,8 @@ case class MovieRecord(
    *  real poster (any cinema's or TMDB's) exists. A URL that is no poster at all
    *  ([[PlaceholderPoster.isAbsent]]) is left out. `posterUrl` takes the head;
    *  `fallbackPosterUrls` is the rest. */
-  private def postersByPreference: Seq[String] = {
-    val all = prioritized.iterator.flatMap(_._2.posterUrl).filterNot(PlaceholderPoster.isAbsent).distinct.toSeq
-    val (placeholders, real) = all.partition(PlaceholderPoster.matches)
-    real ++ placeholders
-  }
+  private def postersByPreference: Seq[String] =
+    SourceMerge.postersByPreference(prioritized.iterator.flatMap(_._2.posterUrl))
 
   /** Best poster URL across sources: first real poster in priority order,
    *  falling back to a "coming soon" placeholder only when that's all we have. */
@@ -261,7 +257,7 @@ case class MovieRecord(
    *  only a change among the highest-priority venues moves it. */
   def fallbackPosterUrls: Seq[String] = {
     val rest      = postersByPreference.drop(1)
-    val catalogue = Seq(Tmdb, Imdb).flatMap(data.get(_).flatMap(_.posterUrl)).filter(rest.contains)
+    val catalogue = Source.PosterCatalogues.flatMap(data.get(_).flatMap(_.posterUrl)).filter(rest.contains)
     (rest.take(MovieRecord.CinemaFallbackPosters) ++ catalogue).distinct
   }
 
@@ -356,7 +352,7 @@ case class MovieRecord(
    *  knows about a capital inside a word), and the alignment neither adds,
    *  drops, nor reorders a name. See [[tools.CreditSpelling]]. */
   def cast: Seq[String] =
-    tools.CreditSpelling.alignedTo(
+    SourceMerge.credits(
       prioritized.iterator.map(_._2.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty),
       slotCredits(Tmdb, _.cast))
 
@@ -365,7 +361,7 @@ case class MovieRecord(
    *  cinema outranks TMDB here, so without this a venue's `Cecil B. Demille`
    *  displays over the TMDB slot's `Cecil B. DeMille` sitting beside it. */
   def director: Seq[String] =
-    tools.CreditSpelling.alignedTo(
+    SourceMerge.credits(
       firstPrioritized(sd => Option.when(sd.director.nonEmpty)(sd.director)).getOrElse(Seq.empty),
       slotCredits(Tmdb, _.director))
 
@@ -418,16 +414,7 @@ case class MovieRecord(
    *  twice ("USA" + "Stany Zjednoczone") if two of them disagree on spelling
    *  — that's accepted; the dedup only catches exact-match dupes modulo
    *  case. */
-  def countries: Seq[String] = {
-    val seen = scala.collection.mutable.LinkedHashSet.empty[String]
-    prioritized.flatMap(_._2.countries)
-      .filter(models.CountryNames.isPolish)
-      .foreach { c =>
-        val key = c.toLowerCase(Locale.ROOT)
-        if (!seen.exists(_.toLowerCase(Locale.ROOT) == key)) seen += c
-      }
-    seen.toSeq
-  }
+  def countries: Seq[String] = SourceMerge.countries(prioritized.iterator.flatMap(_._2.countries))
 
   /** Original (production-language) titles contributed by the resolved-metadata
    *  sources — TMDB, IMDb, Filmweb. These are the alternate search terms the
@@ -437,7 +424,7 @@ case class MovieRecord(
    *  TMDB missed can now be found by. Broader than the TMDB-only display
    *  `originalTitle` — used by [[services.movies.MergeRetrigger]], not for display. */
   def resolverOriginalTitles: Set[String] =
-    Seq(Tmdb, Imdb, Filmweb).flatMap(s => data.get(s).flatMap(_.originalTitle)).toSet
+    Source.ResolvedMetadata.flatMap(s => data.get(s).flatMap(_.originalTitle)).toSet
 
 }
 

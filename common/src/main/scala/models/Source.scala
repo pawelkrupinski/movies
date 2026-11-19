@@ -45,6 +45,13 @@ object CinemaShowing {
 }
 
 object Source {
+  /** The catalogues whose slots carry a film's resolved metadata (its original title, its poster): TMDB, IMDb,
+   *  Filmweb, in priority order. */
+  val ResolvedMetadata: Seq[Source] = Seq(Tmdb, Imdb, Filmweb)
+
+  /** The poster catalogues a card's fallback chain ends on: TMDB's, then IMDb's. */
+  val PosterCatalogues: Seq[Source] = Seq(Tmdb, Imdb)
+
   /** All known sources, ordered for derived-accessor priority: Multikino
    *  first (preserves the old `prioritizedShowings` behaviour), then the rest
    *  of `Cinema.all`, then the network-level chain detail sources (synthetic
@@ -55,8 +62,9 @@ object Source {
    *  on read). */
   val all: Seq[Source] = {
     val cinemasPrioritized = Multikino +: Cinema.all.filterNot(_ == Multikino)
-    cinemasPrioritized ++ CinemaNetworks.all ++ Seq(Tmdb, Imdb, Filmweb)
+    cinemasPrioritized ++ CinemaNetworks.all ++ ResolvedMetadata
   }
+
 
   /** Stable priority index for ordering source slots. Lower = preferred. */
   val priority: Map[Source, Int] = all.zipWithIndex.toMap

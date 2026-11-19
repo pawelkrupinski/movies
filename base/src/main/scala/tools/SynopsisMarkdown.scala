@@ -48,6 +48,15 @@ object SynopsisMarkdown {
       if (period > 0 && period < s.length) s.substring(0, period) else s
     }
 
+  /** One raw synopsis candidate made comparable: its CMS repeats collapsed ([[collapseRepeats]]), FIRST, on the raw
+   *  value (stripping URLs trims, breaking the exact periodicity the collapse needs), then its URL tokens stripped
+   *  (`TextNormalization.stripUrls`) -- `(markdown, plainText)`, the plain text emphasis-stripped ([[strip]]) for a
+   *  length comparison. `None` when nothing survives (a blurb that was nothing but a link). */
+  def comparable(raw: String): Option[(String, String)] = {
+    val processed = TextNormalization.stripUrls(collapseRepeats(raw))
+    if (processed.isEmpty) None else Some(processed -> strip(processed))
+  }
+
   /** Normalise a synopsis to clean, well-formed markdown — applied once at the
    *  read boundary ([[models.MovieRecord.synopsis]]) so EVERY source path is
    *  guaranteed valid, whether the markers came from `ScraperParse.blockText`,
