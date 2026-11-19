@@ -2,7 +2,7 @@ package services.identity
 
 import models.ListingKey
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
@@ -108,7 +108,7 @@ object PopulationMonotonicity {
    *  against it with the family's absent listings taken out ([[Without]]), the rest of the corpus fixed -- what the
    *  report's walk resolves, and the population walk's model under both its takes (a resolve of a few listings, not of
    *  the corpus beside them). */
-  final class Subsets(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs) {
+  final class Subsets(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs) {
     val generation  = new CandidateGeneration(listings.sorted.distinctBy(_.key), lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
     private val without = new Without.Index(generation.nodes)
     def resolve(family: Set[ListingKey], present: Seq[Listing]): Resolution =
@@ -117,7 +117,7 @@ object PopulationMonotonicity {
   }
 
   /** A whole resolve of `listings` (no corpus beyond them), every listing's take as [[takeOf]] reads it. */
-  def wholeTakes(lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs)(listings: Seq[Listing]): Map[ListingKey, Option[String]] = {
+  def wholeTakes(lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs)(listings: Seq[Listing]): Map[ListingKey, Option[String]] = {
     val r = IdentityResolver.resolve(listings, lookups, normalizer, inputs)
     listings.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
   }
@@ -152,7 +152,7 @@ object PopulationMonotonicity {
    *  reads the corpus's context and answers and writes nothing they hold (its resolves build their own generation and
    *  scope), so families walk side by side and their findings are gathered in family order -- the same report as one
    *  thread's while the budget is not spent (a family starts, on any thread, only while it is not). */
-  def report(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
+  def report(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs, whole: Resolution,
              stopwatch: tools.Stopwatch, count: Int = 4, steps: Int = 6, budgetSeconds: Double = 900, maxFamily: Int = 300,
              focus: ListingKey => Boolean = _ => true, threads: Int = 1): Report = {
     val started    = stopwatch.start()

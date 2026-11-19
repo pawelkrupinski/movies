@@ -32,7 +32,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
                       val facts: TitleFacts.Rules = TitleFacts.Rules.none,
                       /** The country [[TitleNormalizer.forCountry]] built it for: what a [[TitleNormalizer.Reader]] names its
                        *  readings by. Empty for one built any other way. */
-                      val country: String = "") extends (String => String) {
+                      val country: String = "") extends (String => String) with TitleForms {
 
   // Each public reading tells the reader set on the companion, when one is (a measurement's: never in a served process),
   // what it read: one volatile read a call otherwise.

@@ -1,12 +1,12 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import IdentityResolver.Mutation
 
 /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
  *  and for [[ResolveReports.candidatesOf]]. */
-private[identity] final class ResolveStages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+private[identity] final class ResolveStages(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                          calibration: IdentityCalibration, mutation: Mutation, pins: PinConstraints, decorations: TitleDecorations,
                                          corpus: Option[CorpusContext] = None) {
   private val arrival = mutation == Mutation.LazyLookups || mutation == Mutation.FirstWins

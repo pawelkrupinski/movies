@@ -1,6 +1,6 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 /** The resolve's own stages told for a report: each candidate as a node's family scored it, a focused node's candidates
  *  and banners ([[candidatesOf]]). */
@@ -31,7 +31,7 @@ object ResolveReports {
 
   /** Every node holding a listing `focused` selects — the resolve's own stages, so the report shows
    *  what the resolve read. */
-  def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  def candidatesOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                    calibration: IdentityCalibration = IdentityCalibration.resolver,
                    pins: PinConstraints = PinConstraints(Nil),
                    decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {

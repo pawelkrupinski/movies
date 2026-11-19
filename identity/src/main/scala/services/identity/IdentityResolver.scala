@@ -2,7 +2,7 @@ package services.identity
 
 import models.ListingKey
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the
@@ -72,7 +72,7 @@ object IdentityResolver {
    *  reads). Its pins are the curation's hard constraints (`PinConstraints`): a pinned film replaces a listing's own
    *  match, a denied one is never eligible, a pinned group is must-linked above every derived tier, and a derived edge
    *  the pins contradict is dropped. */
-  def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs): Resolution =
+  def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs): Resolution =
     resolveWith(listings, lookups, normalizer, inputs.calibration, Mutation.None, inputs.pins, inputs.decorations)
 
   /** Why a listing resolved as it did and sits where it does — the resolve's own stages, told:
@@ -92,7 +92,7 @@ object IdentityResolver {
         candidates.take(8).map(candidate => s"  candidate ${candidate.render}")
   }
 
-  def explain(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  def explain(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
               calibration: IdentityCalibration = IdentityCalibration.resolver,
               pins: PinConstraints = PinConstraints(Nil),
               decorations: TitleDecorations = TitleDecorations.resolver)(wanted: Set[ListingKey]): Seq[ListingExplanation] = {
@@ -141,7 +141,7 @@ object IdentityResolver {
             connectors.map { case (node, shared) => s"  connector $node: ${shared.mkString(", ")}" }))
   }
 
-  def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  def familyAnatomy(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                     calibration: IdentityCalibration = IdentityCalibration.resolver,
                     decorations: TitleDecorations = TitleDecorations.resolver)(largest: Int): Seq[FamilyAnatomy] = {
     val stages   = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
@@ -162,7 +162,7 @@ object IdentityResolver {
   final case class NodeEvidence(keys: Seq[ListingKey], candidates: Seq[CandidateEvidence])
 
   /** Every node holding a listing `focused` selects, its candidates scored as the resolve scores them. */
-  def evidenceOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  def evidenceOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                  calibration: IdentityCalibration = IdentityCalibration.resolver,
                  decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeEvidence] =
     evidenceIn(new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations))(focused)
@@ -185,7 +185,7 @@ object IdentityResolver {
   final class Scored private[IdentityResolver] (val resolution: Resolution, stages: ResolveStages) {
     lazy val evidence: Seq[NodeEvidence] = evidenceIn(stages)(_ => true)
   }
-  def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
     new Scored(run(stages, Mutation.None, pieces = false), stages)
@@ -193,12 +193,12 @@ object IdentityResolver {
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
    *  resolved alone with `corpus = Some(...)`, needs to decide as the whole resolve does. */
-  private[identity] def contextOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  private[identity] def contextOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                   pins: PinConstraints = PinConstraints(Nil),
                                   decorations: TitleDecorations = TitleDecorations.None): CorpusContext =
     new CandidateGeneration(listings.toSeq.sorted.distinctBy(_.key), lookups, normalizer, pins, decorations, lazyLookups = false).context
 
-  private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                     calibration: IdentityCalibration, mutation: Mutation,
                                     pins: PinConstraints = PinConstraints(Nil),
                                     decorations: TitleDecorations = TitleDecorations.None,
@@ -235,7 +235,7 @@ object IdentityResolver {
 
   /** Resolve `listings` — a union of whole families — against the corpus's `corpus` context, family
    *  by family: A3 with the corpus's facts, so each decides as the whole resolve would. */
-  private[identity] def resolveRegion(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+  private[identity] def resolveRegion(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                       calibration: IdentityCalibration, pins: PinConstraints, decorations: TitleDecorations,
                                       corpus: CorpusContext): Seq[RegionFamily] = {
     val stages     = new ResolveStages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations, Some(corpus))

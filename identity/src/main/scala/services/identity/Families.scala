@@ -2,7 +2,7 @@ package services.identity
 
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import scala.annotation.tailrec
 
@@ -12,7 +12,7 @@ import scala.annotation.tailrec
  *  ([[Acceptance.aloneNamed]]), unless a title-linked sibling denies it ([[withoutSiblingDenials]]).
  *  `narrow` is the teeth tests' `Mutation.NarrowFamilies`: families by sanitised title only, never grown. */
 private[identity] final class Families(scoring: CandidateScoring, acceptance: Acceptance, links: TitleLinks,
-                                       normalizer: TitleNormalizer, narrow: Boolean) {
+                                       normalizer: TitleForms, narrow: Boolean) {
   import scoring.{evidenceDenies, houses, pins}
   import scoring.generation.{candidateOf, nodeById, nodes}
 

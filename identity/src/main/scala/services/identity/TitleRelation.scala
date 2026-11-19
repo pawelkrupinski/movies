@@ -1,6 +1,6 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 /**
  * THE TITLE RELATION (docs/investigations/2026-11-01-flip-unification.md, stage 2): how two listings' TITLES relate,
@@ -34,7 +34,7 @@ object TitleRelation {
                          groups: Set[String], cleanTitle: String, originalTitle: Option[String], shapes: Seq[String],
                          relays: Set[String] = Set.empty) {
     /** The title block keys its family is grown by ([[Cut]]), against a corpus's whole titles and banners. */
-    def keys(normalizer: TitleNormalizer, wholeTitle: String => Boolean, bannerSegment: String => Boolean): Set[String] =
+    def keys(normalizer: TitleForms, wholeTitle: String => Boolean, bannerSegment: String => Boolean): Set[String] =
       new Cut(this, normalizer, wholeTitle, bannerSegment).blocked
     /** The keys a PRESENT listing shows its title under ([[Showing]]). */
     def shown: Iterator[String] =
@@ -49,7 +49,7 @@ object TitleRelation {
   }
 
   /** `evidence`'s forms, sanitised and searched by `normalizer`. */
-  def of(evidence: Evidence, normalizer: TitleNormalizer): Forms = of(evidence, normalizer.sanitize, normalizer.searchQuery)
+  def of(evidence: Evidence, normalizer: TitleForms): Forms = of(evidence, normalizer.sanitize, normalizer.searchQuery)
 
   def of(evidence: Evidence, sanitize: String => String, searchQuery: String => String): Forms = {
     val whole = sanitize(evidence.cleanTitle)
@@ -62,7 +62,7 @@ object TitleRelation {
 
   /** A listing's forms read off the listing alone -- no venue page, the resolver's decorations: what retention relates
    *  listings by before any resolve, so the rule needs no take to decide what a take reads. */
-  def of(listing: Listing, normalizer: TitleNormalizer): Forms = of(Evidence.of(listing, None, TitleDecorations.resolver), normalizer)
+  def of(listing: Listing, normalizer: TitleForms): Forms = of(Evidence.of(listing, None, TitleDecorations.resolver), normalizer)
 
   /** Every title group a listing's backing can read, whatever the film ([[backingGroups]]): its title's and its
    *  decorated-only shapes' keys, every title its search asks for, and every shape of its title. What a family's resolve
@@ -116,7 +116,7 @@ object TitleRelation {
    *  the two share a family block key ([[Cut]], cut against the whole titles and banners of every listing named here):
    *  what puts two listings in one family puts them in one another's input. `others` (the leaving and the kept ones)
    *  count toward those whole titles and banners too, as the model's corpus holds them. */
-  final class Showing(present: Seq[Forms], others: Seq[Forms], normalizer: TitleNormalizer) {
+  final class Showing(present: Seq[Forms], others: Seq[Forms], normalizer: TitleForms) {
     private val all    = present ++ others
     private val wholes = all.iterator.map(_.whole).filter(_.nonEmpty).toSet
     private val spread = all.flatMap(forms => forms.shapes.map(normalizer.sanitize).filter(piece => piece.nonEmpty && piece != forms.whole).distinct
@@ -136,7 +136,7 @@ object TitleRelation {
    *  work only through "Così fan tutte" — unless the piece is a banner by how many titles carry it (`bannerSegment`: a
    *  festival's films rarely have a listing of their own, so "Młode Horyzonty: …" has no whole-title piece beside the
    *  banner). */
-  final class Cut(forms: Forms, normalizer: TitleNormalizer, wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
+  final class Cut(forms: Forms, normalizer: TitleForms, wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
     val whole   = normalizer.sanitize(forms.cleanTitle)
     val pieces  = forms.shapes.map(segment => segment -> normalizer.sanitize(segment))
     // The listing's own cleaned title is a work too, when another piece of what the venue published

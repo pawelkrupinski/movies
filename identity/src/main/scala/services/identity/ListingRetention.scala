@@ -1,6 +1,6 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details
@@ -64,11 +64,11 @@ object ListingRetention {
    *  Filmhaus Kino Koeln's "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)", UK Picture
    *  House Keighley's "The Ladykillers (1955)" while Nerve Centre bills "The Ladykillers | Cinematic Breakfast": the model
    *  joins each pair by title (drift slices kinocenter-giessen-black-water-globale, nerve-centre-londonderry-the-ladykillers). */
-  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer): Seq[Listing] =
+  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleForms): Seq[Listing] =
     retained(departed, present, normalizer, (listing: Listing) => TitleRelation.of(listing, normalizer))
 
   /** [[retained]], each listing's title read by `forms` (the worker's cache of them). */
-  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer, forms: Listing => TitleRelation.Forms): Seq[Listing] = {
+  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleForms, forms: Listing => TitleRelation.Forms): Seq[Listing] = {
     val billed = present.iterator.map(_.key).toSet
     val twins  = returnedUnderAnotherKey(departed, present).iterator.map(_.key).toSet
     val gone   = departed.filterNot(listing => billed(listing.key) || twins(listing.key))
@@ -114,7 +114,7 @@ object ListingRetention {
     }
 
   /** [[retained]] of the departed listings that are inputs at `now` within `window` ([[live]]). */
-  def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,
+  def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleForms,
                  forms: Listing => TitleRelation.Forms, window: java.time.Duration = DefaultMaxAge): Seq[Listing] =
     retained(departed.iterator.filter(live(_, now, window)).map(_.listing).toSeq, present, normalizer, forms)
 }

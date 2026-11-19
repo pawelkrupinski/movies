@@ -2,7 +2,7 @@ package services.identity
 
 import models.ListingKey
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
@@ -22,7 +22,7 @@ import MultiMaps.*
  * `IdentityMeasures.venueTitles`, `Houses.learn`), so the context equals [[CorpusContext.of]] of the
  * listings held — `LiveCorpusSpec` asserts it after every event.
  */
-private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: TitleNormalizer, pins: PinConstraints,
+private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: TitleForms, pins: PinConstraints,
                                          decorations: TitleDecorations,
                                          slices: LiveCorpus.Slices = LiveCorpus.Slices.Default) extends CorpusContext {
   private type NodeKey = (String, Set[String])

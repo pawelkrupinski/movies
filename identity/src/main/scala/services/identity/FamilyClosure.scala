@@ -1,6 +1,6 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 /**
  * The FAMILY an identity resolve is scoped to, and the check that the scoping is sound
@@ -37,7 +37,7 @@ object FamilyClosure {
    *  listing's whole title however either is cased. They put a
    *  decorated spelling in its plain sibling's family — which is what lets the resolver's
    *  group-level signals reach it — without drawing any edge by themselves. */
-  def blockKeys(cleanTitle: String, originalTitle: Option[String], normalizer: TitleNormalizer, segments: Seq[String] = Nil): Set[String] = {
+  def blockKeys(cleanTitle: String, originalTitle: Option[String], normalizer: TitleForms, segments: Seq[String] = Nil): Set[String] = {
     def titleKeys(t: String) = Seq("t:" + normalizer.sanitize(t), "q:" + normalizer.searchQuery(t))
     (titleKeys(cleanTitle) ++ originalTitle.toSeq.flatMap(titleKeys) ++ segments.map(s => "t:" + normalizer.sanitize(s)))
       .filterNot(_.endsWith(":")).toSet

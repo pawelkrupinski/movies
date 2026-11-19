@@ -1,12 +1,12 @@
 package services.identity
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import scala.collection.mutable
 
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
-private[identity] final class TitleLinks(normalizer: TitleNormalizer, pins: PinConstraints,
+private[identity] final class TitleLinks(normalizer: TitleForms, pins: PinConstraints,
                                          wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
 
   // Each once per title, and each node's keys once per resolve: every pair of a family's nodes
@@ -68,7 +68,7 @@ private[identity] final class TitleLinks(normalizer: TitleNormalizer, pins: PinC
 private[identity] object TitleLinks {
   /** The keys a node's title blocks under: its title's ([[TitleRelation.Cut]]: sanitised title, search form, original
    *  title, its segments except BANNERS) and its pins' and catalogue ids' — a family's seed before any match grows it. */
-  def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+  def titleKeys(node: EvidenceNode, normalizer: TitleForms, pins: PinConstraints, wholeTitle: String => Boolean,
                 bannerSegment: String => Boolean): Set[String] =
     new Cut(node, normalizer, pins, wholeTitle, bannerSegment).keys
 
@@ -78,7 +78,7 @@ private[identity] object TitleLinks {
     def keys: Set[String] = kept.map(_._1).toSet
   }
 
-  def keyed(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+  def keyed(node: EvidenceNode, normalizer: TitleForms, pins: PinConstraints, wholeTitle: String => Boolean,
             bannerSegment: String => Boolean): Keyed = {
     val cut = new Cut(node, normalizer, pins, wholeTitle, bannerSegment)
     import cut.{blocked, catalogued, droppedPieces, isWhole, pinned, reasonToDrop, whole}
@@ -98,7 +98,7 @@ private[identity] object TitleLinks {
   /** What [[titleKeys]] and [[keyed]] both decide — the title's cut ([[TitleRelation.Cut]]: the pieces kept and dropped,
    *  and its block keys) and the node's pins and catalogue ids — with no reason told: a resolve and every event's title
    *  components key every node, and read no reason. */
-  private final class Cut(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
+  private final class Cut(node: EvidenceNode, normalizer: TitleForms, pins: PinConstraints, wholeTitle: String => Boolean,
                           bannerSegment: String => Boolean) {
     private val title = new TitleRelation.Cut(TitleRelation.of(node.evidence, normalizer), normalizer, wholeTitle, bannerSegment)
     val whole: String = title.whole

@@ -2,7 +2,7 @@ package services.identity
 
 import models.ListingKey
 
-import services.titles.TitleNormalizer
+import services.titles.TitleForms
 
 import scala.collection.concurrent.TrieMap
 
@@ -186,7 +186,7 @@ object FamilyIndex {
 
   /** The family `recorded` holds resolved ALONE from its recorded reads — no corpus, no lookups beyond them: each member's
    *  take. Throws [[Unindexed]] on a read the index does not hold. */
-  def replayAlone(recorded: Recorded, normalizer: TitleNormalizer, inputs: ResolveInputs): Map[ListingKey, Option[String]] = {
+  def replayAlone(recorded: Recorded, normalizer: TitleForms, inputs: ResolveInputs): Map[ListingKey, Option[String]] = {
     val regions = IdentityResolver.resolveRegion(recorded.members, new ReplayLookups(recorded), normalizer, inputs.calibration, inputs.pins,
       inputs.decorations, new ReplayContext(recorded.context))
     val decided = regions.flatMap(_.decisions).flatMap(decision => decision.members.map(_ -> decision)).toMap
@@ -258,7 +258,7 @@ object FamilyIndex {
 
   /** Every family of `listings`' resolve, each resolved alone against the corpus's context and recorded; `values`: each
    *  family's reads kept as values too ([[Recorded]], in entry order), for [[replayAlone]]. */
-  def build(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, threads: Int = 1,
+  def build(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs, threads: Int = 1,
             values: Boolean = false): Built = {
     val all        = listings.sorted.distinctBy(_.key)
     val whole      = IdentityResolver.resolve(all, lookups, normalizer, inputs)
@@ -289,7 +289,7 @@ object FamilyIndex {
 
   /** What `listings` answer a re-read with ([[Now]]): their corpus's context, `lookups`, and each block key's holders by
    *  the corpus resolve's families (`whole`, [[blockKeyHolders]]). */
-  private[identity] def now(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Built): Now = {
+  private[identity] def now(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs, whole: Built): Now = {
     val all        = listings.sorted.distinctBy(_.key)
     val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
     val byKey      = all.map(l => l.key -> l).toMap
