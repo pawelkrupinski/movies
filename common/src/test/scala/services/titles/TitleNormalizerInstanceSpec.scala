@@ -1,7 +1,6 @@
 package services.titles
 
-import services.movies.*
-
+import services.movies.CacheKey
 
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
