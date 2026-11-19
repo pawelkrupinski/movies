@@ -192,7 +192,23 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Seq("services.identity.FamilyScope", "services.identity.ConstraintEdges", "services.identity.IncrementalResolver")
       .map(table.contractsOf(_).map(_._1)) shouldBe Seq(Seq("resolver-vocabulary"), Seq("resolver-vocabulary"), Seq("resolver-vocabulary"))
     Seq("services.identity.ProjectionDrafting", "services.identity.IdentityMeasures", "services.identity.agreement.Agreement",
-      "services.identityadapters.IdentityProjection").flatMap(table.contractsOf) shouldBe empty
+      "services.identityadapters.IdentityProjection").flatMap(table.contractsOf).map(_._1) should not contain "resolver-vocabulary"
+  }
+
+  "the projection contract" should "be one dependency of the identity projection alone, never of the resolver core, the measures, the agreement stage or the other adapters" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    table.contracts.find(_._1 == "projection").map(_._3.toSet) shouldBe Some(Set("services.identity.ProjectionIndex",
+      "services.identity.ProjectionScope", "services.identity.ProjectedListing", "services.identity.FilmDraft",
+      "services.identity.ProjectedFilm", "services.identity.ProjectionPlan", "services.identity.Regroupings"))
+    val users = Seq("services.identityadapters.IdentityProjection", "services.identityadapters.ProjectionWrite",
+      "services.identityadapters.ProjectionDrift", "services.identity.ProjectionDrafting", "services.identity.FilmRecordDrafts",
+      "services.identity.FilmPlans", "services.identity.VenueSlotBuilds", "services.identity.FilmKeys",
+      "services.identity.ProjectionDrafts", "services.identity.StoredFilmListings")
+    users.map(table.contractsOf(_).map(_._1)) shouldBe users.map(_ => Seq("projection"))
+    Seq("services.identity.IdentityResolver", "services.identity.IncrementalResolver", "services.identity.IdentityMeasures",
+      "services.identity.agreement.Agreement", "services.identity.IdentityListingIntake",
+      "services.identityadapters.IdentityAgreementMetrics", "services.identityadapters.IdentityProjectionMetrics")
+      .flatMap(table.contractsOf).map(_._1) should not contain "projection"
   }
 
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {

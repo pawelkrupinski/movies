@@ -106,3 +106,34 @@ member	services.identity.Candidate	resolver-vocabulary	identity	a film a node ha
 member	services.identity.CandidateQuery	resolver-vocabulary	identity	a candidate question a node asks: what found a candidate
 member	services.identity.Scored	resolver-vocabulary	identity	a candidate as a node's evidence scored it
 member	services.identity.Denial	resolver-vocabulary	identity	why a node's evidence rules a candidate out
+contract	services.identityadapters.IdentityProjection	projection	identity	the identity projection's side of its vocabulary contract: the seven immutable value types every step of a projection reads together (the index of the listings, stored films and clusters, the scope one projection drafts, a listing as projected, a film drafted and as written, the plan to write, and its regroupings) count as one dependency. Scoped by name to the projection (indexing, scoping, drafting, keys, venue slots, guard, plan, write, drift and tick), never the resolver core, the measures, the agreement stage, the listing intake or the other adapters
+contract	services.identityadapters.ProjectionWrite	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identityadapters.ProjectionDrafter	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identityadapters.ProjectionDrift	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identityadapters.ProjectionTick	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identityadapters.ProjectedFilmWrites	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identityadapters.ProjectionTakeReports	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionDrafting	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.FilmRecordDrafts	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionDrafts	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionDraft	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.IdentityProjectionPlan	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.FilmPlans	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.FilmKeys	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.VenueSlotBuilds	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.VenueSlots	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.VenueSlotMemo	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.StoredFilmListings	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionIndexing	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.LiveProjectionIndex	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionGuard	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionIndex	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionScope	projection	identity	the identity projection (see IdentityProjection)
+contract	services.identity.ProjectionPlan	projection	identity	the identity projection (see IdentityProjection)
+member	services.identity.ProjectionIndex	projection	identity	what a projection reads off the listings, the resolution and the stored films before it drafts: listings by key, previous films, clusters
+member	services.identity.ProjectionScope	projection	identity	the films one projection drafts, compares and writes: its changes closed over what a draft reads
+member	services.identity.ProjectedListing	projection	identity	one published listing as the projection holds it: the listing and its row and showtimes digests
+member	services.identity.FilmDraft	projection	identity	one film of a projection before its key is chosen: counter, inherited id, listings, record
+member	services.identity.ProjectedFilm	projection	identity	a film as the projection writes it: id, counter, title, year, key, record, listings
+member	services.identity.ProjectionPlan	projection	identity	a projection ready to write: the films, the ids retired, the FilmId-map additions, the regroupings
+member	services.identity.Regroupings	projection	identity	how the films moved between two projections: merges, splits, moves, fresh and retired ids
