@@ -159,6 +159,8 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
 
 The whole path from commit to main — `land`, every pre-push step, the area tests, the gate, each refusal and what
 to do — is in `docs/landing-process.md`.
+**A refactoring lane follows ONE checklist**, "Landing a refactor" at the top of that doc (pure moves, what-if,
+narrowed layers, keep working while queued) instead of re-deriving it from the sections below.
 
 **No pre-merge CI** (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not
 green branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless

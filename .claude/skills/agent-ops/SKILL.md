@@ -22,6 +22,8 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
   CLAUDE.md lists, the `chore/identity-capture` verdict push and `scripts/mobile-ship.sh`'s own release commit are the
   exceptions — see `CLAUDE.md`). Before typing `git push` or `gh pr create`, run `git rev-parse --abbrev-ref HEAD` and name the
   ref you push (`<sha>:main`); a push of anything but `main` violates the rule.
+- **A refactor** (complexity, coupling, moves, splits; identity code too): follow the checklist "Landing a refactor"
+  at the top of `docs/landing-process.md`.
 - **Landing:** rebase onto main → every relevant layer green locally → `~/bin/agentctl land --until-done` from your
   worktree as your LAST step (Bash `run_in_background=true`, end your turn, report ONCE after its last line). It
   queues (or resumes its own entry), waits for the verdict and ends `DONE <sha> ... worktree removed` -- it proves
