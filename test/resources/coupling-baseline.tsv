@@ -41,8 +41,8 @@ module-edge	scrapers->common	1538
 module-edge	scrapers->geodata	3
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
-module-edge	web->base	32
-module-edge	web->common	608
+module-edge	web->base	31
+module-edge	web->common	606
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	41
@@ -302,7 +302,6 @@ fanout	services.tasks.RatingEnqueuer	12
 fanout	services.tasks.RatingRunCensus	12
 fanout	services.tasks.TaskWorker	10
 fanout	services.titles.TitleNormalizer	11
-fanout	services.users.MongoUserStateRepository	12
 fanout	services.venuepages.DetailRowLanding	15
 fanout	services.venuepages.EnrichDetailsHandler	10
 distance	services.identity	43
