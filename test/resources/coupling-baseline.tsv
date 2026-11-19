@@ -187,7 +187,7 @@ fanout	services.identity.YearRuntimeMeasures	11
 fanout	services.identity.agreement.Agreement	42
 fanout	services.identity.agreement.AgreementCandidates	32
 fanout	services.identity.agreement.AgreementCorrections	33
-fanout	services.identity.agreement.AgreementStage	59
+fanout	services.identity.agreement.AgreementStage	58
 fanout	services.identity.agreement.AgreementStageComposition	17
 fanout	services.identity.agreement.AgreementTakes	34
 fanout	services.identity.agreement.AgreementVerdicts	11
@@ -196,7 +196,6 @@ fanout	services.identity.agreement.Catalogue	16
 fanout	services.identity.agreement.FamilyLookups	13
 fanout	services.identity.agreement.FamilyVerdicts	18
 fanout	services.identityadapters.AgreementAsker	26
-fanout	services.identityadapters.AgreementCatalogueQuestions	12
 fanout	services.identityadapters.AgreementQuestions	28
 fanout	services.identityadapters.CatalogueAnswerStore	12
 fanout	services.identityadapters.FamilyAnswerStore	20
@@ -205,9 +204,7 @@ fanout	services.identityadapters.IdentityModelService	27
 fanout	services.identityadapters.IdentityProjection	43
 fanout	services.identityadapters.IdentityStagingPublisher	11
 fanout	services.identityadapters.IdentityTmdbLayer	13
-fanout	services.identityadapters.IndexedVenuePageFacts	13
-fanout	services.identityadapters.InlineFamilyAsks	17
-fanout	services.identityadapters.LookupFill	33
+fanout	services.identityadapters.LookupFill	29
 fanout	services.identityadapters.ModelSnapshots	14
 fanout	services.identityadapters.PosterAnswerStore	11
 fanout	services.identityadapters.PosterHashing	11
@@ -221,7 +218,6 @@ fanout	services.identityadapters.StagingReading	13
 fanout	services.identityadapters.StagingSnapshots	22
 fanout	services.identityadapters.StoredFirstLookups	11
 fanout	services.identityadapters.StoredTmdbLookups	21
-fanout	services.identityadapters.SuspectTakeCount	11
 fanout	services.identityadapters.TakeReads	12
 fanout	services.identityadapters.TmdbChangesSweep	13
 fanout	services.identityadapters.TmdbFilmRefresh	17
@@ -229,9 +225,7 @@ fanout	services.identityadapters.TmdbIdentityLookups	15
 fanout	services.identityadapters.TmdbNormalizer	19
 fanout	services.identityadapters.TmdbStore	16
 fanout	services.identityadapters.VenueDetailLookups	14
-fanout	services.identityadapters.VenueDetails	10
 fanout	services.identityadapters.VenuePageWait	10
-fanout	services.identityadapters.WikiFamily	12
 fanout	services.metrics.RetiredVenueCensus	10
 fanout	services.movies.CaffeineMovieCache	38
 fanout	services.movies.CinemaSlotBuilder	14
@@ -315,6 +309,6 @@ fanout	services.venuepages.ReadVenuePageHandler	12
 fanout	services.venuepages.VenuePageReader	12
 fanout	tools.ProxyChain	11
 fanout	tools.RealHttpFetch	11
-distance	services.identity	40
+distance	services.identity	41
 distance	services.metrics	38
 distance	services.movies	39

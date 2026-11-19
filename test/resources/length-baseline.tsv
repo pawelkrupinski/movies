@@ -8,11 +8,8 @@
 limit	method-lines	50
 limit	file-lines	800
 method-lines	identity/src/main/scala/services/identity/TakeChangeLines.scala:TakeChangeLines.of	56
-method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.corrected	73
-method-lines	identity/src/main/scala/services/identity/agreement/AgreementCorrections.scala:AgreementCorrections.correctionOf	72
-method-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala:AgreementStage.resolved	67
 method-lines	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.main	57
 method-lines	worker/src/main/scala/tools/CityCardRenderer.scala:CityCardRenderer.render	59
 method-lines	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.renderBase	59
 file-lines	common/src/main/scala/models/Cinema.scala	1067
-file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1351
+file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1240
