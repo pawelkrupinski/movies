@@ -16,8 +16,8 @@ final class ReviewPages(cc: ControllerComponents, environment: Mode, sources: Ma
   private val listingReads = new ReviewListingReads(reads)
   private val labels = new ReviewLabels(labelsPath)
   private val cards  = new ReviewCardsPage(answers, reads, notices)
-  val queues      = new ReviewQueueController(cc, environment, reads, labels, cards, clock)
-  val agentJudgedPages = new AgentJudgedController(cc, environment, answers, labels, reads, new AgentJudgedCards(tmdbPosters), cards)
+  val queues      = new ReviewQueueController(cc, environment, new ReviewQueues(reads, labels, clock), cards)
+  val agentJudgedPages = { val judged = new AgentJudgedCards(tmdbPosters); new AgentJudgedController(cc, environment, new AgentJudgedTakes(answers, labels, judged), reads, judged, cards) }
   val whys        = new ReviewWhyController(cc, environment, listingReads)
   val listings    = new ReviewListingController(cc, environment, listingReads, labels, notices)
   val posters     = new TmdbPosterController(cc, environment, tmdbPosters)

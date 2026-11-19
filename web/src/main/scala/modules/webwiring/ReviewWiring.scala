@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AgentJudgedCards, AgentJudgedController, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewListingReads, ReviewQueueController, ReviewReads, ReviewWhyController, TmdbPosterController}
+import controllers.{AgentJudgedCards, AgentJudgedController, AgentJudgedTakes, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewListingReads, ReviewQueueController, ReviewQueues, ReviewReads, ReviewWhyController, TmdbPosterController}
 import play.api.Mode
 import java.nio.file.Paths
 import services.review.{CachingReviewSource, InMemoryReviewAnswerStore, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource, TmdbPosterLookup}
@@ -42,9 +42,10 @@ trait ReviewWiring { self: Wiring =>
   private lazy val reviewCardsPage = new ReviewCardsPage(reviewAnswers, reviewReads, reviewNotices)
 
   lazy val reviewQueueController: ReviewQueueController =
-    new ReviewQueueController(controllerComponents, environmentMode, reviewReads, reviewLabels, reviewCardsPage, clock)
+    new ReviewQueueController(controllerComponents, environmentMode, new ReviewQueues(reviewReads, reviewLabels, clock), reviewCardsPage)
   lazy val agentJudgedController: AgentJudgedController = new AgentJudgedController(controllerComponents, environmentMode,
-    reviewAnswers, reviewLabels, reviewReads, new AgentJudgedCards(reviewTmdbPosters), reviewCardsPage)
+    new AgentJudgedTakes(reviewAnswers, reviewLabels, agentJudgedCards), reviewReads, agentJudgedCards, reviewCardsPage)
+  private lazy val agentJudgedCards = new AgentJudgedCards(reviewTmdbPosters)
   lazy val reviewWhyController: ReviewWhyController = new ReviewWhyController(controllerComponents, environmentMode, reviewListingReads)
   lazy val reviewListingController: ReviewListingController =
     new ReviewListingController(controllerComponents, environmentMode, reviewListingReads, reviewLabels, reviewNotices)
