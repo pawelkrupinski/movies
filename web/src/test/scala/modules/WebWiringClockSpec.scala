@@ -70,7 +70,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     payload.bucket("Probe", bucket).map(_.status) shouldBe Some("red")
   }
 
-  "the wiring's DebugController" should "age the read-mirror on the wiring clock" in {
+  "the wiring's CadenceController" should "age the read-mirror on the wiring clock" in {
     val wiring = new ClockedWiring {
       override lazy val debugCountries: DebugCountries = DebugCountries.of(
         new DebugStack(models.Country.default, movieRepository, ratingCadenceReader,
@@ -78,7 +78,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
           mirrorFreshness = () => Some(Pinned.minusSeconds(300))),
         Map.empty, devMode = true)
     }
-    contentAsString(wiring.debugController.cadence()(FakeRequest())) should include ("mirror 5m behind")
+    contentAsString(wiring.cadenceController.cadence()(FakeRequest())) should include ("mirror 5m behind")
   }
 
   "the wiring's listing" should "label a showing day against the wiring clock's year" in {

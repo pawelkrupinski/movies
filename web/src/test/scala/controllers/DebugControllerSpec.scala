@@ -26,7 +26,7 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     ("Incepcja", Some(2010), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Incepcja"))))),
   )
 
-  private def buildController(mode: Mode): DebugController =
+  private def buildController(mode: Mode): TestDebugController.DebugPages =
     TestDebugController.build(records, mode)._1
 
   "GET /debug" should "render the whole corpus in dev mode" in {

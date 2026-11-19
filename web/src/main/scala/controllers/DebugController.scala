@@ -1,22 +1,17 @@
 package controllers
 
-import services.movies.LatestTitleYear
-
 import models._
 import play.api.mvc._
 import play.api.Mode
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.{DurationInt, DurationLong}
-
 /**
- * The dev-only corpus pages of `/debug`: the corpus table, its per-row detail and the
- * rating cadence. Their siblings answer elsewhere: the read-model dump
+ * The dev-only corpus table of `/debug` and its rows' detail. Its siblings answer elsewhere: the rating
+ * cadence ([[CadenceController]]), the read-model dump
  * ([[DebugReadModelController]]), the tuning pages ([[TuneController]]) and
  * `rehydrate` ([[RehydrateController]]), the one /debug endpoint that runs in prod.
  *
- * ⚠️ THE ONLY CONTROLLER IN THE WEB TIER THAT READS THE SOURCE CORPUS. Every
- * page here pulls `movies` / the task queue from Mongo on
+ * ⚠️ WITH THE CADENCE PAGE, THE ONLY CONTROLLERS IN THE WEB TIER THAT READ THE
+ * SOURCE CORPUS. Every page here pulls `movies` / the task queue from Mongo on
  * demand and blocks on it (`Await`) — full-collection scans over the local→prod
  * tunnel, ~6 s apiece. That is fine for an operator's tab and would not be for a
  * public route, which is why none of this lives beside the listing handlers:
@@ -36,13 +31,13 @@ class DebugController(cc: ControllerComponents,
                       // `cinema displayName -> public source-page URL`, the same
                       // links /uptime shows, sourced from the UptimeMonitor tag
                       // snapshot. Evaluated per request so it tracks live retags;
-                      // used by the /debug table to link cinema names.
+                      // used by a row's detail to link cinema names.
                       cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
-                      // What "now" is for the pages' own age readings (the mirror badge, cadence).
+                      // What "now" is for the pages' own age readings (the mirror badge).
                       clock: java.time.Clock,
                      ) extends AbstractController(cc) {
   // The latest year a title may name, read off this controller's clock: what the row details cap a title's year by.
-  private val latestYear = LatestTitleYear(clock)
+  private val latestYear = services.movies.LatestTitleYear(clock)
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -68,42 +63,7 @@ class DebugController(cc: ControllerComponents,
         // The SELECTED country's rules, not the deployment's: /debug can switch
         // countries, and a row's display title must read as its own corpus keyed it.
         stack.movieRepository.normalizer,
-        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(listing)))
-        .withCookies(debugCountries.selectionCookie(request).toSeq*)
-    }
-  }
-
-  /** The debug navbar's age badge: how far behind the mirror was when the data on
-   *  screen was READ (the sync's health — a snapshot's own age doesn't make the
-   *  mirror look broken), plus how long ago that read was once it is old enough to
-   *  matter, e.g. a snapshot restored after a restart. `None` in prod, where the
-   *  pages read the source and there is no copy to be behind. */
-  private def mirrorAge(snapshot: DebugSnapshot[?]): Option[controllers.MirrorFreshness.Age] = {
-    val now = clock.instant()
-    controllers.MirrorFreshness.describe(snapshot.mirrorNewest, snapshot.takenAt.getOrElse(now)).map { age =>
-      val sinceRead = snapshot.takenAt.map(at => java.time.Duration.between(at, now).toMillis.millis)
-      age.copy(snapshotAge = sinceRead.filter(_ >= DebugController.SnapshotAgeShownAfter))
-    }
-  }
-
-  /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
-   *  grouped by their current refresh interval, slowest (most backed-off / stable)
-   *  first, with the last two displayed-value changes shown on hover. Reads the
-   *  worker-written `rating_cadence` collection + names the films from the same
-   *  corpus-listing snapshot `/debug` renders. */
-  def cadence(): Action[AnyContent] = Action { request =>
-    devOnly {
-      val country = debugCountries.resolve(request)
-      val stack   = debugCountries.stackFor(country)
-      implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val recordsFuture = Future(stack.ratingCadence())
-      val listingFuture = Future(stack.listing())
-      val (records, listing) = Await.result(recordsFuture.zip(listingFuture), 70.seconds)
-      implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-      Ok(views.html.cadence(services.cadence.CadenceReport.build(records.value, listing.value.titleByTmdb.get), clock.instant(),
-        // The OLDER of the two snapshots' stamps: the page is as behind as its stalest half.
-        current = country, sameOrigin = debugCountries.switchable,
-        mirror = mirrorAge(Seq(records, listing).minBy(_.mirrorNewest.getOrElse(java.time.Instant.MAX)))))
+        current = country, sameOrigin = debugCountries.switchable, mirror = listing.mirrorAge(clock.instant())))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
@@ -139,11 +99,4 @@ class DebugController(cc: ControllerComponents,
       }
     }
   }
-}
-
-object DebugController {
-
-  /** A snapshot younger than this is what the warm-up keeps them at (~1 min) and is
-   *  not called out; an older one — restored after a restart — says how old it is. */
-  private[controllers] val SnapshotAgeShownAfter: scala.concurrent.duration.FiniteDuration = 2.minutes
 }

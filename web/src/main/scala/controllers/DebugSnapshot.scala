@@ -14,9 +14,23 @@ import scala.util.{Failure, Success, Try, Using}
  *  read, and WHEN it was read — `None` for a read made for this very request. The
  *  navbar renders the mirror's lag as of the read, and, for a snapshot old enough to
  *  matter, how old it is. */
-final case class DebugSnapshot[A](value: A, mirrorNewest: Option[Instant], takenAt: Option[Instant] = None)
+final case class DebugSnapshot[A](value: A, mirrorNewest: Option[Instant], takenAt: Option[Instant] = None) {
+  /** The debug navbar's age badge at `now`: how far behind the mirror was when this was READ (the sync's health — a
+   *  snapshot's own age doesn't make the mirror look broken), plus how long ago that read was once it is old enough to
+   *  matter, e.g. a snapshot restored after a restart. `None` in prod, where the pages read the source and there is no
+   *  copy to be behind. */
+  def mirrorAge(now: Instant): Option[MirrorFreshness.Age] =
+    MirrorFreshness.describe(mirrorNewest, takenAt.getOrElse(now)).map { age =>
+      val sinceRead = takenAt.map(at => JDuration.between(at, now).toMillis.millis)
+      age.copy(snapshotAge = sinceRead.filter(_ >= DebugSnapshot.AgeShownAfter))
+    }
+}
 
 object DebugSnapshot {
+  /** A snapshot younger than this is what the warm-up keeps them at (~1 min) and is
+   *  not called out; an older one — restored after a restart — says how old it is. */
+  private[controllers] val AgeShownAfter: FiniteDuration = 2.minutes
+
   /** Read it now, on the caller's thread — a stack whose read is cheap enough to do per
    *  request (an in-memory model, every spec's in-memory repository). */
   def readNow[A](freshness: MirrorFreshness)(read: => A): () => DebugSnapshot[A] =

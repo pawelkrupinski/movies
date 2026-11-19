@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
+import controllers.{CadenceController, CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
 import play.api.Mode
 import services.{MongoConnection, ServiceTags}
 import services.movies.{MongoMovieChangeFeed, MongoMovieRepository}
@@ -161,6 +161,7 @@ trait DebugWiring { self: Wiring =>
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, environmentMode,
     cinemaSourceUrls = () => ServiceTags.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()), clock = clock) }
+  lazy val cadenceController = { debugSnapshotTicker; new CadenceController(controllerComponents, debugCountries, environmentMode, clock) }
   lazy val debugReadModelController = new DebugReadModelController(controllerComponents, environmentMode, debugReadModels, clock)
   lazy val tuneController = new TuneController(controllerComponents, environmentMode, cityRequests)
   // The one /debug endpoint that runs in prod: admin-gated, it reloads the read-model caches.

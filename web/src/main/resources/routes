@@ -73,7 +73,7 @@ GET     /debug/readmodel/screenings controllers.DebugReadModelController.debugRe
 # Dev-only: per-(rating source, film) adaptive refresh cadence — films grouped by
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.
-GET     /debug/cadence              controllers.DebugController.cadence()
+GET     /debug/cadence              controllers.CadenceController.cadence()
 # Dev-only: every country's clusters whose take still waits on an answer, and those decided, moved or settled
 # lately, on one page (docs/design/identity-questions.md, "The staging screen"). Each worker publishes its own
 # to its country's `identity_staging`; the page polls /data, which reads every country's mirror database.

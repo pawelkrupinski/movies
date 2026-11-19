@@ -10,7 +10,7 @@ import play.api.test.Helpers
 import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
 
-/** Shared builders for the /debug pages' controllers: a fully-wired [[DebugController]]
+/** Shared builders for the /debug pages' controllers: the fully-wired corpus pages ([[DebugController]] and its siblings)
  *  over an in-memory corpus behind a single-country [[DebugStack]], the
  *  [[DebugReadModelController]] over the read model projected from the same `records`
  *  (unless `readModels` says otherwise), the [[TuneController]] and the
@@ -32,19 +32,23 @@ object TestDebugController {
     // multi-country `DebugCountries` instead.
     debugCountries: Option[DebugCountries] = None,
     clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC),
-  )(using latestYear: LatestTitleYear = LatestTitleYear(java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC))): (DebugController, WebReadModel) = {
+  )(using latestYear: LatestTitleYear = LatestTitleYear(java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC))): (DebugPages, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
-    val ctrl = new DebugController(
-      cc               = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
-      debugCountries   = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
-        models.Country.default,
-        movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),
-        ratingCadenceReader, attemptReader))),
-      environment      = mode,
-      cinemaSourceUrls = () => cinemaSourceUrls,
-      clock            = clock,
-    )
-    (ctrl, readModel)
+    val cc        = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi)
+    val countries = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
+      models.Country.default,
+      movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),
+      ratingCadenceReader, attemptReader)))
+    (new DebugPages(new DebugController(cc, countries, mode, () => cinemaSourceUrls, clock), new CadenceController(cc, countries, mode, clock)),
+      readModel)
+  }
+
+  /** The /debug corpus pages' controllers over one set of stacks, each route answered by the controller the routes
+   *  file names. */
+  final class DebugPages(corpus: DebugController, cadencePage: CadenceController) {
+    def debug()                  = corpus.debug()
+    def debugDetails(id: String) = corpus.debugDetails(id)
+    def cadence()                = cadencePage.cadence()
   }
 
   private val Pinned = java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC)
