@@ -1,0 +1,28 @@
+# THE ci-runner LANE POLICY (the owner, 2026-11-19: "could any of these decision things could've been handled
+# automatically? fix structurally" -- Stage NixOS closures #102 asked him "where should a movies-stage lane rank" and
+# Record scrape fixtures #198 "which lane order-independence rows take": both answered by the rules below).
+# Where a job's runner lane ranks is decided HERE, not by asking the owner. runner_scheduler.py serves each runner
+# class's lanes highest first (MEASURE_LANES, CHECK_LANES); scripts/ci/lane_policy_test.py holds its order to this file.
+# A fixer or agent placing a job consults this file and acts; it asks the owner only when no rule here answers, and
+# then proposes the row to add (agentctl: `decide[policy-no-rule]: ...; rule: scripts/ci/lane-policy.tsv: <row>`).
+#
+# THE RULES, highest first (the `class` column):
+#   gate-red-fix          a gate red's fix: before everything (nothing stops a gate fix)
+#   landing-check         any other landing check's rows
+#   deploy-feeding        work that feeds a deploy or a gate (the staging closures)
+#   optional-measurement  identity measurements and other optional runs
+#   consumer              a producer's consumer: JUST BELOW its producer's lane (`producer`), never above it
+#   exploration           the nightly explorers: last, and none starts while a landing check waits
+# NO PRIORITY INVERSION: a consumer never ranks in a lane that cannot start while its producer's priority class runs --
+# so a consumer's lane yields to landing checks (`yields_to_landing`) only where its producer's does too.
+#
+# runner  rank  lane  class  producer  yields_to_landing  decided
+runner	rank	lane	class	producer	yields_to_landing	decided
+check	1	movies-check-red-fix	gate-red-fix	-	no	2026-11-17: a red fix still checking 41 min after it was queued
+check	2	movies-check	landing-check	-	no	2026-11-08: the check class
+measure	1	movies-red-fix	gate-red-fix	-	no	2026-11-16: Main red, its fix's drift rows behind optional measurements
+measure	2	movies-landing	landing-check	-	no	2026-11-16: a landing check's rows ahead of every optional measurement
+measure	3	movies-stage	deploy-feeding	-	no	the owner, 2026-11-19 (Stage NixOS closures #102): between movies-landing and movies-measure
+measure	4	movies-measure	optional-measurement	-	no	2026-11-16: everything optional
+measure	5	movies-consumer	consumer	movies-measure	no	the owner, 2026-11-19 (Record scrape fixtures #198): a new consumer lane just below movies-measure
+measure	6	movies-explore	exploration	-	yes	the owner, 2026-11-18 ("7"): the explorers, last
