@@ -47,6 +47,10 @@ final class DebugStack(
   /** Every `rating_cadence` record — `/debug/cadence`. */
   val ratingCadence: () => DebugSnapshot[Seq[(String, models.RatingChangeStats)]] =
     ratingCadenceSnapshot.getOrElse(DebugSnapshot.readNow(mirrorFreshness)(ratingCadenceReader.all()))
+
+  /** A film's per-source enrichment log, read from this stack's attempt and cadence stores ([[FilmAttemptReport]]). */
+  def attemptReport(tmdbId: Option[Int])(using scala.concurrent.ExecutionContext): Seq[SourceAttemptStatus] =
+    FilmAttemptReport.buildFrom(tmdbId, attemptReader, ratingCadenceReader)
 }
 
 /** The `/debug` corpus table's rows, RENDERED: a row is a pure function of its record,

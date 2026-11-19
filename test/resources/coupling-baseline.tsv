@@ -43,7 +43,7 @@ module-edge	scrapers->geodata	3
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
 module-edge	web->base	31
-module-edge	web->common	606
+module-edge	web->common	604
 module-edge	web->geodata	1
 module-edge	web->http	18
 module-edge	web->identity	41
@@ -91,10 +91,6 @@ ce	services.users	4
 ce	services.venuepages	11
 ce	settings	2
 ce	tools	0
-fanout	controllers.DebugController	10
-fanout	controllers.MovieControllerService	10
-fanout	controllers.SsoController	10
-fanout	services.config.EnvConfigService	11
 fanout	services.corpus.CorpusCensus	10
 fanout	services.identity.ConstraintEdges	10
 fanout	services.identity.FamilyScope	12
@@ -123,8 +119,6 @@ fanout	services.readmodel.PruneSweep	12
 fanout	services.readmodel.ReadModelBoot	11
 fanout	services.readmodel.ReadModelProjector	19
 fanout	services.readmodel.ReadModelSweeper	13
-fanout	services.venuepages.DetailRowLanding	15
-fanout	services.venuepages.EnrichDetailsHandler	10
 distance	services.identity	43
 distance-cap	services.identity	45
 distance	services.metrics	38
