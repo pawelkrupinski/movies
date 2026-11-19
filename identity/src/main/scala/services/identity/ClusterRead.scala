@@ -5,14 +5,14 @@ package services.identity
 private[identity] final class ClusterRead(scoring: CandidateScoring, families: Families, acceptance: Acceptance,
                                           val cluster: Seq[EvidenceNode], val scope: FamilyScope, val film: Option[Int],
                                           accepted: Map[String, Int], val votes: Map[String, ResolverDecisions.Vote]) {
-  import scoring.generation.{answers, queriesOf}
+  import scoring.generation.{awaitsAnswer, queriesOf}
   import families.pinnedFilm
 
   val pinned   = film.isDefined && cluster.exists(node => pinnedFilm.contains(node.id))
   val scored   = scope.pooled(cluster)
   val eligible = scored.filterNot(_.denied)
   private val ownMatch = cluster.exists(node => accepted.contains(node.id))
-  val unknown  = cluster.flatMap(node => queriesOf(node.id)).distinct.count(query => answers(query).isAwaited)
+  val unknown  = cluster.flatMap(node => queriesOf(node.id)).distinct.count(query => awaitsAnswer(query))
 
   /** A cluster the title family alone decided is filed at the family's bound when its own scoring rates the film
    *  lower. */
@@ -57,7 +57,7 @@ private[identity] final class ClusterRead(scoring: CandidateScoring, families: F
   // their unanswered questions too: Pending, served all the same, until they close.
   def awaits: Set[Question] = {
     val reads = scope.members
-    reads.flatMap(node => queriesOf(node.id)).distinct.filter(query => answers(query).isAwaited).map(Question.Candidate(_)).toSet ++
+    reads.flatMap(node => queriesOf(node.id)).distinct.filter(query => awaitsAnswer(query)).map(Question.Candidate(_)).toSet ++
       awaited.map(Question.FilmRecord(_)) ++
       reads.flatMap(_.listings).filter(scoring.generation.pagePending).map(listing => Question.VenuePage(listing.key))
   }
@@ -83,7 +83,7 @@ private[identity] final class ClusterRead(scoring: CandidateScoring, families: F
    *  ([[ReleaseVeto]]: PL "Stan wyjątkowy", Brešan's 2018 film best only once Hřebejk's 2024 one was vetoed), nor a
    *  reused page's copied record. */
   def candidate: Option[ResolverDecision.Leaning] =
-    if (film.isDefined || scored.takeWhile(_.denied).exists(_.denial.exists(ReleaseVeto.vetoes))) None
+    if (film.isDefined || scored.takeWhile(_.denied).exists(_.denial.exists(_.isReleaseVeto))) None
     else eligible.headOption.filter(best => best.untaken.isEmpty && !copiedOnly(best.candidate.tmdbId)).map(_.candidate)
       .filterNot(best => deniedByMember(best.tmdbId))
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
@@ -99,8 +99,7 @@ private[identity] final class ClusterRead(scoring: CandidateScoring, families: F
     if (fallbacks.pool.isEmpty) None
     else cluster.flatMap(node => acceptance.fallback(fallbacks.of(node))).distinctBy(_.candidate.tmdbId) match {
       case Seq(taken) if !tmdbNamesake && !cluster.exists(node => families.denies(node, taken.candidate.tmdbId)) =>
-        FallbackIds.unapply(taken.candidate.tmdbId).flatMap { case (source, _) =>
-          FallbackIds.imdbId(taken.candidate.tmdbId).map(ResolverDecision.Fallback(source.label, _, taken.probability)) }
+        taken.candidate.fallbackRecord.map { case (source, imdbId) => ResolverDecision.Fallback(source, imdbId, taken.probability) }
       case _ => None
     }
   }

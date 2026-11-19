@@ -120,12 +120,12 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
   }
 
   /** Does the venue's billing name `best` only WITHIN another eligible candidate's longer title — the agreement's same
-   *  concept ([[agreement.Agreement.namedWithinAnother]]), read where pooled evidence alone would take it? PL "Kacper i
+   *  concept ([[TitleTextMeasures.namedWithinAnother]]), read where pooled evidence alone would take it? PL "Kacper i
    *  Emma – najlepsi przyjaciele Edukacja Młode Horyzonty" names the 2026 short "Najlepsi przyjaciele" only as part of
    *  the 2013 "Kacper i Emma: Najlepsi przyjaciele". */
   private[identity] def namedWithinAnother(best: Scored, eligible: Seq[Scored]): Boolean = eligible.sizeIs > 1 && {
     val billed = Seq(services.titles.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title)))
-    def spans(film: IdentityMeasures.Film) = agreement.Agreement.spansIn(billed, Seq(film))
-    agreement.Agreement.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
+    def spans(film: IdentityMeasures.Film) = TitleTextMeasures.spansIn(billed, Seq(film))
+    TitleTextMeasures.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
   }
 }

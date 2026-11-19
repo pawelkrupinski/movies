@@ -187,8 +187,8 @@ object FamilyIndex {
   /** The family `recorded` holds resolved ALONE from its recorded reads — no corpus, no lookups beyond them: each member's
    *  take. Throws [[Unindexed]] on a read the index does not hold. */
   def replayAlone(recorded: Recorded, normalizer: TitleForms, inputs: ResolveInputs): Map[ListingKey, Option[String]] = {
-    val regions = IdentityResolver.resolveRegion(recorded.members, new ReplayLookups(recorded), normalizer, inputs.calibration, inputs.pins,
-      inputs.decorations, new ReplayContext(recorded.context))
+    val regions = IdentityResolver.resolveRegion(recorded.members, new ReplayLookups(recorded), normalizer, inputs,
+      new ReplayContext(recorded.context))
     val decided = regions.flatMap(_.decisions).flatMap(decision => decision.members.map(_ -> decision)).toMap
     recorded.members.map(l => l.key -> decided.get(l.key).flatMap(PopulationMonotonicity.takeOf)).toMap
   }
@@ -262,12 +262,12 @@ object FamilyIndex {
             values: Boolean = false): Built = {
     val all        = listings.sorted.distinctBy(_.key)
     val whole      = IdentityResolver.resolve(all, lookups, normalizer, inputs)
-    val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
+    val corpus     = IdentityResolver.contextOf(all, lookups, normalizer, inputs)
     val families   = all.groupBy(listing => whole.familyOf.getOrElse(listing.key, -1)).toSeq.sortBy(_._1).map(_._2)
     def entryOf(members: Seq[Listing]): (Entry, Seq[ListingKey], Option[Recorded]) = {
-      val context  = new RecordingContext(generation.context)
+      val context  = new RecordingContext(corpus)
       val recorded = new RecordingLookups(lookups)
-      val regions  = IdentityResolver.resolveRegion(members, recorded, normalizer, inputs.calibration, inputs.pins, inputs.decorations, context)
+      val regions  = IdentityResolver.resolveRegion(members, recorded, normalizer, inputs, context)
       val decided  = regions.flatMap(_.decisions).flatMap(decision => decision.members.map(_ -> decision)).toMap
       val keys     = members.map(_.key)
       val takes    = keys.map(key => key -> decided.get(key).flatMap(PopulationMonotonicity.takeOf)).toMap
@@ -291,9 +291,8 @@ object FamilyIndex {
    *  the corpus resolve's families (`whole`, [[blockKeyHolders]]). */
   private[identity] def now(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleForms, inputs: ResolveInputs, whole: Built): Now = {
     val all        = listings.sorted.distinctBy(_.key)
-    val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
     val byKey      = all.map(l => l.key -> l).toMap
-    Now(generation.context, lookups, byKey.get, inputs.pins, blockKeyHolders(whole.index))
+    Now(IdentityResolver.contextOf(all, lookups, normalizer, inputs), lookups, byKey.get, inputs.pins, blockKeyHolders(whole.index))
   }
 
   /** Each block key's listings, by the families of `index` carrying it. */

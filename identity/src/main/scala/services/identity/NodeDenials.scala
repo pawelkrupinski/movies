@@ -6,7 +6,7 @@ import scala.collection.mutable
  *  overruled, a copied title, a title naming it only by the venue's name, a tag or a programme slot, a festival billed
  *  alone, a silent billing, the venues' cast, a relay's own text. */
 private[identity] final class NodeDenials(scoring: CandidateScoring, links: FeedLinkOverrule, copied: CopiedTitleDenial) {
-  import scoring.{namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
+  import scoring.{namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue}
   import scoring.generation.candidateById
 
   private val billing = new BillingDenials
@@ -21,8 +21,8 @@ private[identity] final class NodeDenials(scoring: CandidateScoring, links: Feed
   // order row's CPU (JFR, docs/investigations/2026-11-01-twenty-runners.md section 9).
   private val denialMemo = mutable.HashMap.empty[(String, Int), Option[Denial]]
   private def denialOf(node: EvidenceNode, id: Int): Option[Denial] =
-    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
-      .orElse(links.overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
+    Option.when(scoring.pinDenies(node, id))("pinned never this film")
+      .orElse(links.overruledDenial(node, id)).map(Denial(_))
       .orElse(copied.namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse((Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))

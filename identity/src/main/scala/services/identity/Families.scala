@@ -13,10 +13,10 @@ import scala.annotation.tailrec
  *  `narrow` is the teeth tests' `Mutation.NarrowFamilies`: families by sanitised title only, never grown. */
 private[identity] final class Families(scoring: CandidateScoring, acceptance: Acceptance, links: TitleLinks,
                                        normalizer: TitleForms, narrow: Boolean) {
-  import scoring.{evidenceDenies, houses, pins}
+  import scoring.{evidenceDenies, houses}
   import scoring.generation.{candidateOf, nodeById, nodes}
 
-  val pinnedFilm: Map[String, Int] = nodes.flatMap(node => pins.filmOf(node.listings.head.key).map(node.id -> _)).toMap
+  val pinnedFilm: Map[String, Int] = nodes.flatMap(node => scoring.pinnedFilm(node).map(node.id -> _)).toMap
 
   /** A node's block keys: its title keys and the films `ids` holds it matched. */
   private def keysOf(node: EvidenceNode, ids: Map[String, Set[Int]]): Set[String] =
@@ -116,7 +116,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     // the node's take read by another title, corroborated by no other venue nor linked by its own feed: only then may a
     // sibling taken alone withdraw it
     private lazy val readOtherwise = !best.category("title").contains("exact") && best.number("venues.corroborating").forall(_ <= 0) &&
-      !(scope.feedLinked(node).exists(_._2 == best.candidate.tmdbId) && scope.overruled(node).isEmpty)
+      !scope.standingFeedLink(node).contains(best.candidate.tmdbId)
     def namedCloser(taken: Scored): Boolean = readOtherwise && taken.candidate.tmdbId != best.candidate.tmdbId &&
       scope.of(node).exists(own => own.candidate.tmdbId == taken.candidate.tmdbId && own.category("title").contains("exact"))
   }
@@ -180,7 +180,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
    *  evidence against the film's record? */
   def denies(node: EvidenceNode, film: Int): Boolean =
-    scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedFilms(node.listings.head.key)(film) || {
+    scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(scoring.pinDenies(node, film) || {
       candidateOf(film).exists { candidate =>
         val stated = scopeOf(node).evidenceOf(node).measured
         evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,

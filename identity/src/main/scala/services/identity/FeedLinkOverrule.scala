@@ -5,15 +5,24 @@ import scala.collection.mutable
 /** A family's feed links ([[FeedLink]]) read against its pool ([[FamilyScope]]): the TMDB film a node's TMDB-keyed feed
  *  links it to, that link overruled where the title's other sources back a rival, a current release or the one film its
  *  titles name, and the node's evidence as the family then reads it. */
-private[identity] final class FeedLinkOverrule(pool: FamilyPool, generation: CandidateGeneration, backing: VenueBacking) {
+private[identity] final class FeedLinkOverrule(pool: FamilyPool, numbersFilmsByTmdbId: Boolean, backing: VenueBacking) {
 
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
-   *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
+   *  family's own numbers, which no TMDB id names (`numbersFilmsByTmdbId`: [[IdentityLookups.numbersFilmsByTmdbId]]). */
   def linked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    if (generation.numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
+    if (numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
 
   /** `node`'s feed link, when the title's other sources overrule it ([[FeedLink]]): once per node for this pool's life. */
   def overruled(node: EvidenceNode): Option[FeedLink] = overruledMemo.getOrElseUpdate(node.id, overrule(node))
+  /** [[linked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
+   *  the link the copied-title and short denials read ([[CopiedTitleDenial]]) -- a venue's own original title is its claim,
+   *  never a copy's pull -- as the feed entry it names (`<source> <id>`) and the film it links. */
+  def copyingLink(node: EvidenceNode): Option[(String, Int)] =
+    linked(node).filter(_ => node.listings.forall(listing => !SourceReliability.decides(listing, SourceReliability.Fact.OriginalTitle)))
+      .map { case (id, film) => (s"${id.source} ${id.id}", film) }
+
+  /** Why `node`'s feed link to `film` is overruled ([[FeedLink.denial]]), when it is. */
+  def overruledDenial(node: EvidenceNode, film: Int): Option[String] = overruled(node).filter(_.film == film).map(_.denial)
   private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
 
   /** `node`'s evidence as the family reads it: its titles alone when its feed link is overruled — the facts were the

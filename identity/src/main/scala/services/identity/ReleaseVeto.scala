@@ -1,14 +1,12 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{Measure, Number}
-
 /** The RELEASE VETO: among the films a listing's bare title names exactly (its NAMESAKES), one TMDB dates no release of in the venue's country, while it dates one of a
  *  namesake beside it, is not the venue's film — unless something backs it: the facts the listing published, on balance
  *  (`EvidenceWeights.factsSupport`) or another venue's own facts (`venues.corroborating`). Helios's bare "Diabły" is Ken
  *  Russell's 1971 film, whose Polish release TMDB does not date, because 43 venues crediting him say so.
  *
  *  The veto adds no evidence FOR any film: a vetoed namesake is denied, and is no rival in the evidence CLASS the film
- *  left is accepted by (an exact top hit with no rival, [[unvetoed]]); the calibrated probability still counts it, so
+ *  left is accepted by (an exact top hit with no rival, [[Scored.unvetoed]]); the calibrated probability still counts it, so
  *  a candidate the listing barely names gains nothing from the veto. PL Kino Kameralne Cafe's bare "Obcy w domu":
  *  TMDB's first hit, the 1986 Polish film released in Poland, was held off its class by a 1989 US namesake TMDB dates
  *  no Polish release of.
@@ -62,18 +60,5 @@ private[identity] object ReleaseVeto {
   /** The denial a vetoed namesake carries — the decision's explanation names the veto and the namesake it stands beside. */
   def why(country: String, released: Int): Denial =
     Denial(s"vetoed: not released in $country, as namesake $released is", Denial.Kind.Vetoed(released))
-  /** Is `denial` this veto's? */
-  def vetoes(denial: Denial): Boolean = releasedBeside(denial).isDefined
-  /** The namesake released in the venue's country that this veto's `denial` stood the vetoed film beside ([[why]]). */
-  def releasedBeside(denial: Denial): Option[Int] = denial.kind match {
-    case Denial.Kind.Vetoed(released) => Some(released)
-    case _                            => None
-  }
 
-  /** `measures` with the namesakes the veto took away from `scored`'s rivals taken out of its `rivals` count — never
-   *  below none: the veto counts every namesake it took away, which can be more than `rivals` ranked against the film. */
-  def unvetoed(scored: Scored, measures: Map[String, Measure]): Map[String, Measure] =
-    if (scored.vetoedRivals == 0) measures
-    else measures.get("rivals").collect { case Number(rivals) => measures.updated("rivals", Number(math.max(0.0, rivals - scored.vetoedRivals))) }
-      .getOrElse(measures)
 }

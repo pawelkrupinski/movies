@@ -217,9 +217,9 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] def atOwn(scored: Scored): Accepted = scored -> scored.probability
   private[identity] def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
   /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing —
-   *  its class read with the namesakes the release veto took away counted as no rivals ([[ReleaseVeto.unvetoed]]). */
+   *  its class read with the namesakes the release veto took away counted as no rivals ([[Scored.unvetoed]]). */
   private[identity] def classAccepted(scored: Scored, measures: Map[String, IdentityMeasures.Measure]): Verdict =
-    calibration.classProbability(ListingFilm, ReleaseVeto.unvetoed(scored, measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
+    calibration.classProbability(ListingFilm, scored.unvetoed(measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
       .flatMap { classProbability =>
         val lent = math.max(scored.probability, classProbability)
         Either.cond(calibration.showsRatings(lent), scored -> lent, Refused("below the rating cut", Some(scored.candidate.tmdbId), cut(lent)))
@@ -423,7 +423,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     if (confidence <= scored.probability) ""
     else (if (topHit(ranked).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
       else " with the ranking priors lending, never withdrawing") +
-      (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(ReleaseVeto.vetoes)
+      (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(_.isReleaseVeto)
         .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
 
   // ── the rules ──────────────────────────────────────────────────────────────────────────

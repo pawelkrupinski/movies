@@ -90,7 +90,7 @@ private[identity] object BilledPiece {
      *  [[PieceRuntimeAgreement]] minutes, a feed's TMDB link? */
     def stated: Boolean = agreed.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= PieceRuntimeAgreement) ||
-      FeedLink.linked(listings).exists(link => tmdbId.contains(link._2))
+      FeedLink.linkedFilm(listings).exists(film => tmdbId.contains(film))
 
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the

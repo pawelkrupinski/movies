@@ -16,7 +16,7 @@ private[identity] final class SourcesApart(scoring: CandidateScoring, families: 
    *  APART", Andreasstadel's "Departures"), is the copy's film, and that wider form lost 5 right takes to cure CITY 46's
    *  "THE BLACK HOLE" (recording 38713274617, docs/identity-experiments.md). */
   def copiedOriginalJoinsAnotherFilm(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && FeedLink.linked(linked.listings).exists { case (_, film) =>
+    scoring.generation.numbersFilmsByTmdbId && FeedLink.linkedFilm(linked.listings).exists { film =>
       val bothTitles = Seq(linked, other)
       bothTitles.exists(_.evidence.originalTitle.isDefined) &&
         bothTitles.forall(node => node.evidence.originalTitle.isEmpty || node.listings.forall(SourceReliability.copiesOriginalTitle)) &&
@@ -31,8 +31,8 @@ private[identity] final class SourcesApart(scoring: CandidateScoring, families: 
    *  und der Preis des Widerstands" (1675748): joined by its title to E-Werk's, Weltspiegel's and Zeise's billings, which
    *  Cineamo links to Baudry's De Gaulle (1165366m), it denied them their film (recording 528). */
   def reusedPageDeniesLink(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && otherFilm.isEmpty && FeedLink.linked(linked.listings).exists { case (_, film) =>
-      !linkedFilm.exists(_ != film) && !FeedLink.linked(other.listings).exists(_._2 == film) && families.denies(other, film) &&
+    scoring.generation.numbersFilmsByTmdbId && otherFilm.isEmpty && FeedLink.linkedFilm(linked.listings).exists { film =>
+      !linkedFilm.exists(_ != film) && !FeedLink.linkedFilm(other.listings).contains(film) && families.denies(other, film) &&
         families.readsAsReused(other)
     }
 
@@ -53,10 +53,7 @@ private[identity] final class SourcesApart(scoring: CandidateScoring, families: 
         case _                        => false
       })
   /** The film `node`'s TMDB-keyed feed links, unless the title's other sources overrule the link. */
-  private def unoverruledLink(node: EvidenceNode): Option[Int] = {
-    val scope = families.scopeOf(node)
-    scope.feedLinked(node).filter(_ => scope.overruled(node).isEmpty).map(_._2)
-  }
+  private def unoverruledLink(node: EvidenceNode): Option[Int] = families.scopeOf(node).standingFeedLink(node)
   /** Does the node's own evidence rate its link's film `own` no lower than the `others`: a pick its own scoring holds up? */
   private def holdsUp(node: EvidenceNode, own: Int, others: Int): Boolean = {
     val scored = families.scopeOf(node).of(node)

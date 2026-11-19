@@ -14,6 +14,14 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
                                           vetoedRivals: Int = 0, untaken: Option[String] = None,
                                           ownReach: Boolean = true) {
+  /** `measures` with the namesakes the release veto ([[ReleaseVeto]]) took away from this film's rivals taken out of its
+   *  `rivals` count -- never below none: the veto counts every namesake it took away, which can be more than `rivals`
+   *  ranked against the film. */
+  def unvetoed(measures: Map[String, Measure]): Map[String, Measure] =
+    if (vetoedRivals == 0) measures
+    else measures.get("rivals").collect { case IdentityMeasures.Number(rivals) => measures.updated("rivals", IdentityMeasures.Number(math.max(0.0, rivals - vetoedRivals))) }
+      .getOrElse(measures)
+
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   /** May a rule take it? Not a denied film, nor an UNTAKEN one — `untaken` says why: a film no rule takes that stays in

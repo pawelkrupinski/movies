@@ -170,7 +170,7 @@ object IdentityResolver {
   private def evidenceIn(stages: ResolveStages)(focused: Listing => Boolean): Seq[NodeEvidence] =
     focusedScored(stages)(focused).map { case (node, scored) =>
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
-        s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures, s.denial.flatMap(ReleaseVeto.releasedBeside))))
+        s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures, s.denial.flatMap(_.releasedBeside))))
     }
 
   /** Every node holding a listing `focused` selects, with its candidates as its family scores them (best first). */
@@ -197,6 +197,11 @@ object IdentityResolver {
                                   pins: PinConstraints = PinConstraints(Nil),
                                   decorations: TitleDecorations = TitleDecorations.None): CorpusContext =
     new CandidateGeneration(listings.toSeq.sorted.distinctBy(_.key), lookups, normalizer, pins, decorations, lazyLookups = false).context
+
+  /** [[contextOf]] under `inputs`' pins and decorations. */
+  private[identity] def contextOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
+                                  inputs: ResolveInputs): CorpusContext =
+    contextOf(listings, lookups, normalizer, inputs.pins, inputs.decorations)
 
   private[identity] def resolveWith(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
                                     calibration: IdentityCalibration, mutation: Mutation,
@@ -255,6 +260,11 @@ object IdentityResolver {
           listing.key -> CandidateGeneration.nodeKeyText(CandidateGeneration.nodeKey(listing, node.evidence, pins)))).toMap)
     }
   }
+
+  /** [[resolveRegion]] over `inputs`' calibration, pins and decorations. */
+  private[identity] def resolveRegion(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleForms,
+                                      inputs: ResolveInputs, corpus: CorpusContext): Seq[RegionFamily] =
+    resolveRegion(listings, lookups, normalizer, inputs.calibration, inputs.pins, inputs.decorations, corpus)
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
    *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */

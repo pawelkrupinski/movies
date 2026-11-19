@@ -11,6 +11,30 @@ import IdentityMeasures.*
  *  forms every title relation compares.
  *  Part of [[IdentityMeasures]], which exports it. */
 private[identity] object TitleTextMeasures {
+
+  /** The runs of `billed` -- billings read into their words -- the films' titles are, each as its words, articles aside:
+   *  each billing must hold the run (`agreement.Agreement.billedSpans` reads them off a cluster's listings). */
+  def spansIn(billed: Seq[Seq[String]], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
+    if (billed.isEmpty) Nil
+    else {
+      val bare = billed.map(withoutArticles)
+      films.flatMap(_.titles).map(title => withoutArticles(TitleContainment.tokens(title)))
+        .filter(words => words.nonEmpty && bare.forall(_.containsSlice(words))).distinct
+    }
+
+  private def withoutArticles(words: Seq[String]): Seq[String] = words.filterNot(LeadingArticles)
+
+  /** Is the film named only WITHIN another candidate's title the listings bill whole -- every run of the billing its
+   *  titles are, a strictly longer run of one of `others`' titles, articles aside (a title only an article longer is the
+   *  same name)? PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the
+   *  2013 "Kacper i Emma: Najlepsi przyjaciele"; DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)" names the
+   *  2025 short "Herr der Ringe" only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", its articles dropped.
+   *  Over spans as [[spansIn]] finds them: `own` the film's, `others` every candidate's, this one's among them. */
+  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
+    own.nonEmpty && others.exists { other =>
+      val longer = other.filter(words => !own.contains(words))
+      own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span)))
+    }
   /** The words two titles share that are a number, or longer than an article — no year, which dates rather than names. */
   private[identity] def sharedWords(a: String, b: String): Int = (countedWords(a).toSet intersect countedWords(b).toSet).size
   /** A title's words that count as naming something: a number, or a word longer than an article — no year. */

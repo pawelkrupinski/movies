@@ -24,8 +24,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
 
   private val family  = new FamilyPool(pool, scoring.houses, related)
-  private val links   = new FeedLinkOverrule(family, scoring.generation, scoring.backing)
-  private val denials = new NodeDenials(scoring, links, new CopiedTitleDenial(family, links, scoring.generation))
+  private val links   = new FeedLinkOverrule(family, scoring.generation.numbersFilmsByTmdbId, scoring.backing)
+  private val denials = new NodeDenials(scoring, links, new CopiedTitleDenial(family, links, scoring.generation.recorded))
 
   /** The qualifiers the pool's records bill ([[FamilyPool.qualifiers]]). */
   def qualifiers: IdentityMeasures.Qualifiers = family.qualifiers
@@ -44,6 +44,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLinkOverrule.linked]]). */
   private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] = links.linked(node)
+
+  /** The film a TMDB-keyed feed links `node` to ([[feedLinked]]), unless the title's other sources overrule the link ([[overruled]]). */
+  def standingFeedLink(node: EvidenceNode): Option[Int] = feedLinked(node).filter(_ => overruled(node).isEmpty).map(_._2)
 
   /** `node`'s feed link, when the title's other sources overrule it ([[FeedLinkOverrule.overruled]]). */
   def overruled(node: EvidenceNode): Option[FeedLink] = links.overruled(node)

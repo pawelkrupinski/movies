@@ -35,7 +35,13 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   val queriesOf: Map[String, Seq[CandidateQuery]] = nodes.map(node => node.id -> CandidateQueries.of(node.evidence)).toMap
   val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
   val issued  = mutable.ArrayBuffer.empty[CandidateQuery]
+  /** Is `query`'s answer awaited: asked, not answered yet ([[Answer.isAwaited]])? */
+  def awaitsAnswer(query: CandidateQuery): Boolean = answers(query).isAwaited
+  /** How many films `query`'s answer named, once answered ([[Answer.answered]]). */
+  def filmsFound(query: CandidateQuery): Option[Int] = answers.get(query).flatMap(_.answered).map(_.size)
   def ask(query: CandidateQuery): Answer[Seq[Hit]] = answers.getOrElseUpdate(query, { issued += query; lookups.candidates(query) })
+  /** Is `shape`, sanitised, a piece the corpus bills beside two whole titles or more ([[CorpusContext.repeatedSegment]])? */
+  def repeatedShape(shape: String): Boolean = context.repeatedSegment(normalizer.sanitize(shape))
   /** The hits `query` was answered with, none where it was not asked or not answered. */
   def answeredHits(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.answered).getOrElse(Nil)
   if (lazyLookups) {

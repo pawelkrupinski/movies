@@ -645,18 +645,7 @@ object Agreement {
   }
   /** The runs of every listing's billing the films' titles are (each as its words, articles aside). */
   def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
-    spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
-
-  /** [[billedSpans]] of billings already read into their words: each of `billed` must hold the run. */
-  def spansIn(billed: Seq[Seq[String]], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
-    if (billed.isEmpty) Nil
-    else {
-      val bare = billed.map(withoutArticles)
-      films.flatMap(_.titles).map(title => withoutArticles(TitleContainment.tokens(title)))
-        .filter(words => words.nonEmpty && bare.forall(_.containsSlice(words))).distinct
-    }
-
-  private def withoutArticles(words: Seq[String]): Seq[String] = words.filterNot(IdentityMeasures.LeadingArticles)
+    services.identity.TitleTextMeasures.spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
 
   /** Does another candidate's titles name MORE of the billing than the film's — every word the film's titles name of it,
    *  and a word beside them — where the billing bills one film under two names? DE Acud Kino's "BARWY OCHRONNE /
@@ -668,17 +657,10 @@ object Agreement {
     named.nonEmpty && others.exists { other => val theirs = other.flatten.toSet; named.subsetOf(theirs) && !theirs.subsetOf(named) }
   }
 
-  /** Is the film named only WITHIN another candidate's title the listings bill whole — every run of the billing its
-   *  titles are, a strictly longer run of one of `others`' titles, articles aside (a title only an article longer is the
-   *  same name)? PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the
-   *  2013 "Kacper i Emma: Najlepsi przyjaciele"; DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)" names the
-   *  2025 short "Herr der Ringe" only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", its articles dropped.
-   *  Over spans [[billedSpans]] found: `own` the film's, `others` every candidate's, this one's among them. */
-  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
-    own.nonEmpty && others.exists { other =>
-      val longer = other.filter(words => !own.contains(words))
-      own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span)))
-    }
+  /** Is the film named only WITHIN another candidate's title the listings bill whole
+   *  ([[services.identity.TitleTextMeasures.namedWithinAnother]], the agreement's readers' name for it)? Over spans
+   *  [[billedSpans]] found: `own` the film's, `others` every candidate's, this one's among them. */
+  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean = services.identity.TitleTextMeasures.namedWithinAnother(own, others)
 
 
   /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a

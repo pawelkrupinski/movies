@@ -207,7 +207,7 @@ private[identity] object CorpusContext {
          answers: CandidateQuery => Option[Seq[Int]], sanitize: String => String): CorpusContext = {
     // a fallback source's film is a candidate only a no-match's fallback scores, never a record the corpus's titles,
     // seasons or houses are read off ([[FallbackIds]])
-    val corpusRecords = recorded.filter { case (id, _) => !FallbackIds.isFallback(id) }
+    val corpusRecords = recorded.filter { case (_, candidate) => !candidate.isFallback }
     val byOriginal  = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), corpusRecords.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
     val byFacts     = nodes.groupBy(titleOf).toSeq.flatMap { case (_, keyed) =>
       val sorted = keyed.sortBy(_.id)
@@ -217,7 +217,7 @@ private[identity] object CorpusContext {
       .groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val candidates  = recorded.map { case (id, candidate) =>
       id -> candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, venueTitles.getOrElse(id, Nil))) }
-    val seasonFilms   = seasonProductions(candidates.collect { case (id, candidate) if !FallbackIds.isFallback(id) => id -> candidate.film })
+    val seasonFilms   = seasonProductions(candidates.collect { case (id, candidate) if !candidate.isFallback => id -> candidate.film })
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
       StageRelays.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }

@@ -4,6 +4,15 @@ package services.identity
  *  denial it is, which a rule asking for one compares exactly — never by the text, whose wording any rule may share. */
 private[identity] final case class Denial(why: String, kind: Denial.Kind = Denial.Kind.Evidence) {
   override def toString: String = why
+
+  /** The namesake released in the venue's country that a release veto's denial ([[ReleaseVeto.why]]) stood the vetoed
+   *  film beside; None for any other denial. */
+  def releasedBeside: Option[Int] = kind match {
+    case Denial.Kind.Vetoed(released) => Some(released)
+    case _                            => None
+  }
+  /** Is it the release veto's ([[ReleaseVeto]])? */
+  def isReleaseVeto: Boolean = releasedBeside.isDefined
 }
 
 private[identity] object Denial {

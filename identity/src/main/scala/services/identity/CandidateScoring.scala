@@ -14,6 +14,11 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
                                                weights: EvidenceWeights, val pins: PinConstraints) {
   import EvidenceNode.placesOf
 
+  /** Whether the curation's pins deny `node`'s listings the film `id` (`PinConstraints.deniedFilms`, by its first listing). */
+  def pinDenies(node: EvidenceNode, id: Int): Boolean = pins.deniedFilms(node.listings.head.key)(id)
+  /** The film the curation's pins give `node`'s listings (`PinConstraints.filmOf`, by its first listing), if any. */
+  def pinnedFilm(node: EvidenceNode): Option[Int] = pins.filmOf(node.listings.head.key)
+
   /** Which house each listing banner is, learned from how every node's candidates bill its works
    *  (`StageRelays.Houses`): the title relation reads a record of the listing's house as
    *  naming it, and a season production must be of it when it is known. */

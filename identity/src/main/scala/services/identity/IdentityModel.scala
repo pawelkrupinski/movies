@@ -571,7 +571,13 @@ object Hit {
  *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. `awaitingRecord`: its
  *  record is not answered yet (a record given up on is not awaited: decided on its hits), so the hits alone carry it and nothing its record states (a running time, credits, where it
  *  was released) can deny it — a family takes a film only where its pool with and without it agree ([[FamilyScope]]). */
-final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRecord: Boolean = false)
+final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRecord: Boolean = false) {
+  /** Is it a fallback source's film ([[FallbackIds]]), which only a no-match's fallback scores, never TMDB's? */
+  def isFallback: Boolean = FallbackIds.isFallback(tmdbId)
+  /** A fallback source's film as that source names it: the source's label and the IMDb id it stands for. */
+  def fallbackRecord: Option[(String, String)] =
+    FallbackIds.unapply(tmdbId).flatMap { case (source, _) => FallbackIds.imdbId(tmdbId).map(source.label -> _) }
+}
 
 object Candidate {
 

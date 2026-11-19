@@ -2,7 +2,7 @@ package services.identity
 
 /** The denial a feed's copied original title makes in a family ([[FamilyScope]]): a film only the title a feed copied
  *  names, never the billed title, is the copy's pull, not the venue's film. */
-private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLinkOverrule, generation: CandidateGeneration) {
+private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLinkOverrule, recorded: Map[Int, Candidate]) {
 
   /** Why `node`'s original title, a FEED's copy ([[SourceReliability.copiesOriginalTitle]]), denies it `candidate`: only that
    *  copied title names it, never the billed title. The copied title is the feed entry's, restated — the entry's claim of
@@ -20,11 +20,6 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
     copiedBy(node).filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
       copiedTitleDenial(links.evidenceOf(node).measured, candidate, feed, linked) }
 
-  /** [[FeedLinkOverrule.linked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
-   *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */
-  private def copyingLink(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    links.linked(node).filter(_ => node.listings.forall(listing => !SourceReliability.decides(listing, SourceReliability.Fact.OriginalTitle)))
-
   /** The feed whose copy `node`'s original title is, with the film it links, if any: a TMDB-keyed feed's link, else a
    *  page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
    *  films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
@@ -32,8 +27,8 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
    *  translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
    *  Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl"). */
   private def copiedBy(node: EvidenceNode): Option[(String, Option[Int])] =
-    copyingLink(node).map { case (id, linked) => (s"${id.source} ${id.id}", Some(linked)) }
-      .orElse(Option.when(FeedLink.linked(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
+    links.copyingLink(node).map { case (feed, linked) => (feed, Some(linked)) }
+      .orElse(Option.when(FeedLink.linkedFilm(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
         links.evidenceOf(node).measured.originalSharesNothingBilled && !links.evidenceOf(node).measured.originalTranslatesBilled)(
         SourceReliability.claimOf(node.listings.head) -> None))
 
@@ -71,7 +66,7 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
   private def namedByItsBilling(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean = {
     val copied = listing.originalTitle.map(IdentityMeasures.key)
     val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
-    val record = generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
+    val record = recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
     val pieces = IdentityMeasures.namingPieces(billed, record)
     lazy val byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
     IdentityMeasures.names(pool.relate(billed, record).value, billed, record) && !byOneWordOnly

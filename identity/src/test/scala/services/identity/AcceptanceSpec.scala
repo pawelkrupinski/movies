@@ -777,9 +777,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val listing = Listing("Diabły")
     val scored  = Scored(Candidate(1, Film("Diabły", year = Some(1971))), 0.5, Map("rivals" -> IdentityMeasures.Number(1)), denial = None,
       listing, Some(1), vetoedRivals = 3)
-    ReleaseVeto.unvetoed(scored, scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
-    ReleaseVeto.unvetoed(scored.copy(vetoedRivals = 1), scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
-    ReleaseVeto.unvetoed(scored.copy(measures = Map("rivals" -> IdentityMeasures.Number(4))), Map("rivals" -> IdentityMeasures.Number(4)))("rivals") shouldBe
+    scored.unvetoed(scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
+    scored.copy(vetoedRivals = 1).unvetoed(scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
+    scored.copy(measures = Map("rivals" -> IdentityMeasures.Number(4))).unvetoed(Map("rivals" -> IdentityMeasures.Number(4)))("rivals") shouldBe
       IdentityMeasures.Number(1)
   }
 
@@ -788,9 +788,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val listing = Listing("Diabły")
     def scored(denial: Denial) = Scored(Candidate(1, Film("Diabły", year = Some(1971))), 0.5, Map.empty, Some(denial), listing, Some(1))
     val veto = ReleaseVeto.why("PL", 12)
-    ReleaseVeto.releasedBeside(veto) shouldBe Some(12)
-    ReleaseVeto.vetoes(Denial(veto.why)) shouldBe false
-    ReleaseVeto.releasedBeside(Denial("vetoed: not released in PL, as namesake 123 is")) shouldBe None
+    veto.releasedBeside shouldBe Some(12)
+    Denial(veto.why).isReleaseVeto shouldBe false
+    Denial("vetoed: not released in PL, as namesake 123 is").releasedBeside shouldBe None
     scored(Denial("listing-film probability below the cannot-link cut")).deniedByCutOnly shouldBe false
     scored(Denial("Learned(listing-film probability below the cannot-link cut)", Denial.Kind.ProbabilityCut)).deniedByCutOnly shouldBe true
   }

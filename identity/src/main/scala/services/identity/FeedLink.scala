@@ -68,4 +68,6 @@ private[identity] object FeedLink {
       case Seq(link) => Some(link)
       case _         => None
     }
+  /** The TMDB film of [[linked]]: what a reader comparing films alone asks. */
+  def linkedFilm(listings: Seq[Listing]): Option[Int] = linked(listings).map(_._2)
 }

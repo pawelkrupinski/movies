@@ -14,7 +14,7 @@ private[identity] final class MembersApart(scope: FamilyScope, generation: Candi
   }
 
   // a piece the corpus bills beside two whole titles or more, whatever families they fell in
-  private def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
+  private def recurs(shape: String) = generation.repeatedShape(shape)
 
   /** The members billing a programme UNDER ITS BANNER: a member whose every listing's words are all words of a member
    *  billing several films by a word that says so ([[MultiFilmBill]]: a block of shorts, a marathon), with one beside the
