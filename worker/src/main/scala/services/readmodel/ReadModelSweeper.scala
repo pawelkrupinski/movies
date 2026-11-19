@@ -28,7 +28,7 @@ import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
  *  - THE BOOT HEAL ([[ReadModelBootHeal]]): every ready row one of whose cards or venues is missing,
  *    projected before the first prune can delete the card it has under an old id.
  *
- * A sweep's pass itself is [[PruneSweep]]'s; this class schedules the passes and judges a prune
+ * A sweep's pass itself is [[CorpusSweep]]'s; this class schedules the passes and judges a prune
  * sweep's heals ([[SweepVerdict]]).
  *
  * Each projects through the projector it sweeps ([[ReadModelSweeper.Projection]]), under that
@@ -48,8 +48,8 @@ class ReadModelSweeper private[readmodel] (
   bootHeal:        ReadModelBootHeal,
   // What the stream did while a prune sweep held the lock, and so which of its heals and rewrites were misses.
   verdict:         SweepVerdict,
-  // One pass over the corpus: the scan, heals, prune, content check and catch-up ([[PruneSweep]]).
-  passes:          PruneSweep
+  // One pass over the corpus: the scan, heals, prune, content check and catch-up ([[CorpusSweep]]).
+  corpusSweep:     CorpusSweep
 ) extends Logging {
 
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
@@ -96,7 +96,7 @@ class ReadModelSweeper private[readmodel] (
    *  an orphan served, so a caller seeding a read model it then asserts on owes another reconcile
    *  once Mongo recovers. */
   def reconcile(): Boolean = {
-    val (_, complete, prunedUnlisted) = passes.sweep(reproject = true)
+    val (_, complete, prunedUnlisted) = corpusSweep.sweep(reproject = true)
     verdict.reportUnlisted("reproject", prunedUnlisted, applied = _ => false)
     complete
   }
@@ -108,7 +108,7 @@ class ReadModelSweeper private[readmodel] (
     projection.exclusively(verdict.begin())
     val (healed, complete, rewritten, prunedUnlisted) =
       tools.AnyThrowable.rethrownAfter {
-        val (healed, complete, prunedUnlisted) = passes.sweep(reproject = false)
+        val (healed, complete, prunedUnlisted) = corpusSweep.sweep(reproject = false)
         projection.exclusively((healed, complete, verdict.rewritten, prunedUnlisted))
       }(_ => projection.exclusively(verdict.abandon()))
     verdict.verdictOnSweep(healed, rewritten, prunedUnlisted)
@@ -125,7 +125,7 @@ class ReadModelSweeper private[readmodel] (
 
 object ReadModelSweeper {
   /** A sweeper over `projection` and the parts of its passes — the boot heal, the verdict on a sweep's heals, the
-   *  corpus pass ([[PruneSweep.apply]]) — as the worker's composition root and the specs build it. Every
+   *  corpus pass ([[CorpusSweep.apply]]) — as the worker's composition root and the specs build it. Every
    *  part logs as the sweeper: a sweep's lines read as the sweeper's, which they are. */
   def apply(
     projection:     Projection,
@@ -137,10 +137,10 @@ object ReadModelSweeper {
     awaitStreamApplied: ChangeStreamLiveness => Unit = StreamApplyWait.Blocking,
     derivationPass: Option[ReadModelDerivationPass] = None
   ): ReadModelSweeper = {
-    val logger  = play.api.Logger(classOf[ReadModelSweeper])
-    val verdict = new SweepVerdict(projection, () => awaitStreamApplied(projection.movieRepository.changeStreamLiveness), logger)
-    val passes  = PruneSweep(projection, derivationPass, pruneInterval.value.toSeconds, logger)
-    new ReadModelSweeper(projection, pruneInterval, pruneBootDelay, derivationPass, new ReadModelBootHeal(projection), verdict, passes)
+    val logger      = play.api.Logger(classOf[ReadModelSweeper])
+    val verdict     = new SweepVerdict(projection, () => awaitStreamApplied(projection.movieRepository.changeStreamLiveness), logger)
+    val corpusSweep = CorpusSweep(projection, derivationPass, pruneInterval.value.toSeconds, logger)
+    new ReadModelSweeper(projection, pruneInterval, pruneBootDelay, derivationPass, new ReadModelBootHeal(projection), verdict, corpusSweep)
   }
 
   /** What a sweep asks of the projector it sweeps: its lock, its per-row projection, and the memo

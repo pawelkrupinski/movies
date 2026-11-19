@@ -7,7 +7,7 @@ import models.StoredMovieRecord
 import play.api.Logging
 import services.movies.MovieRepository
 
-/** THE SELF-HEAL FOR A SILENT CHANGE STREAM, run by each prune sweep ([[PruneSweep]]). A terminal
+/** THE SELF-HEAL FOR A SILENT CHANGE STREAM, run by each prune sweep ([[CorpusSweep]]). A terminal
  *  cursor error reopens itself; a cursor that is open and delivering nothing — a server-side stall,
  *  a stale resume position after a migration — reopens nothing, and the sweep healed a MISSING card
  *  or venue but never re-projected a CHANGED row, so the site served stale ratings and showtimes

@@ -14,7 +14,7 @@ import play.api.Logging
  * @param pruneSeconds the prune's cadence: the content slices are numbered by the clock over it.
  * @param logger the sweeper's: a sweep's lines read as the sweeper's, which they are.
  */
-private[readmodel] final class PruneSweep(
+private[readmodel] final class CorpusSweep(
   projection:     ReadModelSweeper.Projection,
   derivationPass: Option[ReadModelDerivationPass],
   pruneSeconds:   Long,
@@ -205,9 +205,9 @@ private[readmodel] final class PruneSweep(
   }
 }
 
-private[readmodel] object PruneSweep {
+private[readmodel] object CorpusSweep {
   /** A pass over `projection` with its orphan prune and catch-up, every part logging under the sweeper's `logger`. */
   def apply(projection: ReadModelSweeper.Projection, derivationPass: Option[ReadModelDerivationPass], pruneSeconds: Long,
-            logger: play.api.Logger): PruneSweep =
-    new PruneSweep(projection, derivationPass, pruneSeconds, new OrphanPrune(projection, logger), new SweepCatchUp(projection, logger), logger)
+            logger: play.api.Logger): CorpusSweep =
+    new CorpusSweep(projection, derivationPass, pruneSeconds, new OrphanPrune(projection, logger), new SweepCatchUp(projection, logger), logger)
 }

@@ -115,7 +115,7 @@ fanout	services.movies.MovieChangeStream	14
 fanout	services.movies.MoviesChangeCursor	12
 fanout	services.movies.SideCollectionWatch	10
 fanout	services.readmodel.MongoReadModelRepository	10
-fanout	services.readmodel.PruneSweep	12
+fanout	services.readmodel.CorpusSweep	12
 fanout	services.readmodel.ReadModelBoot	11
 fanout	services.readmodel.ReadModelProjector	19
 fanout	services.readmodel.ReadModelSweeper	13
