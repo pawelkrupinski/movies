@@ -3,18 +3,16 @@ package services.review
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
 import org.mongodb.scala.ObservableFuture
-import services.movies.SlotsRepository
 
 import java.time.Instant
 
 /** The review reads of the listings themselves: their slot rows, their venues' own film pages and their feeds. */
 trait MongoListingReads extends MongoReviewReads {
-  import MongoListingReads._
   import ReviewBson._
 
   def slots(listingKeys: Seq[String]): Map[String, SlotFacts] =
     listingKeys.distinct.grouped(500).flatMap { keys =>
-      await(collection(SlotsRepository.Collection).find(Filters.in("listingKey", keys*))
+      await(collection(ReviewCollections.Slots).find(Filters.in("listingKey", keys*))
         .projection(Projections.include("listingKey", "slot", "updatedAt")).batchSize(tools.MongoReplies.Default).toFuture())
         .flatMap { d =>
           val b = d.toBsonDocument
@@ -25,7 +23,7 @@ trait MongoListingReads extends MongoReviewReads {
 
   def updatedSince(since: Instant): Map[String, Instant] = {
     val out = Map.newBuilder[String, Instant]
-    scan(SlotsRepository.Collection, Filters.and(Filters.gte("updatedAt", java.util.Date.from(since)), Filters.exists("listingKey")),
+    scan(ReviewCollections.Slots, Filters.and(Filters.gte("updatedAt", java.util.Date.from(since)), Filters.exists("listingKey")),
       Projections.include("listingKey", "updatedAt"), tools.MongoReplies.Default) { batch =>
       batch.foreach { d => val b = d.toBsonDocument; for { k <- string(b, "listingKey"); at <- instant(b, "updatedAt") } out += k -> at }
     }
@@ -34,7 +32,7 @@ trait MongoListingReads extends MongoReviewReads {
 
   def venuePages(urls: Seq[String]): Map[String, VenueFacts] =
     urls.distinct.grouped(200).flatMap { batch =>
-      await(collection(VenuePagesCollection).find(Filters.and(Filters.in("page", batch*), Filters.exists("gone", false)))
+      await(collection(ReviewCollections.VenuePages).find(Filters.and(Filters.in("page", batch*), Filters.exists("gone", false)))
         .sort(Sorts.ascending("readAt")).batchSize(tools.MongoReplies.Default).toFuture())
         .flatMap { d => val b = d.toBsonDocument; string(b, "page").map(_ -> facts(b, poster = "posterUrl")) }
     }.toMap
@@ -60,19 +58,13 @@ trait MongoListingReads extends MongoReviewReads {
           "screenings" -> Document("$size" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.showtimes", org.mongodb.scala.bson.BsonArray()))),
           "first" -> Document("$min" -> "$films.showtimes.dateTime"),
           "last" -> Document("$max" -> "$films.showtimes.dateTime"))))
-      await(collection(ListingsCollection).aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture()).flatMap { d =>
+      await(collection(ReviewCollections.Listings).aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture()).flatMap { d =>
         val b = d.toBsonDocument
         for { venue <- string(b, "_id"); raw <- string(b, "raw") if byVenue.get(venue).exists(_.contains(raw)) } yield
-          (venue, raw) -> ListingFeed(
-            ListingFeed.catalogueIdsOf(b.get("externalIds")),
+          (venue, raw) -> ListingFeed.of(b.get("externalIds"),
             Option(b.get("screenings")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
             instant(b, "first").map(localTime), instant(b, "last").map(localTime), string(b, "poster"))
       }.toMap
     }
   }
-}
-
-private[review] object MongoListingReads {
-  val VenuePagesCollection = services.DebugMirror.VenuePages
-  val ListingsCollection   = services.DebugMirror.IdentityListings
 }

@@ -3,7 +3,6 @@ package services.review
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections}
 import org.mongodb.scala.ObservableFuture
-import services.movies.SlotsRepository
 
 /** The review reads of the corpus's films: their cards from what the read model serves (else their TMDB slot), and
  *  the films several sites' ids name. */
@@ -20,7 +19,7 @@ trait MongoFilmReads extends MongoReviewReads {
       urlEndingIn("filmwebUrl", "filmweb", "-") ++ urlEndingIn("rottenTomatoesUrl", "rt", "/m/") ++
       urlEndingIn("metacriticUrl", "metacritic", "/movie/")
     if (clauses.isEmpty) Nil
-    else await(collection(MoviesCollection).find(Filters.or(clauses*))
+    else await(collection(ReviewCollections.Movies).find(Filters.or(clauses*))
       .projection(Projections.include("tmdbId", "imdbId", "filmwebUrl", "rottenTomatoesUrl", "metacriticUrl"))
       .batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).map { b =>
       (int(b, "tmdbId").map(FilmRef.tmdb).toSeq ++ string(b, "imdbId").flatMap(FilmRef.parse) ++
@@ -46,19 +45,19 @@ trait MongoFilmReads extends MongoReviewReads {
   /** The corpus's films carrying these TMDB ids: (film id, TMDB id, IMDb id). */
   private def corpusFilms(tmdbIds: Seq[Int]): Seq[(String, Int, Option[String])] =
     if (tmdbIds.isEmpty) Nil
-    else await(collection(MoviesCollection).find(Filters.in("tmdbId", tmdbIds*))
+    else await(collection(ReviewCollections.Movies).find(Filters.in("tmdbId", tmdbIds*))
       .projection(Projections.include("tmdbId", "imdbId")).batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).flatMap { b =>
       Option(b.get("tmdbId")).filter(_.isNumber).map(t => (idText(b.get("_id")), t.asNumber.intValue, string(b, "imdbId")))
     }
 
   /** The read model's documents of these films, by film id. */
   private def servedMovies(filmIds: Seq[String]): Map[String, BsonDocument] =
-    await(collection(WebMoviesCollection).find(Filters.in("_id", filmIds*)).projection(Projections.exclude("synopsisByCity", "ratings"))
+    await(collection(ReviewCollections.WebMovies).find(Filters.in("_id", filmIds*)).projection(Projections.exclude("synopsisByCity", "ratings"))
       .batchSize(tools.MongoReplies.Films).toFuture()).map(d => idText(d.toBsonDocument.get("_id")) -> d.toBsonDocument).toMap
 
   /** These films' TMDB slots, by film id. */
   private def tmdbSlotsOf(filmIds: Seq[String]): Map[String, BsonDocument] =
-    await(collection(SlotsRepository.Collection).find(Filters.and(Filters.in("filmId", filmIds*), Filters.eq("slotKey", "TMDB")))
+    await(collection(ReviewCollections.Slots).find(Filters.and(Filters.in("filmId", filmIds*), Filters.eq("slotKey", "TMDB")))
       .projection(Projections.include("filmId", "slot")).batchSize(tools.MongoReplies.Default).toFuture())
       .flatMap(d => doc(d.toBsonDocument, "slot").map(idText(d.toBsonDocument.get("filmId")) -> _)).toMap
 }
@@ -71,7 +70,4 @@ private[review] object MongoFilmReads {
       served.year.orElse(slot.year), orSlot(served.directors, slot.directors), served.runtime.orElse(slot.runtime),
       served.poster.orElse(slot.poster), served.synopsis.orElse(slot.synopsis), orSlot(served.cast, slot.cast))
   }
-
-  val MoviesCollection    = services.movies.MovieRepository.Collection
-  val WebMoviesCollection = services.readmodel.MongoReadModelRepository.MoviesCollection
 }

@@ -42,4 +42,15 @@ object TmdbPosterLookup {
 
   /** How many films' posters a session keeps: a few pages of cards' candidates. */
   val Kept = 5000L
+
+  /** The ids of these films' poster documents (`poster|film|<tmdbId>`) among the family answers, each to its film. */
+  def answerIds(tmdbIds: Seq[Int]): Map[String, Int] =
+    tmdbIds.map(id => PosterAnswers.idOf(services.identity.agreement.AgreementStage.PosterQuestion.Film(id)) -> id).toMap
+
+  /** The fields of a poster document that file its paths. */
+  val AnswerPaths: String = PosterAnswers.Paths
+
+  /** A film's poster document as the film's TMDB poster: the first of the paths filed beside its hashes, the one the
+   *  film's country's language prefers. `None` for one filed before paths were. */
+  def posterOf(d: org.bson.BsonDocument): Option[String] = PosterAnswers.pathsOf(d).headOption.map(PosterAnswers.FilmPosterBase + _)
 }

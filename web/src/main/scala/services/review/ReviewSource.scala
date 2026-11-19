@@ -24,6 +24,10 @@ final case class ListingFeed(catalogueIds: Seq[services.identity.CatalogueId], s
 }
 
 object ListingFeed {
+  /** A feed whose catalogue ids are spelled however `externalIds` spells them ([[catalogueIdsOf]]). */
+  def of(externalIds: org.bson.BsonValue, screenings: Int, first: Option[String], last: Option[String], poster: Option[String]): ListingFeed =
+    ListingFeed(catalogueIdsOf(externalIds), screenings, first, last, poster)
+
   /** Catalogue ids however a document spells them: a map (`{"flicks": "29423"}`, how the scrape archive stores
    *  `externalIds`), one `{source, id}` object, a list of those or of `source:id` strings, or one such string. A value
    *  of any other shape is no id, never a failed card. */
