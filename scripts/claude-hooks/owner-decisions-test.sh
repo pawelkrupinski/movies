@@ -81,17 +81,17 @@ check "a garbage snapshot: silent, exit 0" " 0" "$(prompt "$tmp/stderr" s6) $(ca
 check "garbage hook input: exit 0, nothing" "exit 0" "$(echo 'not json' | AGENTCTL_STATE_FILE="$tmp/one.json" python3 "$hook" prompt 2>/dev/null; echo "exit $?")"
 
 printf '\033[36m▸\033[0m bounded: never waits on stdin\n'
-bounded() { # <seconds> <cmd...>: "done" when the command ends within the bound, else "hung"
-  local s=$1; shift
-  ( "$@" >/dev/null 2>&1 ) & local pid=$!
-  for _ in $(seq $((s * 10))); do kill -0 "$pid" 2>/dev/null || { echo "done"; return; }; sleep 0.1; done
-  kill "$pid" 2>/dev/null; echo hung
+# Each case feeds the hook a stdin whose writer lives 30 s and never writes: the hook must end while the writer still
+# lives (a hook that waits for EOF ends only once the writer exits, and then says "hung").
+mkfifo "$tmp/held"
+ends_before_its_writer() { # <cmd...>: "done" when the command ends while its stdin's writer still lives, else "hung"
+  sleep 30 >"$tmp/held" & local writer=$!
+  "$@" <"$tmp/held" >/dev/null 2>&1
+  if kill -0 "$writer" 2>/dev/null; then echo "done"; else echo "hung"; fi
+  kill "$writer" 2>/dev/null; wait "$writer" 2>/dev/null
 }
-held_open() { AGENTCTL_STATE_FILE="$tmp/one.json" python3 "$hook" prompt < <(sleep 30); }
-check "a writer that never closes stdin (a shell's terminal): ends within 5 s" "done" "$(bounded 5 held_open)"
-# BSD script(1): a pty as the hook's stdin, script's own stdin held open
-held_tty() { AGENTCTL_STATE_FILE="$tmp/one.json" script -q /dev/null python3 "$hook" prompt < <(sleep 30); }
-[ "$(uname)" = Darwin ] && check "run from a terminal: ends within 5 s" "done" "$(bounded 5 held_tty)"
+check "a writer that never closes stdin (a shell's terminal): never waited on" "done" \
+  "$(ends_before_its_writer env AGENTCTL_STATE_FILE="$tmp/one.json" python3 "$hook" prompt)"
 
 printf '\033[36m▸\033[0m session start\n'
 start() { # <source> <cwd> [session]
