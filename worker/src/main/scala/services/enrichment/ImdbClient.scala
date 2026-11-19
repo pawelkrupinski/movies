@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import services.movies.SamePerson
+import services.titles.SamePerson
 import services.titles.TitleMatch
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 

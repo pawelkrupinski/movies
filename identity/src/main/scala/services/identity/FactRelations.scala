@@ -47,9 +47,9 @@ object FactRelations {
   /** Could two credits name one person however each is SPELT — in another alphabet ("Bolshynska", "Большинська") or
    *  after another language's transliteration ("Konchalovsky", German "Kontschalowski", Polish "Konczałowski")? Both
    *  are read in Latin letters ([[CreditRelation.latinized]]) and folded to [[spellingKey]], then compared by
-   *  [[services.movies.SamePerson]], whose tolerances (word order, a missing first name, a letter's slip) still hold. */
+   *  [[services.titles.SamePerson]], whose tolerances (word order, a missing first name, a letter's slip) still hold. */
   def samePersonInAnySpelling(a: String, b: String): Boolean =
-    services.movies.SamePerson(a, b) || samePerson(Seq(a), Seq(b)) || services.movies.SamePerson(spellingKey(a), spellingKey(b))
+    services.titles.SamePerson(a, b) || samePerson(Seq(a), Seq(b)) || services.titles.SamePerson(spellingKey(a), spellingKey(b))
 
   /** A name in Latin letters with the sounds transliterations write differently written one way: "tsch"/"cz"/"ch" as
    *  "c", "sz"/"sh"/"sch" as "s", "zh" as "z", "kh" as "h", "w" as "v", "y"/"j" as "i", the soft sign and apostrophes

@@ -1,4 +1,4 @@
-package services.movies
+package services.titles
 
 /**
  * Directors whose two names share no letters, so no comparison of the strings can
@@ -8,7 +8,7 @@ package services.movies
  * Facts, not rules — each entry is one director, added because a real row was
  * flagged over it. Deliberately NOT a general fuzzy-matching layer: everything
  * that CAN be reached by comparing the strings is handled in
- * [[CinemaCorroboration]], and this exists only for what cannot.
+ * [[services.movies.CinemaCorroboration]], and this exists only for what cannot.
  *
  * It is also the smallest of the classes it sits among. A venue naming a film's
  * OTHER director — Ethan for a film TMDB credits to Joel Coen, David Leitch for

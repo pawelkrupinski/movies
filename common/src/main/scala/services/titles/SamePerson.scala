@@ -1,4 +1,4 @@
-package services.movies
+package services.titles
 
 import java.util.Locale
 
@@ -76,7 +76,7 @@ object SamePerson {
    *  person from "Fatih Akin". Folded here rather than in `deburr`, which is frozen —
    *  `TitleRuleKey` derives stored rule keys from it, and widening it re-keys every
    *  title rule in prod. `MixedFilmDetector`'s strict director key folds by it too. */
-  private[movies] def foldUndecomposed(s: String): String =
+  private[services] def foldUndecomposed(s: String): String =
     s.replace('ı', 'i').replace('İ', 'i')
       .replace('ø', 'o').replace('Ø', 'o')
       .replace('đ', 'd').replace('Đ', 'd')

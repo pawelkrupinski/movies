@@ -1,4 +1,4 @@
-package services.movies
+package services.titles
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

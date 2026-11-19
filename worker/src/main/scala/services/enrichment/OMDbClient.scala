@@ -3,7 +3,7 @@ package services.enrichment
 import java.util.Locale
 
 import play.api.libs.json._
-import services.movies.SamePerson
+import services.titles.SamePerson
 import services.titles.{TitleMatch, YearWindow}
 import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 

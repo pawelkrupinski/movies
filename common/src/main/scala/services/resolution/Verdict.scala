@@ -3,7 +3,7 @@ package services.resolution
 import services.movies.FilmEvidence
 
 import models.SourceData
-import services.movies.SamePerson
+import services.titles.SamePerson
 
 /**
  * A film a resolution might conclude, as TMDB describes it — the CLAIM the

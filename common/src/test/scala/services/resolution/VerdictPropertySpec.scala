@@ -5,7 +5,7 @@ import services.movies.FilmEvidence
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators._
-import services.movies.SamePerson
+import services.titles.SamePerson
 
 /** `Verdict.of` weighs SETS of evidence: order-free, silent when both sides are
  *  silent, and settled by any credit the two sides share. */

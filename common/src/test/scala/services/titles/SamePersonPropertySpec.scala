@@ -1,4 +1,4 @@
-package services.movies
+package services.titles
 
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
