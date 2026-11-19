@@ -43,14 +43,15 @@ class ReadModelSweeper(
   // The derivation pass the first complete sweep arms, and `schedule` paces; `None` owes no pass.
   derivationPass: Option[ReadModelDerivationPass] = None
 ) extends ContinuingSteps with Logging {
-  import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, Target}
+  import ReadModelProjectionMetrics.{HealTrigger, ProjectTrigger, ReconcileKind}
   import ReadModelSweeper.{ContentSlices, SliceWalk}
   // The stores and clock the projection writes and keeps time by: a sweep passes over exactly those.
   private val movieRepository = projection.movieRepository
-  private val writer          = projection.writer
   private val reader          = projection.reader
   private val metrics         = projection.metrics
   private val clock           = projection.clock
+  // The destructive half of a complete sweep: the orphans and unlisted venues it deletes.
+  private val pruner          = new SweepPrune(projection, logger)
   // What the stream did while a prune sweep held the lock, and so which of its heals and rewrites were misses.
   private val verdict         = new SweepVerdict(projection, () => awaitStreamApplied(movieRepository.changeStreamLiveness), logger)
 
@@ -88,14 +89,6 @@ class ReadModelSweeper(
         PruneBootDelaySeconds, ReadModelDerivationPass.TickSeconds, TimeUnit.SECONDS)
     }
     logger.info(s"read-model sweeps scheduled: orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s).")
-  }
-
-  // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
-  // (its filmId changed) is dropped wholesale. `recordFilmPruned` is the link-break
-  // signal; the document deletes are also counted as reprojection writes.
-  private def deleteFilm(filmId: String, reason: String): Unit = {
-    projection.removeCard(filmId, audit = "reconcile-prune")
-    metrics.recordFilmPruned(reason, 1)
   }
 
   /** One reconciliation pass over the whole corpus.
@@ -147,7 +140,7 @@ class ReadModelSweeper(
       // destructive prune; the next tick reconciles cleanly once reads recover.
       logger.warn(s"read-model $kind: source scan was incomplete (Mongo read failed mid-scan) — " +
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
-    } else prune(reproject, kind, baseline, tally)
+    } else pruner.prune(reproject, kind, baseline, tally)
     if (!reproject && scanComplete) checkContentSlice(kind, tally.liveRowIds)
     sweepCount += 1
     if (!reproject) catchUpUndelivered(kind)
@@ -216,79 +209,6 @@ class ReadModelSweeper(
           if (repaired) tally.healed += row.id.value
         }
       }
-  }
-
-  /** Caller holds the projection lock. The destructive half of a sweep whose scan was COMPLETE: prune off id-only
-   *  projections — the prune reads ids/filmIds, never payloads. Each delete guarded: a read-model
-   *  write THROWS on failure, and one refused delete must not skip every other orphan, the content
-   *  slice, the catch-up and the sweep's metrics. */
-  private def prune(reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
-    pruneOrphanCards(reproject, kind, baseline, tally)
-    // Drop metadata cached for source rows that no longer exist. Only reachable on a
-    // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
-    // live rows' metadata, costing a needless recompute each.
-    projection.retainRows(tally.liveRowKeys)
-    // A screenings read that failed prunes none: an unread row is not an orphan.
-    baseline.screeningRefs.orElse(if (reproject) reader.findAllScreeningRefsChecked().answered else None).getOrElse {
-      logger.warn(s"read-model $kind: the screening ids could not be read — no screening is pruned this tick."); Seq.empty
-    }.iterator.filterNot(ref => tally.liveIds(ref.filmId)).foreach(pruneScreening(_, kind, tally))
-    pruneUnlistedVenues(kind, baseline, tally)
-  }
-
-  /** Caller holds the projection lock. Prune every card no live row projects to.
-   *
-   *  The cards as they were BEFORE the scan, when that read was complete: a card written since
-   *  (another process, during a rolling deploy) belongs to a row the scan may not have seen, and
-   *  diffing a fresh read against `liveIds` pruned it as an orphan. Those cards are the next
-   *  sweep's to judge; this one's heals are in `liveIds` either way. A card read that failed judges
-   *  none: an unread card is not an orphan. */
-  private def pruneOrphanCards(reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
-    val cardsToJudge = (if (!reproject) baseline.cards else reader.findAllMovieIdsChecked()).answered.getOrElse {
-      logger.warn(s"read-model $kind: the card ids could not be read — no card is pruned this tick."); Seq.empty }
-    cardsToJudge.iterator.filterNot(tally.liveIds).foreach { id =>
-      val rowOfCard = id.takeWhile(_ != '~')
-      continuing(s"read-model $kind: pruning card $id failed") {
-        deleteFilm(id, if (tally.liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
-        tally.prunedFilms += 1
-      }.getOrElse { tally.pruneFailed = true }
-    }
-  }
-
-  /** Caller holds the projection lock. Delete one orphan screenings row, guarded like every prune write. */
-  private def pruneScreening(ref: ScreeningRef, kind: String, tally: SweepTally): Unit =
-    continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
-      writer.deleteScreening(ref._id)
-      metrics.recordWrite(Target.Screening, Op.Delete, 1)
-      projection.forgetScreening(ref)
-      tally.prunedScreenings += 1
-    }.getOrElse { tally.pruneFailed = true }
-
-  /** Caller holds the projection lock. Prune the venues a live card holds that its row no longer lists at all
-   *  (`unlisted`): a removal the stream never applied, which no id check of the CARD can see — the
-   *  card stays, its row does too, and only the content check ever rewrote it, up to a day later
-   *  (us/chicago served Dracula: A Love Tale at a venue it had left for 22 hours, 2026-09-30).
-   *
-   *  A stream misses a removal now and then; one sweep finding a great many is far likelier a
-   *  comparison gone wrong — the slots-only view disagreeing with the projection about some shape
-   *  of row — and pruning on it would blank the served venues of a country. So past the cap the
-   *  sweep prunes none of them and says so loudly; the content check still rewrites each row.
-   *
-   *  Most of what it finds is no miss at all: a removal the stream still holds (the DE/UK/US debounce
-   *  keeps a film's re-read up to two minutes) or has queued behind this sweep's lock. Deleting those
-   *  is harmless, but only the ones the stream does not then apply are missed removals — the
-   *  sweep's verdict ([[SweepVerdict.reportUnlisted]]) tells them apart once the lock is let go. */
-  private def pruneUnlistedVenues(kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
-    val unlisted = tally.unlisted
-    val cap      = ReadModelSweeper.unlistedPruneCap(baseline.screeningRefs.fold(0)(_.size))
-    if (unlisted.sizeIs > cap) {
-      metrics.recordUnlistedVenues(unlisted.size, withheld = true)
-      logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
-        s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
-        s"that many missed removals: ${ReadModelSweeper.idsForLog(unlisted.map(_._id))}.")
-    } else {
-      unlisted.foreach(pruneScreening(_, kind, tally))
-      tally.prunedUnlisted ++= unlisted
-    }
   }
 
   /** Caller holds the projection lock. THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole
@@ -518,8 +438,7 @@ object ReadModelSweeper {
   trait Projection {
     /** The source store the projection reads. */
     def movieRepository: MovieRepositoryReader & MovieChangeFeed
-    /** The read model it writes, and reads back. */
-    def writer: ReadModelWriter
+    /** The read model it reads back (it writes only through the methods below). */
     def reader: ReadModelReader
     def metrics: ReadModelProjectionMetrics
     /** The clock it keeps time by — the rolling content check numbers its slice by it. */
@@ -549,8 +468,8 @@ object ReadModelSweeper {
     def retainRows(live: String => Boolean): Unit
     /** Remove a card and its remembered screenings from the read model; `audit` names the path. */
     def removeCard(filmId: String, audit: String): Unit
-    /** Forget a screenings row a sweep deleted. */
-    def forgetScreening(ref: ScreeningRef): Unit
+    /** Delete a screenings row a sweep found orphaned, and forget it. */
+    def removeScreening(ref: ScreeningRef): Unit
   }
 
   /** What the projector tells the sweeper over it, under its lock: the rows the change stream applied

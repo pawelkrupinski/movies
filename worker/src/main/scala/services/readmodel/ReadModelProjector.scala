@@ -87,7 +87,6 @@ class ReadModelProjector(
    *  and its memo. The composition root builds the sweeper over it; a projector constructs none. */
   val projection: ReadModelSweeper.Projection = new ReadModelSweeper.Projection {
     def movieRepository: MovieRepositoryReader & MovieChangeFeed = ReadModelProjector.this.movieRepository
-    def writer: ReadModelWriter = ReadModelProjector.this.writer
     def reader: ReadModelReader = ReadModelProjector.this.reader
     def metrics: ReadModelProjectionMetrics = ReadModelProjector.this.metrics
     def clock: java.time.Clock = ReadModelProjector.this.clock
@@ -105,7 +104,11 @@ class ReadModelProjector(
     def recordRowCards(rowId: String, cards: Set[String]): Unit = lastCardsByRow.update(rowId, cards)
     def retainRows(live: String => Boolean): Unit = memo.retainRows(live)
     def removeCard(filmId: String, audit: String): Unit = ReadModelProjector.this.removeCard(filmId, audit)
-    def forgetScreening(ref: ScreeningRef): Unit = lastScreenings.forget(ref.filmId, ref._id)
+    def removeScreening(ref: ScreeningRef): Unit = {
+      writer.deleteScreening(ref._id)
+      metrics.recordWrite(Target.Screening, Op.Delete, 1)
+      lastScreenings.forget(ref.filmId, ref._id)
+    }
   }
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
