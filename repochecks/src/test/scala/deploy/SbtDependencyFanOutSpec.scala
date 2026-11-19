@@ -150,8 +150,13 @@ class SbtDependencyFanOutSpec extends AnyFlatSpec with Matchers {
     }
     warmer should include("lookup-only: 'true'")
     val save = steps(warmer).find(_.get("uses").exists(_.trim.startsWith("actions/cache/save@")))
-    withClue("the warmer saves the exact key itself off main (main's setup-jdk step saves it there): ") {
-      save.flatMap(_.get("if")).getOrElse("") should include("steps.lookup.outputs.cache-hit != 'true'")
+    // On main too (Main #2678): setup-jdk's own save is the post step of an `actions/cache` inside a composite action,
+    // whose `path` -- a step output of that action -- is gone by then ("Input required and not supplied: path"), so it
+    // saved nothing; the rows started 3 s after the warmer each restored the older fallback and fetched from Central.
+    withClue("the warmer saves the exact key itself on a miss, on every ref, main included: ") {
+      val condition = save.flatMap(_.get("if")).getOrElse("")
+      condition should include("steps.lookup.outputs.cache-hit != 'true'")
+      condition should not include "refs/heads/main"
     }
   }
 }

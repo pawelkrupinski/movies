@@ -93,9 +93,11 @@ jobs:
     # coursier does not wait one out (scripts/ci/sbt-deps-resolve.sh). So every sbt row `needs` this job
     # (SbtDependencyFanOutSpec). On an exact hit -- every run whose build files main has already built -- it only asks
     # GitHub whether the entry exists, in seconds. On a miss it restores the fallback, resolves the whole build once
-    # (retrying with a backoff), and saves the exact key, so every row after it restores everything and downloads
-    # nothing. Main's entry is saved by setup-jdk's own cache step; a pull request's here, which CacheSavePolicySpec
-    # allows this one step: the run's own rows read it a minute later, and GitHub expires a branch's entries with it.
+    # (retrying with a backoff), and saves the exact key HERE, on every ref -- the one step CacheSavePolicySpec lets save
+    # off main too: the run's own rows read it a minute later, and GitHub expires a branch's entries with it. Main as
+    # well (Main #2678): setup-jdk's own save is the post step of an `actions/cache` in a composite action, whose `path`
+    # (a step output of that action) is empty by then ("Input required and not supplied: path"), so it saved nothing,
+    # and the rows that started 3 s after this job each restored the older fallback and fetched from Central at once.
     # FAILS OPEN like `scope`: the rows test `!cancelled()`, so a resolve that still fails leaves them to fetch for
     # themselves, as before.
     deps:
@@ -136,8 +138,8 @@ jobs:
             - name: Resolve the build's dependencies (retrying)
               if: steps.lookup.outputs.cache-hit != 'true'
               run: scripts/ci/sbt-deps-resolve.sh
-            - name: Save the dependency cache for this run's rows (main saves through setup-jdk)
-              if: steps.lookup.outputs.cache-hit != 'true' && github.ref != 'refs/heads/main'
+            - name: Save the dependency cache for this run's rows
+              if: steps.lookup.outputs.cache-hit != 'true'
               uses: actions/cache/save@v5
               with:
                   path: ${{ steps.sbt-deps-key.outputs.paths }}

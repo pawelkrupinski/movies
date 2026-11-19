@@ -12,9 +12,10 @@ import org.scalatest.matchers.should.Matchers
  * copy. A step that can save one of those paths must say
  * `github.ref == 'refs/heads/main'` in its `if:`; restoring (`actions/cache/restore`) is free.
  *
- * ONE exception: ci.yml's `deps` job saves the dependency cache under a changed build's exact key on a pull request too,
- * and only when GitHub has no such entry. Its readers are the run's own 18 sbt rows a minute later, which would
- * otherwise each fetch the change from Maven Central at once (SbtDependencyFanOutSpec).
+ * ONE exception: ci.yml's `deps` job saves the dependency cache under a changed build's exact key on every ref, a pull
+ * request's too, and only when GitHub has no such entry. Its readers are the run's own 18 sbt rows a minute later,
+ * which would otherwise each fetch the change from Maven Central at once (SbtDependencyFanOutSpec; on main too since
+ * Main #2678: setup-jdk's post-step save there saved nothing).
  */
 class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
   private val LargePaths =
@@ -27,7 +28,7 @@ class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
 
   /** The exception above: (file, step name, the `if:` it must carry). */
   private val RunScopedSave = (".github/workflows/ci.yml", "name: Save the dependency cache for this run's rows",
-    "if: steps.lookup.outputs.cache-hit != 'true' && github.ref != 'refs/heads/main'")
+    "if: steps.lookup.outputs.cache-hit != 'true'")
 
   /** Each step of a CI file, as its own lines: from a `- ` item to the next item at the same indent. */
   private def steps(text: String): Seq[Vector[String]] = {
