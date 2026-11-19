@@ -2,6 +2,8 @@
  "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by infra/test/test_metric_names.py. Do not edit by hand -- re-run the script (--names-only refreshes just this file).",
  "names": [
   "alertmanager_notifications_failed_total",
+  "coredns_dns_responses_total",
+  "coredns_proxy_request_duration_seconds_count",
   "fleet_auto_apply_state_last_run_timestamp_seconds",
   "fleet_container_image_gc_last_success_timestamp_seconds",
   "fleet_nix_gc_last_success_timestamp_seconds",
@@ -90,6 +92,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
- "taken": "2026-11-10",
+ "taken": "2026-11-18",
  "window_days": 14
 }
