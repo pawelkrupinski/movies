@@ -22,8 +22,8 @@ import scala.jdk.CollectionConverters.*
  * actually executes, never a captured document that a later write in the same burst could have
  * made stale.
  */
-final class FilmRereads(
-  fanout:              ChangeStreamFanout[FilmRereads.Delivery, FilmRereads.VenueDelivery],
+final class MovieChangeApply(
+  fanout:              ChangeStreamFanout[MovieChangeApply.Delivery, MovieChangeApply.VenueDelivery],
   reread:              String => tools.ReadOutcome[StoredMovieRecord],
   // Marked before every `reread`, so a consumer that also writes films (the cache) can tell a
   // read taken before its own write from one taken after — see [[FilmWriteFence]].
@@ -60,7 +60,7 @@ final class FilmRereads(
   // `applied()` in the task's `finally`, or that cursor stalls; `applyBacklog` is the
   // invariant made observable.
   private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply",
-    FilmRereads.applyQueueCapacity(changeDemandWindow))
+    MovieChangeApply.applyQueueCapacity(changeDemandWindow))
   private val backlog      = new AtomicInteger(0)
 
   /** Change events handed to the apply thread but not yet applied — the depth of the
@@ -235,7 +235,7 @@ final class FilmRereads(
       case None       => Reason.Unsupported
       case Some(read) => venues.filter(_.nonEmpty) match {
         case None                                                    => Reason.NotShowtimes
-        case Some(at) if at.sizeIs > FilmRereads.MaxVenuesApplied       => Reason.TooManyVenues
+        case Some(at) if at.sizeIs > MovieChangeApply.MaxVenuesApplied       => Reason.TooManyVenues
         case Some(_) if holds.exists(_.isFailing(filmId))            => Reason.Failing
         case Some(at)                                                => deliverVenues(filmId, at, read)
       }
@@ -254,7 +254,7 @@ final class FilmRereads(
     read(filmId, at) match {
       case None        => Reason.VenueReadFailed
       case Some(slots) =>
-        val declined = fanout.dispatchPart(FilmRereads.VenueDelivery(slots, mark))
+        val declined = fanout.dispatchPart(MovieChangeApply.VenueDelivery(slots, mark))
           .collect { case VenueVerdict.Declined(why) => why }
         declined.foreach(changeStreamMetrics.recordVenueDecline)
         if (declined.isEmpty) Reason.Applied else Reason.Declined
@@ -294,13 +294,13 @@ final class FilmRereads(
     def markedRead() = { val mark = fence.mark(filmId); val read = reread(filmId); (read.answered, !read.isFailed, mark) }
     var attempt = 1
     var (film, read, mark) = markedRead()
-    while (!read && attempt < FilmRereads.RereadAttempts) {
-      Thread.sleep(FilmRereads.RereadBackoffMillis * attempt)
+    while (!read && attempt < MovieChangeApply.RereadAttempts) {
+      Thread.sleep(MovieChangeApply.RereadBackoffMillis * attempt)
       attempt += 1
       val next = markedRead(); film = next._1; read = next._2; mark = next._3
     }
     if (read) {
-      film.foreach(f => fanout.dispatchUpsert(FilmRereads.Delivery(f, mark)))
+      film.foreach(f => fanout.dispatchUpsert(MovieChangeApply.Delivery(f, mark)))
       holds.foreach(_.applied(filmId))
     }
     read
@@ -316,7 +316,7 @@ final class FilmRereads(
    *  after the next delay. Its success acknowledges the events waiting on the film (through the
    *  [[CursorHold]]); it owes no demand, since no cursor delivered it. */
   private def rereadLater(filmId: String, hold: CursorHold, delayMillis: Long): Unit = {
-    val next = math.min(delayMillis * 2, FilmRereads.RereadRetryMaxMillis)
+    val next = math.min(delayMillis * 2, MovieChangeApply.RereadRetryMaxMillis)
     scala.util.Try(rereadRetry.schedule((() =>
       if (pending.containsKey(filmId)) rereadLater(filmId, hold, next)
       else {
@@ -345,13 +345,13 @@ final class FilmRereads(
     if (debounce.isDefined) debouncer.shutdownNow()
     releaseHeld()
     changeApply.shutdown()
-    if (!changeApply.awaitTermination(FilmRereads.CloseDrainSeconds, java.util.concurrent.TimeUnit.SECONDS))
-      logger.warn(s"MovieRepository change stream: applies still running after ${FilmRereads.CloseDrainSeconds}s " +
+    if (!changeApply.awaitTermination(MovieChangeApply.CloseDrainSeconds, java.util.concurrent.TimeUnit.SECONDS))
+      logger.warn(s"MovieRepository change stream: applies still running after ${MovieChangeApply.CloseDrainSeconds}s " +
         "at close — saving the positions they have reached; a restart replays the rest.")
   }
 }
 
-object FilmRereads {
+object MovieChangeApply {
   /** Where each film's debounce is waited out when no spec steps it by hand: a daemon scheduler of its own. */
   val DebounceScheduler: () => java.util.concurrent.ScheduledExecutorService =
     () => tools.DaemonExecutors.scheduler("movie-change-debounce")

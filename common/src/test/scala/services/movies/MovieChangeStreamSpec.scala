@@ -819,7 +819,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     val failures  = new AtomicInteger(0)
     val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
       // Fails past the apply's own quick retries, then recovers.
-      if (id == "broken|2024" && failures.incrementAndGet() <= FilmRereads.RereadAttempts + 2) (None, false)
+      if (id == "broken|2024" && failures.incrementAndGet() <= MovieChangeApply.RereadAttempts + 2) (None, false)
       else (Some(recordOf(id)), true)
     })
 
@@ -842,7 +842,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
     val failures  = new AtomicInteger(0)
     val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
-      if (id == "broken|2024" && failures.incrementAndGet() <= FilmRereads.RereadAttempts + 2) (None, false)
+      if (id == "broken|2024" && failures.incrementAndGet() <= MovieChangeApply.RereadAttempts + 2) (None, false)
       else (Some(recordOf(id)), true)
     })
 
@@ -872,7 +872,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     val acks      = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
     // Its first apply and two retries (20 ms, then 40 ms later) have each failed every read they made.
-    val brokenReads = new CountDownLatch(3 * FilmRereads.RereadAttempts)
+    val brokenReads = new CountDownLatch(3 * MovieChangeApply.RereadAttempts)
     val under = stream(source, slots = Some(slots),
       rereadChecked = Some(id =>
         if (id == "broken|2024") { brokenReads.countDown(); (None, false) } else (Some(recordOf(id)), true)))

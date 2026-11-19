@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.util.Try
 
 /** [[MovieChangeStream]]'s `movies` cursor: opened after a resume position, each event's post-image
- *  decoded and handed to the apply side ([[FilmRereads]]) as a re-read of its film — or, with no
+ *  decoded and handed to the apply side ([[MovieChangeApply]]) as a re-read of its film — or, with no
  *  post-image, a delete — and its resume position moved past each contiguous run of applied events.
  *  An error or its end clears it and asks `reopen` for another on its backoff. `subscribe` opens
  *  the collection's change stream ([[MovieChangeStream.Source]]). */
@@ -19,8 +19,8 @@ final class MoviesChangeCursor(
   subscribe:           (Option[BsonDocument], Observer[ChangeStreamDocument[BsonDocument]]) => Unit,
   resumeToken:         ChangeStreamResumeToken,
   reopen:              ChangeStreamReopen,
-  rereads:             FilmRereads,
-  fanout:              ChangeStreamFanout[FilmRereads.Delivery, FilmRereads.VenueDelivery],
+  changeApply:         MovieChangeApply,
+  fanout:              ChangeStreamFanout[MovieChangeApply.Delivery, MovieChangeApply.VenueDelivery],
   liveness:            ChangeStreamLiveness,
   changeStreamMetrics: ChangeStreamMetrics,
   changeDemandWindow:  Int,
@@ -67,13 +67,13 @@ final class MoviesChangeCursor(
   }
 
   /** One event the `movies` cursor delivered, applied OFF the Netty I/O loop: the stitch read +
-   *  projection must not run there (they made the loops contend + spin — see `FilmRereads.changeApply`). */
+   *  projection must not run there (they made the loops contend + spin — see `MovieChangeApply.changeApply`). */
   private def onMoviesChange(change: ChangeStreamDocument[BsonDocument]): Unit = {
     reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
     liveness.delivered(ChangeStreamLiveness.Movies)
     recordChangeMetrics(change)
     // The resume position moves only once this event is APPLIED — in its apply task,
-    // AFTER the fan-out (see `FilmRereads.applyReread`). Advancing HERE, at delivery, persisted a
+    // AFTER the fan-out (see `MovieChangeApply.applyReread`). Advancing HERE, at delivery, persisted a
     // position past every delivered-but-queued event (up to a demand window of them), so a
     // restart resumed after events that were never applied. The generation guards against
     // a `clear()` (invalid token) landing while this event is still queued.
@@ -94,10 +94,10 @@ final class MoviesChangeCursor(
   /** The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
    *  same by-id read the side cursors use) before fanning out, so consumers get a
    *  full row. A failed read fans out NOTHING (an empty-cinema record here is what the
-   *  projector turns into a screenings wipe) and holds the position — see `FilmRereads.applyReread`.
+   *  projector turns into a screenings wipe) and holds the position — see `MovieChangeApply.applyReread`.
    *
    *  COALESCE with a same-film apply already queued — by an earlier movies event,
-   *  or by the screenings/movie_slots cursors sharing [[FilmRereads]]' `pending`. This is the
+   *  or by the screenings/movie_slots cursors sharing [[MovieChangeApply]]' `pending`. This is the
    *  common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
    *  `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
    *  rows, so a slot drop used to buy the film TWO re-projections (one bought here,
@@ -113,7 +113,7 @@ final class MoviesChangeCursor(
    *  `reread` closes that window the same way the side cursors' own re-read already
    *  does, at the cost of one extra point read per movies apply.) */
   private def applyMoviesUpsert(filmId: String, ack: () => Unit): Unit =
-    if (!rereads.request(filmId, ChangeStreamLiveness.Movies, moviesDemand, ack, debounced = false)) {
+    if (!changeApply.request(filmId, ChangeStreamLiveness.Movies, moviesDemand, ack, debounced = false)) {
       changeStreamMetrics.recordCoalescedChange(); moviesDemand.applied()
     }
 
@@ -130,8 +130,8 @@ final class MoviesChangeCursor(
   private def applyMoviesDelete(deletedId: Option[String], ack: () => Unit): Unit = {
     // Only a re-read already QUEUED is behind the barrier: one the debounce still holds is
     // queued after this delete, so it runs after it and reads whatever the key holds then.
-    deletedId.foreach(rereads.barrier)
-    rereads.applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
+    deletedId.foreach(changeApply.barrier)
+    changeApply.applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
       deletedId.foreach(fanout.dispatchDelete)
       ack()
     }

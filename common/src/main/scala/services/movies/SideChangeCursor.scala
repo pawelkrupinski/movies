@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.util.Try
 
 /** One of [[MovieChangeStream]]'s side-collection cursors — `screenings` or `movie_slots` — with its
- *  own demand window and its own coalescing counter, ringing into the shared apply ([[FilmRereads]]).
+ *  own demand window and its own coalescing counter, ringing into the shared apply ([[MovieChangeApply]]).
  *  Read-split only: a showtime change writes only `screenings` and a venue's slot only `movie_slots`
  *  (movies stays put), so without these the projector would never see either. */
 final class SideChangeCursor(
@@ -14,7 +14,7 @@ final class SideChangeCursor(
   metrics:            SideCollectionChangeMetrics,
   // The side collection whose applied rows this cursor watches; None (no split) opens nothing.
   rows:               Option[SlotKeyedRows],
-  rereads:            FilmRereads,
+  changeApply:        MovieChangeApply,
   liveness:           ChangeStreamLiveness,
   changeDemandWindow: Int
 ) {
@@ -66,16 +66,16 @@ final class SideChangeCursor(
    *  still land after it: that enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so
    *  the film's entry stays pending and its demand is never released. That is deliberate, not an
    *  oversight: the repository is being discarded and nobody is waiting on its cursor any more.
-   *  Anything that resurrects a closed repository would have to clear `FilmRereads`' `pending` first. */
+   *  Anything that resurrects a closed repository would have to clear `MovieChangeApply`' `pending` first. */
   private def applyChange(rowId: String, applied: () => Unit): Unit = {
     liveness.delivered(collection)
     val filmId = SlotKeyed.filmIdOf(rowId)
-    // A `screenings` row at a known venue can be applied from that venue alone — see `FilmRereads.applyVenues`.
+    // A `screenings` row at a known venue can be applied from that venue alone — see `MovieChangeApply.applyVenues`.
     val venue  = Option.when(collection == ChangeStreamLiveness.Screenings && rowId != filmId)(SlotKeyed.slotKeyOf(rowId))
       .flatMap(models.Source.byWireKey).collect { case showing: models.CinemaShowing => showing.cinema }
     // Either way the event is acknowledged only once the film is fanned out — by the re-read it
-    // opened or the one it rides — see `SideCollectionWatch` and `FilmRereads.applyReread`.
-    if (!rereads.request(filmId, collection, demand, applied, debounced = true, venue)) {
+    // opened or the one it rides — see `SideCollectionWatch` and `MovieChangeApply.applyReread`.
+    if (!changeApply.request(filmId, collection, demand, applied, debounced = true, venue)) {
       metrics.recordCoalescedChange(); demand.applied()
     }
   }

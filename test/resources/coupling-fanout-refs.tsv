@@ -269,7 +269,7 @@ services.movies.MovieChangeStream	services.movies.ChangeStreamMetrics
 services.movies.MovieChangeStream	services.movies.ChangeStreamReopen
 services.movies.MovieChangeStream	services.movies.ChangeStreamResumeToken
 services.movies.MovieChangeStream	services.movies.DecodeFailureMetrics
-services.movies.MovieChangeStream	services.movies.FilmRereads
+services.movies.MovieChangeStream	services.movies.MovieChangeApply
 services.movies.MovieChangeStream	services.movies.FilmWriteFence
 services.movies.MovieChangeStream	services.movies.MoviesChangeCursor
 services.movies.MovieChangeStream	services.movies.SideChangeCursor
@@ -285,7 +285,7 @@ services.movies.MoviesChangeCursor	services.movies.ChangeStreamMetrics
 services.movies.MoviesChangeCursor	services.movies.ChangeStreamReopen
 services.movies.MoviesChangeCursor	services.movies.ChangeStreamResumeToken
 services.movies.MoviesChangeCursor	services.movies.DecodeFailureMetrics
-services.movies.MoviesChangeCursor	services.movies.FilmRereads
+services.movies.MoviesChangeCursor	services.movies.MovieChangeApply
 services.movies.MoviesChangeCursor	services.movies.MovieCodecs
 services.movies.MoviesChangeCursor	tools.AppliedPrefix
 services.movies.MoviesChangeCursor	tools.ChangeStreamLiveness

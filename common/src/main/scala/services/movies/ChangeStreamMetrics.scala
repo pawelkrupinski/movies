@@ -60,7 +60,7 @@ object ChangeStreamMetrics {
       CacheNotResident, CacheSlotsDiffer, ChangeStreamFanout.NoPartHandler, ChangeStreamFanout.PartFailed)
   }
 
-  /** How a film's apply went — `FilmRereads.applyVenues`. A `venues` apply read only the
+  /** How a film's apply went — `MovieChangeApply.applyVenues`. A `venues` apply read only the
    *  changed venues' rows; a `film` apply re-read the whole film, for the `reason` given. */
   object Apply {
     val Venues = "venues"; val Film = "film"

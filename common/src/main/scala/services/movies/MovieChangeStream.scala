@@ -44,10 +44,10 @@ import org.mongodb.scala.Observer
  * `source` is the seam: production opens the collection's cursor
  * ([[MongoMovieChangeFeed]]); a spec pushes events by hand.
  * `reread` re-reads a film by id, stitched (showtimes and slots live in their own
- * collections) — see [[FilmRereads]], the apply side every cursor rings into.
+ * collections) — see [[MovieChangeApply]], the apply side every cursor rings into.
  *
  * Its parts: the `movies` cursor ([[MoviesChangeCursor]]), the two side cursors
- * ([[SideChangeCursor]]), and the apply side ([[FilmRereads]]): this class owns the
+ * ([[SideChangeCursor]]), and the apply side ([[MovieChangeApply]]): this class owns the
  * listeners, starts the cursors on the first and stops them after the last, and closes it all.
  */
 final class MovieChangeStream(
@@ -77,7 +77,7 @@ final class MovieChangeStream(
   stopwatch:           tools.Stopwatch,
   // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
-  rereadRetryMillis:   Long = FilmRereads.RereadRetryMillis,
+  rereadRetryMillis:   Long = MovieChangeApply.RereadRetryMillis,
   // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
   decodeFailures:      services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop,
   // How long a film's re-read waits for the rest of its burst — see [[MovieChangeStream.Debounce]].
@@ -89,33 +89,33 @@ final class MovieChangeStream(
   readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
   // Waits out each film's debounce (built only when `debounce` is set) — injected so a spec can
   // step a debounce boundary on a hand-moved `clock` instead of sleeping across it.
-  debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = FilmRereads.DebounceScheduler
+  debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = MovieChangeApply.DebounceScheduler
 ) extends AutoCloseable {
 
-  private val movieChanges = new ChangeStreamFanout[FilmRereads.Delivery, FilmRereads.VenueDelivery]("MovieRepository")
+  private val movieChanges = new ChangeStreamFanout[MovieChangeApply.Delivery, MovieChangeApply.VenueDelivery]("MovieRepository")
   private val changeLock   = new AnyRef
 
   // Every event of the three cursors becomes a re-read of its film here, coalesced and applied on one thread.
-  private val rereads = new FilmRereads(movieChanges, reread, fence, liveness, changeStreamMetrics, changeDemandWindow,
+  private val changeApply = new MovieChangeApply(movieChanges, reread, fence, liveness, changeStreamMetrics, changeDemandWindow,
     clock, rereadRetryMillis, debounce, readVenues, debounceScheduler)
 
-  /** Change events handed to the apply thread but not yet applied — see [[FilmRereads.applyBacklog]]. */
-  def applyBacklog: Int = rereads.applyBacklog
+  /** Change events handed to the apply thread but not yet applied — see [[MovieChangeApply.applyBacklog]]. */
+  def applyBacklog: Int = changeApply.applyBacklog
 
-  /** Block until every apply queued before this call has run — see [[FilmRereads.awaitQueuedApplies]]. */
-  private[movies] def awaitQueuedApplies(timeoutSeconds: Long = 10): Boolean = rereads.awaitQueuedApplies(timeoutSeconds)
+  /** Block until every apply queued before this call has run — see [[MovieChangeApply.awaitQueuedApplies]]. */
+  private[movies] def awaitQueuedApplies(timeoutSeconds: Long = 10): Boolean = changeApply.awaitQueuedApplies(timeoutSeconds)
 
   /** Re-reads the debounce is holding for the rest of their film's burst. */
-  def held: Int = rereads.held
+  def held: Int = changeApply.held
 
-  /** Queue every re-read the debounce holds, now — see [[FilmRereads.releaseHeld]]. */
-  def releaseHeld(): Unit = rereads.releaseHeld()
+  /** Queue every re-read the debounce holds, now — see [[MovieChangeApply.releaseHeld]]. */
+  def releaseHeld(): Unit = changeApply.releaseHeld()
 
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
   // `movie_slots` (movies stays put), so without these the projector would never see either.
   private val sideCursors: Seq[SideChangeCursor] = Seq(
-    new SideChangeCursor(ChangeStreamLiveness.Screenings, screeningsMetrics, screenings, rereads, liveness, changeDemandWindow),
-    new SideChangeCursor(ChangeStreamLiveness.Slots, slotsMetrics, slots, rereads, liveness, changeDemandWindow))
+    new SideChangeCursor(ChangeStreamLiveness.Screenings, screeningsMetrics, screenings, changeApply, liveness, changeDemandWindow),
+    new SideChangeCursor(ChangeStreamLiveness.Slots, slotsMetrics, slots, changeApply, liveness, changeDemandWindow))
 
   // Set while an open deferred on an unreadable resume position waits on `changeReopen`. A
   // registration meanwhile leaves the open to that reopen rather than re-reading the position:
@@ -135,7 +135,7 @@ final class MovieChangeStream(
     (() => { openDeferred.set(false); if (!movieChanges.isEmpty) ensureWatching() }): @unchecked)
 
   private val moviesCursor = new MoviesChangeCursor((resumeFrom, observer) => source.open(resumeFrom, observer), resumeToken,
-    changeReopen, rereads, movieChanges, liveness, changeStreamMetrics, changeDemandWindow, decodeFailures, stopwatch)
+    changeReopen, changeApply, movieChanges, liveness, changeStreamMetrics, changeDemandWindow, decodeFailures, stopwatch)
 
   /** Attach a consumer, starting the shared cursor if it isn't running; the returned
    *  handle detaches just that consumer and stops the cursor once none remain. */
@@ -208,12 +208,12 @@ final class MovieChangeStream(
    *  persisted synchronously, every demand window closed, the apply thread stopped. */
   override def close(): Unit = changeLock.synchronized {
     changeReopen.close()
-    rereads.stopRetries()
+    changeApply.stopRetries()
     moviesCursor.unsubscribe()
     // A re-read the debounce still holds is queued now, so it drains with the rest and its events
     // are applied before the final positions are saved; and the applies already queued FINISH
-    // (bounded) before them: saved first, a position misses them ([[FilmRereads.drainForClose]]).
-    rereads.drainForClose()
+    // (bounded) before them: saved first, a position misses them ([[MovieChangeApply.drainForClose]]).
+    changeApply.drainForClose()
     resumeToken.save(force = true)
     // Each side handle stops its own reopen driver too — left open, a Mongo side cursor whose
     // client is closed under it would fail and reschedule its reopen for the life of the JVM.
