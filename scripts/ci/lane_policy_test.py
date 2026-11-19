@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 import runner_scheduler as rs  # noqa: E402
 
 POLICY = os.path.join(HERE, "lane-policy.tsv")
-CLASSES = ("gate-red-fix", "landing-check", "deploy-feeding", "optional-measurement", "consumer", "exploration")
+CLASSES = ("red-fix", "landing-check", "deploy-feeding", "optional-measurement", "consumer", "exploration")
 COLUMNS = ["runner", "rank", "lane", "class", "producer", "yields_to_landing", "decided"]
 
 

@@ -7,7 +7,9 @@
 # then proposes the row to add (agentctl: `decide[policy-no-rule]: ...; rule: scripts/ci/lane-policy.tsv: <row>`).
 #
 # THE RULES, highest first (the `class` column):
-#   gate-red-fix          a gate red's fix: before everything (nothing stops a gate fix)
+#   red-fix               a fix of ANY open red -- the gate's or one outside it (agentctl's change kind `red_fix`,
+#                         changekind.py; it pushes them to check/red-<...>): before everything (2026-11-19: 08010c,
+#                         an outside red's fix, verified on movies-check and waited 32 min for a runner)
 #   landing-check         any other landing check's rows
 #   deploy-feeding        work that feeds a deploy or a gate (the staging closures)
 #   optional-measurement  identity measurements and other optional runs
@@ -18,9 +20,9 @@
 #
 # runner  rank  lane  class  producer  yields_to_landing  decided
 runner	rank	lane	class	producer	yields_to_landing	decided
-check	1	movies-check-red-fix	gate-red-fix	-	no	2026-11-17: a red fix still checking 41 min after it was queued
+check	1	movies-check-red-fix	red-fix	-	no	2026-11-17: a red fix still checking 41 min after it was queued
 check	2	movies-check	landing-check	-	no	2026-11-08: the check class
-measure	1	movies-red-fix	gate-red-fix	-	no	2026-11-16: Main red, its fix's drift rows behind optional measurements
+measure	1	movies-red-fix	red-fix	-	no	2026-11-16: Main red, its fix's drift rows behind optional measurements
 measure	2	movies-landing	landing-check	-	no	2026-11-16: a landing check's rows ahead of every optional measurement
 measure	3	movies-stage	deploy-feeding	-	no	the owner, 2026-11-19 (Stage NixOS closures #102): between movies-landing and movies-measure
 measure	4	movies-measure	optional-measurement	-	no	2026-11-16: everything optional
