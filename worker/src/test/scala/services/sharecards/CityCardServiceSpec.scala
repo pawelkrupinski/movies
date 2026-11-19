@@ -139,7 +139,7 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers with ScratchDirector
     val store   = tempStore(tempDirectory)
     val queue   = new InMemoryTaskQueue
     val country = Country.UnitedStates
-    val service = new CityCardService(country, store, new InMemoryReadModelRepository, queue, ShareCardMetrics.noop, clock)
+    val service = serviceFor(country, store, new InMemoryReadModelRepository, queue, ShareCardMetrics.noop, clock)
     country.cities.foreach(city => card(store, city, T0))
     val renders = collection.mutable.Buffer.empty[(String, Instant)]
     (1 to 7 * 24).foreach { _ =>
@@ -166,6 +166,13 @@ object CityCardServiceSpec {
   val FirstWait: Duration = Duration.ofMinutes(10)
   val MaxWait: Duration   = Duration.ofHours(6)
 
+  /** `country`'s city cards over `reader`'s screenings, wired as `ShareCardWiring` wires them. */
+  def serviceFor(country: Country, store: ShareCardStore, reader: services.readmodel.ReadModelReader, queue: InMemoryTaskQueue,
+      metrics: ShareCardMetrics, clock: java.time.Clock, cap: Int = CityCardService.MaxEnqueuePerTick): CityCardService =
+    new CityCardService(country.cities, store, new CityCardWriter(store, new CityFilms(reader, country.cities.iterator.map(_.slug).toSet, clock),
+      tools.CityCardRenderer.Brand(country.brandName, country.shareHost, country.filmwebEnabled), metrics, clock), queue, metrics, clock,
+      maxEnqueuePerTick = cap)
+
   def near(c: Color, target: Color, tol: Int = 40): Boolean =
     math.abs(c.getRed - target.getRed) <= tol && math.abs(c.getGreen - target.getGreen) <= tol && math.abs(c.getBlue - target.getBlue) <= tol
 
@@ -189,7 +196,7 @@ object CityCardServiceSpec {
     val clock     = new MutableClock(T0)
     val queue     = new InMemoryTaskQueue
     val readModel = reads
-    val service   = new CityCardService(Country.Poland, store, readModel, queue, metrics, clock, maxEnqueuePerTick = cap)
+    val service   = serviceFor(Country.Poland, store, readModel, queue, metrics, clock, cap)
     val handler   = new RenderCityCardHandler(service)
 
     def card(city: City, at: Instant): Unit = CityCardServiceSpec.card(store, city, at)

@@ -65,10 +65,13 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     val reading = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System) {
       override def findAllScreeningRefsChecked() = { val refs = super.findAllScreeningRefsChecked(); refs.answered.foreach(_.flatMap(_.citySlug).foreach(read += _)); refs }
     }
-    val service = new services.sharecards.CityCardService(Country.Poland, store, reading, new services.tasks.InMemoryTaskQueue,
-      services.sharecards.ShareCardMetrics.noop, java.time.Clock.fixed(java.time.Instant.parse("2026-10-12T00:00:00Z"), java.time.ZoneOffset.UTC))
+    val clock   = java.time.Clock.fixed(java.time.Instant.parse("2026-10-12T00:00:00Z"), java.time.ZoneOffset.UTC)
+    val country = Country.Poland
+    val writer  = new services.sharecards.CityCardWriter(store,
+      new services.sharecards.CityFilms(reading, country.cities.iterator.map(_.slug).toSet, clock),
+      tools.CityCardRenderer.Brand(country.brandName, country.shareHost, country.filmwebEnabled), services.sharecards.ShareCardMetrics.noop, clock)
     try {
-      service.render(poznan) shouldBe services.sharecards.ShareCardMetrics.CityOutcome.Rendered
+      writer.render(poznan) shouldBe services.sharecards.ShareCardMetrics.CityOutcome.Rendered
       read.toSet shouldBe Set("poznan", "krakow")
       val card   = javax.imageio.ImageIO.read(store.cityCardPath(poznan).toFile)
       val (x, y) = tools.CityCardRenderer.tileAt(0)

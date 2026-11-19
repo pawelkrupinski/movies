@@ -1,23 +1,18 @@
 package services.sharecards
 
-import models.{City, Country}
-import play.api.Logging
-import services.readmodel.ReadModelReader
+import models.City
 import services.tasks.{DueWindow, Enqueued, TaskProducer}
 import services.tasktypes.TaskType
-import tools.{CityCardRenderer, Digest}
 
-import java.nio.file.{Files, Path}
 import java.time.Clock
 import scala.concurrent.duration.*
-import scala.util.Try
 
 /**
  * The country's CITY share cards: one per city in the catalog, `city-<slug>.jpg` in the share-card
  * directory beside the film cards, served by Caddy at `/share-cards/<cc>/city-<slug>.jpg` and named
  * by every `/{city}/` page's `og:image` (the web's `ShareCardUrl.city`).
  *
- * WHAT A CARD DRAWS ([[CityCardRenderer]]): the posters of the films the city shows most widely —
+ * WHAT A CARD DRAWS (`tools.CityCardRenderer`, drawn and written by [[CityCardWriter]]): the posters of the films the city shows most widely —
  * ranked by how many of its cinemas show each, read off `web_screenings` — under the brand, the
  * city's localised heading and the rating pills. The posters come from the film cards' own poster
  * cache, so a city card fetches nothing: a film whose poster is not cached is skipped.
@@ -39,31 +34,27 @@ import scala.util.Try
  * Cards of cities gone from the catalog are pruned by [[ShareCardJanitor]].
  */
 class CityCardService(
-  country: Country,
+  cities:  Seq[City],
   store:   ShareCardStore,
-  reader:  ReadModelReader,
+  writer:  CityCardWriter,
   queue:   TaskProducer,
   metrics: ShareCardMetrics,
   clock:   Clock,
   schedule: DueWindow = new DueWindow(CityCardService.Period),
   maxEnqueuePerTick: Int = CityCardService.MaxEnqueuePerTick
-) extends Logging {
+) {
   import CityCardService.*
   import ShareCardMetrics.CityOutcome
 
-  private val citiesBySlug: Map[String, City] = country.cities.iterator.map(city => city.slug -> city).toMap
-
-  private val brand = CityCardRenderer.Brand(country.brandName, country.shareHost, country.filmwebEnabled)
+  private val citiesBySlug: Map[String, City] = cities.iterator.map(city => city.slug -> city).toMap
 
   private val backoff = new CityCardBackoff(clock)
-
-  private val cityFilms = new CityFilms(reader, citiesBySlug.keySet, clock)
 
   /** The reaper's tick: enqueue the cities with no card, then those due, up to the cap; publish
    *  the coverage gauge. Returns what its enqueues came to: how many renders it added, and how many failed. */
   def enqueueDue(): Enqueued = {
     val now     = clock.instant()
-    val written = country.cities.map(city => city -> store.written(store.cityCardPath(city)))
+    val written = cities.map(city => city -> store.written(store.cityCardPath(city)))
     if (written.nonEmpty)
       metrics.cityCoverage(written.count { case (_, at) => at.exists(_.isAfter(now.minusMillis(StaleAfter.toMillis))) }.toDouble / written.size)
     val ready   = written.iterator.filterNot { case (city, _) => backoff.holds(city.slug, now) }.toVector
@@ -82,43 +73,16 @@ class CityCardService(
       Option.when(written.isEmpty || schedule.isDue(dedupKey(city), written, clock.instant()))(render(city))
     }
 
-  /** Draw the city's card from its current films and write it — or, when it would be the picture
-   *  already on disk, only mark it rendered now. A city with no card the directory has no room for
-   *  is refused first, before its films are read or a poster decoded. */
+  /** Draw the city's card and write it ([[CityCardWriter]]), holding a city whose render failed or was refused out
+   *  of the reaper's ticks for a while ([[CityCardBackoff]]); a drawn card clears that. */
   def render(city: City): String = {
-    val path    = store.cityCardPath(city)
-    var posters = Vector.empty[Path]
-    val outcome = Try {
-      store.admitNew(path)
-      posters = cityFilms.of(city.slug).iterator.map(store.posterPath).filter(Files.isRegularFile(_)).take(CityCardRenderer.PosterCount).toVector
-      val version = versionOf(city, posters)
-      if (store.version(path).contains(version)) { store.touch(path, clock.instant()); CityOutcome.Unchanged }
-      else {
-        store.writeAtomically(path, CityCardDrawing.png(city.heading, brand, posters), version)
-        // The schedule reads the injected clock, so the file is stamped by it, not the filesystem's.
-        store.touch(path, clock.instant())
-        CityOutcome.Rendered
-      }
-    }.recover {
-      case _: NoRoomForShareCard => CityOutcome.Refused
-      case e: Exception =>
-        logger.warn(s"city card: ${city.slug} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}")
-        CityOutcome.Failed
-    }.get
+    val outcome = writer.render(city)
     outcome match {
       case CityOutcome.Rendered | CityOutcome.Unchanged => backoff.drawn(city.slug)
       case _                                            => backoff.missed(city.slug)
     }
-    logger.info(s"city card: ${city.slug} $outcome — ${posters.size} posters")
-    metrics.cityRender(outcome)
     outcome
   }
-
-  /** The card's version: everything it draws — the template, the heading, the brand and, of each
-   *  poster, its film and the poster's own version. */
-  private def versionOf(city: City, posters: Seq[Path]): String =
-    Digest.sha256Hex((Seq(TemplateVersion.toString, city.heading, brand.toString) ++
-      posters.map(poster => s"${poster.getFileName}:${store.version(poster).getOrElse("")}")).mkString("\u0000")).take(16)
 }
 
 object CityCardService {
@@ -140,16 +104,6 @@ object CityCardService {
    *  few hours loses nothing a minute's retry would win. */
   val FirstFailureRetry: FiniteDuration = 10.minutes
   val MaxFailureRetry: FiniteDuration   = 6.hours
-
-  /** The films' ranking is re-read at most this often. */
-  val FilmsMaxAge: FiniteDuration = 1.hour
-
-  /** How many of a city's films are kept as poster candidates: twice the posters a card draws, as
-   *  some have no poster cached. */
-  val Candidates: Int = CityCardRenderer.PosterCount * 2
-
-  /** Bumped when the card's look changes, so every card re-renders at its next phase. */
-  val TemplateVersion: Int = 1
 
   val CityKey = "city"
 

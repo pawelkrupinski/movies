@@ -126,7 +126,10 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   /** The country's city cards, each re-rendered weekly at its own phase. */
   lazy val cityCardService: CityCardService =
-    new CityCardService(country, shareCardStore, readModelRepository, taskQueue, shareCardMetrics, clock)
+    new CityCardService(country.cities, shareCardStore, new CityCardWriter(shareCardStore,
+      new CityFilms(readModelRepository, country.cities.iterator.map(_.slug).toSet, clock),
+      tools.CityCardRenderer.Brand(country.brandName, country.shareHost, country.filmwebEnabled), shareCardMetrics, clock),
+      taskQueue, shareCardMetrics, clock)
 
   lazy val shareCardBackfill: ShareCardBackfill =
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
