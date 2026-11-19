@@ -144,7 +144,9 @@
 #   `puremove`    scripts/pure-move-check <sha>^..<sha> over each pushed commit carrying `Pure-Move: verified`, whatever it
 #                 touches: a commit claiming to be a pure move (files, packages and classes renamed, nothing else, so no
 #                 take can move and scripts/identity-what-if has nothing to measure) is one. The trailer is optional --
-#                 identity-what-if runs the check itself -- and verified only when present. Seconds a commit
+#                 identity-what-if runs the check itself -- and verified only when present. Such a commit's paths select
+#                 no `identity` area and no identity heavy rows (A VERIFIED PURE MOVE OWES NO IDENTITY AREA, below);
+#                 the commits without the claim still do. Seconds a commit
 #   `flipbacklog` THE FLIP BACKLOG IS COMPLETE (Main #2515: 97d260d67 committed the Ratzeburg Grinch drift slice with its
 #                 `drift` row alone; PopulationMonotonicitySpec failed main on four A -> B -> A takes no `population` row
 #                 named, and a slice changed alone selected no check at all), on a change to the flip backlog, the
@@ -1318,6 +1320,40 @@ for r in "${ranges[@]}"; do
     [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
     checks="$(printf '%s\npuremove' "$checks" | grep -v '^$')"; break
 done
+# A VERIFIED PURE MOVE OWES NO IDENTITY AREA (2026-11-19, the owner's "make it simpler and faster": an identity check's
+# shards queued ~17 min and ran ~16 beside the rest's ~7+7, and kept the change out of every backlog batch). A commit
+# saying `Pure-Move: verified` only moves code -- the puremove check above proves it, failing the push otherwise -- so
+# it moves no take, the rule identity-what-if skips such a commit by. The identity area and the identity heavy rows are
+# selected by the paths of the commits WITHOUT that claim alone; the claimed commits' paths still select every other
+# check (sbt, the lints, coupling, ...). agentctl's backlog batch reads the same rule (batch.py identity_change).
+PureMoveAreas='^(identity|itidentity|e2ecorpus)$'
+if printf '%s\n' "$checks" | grep -qE "$PureMoveAreas"; then
+    unclaimed="" claimed_any=""
+    for r in "${ranges[@]}"; do
+        for sha in $(git rev-list "$r"); do
+            if [ "$(git log -1 --format='%(trailers:key=Pure-Move,valueonly)' "$sha" | grep -v '^$' || true)" = verified ]; then
+                claimed_any=1; continue
+            fi
+            unclaimed+="$(git diff-tree --no-commit-id --name-only -r -m --root "$sha")"$'\n'
+        done
+    done
+    if [ -n "$claimed_any" ]; then
+        unclaimed_areas=" "
+        if [ -n "$(printf '%s' "$unclaimed" | grep -v '^$' || true)" ]; then
+            unclaimed_areas=" $(printf '%s' "$unclaimed" | grep -v '^$' | sort -u | plan | grep -E "$PureMoveAreas" | tr '\n' ' ')"
+        fi
+        kept=""
+        while IFS= read -r c; do
+            [ -n "$c" ] || continue
+            if [[ "$c" =~ $PureMoveAreas ]] && [[ "$unclaimed_areas" != *" $c "* ]]; then
+                log "$c: left out -- only commits saying 'Pure-Move: verified' select it (the puremove check holds them)" >&2
+                continue
+            fi
+            kept+="$c"$'\n'
+        done <<< "$checks"
+        checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
+    fi
+fi
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
 drift_reds="" drift_birth=""

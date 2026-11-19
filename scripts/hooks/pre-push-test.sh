@@ -792,6 +792,30 @@ code=0; (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs"
 check "...and a real move passes it" "0 1" "$code $(grep -c 'puremove: .* is a pure move' "$testroot/area-out")"
 code="$(area_push notes/b.txt PREPUSH_LIST=1)"
 check "...and a commit with no claim does not select it" "0 0" "$code $(grep -cx puremove "$testroot/area-out")"
+# A VERIFIED PURE MOVE OWES NO IDENTITY AREA (2026-11-19, "make it simpler and faster"): its identity paths select the
+# puremove check, not the identity shards and heavy rows -- a pure move moves no take (identity-what-if skips one too);
+# an identity path a commit WITHOUT the claim touches still selects them
+list_range() { # <range> [env...]: the hook's PREPUSH_LIST over <range>, one line
+  local range="$1"; shift
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" PREPUSH_LIST=1 "$@" \
+     bash scripts/hooks/pre-push --range "$range" 2>/dev/null) | tr '\n' ' ' | sed 's/ $//'
+}
+has_check() { case " $1 " in *" $2 "*) echo 1 ;; *) echo 0 ;; esac; }
+AREA_MESSAGE=$'Resolver: moved\n\nPure-Move: verified' area_push identity/src/main/scala/services/identity/Moved.scala > /dev/null
+listed="$(list_range HEAD~1..HEAD PREPUSH_HEAVY_ROWS=1)"
+check "a verified pure move of an identity path selects puremove, not the identity area or its heavy rows" "1 0 0 1" \
+  "$(has_check "$listed" puremove) $(has_check "$listed" identity) $(has_check "$listed" itidentity) $(has_check "$listed" sbt)"
+area_push worker/src/main/scala/services/movies/After.scala > /dev/null
+listed="$(list_range HEAD~2..HEAD)"
+check "...beside an unclaimed commit off the identity paths, still none" "1 0" \
+  "$(has_check "$listed" puremove) $(has_check "$listed" identity)"
+area_push identity/src/main/scala/services/identity/Changed.scala > /dev/null
+listed="$(list_range HEAD~3..HEAD PREPUSH_HEAVY_ROWS=1)"
+check "...but an unclaimed commit on an identity path selects the area and its heavy rows" "1 1 1" \
+  "$(has_check "$listed" puremove) $(has_check "$listed" identity) $(has_check "$listed" itidentity)"
+AREA_MESSAGE=$'Resolver: moved\n\nPure-Move: maybe' area_push identity/src/main/scala/services/identity/Claimed.scala > /dev/null
+listed="$(list_range HEAD~1..HEAD)"
+check "...and so does a claim that is not 'verified'" "1" "$(has_check "$listed" identity)"
 # THE IDENTITY SHARDS: PREPUSH_IDENTITY_SHARD=k/n runs shard k of the selected classes; the shards together run them all
 shard_classes() { grep -o 'services\.identity\.[A-Za-z]*Spec' "$AREA_CALLS" | sort | tr '\n' ' '; }
 all_in_shards=""
