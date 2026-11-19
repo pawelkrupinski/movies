@@ -43,12 +43,12 @@ class CatalogueProvenanceSpec extends AnyFlatSpec with Matchers {
       Some(ListingFeed(Seq(CatalogueId("bilety24", "1")), 3, Some("2026-10-06 18:00"), Some("2026-10-09 18:00"))))
     val card = ReviewCard(ReviewCluster(models.Country.Germany, Seq(fed.key, own.key), None, 0.2,
       services.identity.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, own), Map.empty, Nil, None, None)
-    card.venueSays shouldBe Seq("Original title" -> "Dronningen", "Year" -> "2019", "Director" -> "May el-Toukhy",
+    card.claims.venueSays shouldBe Seq("Original title" -> "Dronningen", "Year" -> "2019", "Director" -> "May el-Toukhy",
       "Cast" -> (1 to 9).map(i => s"Actor $i").mkString(", "), "Runtime" -> "127 min",
       "Country" -> "DK", "Catalogue ids" -> "bilety24=1", "Screenings" -> "5 · 2026-10-06 18:00 → 2026-10-09 18:00")
-    card.venueCast shouldBe (1 to 9).map(i => s"Actor $i")
-    card.catalogueCast shouldBe Seq("Fed Actor")
-    card.catalogueSays shouldBe Seq("Year" -> "2020", "Director" -> "Someone", "Cast" -> "Fed Actor", "Runtime" -> "99 min", "Catalogue ids" -> "webedia=279943")
-    ReviewCard(card.cluster, Seq(own), Map.empty, Nil, None, None).catalogueSays shouldBe empty
+    card.claims.venueCast shouldBe (1 to 9).map(i => s"Actor $i")
+    card.claims.catalogueCast shouldBe Seq("Fed Actor")
+    card.claims.catalogueSays shouldBe Seq("Year" -> "2020", "Director" -> "Someone", "Cast" -> "Fed Actor", "Runtime" -> "99 min", "Catalogue ids" -> "webedia=279943")
+    ReviewCard(card.cluster, Seq(own), Map.empty, Nil, None, None).claims.catalogueSays shouldBe empty
   }
 }

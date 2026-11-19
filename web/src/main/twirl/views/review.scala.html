@@ -168,19 +168,19 @@
         <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
       }
       <div class="listing">
-        @venuePoster(card.posters)
+        @venuePoster(card.claims.posters)
         <div>
           @if(card.members.size <= 3) {
             <div class="meta">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)}</div>
           } else {
             <details class="venues" data-listings><summary>@card.members.size cinemas</summary><ul></ul></details>
           }
-          @if(card.venueSays.nonEmpty){@factRows(card.venueSays, card.venueCast, "")} else {<div class="s muted">The venue gives no film details.</div>}
-          @if(card.catalogueSays.nonEmpty) {
+          @if(card.claims.venueSays.nonEmpty){@factRows(card.claims.venueSays, card.claims.venueCast, "")} else {<div class="s muted">The venue gives no film details.</div>}
+          @if(card.claims.catalogueSays.nonEmpty) {
             <div class="s catalogue-note">The aggregator's catalogue entry says (not the venue):</div>
-            @factRows(card.catalogueSays, card.catalogueCast, " muted catalogue")
+            @factRows(card.claims.catalogueSays, card.claims.catalogueCast, " muted catalogue")
           }
-          @card.synopsis match {
+          @card.claims.synopsis match {
             case Some(s) => {<div class="syn">@s</div>}
             case None    => {<div class="syn muted">The venue gives no synopsis.</div>}
           }

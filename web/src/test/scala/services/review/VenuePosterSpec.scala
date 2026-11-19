@@ -37,7 +37,7 @@ class VenuePosterSpec extends AnyFlatSpec with Matchers {
     val b = MemberView(ListingKey.Native("Bajka", "https://bajka/queen", "Queen"), None, None, feed(Some("https://muza/queen.jpg")))
     val card = ReviewCard(ReviewCluster(models.Country.Germany, Seq(fed.key, a.key, b.key), None, 0.2,
       services.identity.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, a, b), Map.empty, Nil, None, None)
-    card.posters shouldBe Seq("https://muza/queen.jpg", "https://webedia/queen.jpg")
+    card.claims.posters shouldBe Seq("https://muza/queen.jpg", "https://webedia/queen.jpg")
   }
 
   "the real prod sample" should "give a venue poster to every card some venue source has one for" in {
@@ -48,6 +48,6 @@ class VenuePosterSpec extends AnyFlatSpec with Matchers {
     }
     cards.size shouldBe 49
     // 19 had one when a card read its slot rows alone (2026-10-06)
-    cards.count(_.posters.nonEmpty) shouldBe 42
+    cards.count(_.claims.posters.nonEmpty) shouldBe 42
   }
 }
