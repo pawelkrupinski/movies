@@ -360,8 +360,15 @@ linux() { : > "$work/docker-calls"
   (cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" DOCKER_STDIN="$work/docker-stdin" \
     bash "$runner" --root "${LINUX_ROOT:-$tree}" --linux "$@") > "$work/out" 2>&1; echo $?; }
 check "--linux runs the selected tests in a container" "0" "$(linux scripts/ci/b_test.py)"
-check "...the checkout mounted read-only at its own path, as this user, not root" "1 1" \
-  "$(grep -c -- "^run .*-v $tree:$tree:ro" "$work/docker-calls") $(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
+# Rancher's VM holds a host descriptor for every file and directory a container ever saw through the shared home, and
+# keeps it after the directory is gone: a worktree mounted itself left ~25k behind, and on 2026-11-20 two hundred
+# thousand of them filled the Mac's file table (ENFILE). A copy in one of a few fixed slots is mounted in its place.
+slots="$work/home/.cache/movies-linux-tree"
+check "...a copy of the checkout in the first free slot, mounted read-only at the checkout's path, as this user, not root" "1 0 1" \
+  "$(grep -c -- "^run .*-v $slots/slot-0:$tree:ro" "$work/docker-calls") $(grep -c -- "-v $tree:" "$work/docker-calls") \
+$(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
+check "...the copy its files and the git dir's mount point" "echo tool a|dir" \
+  "$(head -1 "$slots/slot-0/scripts/a.sh")|$([ -d "$slots/slot-0/.git" ] && echo dir)"
 check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 0 --stall 300 scripts/ci/b_test.py$' "$work/docker-calls")"
 check "...from an ubuntu image pulled from mirror.gcr.io" "1" "$(grep -c 'kinowo-script-tests:' "$work/docker-calls" | grep -c .)"
 # its git metadata a snapshot, unpacked into a tmpfs at the git dir's own path, only the objects mounted live: a host git
@@ -374,8 +381,25 @@ check "...unpacked there from its stdin before the tests start" "1" \
   "$(grep -c -- "^run .* bash -c .*tar -xf - -C \"\$0\".* $git_dir bash scripts/run-script-tests " "$work/docker-calls")"
 check "...the snapshot its config, HEAD and refs, not its objects" "config HEAD refs/heads/main 0" \
   "$(tar -tf "$work/docker-stdin" | grep -x -e config -e HEAD -e refs/heads/main | paste -sd' ' -) $(tar -tf "$work/docker-stdin" | grep -c '^objects')"
+echo scratch > "$tree/main-only.txt"; linux scripts/ci/b_test.py > /dev/null
 scratch_git "$tree" worktree add -q "$work/wt" -b wt
 LINUX_ROOT="$work/wt" linux scripts/ci/b_test.py > /dev/null
+check "...a worktree run after it: the same slot, in step with that worktree, its .git file and not the other's files" \
+  "1 file absent" "$(grep -c -- "^run .*-v $slots/slot-0:$work/wt:ro" "$work/docker-calls") \
+$([ -f "$slots/slot-0/.git" ] && echo file) $([ -e "$slots/slot-0/main-only.txt" ] && echo present || echo absent)"
+rm "$tree/main-only.txt"
+# a slot another run holds (its flock) is passed over; every slot held: a clear failure once the wait is up
+hold_slot() { rm -f "$work/held"; mkdir -p "$slots"
+  python3 -c 'import fcntl, sys, time; f = open(sys.argv[1], "w"); fcntl.flock(f, fcntl.LOCK_EX); open(sys.argv[2], "w").close(); time.sleep(60)' \
+    "$slots/slot-$1.lock" "$work/held" & holder=$!
+  wait_until "slot $1 held" '[ -e "$work/held" ]'; }
+hold_slot 0
+LINUX_ROOT="$work/wt" linux scripts/ci/b_test.py > /dev/null
+check "...a held slot passed over for the next" "1" "$(grep -c -- "^run .*-v $slots/slot-1:$work/wt:ro" "$work/docker-calls")"
+check "...every slot held: exit 2 once the wait is up, no container" "2 1 0" \
+  "$(RUN_SCRIPT_TESTS_LINUX_SLOTS=1 RUN_SCRIPT_TESTS_LINUX_WAIT=0 LINUX_ROOT="$work/wt" linux scripts/ci/b_test.py) \
+$(grep -c 'every Linux tree slot is busy' "$work/out") $(grep -c '^run ' "$work/docker-calls")"
+kill "$holder"; wait "$holder" 2>/dev/null
 check "...from a worktree, the clone's metadata and the worktree's own" "config worktrees/wt/HEAD worktrees/wt/commondir worktrees/wt/gitdir" \
   "$(tar -tf "$work/docker-stdin" | grep -x -e config -e 'worktrees/wt/[a-zA-Z]*' | grep -v -e index -e ORIG_HEAD | paste -sd' ' -)"
 scratch_git "$tree" worktree remove --force "$work/wt"
