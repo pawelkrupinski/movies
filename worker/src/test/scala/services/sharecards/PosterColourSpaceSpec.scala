@@ -47,7 +47,7 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers with ScratchDirect
     val shrinker = new PosterShrinker { def coverSlot(f: Path): Either[String, BufferedImage] = throw new javax.imageio.IIOException("Bogus input colorspace") }
     val store = tempStore(tempDirectory)
     val posters = new ShareCardPosters(store, serving(() => file(image(BufferedImage.TYPE_INT_RGB), "jpg")), shrinker, ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
-    val service = new ShareCardService(models.Country.default, store, posters, new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
+    val service = new ShareCardService(models.Country.default, store, new ShareCardDrawing(store, posters, ShareCardMetrics.noop, clockAt(T0)), new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
     service.render(service.inputs(film()), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.RenderedNoPoster
   }
 }
@@ -83,7 +83,7 @@ object PosterColourSpaceSpec extends Matchers {
     val store = tempStore()
     val posters = new ShareCardPosters(store, serving(poster), shrinker, ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
     val movie = film()
-    val service = new ShareCardService(models.Country.default, store, posters, new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
+    val service = new ShareCardService(models.Country.default, store, new ShareCardDrawing(store, posters, ShareCardMetrics.noop, clockAt(T0)), new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
     service.render(service.inputs(movie), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered
     ImageIO.read(store.cardPath(movie._id).toFile).getWidth shouldBe 1200
     ImageIO.read(store.posterPath(movie._id).toFile).getWidth shouldBe 420

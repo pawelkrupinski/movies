@@ -62,7 +62,8 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
-    new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics, stopwatch),
+    new ShareCardDrawing(shareCardStore,
+      new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics, stopwatch), shareCardMetrics, clock),
     taskQueue, shareCardRescrapes, shareCardMetrics, clock)
 
   /** The fleet database — one for every country's worker, on the same cluster (and, in a
