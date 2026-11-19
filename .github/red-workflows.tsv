@@ -1,0 +1,15 @@
+# How agentctl treats a RED scheduled/post-landing workflow (agentctl reads this file from main). One row per
+# workflow, tab-separated, `#` comments and blank lines ignored:
+#
+#   workflow         the workflow's `name:`
+#   verify_dispatch  yes | no -- may agentctl dispatch the workflow to verify a landed fix (no: it costs money, or
+#                    needs a service only the schedule may call; the fix is verified by the next scheduled run)
+#   replay           a command template, or `-`. A fixer for a red of this workflow runs it at base (origin/main)
+#                    and at head (the fix) BEFORE landing and lands only on base=FAIL head=PASS. `{run}` is replaced
+#                    by the red's failing run id. The command ends with a `Fix-Replay: ... base=X head=Y` line.
+#   why              what the replay costs / why there is none
+#
+# A workflow with no row has no replay and may not be dispatched to verify.
+workflow	verify_dispatch	replay	why
+Alert backtest	yes	infra/bin/backtest-alerts-replay --from-run {run}	scoped to the alerts the red run named, ~30 min on ci-runner's own runner over the nightly Prometheus copy, no paid service
+Record scrape fixtures	no	-	scrapes every cinema through paid proxies: wait for the nightly

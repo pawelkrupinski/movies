@@ -436,6 +436,44 @@ class SnapshotSource(unittest.TestCase):
         self.assertIn("--query.max-concurrency=16", arguments)
 
 
+class AlertSelection(unittest.TestCase):
+    """--alert, --group and --from-log: a union, so a fixer can replay only what a red named."""
+    ALERTS = {
+        "IdentityIncrementalDrift": {"file": "identity-regressions.rules"},
+        "IdentityOther": {"file": "identity-regressions.rules"},
+        "HostDown": {"file": "hosts.rules"},
+        "DiskFull": {"file": "hosts.rules"},
+    }
+    LOG = "\n".join([
+        "backtesting 224 alerts",
+        "2026-11-19T12:50:01.123Z FAILED -- 3 problem(s):",
+        "  - IdentityIncrementalDrift (identity-regressions.rules): fired 86.9% of the window",
+        "  - incident 2026-11-01-outage: HostDown should have fired between a and b and did not",
+        "  - incident 2026-11-02-x names Retired, which no rule defines",
+        "  - conditional_metrics: kinowo_x has no series",
+    ])
+
+    def test_no_flag_selects_nothing_in_particular(self):
+        self.assertIsNone(bt.select_alerts(self.ALERTS))
+
+    def test_a_group_selects_the_alerts_of_that_rule_file(self):
+        self.assertEqual(bt.select_alerts(self.ALERTS, groups=["hosts.rules"]), ["DiskFull", "HostDown"])
+
+    def test_the_log_names_the_alerts_in_rule_and_incident_problems_only(self):
+        self.assertEqual(bt.alerts_named_in_log(self.LOG, self.ALERTS), {"IdentityIncrementalDrift", "HostDown"})
+
+    def test_the_flags_combine_as_a_union(self):
+        self.assertEqual(bt.select_alerts(self.ALERTS, names=["DiskFull"], groups=["identity-regressions.rules"],
+                                          log_text=self.LOG),
+                         ["DiskFull", "HostDown", "IdentityIncrementalDrift", "IdentityOther"])
+
+    def test_a_log_naming_no_alert_selects_all(self):
+        self.assertEqual(bt.select_alerts(self.ALERTS, log_text="  - conditional_metrics: x\n"), sorted(self.ALERTS))
+
+    def test_a_group_no_alert_belongs_to_selects_nothing(self):
+        self.assertEqual(bt.select_alerts(self.ALERTS, groups=["b.rules"]), [])
+
+
 class SourceSwitch(unittest.TestCase):
     def setUp(self):
         self.constructed = []

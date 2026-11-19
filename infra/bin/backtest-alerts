@@ -69,6 +69,8 @@ Usage:
   infra/bin/backtest-alerts                    # all rules, 14 days, write the baseline, check
   infra/bin/backtest-alerts --alert HostDown   # just these alerts, no baseline written
   infra/bin/backtest-alerts --no-write         # check without touching the baseline
+  infra/bin/backtest-alerts --group identity-regressions.rules   # every alert of one rule file
+  infra/bin/backtest-alerts --from-log backtest.log              # the alerts a failing run's log names
   infra/bin/backtest-alerts --source live --alert HostDown --days 1
 """
 
@@ -769,12 +771,44 @@ def excused_windows(catalogue, step):
 # ── MAIN ─────────────────────────────────────────────────────────────────────────────────────────
 
 
+PROBLEM_LINE = re.compile(r"^\s*- (?:incident \S+: )?([A-Za-z_][\w]*)(?: \(| should | query failed| names )")
+
+
+def alerts_named_in_log(text, known):
+    """The alerts a failing run's problem lines name ("  - Name (file.rules): ...", "  - incident id: Name ...")."""
+    names = set()
+    for line in text.splitlines():
+        found = PROBLEM_LINE.match(line)
+        if found and found.group(1) in known:
+            names.add(found.group(1))
+    return names
+
+
+def select_alerts(alerts, names=(), groups=(), log_text=None):
+    """The union of the named alerts, the alerts of the named rule files and the alerts a log names.
+
+    None when nothing narrows the run (no flag at all) or the log names no alert (then every alert is wanted)."""
+    if not (names or groups or log_text is not None):
+        return None
+    chosen = set(names)
+    chosen |= {n for n, rule in alerts.items() if rule["file"] in groups}
+    if log_text is not None:
+        named = alerts_named_in_log(log_text, alerts)
+        if not named and not names and not groups:
+            return sorted(alerts)
+        chosen |= named
+    return sorted(chosen)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--days", type=float, default=14)
     parser.add_argument("--step", type=int, default=60, help="evaluation resolution, seconds")
     parser.add_argument("--end", help="window end (ISO, UTC); default now")
     parser.add_argument("--alert", action="append", help="only these alerts (repeatable)")
+    parser.add_argument("--group", action="append", default=[],
+                        help="only the alerts of this rule file, e.g. identity-regressions.rules (repeatable)")
+    parser.add_argument("--from-log", help="only the alerts a failing run's log names (all, when it names none)")
     parser.add_argument("--no-write", action="store_true", help="do not write the baseline")
     parser.add_argument("--no-incidents", action="store_true")
     parser.add_argument("--jobs", type=int, help="parallel queries (default 16 on a snapshot, 6 live)")
@@ -860,13 +894,21 @@ def run_backtest(args, prom, source):
     for name, rule in alerts.items():
         rule["expr"] = expand_recordings(rule["expr"], records, stale)
 
-    selected = sorted(alerts)
-    if args.alert:
-        unknown = set(args.alert) - set(alerts)
-        if unknown:
-            print("unknown alert(s): %s" % ", ".join(sorted(unknown)))
-            return 2
-        selected = sorted(args.alert)
+    scoped = bool(args.alert or args.group or args.from_log)
+    unknown = set(args.alert or []) - set(alerts)
+    if unknown:
+        print("unknown alert(s): %s" % ", ".join(sorted(unknown)))
+        return 2
+    unknown_groups = set(args.group) - {rule["file"] for rule in alerts.values()}
+    if unknown_groups:
+        print("unknown rule file(s): %s" % ", ".join(sorted(unknown_groups)))
+        return 2
+    log_text = None
+    if args.from_log:
+        with open(args.from_log, encoding="utf-8", errors="replace") as handle:
+            log_text = handle.read()
+    selected = select_alerts(alerts, args.alert or [], args.group, log_text) or sorted(alerts)
+    only = set(selected) if scoped else None
 
     problems = []
     for name in sorted(set(allowed) - set(alerts)):
@@ -971,10 +1013,10 @@ def run_backtest(args, prom, source):
     incident_report = []
     if not args.no_incidents:
         incident_report, incident_problems = check_incidents(prom, alerts, catalogue, step, floor,
-                                                             args.alert, end)
+                                                             only, end)
         problems += incident_problems
 
-    if not args.no_write and not args.alert:
+    if not args.no_write and not scoped:
         with open(BASELINE, "w", encoding="utf-8") as handle:
             json.dump({
                 "window": {"start": iso(start), "end": iso(end), "step_seconds": step},
