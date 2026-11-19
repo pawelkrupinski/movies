@@ -89,7 +89,8 @@ ce	settings	2
 ce	tools	0
 fanout	controllers.AgentJudgedController	16
 fanout	controllers.AuthController	13
-fanout	controllers.DebugController	22
+fanout	controllers.CadenceController	10
+fanout	controllers.DebugController	20
 fanout	controllers.DebugStack	10
 fanout	controllers.MovieController	22
 fanout	controllers.MovieControllerService	12
@@ -286,7 +287,7 @@ fanout	services.sharecards.RescrapePageSender	12
 fanout	services.sharecards.ShareCardBackfill	14
 fanout	services.sharecards.ShareCardInputs	11
 fanout	services.sharecards.ShareCardPosters	10
-fanout	services.sharecards.ShareCardService	20
+fanout	services.sharecards.ShareCardService	18
 fanout	services.tasks.CinemaContentCensus	13
 fanout	services.tasks.InMemoryTaskQueue	12
 fanout	services.tasks.MongoTaskQueue	18
