@@ -15,9 +15,10 @@ import org.scalatest.matchers.should.Matchers
  *
  * Where the runner is NOT in the tool cache (GitHub's hosted runners), setup-sbt's own download is one `curl -sL` with no
  * retry: a DNS blip on a hosted runner failed a convergence leg on it (curl exit 6, Identity model convergence #1195,
- * 2026-11-16). So every setup-sbt step comes right after `scripts/ci/seed-sbt-runner.sh`, which puts the pinned runner
- * into the tool cache through fetch-verified.sh (retrying for minutes, checksum-verified) and names the curl exit if it
- * still fails; setup-sbt then finds it there and downloads nothing.
+ * 2026-11-16). So every setup-sbt step comes right after `.github/actions/seed-sbt-runner`, which restores the release
+ * zip from our actions/cache and runs `scripts/ci/seed-sbt-runner.sh`: it puts the pinned runner into the tool cache
+ * (on a miss through fetch-verified.sh, retrying for minutes, checksum-verified) and names the curl exit if it still
+ * fails; setup-sbt then finds it there and downloads nothing.
  *
  * And setup-sbt's own disk cache stays off: it is sbt 2's, and this build is on sbt 1, so it only ever restored and
  * saved an empty directory.
@@ -44,7 +45,10 @@ class SetupSbtRunnerPinSpec extends AnyFlatSpec with Matchers {
     }.flatten
   }
 
-  private val SeedStep = """run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'"""
+  private val SeedStep = "uses: ./.github/actions/seed-sbt-runner"
+
+  /** The release zip's own sha256 (its `.sha256` asset). */
+  private val ImageRunnerSha256 = "6ff28e1dea38d1de48ea3d4e903f0380b85b19f945a103e30ec4298717c90cd7"
 
   /** Each setup-sbt step's own `if:` and the code lines of the step before it, comments dropped. */
   private def seedsBefore(text: String): Seq[(Option[String], Seq[String])] = {
@@ -89,7 +93,19 @@ class SetupSbtRunnerPinSpec extends AnyFlatSpec with Matchers {
   "the seed script" should "pin the same runner, with its release's sha256" in {
     val script = RepoFile.read("scripts/ci/seed-sbt-runner.sh")
     script should include(s"version=\"$${1:-$ImageRunner}\"")
-    script should include("sha256=\"${2:-6ff28e1dea38d1de48ea3d4e903f0380b85b19f945a103e30ec4298717c90cd7}\"")
+    script should include(s"sha256=\"$${2:-$ImageRunnerSha256}\"")
+  }
+
+  /** GitHub's release CDN dropped every connection from one hosted runner for ~4 minutes and the seed's retries ran
+   *  out (curl exit 56, Identity model convergence #1279): the zip is kept in OUR actions/cache under its pin, restored
+   *  before the seed (which re-verifies the checksum and downloads nothing) and saved from main only. */
+  it should "be restored from actions/cache under its pin, and saved from main only" in {
+    val action = RepoFile.withoutComments(RepoFile.read(".github/actions/seed-sbt-runner/action.yml"))
+    action.linesIterator.count(_.trim == s"key: sbt-runner-$ImageRunner-$ImageRunnerSha256") shouldBe 2
+    action should include("path: ${{ runner.temp }}/_sbt-seed")
+    action.indexOf("uses: actions/cache/restore@") should be < action.indexOf("scripts/ci/seed-sbt-runner.sh")
+    action.indexOf("scripts/ci/seed-sbt-runner.sh") should be < action.indexOf("uses: actions/cache/save@")
+    action should include("if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'")
   }
 
   "the build" should "still be on sbt 1, for which setup-sbt's disk cache holds nothing" in {

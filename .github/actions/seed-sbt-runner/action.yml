@@ -1,0 +1,29 @@
+# The pinned sbt runner, into the tool cache where sbt/setup-sbt looks first (scripts/ci/seed-sbt-runner.sh), from
+# OUR actions/cache entry when it holds the release zip: a warm cache downloads nothing from GitHub's release CDN.
+# A curl retry budget alone was not enough: on 2026-11-19 the CDN dropped every connection from one hosted runner
+# for ~4 minutes and the seed gave up with curl exit 56 (Identity model convergence #1279). The entry is keyed on the
+# version and its sha256, saved from main only (CacheSavePolicySpec), and re-verified by fetch-verified.sh on every
+# hit. Every `uses: sbt/setup-sbt@` step comes right after this one (SetupSbtRunnerPinSpec).
+name: Seed the sbt runner
+description: Put the pinned sbt runner into the tool cache, from actions/cache or a verified, retrying download.
+runs:
+  using: composite
+  steps:
+    - name: Restore the sbt runner zip
+      id: restore
+      uses: actions/cache/restore@v5
+      continue-on-error: true
+      with:
+        path: ${{ runner.temp }}/_sbt-seed
+        key: sbt-runner-2.0.10-6ff28e1dea38d1de48ea3d4e903f0380b85b19f945a103e30ec4298717c90cd7
+    - name: Seed the sbt runner into the tool cache (retrying, checksum-verified)
+      id: seed
+      shell: bash
+      run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'
+    - name: Save the sbt runner zip (main only)
+      if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true' && steps.seed.outputs.zip == 'verified'
+      uses: actions/cache/save@v5
+      continue-on-error: true
+      with:
+        path: ${{ runner.temp }}/_sbt-seed
+        key: sbt-runner-2.0.10-6ff28e1dea38d1de48ea3d4e903f0380b85b19f945a103e30ec4298717c90cd7

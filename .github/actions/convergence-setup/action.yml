@@ -221,9 +221,7 @@ runs:
           java-version: 27
           cache: sbt
     # setup-sbt's own download is one retry-free curl: seed the tool cache it looks in first (SetupSbtRunnerPinSpec).
-    - name: Seed the sbt runner into the tool cache (retrying, checksum-verified)
-      shell: bash
-      run: '"$GITHUB_WORKSPACE/scripts/ci/seed-sbt-runner.sh"'
+    - uses: ./.github/actions/seed-sbt-runner
     # sbt 1.x keeps no sbt-2 disk cache: the step restored nothing and saved nothing, at ~30 s a
     # leg in its key's workspace glob.
     - uses: sbt/setup-sbt@v1

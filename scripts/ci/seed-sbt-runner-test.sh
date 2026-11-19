@@ -29,9 +29,10 @@ chmod +x "$work/bin/curl"
 
 # seed <tool cache> [sha256] -> prints the exit status; stderr to $work/stderr.
 seed() {
-  rm -f "$work/curls"
+  rm -f "$work/curls" "$work/github-output"
   PATH="$work/bin:$PATH" STUB_LOG="$work/curls" STUB_ZIP="${STUB_ZIP:-$work/good.zip}" \
     RUNNER_TOOL_CACHE="$1" RUNNER_TEMP="$work/temp-$(basename "$1")" FETCH_RETRY_MAX_TIME=1 \
+    GITHUB_OUTPUT="$work/github-output" \
     bash "$REPO_ROOT/scripts/ci/seed-sbt-runner.sh" 2.0.10 "${2:-$good_sha}" > "$work/stdout" 2> "$work/stderr"
   echo $?
 }
@@ -41,6 +42,14 @@ check "...the seeded runner is where setup-sbt looks first" "fake-sbt" "$("$work
 check "...from the pinned release URL" "1" \
   "$(grep -c 'https://github.com/sbt/sbt/releases/download/v2.0.10/sbt-2.0.10.zip' "$work/curls")"
 check "...through fetch-verified's retries, every error class" "1" "$(grep -c -- '--retry-all-errors' "$work/curls")"
+check "...and tells the action the verified zip is there to cache" "zip=verified" "$(cat "$work/github-output")"
+
+# The zip .github/actions/seed-sbt-runner restored from actions/cache, at the path the seed downloads to.
+mkdir -p "$work/temp-warm/_sbt-seed" && cp "$work/good.zip" "$work/temp-warm/_sbt-seed/sbt-2.0.10.zip"
+check "a zip restored from actions/cache seeds with no download, even while the CDN drops every connection" "0" \
+  "$(STUB_FAIL=56 seed "$work/warm")"
+check "...curl never ran" "absent" "$( [ -f "$work/curls" ] && echo present || echo absent)"
+check "...the runner is seeded" "fake-sbt" "$("$work/warm/sbt/2.0.10/sbt/bin/sbt")"
 
 check "a tool cache that already holds the runner downloads nothing, even while DNS fails" "0" \
   "$(STUB_FAIL=6 seed "$work/cold")"
@@ -49,6 +58,9 @@ check "...curl never ran" "absent" "$( [ -f "$work/curls" ] && echo present || e
 check "a download that keeps failing to resolve the host fails with curl's exit" "6" "$(STUB_FAIL=6 seed "$work/dns")"
 check "...and names the cause" "1" "$(grep -c 'curl exit 6, could not resolve the host (DNS)' "$work/stderr")"
 check "...and seeds nothing" "absent" "$( [ -e "$work/dns/sbt/2.0.10/sbt/bin/sbt" ] && echo present || echo absent)"
+
+check "a connection that keeps dying mid-download fails with curl's exit" "56" "$(STUB_FAIL=56 seed "$work/reset")"
+check "...and names the cause" "1" "$(grep -c 'curl exit 56, the connection died while receiving' "$work/stderr")"
 
 check "a download that fails its checksum fails the seed" "1" "$(seed "$work/tampered" "$empty_sha")"
 check "a zip with no sbt/bin/sbt fails the seed" "1" "$(STUB_ZIP="$work/empty.zip" seed "$work/hollow" "$empty_sha")"

@@ -7,6 +7,8 @@
 # convergence leg (curl exit 6 = could not resolve host; Identity model convergence #1195, 2026-11-16). This downloads
 # through fetch-verified.sh instead, which retries for minutes and checks the release's sha256. A download that still
 # fails is named by its curl exit code, so the next occurrence says what broke.
+# A zip already at $RUNNER_TEMP/_sbt-seed whose checksum matches (restored from actions/cache by
+# .github/actions/seed-sbt-runner) is used with no download at all.
 # A runner whose image already holds the runner (`SBT_RUNNER_URL` in the job image) does nothing here.
 # Env: RUNNER_TOOL_CACHE, RUNNER_TEMP (set by the runner); FETCH_* as fetch-verified.sh.
 # Test: scripts/ci/seed-sbt-runner-test.sh.
@@ -33,12 +35,15 @@ if [ "$rc" != 0 ]; then
     7) why="could not connect" ;;
     28) why="timed out" ;;
     22) why="the server answered an HTTP error" ;;
+    56) why="the connection died while receiving" ;;
     35) why="the TLS handshake failed" ;;
     *) why="exit $rc" ;;
   esac
   echo "::error::sbt runner $version: the download of $url failed after its retries: curl exit $rc, $why" >&2
   exit "$rc"
 fi
+# the verified zip, for .github/actions/seed-sbt-runner to keep in actions/cache
+if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "zip=verified" >> "$GITHUB_OUTPUT"; fi
 mkdir -p "$toolpath"
 unzip -q -o "$zip" -d "$toolpath"
 if [ ! -f "$launcher" ]; then
