@@ -1,12 +1,20 @@
 package tools
 
-import models.FilmRuntime
-
 import models.SourceData
+
+import scala.annotation.nowarn
 
 /** The shape every field of a cinema slot must have: what `CinemaSlotInvariantsSpec` holds every corpus to, and what
  *  `scripts/title-trace` says one raw title's slot would raise. */
 object CinemaSlotInvariants {
+
+  /** [[models.FilmRuntime.plausible]], reached in either package a ref keeps it (services.movies before 2026-11-19,
+   *  models since): scripts/title-trace drops this file into refs from before the move. */
+  @nowarn("msg=unused import")
+  private def plausibleRuntime(minutes: Int): Boolean = {
+    import services.movies.*, models.*
+    FilmRuntime.plausible(minutes)
+  }
 
   private val Runtime        = """(?i)^\d{1,3}\s*(?:['’′]|min\.?|minut\w*|mins?)$""".r
   private val DateOrNumber   = """^[\d\s./:-]+$""".r
@@ -44,7 +52,7 @@ object CinemaSlotInvariants {
       else Option.when(YearInName.findFirstIn(person).isDefined)(s"person-carries-year: $person")
     }
     val title = slot.title.map(_.trim).filter(t => DanglingEnd.findFirstIn(t).isDefined).map(t => s"title-ends-mid-phrase: $t")
-    val runtime = slot.runtimeMinutes.filterNot(FilmRuntime.plausible).map(m => s"runtime-implausible: $m")
+    val runtime = slot.runtimeMinutes.filterNot(plausibleRuntime).map(m => s"runtime-implausible: $m")
     val year = slot.releaseYear.filterNot(y => y >= 1880 && y <= LatestYear).map(y => s"year-implausible: $y")
     val synopsis = slot.synopsis.map(_.trim).filter(CreditsOpening.findFirstIn(_).isDefined).map(s => s"synopsis-is-credits: $s")
     people ++ title ++ runtime ++ year ++ synopsis
