@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 /** One production listing explained (`/debug/review/listing`, [[services.review.ListingExplain]]): its take, where its take history is,
  *  the latest decision trace, its judgements and its cluster on the review pages -- the listings `venue` (every venue
  *  when left out) bills as `title` exactly, else those whose title contains it to pick from. Production 404s it. */
-class ReviewListingController(cc: ControllerComponents, environment: Mode, reads: ReviewReads, labels: ReviewLabels,
+class ReviewListingController(cc: ControllerComponents, environment: Mode, reads: ReviewListingReads, labels: ReviewLabels,
                               // Why the page may be empty (no mirror, no labels file), for its banner.
                               notices: Seq[String]) extends AbstractController(cc) {
 

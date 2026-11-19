@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 /** One review card's "Why" fold-out (`/debug/review/why`), read when it is opened: each member listing's trace -- the
  *  evidence for and against the film it weighed, every rule's refusal, the candidates it scored and what it searched.
  *  Production 404s it, like the rest of `/debug`. */
-class ReviewWhyController(cc: ControllerComponents, environment: Mode, reads: ReviewReads) extends AbstractController(cc) {
+class ReviewWhyController(cc: ControllerComponents, environment: Mode, reads: ReviewListingReads) extends AbstractController(cc) {
 
   def why(country: String, cluster: String): Action[AnyContent] = Action {
     DevMode.gate(environment) {

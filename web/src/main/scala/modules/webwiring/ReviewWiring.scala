@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AgentJudgedCards, AgentJudgedController, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewQueueController, ReviewReads, ReviewWhyController, TmdbPosterController}
+import controllers.{AgentJudgedCards, AgentJudgedController, ReviewAnswerController, ReviewCardsPage, ReviewLabels, ReviewListingController, ReviewListingReads, ReviewQueueController, ReviewReads, ReviewWhyController, TmdbPosterController}
 import play.api.Mode
 import java.nio.file.Paths
 import services.review.{CachingReviewSource, InMemoryReviewAnswerStore, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource, TmdbPosterLookup}
@@ -37,6 +37,7 @@ trait ReviewWiring { self: Wiring =>
       Seq("MONGODB_MOVIES_MIRROR_URI is not set: these pages read only the local mirror (scripts/local-mirror/README.md), so they list nothing, and answers are kept in memory only.")
     else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewAnswerController.LabelsNotConfigured.capitalize) else Nil)
   private lazy val reviewReads  = new ReviewReads(reviewSources)
+  private lazy val reviewListingReads = new ReviewListingReads(reviewReads)
   private lazy val reviewLabels = new ReviewLabels(reviewLabelsPath)
   private lazy val reviewCardsPage = new ReviewCardsPage(reviewAnswers, reviewReads, reviewNotices)
 
@@ -44,9 +45,9 @@ trait ReviewWiring { self: Wiring =>
     new ReviewQueueController(controllerComponents, environmentMode, reviewReads, reviewLabels, reviewCardsPage, clock)
   lazy val agentJudgedController: AgentJudgedController = new AgentJudgedController(controllerComponents, environmentMode,
     reviewAnswers, reviewLabels, reviewReads, new AgentJudgedCards(reviewTmdbPosters), reviewCardsPage)
-  lazy val reviewWhyController: ReviewWhyController = new ReviewWhyController(controllerComponents, environmentMode, reviewReads)
+  lazy val reviewWhyController: ReviewWhyController = new ReviewWhyController(controllerComponents, environmentMode, reviewListingReads)
   lazy val reviewListingController: ReviewListingController =
-    new ReviewListingController(controllerComponents, environmentMode, reviewReads, reviewLabels, reviewNotices)
+    new ReviewListingController(controllerComponents, environmentMode, reviewListingReads, reviewLabels, reviewNotices)
   lazy val tmdbPosterController: TmdbPosterController = new TmdbPosterController(controllerComponents, environmentMode, reviewTmdbPosters)
 
   lazy val reviewAnswerController: ReviewAnswerController = new ReviewAnswerController(controllerComponents, environmentMode,

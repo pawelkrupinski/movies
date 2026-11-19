@@ -41,10 +41,10 @@ object ProdReviewSample {
         key  <- Option(d.get("listingKey")).filter(_.isString).flatMap(v => models.ListingKey.parse(v.asString.getValue))
         slot <- Option(d.get("slot")).filter(_.isDocument).map(_.asDocument)
         at   <- Option(d.get("updatedAt")).filter(_.isDateTime).map(v => java.time.Instant.ofEpochMilli(v.asDateTime.getValue))
-      } yield key -> SlotFacts(MongoReviewSource.facts(slot, poster = "posterUrl"), at)
+      } yield key -> SlotFacts(ReviewBson.facts(slot, poster = "posterUrl"), at)
     }.toMap
     val pages = documents(db, "venue_pages").flatMap { d =>
-      Option(d.get("page")).filter(_.isString).map(_.asString.getValue -> MongoReviewSource.facts(d, poster = "posterUrl"))
+      Option(d.get("page")).filter(_.isString).map(_.asString.getValue -> ReviewBson.facts(d, poster = "posterUrl"))
     }.toMap
     new InMemoryReviewSource(decisions.filter(_._1 == Databases(db)).map(_._2), slots, pagesHeld = pages, feedsHeld = feeds(db),
       tracesHeld = traces(db))

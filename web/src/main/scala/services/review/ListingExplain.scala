@@ -60,7 +60,7 @@ object ListingExplain {
     val served     = source.served().get(serialised)
     val ids = (decision.toSeq.flatMap { case (d, c) => d.film.toSeq ++ c.candidateFilms } ++ trace.flatMap(_.film) ++
       trace.flatMap(_.weighedFilm) ++ served.flatten).distinct
-    val films = ReviewCards.withRecords(source.films(ids), source.filmRecords(ids))
+    val films = ReviewCardFacts.withRecords(source.films(ids), source.filmRecords(ids))
     ListingExplain(country, listing, decision, trace, served, films, judgementsOf(country, listing, labels))
   }
 

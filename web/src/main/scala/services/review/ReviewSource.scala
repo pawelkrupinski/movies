@@ -51,7 +51,7 @@ object ListingFeed {
 }
 
 /** A film as the review card shows it: the resolver's stored TMDB record (`tmdb_films`) and the corpus's (`movies` + `web_movies`, else
- *  its TMDB slot), merged by [[ReviewCards.withRecords]] — never a live TMDB call. `cast` its top-billed names in billing order. */
+ *  its TMDB slot), merged by [[ReviewCardFacts.withRecords]] — never a live TMDB call. `cast` its top-billed names in billing order. */
 final case class FilmCard(tmdb: Int, imdb: Option[String], title: Option[String], originalTitle: Option[String],
                           year: Option[Int], directors: Seq[String], runtime: Option[Int], poster: Option[String],
                           overview: Option[String], cast: Seq[String] = Nil) {

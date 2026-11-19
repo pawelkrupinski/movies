@@ -1,8 +1,8 @@
 package controllers
 
-import models.{Country, ListingKey}
+import models.Country
 import services.identity.ResolverDecision
-import services.review.{DigestItem, LabelRow, ListingExplain, ReviewAnswers, ReviewCard, ReviewCards, ReviewCluster, ReviewDigest, ReviewSource}
+import services.review.{DigestItem, LabelRow, ReviewAnswers, ReviewCard, ReviewCards, ReviewCluster, ReviewDigest, ReviewSource}
 
 import java.time.Instant
 import scala.concurrent.duration.Duration
@@ -12,7 +12,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * What the dev-only review pages read, country by country: each country's [[ReviewSource]] over the LOCAL read-mirror
  * (`sources`, built by the wiring from `MONGODB_MOVIES_MIRROR_URI` alone; none without a mirror), its clusters and the
- * cards of the clusters on screen. The countries are read side by side, so a page over every country waits on its
+ * cards of the clusters on screen; one listing's or cluster's own reads are [[ReviewListingReads]]'. The countries are read side by side, so a page over every country waits on its
  * slowest, not on their sum; a country whose read failed is reported, never shown as one with no clusters.
  */
 final class ReviewReads(sources: Map[Country, ReviewSource]) {
@@ -67,24 +67,6 @@ final class ReviewReads(sources: Map[Country, ReviewSource]) {
   /** The cluster `id` of `country`'s decisions: none when it is not there or they could not be read. */
   def cluster(country: Country, id: String): Option[ReviewCluster] =
     Try(sourceOf(country).decisions(unmatchedOnly = false)).toOption.flatMap(_.iterator.map(ReviewCluster.of(country, _)).find(_.id == id))
-
-  /** The "Why" fold-out of `country`'s cluster `id` (`reviewWhy.scala.html`): each member listing with its latest
-   *  decision trace, none for a listing without one. None for no such cluster; a failed trace read, said. */
-  def why(country: Country, id: String): Option[Try[play.twirl.api.Html]] =
-    cluster(country, id).map(found => Try(sourceOf(country).traces(found.members.map(ListingKey.serialised))).map(traces =>
-      views.html.reviewWhy(found.members.map(k => k -> traces.get(ListingKey.serialised(k))), Some(country))))
-
-  /** The listings of `country` that `venue` (every venue when none) bills as `title` exactly, and when there are none
-   *  the listings whose title contains it, to pick from ([[ListingExplain.find]], [[ListingExplain.near]]). */
-  def listingsBilled(country: Country, venue: Option[String], title: String): Try[(Seq[ListingKey], Seq[ListingKey])] =
-    Try(sourceOf(country).decisions(unmatchedOnly = false)).map { decisions =>
-      val keys = if (title.isEmpty) Nil else ListingExplain.find(decisions, venue, title)
-      (keys, if (keys.isEmpty && title.nonEmpty) ListingExplain.near(decisions, venue, title) else Nil)
-    }
-
-  /** One listing of `country` explained ([[ListingExplain.build]]) against the labels file's `labels`. */
-  def explained(country: Country, listing: ListingKey, labels: Seq[LabelRow]): ListingExplain =
-    ListingExplain.build(country, listing, sourceOf(country), labels)
 
   /** The cards of `shown`, each country's built from its own source on its own thread. */
   def cards(shown: Seq[(ReviewCluster, Option[Instant])], labels: Seq[LabelRow], index: ReviewAnswers.Index): Seq[ReviewCard] = {
