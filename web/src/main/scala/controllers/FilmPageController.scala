@@ -59,13 +59,7 @@ class FilmPageController(cc: ControllerComponents,
 
   private def renderFilm(schedule: FilmSchedule, request: Request[AnyContent])(implicit c: City): Result = {
     implicit val messages: play.api.i18n.Messages = deploymentMessages
-    // `request.uri` would carry the raw inbound encoding; use the canonical
-    // FilmHref form instead so the og:url matches the link the page exposes
-    // elsewhere. Scheme/host come from PageMeta so the X-Forwarded-* workaround
-    // (Play 3.0's `request.secure` ignores the `trustedProxies` knob on this Fly
-    // setup) is in one place.
-    val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
-    val ogImageUrl   = shareCardUrl(schedule)
+    val meta = FilmPageMeta.of(schedule, request, c)
     // Sibling cities currently showing this same film — the cross-links a
     // near-duplicate per-city page needs so it isn't only reachable through
     // the sitemap. See [[MovieControllerService.citiesShowing]].
@@ -78,13 +72,9 @@ class FilmPageController(cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    schedule.slug.flatMap(CityPath.filmUrl(c, _)).foreach(filmPageServed(request.headers.get(USER_AGENT), _))
-    okHtml(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
+    meta.servedUrl.foreach(filmPageServed(request.headers.get(USER_AGENT), _))
+    okHtml(views.html.film(schedule, meta.canonicalUrl, meta.preview, meta.ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }
-
-  /** The film's share card, or the city's while it has none — see [[ShareCardUrl]]. */
-  private def shareCardUrl(schedule: FilmSchedule)(implicit c: City): String =
-    ShareCardUrl.forFilm(schedule, c)
 }
