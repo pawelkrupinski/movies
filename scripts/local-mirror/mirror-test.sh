@@ -138,4 +138,26 @@ check "no kinowo* database through the tunnel ends the run (exit 1)" "1" "$code"
 check "...naming the likely cause" "1" "$(printf '%s\n' "$out" | grep -c 'is MONGODB_URI right')"
 check "...and leaves no temp file behind" "" "$(ls "$work/tmp")"
 
+# ── A seed waits for a governor ticket (a starved laptop), then runs holding it ─────────────────────
+spec_fake_governor "$work/agentctl"
+export GOV_CALLS="$work/gov-calls"
+# seeded <db> -> reseed with the spec's governor governing and mongosh standing in (it records whether it holds a ticket)
+# shellcheck disable=SC2329 # invoked by in_mirror
+seeded() {
+  unset KINOWO_GOV_CPU_HELD KINOWO_GOV_CLASS KINOWO_JVM_SLOT_HELD
+  export KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$work/gov"
+  # shellcheck disable=SC2329 # invoked by reseed
+  mongosh_at() { echo "seed $*$([ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2>/dev/null && echo ' ticket')" >> "$work/seeds"; }
+  reseed "$1"
+}
+: > "$GOV_CALLS"; : > "$work/seeds"
+GOV_HOLD="$work/admit" in_mirror seeded kinowo_pl > /dev/null 2>&1 &
+seeding=$!
+wait_until "the seed asked the governor" '[ -e "$work/admit.waiting" ]'
+check "a seed not admitted has not started" "0" "$(grep -c . "$work/seeds")"
+touch "$work/admit"; wait "$seeding"
+check "...admitted, it runs by itself, holding its ticket" "1" "$(grep -c "^seed mongodb://source .*SRC_DB='kinowo_pl'.*seed.js ticket$" "$work/seeds")"
+check "...charged one core and 1 GB as mirror-seed" "1" \
+  "$(grep -c -- "^gov admit .*--mem 1 --label mirror seed kinowo_pl .*--job mirror-seed --cores 1$" "$GOV_CALLS")"
+
 spec_summary

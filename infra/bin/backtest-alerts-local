@@ -26,7 +26,7 @@ meant a CI run. This brings the copy here and runs the same tool over it, with t
      backtest-alerts refuses any other version.
   3. BACKTEST. infra/bin/backtest-alerts --source snapshot over a run directory whose tsdb/ links the cached
      blocks; its Replay takes a private copy-on-write clone of them (APFS clonefile), so the replay's Prometheus
-     never writes into the cache. It runs under a governor ticket (scripts/jvm-gate.sh gov_take, `agentctl gov`)
+     never writes into the cache. It runs under a governor ticket (scripts/gov-run, `agentctl gov`)
      like other heavy laptop jobs. --no-write is the default (--write to refresh the checked-in baseline).
 
 Exit status is backtest-alerts' own (0 ok, 1 a problem found, 2 could not run); 2 also when the sync could not
@@ -375,15 +375,14 @@ def prometheus_for(version, cache_root):
 
 
 def governed(command, label="backtest-alerts-local"):
-    """`command` under a governor ticket (scripts/jvm-gate.sh gov_take) where the governor governs: Prometheus over
-    two weeks of blocks takes a few GB and the parallel queries take cores, like an sbt JVM."""
-    gate = os.path.join(ROOT, "scripts", "jvm-gate.sh")
-    if os.environ.get("KINOWO_GOVERNOR") == "0" or not os.path.exists(gate):
+    """`command` under a governor ticket (scripts/gov-run, `agentctl gov`) where the governor governs: Prometheus over
+    two weeks of blocks takes a few GB and the parallel queries take cores, like an sbt JVM. While the laptop is
+    starved it waits for admission, then starts by itself; it rides a parent's ticket and takes none in a check's hook,
+    off the Mac or with KINOWO_GOVERNOR=0 (gov-run)."""
+    gov_run = os.path.join(ROOT, "scripts", "gov-run")
+    if not os.path.exists(gov_run):
         return command
-    script = ('. "$1"; shift; label="$1"; shift; '
-              'if governor_bin > /dev/null; then gov_take "$label" || { echo "the governor refused a ticket" >&2; '
-              'exit 2; }; fi; exec "$@"')
-    return ["bash", "-c", script, "governed", gate, label] + command
+    return [gov_run, "--job", "backtest", "--cores", "3", "--mem", "5", "--label", label, "--"] + command
 
 
 def prepare(args, backtest_paths, out=sys.stdout):

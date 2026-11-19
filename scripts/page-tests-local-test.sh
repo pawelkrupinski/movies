@@ -17,7 +17,7 @@ esac
 STUB
 cat > "$t/npx" <<'STUB'
 #!/usr/bin/env bash
-echo "npx $* base=$KINOWO_BASE_URL workers=${PW_WORKERS:-}" >> "$CALLS"
+echo "npx $* base=$KINOWO_BASE_URL workers=${PW_WORKERS:-}$([ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2>/dev/null && echo ' ticket')" >> "$CALLS"
 case "$*" in *"${NPX_FAILS:-no such}"*) exit 1 ;; esac
 STUB
 printf '#!/usr/bin/env bash\necho "npm $*" >> "$CALLS"\n' > "$t/npm"
@@ -55,7 +55,8 @@ out=$(NPX_FAILS=chrome-desktop bash "$REPO_ROOT/scripts/page-tests-local" 2>&1);
 check "a failing row fails the run, names the row, and the rows after it still run" "1 1 1" \
   "$code $(printf '%s\n' "$out" | grep -c '==> chrome desktop FAILED') $(grep -c webkit-desktop "$CALLS")"
 check "...and stops the server" "1 0" "$(grep -c 'sbt-warm --stop' "$CALLS") $(alive_servers)"
-check "off CI it installs, warms and pins nothing" "0 0" "$(grep -c '^install\|^node' "$CALLS") $(grep '^npx' "$CALLS" | grep -c 'workers=5')"
+check "off CI it installs and warms nothing, and runs CI's five workers (what its ticket is charged)" "0 3" \
+  "$(grep -c '^install\|^node' "$CALLS") $(grep '^npx' "$CALLS" | grep -c 'workers=5$')"
 : > "$CALLS"
 CI=true bash "$REPO_ROOT/scripts/page-tests-local" chromium >/dev/null 2>&1
 check "on CI: the row's browsers installed and warmed, five workers" "1 1 3" \
@@ -65,4 +66,19 @@ CI=true bash "$REPO_ROOT/scripts/page-tests-local" >/dev/null 2>&1
 check "on CI, all: both engines; the WebKit row still one worker" "1 1" \
   "$(grep -cx 'install chromium webkit' "$CALLS") $(grep -c 'webkit-desktop.*workers=1$' "$CALLS")"
 check "an unknown row is a usage error" "2" "$(bash "$REPO_ROOT/scripts/page-tests-local" firefox >/dev/null 2>&1; echo $?)"
+# THE GOVERNOR: each row waits for a ticket of its own (a starved laptop), charged its workers, and runs holding it
+spec_fake_governor "$t/agentctl"
+export GOV_CALLS="$t/gov-calls"
+: > "$CALLS"; : > "$GOV_CALLS"
+GOV_HOLD="$t/admit" spec_governed "$t/agentctl" bash "$REPO_ROOT/scripts/page-tests-local" > "$t/out" 2>&1 &
+governed_run=$!
+wait_until "the first row asked the governor" '[ -e "$t/admit.waiting" ]'
+check "governed: a row not admitted has not started" "0" "$(grep -c '^npx' "$CALLS")"
+touch "$t/admit"; wait "$governed_run"; code=$?
+check "...admitted, the rows start by themselves, each holding its ticket" "0 4" "$code $(grep -c '^npx.* ticket$' "$CALLS")"
+check "...one ticket a row, charged its workers' cores as page-tests" "5 5 5 1" \
+  "$(sed -n 's/^gov admit .*--label page-tests .*--job page-tests --cores \([0-9]*\)$/\1/p' "$GOV_CALLS" | paste -sd' ' -)"
+: > "$CALLS"; : > "$GOV_CALLS"
+KINOWO_GOVERNOR=0 KINOWO_GOVERNOR_BIN="$t/agentctl" bash "$REPO_ROOT/scripts/page-tests-local" chromium > /dev/null 2>&1
+check "...KINOWO_GOVERNOR=0: no ticket, the rows run at once" "0 3" "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(grep -c '^npx' "$CALLS")"
 spec_summary

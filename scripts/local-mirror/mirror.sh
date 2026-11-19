@@ -44,6 +44,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # source starts nothing.
 . "$HERE/prod-tunnel.sh"
 . "$HERE/local-mongo.sh"
+# shellcheck source=scripts/jvm-gate.sh
+. "$HERE/../jvm-gate.sh" # gov_run: a seed under a governor ticket (reseed, below)
 
 # Reading the endpoints is a STARTUP step, not a load-time one: mirror-resilience-test.sh
 # sources this file for `supervise_db` alone and supplies its own endpoints, and it
@@ -247,7 +249,10 @@ discover_dbs() {
     2>/dev/null | tail -1
 }
 
-reseed()   { mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
+# A seed drops and refills every mirrored collection: minutes of mongod inserts and index builds, so on the Mac it runs
+# under a governor ticket (jvm-gate.sh gov_run, `agentctl gov`; 1 core, 1 GB) and waits while the laptop is starved,
+# then starts by itself (the owner, 2026-11-19). The tail is the mirror's steady state, never held.
+reseed()   { gov_run "mirror seed $1" mirror-seed 1 1 mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
 
 # Re-seed, treating a failure as a recoverable cycle rather than the end of this
 # supervisor — 0 to carry on, non-zero for the caller to `continue` on.

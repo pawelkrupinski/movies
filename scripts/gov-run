@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# THE GOVERNOR FOR ONE COMMAND: <command> run under a governor ticket (scripts/jvm-gate.sh gov_hold, `agentctl gov`,
+# ~/bin/AGENTCTL.md "gov"), so a heavy job that is no tool's JVM waits while the laptop is starved and starts by itself
+# once there is room (the owner, 2026-11-19: "if cpu is starved then pause until we have enough resources and resume
+# when we have too much").
+#
+#   scripts/gov-run [--class C] --job J [--cores N] [--mem GB] [--label L] -- <command...>
+#
+#   --job J     what the ticket is charged as (script-tests, page-tests, backtest, mirror-seed, ...)
+#   --cores N   the cores it is charged (default: the governor's figure for J)
+#   --mem GB    the memory it is expected to take (default 1)
+#   --class C   red | check | agent | measure (default: jvm-gate.sh gov_class -- KINOWO_GOV_CLASS, a red fixer's
+#               checkout red, else agent)
+#   --label L   the ticket's label in `agentctl gov status` (default: J)
+#
+# The wait is the governor's own (`gov admit` blocks; nothing polls here). Then <command> is exec'd holding the ticket on
+# descriptor 7 -- given back when it and every child still holding the descriptor have ended -- and a gated tool it runs
+# rides that ticket (KINOWO_JVM_SLOT_HELD), never waiting on its own parent. No ticket, <command> run at once: off the
+# Mac (Linux CI), with KINOWO_GOVERNOR=0, without ~/bin/agentctl ($KINOWO_GOVERNOR_BIN), riding a parent's ticket,
+# under KINOWO_GOV_CPU_HELD (a pre-commit check's hook: its ticket is charged its cores) -- and when the governor fails
+# (warned). A process started to OUTLIVE <command> is started with descriptor 7 closed (`7>&-`), or it holds the ticket.
+# Exit: <command>'s; 64 usage.
+set -uo pipefail
+usage() { sed -n '7,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+class="" job="" cores="" mem=1 label=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --class|--job|--cores|--mem|--label) [ $# -ge 2 ] || usage ;;
+  esac
+  case "$1" in
+    --class) class=$2; shift ;;
+    --job) job=$2; shift ;;
+    --cores) cores=$2; shift ;;
+    --mem) mem=$2; shift ;;
+    --label) label=$2; shift ;;
+    --) shift; break ;;
+    -h|--help) usage ;;
+    *) echo "gov-run: unknown argument $1" >&2; usage ;;
+  esac
+  shift
+done
+[ -n "$job" ] && [ $# -gt 0 ] || usage
+# shellcheck source=scripts/jvm-gate.sh
+. "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh"
+if [ -n "$class" ]; then
+  KINOWO_GOV_CLASS=$class gov_hold "${label:-$job}" "$job" "$cores" "$mem"
+else
+  gov_hold "${label:-$job}" "$job" "$cores" "$mem"
+fi
+exec "$@"

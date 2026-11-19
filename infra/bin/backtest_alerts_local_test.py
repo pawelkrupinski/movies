@@ -206,13 +206,28 @@ class LocalBacktest(unittest.TestCase):
         log = os.path.join(self.work, "gov.log")
         status, out = self.run_tool("--alert", "MemoryAvailableLow", "--end", END, KINOWO_GOVERNOR="1",
                                     KINOWO_GOVERNOR_BIN=agentctl, KINOWO_JVM_GATE_OS="Darwin", GOV_LOG=log,
-                                    AGENTCTL_GOV_DIR=os.path.join(self.work, "gov"))
+                                    AGENTCTL_GOV_DIR=os.path.join(self.work, "gov"), KINOWO_GOV_CPU_HELD="",
+                                    KINOWO_JVM_SLOT_HELD="", KINOWO_JVM_GATE_FOLLOW_MAIN="0")
         self.assertEqual(status, 0, out)
         with open(log) as handle:
             admitted = handle.read()
         self.assertIn("gov admit", admitted)
         self.assertIn("--label backtest-alerts-local", admitted)
+        self.assertIn("--job backtest --cores 3", admitted)
         self.assertIn("STUB BACKTEST", out)
+
+    def test_in_a_check_or_under_a_parents_ticket_it_takes_none(self):
+        agentctl = os.path.join(self.work, "agentctl")
+        with open(agentctl, "w") as handle:
+            handle.write(AGENTCTL)
+        os.chmod(agentctl, 0o755)
+        log = os.path.join(self.work, "gov.log")
+        governed = dict(KINOWO_GOVERNOR="1", KINOWO_GOVERNOR_BIN=agentctl, KINOWO_JVM_GATE_OS="Darwin", GOV_LOG=log,
+                        AGENTCTL_GOV_DIR=os.path.join(self.work, "gov"), KINOWO_JVM_GATE_FOLLOW_MAIN="0")
+        status, out = self.run_tool("--alert", "MemoryAvailableLow", "--end", END, KINOWO_GOV_CPU_HELD="1", **governed)
+        self.assertEqual(status, 0, out)
+        self.assertIn("STUB BACKTEST", out)
+        self.assertFalse(os.path.exists(log), "a check's hook holds the ticket: none of its own")
 
     def test_the_real_replay_over_the_fixture_and_the_cache_is_never_written(self):
         nix = next((p for p in ("/nix/var/nix/profiles/default/bin/nix", shutil.which("nix") or "") if

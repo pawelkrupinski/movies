@@ -166,6 +166,11 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   the CI sbt step's: 0 passed, 1 failed, 2 no verdict); `scripts/sbt-warm --local` / `--ci` (or
   `KINOWO_SBT_WARM_ROUTE`) decide. `scripts/fail-before` routes its two runs the same way (`--ci` / `--local`,
   `KINOWO_FAIL_BEFORE_ROUTE`). A testOnly, a compile, a check's or a red fix's run stays local.
+  A heavy job that is no JVM goes through it the same way: `scripts/gov-run [--class C] --job J [--cores N] [--mem GB]
+  -- <command...>` (or jvm-gate.sh's `gov_hold` / `gov_run` inside a script) waits for admission -- the governor's own
+  wait -- and runs the command holding the ticket, which a gated child rides; off the Mac, with `KINOWO_GOVERNOR=0`, in
+  a check's hook or under a parent's ticket it runs at once. `run-script-tests`, `page-tests-local`'s Playwright rows,
+  `backtest-alerts-local` and the mirror's seed take theirs themselves.
   This is the "heavy-run" the older docs named: there is no `heavy-run` command. `identity-measure-local`,
   `identity-measure --footprint` and `identity-landing-check --local` (via sbt-warm / it-local.sh) take their slot
   themselves, so run them directly; never route around the gate.

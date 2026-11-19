@@ -53,6 +53,32 @@ spec_lock_state() {
   bash -c '. "$1"; if lock_busy "$2"; then echo held; else echo free; fi' _ "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" "$1"
 }
 
+# A GOVERNOR OF THE SPEC'S OWN (~/bin/agentctl gov, scripts/jvm-gate.sh gov_hold): a spec proving a tool waits for
+# admission, runs under its ticket and lets a child ride it.
+# spec_fake_governor <file> -> an agentctl at <file> whose `gov admit` records its arguments in $GOV_CALLS, then -- while
+# $GOV_HOLD names a file not there yet (a starved laptop) -- writes <GOV_HOLD>.waiting and blocks until it appears, then
+# takes the ticket's lock on the descriptor it was given (7), as the real one does
+spec_fake_governor() {
+  cat > "$1" <<'STUB'
+#!/usr/bin/env bash
+# def cmd_gov def gov_route: an agentctl whose governor charges cores (what jvm-gate.sh greps for)
+printf '%s\n' "$*" >> "$GOV_CALLS"
+if [ -n "${GOV_HOLD:-}" ]; then
+  echo waiting > "$GOV_HOLD.waiting"
+  for _ in $(seq 1 2400); do [ -e "$GOV_HOLD" ] && break; sleep 0.05; done
+fi
+python3 -I -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+STUB
+  chmod +x "$1"
+}
+# spec_governed <agentctl> <command...> -> the command (an executable) on "the Mac" with that governor governing, outside
+# any check's hook (KINOWO_GOV_CPU_HELD) or ticket, its tickets under <agentctl>'s directory
+spec_governed() {
+  local g=$1
+  shift
+  env -u KINOWO_GOV_CPU_HELD -u KINOWO_GOV_CLASS -u KINOWO_JVM_SLOT_HELD KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$g" \
+    KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$(dirname "$g")/gov" "$@"
+}
 # HUNG STUBS. A case proving that a tool's own bound cuts off a command that never answers (a hung gh, mongosh,
 # apt-get, a test or chore that never ends) asserts that MECHANISM, never elapsed wall time. Wall time counts every
 # process the run starts: "within N s" assertions failed whenever the machine ran the specs ~10x slower (a load of ~86;

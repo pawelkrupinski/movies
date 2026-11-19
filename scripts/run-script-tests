@@ -78,11 +78,19 @@
 # each, passing case after passing case, at the 600 s a test it had then. --timeout S adds a wall-clock
 # ceiling for a caller that wants one; CI's is the job's own timeout. The table names each PASS / FAIL /
 # STALLED / TIMEOUT with its seconds; a failure's last lines follow.
+# THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm-gate.sh
+# gov_hold, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
+# admission, then starts by itself (the owner, 2026-11-19). None in a check's hook (its ticket is charged already), off
+# the Mac, with KINOWO_GOVERNOR=0, or riding a parent's. The tests themselves run with descriptor 7 closed and
+# KINOWO_JVM_SLOT_HELD unset: a test of the gate fakes its own governor and must see no ticket of this run's (and
+# shell-spec.sh keeps the real governor out of every spec).
 # Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
 # 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
 set -uo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
+# shellcheck source=scripts/jvm-gate.sh
+. "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" # gov_hold: the run under a governor ticket (THE GOVERNOR, above)
 # A self-test runs its tool as a test, never as the CI step it is run from: one that reads GITHUB_STEP_SUMMARY or
 # GITHUB_OUTPUT would write into the calling step's own. Nor does it see the run it is in: the ref, event, commit, forge
 # and run a workflow step is about are a tool's INPUTS, which a test sets itself, so a test passing on a laptop (where
@@ -133,6 +141,15 @@ cd "$root" || exit 64
 [ -z "$floor_bash" ] || { [ -n "$changed_base" ] && [ -z "$test_bash" ]; } || usage_error "--floor needs --changed, and no --bash"
 # --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
 [ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
+
+# govern_run <tests> -> this run under a governor ticket charged min(--jobs, <tests>) cores (THE GOVERNOR); its tests
+# then see no ticket (descriptor 7 closed in run_one)
+govern_run() {
+  local cores=$jobs
+  [ "$1" -lt "$cores" ] && cores=$1
+  gov_hold run-script-tests script-tests "$cores" 2
+  unset KINOWO_JVM_SLOT_HELD
+}
 
 # ── Discovery ──────────────────────────────────────────────────────────────────────────────────
 discover() { # every self-test under the roots: path<TAB>tag<TAB>reason
@@ -464,6 +481,7 @@ if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
 
 if [ "$linux" = 1 ]; then
   [ -s "$work/selected" ] || { echo "run-script-tests: no script tests selected${changed_base:+ by the changes since $changed_base}"; exit 0; }
+  govern_run "$(wc -l < "$work/selected" | tr -d ' ')"
   run_on_linux
   exit $?
 fi
@@ -490,6 +508,8 @@ if grep -q '\.py	' "$work/selected" && ! python3 -c "import sys; sys.exit(sys.ve
   exit 1
 fi
 
+govern_run "$(wc -l < "$work/selected" | tr -d ' ')"
+
 # ── Running ────────────────────────────────────────────────────────────────────────────────────
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
   local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH
@@ -499,12 +519,12 @@ run_one() { # <index> <path>: its log, exit status and seconds land in $work/<in
   # stays python3's, with the floor bash first on its PATH for the bash it runs: read by bash, it failed to parse.
   if grep -qxF "$path" "$work/floor.tests"; then
     test_path="$work/floor-bin:$PATH"
-    case "$path" in *.py) ;; *) interpreter=$floor_bash ;; esac
+    case "$path" in *.py) ;; *) interpreter=$work/floor-bin/bash ;; esac # the floor-bin name: the $BASH a tool it starts by `bash` sees too
   fi
   # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
   # (appended to, as the watch below appends its report: neither writes over the other)
   : > "$work/$i.log"
-  PATH=$test_path BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 &
+  PATH=$test_path BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 7>&- &
   local test_pid=$! watch_pid
   # the no-progress bound: its log written counts as progress; a stall says what the test's group was stuck on, in its
   # log, and ends the group. Run by this script's own bash: a --bash under test runs the tests only.

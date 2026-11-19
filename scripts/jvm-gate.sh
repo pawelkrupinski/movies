@@ -77,6 +77,18 @@
 #                          call into a kept JVM -- an sbt-warm command, a what-if or slice request -- released by
 #                          jvm_slot_release. None while riding a parent's ticket, under KINOWO_GOV_CPU_HELD (agentctl's
 #                          pre-commit check: its own ticket is charged the hook's cores), or without the governor
+#   gov_hold <label> <job> [cores] [mem GB]  a ticket for a heavy job that is no tool's JVM (the owner, 2026-11-19: "if
+#                          cpu is starved then pause until we have enough resources and resume when we have too much") --
+#                          a script-test run and its Linux container, a Playwright row, an alert backtest, the mirror's
+#                          seed: charged <job> with <cores> (none: the job's own figure) and <mem> GB (default 1), held on
+#                          descriptor 7 by this process until it ends or jvm_slot_release, so every child rides it. The
+#                          wait is the governor's own (a blocked `gov admit`, no poll here); a refused admission is warned
+#                          and the job runs. None, 0 at once: without the governor (Linux / CI, KINOWO_GOVERNOR=0, no
+#                          agentctl), riding a parent's ticket, under KINOWO_GOV_CPU_HELD (a check's hook: its ticket is
+#                          charged the hook's cores already) or holding one already. Class gov_class's (a red fixer's
+#                          checkout red: admitted at once). scripts/gov-run is the same for one command
+#   gov_run <label> <job> <cores> <mem> <command...>  the command (a function too) under gov_hold's ticket, given back
+#                          when it ends: its exit status
 #   jvm_route <job>        `ci` when the governor would hold <job> now and ci-runner's measure lane is free (`agentctl
 #                          gov route`), else `local` -- the reason on stderr. Only an agent's own work (gov_class agent):
 #                          local without the governor, riding, under KINOWO_GOV_CPU_HELD (a tool inside a check or a
@@ -176,6 +188,21 @@ jvm_cpu_take() { # <label> <job>
   KINOWO_GOV_MEM_GB=0 KINOWO_GOV_JOB=$2 gov_take "$1" ||
     echo "[$1] the governor ($g gov admit) failed: running without a cores ticket" >&2
   return 0
+}
+gov_hold() { # <label> <job> [cores] [mem GB]
+  local g
+  g=$(governor_bin) || return 0
+  jvm_slot_riding && return 0
+  [ -z "${KINOWO_GOV_CPU_HELD:-}" ] || return 0
+  [ -z "$JVM_SLOT" ] || return 0
+  KINOWO_GOV_JOB=$2 KINOWO_GOV_CORES=${3:-} KINOWO_GOV_MEM_GB=${4:-1} gov_take "$1" ||
+    echo "[$1] the governor ($g gov admit) failed: running without a ticket" >&2
+  return 0
+}
+gov_run() { # <label> <job> <cores> <mem> <command...>
+  local label=$1 job=$2 charged=$3 mem=$4
+  shift 4
+  ( gov_hold "$label" "$job" "$charged" "$mem"; "$@" )
 }
 jvm_route() { # <job>
   local g

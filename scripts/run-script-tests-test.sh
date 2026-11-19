@@ -404,4 +404,36 @@ check "with no names, the tests --changed origin/main selects" "0 $want" \
 check "Docker not running: a clear failure, exit 2" "2" "$(DOCKER_DOWN=1 linux scripts/ci)"
 check "...naming what to start" "1" "$(grep -c -- '--linux needs a running Docker' "$work/out")"
 
+# THE GOVERNOR: the run waits for its ticket (a starved laptop), charged its parallelism, then starts by itself; its
+# tests see no ticket of its own (descriptor 7 closed, KINOWO_JVM_SLOT_HELD unset)
+spec_fake_governor "$work/agentctl"
+export GOV_CALLS="$work/gov-calls"
+put scripts/sees-test.sh 'echo "fd7 $({ : >&7; } 2>/dev/null && echo open || echo closed) held=${KINOWO_GOV_CPU_HELD:-} slot=${KINOWO_JVM_SLOT_HELD:-}" > "$SEEN"'
+: > "$GOV_CALLS"; rm -f "$work/seen"
+(cd "$work" && SEEN="$work/seen" GOV_HOLD="$work/admit" spec_governed "$work/agentctl" bash "$runner" --root "$tree" --jobs 3 scripts/sees-test.sh scripts/a-test.sh) \
+  > "$work/out" 2>&1 &
+governed_run=$!
+wait_until "the run asked the governor" '[ -e "$work/admit.waiting" ]'
+check "governed: not admitted, no test has started" "absent" "$([ -e "$work/seen" ] && echo ran || echo absent)"
+touch "$work/admit"; wait "$governed_run"; status=$?
+check "...admitted, the run starts by itself and passes" "0 fd7 closed held= slot=" "$status $(cat "$work/seen")"
+check "...one ticket, charged min(--jobs, tests) cores as script-tests" "1" \
+  "$(grep -c -- '^gov admit .*--class agent --mem 2 --label run-script-tests .*--job script-tests --cores 2$' "$GOV_CALLS")"
+: > "$GOV_CALLS"
+(cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" "$REPO_ROOT/scripts/gov-run" --job outer -- bash "$runner" --root "$tree" scripts/sees-test.sh) > "$work/out" 2>&1
+check "...run under a ticket already (a gated parent): it rides it, no second ticket" "1 fd7 closed held= slot=" \
+  "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(cat "$work/seen")"
+: > "$GOV_CALLS"
+(cd "$work" && SEEN="$work/seen" KINOWO_GOV_CPU_HELD=1 KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin \
+  bash "$runner" --root "$tree" scripts/sees-test.sh
+  SEEN="$work/seen" KINOWO_GOVERNOR=0 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin bash "$runner" --root "$tree" scripts/sees-test.sh
+  SEEN="$work/seen2" spec_governed "$work/agentctl" env KINOWO_JVM_GATE_OS=Linux bash "$runner" --root "$tree" scripts/sees-test.sh) > "$work/out" 2>&1
+check "...ungated in a check's hook, with KINOWO_GOVERNOR=0 and on Linux: no ticket asked, the tests run" "0 fd7 closed held= slot=|fd7 closed held= slot=" \
+  "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(cat "$work/seen")|$(cat "$work/seen2")"
+: > "$GOV_CALLS"
+(cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" DOCKER_STDIN="$work/docker-stdin" \
+  spec_governed "$work/agentctl" bash "$runner" --root "$tree" --linux scripts/ci/b_test.py) > "$work/out" 2>&1
+check "--linux: its container (and image build) under one ticket of the run's" "1 1" \
+  "$(grep -c -- '--label run-script-tests .*--job script-tests --cores 1$' "$GOV_CALLS") $(grep -c '^run ' "$work/docker-calls")"
+
 spec_summary

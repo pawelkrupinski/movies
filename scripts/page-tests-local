@@ -14,11 +14,18 @@
 # .github/scripts/fixture-server.sh (relaunch on an early exit, 600 s ceiling), stopped on exit with the checkout's kept
 # server (`sbt-warm --stop`): a serving runMain holds it. Needs Node (npm ci once per worktree) and Playwright's
 # browsers (`npx playwright install chromium webkit`; Google Chrome for chrome-desktop).
+# THE GOVERNOR: each Playwright row runs under a governor ticket of its own on the Mac (jvm-gate.sh gov_run, `agentctl
+# gov`), charged its workers' cores -- PW_WORKERS, CI's 5 when unset (Playwright's local default, every core, would
+# charge the whole laptop), 1 for WebKit: while the laptop is starved a row waits for admission, then starts by itself
+# (the owner, 2026-11-19). The fixture server's sbt-warm takes its own; off the Mac, with KINOWO_GOVERNOR=0 or in a
+# check's hook, none.
 # PAGE_TESTS_SBT_WARM / PAGE_TESTS_NPX / PAGE_TESTS_NPM / PAGE_TESTS_INSTALL / PAGE_TESTS_NODE stand in for scripts/sbt-warm,
 # npx, npm, scripts/ci/install-playwright.sh and node (the self-test's fakes).
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
+# shellcheck source=scripts/jvm-gate.sh
+. "$root/scripts/jvm-gate.sh" # gov_run: each row under a governor ticket (THE GOVERNOR, above)
 which=${1:-all}
 case "$which" in chromium|webkit|all) ;; *) echo "usage: scripts/page-tests-local [chromium|webkit|all]" >&2; exit 2 ;; esac
 sbt_warm=${PAGE_TESTS_SBT_WARM:-scripts/sbt-warm}
@@ -51,11 +58,12 @@ cd page-tests-playwright
 # host's 32 cores behind a 4-CPU quota. Run 3342 failed every Chromium test in milliseconds (no browser); with the
 # browsers but 40 workers (playwright.config.ts's 125%) the load passed 170 and 16 tests timed out (diag run 3353).
 # So: the browsers and their system libraries, CI's worker figure (run-page-test's PW_WORKERS, unless the
-# caller set one), and one warm render per engine before any test's clock starts (warm-browsers.mjs).
+# caller set one; on the laptop too, THE GOVERNOR above), and one warm render per engine before any test's clock starts
+# (warm-browsers.mjs).
+export PW_WORKERS=${PW_WORKERS:-5}
 if [ -n "${CI:-}" ]; then
     case "$which" in chromium) engines=(chromium) ;; webkit) engines=(webkit) ;; *) engines=(chromium webkit) ;; esac
     ${PAGE_TESTS_INSTALL:-../scripts/ci/install-playwright.sh} "${engines[@]}"
-    export PW_WORKERS=${PW_WORKERS:-5}
     ${PAGE_TESTS_NODE:-node} warm-browsers.mjs "${engines[@]}"
 fi
 rc=0
@@ -63,7 +71,7 @@ row() { # <name> <playwright args...>
     local name=$1 t0=$SECONDS
     shift
     echo "==> $name: playwright test $*"
-    if "$npx" playwright test "$@"; then echo "==> $name ok ($((SECONDS - t0))s)"
+    if gov_run "page-tests $name" page-tests "$PW_WORKERS" 2 "$npx" playwright test "$@"; then echo "==> $name ok ($((SECONDS - t0))s)"
     else echo "==> $name FAILED ($((SECONDS - t0))s)"; rc=1; fi
 }
 if [ "$which" != webkit ]; then

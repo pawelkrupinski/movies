@@ -367,7 +367,10 @@ local heavy runs are a fallback only, for what the CI route cannot do yet, and t
 themselves (`scripts/jvm-gate.sh`, `KINOWO_JVM_SLOTS`, behind `agentctl gov`; there is no `heavy-run` wrapper to call --
 the name is the old one); never lower the slot count or bypass the gate, and say so in the report if you use a gate escape hatch.
 The governor admits by CPU as well as memory (2026-11-18): every sbt-warm command, what-if and slice request is charged
-its job's cores (`agentctl gov status` shows them), so a full laptop queues work instead of running it 3-5x slower. A
+its job's cores (`agentctl gov status` shows them), so a full laptop queues work instead of running it 3-5x slower.
+Heavy jobs that are no JVM -- a `run-script-tests` run (and its `--linux` container), each Playwright row of
+`page-tests-local`, `backtest-alerts-local`, the mirror's seed -- take a ticket too (`scripts/gov-run --job J [--cores
+N] -- <command>`, jvm-gate.sh `gov_hold`): they wait while the laptop is starved and start by themselves. A
 whole-module `testUnit` / `<module>/test` and `scripts/fail-before` it would hold go to ci-runner's measure lane by
 themselves when that is free (`scripts/ci-sbt`; `--ci` / `--local` decide instead; the proof's verdict is each CI run's
 own sbt step, a run with none is no verdict). Narrow `testOnly` runs and compiles stay local.
