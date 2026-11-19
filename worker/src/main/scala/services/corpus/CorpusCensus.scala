@@ -1,27 +1,21 @@
 package services.corpus
 
-import services.metrics.WorkerCorpusMetrics
-import services.metrics.WorkerSourceFilmsMetrics
-import services.movies.LatestTitleYear
-
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{City, MovieRecord, Showtime, VenueClock, ShowtimesDigest}
+import models.City
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache, StoredMovieRecord}
-import services.titles.TitleNormalizer
+import services.movies.MovieCache
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
-import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import java.time.Clock
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Every `movies`-census gauge the worker exposes — [[WorkerCorpusMetrics]], [[WorkerSourceFilmsMetrics]],
- * [[WorkerShowtimesMetrics]] and [[WorkerSlotFanoutMetrics]], with each city's off-season verdict beside them
- * ([[WorkerCitySeasonMetrics]]) — kept film by film as the worker's cache changes, never
+ * Every `movies`-census gauge the worker exposes ([[CensusGauges]]) — `WorkerCorpusMetrics`, `WorkerSourceFilmsMetrics`,
+ * `WorkerShowtimesMetrics` and `WorkerSlotFanoutMetrics`, with each city's off-season verdict beside them
+ * (`WorkerCitySeasonMetrics`) — kept film by film as the worker's cache changes, never
  * by reading the corpus.
  *
  * These were a 15-minute scan of `movies` with its showtimes stitched from `screenings` and its slots from
@@ -29,8 +23,8 @@ import scala.util.Try
  * cost 29% of the worker's CPU at its earlier 5-minute cadence (2026-09-30). The cache already holds every film, and
  * hears of every change — a scrape landing, the identity projection's writes, another process's write through the
  * change stream, a rehydrate. So the cache notes each film it changed (`MovieCache.onResident`, a map put under the
- * film's lock), each tick derives the noted films' parts ([[FilmCensus]]) — reusing every slot it holds unchanged — and
- * keeps them:
+ * film's lock), each tick derives the noted films' parts ([[FilmCensus]], held by [[CensusParts]]) — reusing every slot it
+ * holds unchanged — and keeps them:
  *   - the time-free counts — the corpus subsets but `unresolved_with_showtimes` — as running sums, moved by each
  *     film's old and new part;
  *   - the rest — films served, upcoming showtimes, unresolved-yet-screening, the widest film — depend on the clock as
@@ -65,91 +59,32 @@ final class CorpusCensus(
   ticks:           TickRecorder      = TickRecorder.Unrecorded,
   threadPools:     ThreadPools
 ) extends tools.Stoppable with Logging {
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
-  import CorpusCensus._
-
-  // Each film's part, as of the last drain, and the time-free subsets' running sums over them. Both guarded by `parts`.
-  private val parts  = scala.collection.mutable.HashMap.empty[CacheKey, FilmCensus]
-  private val static = new Array[Long](StaticSubsets.size)
-  // The films the cache changed since the last drain, each as it now holds it (`None`: gone).
-  private val dirty  = new ConcurrentHashMap[CacheKey, Option[StoredMovieRecord]]()
+  // What the cache noted, and each film's part: the specs note a film straight into it.
+  private[corpus] val parts = new CensusParts(cache.normalizer, cities, clock)
+  private val gauges = new CensusGauges(corpus, served, showtimes, widest, mayBeDark, countryCode, cities)
   @volatile private var seeded = false
 
-  // Every (city, scope) and city seeded at 0, so a city that empties reads as an explicit 0, not a vanished series.
-  // The corpus subsets are not: a 0 there reads as an empty corpus, and every restart drew the coverage chart to 0
-  // and back. Each appears with the first complete census instead.
-  for (c <- cities) {
-    WorkerSourceFilmsMetrics.Scope.all.foreach(scope => served.labelValues(countryCode, c.slug, scope).set(0.0))
-    showtimes.labelValues(countryCode, c.slug).set(0.0)
-  }
-  widest.labelValues(countryCode).set(0.0)
-  publishSeasons()
+  gauges.seeded()
+  gauges.seasons(clock.instant())
 
   private val scheduler = threadPools.scheduler("corpus-census")
 
-  /** Note the film `key` now holds (`None`: gone), for the next drain to derive. Called under the cache's lock for
-   *  the key, on the writer's thread — so it only notes: deriving a film's part is linear in its slots, and a wide
-   *  release at 3,300 venues was re-derived whole for each venue's landing, inside that lock. */
-  private[corpus] def held(key: CacheKey, film: Option[StoredMovieRecord]): Unit = { dirty.put(key, film); () }
-
-  /** Derive the part of every film noted since the last drain, in place of its last one. A film whose derivation
-   *  throws keeps its last part and stays noted, so the next drain tries it again rather than leaving it wrong until
-   *  its next write. Whether every film derived. Caller holds `parts`. */
-  private def drain(): Boolean = dirty.keySet().asScala.toSeq.foldLeft(true) { (whole, key) =>
-    Option(dirty.remove(key)).fold(whole) { film =>
-      val prior = parts.get(key)
-      Try(film.map(FilmCensus.of(_, cache.normalizer, prior))) match {
-        case scala.util.Success(next) =>
-          next.fold(parts.remove(key))(parts.put(key, _))
-          prior.foreach(p => add(p.subsets, -1))
-          next.foreach(n => add(n.subsets, +1))
-          whole
-        case scala.util.Failure(e) =>
-          dirty.putIfAbsent(key, film)
-          logger.warn(s"corpus-census: could not count '${key.cleanTitle}' (${e.getMessage}) — it keeps its last count until the next tick.")
-          false
-      }
-    }
-  }
-
-  private def add(subsets: Int, by: Int): Unit =
-    StaticSubsets.indices.foreach(i => if ((subsets & (1 << i)) != 0) static(i) += by)
-
   /** The census as the films the cache holds now give it, against the clock now. */
-  def reading(): Reading = drainedReading()._1
-
-  /** [[reading]], and whether every film noted since the last drain could be counted. */
-  private def drainedReading(): (Reading, Boolean) = parts.synchronized {
-    val whole = drain()
-    (tally(parts.valuesIterator, static.toSeq, cities, clock), whole)
-  }
-
-  /** Each city's [[WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
-  private def publishSeasons(): Unit = {
-    val now = clock.instant()
-    cities.foreach(c => mayBeDark.labelValues(countryCode, c.slug).set(if (c.mayBeDarkAt(now)) 1.0 else 0.0))
-  }
+  def reading(): CensusReading = parts.drainedReading()._1
 
   /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. The
    *  off-season verdicts are published either way: they read no corpus. [[TickRun.Incomplete]] for a miss (its gauges
    *  keep old values), or a reading with a film it could not count. */
   def publish(): TickRun = {
-    publishSeasons()
+    gauges.seasons(clock.instant())
     if (!seeded || !cache.hydrated) {
       metrics.recordIncompleteSample()
       logger.warn("corpus-census: the cache does not hold the whole corpus yet — census gauges keep their previous " +
         "values rather than publishing a partial count as if the corpus had shrunk.")
       TickRun.Incomplete
     } else {
-      val (now, whole) = drainedReading()
-      now.corpus.foreach { case (subset, n) => corpus.labelValues(countryCode, subset).set(n.toDouble) }
-      for (c <- cities) {
-        WorkerSourceFilmsMetrics.Scope.all.foreach(scope =>
-          served.labelValues(countryCode, c.slug, scope).set(now.served.getOrElse((c.slug, scope), 0).toDouble))
-        showtimes.labelValues(countryCode, c.slug).set(now.showtimes.getOrElse(c.slug, 0).toDouble)
-      }
-      widest.labelValues(countryCode).set(now.widest.toDouble)
+      val (now, whole) = parts.drainedReading()
+      gauges.published(now)
       TickRun.completedWhen(whole)
     }
   }
@@ -161,7 +96,7 @@ final class CorpusCensus(
 
   /** Count every film the cache holds, and follow its changes from now on. */
   def seed(): Unit = {
-    cache.onResident(held)
+    cache.onResident(parts.held)
     seeded = true
   }
 
@@ -198,92 +133,4 @@ object CorpusCensus {
         "their last complete values — so a rising rate here is the only sign those gauges have gone stale.")
       .labelNames("country")
       .register(registry)
-
-  /** The corpus subsets that do not move with the clock, in the order of their bits in [[FilmCensus.subsets]]. */
-  private[corpus] val StaticSubsets: IndexedSeq[(String, MovieRecord => LatestTitleYear ?=> Boolean)] = {
-    import WorkerCorpusMetrics.Subset._
-    IndexedSeq(
-      Total         -> (_ => true),
-      WithAnyRating -> (r => r.imdbRating.isDefined || r.filmwebRating.isDefined || r.rottenTomatoes.isDefined || r.metascore.isDefined),
-      WithTmdbId    -> (_.tmdbId.isDefined),
-      WithImdbId    -> (_.imdbId.isDefined),
-      ImdbRating    -> (_.imdbRating.isDefined),
-      RtRating      -> (_.rottenTomatoes.isDefined),
-      McRating      -> (_.metascore.isDefined),
-      FwRating      -> (_.filmwebRating.isDefined),
-      Misresolved   -> (r => CinemaCorroboration.contradicts(r)))
-  }
-
-  /** The census at one instant: each corpus subset, films served by (city, scope), upcoming showtimes by city, and
-   *  the widest film's cinema slots. */
-  final case class Reading(corpus: Seq[(String, Int)], served: Map[(String, String), Int], showtimes: Map[String, Int], widest: Int) {
-    def subset(name: String): Int = corpus.collectFirst { case (`name`, n) => n }.getOrElse(0)
-  }
-
-  /** The census of `rows` against `clock` — what a census holding exactly these films reads. */
-  def read(rows: Iterable[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: TitleNormalizer)(using LatestTitleYear): Reading = {
-    val parts  = rows.map(FilmCensus.of(_, normalizer, None)).toSeq
-    val static = StaticSubsets.indices.map(i => parts.count(p => (p.subsets & (1 << i)) != 0).toLong)
-    tally(parts.iterator, static, cities, clock)
-  }
-
-  /** One city's local tomorrow on a tick: a start in `[tomorrowFrom, tomorrowUntil)`, in [[ShowtimesDigest.startMinute]]s. */
-  private final case class Window(tomorrowFrom: Int, tomorrowUntil: Int)
-
-  /** The minute after which a start at `now` (venue-local) is still upcoming: a showtime is until [[Showtime.Grace]]
-   *  past its start. Exact for starts on the minute, which every showtime a venue lists is. */
-  private def upcomingAfter(now: LocalDateTime): Int = ShowtimesDigest.startMinute(now.minus(Showtime.Grace))
-
-  private def tally(films: Iterator[FilmCensus], static: Seq[Long], cities: Seq[City], clock: Clock): Reading = {
-    val instant    = clock.instant()
-    val venueClock = new VenueClock(Clock.fixed(instant, ZoneOffset.UTC))
-    val windows    = cities.map { c =>
-      val now      = venueClock.nowIn(c)
-      val tomorrow = now.toLocalDate.plusDays(1)
-      c.slug -> Window(ShowtimesDigest.startMinute(tomorrow.atStartOfDay),
-        ShowtimesDigest.startMinute(tomorrow.plusDays(1).atStartOfDay))
-    }.toMap
-    val tally = new Tally(windows, venueClock)
-    films.foreach(tally.add)
-    val corpus = StaticSubsets.indices.map(i => StaticSubsets(i)._1 -> static(i).toInt) :+
-      (WorkerCorpusMetrics.Subset.UnresolvedWithShowtimes -> tally.unresolvedScreening)
-    Reading(WorkerCorpusMetrics.Subset.all.map(name => name -> corpus.collectFirst { case (`name`, n) => n }.getOrElse(0)),
-      tally.served.toMap, tally.upcoming.toMap, tally.widest)
-  }
-
-  /** One census pass's running counts, film by film: the cards served per city and scope, the showtimes ahead per
-   *  city, the unresolved films still screening and the widest film. */
-  private final class Tally(windows: Map[String, Window], venueClock: VenueClock) {
-    private val zoneCutoffs = scala.collection.mutable.HashMap.empty[ZoneId, Int]
-    val served   = scala.collection.mutable.HashMap.empty[(String, String), Int].withDefaultValue(0)
-    val upcoming = scala.collection.mutable.HashMap.empty[String, Int].withDefaultValue(0)
-    var unresolvedScreening = 0
-    var widest = 0
-
-    private def zoneCutoff(zone: ZoneId) = zoneCutoffs.getOrElseUpdate(zone, upcomingAfter(venueClock.now(zone)))
-
-    def add(film: FilmCensus): Unit = {
-      if (film.cinemaSlots > widest) widest = film.cinemaSlots
-      if (film.ready) film.cards.foreach(addCard)
-      else if (film.screenable.exists(slot => slot.startsAfter(zoneCutoff(slot.zone)) > 0)) unresolvedScreening += 1
-    }
-
-    private def addCard(card: Seq[SlotCensus]): Unit = {
-      val cardCities = scala.collection.mutable.HashMap.empty[String, (Boolean, Boolean)]
-      card.foreach { slot =>
-        slot.city.flatMap(slug => windows.get(slug).map(slug -> _)).foreach { case (slug, window) =>
-          // Started on the venue's own clock, as the web cuts it (`StartedShowtimeCut`): a US city's venues across a
-          // zone line keep their own. Tomorrow stays the city's day, as the web's tomorrow page reads it.
-          val ahead = slot.startsAfter(zoneCutoff(slot.zone))
-          upcoming(slug) += ahead
-          val (anyAhead, anyTomorrow) = cardCities.getOrElse(slug, (false, false))
-          cardCities(slug) = (anyAhead || ahead > 0, anyTomorrow || slot.startsWithin(window.tomorrowFrom, window.tomorrowUntil))
-        }
-      }
-      cardCities.foreach { case (slug, (anyAhead, anyTomorrow)) =>
-        if (anyAhead) served((slug, WorkerSourceFilmsMetrics.Scope.All)) += 1
-        if (anyTomorrow) served((slug, WorkerSourceFilmsMetrics.Scope.Tomorrow)) += 1
-      }
-    }
-  }
 }

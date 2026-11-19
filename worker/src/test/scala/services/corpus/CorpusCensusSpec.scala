@@ -225,7 +225,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
         showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))).toMap))
     val key = cache.keyOf("Wide Film", Some(2026))
     counting.reset()
-    (1 to 50).foreach(_ => census.held(key, Some(wide)))
+    (1 to 50).foreach(_ => census.parts.held(key, Some(wide)))
     counting.calls shouldBe 0
     census.reading().subset(Subset.Total) shouldBe 1
     counting.calls should be > 0
@@ -242,7 +242,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val flaky  = film.copy(record = new MovieRecord(tmdbId = Some(1), data = film.record.data) {
       override def readyToProject: Boolean = if (broken) throw new IllegalStateException("bug") else super.readyToProject
     })
-    census.held(key, Some(flaky))
+    census.parts.held(key, Some(flaky))
     census.reading().subset(Subset.Total) shouldBe 0
     broken = false
     census.reading().subset(Subset.Total) shouldBe 1
@@ -267,7 +267,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     census.seed()
     var broken = true
     val film   = row("Flaky", ready(Helios, 1, tomorrow))
-    census.held(CacheKey("Flaky", Some(2026), normalizer), Some(film.copy(record = new MovieRecord(tmdbId = Some(1), data = film.record.data) {
+    census.parts.held(CacheKey("Flaky", Some(2026), normalizer), Some(film.copy(record = new MovieRecord(tmdbId = Some(1), data = film.record.data) {
       override def readyToProject: Boolean = if (broken) throw new IllegalStateException("bug") else super.readyToProject
     })))
     tick(census)

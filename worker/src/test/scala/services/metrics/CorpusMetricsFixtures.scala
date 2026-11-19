@@ -1,6 +1,6 @@
 package services.metrics
 
-import services.corpus.CorpusCensus
+import services.corpus.{CensusReading, CorpusCensus}
 import services.corpus.CorpusCensusMetrics
 import tools.SpecClock.given
 
@@ -82,6 +82,6 @@ object CorpusMetricsFixtures {
       WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", City.all, at, metrics, threadPools = tools.ThreadPools.Unmanaged)
 
   /** The census of exactly `rows`, against `at`. */
-  def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CorpusCensus.Reading =
-    CorpusCensus.read(rows, City.all, at, SingleCountryNormalizer.titleNormalizer)
+  def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CensusReading =
+    CensusReading.of(rows, City.all, at, SingleCountryNormalizer.titleNormalizer)
 }
