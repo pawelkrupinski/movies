@@ -14,6 +14,9 @@ final class ShareCardFiles(directory: ShareCardDirectoryTemplate) {
   /** Where `country`'s cards are looked for. */
   def directoryOf(country: Country): Path = directory.forCountry(country)
 
+  /** [[find]] by the country's code. */
+  def find(countryCode: String, file: String): Option[Path] = Country.byCode(countryCode).flatMap(find(_, file))
+
   /** The card `file` of `country` when it is on disk. Only a bare `<name>.jpg` is looked up, so no request reaches
    *  a path outside the country's directory. */
   def find(country: Country, file: String): Option[Path] =

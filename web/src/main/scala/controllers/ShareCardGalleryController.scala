@@ -18,29 +18,23 @@ class ShareCardGalleryController(cc: ControllerComponents, environment: Mode,
   def cities(): Action[AnyContent] = Action { request =>
     DevMode.gate(environment) {
       val country = ShareCardGallery.countryOf(request)
-      Ok(views.html.shareCardCities(country, ShareCardGallery.homeCard(country) +: ShareCardGallery.cityCards(country, files),
-        files.directoryOf(country)))
+      Ok(views.html.shareCardCities(country, ShareCardGallery.cityPage(country, files), files.directoryOf(country)))
     }
   }
 
   def movies(limit: Option[Int]): Action[AnyContent] = Action { request =>
     DevMode.gate(environment) {
       val country = ShareCardGallery.countryOf(request)
-      if (!readModels.countries.contains(country))
-        NotFound(s"no ${country.code} read model on this server: scripts/dev-server.sh reads every country's from the local mirror")
-      else readModels(country).reader.findAllMoviesChecked().answered match {
-        case Some(films) =>
-          val cards = ShareCardGallery.filmCards(films, country, limit.filter(_ > 0).getOrElse(ShareCardGallery.DefaultFilmLimit), files)
-          Ok(views.html.shareCardMovies(country, cards, films.size, files.directoryOf(country)))
-        case None => ServiceUnavailable(s"could not read the ${country.code} read model whole")
-      }
+      ShareCardGallery.filmPage(readModels, country, limit, files).fold(NotFound(_), { case (cards, showing) =>
+        Ok(views.html.shareCardMovies(country, cards, showing, files.directoryOf(country)))
+      })
     }
   }
 
   /** One card file of `country`'s share-card directory, as production's Caddy serves it. */
   def file(country: String, file: String): Action[AnyContent] = Action {
     DevMode.gate(environment) {
-      models.Country.byCode(country).flatMap(files.find(_, file))
+      files.find(country, file)
         .fold(NotFound(s"no card $file for $country on this machine"))(path => Ok(ByteString(Files.readAllBytes(path))).as("image/jpeg"))
     }
   }

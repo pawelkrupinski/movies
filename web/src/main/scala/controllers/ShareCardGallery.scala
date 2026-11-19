@@ -19,17 +19,26 @@ object ShareCardGallery {
     request.getQueryString("country").flatMap(Country.byCode).getOrElse(DefaultCountry)
 
   /** The country's landing card, a checked-in asset this server always has. */
-  def homeCard(country: Country): GalleryCard =
+  private def homeCard(country: Country): GalleryCard =
     GalleryCard(s"home (${country.homeOgImage})", Some(ShareCardUrl.home(country)),
       Some(routes.Assets.versioned(Assets.Asset(s"img/${country.homeOgImage}")).url))
 
   /** Every city of the country's roster, in roster order. */
-  def cityCards(country: Country, files: ShareCardFiles): Seq[GalleryCard] =
+  private def cityCards(country: Country, files: ShareCardFiles): Seq[GalleryCard] =
     country.cities.map(city => GalleryCard(city.labels.nominative, Some(ShareCardUrl.city(city)),
       local(country, city.shareImage, files)))
 
+  /** The home card, then every city card. */
+  def cityPage(country: Country, files: ShareCardFiles): Seq[GalleryCard] = homeCard(country) +: cityCards(country, files)
+
+  /** The cards of the first `limit` films ([[DefaultFilmLimit]] when absent or not positive) of `country`'s read
+   *  model and how many films it shows, or why there is no such read model to read. */
+  def filmPage(readModels: DebugReadModels, country: Country, limit: Option[Int], files: ShareCardFiles): Either[String, (Seq[GalleryCard], Int)] =
+    readModels.moviesOf(country).map(films =>
+      filmCards(films, country, limit.filter(_ > 0).getOrElse(DefaultFilmLimit), files) -> films.size)
+
   /** The first `limit` films by title. */
-  def filmCards(films: Seq[ResolvedMovie], country: Country, limit: Int, files: ShareCardFiles): Seq[GalleryCard] =
+  private def filmCards(films: Seq[ResolvedMovie], country: Country, limit: Int, files: ShareCardFiles): Seq[GalleryCard] =
     films.sortBy(_.title).take(limit).map(film => GalleryCard(film.title, ShareCardUrl.film(film, country),
       film.shareCard.map(ShareCardFiles.fileOf).flatMap(local(country, _, files))))
 

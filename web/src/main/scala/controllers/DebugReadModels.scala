@@ -35,6 +35,11 @@ final class DebugReadModels private (byCountry: Map[Country, DebugReadModel], de
     request.getQueryString("country").flatMap(Country.byCode).filter(byCountry.contains).getOrElse(default)
 
   def apply(country: Country): DebugReadModel = byCountry(country)
+
+  /** Every film of `country`'s read model, or why there is none to list: no read model of it here, or a partial read. */
+  def moviesOf(country: Country): Either[String, Seq[ResolvedMovie]] =
+    byCountry.get(country).toRight(s"no ${country.code} read model on this server: scripts/dev-server.sh reads every country's from the local mirror")
+      .flatMap(_.reader.findAllMoviesChecked().answered.toRight(s"could not read the ${country.code} read model whole"))
 }
 
 object DebugReadModels {
