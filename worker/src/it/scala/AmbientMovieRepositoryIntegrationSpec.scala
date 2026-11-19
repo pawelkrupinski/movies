@@ -1,9 +1,11 @@
 package scripts
 
+import models.FilmId
+
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**

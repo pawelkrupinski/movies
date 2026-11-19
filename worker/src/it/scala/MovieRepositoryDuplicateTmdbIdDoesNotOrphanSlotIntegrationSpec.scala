@@ -1,12 +1,14 @@
 package integration
 
+import models.{FilmId, StoredMovieRecord}
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{MovieRecord, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 
 /**
  * A resolution that collides with a SIBLING document's `tmdbId` must refuse the

@@ -1,5 +1,7 @@
 package services.movies
 
+import models.SlotFields
+
 import services.titles.TitleContainment
 import services.titles.TitleNormalizer
 

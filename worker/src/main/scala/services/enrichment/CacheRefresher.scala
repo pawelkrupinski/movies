@@ -1,8 +1,10 @@
 package services.enrichment
 
+import models.CacheKey
+
 import models.MovieRecord
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache}
+import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
 
 import scala.util.{Failure, Success, Try}

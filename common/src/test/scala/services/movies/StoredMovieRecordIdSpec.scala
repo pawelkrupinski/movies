@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer.titleNormalizer

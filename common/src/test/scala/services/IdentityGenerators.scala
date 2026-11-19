@@ -2,7 +2,7 @@ package services
 
 import models._
 import org.scalacheck.Gen
-import services.movies.{CacheKey, MovieRecordMerge, SingleCountryNormalizer}
+import services.movies.{MovieRecordMerge, SingleCountryNormalizer}
 import services.titles.TitleNormalizer
 import services.resolution.Candidate
 import services.movies.FilmEvidence

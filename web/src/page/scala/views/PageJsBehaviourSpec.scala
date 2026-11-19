@@ -1,5 +1,7 @@
 package views
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -12,7 +14,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{Json, JsString}
-import services.movies.StoredMovieRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 import tools.contracts.RetryClassificationTable
 

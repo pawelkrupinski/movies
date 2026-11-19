@@ -1,10 +1,12 @@
 package services.enrichment
 
+import models.CacheKey
+
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._

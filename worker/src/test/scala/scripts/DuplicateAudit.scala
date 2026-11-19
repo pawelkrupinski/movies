@@ -1,6 +1,7 @@
 package scripts
 
-import services.movies.StoredMovieRecord
+import models.StoredMovieRecord
+
 
 /**
  * Audit duplicate rows across alternative merge keys.

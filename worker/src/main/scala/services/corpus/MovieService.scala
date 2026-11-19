@@ -1,5 +1,7 @@
 package services.corpus
 
+import models.{CacheKey, SlotFields, StoredMovieRecord}
+
 import services.movies.*
 
 import clients.TmdbClient

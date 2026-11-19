@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 import controllers.FilmSchedule
 import models.Showtime
 

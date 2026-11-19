@@ -1,5 +1,7 @@
 package integration
 
+import models.{FilmId, StoredMovieRecord}
+
 import tools.SpecClock.given
 
 import tools.SpecTimeouts
@@ -14,7 +16,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{MongoMovieChangeFeed, ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore, StoredMovieRecord, FilmId}
+import services.movies.{MongoMovieChangeFeed, ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, ResumeTokenStore}
 import tools.Eventually
 import tools.Eventually.awaitStreamLive
 
@@ -138,7 +140,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   }
 
   it should "derive a migrated film's title from its movie_slots, not from the empty embedded map" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -202,7 +204,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // the only shape this path is reachable in.
   it should "surface an out-of-band upsert AND delete (by _id) on the change stream" in {
     import java.util.concurrent.{CountDownLatch, TimeUnit}
-    import services.movies.StoredMovieRecord
 
     val title = "__integration-test-changestream__"
     val year  = Some(1901)
@@ -1253,7 +1254,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // `movies` untouched, and a `screenings` change fans out a stitched upsert (so the
   // projector re-projects). Verified against a real replica set.
   it should "split reads: strip showtimes from movies, stitch from screenings, and fan out screenings changes" in {
-    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import services.movies.MongoScreeningsRepository
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     // ITS OWN DATABASE: this test's change stream watches the whole `screenings` collection,
     // and in the shared one every sibling spec's write is decoded by it (see the poison below).
@@ -1330,7 +1331,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // That reversibility is the whole point of this phase — the read flip comes later,
   // and only after a backfill. Verified against a real replica set.
   it should "dual-write cinema slots into movie_slots while movies stays the read authority" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1384,7 +1385,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // halves matter — the first is the point of the split, the second is what stops it
   // blanking every film that has not been rewritten yet.
   it should "read slots from movie_slots when present and fall back to the embedded map when not" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1433,7 +1434,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // byte-identical `_id`s (prod, 2026-07-28 06:29Z). The title must come from the
   // STITCHED record, not the hollow document.
   it should "derive the display title from the stitched slots, not the sanitized _id prefix" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1465,7 +1466,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // former size. Guarded by the rule that the embedded copy is only dropped after the
   // slot write is CONFIRMED — the one way this migration could lose a film.
   it should "drop the embedded sourceData once the slots have landed, and keep it when they have not" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import models.SourceData
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1501,7 +1502,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // land; if `updateIfPresent` still wrote `sourceData.<slot>`, the very next metadata
   // change would rebuild it field by field and the document would creep back to full size.
   it should "not resurrect the embedded sourceData through a later patch" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import models.SourceData
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1537,7 +1538,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // two together fanned one logical change out twice. This pins BOTH halves: the change
   // arrives, and it arrives exactly once.
   it should "still fan out a change event when only the slots changed" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import models.SourceData
     val db     = specDb
@@ -1587,7 +1588,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // the one reader that does not go through the shared stitch — and a migrated film would
   // list with no cinemas at all.
   it should "stitch slots into the listing read as well" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import models.SourceData
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1614,7 +1615,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // If the slots split made it also write `movie_slots` — or touch `movies` — every scrape
   // of every film would re-project for nothing, on a clock rather than on a real change.
   it should "keep an expiring-showtimes re-scrape a screenings-only write, with one fanout and no slot write" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import java.util.concurrent.atomic.AtomicInteger
     import models.SourceData
@@ -1682,7 +1683,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // for a film across 471 UK venues that is 471 pointless row writes per scrape, and
   // Mongo write throughput has been the binding constraint on this system before.
   it should "not rewrite unchanged slot rows on a repeat upsert" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredSlotDto, MovieCodecs, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredSlotDto, MovieCodecs}
     import org.mongodb.scala.ObservableFuture
     import models.SourceData
     val db     = specDb
@@ -1726,7 +1727,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // next one added will forget too. The showtimes equivalent below exists because exactly
   // this class of divergence once dropped 129 films.
   it should "return identical slots from findById, findAll, foreachRecord and findAllForListing" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     import models.SourceData
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -1762,7 +1763,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
   it should "return identical showtimes from findAll, findById and foreachRecord (read-path parity)" in {
-    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import services.movies.MongoScreeningsRepository
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
@@ -1806,7 +1807,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // findAll returns every seeded slot exactly once, grouped by film — the keyset-paging
   // correctness the refactor introduces.
   it should "page screenings.findAll by _id across batch boundaries, returning every slot exactly once" in {
-    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import services.movies.MongoScreeningsRepository
     val db     = specDb
     val writer = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     // batchSize 2 forces several page boundaries over the 5 seeded slots.
@@ -1830,7 +1831,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // empty showtimes and DELETES the film's web_screenings. Wire the real projector to a
   // split repo + read model, reconcile, and assert the film's screening is RETAINED.
   it should "not prune a split film's web_screenings on reconcile (foreachRecord stitches)" in {
-    import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
+    import services.movies.MongoScreeningsRepository
     import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2167,7 +2168,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // the embedded map dropped the cinemas only the embedded map had: on prod PL
   // 2026-07-27, 14 films were being served with fewer cinemas than the corpus held.
   it should "serve a cinema the embedded map has and movie_slots does not" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2200,8 +2201,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // fan-out hands the projector, whose `diffScreenings` then deletes every `web_screening`
   // the film has: a transient Mongo blip would empty a live film off the site.
   it should "refuse to decode a migrated film at all when its slot read fails" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
-      SlotsRepository, UnreadableSlotsRepository}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, SlotsRepository, UnreadableSlotsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2230,8 +2230,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // UNCHECKED `findForFilm`, so a failed read decoded to a film whose every cinema had no
   // showtimes — the record the projector reads as "delete every web_screening".
   it should "refuse to decode a film at all when its screenings read fails" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
-      UnreadableScreeningsRepository}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, UnreadableScreeningsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2260,8 +2259,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // (HardClusterConvergenceIntegrationSpec, red in a loaded `itAll` on 2026-10-03: "archived
   // listing(s) whose showtimes are NOT served under the film that holds them").
   it should "not hand a corpus scan a film whose screenings read failed" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
-      UnreadableScreeningsRepository}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, UnreadableScreeningsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
@@ -2304,7 +2302,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // on 2026-07-27: 13,201 cinema slots, only 2,609 with a screenings doc, zero the other way,
   // film count flat and every city still present while ~80% of upcoming showtimes vanished.
   it should "keep a film's showtimes when the screenings read fails under a whole-record write" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, UnreadableScreeningsRepository}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, UnreadableScreeningsRepository}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
     val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)

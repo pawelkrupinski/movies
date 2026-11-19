@@ -1,5 +1,7 @@
 package services.corpus
 
+import models.CacheKey
+
 import services.metrics.CorpusMetricsFixtures
 import services.metrics.PrometheusExposition
 import services.metrics.ReferenceCensus
@@ -17,7 +19,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.CorpusMetricsFixtures.{cacheOver, censusOver, now, ready, row, splitRepository, tomorrow, warsaw}
 import services.metrics.WorkerCorpusMetrics.Subset
-import services.movies.{CacheKey, FilmWriteFence, InMemoryMovieRepository, SingleCountryNormalizer}
+import services.movies.{FilmWriteFence, InMemoryMovieRepository, SingleCountryNormalizer}
 
 import java.time.{Duration, LocalDateTime}
 import scala.util.Random
@@ -185,7 +187,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val registry   = new PrometheusRegistry()
     val counter    = CorpusCensus.incompleteCounter(registry)
     val unreadable = new InMemoryMovieRepository(Seq(("Film", Some(2026), ready(Helios, 1, tomorrow))), normalizer = normalizer) {
-      override def findAllChecked(): tools.ReadOutcome[Seq[services.movies.StoredMovieRecord]] =
+      override def findAllChecked(): tools.ReadOutcome[Seq[models.StoredMovieRecord]] =
         services.movies.UnreadableRepositories.failed
     }
     val cache  = cacheOver(unreadable)
@@ -255,7 +257,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     def tick(census: CorpusCensus): Unit =
       tools.ScheduledTick.recorded("corpus-census", CorpusCensus.DefaultPublishInterval, play.api.Logger(getClass), ticks)(census.publish())
     val unreadable = new InMemoryMovieRepository(Seq(("Film", Some(2026), ready(Helios, 1, tomorrow))), normalizer = normalizer) {
-      override def findAllChecked(): tools.ReadOutcome[Seq[services.movies.StoredMovieRecord]] =
+      override def findAllChecked(): tools.ReadOutcome[Seq[models.StoredMovieRecord]] =
         services.movies.UnreadableRepositories.failed
     }
     val missing = censusOver(cacheOver(unreadable), new PrometheusRegistry())

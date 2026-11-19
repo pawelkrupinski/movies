@@ -1,9 +1,11 @@
 package services.enrichment
 
+import models.CacheKey
+
 import java.util.Locale
 
 import models.{MovieRecord, EmbeddedYear}
-import services.movies.{CacheKey, LatestTitleYear, TmdbLessEligibility}
+import services.movies.{LatestTitleYear, TmdbLessEligibility}
 import services.titles.TitleNormalizer
 import services.titles.SearchTitles
 

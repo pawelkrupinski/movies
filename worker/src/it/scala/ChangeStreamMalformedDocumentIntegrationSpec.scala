@@ -1,5 +1,7 @@
 package integration
 
+import models.StoredMovieRecord
+
 import tools.SpecTimeouts
 
 import services.movies.ListedShowtimes
@@ -8,7 +10,7 @@ import models.{CityScreening, MovieRecord, ResolvedMovie, ResolvedRatings, Showt
 import org.mongodb.scala.{Document, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieChangeFeed, ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieChangeFeed, ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.MongoReadModelRepository
 import services.movies.DecodeFailureMetrics

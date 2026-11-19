@@ -1,5 +1,7 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.tasktypes.TaskType
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -9,7 +11,6 @@ import org.scalatest.matchers.should.Matchers
 import services.attempts.InMemoryEnrichmentAttemptStore
 import models.AttemptOutcome
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.CacheKey
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable

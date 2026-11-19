@@ -23,7 +23,7 @@ object TakeCauses {
   /** What the projection read the takes against: the stored films before its writes, by id; whether a listing key, or a
    *  venue slot ([[StoredFilmSlots.slotOf]]), is published now; the listings re-published this update (none for an index
    *  built afresh); each listing's decision's members now; its trigger, and whether the store holds this process's takes. */
-  final case class Reading(stored: String => Option[services.movies.StoredMovieRecord], published: ListingKey => Boolean,
+  final case class Reading(stored: String => Option[models.StoredMovieRecord], published: ListingKey => Boolean,
                            publishedAt: ((String, String)) => Boolean, republished: Option[ListingKey => Boolean],
                            members: ListingKey => Seq[ListingKey], trigger: String, ownTakes: Boolean)
 

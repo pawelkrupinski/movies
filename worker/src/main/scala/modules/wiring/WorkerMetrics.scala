@@ -61,7 +61,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // process, so a string Poland interned is the instance Germany gets back — and its
   // occupancy/eviction gauges, process-level for the same reason: a `country` label
   // would be a lie.
-  val stringPool: services.movies.StringPool = new services.movies.StringPool
+  val stringPool: models.StringPool = new models.StringPool
   StringPoolMetrics.register(registry, stringPool)
 
   // TTL indexes the reconciler could not bring into line — also process-level, and

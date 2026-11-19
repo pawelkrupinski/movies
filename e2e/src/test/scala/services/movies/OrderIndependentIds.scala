@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmId, StoredMovieRecord}
+
 import services.titles.TitleNormalizer
 
 import controllers.FilmSchedule

@@ -1,6 +1,8 @@
 package services.enrichment
 
-import services.movies.{CacheKey, MovieCache}
+import models.CacheKey
+
+import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
 
 import java.util.concurrent.atomic.AtomicInteger

@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, StoredMovieRecord, StringPool}
+
 import services.titles.TitleNormalizer
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}

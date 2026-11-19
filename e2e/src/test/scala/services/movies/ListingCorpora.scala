@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StringPool
+
 import services.titles.TitleNormalizer
 
 import models.{Cinema, Country, SourceData}

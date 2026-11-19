@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmId, StoredMovieRecord}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.resolution.{InMemoryResolutionStore, ResolutionCache, UnresolvedPolicy, WriteThroughResolutionCache}

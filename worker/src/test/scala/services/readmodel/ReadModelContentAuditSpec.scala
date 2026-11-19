@@ -55,7 +55,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val withholdAll = new services.readmodel.RatingGate {
-      def apply(stored: services.movies.StoredMovieRecord, movie: ResolvedMovie) = services.readmodel.RatingGate.withheld(movie)
+      def apply(stored: models.StoredMovieRecord, movie: ResolvedMovie) = services.readmodel.RatingGate.withheld(movie)
       val version = 1
     }
     val projector  = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, ratingGate = withholdAll)

@@ -1,10 +1,12 @@
 package services.corpus
 
+import models.{CacheKey, StoredMovieRecord}
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import play.api.Logging
-import services.movies.{CacheKey, LatestTitleYear, MovieCache, StoredMovieRecord}
+import services.movies.{LatestTitleYear, MovieCache}
 import services.titles.TitleNormalizer
 import models.MovieRecord
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}

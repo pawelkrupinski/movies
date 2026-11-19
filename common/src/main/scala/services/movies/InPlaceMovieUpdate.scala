@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, StoredMovieRecord}
+
 import com.mongodb.client.model.UpdateOptions
 import models.{MovieRecord, Source, SourceData}
 import org.bson.conversions.Bson

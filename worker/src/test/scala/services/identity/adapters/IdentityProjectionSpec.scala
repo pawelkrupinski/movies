@@ -1,13 +1,15 @@
 package services.identity
 package adapters
 
+import models.CacheKey
+
 import services.identityadapters.*
 import tools.SpecTimeouts
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CacheKey, InMemoryMovieRepository, SingleCountryNormalizer}
+import services.movies.{InMemoryMovieRepository, SingleCountryNormalizer}
 import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -147,7 +149,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val inFlight = new java.util.concurrent.atomic.AtomicInteger
     val most     = new java.util.concurrent.atomic.AtomicInteger
     val slow = new InMemoryMovieRepository(normalizer = normalizer) {
-      override def upsert(film: services.movies.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome = {
+      override def upsert(film: models.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome = {
         most.accumulateAndGet(inFlight.incrementAndGet(), math.max)
         try { Thread.sleep(50); super.upsert(film, key, e) } finally { inFlight.decrementAndGet(); () }
       }
@@ -165,13 +167,13 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.scrape(programme)
     val first   = w.projection.tick().plan.get
     val stored  = w.repository.findAll()
-    val renamed = first.films.map(f => if (f.title == "Obcy") f.copy(id = services.movies.FilmId("new-obcy")) else f)
+    val renamed = first.films.map(f => if (f.title == "Obcy") f.copy(id = models.FilmId("new-obcy")) else f)
     // Every film already stored: none is new. A fresh id under a key a stored film holds is not free either.
     ProjectionWrite.independent(first.films, first.films, stored, normalizer) shouldBe empty
     ProjectionWrite.independent(renamed, renamed, stored, normalizer) shouldBe empty
     // New to an empty store, each under its own key: all of them — unless two of them take one key.
     ProjectionWrite.independent(first.films, first.films, Nil, normalizer) shouldBe first.films.map(_.id).toSet
-    val twice = first.films :+ first.films.head.copy(id = services.movies.FilmId("twin"))
+    val twice = first.films :+ first.films.head.copy(id = models.FilmId("twin"))
     ProjectionWrite.independent(twice, twice, Nil, normalizer) shouldBe first.films.tail.map(_.id).toSet
   }
 
@@ -735,7 +737,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       }))
     }
     val store = new InMemoryMovieRepository(normalizer = normalizer) {
-      override def upsert(film: services.movies.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome =
+      override def upsert(film: models.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome =
         if (decline && e.tmdbId.contains(602)) services.movies.WriteOutcome.Declined("store refused") else super.upsert(film, key, e)
     }
     val w = new ProjectionWorld(store, programme.keys.toSeq, clock, matched)

@@ -1,5 +1,7 @@
 package integration
 
+import models.{FilmId, StoredMovieRecord}
+
 import tools.SpecTimeouts
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -11,7 +13,7 @@ import org.mongodb.scala.{Document, Observer, SingleObservableFuture, Subscripti
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId, WriteOutcome}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, WriteOutcome}
 
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import scala.concurrent.Await

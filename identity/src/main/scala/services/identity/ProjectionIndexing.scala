@@ -1,9 +1,10 @@
 package services.identity
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 
 import models.ListingKey
-import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
 /** How a projection's [[ProjectionIndex]] is built afresh from the whole listing set, the resolution and the stored films

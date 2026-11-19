@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{ShowtimePool, StoredMovieRecord}
+
 import models.{Showtime, SourceData}
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoCollection

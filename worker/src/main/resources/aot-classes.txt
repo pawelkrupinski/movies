@@ -5800,6 +5800,8 @@ models.Bialystok$
 models.BielskoBiala$
 models.Bydgoszcz$
 models.Bytom$
+models.CacheKey
+models.CacheKey$
 models.CharlieMonroe$
 models.Cinema
 models.Cinema$
@@ -5876,6 +5878,8 @@ models.Elblag$
 models.EmbeddedYear$
 models.EnrichmentAttempt
 models.EnrichmentAttempt$
+models.FilmId
+models.FilmId$
 models.Filmweb$
 models.GdynskieCentrumFilmowe$
 models.GeoPoint
@@ -6439,6 +6443,10 @@ models.SpanishRoster$$anon$2
 models.SpanishRoster$$anon$3
 models.SpanishRosterData$
 models.StacjaFalenica$
+models.StoredMovieRecord
+models.StoredMovieRecord$
+models.StringPool
+models.StringPool$
 models.SuccessfulScrape
 models.SuccessfulScrape$
 models.Szczecin$
@@ -10333,8 +10341,6 @@ services.metrics.WorkerSourceFilmsMetrics$FilmTally
 services.metrics.WorkerSourceFilmsMetrics$Scope$
 services.movies.BookingUrlScreening$
 services.movies.BookingUrlScreening$$anon$1
-services.movies.CacheKey
-services.movies.CacheKey$
 services.movies.CacheSyncMetrics
 services.movies.CaffeineMovieCache
 services.movies.CaffeineMovieCache$$anon$1
@@ -10379,8 +10385,6 @@ services.movies.FieldUpdate$SetTo
 services.movies.FieldUpdate$SetTo$
 services.movies.FilmEvidence
 services.movies.FilmEvidence$
-services.movies.FilmId
-services.movies.FilmId$
 services.movies.FilmWriteFence
 services.movies.FilmWriteFence$
 services.movies.FilmWriteFence$Marks
@@ -10525,8 +10529,6 @@ services.movies.SlotsRepository
 services.movies.SlotsRepository$
 services.movies.StoredMovieDto
 services.movies.StoredMovieDto$
-services.movies.StoredMovieRecord
-services.movies.StoredMovieRecord$
 services.movies.StoredScreeningsDto
 services.movies.StoredScreeningsDto$
 services.movies.StoredSlotDto
@@ -10535,8 +10537,6 @@ services.movies.StoredTmdbAttempt
 services.movies.StoredTmdbAttempt$
 services.movies.StrandedSideRows
 services.movies.StrandedSideRows$
-services.movies.StringPool
-services.movies.StringPool$
 services.movies.UnscreenedCleanup
 services.movies.UnscreenedCleanup$$anon$1
 services.movies.UnscreenedCleanup$$anon$2

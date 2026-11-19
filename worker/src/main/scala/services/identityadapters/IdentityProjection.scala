@@ -1,5 +1,7 @@
 package services.identityadapters
 
+import models.{CacheKey, StoredMovieRecord}
+
 import services.identity.*
 import services.movies.LatestTitleYear
 
@@ -7,7 +9,7 @@ import java.util.Locale
 
 import models.{Cinema, MovieRecord, ListingKey}
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache, StoredMovieRecord}
+import services.movies.MovieCache
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}

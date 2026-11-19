@@ -1,5 +1,7 @@
 package services.movies
 
+import models.FilmId
+
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec

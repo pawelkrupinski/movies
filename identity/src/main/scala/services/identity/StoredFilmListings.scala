@@ -1,7 +1,9 @@
 package services.identity
 
+import models.StoredMovieRecord
+
 import models.ListingKey
-import services.movies.{LatestTitleYear, StoredMovieRecord}
+import services.movies.LatestTitleYear
 import services.titles.TitleNormalizer
 
 /** The stored films as the published listings' sets ([[ProjectionIndexing.index]]): each listing's previous film, and

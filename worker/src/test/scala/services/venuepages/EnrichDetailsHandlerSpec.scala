@@ -640,8 +640,8 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   it should "land the page on the row the task was asked for, not on another film of the same title" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val showing = titleNormalizer.slotKey(KinoApollo, "Lalka")
-    val bare    = services.movies.CacheKey.stored("Lalka", "lalka|")
-    val second  = services.movies.CacheKey.stored("Lalka", "lalka~1164|")
+    val bare    = models.CacheKey.stored("Lalka", "lalka|")
+    val second  = models.CacheKey.stored("Lalka", "lalka~1164|")
     cache.put(bare, MovieRecord(data = Map(titleNormalizer.slotKey(CinemaCityKinepolis, "Lalka") -> SourceData(title = Some("Lalka")))))
     cache.put(second, MovieRecord(data = Map(showing -> SourceData(title = Some("Lalka"), filmUrl = Some("http://ref"),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))

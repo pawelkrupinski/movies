@@ -1,9 +1,10 @@
 package services.identityadapters
 
+import models.{FilmId, StoredMovieRecord}
+
 
 import models.ListingKey
 import services.identity.*
-import services.movies.{FilmId, StoredMovieRecord}
 /** How a written identity projection's take changes are told ([[IdentityProjection]]): to the metrics (the changes, and
  *  those that undid the listing's last change, `reversals`), the change feed, the log (a line each, then a summary) and the
  *  take history. Logs under the projection's `logger`. */

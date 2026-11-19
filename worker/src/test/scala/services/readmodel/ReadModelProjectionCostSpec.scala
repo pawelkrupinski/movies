@@ -1,10 +1,12 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{InMemoryMovieRepository, MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
+import services.movies.{InMemoryMovieRepository, MovieChangeFeed, MovieRepositoryReader}
 import tools.costs.{CostScaling, Work}
 
 /**

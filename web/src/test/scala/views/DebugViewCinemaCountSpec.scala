@@ -1,11 +1,12 @@
 package views
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import models.{CinemaCityWroclavia, Multikino, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.StoredMovieRecord
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**

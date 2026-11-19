@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId}
+
 import tools.SpecTimeouts
 
 import models.{Multikino, MovieRecord, Source, SourceData, Tmdb}

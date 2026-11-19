@@ -1,9 +1,11 @@
 package services.identity
 
+import models.{FilmId, LeanRecords}
+
 import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey}
-import services.movies.{CinemaSlotBuilder, FilmId, LeanRecords, ScreeningTokens}
+import services.movies.{CinemaSlotBuilder, ScreeningTokens}
 import services.titles.TitleNormalizer
 import models.TmdbAttempt
 

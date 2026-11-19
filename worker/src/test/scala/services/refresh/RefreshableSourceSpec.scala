@@ -1,10 +1,12 @@
 package services.refresh
 
+import models.CacheKey
+
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.CacheRefresher
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, MovieCache}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, MovieCache}
 import services.titles.TitleNormalizer
 import services.resolution.ResolutionCache
 import services.tasks.{BulkRefreshResult, HandlerOutcome, InMemoryBulkTaskResultStore, RefreshableSource, RefreshableSources, Task}

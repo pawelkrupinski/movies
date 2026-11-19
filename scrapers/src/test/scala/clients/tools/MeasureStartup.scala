@@ -1,5 +1,7 @@
 package clients.tools
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 
 
@@ -7,7 +9,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import models.MovieRecord
 import org.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
+import services.movies.{MovieCodecs, StoredMovieDto}
 import _root_.tools.ToolMongoAddress
 
 import scala.concurrent.{Await, Promise}

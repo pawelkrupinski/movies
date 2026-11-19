@@ -6,7 +6,6 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.StoredMovieRecord
 import services.readmodel.{RatingGate, ReadModelProjection}
 
 /** The rating gate's confidence in a STORED film's TMDB identity, read off the row's own

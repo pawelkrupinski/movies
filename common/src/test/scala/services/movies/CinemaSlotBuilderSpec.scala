@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StringPool
+
 import models.{CinemaMovie, Country, KinoApollo, Movie, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

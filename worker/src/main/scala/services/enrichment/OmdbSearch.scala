@@ -1,7 +1,9 @@
 package services.enrichment
 
+import models.CacheKey
+
 import models.MovieRecord
-import services.movies.{CacheKey, LatestTitleYear}
+import services.movies.LatestTitleYear
 import services.titles.TitleNormalizer
 
 /** How the OMDb id backfill asks OMDb for a row's film: original (production, English) title first — OMDb is an

@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmRuntime, SlotFields, StringPool}
+
 import models.{CinemaMovie, SourceData}
 import tools.{PersonName, TextNormalization}
 

@@ -1,8 +1,9 @@
 package scripts
 
+import models.StoredMovieRecord
+
 import play.api.libs.json._
 import services.enrichment.FilmwebClient
-import services.movies.StoredMovieRecord
 import tools.{CommandLine, RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder

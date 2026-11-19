@@ -1,7 +1,8 @@
 package services.identity
 
+import models.StoredMovieRecord
+
 import models.{CinemaShowing, ListingKey, Source, SourceData}
-import services.movies.StoredMovieRecord
 
 /** The slots of a stored film as a projection's index reads them ([[StoredSlots.of]], [[LiveProjectionIndex]]):
  *  where each is, and which listing it is the slot of. */

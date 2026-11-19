@@ -1,12 +1,14 @@
 package integration
 
+import models.StoredMovieRecord
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{MovieRecord, Multikino, Showtime, Source, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.readmodel.MongoReadModelRepository
 import tools.IsolatedMongoDatabase
 

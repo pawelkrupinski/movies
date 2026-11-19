@@ -1,11 +1,13 @@
 package services.identity
 
+import models.{FilmId, StoredMovieRecord}
+
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, SingleCountryNormalizer, StoredMovieRecord}
+import services.movies.SingleCountryNormalizer
 import java.time.LocalDateTime
 import scala.util.Random
 

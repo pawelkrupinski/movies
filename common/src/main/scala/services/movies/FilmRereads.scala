@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 import play.api.Logging
 
 import java.util.concurrent.atomic.AtomicInteger

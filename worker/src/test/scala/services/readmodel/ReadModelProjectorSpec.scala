@@ -8,7 +8,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, StoredMovieRecord}
+import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 
 /**
  * The projector's minimal-write diff: the whole point of the read-model split
@@ -1323,7 +1323,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // that never happened.
   it should "meter only the rows it actually projected, not one that vanished before it was read" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
-      override def findByIdChecked(id: services.movies.FilmId): tools.ReadOutcome[StoredMovieRecord] = {
+      override def findByIdChecked(id: models.FilmId): tools.ReadOutcome[StoredMovieRecord] = {
         val found = super.findByIdChecked(id)
         if (found.answered.exists(_.title == "Bar")) tools.ReadOutcome.none("Bar") else found
       }

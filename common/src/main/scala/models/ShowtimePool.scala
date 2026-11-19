@@ -1,9 +1,8 @@
-package services.movies
+package models
 
 import java.time.LocalDateTime
 
 import com.github.benmanes.caffeine.cache.Interner
-import models.{CityScreening, Showtime}
 
 /** What a city's showtimes repeat, held once: one `LocalDateTime` per distinct instant, and one
  *  String per booking-URL prefix a row's showtimes share.

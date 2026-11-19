@@ -8,7 +8,7 @@ import java.time.Clock
  *  country names (the specs' historical behaviour), and the OMDb id backfill from its client, backoff store and clock. */
 object ImdbSourcesOf {
   def ratings(cache: MovieCache, imdb: ImdbClient,
-              cadenceRecorder: (services.movies.CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()): ImdbRatings =
+              cadenceRecorder: (models.CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()): ImdbRatings =
     new ImdbRatings(cache, imdb, new ImdbRowUpdates(models.Country.Poland.language), cadenceRecorder)
 
   def backfill(cache: MovieCache, omdb: OMDbClient, attempts: OmdbAttemptStore = OmdbAttemptStore.noop, clock: Clock): OmdbBackfill =

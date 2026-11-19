@@ -1,8 +1,9 @@
 package services.enrichment
 
+import models.CacheKey
+
 import models.MovieRecord
 import services.enrichment.SiteRatings.{Found, PageRead}
-import services.movies.CacheKey
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.titles.TitleNormalizer
 

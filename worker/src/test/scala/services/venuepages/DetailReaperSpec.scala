@@ -1,8 +1,10 @@
 package services.venuepages
 
+import models.CacheKey
+
 import services.tasks.{ClaimedEnqueueReaper, DueWindow, Enqueued, FailingEnqueueTaskQueue, HandlerOutcome, InMemoryTaskQueue, TaskProducer, TaskState}
 import models.{CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCacheReader}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCacheReader}
 import services.cinemas.common.DetailEnricher
 import services.cinemas.FakeDetailEnricher
 import services.events.InProcessEventBus

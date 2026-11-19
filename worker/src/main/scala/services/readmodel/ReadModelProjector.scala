@@ -1,10 +1,12 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 
 import models.ResolvedMovie
 import play.api.Logging
-import services.movies.{MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
+import services.movies.{MovieChangeFeed, MovieRepositoryReader}
 
 /**
  * Maintains the denormalised read model (`web_movies` + `web_screenings`) from
@@ -96,7 +98,7 @@ class ReadModelProjector(
     def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = ReadModelProjector.this.project(partition, trigger)
     def projectRow(row: StoredMovieRecord, trigger: ProjectTrigger): Int = ReadModelProjector.this.projectRow(row, trigger)
     def projectCards(partition: ReadModelProjection.Partition): Int = ReadModelProjector.this.projectCards(partition)
-    def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] =
+    def heal(id: models.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] =
       ReadModelProjector.this.heal(id, metadataHash, absentCards, absentVenues)
     def phantomsOf(rowId: String, metadataHash: Int): Set[String] = memo.phantomsOf(rowId, metadataHash)
     def noteRowCards(rowId: String, cards: Set[String]): Unit =
@@ -171,7 +173,7 @@ class ReadModelProjector(
   /** A row deleted or merged away: every card it produced goes with it, now — not at the
    *  next prune. The cards are what this process remembers producing for the row, plus
    *  anything in the read model under the row's id (a card a previous process wrote). */
-  def onMovieDelete(id: services.movies.FilmId): Unit = lock.synchronized {
+  def onMovieDelete(id: models.FilmId): Unit = lock.synchronized {
     sweep.noteApplied(id.value)
     val remembered = lastCardsByRow.getOrElse(id.value, Set.empty)
     val underId    = lastMovie.keysIterator.filter(card => card == id.value || card.startsWith(id.value + "~")).toSet
@@ -315,14 +317,14 @@ class ReadModelProjector(
     // A card held for its share card and published by the render landing is in flight like a
     // stream event: a sweep between the two found it absent (see [[SweepVerdict]]).
     sweep.noteApplied(row)
-    movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
+    movieRepository.findById(models.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
   }
 
   /** End the hold on card `filmId` now — its card can't be made (every poster failed for good) —
    *  and publish it with the fallback. */
   def releaseShareCardHold(filmId: String): Unit = lock.synchronized {
     shareCardGate.expireNow(filmId, clock.millis()).foreach { row =>
-      movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.HoldRelease))
+      movieRepository.findById(models.FilmId(row)).foreach(projectRow(_, ProjectTrigger.HoldRelease))
     }
   }
 
@@ -343,7 +345,7 @@ class ReadModelProjector(
     val now  = clock.millis()
     val rows = shareCardGate.expiredRows(now)
     rows.filter { row =>
-      movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
+      movieRepository.findByIdChecked(models.FilmId(row)) match {
         case tools.ReadOutcome.Answered(whole)     => projectRow(whole, ProjectTrigger.HoldRelease); false
         case tools.ReadOutcome.Absent(_)  => shareCardGate.dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
         case tools.ReadOutcome.Failed(_)  => true                                                       // unreadable: keep the hold
@@ -472,7 +474,7 @@ class ReadModelProjector(
    *
    *  `None` when nothing was projected -- the row is gone by the time it is read whole, or no
    *  longer ready; otherwise whether the absence was repaired. */
-  private def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] = {
+  private def heal(id: models.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] = {
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
     movieRepository.findById(id).flatMap { whole =>

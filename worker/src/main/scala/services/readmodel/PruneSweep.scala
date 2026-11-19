@@ -1,7 +1,8 @@
 package services.readmodel
 
+import models.{FilmId, StoredMovieRecord}
+
 import play.api.Logging
-import services.movies.{FilmId, StoredMovieRecord}
 
 /**
  * One whole-corpus pass of a [[ReadModelSweeper]] — the FULL reconcile (`reproject = true`) or the

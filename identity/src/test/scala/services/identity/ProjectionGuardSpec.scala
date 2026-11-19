@@ -1,9 +1,11 @@
 package services.identity
 
+import models.{FilmId, StoredMovieRecord}
+
 import models.{CinemaShowing, Helios, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, SingleCountryNormalizer, StoredMovieRecord}
+import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
 

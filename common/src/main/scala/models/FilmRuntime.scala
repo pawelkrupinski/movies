@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 /** The running times a screened film can have: a venue's runtime outside them is a slip, not the film's, and reads as
  *  unpublished — at the slot ([[CinemaSlotBuilder]]) and in the identity model alike. */

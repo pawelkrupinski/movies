@@ -79,7 +79,7 @@ class DebugController(cc: ControllerComponents,
     devOnly {
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
       val stack = debugCountries.stackFor(debugCountries.resolve(request))
-      stack.movieRepository.findById(services.movies.FilmId(id)) match {
+      stack.movieRepository.findById(models.FilmId(id)) match {
         case Some(row) =>
           // The per-source enrichment log, joined on the tmdbId-keyed rating key.
           // Two bounded `_id in [...]` lookups (4 keys each), not the readers'

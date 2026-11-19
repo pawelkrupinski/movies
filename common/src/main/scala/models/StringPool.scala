@@ -1,5 +1,4 @@
-package services.movies
-
+package models
 
 /** Interns short, heavily-repeated `SourceData` strings — synopses, cast/director names,
  *  countries, genres, and the poster / film-page / trailer URLs — so a film shown at N

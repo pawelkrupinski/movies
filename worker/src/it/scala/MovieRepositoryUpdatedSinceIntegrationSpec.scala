@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 import tools.SpecTimeouts
 
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}

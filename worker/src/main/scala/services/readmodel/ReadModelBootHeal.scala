@@ -63,7 +63,7 @@ private[readmodel] final class ReadModelBootHeal(projection: ReadModelSweeper.Pr
     def refiled(filmIds: Seq[String], venue: String): Boolean =
       filmIds.filter(card => venue.startsWith(card + "|")).maxByOption(_.length)
         .flatMap(card => ScreeningRef(venue, card).venueKey).exists(filed)
-    def check(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String], metadataHash: => Int): Unit = {
+    def check(id: models.FilmId, filmIds: Seq[String], screeningIds: Seq[String], metadataHash: => Int): Unit = {
       projection.recordRowCards(id.value, filmIds.toSet)
       val absentCards  = filmIds.filterNot(cards)
       val absentVenues = venues.fold(Seq.empty[String])(has => screeningIds.filterNot(has))

@@ -1,12 +1,14 @@
 package services.identity
 
+import models.{FilmId, StringPool}
+
 import services.identityadapters.{FiledAnswerFeed, IndexedVenuePageFacts, VenuePageIndex}
 
 import models.{CinemaMovie, CinemaShowing, Country, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.movies.{MongoMovieChangeFeed, CinemaSlotBuilder, FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StringPool}
+import services.movies.{MongoMovieChangeFeed, CinemaSlotBuilder, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.venuepages.{MongoVenuePageStore, VenuePage, VenuePageKey}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}

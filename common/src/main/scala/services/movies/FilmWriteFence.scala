@@ -1,5 +1,7 @@
 package services.movies
 
+import models.FilmId
+
 /**
  * Keeps a change-stream re-read from rolling back a write this process made after it.
  *

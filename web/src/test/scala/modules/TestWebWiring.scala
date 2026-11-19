@@ -1,11 +1,13 @@
 package modules
 
+import models.StoredMovieRecord
+
 import modules.webwiring.Wiring
 
 import models.{Country, MovieRecord}
 import services.MongoConnection
 import settings.MongoAddress
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.InMemoryMovieRepository
 import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection, ReadModelReader}
 import play.api.test.Helpers.stubControllerComponents
 

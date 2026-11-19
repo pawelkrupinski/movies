@@ -79,7 +79,7 @@ class ResolutionKeysSpec extends AnyFlatSpec with Matchers {
   it should "match a rating link keyed by the title stripped of its programme decoration" in {
     val title  = "Kino bez barier: Arco (AD)"
     val row    = models.MovieRecord(tmdbId = Some(1))
-    val titles = services.enrichment.RatingSiteTitles.derive(services.movies.CacheKey(title, Some(2025), titleNormalizer).cleanTitle, row, None, titleNormalizer)
+    val titles = services.enrichment.RatingSiteTitles.derive(models.CacheKey(title, Some(2025), titleNormalizer).cleanTitle, row, None, titleNormalizer)
     titles.linkTitle shouldBe "Arco"
     ResolutionKeys.belongsTo(ResolutionKeys.rt(titles.linkTitle, titles.fallback, titles.year, titleNormalizer), title, titleNormalizer) shouldBe true
     ResolutionKeys.belongsTo(ResolutionKeys.mc(titles.linkTitle, titles.fallback, titles.year, titleNormalizer), title, titleNormalizer) shouldBe true

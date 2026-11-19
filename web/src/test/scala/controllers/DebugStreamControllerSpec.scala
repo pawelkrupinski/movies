@@ -1,5 +1,7 @@
 package controllers
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import tools.SpecTimeouts
@@ -18,7 +20,7 @@ import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers
 import play.api.test.Helpers._
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.InMemoryMovieRepository
 
 import scala.concurrent.Await
 

@@ -24,7 +24,7 @@ object ImdbSlot {
       director       = d.director,
       runtimeMinutes = d.runtimeMinutes,
       releaseYear    = d.releaseYear,
-      countries      = services.movies.SlotFields.countries(d.countries, language),
+      countries      = models.SlotFields.countries(d.countries, language),
       posterUrl      = d.posterUrl
     )
     val hasContent = slot.title.isDefined || slot.originalTitle.isDefined ||

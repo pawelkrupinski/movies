@@ -1,12 +1,13 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.MovieRecord
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
 import tools.SpecClock.given
-import services.movies.StoredMovieRecord
 
 /**
  * Test helper: project a set of `(title, year, MovieRecord)` rows through the

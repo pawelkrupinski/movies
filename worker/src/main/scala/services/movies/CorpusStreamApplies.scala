@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
+
 import models.MovieRecord
 
 /**

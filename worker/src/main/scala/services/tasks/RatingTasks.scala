@@ -1,8 +1,9 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.cadence.RatingCadenceStore
 import services.freshness.FreshnessKind
-import services.movies.CacheKey
 
 /** Dedup/freshness key + payload for a rating-refresh task. The key encodes the
  *  rating source and the film, so "refresh the IMDb rating of film F" can't be
@@ -60,7 +61,7 @@ object RatingTasks {
  *  feed an operator bulk refresh's displayed-value changes into the SAME
  *  tmdbId-keyed adaptive cadence the per-row [[RatingHandler]] feeds. Lives here
  *  (not in the `modules` composition root) because the root can't name the
- *  `private[services]` [[services.movies.CacheKey]] — it wires the recorder by
+ *  `private[services]` [[models.CacheKey]] — it wires the recorder by
  *  value instead. */
 object BulkCadenceRecorder {
   def apply(cadence: RatingCadenceStore, kind: FreshnessKind, clock: java.time.Clock): (CacheKey, Option[Int], Option[String]) => Unit =

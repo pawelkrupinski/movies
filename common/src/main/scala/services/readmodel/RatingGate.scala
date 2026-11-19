@@ -1,7 +1,8 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import models.{RatingSearchUrls, ResolvedMovie, ResolvedRatings}
-import services.movies.StoredMovieRecord
 
 /**
  * CONFIDENCE-GATED RATINGS (docs/design/identity-resolver.md, "Confidence-gated ratings"): a

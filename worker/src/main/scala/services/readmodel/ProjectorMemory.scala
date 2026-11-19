@@ -56,7 +56,7 @@ private[readmodel] object Lesson {
 
 /** One ready row of the boot hydrate's read, as the boot reads use it: what the missing-card check
  *  asks of it, and what [[ReadModelProjector.learn]] would take from it. */
-private[readmodel] final case class BootRow(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String],
+private[readmodel] final case class BootRow(id: models.FilmId, filmIds: Seq[String], screeningIds: Seq[String],
                                             metadataHash: Int, lesson: Lesson)
 
 /** What the projector remembers about a written card: one hash per part, so the next
@@ -128,7 +128,7 @@ private[readmodel] final class SweepTally {
   /** The source-row keys behind those cards — what `lastMetadata` is keyed by. */
   val liveRowKeys = scala.collection.mutable.Set.empty[String]
   /** The ids of the ready rows this scan saw — what the content check walks its slice of. */
-  val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[services.movies.FilmId]
+  val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[models.FilmId]
   /** The venue rows a live card holds that its row no longer lists. */
   val unlisted    = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
   /** The unlisted venue rows the prune deleted: misses or removals the stream had in flight, which
@@ -151,7 +151,7 @@ private[readmodel] final class SweepTally {
 
 /** A ready row the boot check found short of a card or a venue, and whether every venue it lacks is
  *  one the read model serves under another city (`refile`). */
-private[readmodel] final case class MissingAtBoot(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String],
+private[readmodel] final case class MissingAtBoot(id: models.FilmId, metadataHash: Int, absentCards: Seq[String],
                                                   absentVenues: Seq[String], refile: Boolean)
 
 /** The rows the change stream changed while the boot reads ran, held to be projected once they are

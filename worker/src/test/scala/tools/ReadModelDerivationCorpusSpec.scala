@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.InMemoryMovieRepository
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{Derivation, DerivationScope, DerivationVersion}
 

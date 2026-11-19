@@ -1,9 +1,11 @@
 package services.identity
 
+import models.FilmId
+
 import models.{Cinema, CinemaShowing, Helios, KinoApollo, KinoMuza, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb, ShowtimesDigest}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, SingleCountryNormalizer}
+import services.movies.SingleCountryNormalizer
 import java.time.LocalDateTime
 
 class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {

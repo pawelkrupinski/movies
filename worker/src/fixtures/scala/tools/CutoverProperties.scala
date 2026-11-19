@@ -1,9 +1,10 @@
 package tools
 
+import models.StoredMovieRecord
+
 import models.{Cinema, CinemaMovie, CinemaShowing, ListingKey}
 import services.identity.Listing
 import services.identityadapters.ProjectionTick
-import services.movies.StoredMovieRecord
 /**
  * The identity projection's guaranteed properties (docs/design/identity-resolver.md §7), checked
  * over what a country's worker actually STORED — the specs that boot a corpus share them:

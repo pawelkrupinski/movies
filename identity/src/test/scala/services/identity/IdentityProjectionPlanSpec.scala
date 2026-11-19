@@ -1,11 +1,13 @@
 package services.identity
 
+import models.{FilmId, StoredMovieRecord, StringPool}
+
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, Filmweb, Helios, Imdb, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CinemaSlotBuilder, FilmId, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
+import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer}
 import java.time.{Instant, LocalDateTime}
 
 /**

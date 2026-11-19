@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 /**
  * The identity of a film row: the `_id` of its `movies` document, and the `filmId`

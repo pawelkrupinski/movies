@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId}
+
 import models.{CinemaShowing, Helios, KinoMuranow, KinoMuza, MovieRecord, Multikino, Showtime, Source, SourceData, ShowtimesDigest}
 import java.time.LocalDateTime
 

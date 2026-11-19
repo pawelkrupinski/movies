@@ -1,7 +1,9 @@
 package services.identity
 
+import models.{LeanRecords, StoredMovieRecord}
+
 import models.{Source, SourceData, ListingKey}
-import services.movies.{LatestTitleYear, LeanRecords, StoredMovieRecord}
+import services.movies.LatestTitleYear
 import services.titles.TitleNormalizer
 
 import scala.collection.mutable
@@ -366,7 +368,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
    *  `joined` when another listing of its cluster was on one). A listing re-pointed to another film of the same TMDB
    *  film, or onto none (it left), changed no take. Only the listings the writes re-pointed are read: none on a quiet
    *  tick. */
-  def written(films: Seq[ProjectedFilm], retired: Seq[services.movies.FilmId]): Seq[TakeChange] = {
+  def written(films: Seq[ProjectedFilm], retired: Seq[models.FilmId]): Seq[TakeChange] = {
     val reslot = mutable.HashSet.empty[ListingKey]
     retired.foreach(id => unstore(id.value, reslot))
     films.foreach(f => restore(StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)), reslot, f.touched))

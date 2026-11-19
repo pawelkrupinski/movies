@@ -122,8 +122,8 @@ object IdentityMeasures {
     /** A running time the venue put in its title as a bracketed annotation ("(97’)", "[97 min]"). */
     lazy val titleRuntime: Option[Int] = IdentityMeasures.bracketedRuntime(titles)
     /** The venue's own runtime: its field, else the one its title brackets — a running time no film has
-     *  ([[services.movies.FilmRuntime.plausible]]) is none. */
-    def statedRuntime: Option[Int] = runtime.filter(services.movies.FilmRuntime.plausible).orElse(titleRuntime)
+     *  ([[models.FilmRuntime.plausible]]) is none. */
+    def statedRuntime: Option[Int] = runtime.filter(models.FilmRuntime.plausible).orElse(titleRuntime)
     /** Each of the listing's own titles' shapes alone ([[IdentityMeasures.shapes]] of the one title, no learned
      *  decorations), split once per listing: the scorer asks them of its billed title for every candidate it weighs. */
     private lazy val ownShapes: Map[String, Seq[String]] = titles.distinct.map(t => t -> IdentityMeasures.shapes(Seq(t))).toMap

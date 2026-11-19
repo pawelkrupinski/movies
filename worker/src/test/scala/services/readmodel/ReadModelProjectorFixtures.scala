@@ -1,7 +1,7 @@
 package services.readmodel
 
 import models._
-import services.movies.{FilmId, InMemoryMovieRepository}
+import services.movies.InMemoryMovieRepository
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDateTime

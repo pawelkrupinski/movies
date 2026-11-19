@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{MovieRecord, SourceData, ShowtimesDigest}
 /**
  * [[ShowtimesDigest.leanEqual]] stopping at the slot it is handed twice. The identity projection writes the lean slots it
  * keeps and the cache keeps them as handed (`MovieCache.forCacheOver`), so a film it writes again at the same venues

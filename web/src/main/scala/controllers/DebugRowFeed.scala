@@ -1,7 +1,8 @@
 package controllers
 
+import models.StoredMovieRecord
+
 import play.api.libs.json.Json
-import services.movies.StoredMovieRecord
 
 /** One country's `movies` changes as the /debug live view's SSE frames: each upserted row rendered
  *  server-side through the same `_debugRow` partial the page uses, so a live-inserted row is

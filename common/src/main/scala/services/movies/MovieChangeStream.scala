@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.Observer

@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmId, StoredMovieRecord}
+
 import scala.annotation.unused
 
 /**

@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, StoredMovieRecord}
+
 import com.mongodb.client.model.ReplaceOptions
 import models.{MovieRecord, Source, SourceData}
 import org.mongodb.scala.model.Filters

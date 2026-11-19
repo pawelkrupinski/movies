@@ -1,11 +1,13 @@
 package services.enrichment
 
+import models.CacheKey
+
 import clients.tools.FixtureFile
 import models.{Imdb, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.{GetOnlyHttpFetch, HttpFetch, HttpStatusException, RoutingHttpFetch}
 
 import java.nio.charset.StandardCharsets

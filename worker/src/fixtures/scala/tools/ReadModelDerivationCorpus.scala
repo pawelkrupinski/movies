@@ -1,5 +1,7 @@
 package tools
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 
 
@@ -7,7 +9,7 @@ import models.ResolvedMovie
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.bson.{BsonArray, BsonDocument, BsonDocumentReader, BsonDocumentWriter, BsonValue}
-import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
+import services.movies.{MovieCodecs, StoredMovieDto}
 import services.titles.TitleNormalizer
 import services.readmodel.{Derivation, DerivationScope, DerivationVersion, ReadModelProjection}
 

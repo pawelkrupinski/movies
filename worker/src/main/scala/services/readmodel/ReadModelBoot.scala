@@ -92,8 +92,8 @@ final class ReadModelBoot(
   }
 
   // The stream's changes, each applied unless the boot hold takes it.
-  private def streamedUpsert(stored: services.movies.StoredMovieRecord): Unit = if (!heldForBoot(stored.id.value)) projector.onMovieUpsert(stored)
-  private def streamedDelete(id: services.movies.FilmId): Unit = if (!heldForBoot(id.value)) projector.onMovieDelete(id)
+  private def streamedUpsert(stored: models.StoredMovieRecord): Unit = if (!heldForBoot(stored.id.value)) projector.onMovieUpsert(stored)
+  private def streamedDelete(id: models.FilmId): Unit = if (!heldForBoot(id.value)) projector.onMovieDelete(id)
   private def streamedVenueSlots(venues: services.movies.VenueSlots): services.movies.VenueVerdict =
     if (heldForBoot(venues.filmId.value)) services.movies.VenueVerdict.Applied else projector.onVenueSlots(venues)
 
@@ -112,7 +112,7 @@ final class ReadModelBoot(
     var rows = bootHold.take()
     while (rows.nonEmpty) {
       rows.foreach { rowId =>
-        val id = services.movies.FilmId(rowId)
+        val id = models.FilmId(rowId)
         continuing(s"read model: applying the change to $rowId held through the boot reads failed") {
           projection.movieRepository.findByIdChecked(id) match {
             case tools.ReadOutcome.Answered(row) => projector.onMovieUpsert(row)

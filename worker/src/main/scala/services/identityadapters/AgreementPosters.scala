@@ -128,7 +128,7 @@ final case class HashedPoster(path: String, hash: PosterHash)
  * A poster the origin refuses, or no decoder can read, is not read (`None`: filed unread, asked again after
  * [[QuestionPolicies.PosterUnreadAge]]); a failure that may pass — a timeout, a 5xx, the network — THROWS, for the
  * asker to remember and ask again on the failure backoff ([[QuestionMemory]]). A venue's link is fetched escaped as a card
- * serves it ([[services.movies.SlotFields.url]]: a raw space no fetch takes is no network failure), and a film TMDB
+ * serves it ([[models.SlotFields.url]]: a raw space no fetch takes is no network failure), and a film TMDB
  * answers durably gone ([[tools.HttpStatusException.isDurable]]) has no posters.
  */
 final class PosterHashing(download: PosterDownload, shrinker: PosterShrinker, images: Int => Seq[clients.TmdbClient.PosterImage], language: String) {
@@ -139,7 +139,7 @@ final class PosterHashing(download: PosterDownload, shrinker: PosterShrinker, im
     case PosterQuestion.Film(tmdbId) => film(tmdbId, filed)
   }
 
-  def venue(url: String): Option[PosterHash] = services.movies.SlotFields.url(url).flatMap(hash)
+  def venue(url: String): Option[PosterHash] = models.SlotFields.url(url).flatMap(hash)
 
   /** The film's posters TMDB keeps now, each path hashed once: a path `filed` already is its hash (a TMDB path names one
    *  image), so asking a film again downloads only the posters TMDB added since. */

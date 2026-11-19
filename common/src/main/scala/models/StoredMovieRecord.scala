@@ -1,6 +1,4 @@
-package services.movies
-
-import models.MovieRecord
+package models
 
 /** One persisted film row: its display `title` and `year` (together, its lookup
  *  [[CacheKey]]), the record, and the [[FilmId]] it is stored under. Used as the return

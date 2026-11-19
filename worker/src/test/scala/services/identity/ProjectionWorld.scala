@@ -1,10 +1,11 @@
 package services.identity
 
+import models.{CacheKey, StringPool}
+
 import services.identityadapters.{IdentityProjection, IdentityProjectionMetrics}
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord, ScrapeAttempt}
-import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
-  ScreeningTokens, SingleCountryNormalizer, StringPool}
+import services.movies.{CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger, ScreeningTokens, SingleCountryNormalizer}
 import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, LocalDateTime}

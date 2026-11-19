@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{Country, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

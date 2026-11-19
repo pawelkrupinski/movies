@@ -1,5 +1,7 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.metrics.SampledCensus
 import tools.ThreadPools
 
@@ -9,7 +11,7 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, MovieRecord}
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{CacheKey, MovieCacheReader}
+import services.movies.MovieCacheReader
 import services.tasks.RatingSources.RatingSource
 
 import java.time.{Clock, Instant}

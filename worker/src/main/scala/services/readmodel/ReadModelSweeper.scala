@@ -1,9 +1,11 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import tools.{ScheduledTick, TickRecorder, TickRun}
 
 import play.api.Logging
-import services.movies.{ChangeStreamLiveness, MovieChangeFeed, MovieRepositoryReader, StoredMovieRecord}
+import services.movies.{ChangeStreamLiveness, MovieChangeFeed, MovieRepositoryReader}
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -149,7 +151,7 @@ object ReadModelSweeper {
     def projectCards(partition: ReadModelProjection.Partition): Int
     /** Re-project a row some of whose cards or venues are missing: whether it repaired one, `None`
      *  when nothing was projected. */
-    def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean]
+    def heal(id: models.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean]
     /** The venues a heal found to be phantoms of this row, while its metadata is what it was. */
     def phantomsOf(rowId: String, metadataHash: Int): Set[String]
     /** The card ids a row projects to, remembered when the projector has none for it yet. */
@@ -193,7 +195,7 @@ object ReadModelSweeper {
   private[readmodel] val ContentSlices = 48
 
   /** The content slice a row falls in: by its id, so the slices partition the corpus. */
-  private[readmodel] def contentSliceOf(id: services.movies.FilmId): Int =
+  private[readmodel] def contentSliceOf(id: models.FilmId): Int =
     math.floorMod(id.value.##.toLong, ContentSlices.toLong).toInt
 
   /** The rows a complete prune sweep saw, walked one content slice at a time: what a derivation pass

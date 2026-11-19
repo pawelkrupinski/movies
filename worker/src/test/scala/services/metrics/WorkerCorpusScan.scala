@@ -1,11 +1,12 @@
 package services.metrics
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import io.prometheus.metrics.core.metrics.Gauge
 import models.{City, MovieRecord}
 import play.api.Logging
-import services.movies.StoredMovieRecord
 import tools.Stopwatch
 
 import java.time.{Clock, ZoneOffset}

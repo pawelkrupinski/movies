@@ -8,7 +8,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.InMemoryMovieRepository
 
 /**
  * The sweeper's passes over the whole corpus: the id-only prune (orphan cards, unlisted venues),

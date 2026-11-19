@@ -6,7 +6,6 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.StoredMovieRecord
 
 /** The withheld card: no ratings and no direct rating links, rather than possibly another film's.
  *  Which cards the gate withholds is [[StoredIdentityConfidenceSpec]]. */

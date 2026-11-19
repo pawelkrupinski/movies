@@ -1,5 +1,7 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.tasktypes.TaskType
 
 import tools.SpecClock.given
@@ -10,7 +12,6 @@ import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.CacheKey
 
 import java.time.Instant
 import scala.concurrent.duration._

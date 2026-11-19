@@ -1,7 +1,9 @@
 package services.enrichment
 
+import models.CacheKey
+
 import clients.TmdbClient
-import services.movies.{CacheKey, LatestTitleYear, MovieCache}
+import services.movies.{LatestTitleYear, MovieCache}
 import services.resolution.ResolutionCache
 
 /** Each URL-keyed rating site's port run by the shared flow, as the composition root (`RatingsWiring`) builds them,

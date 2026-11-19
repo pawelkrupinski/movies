@@ -1,7 +1,9 @@
 package services.identity
 
+import models.SlotFields
+
 import models.{Cinema, CinemaMovie, ListingKey}
-import services.movies.{ScrapeListing, SlotFields}
+import services.movies.ScrapeListing
 import services.titles.{TitleNormalizer, TitleSeason}
 
 import scala.annotation.unused
@@ -531,7 +533,7 @@ object Evidence {
     year          = listing.year.orElse(detail.flatMap(_.year)),
     directors     = (if (listing.directors.nonEmpty) listing.directors
                      else detail.map(_.directors.flatMap(Listing.credited).filter(_.nonEmpty).distinct).getOrElse(Nil)).sorted,
-    runtime       = listing.runtime.filter(services.movies.FilmRuntime.plausible).orElse(detail.flatMap(_.runtime).filter(services.movies.FilmRuntime.plausible)),
+    runtime       = listing.runtime.filter(models.FilmRuntime.plausible).orElse(detail.flatMap(_.runtime).filter(models.FilmRuntime.plausible)),
     originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)),
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
     decorations   = decorations,

@@ -1,5 +1,7 @@
 package services.tasks
 
+import models.{CacheKey, StoredMovieRecord}
+
 import services.metrics.PrometheusExposition
 import tools.SpecClock.given
 
@@ -10,7 +12,7 @@ import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
-import services.movies.{CacheKey, MovieCacheReader, StoredMovieRecord}
+import services.movies.MovieCacheReader
 
 import java.time.Instant
 

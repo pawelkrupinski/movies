@@ -1,7 +1,9 @@
 package services.readmodel
 
+import models.StoredMovieRecord
+
 import play.api.Logging
-import services.movies.{BootCorpusReader, BootReadEnd, LatestTitleYear, StoredMovieRecord}
+import services.movies.{BootCorpusReader, BootReadEnd, LatestTitleYear}
 import services.titles.TitleNormalizer
 
 import java.util.concurrent.atomic.AtomicReference

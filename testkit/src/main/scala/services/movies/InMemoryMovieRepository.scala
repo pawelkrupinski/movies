@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, StoredMovieRecord}
+
 import models.{MovieRecord, Source, SourceData}
 
 import scala.collection.mutable

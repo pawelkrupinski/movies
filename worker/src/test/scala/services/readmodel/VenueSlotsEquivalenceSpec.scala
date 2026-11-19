@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CaffeineMovieCache, FilmId, FilmWriteFence, InMemoryMovieRepository, InMemoryScreeningsRepository, StoredMovieRecord, VenueSlots}
+import services.movies.{CaffeineMovieCache, FilmWriteFence, InMemoryMovieRepository, InMemoryScreeningsRepository, VenueSlots}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDateTime

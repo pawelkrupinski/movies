@@ -442,7 +442,7 @@ object Agreement {
    *  record of this year or later, whose running time TMDB often holds before the cut is final (UK "Street Fighter",
    *  "Dune: Part Three - See It First Preview"), nor a silent film's, which runs at the speed it is projected (PL "Dni Kina
    *  Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW"). Only a feature's running time a film can have counts
-   *  ([[services.movies.FilmRuntime.plausible]], [[SuspectTakes.FeatureMinutes]]), and only the whole film's: a part the
+   *  ([[models.FilmRuntime.plausible]], [[SuspectTakes.FeatureMinutes]]), and only the whole film's: a part the
    *  title bills and the record's titles do not ("Shoah – Teil 1", 273 of 566 minutes), or a slot of half the film or less
    *  (a half before an intermission), screens a part of it. The agreement's guard, and the fill's `listing.runsShort`
    *  ([[services.identity.UnifiedEvidence]]); no lean's dissent reads it. */
@@ -451,7 +451,7 @@ object Agreement {
     else {
       val runs = recordRuntimes(record)
       listings.iterator.filter(listing => SourceReliability.factsOf(listing).trust(Fact.Runtime) == Trust.Decide && !billsAPart(listing, record))
-        .flatMap(_.runtime.filter(stated => services.movies.FilmRuntime.plausible(stated) && stated >= services.identity.SuspectTakes.FeatureMinutes))
+        .flatMap(_.runtime.filter(stated => models.FilmRuntime.plausible(stated) && stated >= services.identity.SuspectTakes.FeatureMinutes))
         .find(stated => runs.nonEmpty && runs.forall(stated < _ - RuntimeShort) && stated * 2 > runs.max)
         .map(_ -> runs.max)
     }

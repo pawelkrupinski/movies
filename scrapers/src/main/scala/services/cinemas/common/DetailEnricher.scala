@@ -38,10 +38,10 @@ case class FilmDetail(
    *  `enrichmentLanguage` is the language the country's corpus names countries in (`CountryNames.canonical`). */
   def landed(enrichmentLanguage: java.util.Locale): FilmDetail =
     copy(
-      countries  = services.movies.SlotFields.countries(countries, enrichmentLanguage),
-      genres     = services.movies.SlotFields.genres(genres, enrichmentLanguage),
-      posterUrl  = services.movies.SlotFields.url(posterUrl, None),
-      trailerUrl = services.movies.SlotFields.url(trailerUrl, None))
+      countries  = models.SlotFields.countries(countries, enrichmentLanguage),
+      genres     = models.SlotFields.genres(genres, enrichmentLanguage),
+      posterUrl  = models.SlotFields.url(posterUrl, None),
+      trailerUrl = models.SlotFields.url(trailerUrl, None))
 
   /** The page-owned fields (those [[changedSince]] compares) as a slot of nothing else: what a venue slot built from the
    *  page's listing carries where the listing states none (`services.movies.VenuePageFacts`). */

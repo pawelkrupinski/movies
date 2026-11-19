@@ -3,7 +3,6 @@ package services.readmodel
 import services.movies.LatestTitleYear
 
 import models._
-import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
 /**
@@ -27,7 +26,7 @@ import services.titles.TitleNormalizer
  */
 object ReadModelProjection {
 
-  /** The film identity: the source row's permanent [[services.movies.FilmId]], as is.
+  /** The film identity: the source row's permanent [[models.FilmId]], as is.
    *
    *  It used to be re-derived here as `sanitize(title)|resolvedYear`, which made the
    *  card follow the row's spelling: every settle that re-spelled a title — the slot

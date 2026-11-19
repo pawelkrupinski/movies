@@ -1,5 +1,7 @@
 package services.movies
 
+import models.FilmId
+
 import tools.SpecClock.given
 
 import models.{CinemaShowing, Helios, Imdb, MovieRecord, Multikino, Showtime, Source, SourceData, TitleSearch, Tmdb, UkRoster, ShowtimesDigest}

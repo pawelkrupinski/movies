@@ -4,7 +4,6 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.StoredMovieRecord
 
 import java.time.LocalDateTime
 
@@ -80,7 +79,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     */
   it should "name which of the 48 daily slices each drifted row falls in" in {
     val bySlice = Seq("troy|2004", "2046|2004", "glastonbury|2006")
-      .map(id => id -> ReadModelSweeper.contentSliceOf(services.movies.FilmId(id)))
+      .map(id => id -> ReadModelSweeper.contentSliceOf(models.FilmId(id)))
     info(s"slice assignment: $bySlice")
     bySlice.map(_._2).distinct.size should be <= 3 // just documents the assignment; no fixed expectation
   }

@@ -1,5 +1,7 @@
 package integration
 
+import models.StoredMovieRecord
+
 import tools.SpecPool
 import tools.SpecClock.given
 
@@ -7,7 +9,6 @@ import tools.SpecTimeouts
 
 import models.Country
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
-import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 import services.readmodel.FilmSlugs
 import tools._

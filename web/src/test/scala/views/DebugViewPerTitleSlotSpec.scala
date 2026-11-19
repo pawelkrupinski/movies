@@ -1,5 +1,7 @@
 package views
 
+import models.StoredMovieRecord
+
 import tools.SpecClock.given
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -7,7 +9,6 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
 import models.{CinemaShowing, Filmweb, Multikino, MovieRecord, Showtime, Source, SourceData}
-import services.movies.StoredMovieRecord
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**

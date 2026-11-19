@@ -620,7 +620,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     import models._
     val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
     val relay = "Samson i dalila | metropolitan opera: live in hd 2026/27"
-    val stored = services.movies.StoredMovieRecord.synthesised(relay, None, MovieRecord(
+    val stored = models.StoredMovieRecord.synthesised(relay, None, MovieRecord(
       imdbRating = Some(6.8), imdbId = Some("tt0041838"), tmdbId = Some(29993), data = Map[Source, SourceData](
         Kino1410 -> SourceData(title = Some(relay), rawTitle = Some(relay)),
         Tmdb     -> SourceData(title = Some("Samson i Dalia"), originalTitle = Some("Samson and Delilah"), releaseYear = Some(1949),

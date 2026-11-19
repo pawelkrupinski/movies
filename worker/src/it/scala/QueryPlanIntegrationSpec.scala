@@ -1,5 +1,7 @@
 package services
 
+import models.FilmId
+
 import services.identityadapters.{MongoTmdbDocuments, TmdbKind, TmdbStore}
 import tools.{QueryPlans, SpecTimeouts, TtlIndexMismatches}
 
@@ -8,7 +10,7 @@ import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObser
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.readmodel.MongoReadModelRepository
 import services.sharecards.{MongoFacebookRescrapeStore, RescrapeEntry, RescrapeKind, RescrapeTarget}
 import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue}
@@ -108,7 +110,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
         Tmdb -> SourceData(title = Some(title))))
       (1 to 10).foreach(i => repository.upsert(s"Film $i", Some(2000 + i), record(s"Film $i", 100 + i, 18)))
       repository.updateIfPresent("Film 1", Some(2001), record("Film 1", 101, 18), record("Film 1", 101, 18, 21)) shouldBe true
-      val stored = repository.findByKeyChecked(services.movies.CacheKey("Film 2", Some(2002), titleNormalizer)).answered.get
+      val stored = repository.findByKeyChecked(models.CacheKey("Film 2", Some(2002), titleNormalizer)).answered.get
       repository.findByIdChecked(stored.id).answered shouldBe defined
       repository.findByIdChecked(FilmId("no-such-film")).answered shouldBe empty
       repository.delete("Film 3", Some(2003))

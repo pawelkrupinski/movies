@@ -1,11 +1,13 @@
 package services.venuepages
 
+import models.CacheKey
+
 import services.tasks.{HandlerOutcome, Task, TaskHandler}
 import services.tasktypes.TaskType
 
 import models.SourceData
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache, ScreeningTokens}
+import services.movies.{MovieCache, ScreeningTokens}
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.Clock
@@ -32,7 +34,7 @@ object EnrichDetailsTasks {
       RefKey   -> ref,
       TitleKey -> key.cleanTitle,
       YearKey  -> key.year.map(_.toString).getOrElse(""),
-      RowKey   -> services.movies.StoredMovieRecord.keyFor(key)
+      RowKey   -> models.StoredMovieRecord.keyFor(key)
     )
 
   /** The PAGE's own stamps: `page` of `group` was read into venue_pages, or found gone. Keyed by the

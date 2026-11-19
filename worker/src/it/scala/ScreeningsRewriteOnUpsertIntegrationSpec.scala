@@ -1,12 +1,13 @@
 package integration
 
+import models.StoredMovieRecord
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieChangeFeed, CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository,
-                        MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieChangeFeed, CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 
 /**
  * An `upsert` that leaves a film's showtimes exactly where they were must not rewrite the

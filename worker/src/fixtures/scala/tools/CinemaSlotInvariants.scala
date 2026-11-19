@@ -1,7 +1,8 @@
 package tools
 
+import models.FilmRuntime
+
 import models.SourceData
-import services.movies.FilmRuntime
 
 /** The shape every field of a cinema slot must have: what `CinemaSlotInvariantsSpec` holds every corpus to, and what
  *  `scripts/title-trace` says one raw title's slot would raise. */

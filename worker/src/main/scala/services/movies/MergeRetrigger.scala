@@ -1,5 +1,7 @@
 package services.movies
 
+import models.CacheKey
+
 import models.MovieRecord
 
 /** One enrichment a merge can invalidate by changing the input field(s) it

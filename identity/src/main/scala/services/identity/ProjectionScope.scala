@@ -1,8 +1,9 @@
 package services.identity
 
+import models.StoredMovieRecord
+
 
 import models.ListingKey
-import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 
 /** A cluster across projections: the TMDB film a matched one is (the clusters of one film are one), or an unmatched

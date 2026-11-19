@@ -1,8 +1,10 @@
 package services.enrichment
 
+import models.CacheKey
+
 import models.{MovieRecord, SourceData}
 import services.enrichment.SiteRatings.{Found, Page, PageRead}
-import services.movies.{CacheKey, MovieCache}
+import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
 import tools.Stopwatch
 

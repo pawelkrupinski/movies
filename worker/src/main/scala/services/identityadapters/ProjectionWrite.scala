@@ -1,9 +1,11 @@
 package services.identityadapters
 
+import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
+
 import services.identity.*
 
 import models.MovieRecord
-import services.movies.{CacheKey, LeanRecords, FilmId, MovieCache, StoredMovieRecord}
+import services.movies.MovieCache
 import services.titles.TitleNormalizer
 
 import scala.util.Try

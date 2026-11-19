@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId, StoredMovieRecord}
+
 
 import models.MovieRecord
 import services.freshness.{FreshnessKind, FreshnessStore}

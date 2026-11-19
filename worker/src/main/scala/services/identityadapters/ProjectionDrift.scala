@@ -1,9 +1,10 @@
 package services.identityadapters
 
+import models.{LeanRecords, StoredMovieRecord}
+
 import services.identity.*
 
 import models.MovieRecord
-import services.movies.{LeanRecords, StoredMovieRecord}
 import services.titles.TitleNormalizer
 
 /** The drift a reconciling projection of the whole corpus finds ([[IdentityProjection]]): the films it wrote or retired

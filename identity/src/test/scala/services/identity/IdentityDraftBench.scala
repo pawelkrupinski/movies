@@ -1,9 +1,11 @@
 package services.identity
 
+import models.{StoredMovieRecord, StringPool}
+
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema, ListingKey}
-import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
+import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer}
 import java.time.LocalDateTime
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
@@ -103,7 +105,7 @@ object IdentityDraftBench {
     println(s"${rows.size} listings, ${resolution.decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
 
     var memo     = new VenueSlotMemo(0L)
-    var stored   = Map.empty[services.movies.FilmId, StoredMovieRecord]
+    var stored   = Map.empty[models.FilmId, StoredMovieRecord]
     var counters = FilmIdCounters.empty
     var live     = new LiveProjectionIndex(normalizer)
     var shapes   = FilmShapes()

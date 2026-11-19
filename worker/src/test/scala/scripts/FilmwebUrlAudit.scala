@@ -1,11 +1,13 @@
 package scripts
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 
 
 import clients.HttpTmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings, RatingColumns, RatingSiteFilms, SiteRatings}
-import services.movies.{CaffeineMovieCache, StoredMovieRecord}
+import services.movies.CaffeineMovieCache
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger

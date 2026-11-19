@@ -185,8 +185,8 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   private class ReadCountingMovieRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
     @volatile var wholeReads = 0
     @volatile var slotsOnlyReads = 0
-    override def findByIdChecked(id: services.movies.FilmId) = { wholeReads += 1; super.findByIdChecked(id) }
-    override def findByIdWithSlotsChecked(id: services.movies.FilmId) = {
+    override def findByIdChecked(id: models.FilmId) = { wholeReads += 1; super.findByIdChecked(id) }
+    override def findByIdWithSlotsChecked(id: models.FilmId) = {
       slotsOnlyReads += 1
       super.findByIdChecked(id).map(r => r.copy(record = r.record.copy(data = r.record.data.view.mapValues(_.copy(showtimes = Nil)).toMap)))
     }

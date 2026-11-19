@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, FilmId}
+
 import models.{CinemaShowing, Helios, MovieRecord, Multikino, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

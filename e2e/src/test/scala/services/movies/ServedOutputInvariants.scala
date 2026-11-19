@@ -1,5 +1,7 @@
 package services.movies
 
+import models.SlotFields
+
 import services.titles.FormatTags
 import services.titles.TitleNormalizer
 

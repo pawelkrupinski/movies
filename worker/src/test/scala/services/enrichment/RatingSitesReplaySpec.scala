@@ -1,5 +1,7 @@
 package services.enrichment
 
+import models.CacheKey
+
 import tools.SpecClock.given
 
 import clients.HttpTmdbClient
@@ -8,7 +10,7 @@ import models.{Filmweb, Imdb, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import tools.{HttpFetch, RoutingHttpFetch}
 
 import java.nio.charset.StandardCharsets

@@ -1,9 +1,11 @@
 package services.identity
 
+import models.FilmId
+
 import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, ListingKey}
-import services.movies.{CinemaSlotBuilder, FilmId, ScreeningTokens}
+import services.movies.{CinemaSlotBuilder, ScreeningTokens}
 import services.titles.TitleNormalizer
 
 /** One run of [[IdentityProjectionPlan.draftOf]]: the drafts of the films `scope` names over `index`, worked out in its

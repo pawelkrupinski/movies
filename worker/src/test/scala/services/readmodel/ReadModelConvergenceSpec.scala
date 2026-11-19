@@ -6,7 +6,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.InMemoryMovieRepository
 
 import java.time.LocalDateTime
 

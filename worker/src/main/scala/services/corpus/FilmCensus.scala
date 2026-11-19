@@ -1,9 +1,10 @@
 package services.corpus
 
+import models.StoredMovieRecord
+
 import services.movies.LatestTitleYear
 import models.{MovieRecord, Source}
 import services.movies.StoredMovieDto
-import services.movies.StoredMovieRecord
 import services.titles.TitleNormalizer
 import services.readmodel.ReadModelProjection
 

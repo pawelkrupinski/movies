@@ -1,5 +1,7 @@
 package integration
 
+import models.StoredMovieRecord
+
 import tools.SpecTimeouts
 
 import models.{CinemaShowing, KinoMuranow, Kinoteka, MovieRecord, Showtime, Source, SourceData, Tmdb, ListingKey, ShowtimesDigest}

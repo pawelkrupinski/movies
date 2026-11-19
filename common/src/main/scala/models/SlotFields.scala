@@ -1,8 +1,4 @@
-package services.movies
-
-import models.Showtime
-import models.CountryNames
-import models.GenreNames
+package models
 
 import java.net.URI
 import java.util.Locale

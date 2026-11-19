@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StoredMovieRecord
+
 /** A boot-time reader of the whole corpus that takes the cache's boot hydrate read instead of
  *  making its own, so that a boot reads the corpus once.
  *

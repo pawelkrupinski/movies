@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 /**
  * Normalised `(title, year)` lookup key. Diacritics stripped, lowercased,

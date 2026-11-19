@@ -6,7 +6,6 @@ import models._
 import models.Kinoteka
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{FilmId, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDateTime

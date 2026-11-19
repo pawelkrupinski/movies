@@ -212,7 +212,7 @@ class WebReadModel(
     shared.share(paged)
   }
 
-  private val shared = new services.movies.ShowtimePool
+  private val shared = new models.ShowtimePool
 
   private[readmodel] def applyScreeningUpsert(projected: CityScreening): Unit = {
     val s        = onCurrentPage(projected)

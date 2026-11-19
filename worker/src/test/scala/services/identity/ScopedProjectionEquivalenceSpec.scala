@@ -1,5 +1,7 @@
 package services.identity
 
+import models.{CacheKey, StringPool}
+
 import tools.SpecPool
 import services.identityadapters.IdentityProjection
 import tools.SpecClock.given
@@ -7,7 +9,7 @@ import tools.SpecClock.given
 import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe, Movie, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CacheKey, CinemaSlotBuilder, InMemoryMovieRepository, StringPool, VenuePageFacts}
+import services.movies.{CinemaSlotBuilder, InMemoryMovieRepository, VenuePageFacts}
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.util.Random
 
@@ -129,7 +131,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   private def world(s: Scenario, scopedBetweenWhole: Int, clock: Clock = clock, memo: Long => VenueSlotMemo = new VenueSlotMemo(_)) =
     new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
       slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer) {
-        override def upsert(film: services.movies.FilmId, key: CacheKey, e: MovieRecord): services.movies.WriteOutcome =
+        override def upsert(film: models.FilmId, key: CacheKey, e: MovieRecord): services.movies.WriteOutcome =
           if (e.tmdbId.exists(s.declining)) services.movies.WriteOutcome.Declined("store refused") else super.upsert(film, key, e)
       }, venues, clock, s.resolve, s.details, scopedBetweenWhole = scopedBetweenWhole, slotMemoOf = memo)
 
@@ -139,7 +141,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       r.record.data.toSeq.collect { case (s: CinemaShowing, sd) => s"${s.cinema.displayName}|${s.titleKey}" -> sd.showtimes.map(_.dateTime) }.sortBy(_._1))
   }
 
-  private def render(film: (services.movies.FilmId, String, String, Option[Int], MovieRecord, Seq[(String, Seq[LocalDateTime])])): String = {
+  private def render(film: (models.FilmId, String, String, Option[Int], MovieRecord, Seq[(String, Seq[LocalDateTime])])): String = {
     val (id, key, title, year, record, slots) = film
     s"$id $key '$title' $year tmdb=${record.tmdbId} attempt=${record.tmdbAttempt.isDefined} imdb=${record.imdbRating} " +
       s"sources=${record.data.keys.map(_.toString).toSeq.sorted.mkString(",")} slots=${slots.map { case (k, ts) => s"$k:${ts.size}" }.mkString(",")}"

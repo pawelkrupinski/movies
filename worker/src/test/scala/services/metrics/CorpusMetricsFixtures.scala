@@ -1,5 +1,7 @@
 package services.metrics
 
+import models.StoredMovieRecord
+
 import services.corpus.{CensusReading, CorpusCensus}
 import services.corpus.CorpusCensusMetrics
 import tools.SpecClock.given
@@ -8,7 +10,7 @@ import services.movies.SingleCountryNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCache, MovieChangeFeed, MovieRepository, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCache, MovieChangeFeed, MovieRepository}
 
 import java.time.{Clock, LocalDateTime, ZoneId}
 

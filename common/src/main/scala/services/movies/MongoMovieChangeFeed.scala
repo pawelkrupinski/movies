@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmId, StoredMovieRecord}
+
 import com.mongodb.client.model.changestream.FullDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.Document

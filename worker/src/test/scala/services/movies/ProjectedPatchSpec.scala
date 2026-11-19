@@ -1,5 +1,7 @@
 package services.movies
 
+import models.StringPool
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

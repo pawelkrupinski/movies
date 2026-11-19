@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{FilmId, StoredMovieRecord}
+
 import tools.SpecTimeouts
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument

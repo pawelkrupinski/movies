@@ -1,5 +1,7 @@
 package services.movies
 
+import models.FilmId
+
 import models.{CinemaShowing, SourceData}
 
 /**

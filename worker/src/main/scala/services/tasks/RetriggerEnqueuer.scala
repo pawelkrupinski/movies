@@ -1,7 +1,8 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.freshness.FreshnessStore
-import services.movies.CacheKey
 import services.tasktypes.TaskType
 
 import java.time.Clock

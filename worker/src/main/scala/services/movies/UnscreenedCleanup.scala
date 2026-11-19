@@ -1,5 +1,7 @@
 package services.movies
 
+import models.{CacheKey, StoredMovieRecord}
+
 import models.{MovieRecord, SourceData}
 import play.api.Logging
 import tools.Stoppable

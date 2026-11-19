@@ -1,10 +1,11 @@
 package services.tasks
 
+import models.CacheKey
+
 import services.movies.LatestTitleYear
 
 import models.{Country, MovieRecord}
 import services.freshness.FreshnessStore
-import services.movies.CacheKey
 
 import java.time.Instant
 

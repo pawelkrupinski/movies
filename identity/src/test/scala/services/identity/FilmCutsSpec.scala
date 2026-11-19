@@ -34,7 +34,7 @@ class FilmCutsSpec extends AnyFlatSpec with Matchers {
     FilmCuts.table.size should be >= 5
     FilmCuts.table.values.flatten.foreach { cut =>
       withClue(cut)(cut.source should startWith("https://"))
-      withClue(cut)(services.movies.FilmRuntime.plausible(cut.runtime) shouldBe true)
+      withClue(cut)(models.FilmRuntime.plausible(cut.runtime) shouldBe true)
     }
   }
 }

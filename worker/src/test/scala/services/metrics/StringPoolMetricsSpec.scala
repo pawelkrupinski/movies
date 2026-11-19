@@ -1,10 +1,11 @@
 package services.metrics
 
+import models.StringPool
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.StringPool
 
 /**
  * The intern pool's bound was unobservable, and that is the whole reason it could
