@@ -193,13 +193,7 @@ final class IdentityModelService(
 
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
-  private def snapshotOf(engine: IncrementalResolver) = {
-    val resolution = engine.resolution
-    val shown      = newWhilePending.shown(inputGate.heldNew)
-    if (shown.isEmpty) ModelSnapshot(resolution, engine.gaps, engine.listings, QuestionRenewals.of(engine.familyQuestions))
-    else ModelSnapshot(resolution.copy(decisions = resolution.decisions ++ shown.map(IdentityModelService.waiting)), engine.gaps,
-      engine.listings ++ shown.map(_.newest), QuestionRenewals.of(engine.familyQuestions))
-  }
+  private def snapshotOf(engine: IncrementalResolver) = ModelSnapshots.of(engine, newWhilePending.shown(inputGate.heldNew))
 
   // A request its reader gave up on is cancelled: one the model's thread has not reached yet never runs
   // (a take-up and a snapshot for nobody, delaying the next reader), one it is running finishes.
@@ -293,21 +287,9 @@ final class IdentityModelService(
   /** The kept listings ([[ListingRetention]]): the departed ones' inputs and the kept set, moved on every drain and take-up. */
   private val retention = new ListingRetainer(retainedStore, heldBefore, normalizer, clock, retentionWindow, metrics)
 
-  /** `seen` and `gone`, as they move what `engine` holds, into the history: a listing new to it, held otherwise — the
-   *  model's fields or its poster — or let go. Its screening days alone moving is no entry: a scrape adds days daily,
-   *  and the model reads only their season. */
+  /** `seen` and `gone`, as they move what `engine` holds, into the history ([[ListingHistoryEntries]]). */
   private def kept(engine: IncrementalResolver, seen: Seq[Listing], gone: Seq[models.ListingKey]): Unit =
-    if (history ne IdentityHistory.Discard) {
-      val at = clock.millis()
-      def key(k: models.ListingKey) = models.ListingKey.serialised(k)
-      val moved = seen.flatMap { listing =>
-        val was = engine.held(listing.key)
-        Option.when(!was.contains(listing) || was.exists(_.poster != listing.poster))(
-          HistoryEntry(HistoryEntry.Listing, key(listing.key), at, was.map(ListingBson.doc), Some(ListingBson.doc(listing)), build))
-      }
-      val left = gone.flatMap(k => engine.held(k).map(was => HistoryEntry(HistoryEntry.Listing, key(k), at, Some(ListingBson.doc(was)), None, build)))
-      history.append(moved ++ left)
-    }
+    if (history ne IdentityHistory.Discard) history.append(ListingHistoryEntries.of(engine.held, seen, gone, clock.millis(), build))
 
   /** A NEW listing whose venue page is unread (`pageWait`) has its page asked for, once. Whether it is taken in meanwhile
    *  is the input gate's ([[gate]]): held while the read was never attempted, then taken in -- decided Pending on the
@@ -365,12 +347,6 @@ object IdentityModelService {
      *  made (DE "IF PIGEONS TURNED TO GOLD", 44 min). Hidden, nothing is written for it until it is taken in. */
     val Default: NewWhilePending = Hidden
   }
-
-  /** A held new listing as the projection reads it: its own decision, no film, Pending on its questions -- `unanswered`
-   *  set so the agreement stage leaves it as it is, as it leaves any decision the model's questions still hold. */
-  private[services] def waiting(held: ModelInputGate.Held): ResolverDecision =
-    ResolverDecision(Seq(held.newest.key), scala.None, 0.0, ResolverDecision.Basis.NoEvidence,
-      Seq(s"held: ${held.waits.size} question(s) of its own not answered yet"), unanswered = held.waits.size, awaits = held.waits)(DecisionTrace.Empty)
 
   /** The wait before a failed take-up is first retried; it doubles with each failure after, up to [[MaxRetry]]. */
   val FirstRetry: FiniteDuration = FiniteDuration(1, TimeUnit.MINUTES)
