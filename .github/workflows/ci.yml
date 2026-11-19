@@ -85,6 +85,71 @@ permissions:
     contents: read
 
 jobs:
+    # A CHANGED BUILD'S DEPENDENCIES, FETCHED ONCE A RUN. Every sbt row restores the dependency cache in setup-jdk under
+    # the build files' hash, falling back to the newest entry main saved (.github/actions/sbt-deps-key). A build change --
+    # a Scala Steward bump, a plugin, an sbt version -- missed that exact key in all 18 sbt rows at once, and each fetched
+    # the same new artifacts from Maven Central together. Central answers such a burst with 403s (run 36807612216) or
+    # 429s (Scala Steward PR #275, run 44250628374: `sentry-logback-8.65.0.pom`, one page-test row red of ~20), and
+    # coursier does not wait one out (scripts/ci/sbt-deps-resolve.sh). So every sbt row `needs` this job
+    # (SbtDependencyFanOutSpec). On an exact hit -- every run whose build files main has already built -- it only asks
+    # GitHub whether the entry exists, in seconds. On a miss it restores the fallback, resolves the whole build once
+    # (retrying with a backoff), and saves the exact key, so every row after it restores everything and downloads
+    # nothing. Main's entry is saved by setup-jdk's own cache step; a pull request's here, which CacheSavePolicySpec
+    # allows this one step: the run's own rows read it a minute later, and GitHub expires a branch's entries with it.
+    # FAILS OPEN like `scope`: the rows test `!cancelled()`, so a resolve that still fails leaves them to fetch for
+    # themselves, as before.
+    deps:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 20 # a cold resolve plus three backoffs; an exact hit takes seconds (CiRowTimeoutSpec)
+        steps:
+            # The build's own files (every root file, project/) and what the steps below run: no 21k-file checkout to
+            # learn that the entry exists.
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      .github
+                      scripts
+                      project
+            - id: sbt-deps-key
+              uses: ./.github/actions/sbt-deps-key
+            - name: Is this build's dependency cache saved?
+              id: lookup
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ steps.sbt-deps-key.outputs.paths }}
+                  key: ${{ steps.sbt-deps-key.outputs.key }}
+                  lookup-only: 'true'
+            # Missed: the whole tree, as the build loads it.
+            - if: steps.lookup.outputs.cache-hit != 'true'
+              uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              if: steps.lookup.outputs.cache-hit != 'true'
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            # The JDK, sbt and the fallback dependency cache (setup-jdk); nothing is compiled, so no build cache.
+            - if: steps.lookup.outputs.cache-hit != 'true'
+              uses: ./.github/actions/setup-sbt-build
+              with:
+                  sbt-disk-cache: 'false'
+                  target-cache: 'false'
+            - name: Resolve the build's dependencies (retrying)
+              if: steps.lookup.outputs.cache-hit != 'true'
+              run: scripts/ci/sbt-deps-resolve.sh
+            - name: Save the dependency cache for this run's rows (main saves through setup-jdk)
+              if: steps.lookup.outputs.cache-hit != 'true' && github.ref != 'refs/heads/main'
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ steps.sbt-deps-key.outputs.paths }}
+                  key: ${{ steps.sbt-deps-key.outputs.key }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() && steps.lookup.outputs.cache-hit != 'true' }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
+
     # WHICH SLOW ROWS THIS PUSH CAN MOVE, in seconds at t=0 (scripts/ci/ci-row-scope.sh). ~65 pushes a day reach Main, and
     # a third touch only identity, the judgements, docs or scripts: each ran the 9 page/mobile/e2e rows (~44
     # runner-minutes) for nothing (2026-10-22). The base is the newest GREEN Main run's commit, not the push's `before`:
@@ -147,6 +212,8 @@ jobs:
     # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests run off the gate, in
     # tool-self-tests.yml; the gitops manifests ride `worker`, whose deploy specs (the worker's and repochecks') read them.
     test:
+        needs: deps
+        if: ${{ !cancelled() }}
         # No `name:`: github.com names a row `test (<shard>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `test` -- a `name:` naming a matrix value renders raw then
         # (`${{ matrix.shard }}`).
@@ -334,6 +401,8 @@ jobs:
     # suites on 4 cores, the build's long pole beside the unit tests (2026-10-15). The slot came from the WebKit
     # phone shards (4 → 2). Both rows run `itAll`, so `all` still keeps going past a failing module.
     integration-test:
+        needs: deps
+        if: ${{ !cancelled() }}
         # No `name:`: github.com names a row `integration-test (<row>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `integration-test` -- a `name:` naming a matrix value renders raw then
         # (`${{ matrix.row }}`).
@@ -466,7 +535,7 @@ jobs:
         # No `name:`: github.com names a row `page-tests-safari (<variant>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `page-tests-safari` -- a `name:` naming a matrix value renders raw then
         # (`${{ matrix.variant }}`).
-        needs: scope
+        needs: [scope, deps]
         if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
         strategy:
             fail-fast: false
@@ -561,7 +630,7 @@ jobs:
         # No `name:`: github.com names a row `page-tests-chrome (<variant>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `page-tests-chrome` -- a `name:` naming a matrix value renders raw then
         # (`${{ matrix.variant }}`).
-        needs: scope
+        needs: [scope, deps]
         # `stable` is the Scala PageTest row (the review and identity admin pages render identity code): it runs on
         # `pages`; the Playwright rows below it only on `browsers`, their steps skipped otherwise (a job `if:` cannot
         # read the matrix).
@@ -671,7 +740,7 @@ jobs:
     # tarball's platform does. Swift 6.2 (ios/Package.swift is tools 6.0, Swift 6 mode): keep it in step with ios.yml's
     # `swift:6.2` container. No setup-swift (ActionPinningSpec): its keyserver refresh held Main red (#2388, #2390).
     mobile-local-server:
-        needs: scope
+        needs: [scope, deps]
         # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
         if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
         runs-on: ubuntu-22.04
@@ -867,7 +936,7 @@ jobs:
         # No `name:`: github.com names a row `e2e (<shard>)` off the one matrix vector (`include` only adds keys to it), and a job
         # that is skipped or cancelled before it starts as plain `e2e` -- a `name:` naming a matrix value renders raw then
         # (`${{ matrix.shard }}`).
-        needs: scope
+        needs: [scope, deps]
         if: ${{ !cancelled() && needs.scope.outputs.e2e != 'false' }}
         strategy:
             fail-fast: false

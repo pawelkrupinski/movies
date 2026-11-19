@@ -33,7 +33,8 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
   private val AblationRowOverheadMinutes = 10
 
   "every ci.yml row" should "carry a timeout above its longest green run and well under the 360-minute default" in {
-    val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/ci.yml")) - "scope"
+    // Not rows: scope plans them in seconds, and deps resolves a changed build once before them (its own bound).
+    val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/ci.yml")) - "scope" - "deps"
     jobs should not be empty
     jobs.foreach { case (job, block) =>
       withClue(s"$job: ") {

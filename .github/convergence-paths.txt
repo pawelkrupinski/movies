@@ -107,6 +107,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/order-compare/action.yml
 .github/actions/report-scheduled-run/action.yml
 .github/actions/run-page-test/action.yml
+.github/actions/sbt-deps-key/action.yml
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml
 .github/allow-lists.txt
@@ -173,6 +174,7 @@ scripts/ci/population_walk_diff.py
 scripts/ci/recording_health.py
 scripts/ci/release-store-prune.sh
 scripts/ci/runner_cache.py
+scripts/ci/sbt-deps-resolve.sh
 scripts/ci/scheduled-failure-issue.sh
 scripts/ci/seed-sbt-runner.sh
 scripts/ci/shellcheck-action-runs.sh

@@ -1,0 +1,37 @@
+# The sbt dependency cache's key and paths, in ONE place: setup-jdk restores (and on main saves) the cache under it, and
+# ci.yml's `deps` job resolves a changed build's dependencies once and saves them under it before any other job of the
+# run asks for them (SbtDependencyFanOutSpec).
+name: The sbt dependency cache's key
+description: The key, fallback prefix and paths of the sbt dependency cache (~/.ivy2/cache, ~/.sbt, ~/.cache/coursier).
+outputs:
+  key:
+    description: The exact key, a hash of the build's own files.
+    value: ${{ steps.key.outputs.key }}
+  prefix:
+    description: The fallback prefix every restore falls back to (the newest entry main saved).
+    value: ${{ steps.key.outputs.prefix }}
+  paths:
+    description: >-
+      The cached paths, one per line. actions/cache versions an entry by its path list, so a save and a restore that
+      spelled the list differently would never see each other's entries.
+    value: ${{ steps.key.outputs.paths }}
+runs:
+  using: composite
+  steps:
+    # The build's own files by NAME, never `**/*.sbt`: hashFiles walks every file a `**` can reach, and a convergence
+    # leg's workspace holds a ~127,000-file restored fixture tree — the walk cost ~39 s at restore and again in the post
+    # step, on every leg.
+    - id: key
+      shell: bash
+      env:
+        PREFIX: sbt-deps-${{ runner.os }}-
+        HASH: ${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
+        CACHED: |-
+          ~/.ivy2/cache
+          ~/.sbt
+          ~/.cache/coursier
+          !~/.sbt/*.lock
+      run: |
+        echo "prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+        echo "key=$PREFIX$HASH" >> "$GITHUB_OUTPUT"
+        printf 'paths<<EOF\n%s\nEOF\n' "$CACHED" >> "$GITHUB_OUTPUT"

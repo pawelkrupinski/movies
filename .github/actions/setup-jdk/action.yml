@@ -39,43 +39,37 @@ runs:
     # that burst with 403s (run 36807612216: "Error downloading org.scala-sbt:sbt:1.13.0 …
     # forbidden"). Same paths, same exact key shape, but a prefix restore-key: a changed build
     # starts from the previous cache and fetches only what actually changed.
+    # That delta was still fetched by every runner at once, and Central answered it with a 429 (Scala Steward PR #275,
+    # run 44250628374: sentry-logback-8.65.0.pom). So where a changed build first runs (ci.yml, for a pull request and
+    # for main), a `deps` job resolves it ONCE and saves this exact key before the sbt rows start; every row then hits it
+    # (SbtDependencyFanOutSpec). The key and paths: .github/actions/sbt-deps-key.
     # Saved by main only, like the sbt target cache (sbt-target-cache's header; CacheSavePolicySpec):
-    # 0.4 GB an entry, and every other ref restores the prefix.
+    # 0.4 GB an entry, and every other ref restores the prefix -- but for that `deps` job's one save.
     # The restore's outcome, time and size for the job's metrics (cache-marker.sh, ci-timings' cache hit rates).
     - if: inputs.cache == 'sbt'
       shell: bash
       continue-on-error: true
       run: '"$GITHUB_WORKSPACE/scripts/ci/cache-marker.sh" begin sbt-deps || true'
+    - id: sbt-deps-key
+      if: inputs.cache == 'sbt'
+      uses: ./.github/actions/sbt-deps-key
     - name: Restore the sbt dependency cache
       id: sbt-deps-cache
       if: inputs.cache == 'sbt' && github.ref == 'refs/heads/main'
       uses: actions/cache@v5
       with:
-        path: |
-          ~/.ivy2/cache
-          ~/.sbt
-          ~/.cache/coursier
-          !~/.sbt/*.lock
-        # The build's own files by NAME, never `**/*.sbt`: hashFiles walks every file a `**` can reach,
-        # and a convergence leg's workspace holds a ~127,000-file restored fixture tree — the walk cost
-        # ~39 s at restore and again in the post step, on every leg.
-        key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
-        restore-keys: |
-          sbt-deps-${{ runner.os }}-
+        path: ${{ steps.sbt-deps-key.outputs.paths }}
+        key: ${{ steps.sbt-deps-key.outputs.key }}
+        restore-keys: ${{ steps.sbt-deps-key.outputs.prefix }}
     - name: Restore the sbt dependency cache (not main, restore only)
       id: sbt-deps-restore
       if: inputs.cache == 'sbt' && github.ref != 'refs/heads/main'
       # through the self-hosted runner's local mirror where it has one (580 MB: ~32 s from GitHub's cache on ci-runner)
       uses: ./.github/actions/cache-restore
       with:
-        path: |
-          ~/.ivy2/cache
-          ~/.sbt
-          ~/.cache/coursier
-          !~/.sbt/*.lock
-        key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
-        restore-keys: |
-          sbt-deps-${{ runner.os }}-
+        path: ${{ steps.sbt-deps-key.outputs.paths }}
+        key: ${{ steps.sbt-deps-key.outputs.key }}
+        restore-keys: ${{ steps.sbt-deps-key.outputs.prefix }}
     - if: inputs.cache == 'sbt'
       shell: bash
       continue-on-error: true

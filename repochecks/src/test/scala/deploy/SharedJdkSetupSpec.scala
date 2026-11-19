@@ -67,18 +67,27 @@ class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
    */
   it should "cache sbt's dependencies with a fallback key, not through setup-java" in {
     val action = RepoFile.read(sharedAction)
-    action should include("key: sbt-deps-${{ runner.os }}-")
-    action should include("restore-keys: |\n          sbt-deps-${{ runner.os }}-")
+    val restores = action.linesIterator.map(_.trim).filter(_.startsWith("restore-keys:")).toSeq
+    restores should not be empty
+    restores.distinct shouldBe Seq("restore-keys: ${{ steps.sbt-deps-key.outputs.prefix }}")
+    keyAction should include("PREFIX: sbt-deps-${{ runner.os }}-")
+    keyAction should include("""echo "key=$PREFIX$HASH"""")
     action should not include "cache: ${{ inputs.cache }}"
   }
+
+  /** The key's one definition: setup-jdk restores under it, and ci.yml's `deps` job saves under it (SbtDependencyFanOutSpec). */
+  private lazy val keyAction = RepoFile.read(".github/actions/sbt-deps-key/action.yml")
 
   /** hashFiles walks every file a `**` reaches, and a convergence leg's workspace is a ~127,000-file
    *  fixture tree: a workspace-wide glob in this key cost ~39 s twice a leg (restore and post step).
    *  Main's saving step and every other ref's restore-only step carry the same key. */
   it should "key the sbt dependency cache on the build's own files, not a workspace-wide glob" in {
-    val key = RepoFile.read(sharedAction).linesIterator.map(_.trim).filter(_.startsWith("key: sbt-deps-")).toSeq
-    key should not be empty
-    key.distinct should have size 1
-    key.head should not include "'**/"
+    val keys = RepoFile.read(sharedAction).linesIterator.map(_.trim).filter(_.startsWith("key:")).toSeq
+      .filter(_.contains("sbt-deps"))
+    keys.distinct shouldBe Seq("key: ${{ steps.sbt-deps-key.outputs.key }}")
+    val hash = keyAction.linesIterator.map(_.trim).filter(_.startsWith("HASH:")).toSeq
+    hash should have size 1
+    hash.head should include("hashFiles('build.sbt'")
+    hash.head should not include "'**/"
   }
 }

@@ -11,13 +11,23 @@ import org.scalatest.matchers.should.Matchers
  * or landing run's entries are read by nobody after it, and a save of a key another job already saved is a second
  * copy. A step that can save one of those paths must say
  * `github.ref == 'refs/heads/main'` in its `if:`; restoring (`actions/cache/restore`) is free.
+ *
+ * ONE exception: ci.yml's `deps` job saves the dependency cache under a changed build's exact key on a pull request too,
+ * and only when GitHub has no such entry. Its readers are the run's own 18 sbt rows a minute later, which would
+ * otherwise each fetch the change from Maven Central at once (SbtDependencyFanOutSpec).
  */
 class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
   private val LargePaths =
     Seq("*/target/scala-*", "~/.ivy2/cache", "~/.cache/coursier", "${{ runner.temp }}/jdk-archive",
-      "${{ runner.temp }}/actionlint", "${{ runner.temp }}/coursier-launcher")
+      "${{ runner.temp }}/actionlint", "${{ runner.temp }}/coursier-launcher",
+      // the dependency cache's paths, as .github/actions/sbt-deps-key spells them for every step using it
+      "${{ steps.sbt-deps-key.outputs.paths }}")
   private val Saving     = Seq("uses: actions/cache@", "uses: actions/cache/save@")
   private val MainOnly   = "github.ref == 'refs/heads/main'"
+
+  /** The exception above: (file, step name, the `if:` it must carry). */
+  private val RunScopedSave = (".github/workflows/ci.yml", "name: Save the dependency cache for this run's rows",
+    "if: steps.lookup.outputs.cache-hit != 'true' && github.ref != 'refs/heads/main'")
 
   /** Each step of a CI file, as its own lines: from a `- ` item to the next item at the same indent. */
   private def steps(text: String): Seq[Vector[String]] = {
@@ -52,7 +62,12 @@ class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
     } yield p -> step
     // The sbt target cache's two saving steps, the dependency cache's one, the JDK's and actionlint's, at least.
     saving.size should be >= 5
-    for ((p, step) <- saving)
+    val (excepted, policed) = saving.partition((p, step) =>
+      p == RunScopedSave._1 && step.exists(_.trim.stripPrefix("- ").startsWith(RunScopedSave._2)))
+    withClue("ci.yml's `deps` job saves for its run's rows, only on a miss: ") {
+      excepted.map((_, step) => ifLine(step)) shouldBe Seq(RunScopedSave._3)
+    }
+    for ((p, step) <- policed)
       withClue(s"$p: a step saving ${LargePaths.mkString(", ")} runs on `${ifLine(step)}`, ") {
         ifLine(step) should include(MainOnly)
       }

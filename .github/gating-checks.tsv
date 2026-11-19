@@ -12,6 +12,7 @@ job	main.yml	ci	aggregate
 job	main.yml	gates	aggregate
 job	main.yml	kick-convergence	2722
 job	main.yml	scope	2722
+job	main.yml	deps	unproven	born 2026-11-19: resolves a changed build's dependencies once before the sbt rows (SbtDependencyFanOutSpec); owner: CI infra
 job	main.yml	test (rest)	2722
 job	main.yml	test (heavy1)	2722
 job	main.yml	test (heavy2)	2722

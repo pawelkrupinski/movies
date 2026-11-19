@@ -32,7 +32,7 @@ class CiRowScopeSpec extends AnyFlatSpec with Matchers {
   "ci.yml's slow rows" should "each wait for scope and run unless it said `false`" in {
     Gated.foreach { case (job, output) =>
       withClue(s"$job: ") {
-        code(jobs(job)) should contain("needs: scope")
+        WorkflowText.needs(jobs(job)) should contain("scope")
         code(jobs(job)) should contain(s"if: $${{ !cancelled() && needs.scope.outputs.$output != 'false' }}")
       }
     }
