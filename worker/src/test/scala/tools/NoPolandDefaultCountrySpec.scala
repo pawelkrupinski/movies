@@ -44,7 +44,6 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
   /** "file: Owner.param" → why it still defaults to Poland. */
   private val Allowlist: Map[String, String] = Map(
     "worker/src/main/scala/clients/HttpTmdbClient.scala: HttpTmdbClient.language"                        -> Tests,
-    "worker/src/main/scala/services/tasks/QueueEnrichmentRetrigger.scala: QueueEnrichmentRetrigger.country" -> Tests,
     "worker/src/main/scala/services/tasks/RatingEnqueuer.scala: RatingEnqueuer.country"             -> Tests,
     "worker/src/main/scala/modules/wiring/WorkerWiring.scala: WorkerWiring.country" ->
       ("the worker test seam `TestWiring` is a trait, so it can only extend the no-argument constructor; " +

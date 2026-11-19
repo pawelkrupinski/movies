@@ -43,7 +43,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
     Seq(
       classOf[services.tasks.TaskWorker], classOf[services.tasks.WorkerHeartbeat],
       classOf[services.venuepages.DetailReaper], classOf[services.tasks.EnrichmentReaper], classOf[services.tasks.RatingEnqueuer],
-      classOf[services.tasks.RecheckedAudit], classOf[services.tasks.ScrapeReaper], classOf[services.tasks.QueueEnrichmentRetrigger],
+      classOf[services.tasks.RecheckedAudit], classOf[services.tasks.ScrapeReaper], classOf[services.tasks.QueueEnrichmentRetrigger], classOf[services.tasks.RetriggerEnqueuer],
       classOf[services.tasks.ChunkScrapePlanner], classOf[services.tasks.ChunkScrapeReaper], classOf[services.tasks.ChunkScrapeCoordinator],
       classOf[services.sharecards.ShareCardService], classOf[services.sharecards.CityCardService],
       classOf[services.sharecards.ShareCardBackfill], classOf[services.identityadapters.VenuePageWait]

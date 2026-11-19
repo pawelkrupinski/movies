@@ -3,7 +3,7 @@ package services.movies
 
 import models.MovieRecord
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.tasks.{QueueEnrichmentRetrigger, RatingTasks, RetriggerTask}
+import services.tasks.{RatingTasks, RetriggerTask}
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -20,7 +20,7 @@ import scala.jdk.CollectionConverters.*
 object NextDayReask {
 
   /** The freshness stamp a kind's handler writes on each ask: a rating task's, none for the IMDb-id resolve. */
-  private def stampOf(kind: RetriggerKind): Option[FreshnessKind] = QueueEnrichmentRetrigger.taskOf(kind) match {
+  private def stampOf(kind: RetriggerKind): Option[FreshnessKind] = RetriggerTask.of(kind) match {
     case RetriggerTask.Rating(_, freshness) => Some(freshness)
     case RetriggerTask.ResolveImdbId        => None
   }
