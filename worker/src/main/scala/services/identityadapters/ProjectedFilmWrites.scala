@@ -35,7 +35,7 @@ private[services] final class ProjectedFilmWrites(cache: MovieCache, logger: pla
     }
     def attempt(fs: Seq[ProjectedFilm]): Seq[ProjectedFilm] = fs.filterNot(write)
     val (apart, ordered) = films.partition(f => independent(f.id))
-    val unwritten = tools.BoundedParallel.map("identity-projection-writes", apart, IdentityProjection.WriteConcurrency)(f => Option.unless(write(f))(f))
+    val unwritten = tools.BoundedParallel.map("identity-projection-writes", apart, ProjectionWrite.WriteConcurrency)(f => Option.unless(write(f))(f))
     val first = unwritten.flatten ++ attempt(ordered)
     retired.foreach { id =>
       val outcome = cache.retireProjected(id)
@@ -49,7 +49,7 @@ private[services] final class ProjectedFilmWrites(cache: MovieCache, logger: pla
     if (last.nonEmpty) tools.LogFields.warn(logger.underlyingLogger, s"identity projection: ${last.size} film(s) not written " +
       s"(e.g. ${last.head.id} under ${last.head.key}); ${parked.size} parked; the next projection retries",
       Seq("declined" -> last.size, "parked" -> parked.size,
-        "declined_films" -> last.take(IdentityProjection.FilmsNamed).map(f => s"${f.id.value}=${f.key}").mkString(" ")))
+        "declined_films" -> last.take(ProjectionWrite.FilmsNamed).map(f => s"${f.id.value}=${f.key}").mkString(" ")))
     val declined = last.map(_.id).toSet
     (declined, parked.filter(f => declined(f.id)))
   }

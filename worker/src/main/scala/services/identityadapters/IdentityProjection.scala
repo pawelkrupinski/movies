@@ -4,11 +4,10 @@ import services.identity.*
 import services.movies.LatestTitleYear
 
 import java.util.Locale
-import scala.util.chaining.scalaUtilChainingOps
 
 import models.{Cinema, MovieRecord, ListingKey}
 import play.api.Logging
-import services.movies.{CacheKey, LeanRecords, FilmId, MovieCache, StoredMovieRecord}
+import services.movies.{CacheKey, MovieCache, StoredMovieRecord}
 import services.titles.TitleNormalizer
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
@@ -156,7 +155,8 @@ final class IdentityProjection(
   private given LatestTitleYear = LatestTitleYear(clock)
 
   private val mapping = new FilmIdMapping(filmIds)
-  private val writes  = new ProjectedFilmWrites(cache, logger)
+  private val writer  = new ProjectionWrite(cache, filmIds, announce, normalizer, metrics, agreementBacklog, logger)
+  private val drift   = new ProjectionDrift(normalizer, metrics, logger)
   private var consecutiveShrinks = 0
 
   /** That the last projection wrote everything it planned, and the FilmId map's size once it had. */
@@ -216,7 +216,7 @@ final class IdentityProjection(
    *  — no five-minute period does. */
   def settled(tick: ProjectionTick): Boolean =
     tick.refused.isEmpty && tick.declined == 0 && !tick.backlog &&
-      !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))
+      !tick.changed.exists(film => ProjectionWrite.awaitsDetails(film.record))
 
   /** One projection, every line it logs on this thread carrying its id (`projection_id`, the clock's instant at its start),
    *  mode and trigger ([[ProjectionTriggers.next]]) — what ties a tick's take changes, summary and warnings together in VictoriaLogs. */
@@ -347,7 +347,7 @@ final class IdentityProjection(
   private def writePlanned(run: Run, counters: FilmIdCounters, p: IdentityProjection.Planned,
                            scopeStored: Seq[StoredMovieRecord]): ProjectionTick = {
     val films = run.stored.size - scopeStored.size + p.plan.films.size
-    val tick  = write(p.resolution, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
+    val tick  = writer(p.resolution, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
       movedElsewhere = p.changes.fold(Set.empty[String])(_.films))
     // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
     // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
@@ -357,7 +357,7 @@ final class IdentityProjection(
     if (p.reconcile) p.moved.foreach(drift(_, p.freed, p.index, tick, run.stored))
     // The index holds what was written: a film written counts as moved next time only if another writer moves it. After a
     // declined write the next projection builds it afresh, so it is moved here only to read the change list off it.
-    val written = tick.changed.filterNot(f => lastUnwritten(f.id)) ++ lastParked
+    val written = writer.written(tick.changed)
     takeReports(live.written(written, p.plan.retired), p.resolution, run.stored, written, live, trigger, ownTakes,
       fresh = run.previous.isEmpty)
     if (tick.declined == 0) {
@@ -369,32 +369,6 @@ final class IdentityProjection(
       scopedSinceWhole = if (p.scope.whole) 0 else if (run.mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
     }
     tick
-  }
-
-  /** A reconciling projection of the whole corpus, checked against the scope its changes alone gave it — closed over key
-   *  collisions too, read off this projection's own keys, which the scope's drafts would have had — so a film it wrote
-   *  or retired outside that scope is one a scoped projection would have left wrong: counted and named, each film written
-   *  with what of it moved ([[IdentityProjection.moved]]) — the input the scope did not see. */
-  private def drift(moved: ProjectionScope, freed: Set[String], index: ProjectionIndex, tick: ProjectionTick,
-                    stored: Seq[StoredMovieRecord]): Unit = tick.plan.foreach { plan =>
-    def inside(scope: ProjectionScope, f: ProjectedFilm) = scope.films(f.id.value) || f.members.exists(scope.listings)
-    @scala.annotation.tailrec
-    def closed(scope: ProjectionScope): ProjectionScope =
-      ProjectionScope.widened(index, scope, plan.films.filter(inside(scope, _)).map(_.key), freed, normalizer) match {
-        case Some(wider) => closed(wider)
-        case None        => scope
-      }
-    val scope  = closed(moved)
-    val before = stored.iterator.filter(r => !scope.films(r.id.value)).map(r => r.id -> r).toMap
-    // a film that moved its key alone names both keys: the key a projection derives is the drift to read then
-    val missed = tick.changed.filterNot(inside(scope, _)).map(f => f.id.value -> before.get(f.id).fold("new")(s =>
-      IdentityProjection.moved(s.record, f.record) match {
-        case "key" => s"key ${s.key(normalizer)} -> ${f.key}, titled '${s.title}' -> '${f.title}'"
-        case what  => what
-      })) ++ plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
-    metrics.drifted(missed.size)
-    if (missed.nonEmpty) logger.warn(s"identity projection drift: the whole projection changed ${missed.size} film(s) the scoped one " +
-      s"would have left: ${missed.sortBy(_._1).take(20).map { case (id, what) => s"$id ($what)" }.mkString(", ")}")
   }
 
   /** [[tick]] — the boot's first projection, of the whole corpus — for a caller that must keep running whatever one
@@ -416,77 +390,6 @@ final class IdentityProjection(
       false
     }
 
-  /** The films the last [[write]] could not write as planned. */
-  private var lastUnwritten = Set.empty[FilmId]
-  /** Of those, the films the store holds parked, as it holds them. */
-  private var lastParked = Seq.empty[ProjectedFilm]
-
-  private def write(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
-                    films: Int, started: tools.Stopwatch.Started,
-                    phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String]): ProjectionTick = {
-    val before    = stored.map(r => r.id -> r).toMap
-    // A film another writer moved since this projection last wrote it may differ anywhere: compared and written whole. So
-    // is every film of a store holding showtimes in the record: an untouched slot drafted lean is not the one it holds.
-    val drafted   = plan.films.map(f =>
-      if (f.touched.isDefined && (movedElsewhere(f.id.value) || !cache.holdsSlotsLean)) f.copy(touched = None) else f)
-    // The map first: a film written under a fresh id must be numbered before anything can see it.
-    if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
-    def moved(f: ProjectedFilm) = before.get(f.id).forall(s => s.key(normalizer) != f.key ||
-      !f.touched.fold(LeanRecords.equal(f.record, s.record))(LeanRecords.equalAt(f.record, s.record, _)))
-    // Compared again once complete: a venue whose lean slot differs from the stored one is built in full from its rows,
-    // and a film whose built slots are the ones stored moved nothing. Written, every hourly projection rewrote it as it
-    // was and counted it as drift — "(key)", nothing of it named — where a scoped one left it (prod PL, 2026-10-27).
-    val (changed, unmoved) = phases("compare")(drafted.filter(moved)
-      .pipe(films => detailed.complete(films, id => before.get(id).map(_.record))).partition(moved))
-    if (unmoved.nonEmpty) warnUnbuilt(unmoved, drafted)
-    // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
-    // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
-    val patchable: ProjectedFilm => Option[MovieRecord] =
-      if (!patch) _ => None else f => before.get(f.id).filter(s => s.key(normalizer) == f.key).map(_.record)
-    val (unwritten, parked) = phases("writes")(writes(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
-      patchable))
-    val declined  = unwritten.size
-    announceIdentified(changed, before)
-    val seconds = started.seconds
-    metrics.projected(films, listings, plan.regroupings, seconds)
-    lastUnwritten = unwritten
-    lastParked    = parked
-    val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
-      changed = changed, backlog = agreementBacklog())
-    logWritten(tick, plan, films, seconds, phases, patch, unwritten)
-    tick
-  }
-
-  /** Films drafted from venue slots a build from their rows does not give, left as stored: logged with what the venue
-   *  slot memo held for each (its lean slot) and what it missed. */
-  private def warnUnbuilt(unmoved: Seq[ProjectedFilm], drafted: Seq[ProjectedFilm]): Unit = {
-    val leanOf = drafted.iterator.map(f => f.id -> f.record).toMap
-    logger.warn(s"identity projection: ${unmoved.size} film(s) drafted from venue slots a build from their rows does not give, " +
-      s"left as stored: ${unmoved.sortBy(_.id.value).take(IdentityProjection.FilmsNamed).map(f =>
-        s"${f.id} (${IdentityProjection.rebuilt(leanOf(f.id), f.record)})").mkString(", ")}")
-  }
-
-  /** A film now identified otherwise — by TMDB, or, one TMDB has no record of, by the fallback source's IMDb id — once
-   *  its TMDB answer is whole, announced: announced while its details were still to come (TMDB failing), its IMDb-id
-   *  recovery searched without the film's original title or director and was never asked again once they arrived. */
-  private def announceIdentified(changed: Seq[ProjectedFilm], before: Map[FilmId, StoredMovieRecord]): Unit =
-    changed.filter(f => !IdentityProjection.awaitsDetails(f.record) && before.get(f.id).forall(s =>
-      IdentityProjection.awaitsDetails(s.record) || s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
-      Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
-    }
-
-  /** The written projection's log line, with its fields: which films, a handful, what a retire or decline burst is
-   *  drilled into by. */
-  private def logWritten(tick: ProjectionTick, plan: ProjectionPlan, films: Int, seconds: Double, phases: ProjectionPhases,
-                         patch: Boolean, unwritten: Set[FilmId]): Unit =
-    tools.LogFields.info(logger.underlyingLogger, f"identity projection: ${tick.listings} listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
-        s"declined ${tick.declined}; ${plan.regroupings}" +
-        f" in $seconds%.1fs (${phases.render})",
-      Seq("listings" -> tick.listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> tick.declined,
-        "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
-        "retired_films" -> Option.when(plan.retired.nonEmpty)(plan.retired.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" ")),
-        "declined_films" -> Option.when(unwritten.nonEmpty)(unwritten.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" "))))
-
 }
 
 object IdentityProjection {
@@ -498,38 +401,6 @@ object IdentityProjection {
                                              moved: Option[ProjectionScope], freed: Set[String], reconciling: Boolean,
                                              reconcile: Boolean, scope: ProjectionScope, draft: ProjectionDraft,
                                              detailed: ProjectionDraft, plan: ProjectionPlan)
-  /** What of a film moved from `was` to `now`, briefly: its own fields (by name), and the sources whose slots differ
-   *  ([[LeanRecords.slotsEqual]]), the first few named, else its key — what a drift line names each film it missed by. */
-  private[services] def moved(was: MovieRecord, now: MovieRecord): String = {
-    val fields  = differing(was, now, Set("data"))
-    val sources = (was.data.keySet ++ now.data.keySet).toSeq.filterNot(s => (was.data.get(s), now.data.get(s)) match {
-      case (Some(a), Some(b)) => LeanRecords.slotsEqual(a, b)
-      case _                  => false
-    }).map(_.toString).sorted
-    val named   = fields ++ sources.take(3) ++ Option.when(sources.size > 3)(s"+${sources.size - 3} slots")
-    if (named.isEmpty) "key" else named.mkString(" ")
-  }
-
-  /** The venue slots of `lean`, a film as drafted, that a build from their rows gave otherwise (`built`), each with the
-   *  fields it differs in — `showtimes` for their digest — the first few named: the input a slot's memo key misses. */
-  private[services] def rebuilt(lean: MovieRecord, built: MovieRecord): String = {
-    val slots = lean.data.toSeq.flatMap { case (source, was) =>
-      built.data.get(source).filterNot(LeanRecords.slotsEqual(was, _)).map { now =>
-        val fields = differing(was, now, Set("showtimes", "showtimesDigest", "showtimeStartMinutes")) ++ Option.when(models.ShowtimesDigest.slotDigest(was) != models.ShowtimesDigest.slotDigest(now))("showtimes")
-        s"$source: ${fields.mkString(" ")}"
-      }
-    }.sorted
-    (slots.take(3) ++ Option.when(slots.size > 3)(s"+${slots.size - 3} slots")).mkString("; ")
-  }
-
-  /** The names of the fields `was` and `now` (one case class) differ in, `skipped` aside, in declaration order. */
-  private def differing(was: Product, now: Product, skipped: Set[String]): Seq[String] =
-    was.productElementNames.zip(was.productIterator.zip(now.productIterator))
-      .collect { case (name, (a, b)) if !skipped(name) && a != b => name }.toSeq
-
-  /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
-  private[services] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
-
   /** How many periodic projections of a scope run between two of the whole corpus — the reconciliation that would put right
    *  a film a scope missed, and counts it ([[IdentityProjectionMetrics.drifted]]). The worker's projections run on scrapes
    *  and are reconciled by the clock ([[ReconcileEvery]]); this paces [[tick]] alone, which an operator's settle runs. */
@@ -545,26 +416,6 @@ object IdentityProjection {
    *  was exactly the drill-down a burst needs. A resolver change re-taking a whole country (~10k listings) still logs
    *  no more than ~2.5 MB of lines. */
   private[services] val TakeChangesLogged = 2000
-
-  /** How many films a projection's summary and warnings name, of those it retired or could not write. */
-  private[services] val FilmsNamed = 50
-
-  /** How many independent films a projection writes at once. */
-  private[services] val WriteConcurrency = 8
-
-  /** The films of `changed` whose write no other write can stand in the way of, nor be stood in the way
-   *  of by: new to the store, under a key and a TMDB id no stored film holds and no other planned film
-   *  takes. Written in any order, they land exactly as in the plan's. */
-  private[services] def independent(changed: Seq[ProjectedFilm], planned: Seq[ProjectedFilm], stored: Seq[StoredMovieRecord],
-                                    normalizer: TitleNormalizer): Set[FilmId] = {
-    val storedIds  = stored.map(_.id).toSet
-    val heldKeys   = stored.map(_.key(normalizer)).toSet
-    val heldTmdb   = stored.flatMap(_.record.tmdbId).toSet
-    val keyTakers  = planned.groupMapReduce(_.key)(_ => 1)(_ + _)
-    val tmdbTakers = planned.flatMap(_.record.tmdbId).groupMapReduce(identity)(_ => 1)(_ + _)
-    changed.filter(f => !storedIds(f.id) && !heldKeys(f.key) && keyTakers(f.key) == 1 &&
-      f.record.tmdbId.forall(id => !heldTmdb(id) && tmdbTakers(id) == 1)).map(_.id).toSet
-  }
 
   /** What asks for a projection of what moved ([[IdentityProjection.asked]]), as its `trigger` names it. */
   enum Trigger(val label: String) {

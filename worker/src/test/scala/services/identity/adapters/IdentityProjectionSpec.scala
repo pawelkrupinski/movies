@@ -167,12 +167,12 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val stored  = w.repository.findAll()
     val renamed = first.films.map(f => if (f.title == "Obcy") f.copy(id = services.movies.FilmId("new-obcy")) else f)
     // Every film already stored: none is new. A fresh id under a key a stored film holds is not free either.
-    IdentityProjection.independent(first.films, first.films, stored, normalizer) shouldBe empty
-    IdentityProjection.independent(renamed, renamed, stored, normalizer) shouldBe empty
+    ProjectionWrite.independent(first.films, first.films, stored, normalizer) shouldBe empty
+    ProjectionWrite.independent(renamed, renamed, stored, normalizer) shouldBe empty
     // New to an empty store, each under its own key: all of them — unless two of them take one key.
-    IdentityProjection.independent(first.films, first.films, Nil, normalizer) shouldBe first.films.map(_.id).toSet
+    ProjectionWrite.independent(first.films, first.films, Nil, normalizer) shouldBe first.films.map(_.id).toSet
     val twice = first.films :+ first.films.head.copy(id = services.movies.FilmId("twin"))
-    IdentityProjection.independent(twice, twice, Nil, normalizer) shouldBe first.films.tail.map(_.id).toSet
+    ProjectionWrite.independent(twice, twice, Nil, normalizer) shouldBe first.films.tail.map(_.id).toSet
   }
 
   "A projection" should "say how long each of its phases took and what it allocated" in {
