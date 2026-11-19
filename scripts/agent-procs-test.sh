@@ -192,11 +192,25 @@ check "...never another session's, a live session's, a terminal's or a server's"
 (cd "$work/wt-merged" && "$TOOL" kill --mine > /dev/null)
 check "kill --mine without a session id reaps none" "yes" "$(kill -0 "$other" 2>/dev/null && echo yes || echo no)"
 # The real environment (ps eww on macOS, /proc/<pid>/environ on Linux), real ps: a loop whose claude is gone.
-env CLAUDE_PID="$dead_pid" CLAUDE_CODE_SESSION_ID=S-real bash -c 'until false; do sleep 1; done' & real=$!
-watchers="$watchers $real"
-(cd "$work/wt-merged" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND -u AGENT_PROCS_ENV_COMMAND \
-  CLAUDE_CODE_SESSION_ID=S-real "$TOOL" kill --mine > /dev/null)
-check "a real orphaned loop, read from its own environment, is reaped" "no" "$(alive_after_term "$real")"
+# Its bash is never macOS's /bin/bash: ps cannot read a platform binary's environment (SIP), so a loop of the floor
+# bash (scripts/run-script-tests --floor / --bash /bin/bash) carried no session ps could see and was spared -- the case
+# failed in every floor run selecting this test (2026-11-19), and the real watchers it guards are agents' own bash.
+loop_bash=$(python3 -I -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$(command -v bash)")
+if [ "$(uname -s)" = Darwin ] && [ "$loop_bash" = /bin/bash ]; then
+  loop_bash=""
+  for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash "$HOME/.nix-profile/bin/bash"; do
+    [ -x "$candidate" ] && { loop_bash=$candidate; break; }
+  done
+fi
+if [ -n "$loop_bash" ]; then
+  env CLAUDE_PID="$dead_pid" CLAUDE_CODE_SESSION_ID=S-real "$loop_bash" -c 'until false; do sleep 1; done' & real=$!
+  watchers="$watchers $real"
+  (cd "$work/wt-merged" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND -u AGENT_PROCS_ENV_COMMAND \
+    CLAUDE_CODE_SESSION_ID=S-real "$TOOL" kill --mine > /dev/null)
+  check "a real orphaned loop, read from its own environment, is reaped" "no" "$(alive_after_term "$real")"
+else
+  printf '  - skipped: a real orphaned loop (only /bin/bash here, whose environment ps cannot read)\n'
+fi
 unset AGENT_PROCS_ENV_COMMAND
 
 # kill: only the named worktree's processes, never the caller's own ancestors.
