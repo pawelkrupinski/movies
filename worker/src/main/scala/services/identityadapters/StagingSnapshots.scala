@@ -1,7 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
-import services.identity.staging.{StagedCluster, StagedFact, StagedListing, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
+import services.identity.staging.{StagedCluster, StagedFact, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
 import models.ListingKey
 
 /**
@@ -55,10 +55,10 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
 
   /** What a publish reads its takes against: each listing's facts as a change carried them, else as the projection last
    *  read them, walked only when asked. */
-  private def readingOf(resolution: Resolution, changed: Seq[StagingEvent.Changed]): Reading = {
+  private def readingOf(resolution: Resolution, changed: Seq[StagingEvent.Changed]): StagingReading = {
     val carried = changed.iterator.flatMap(c => c.change.published.map(c.change.listing -> _)).toMap
     lazy val lastRead = read().map(l => l.key -> l).toMap
-    new Reading(resolution, storedFilm, key => carried.get(key).orElse(lastRead.get(key)).fold(Nil)(StagedEvidence.listing))
+    new StagingReading(resolution, storedFilm, key => carried.get(key).orElse(lastRead.get(key)).fold(Nil)(StagedEvidence.listing))
   }
 
   /** Each cluster of `resolution` sorted: waiting now, settled after staging, or a wait begun and ended between two
@@ -94,7 +94,7 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
    *  `settled` only when no take moved. Each written once, under its own key (the cluster's and when it was published,
    *  or what changed). */
   private def resolvedSince(wasStaging: Map[String, StagedCluster], nowStaging: Map[String, StagedCluster], sorted: Sorted,
-                            digest: EventDigest, reading: Reading, known: Map[Question, QuestionMemory.Outcome], now: Long): Seq[StagedCluster] = {
+                            digest: EventDigest, reading: StagingReading, known: Map[Question, QuestionMemory.Outcome], now: Long): Seq[StagedCluster] = {
     val changeDocs = changesOf(digest.changed, sorted.clusterOf, reading)
     val changedClusters = changeDocs.groupBy(_.key.takeWhile(_ != '@'))
     val waited = wasStaging.collect { case (key, was) if !nowStaging.contains(key) =>
@@ -120,7 +120,7 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
    *  listing in no cluster now is a document of its own, its take the change's film. Keyed by the projection and what
    *  changed, so a publish that fails and writes them with the next writes the same documents. */
   private def changesOf(changed: Seq[StagingEvent.Changed], clusterOf: collection.Map[ListingKey, ResolverDecision],
-                        reading: Reading): Seq[StagedCluster] =
+                        reading: StagingReading): Seq[StagedCluster] =
     changed.groupBy { c =>
       val change = c.change
       (c.projection, clusterOf.get(change.listing).fold(ListingKey.serialised(change.listing))(clusterKey),
@@ -145,9 +145,9 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
 
   /** `earlier`: the cluster as the last publish staged it, whose listings' facts stand for those the projection did not
    *  read this time (a scoped one's, outside its scope). */
-  private def stagedOf(key: String, decision: ResolverDecision, reading: Reading, waits: WaitingOn, since: Long,
+  private def stagedOf(key: String, decision: ResolverDecision, reading: StagingReading, waits: WaitingOn, since: Long,
                        known: Map[Question, QuestionMemory.Outcome], earlier: Option[StagedCluster]): StagedCluster = {
-    val questions = waits.questions.toSeq.map(questionOf(_, known)).sortBy(q => (StagedQuestion.Outcomes.indexOf(q.outcome), q.kind, q.text))
+    val questions = waits.questions.toSeq.map(StagedQuestions.of(_, known)).sortBy(q => (StagedQuestion.Outcomes.indexOf(q.outcome), q.kind, q.text))
     val shown     = reading.shown(decision.members)
     val heldFacts = earlier.fold(Map.empty[(String, String), Seq[StagedFact]])(_.listings.map(l => (l.venue, l.rawTitle) -> l.facts).toMap)
     val listings  = reading.listings(shown).map(l => if (l.facts.nonEmpty) l else l.copy(facts = heldFacts.getOrElse((l.venue, l.rawTitle), Nil)))
@@ -156,22 +156,12 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
   }
 
   /** A cluster that stopped waiting: its questions as the memory last tells them — answered, or left out. */
-  private def resolvedOf(was: StagedCluster, settled: Option[ResolverDecision], reading: Reading, now: Long,
+  private def resolvedOf(was: StagedCluster, settled: Option[ResolverDecision], reading: StagingReading, now: Long,
                          known: Map[Question, QuestionMemory.Outcome]): StagedCluster = {
-    val questions = was.questions.map(q => Question.parse(q.text).fold(q)(questionOf(_, known)))
+    val questions = was.questions.map(q => Question.parse(q.text).fold(q)(StagedQuestions.of(_, known)))
     was.copy(take = settled.fold(was.take)(d => reading.take(d, reading.shown(d.members))), questions = questions,
       attempted = was.attempted.max(questions.count(_.outcome != StagedQuestion.NotAttempted)),
       resolvedAt = Some(now), resolution = Some(if (settled.isDefined) StagedCluster.Settled else StagedCluster.Regrouped))
-  }
-
-  private def questionOf(question: Question, known: Map[Question, QuestionMemory.Outcome]): StagedQuestion = {
-    val base = StagedQuestion(question.kind.toString, askerOf(question), textOf(question), StagedQuestion.NotAttempted)
-    known.get(question).fold(base) {
-      case QuestionMemory.Outcome.Answered => base.copy(outcome = StagedQuestion.Answered)
-      case QuestionMemory.Outcome.Absent   => base.copy(outcome = StagedQuestion.Absent)
-      case QuestionMemory.Outcome.Failed(attempts, nextRetryAt, host) =>
-        base.copy(outcome = StagedQuestion.Failed, attempts = attempts, nextRetryAt = Some(nextRetryAt.toEpochMilli), host = host)
-    }
   }
 }
 
@@ -214,64 +204,4 @@ object StagingSnapshots {
   val ExplanationShown = 6
   /** The screen's key of the cluster whose key ([[agreement.AgreementStage.keyOf]]) is `id`: hashed short. */
   def keyOfId(id: String): String = java.lang.Long.toHexString(agreement.AgreementStage.digest(Seq(id)))
-
-
-  /** What one publish reads its takes against: the films of the model's resolution, else of the TMDB store
-   *  (`storedFilm`), and each listing's facts (`factsOf`, none when it is not known). */
-  private final class Reading(resolution: Resolution, storedFilm: Int => Option[IdentityMeasures.Film],
-                              factsOf: ListingKey => Seq[StagedFact]) {
-    def film(id: Int): Option[IdentityMeasures.Film] = resolution.films.get(id).orElse(storedFilm(id))
-    def title(id: Int): Option[String]                = film(id).map(_.title)
-    def filmFacts(id: Option[Int]): Seq[StagedFact]   = id.flatMap(i => film(i).map(StagedEvidence.film(i, _))).getOrElse(Nil)
-
-    /** The listings a cluster lists of `keys`: one per venue and title, the first [[ListingsShown]]. */
-    def shown(keys: Seq[ListingKey]): Seq[ListingKey] =
-      keys.distinctBy(k => (k.venue, k.rawTitle)).sortBy(k => (k.venue, k.rawTitle)).take(ListingsShown)
-    def listings(keys: Seq[ListingKey]): Seq[StagedListing] = keys.map(k => StagedListing(k.venue, k.rawTitle, factsOf(k)))
-
-    /** `decision`'s take as the screen shows it: its films titled, the film's facts, and its trace of each of `shown`. */
-    def take(decision: ResolverDecision, shown: Seq[ListingKey]): StagedTake = {
-      val leaning = decision.leaning.orElse(decision.candidate).map(_.film)
-      StagedTake(decision.film, decision.film.flatMap(title), decision.basis.toString, decision.confidence,
-        leaning, leaning.flatMap(title),
-        decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown),
-        filmFacts = filmFacts(decision.film.orElse(leaning)),
-        nodes = shown.flatMap(k => decision.trace.nodes.get(k).map(StagedEvidence.node(k, _, title,
-          Some(DecidedBy.of(decision, k)), Some(DecidedBy.stage(decision, k))))))
-    }
-
-    /** The take moved listings held: film `was`, and the decision it came from (`priors`, each listing's, when the
-     *  projection saw it) — its basis and confidence; as why its last reason, the rule that decided it and the runner-up
-     *  it weighed beside it, said to be the film taken `now` when that one is; that film's facts, and each listing's
-     *  trace against it. */
-    def prior(was: Option[Int], priors: Seq[(ListingKey, TakeChange.Prior)], now: Option[Int]): StagedTake = {
-      val first    = priors.headOption.map(_._2)
-      val runnerUp = first.flatMap(_.runnerUp).map { id =>
-        s"runner-up then: tmdb $id${title(id).fold("")(" " + _)}" + (if (now.contains(id)) " — the film taken now" else "")
-      }
-      StagedTake(was, was.flatMap(title), first.fold("unknown")(_.basis.toString), first.fold(0.0)(_.confidence),
-        explanation = first.toSeq.flatMap(p => p.reason.toSeq ++ p.decidedBy.map("decided by " + _)) ++ runnerUp,
-        filmFacts = filmFacts(was),
-        nodes = priors.take(ListingsShown).flatMap { case (k, p) => p.node.map(StagedEvidence.node(k, _, title, p.decidedBy)) })
-    }
-  }
-
-  /** Who a question is asked of: the family it names, else the part of the identity system that asks it. */
-  private def askerOf(question: Question): String = question match {
-    case Question.Family(family, _) => family.label
-    case Question.VenuePage(_)      => "venue"
-    case Question.Poster(_)         => "poster"
-    case Question.Catalogue(_)      => "catalogue"
-    case _                          => "tmdb"
-  }
-
-  /** A question as the screen names it: an agreement question by the id it is asked under ([[Question.id]], read back
-   *  by [[Question.parse]]), a model question by what it asks. */
-  def textOf(question: Question): String = question.id.getOrElse(question match {
-    case Question.Candidate(query) => s"${query.productPrefix.toLowerCase(java.util.Locale.ROOT)}|${query.productElement(0)}"
-    case Question.FilmRecord(id)   => s"film|$id"
-    case Question.Person(id)       => s"person|$id"
-    case Question.VenuePage(key)   => s"page|${key.venue}|${key.rawTitle}"
-    case other                     => other.toString
-  })
 }
