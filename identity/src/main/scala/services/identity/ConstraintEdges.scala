@@ -10,8 +10,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   import scoring.generation.candidateOf
   import links.{sanitized, segmentOf}
 
-  private val apart   = new ListingsApart(scoring, families, links)
-  private val sources = new SourcesApart(scoring, families, links, apart)
+  private val apart   = new ListingCannotLinks(scoring, families, links)
+  private val sources = new SourceCannotLinks(scoring, families, links, apart)
   private val pinned  = new PinEdges(scoring)
 
   private def pairsSharingAKey(group: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
@@ -102,7 +102,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
       Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
         (3, ConstraintEdges.SameRelay)),
-      // One film-less event, however each venue spells it beside its name ([[ListingsApart.oneEvent]], the same words an article and
+      // One film-less event, however each venue spells it beside its name ([[ListingCannotLinks.oneEvent]], the same words an article and
       // the edition aside), while neither holds a film: no record joins them, and their titles share no form
       // (UK "CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island", "The CBeebies Panto 2026: …").
       Option.when(firstFilm.isEmpty && secondFilm.isEmpty && apart.oneEvent(first, second) && apart.sameEventName(first, second))(

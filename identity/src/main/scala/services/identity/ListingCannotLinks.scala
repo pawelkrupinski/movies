@@ -5,7 +5,7 @@ import services.movies.ListingConstraints
 /** Whether two nodes' own evidence keeps them apart ([[ConstraintEdges]]): the seasons their titles name, or the learned
  *  "listing-listing" scope over a fact both publish, as each node's scope reads its facts; and the film-less event each
  *  node bills, which keeps two billings of one event together. */
-private[identity] final class ListingsApart(scoring: CandidateScoring, families: Families, links: TitleLinks) {
+private[identity] final class ListingCannotLinks(scoring: CandidateScoring, families: Families, links: TitleLinks) {
   import scoring.calibration
   import links.{searchForm, titlesBeside}
 

@@ -6,7 +6,7 @@ import IdentityResolver.{FamilyCrossing, Mutation}
 
 /** Stage B of a resolve — the global assignment, per family — over `stages`' candidates and families
  *  ([[IdentityResolver]]'s `run`). `pieces`: whether a member billing its cluster's film as one piece beside another thing
- *  is decided apart, as no film ([[MembersApart]]) — the model's own takes; not a family's verdict
+ *  is decided apart, as no film ([[NoFilmMembers]]) — the model's own takes; not a family's verdict
  *  ([[IdentityResolver.resolveScored]]). */
 private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutation, pieces: Boolean) {
   import stages.{acceptance, families, generation, links, ordered, scoring}
@@ -115,7 +115,7 @@ private[identity] final class ResolverRun(stages: ResolveStages, mutation: Mutat
     // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
     // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
     private val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
-    private val apart   = new MembersApart(scope, generation)
+    private val apart   = new NoFilmMembers(scope, generation)
     private val billing = bills ++ apart.billingUnderBanner(members, bills, filmOf, scope.of)
     private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
     private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)

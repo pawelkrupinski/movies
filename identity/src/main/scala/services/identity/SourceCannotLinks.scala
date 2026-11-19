@@ -3,7 +3,7 @@ package services.identity
 /** The cannot-links two nodes' sources draw ([[ConstraintEdges]]): a feed's copied original title alone joining them, a
  *  reused page's copied facts denying a linked film, kept listings beside an overruled link, two feed links naming two
  *  films, a credit standing against the film the other holds. */
-private[identity] final class SourcesApart(scoring: CandidateScoring, families: Families, links: TitleLinks, apart: ListingsApart) {
+private[identity] final class SourceCannotLinks(scoring: CandidateScoring, families: Families, links: TitleLinks, apart: ListingCannotLinks) {
   import links.sanitized
 
   /** Do two nodes meet only through a feed's copied original title — no billed title or search form of theirs alike, every

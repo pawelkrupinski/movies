@@ -12,7 +12,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
          votes: Map[String, ResolverDecisions.Vote], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
     val films = cluster.flatMap(node => filmOf(node.id)).distinct
     require(films.sizeIs <= 1, s"a cluster holds two films ${films.mkString(",")}: a cannot-link was not drawn")
-    val read  = new ClusterRead(scoring, families, acceptance, cluster, scope, films.headOption, accepted, votes)
+    val read  = new ClusterDecisionFacts(scoring, families, acceptance, cluster, scope, films.headOption, accepted, votes)
     val ids   = cluster.map(_.id).toSet
     val apart = keptApart(edges, ids, clusterIndex)
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, read.film, read.confidence, read.basis,
@@ -23,7 +23,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
   }
 
   /** The decision's explanation, line by line. */
-  private def explanation(read: ClusterRead, edges: Seq[ResolverEdge], ids: Set[String], apart: Seq[String]): Seq[String] = {
+  private def explanation(read: ClusterDecisionFacts, edges: Seq[ResolverEdge], ids: Set[String], apart: Seq[String]): Seq[String] = {
     import read.cluster
     val own = ownMatches(cluster, read.scope)
     (overruledLines(read) ++ own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ voteLine(read) ++
@@ -34,7 +34,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       s"node ${cluster.head.listings.head.key}"
   }
 
-  private def overruledLines(read: ClusterRead): Seq[String] =
+  private def overruledLines(read: ClusterDecisionFacts): Seq[String] =
     read.cluster.flatMap(node => read.scope.overruled(node).map(link => s"${node.label}: ${link.explanation}"))
 
   private def ownMatches(cluster: Seq[EvidenceNode], scope: FamilyScope): Seq[String] =
@@ -53,13 +53,13 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       s"kept apart from ${nodeById(other).label} (cluster ${clusterIndex(other)}): ${edge.reason}"
     }.distinct.sorted
 
-  private def voteLine(read: ClusterRead): Option[String] = {
+  private def voteLine(read: ClusterDecisionFacts): Option[String] = {
     val clusterVotes = read.cluster.flatMap(node => read.votes.get(node.id))
     clusterVotes.flatMap(_.majority).headOption.orElse(clusterVotes.headOption.map(v =>
       s"pooled evidence of ${read.cluster.size} node(s) → ${v.film} at ${ResolverDecision.percent(v.probability)}"))
   }
 
-  private def bestRejected(read: ClusterRead): Option[String] =
+  private def bestRejected(read: ClusterDecisionFacts): Option[String] =
     read.scored.headOption.filter(scored => !read.film.contains(scored.candidate.tmdbId)).map { scored =>
       val why = scored.denial.orElse(scored.untaken).fold("")(reason => s", ${if (scored.denied) "denied" else "untaken"}: $reason,")
       s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}$why (${calibration.explain(ListingFilm, scored.measures)})"

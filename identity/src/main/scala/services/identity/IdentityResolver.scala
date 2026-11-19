@@ -179,7 +179,7 @@ object IdentityResolver {
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
    *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. A family's verdict
-   *  (`agreement.Agreement.verdict`, its only caller) takes a film one piece of the billing names ([[MembersApart]]): what
+   *  (`agreement.Agreement.verdict`, its only caller) takes a film one piece of the billing names ([[NoFilmMembers]]): what
    *  the families agree on is the agreement stage's to read against the billing (`AgreementStage.pieceOf`), which also keeps
    *  a fill off it. */
   final class Scored private[IdentityResolver] (val resolution: Resolution, stages: ResolveStages) {
