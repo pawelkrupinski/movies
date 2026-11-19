@@ -55,7 +55,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   private val W = "worker/src/main/scala/services/identityadapters/"
 
   private val PerResolve = "its owner is built per resolve"
-  private val PerApply   = "a field of AgreementStage.Pass, built per apply"
+  private val PerApply   = "a field of AgreementPass, built per apply"
   private val PerRefresh = "a field of LiveCorpus's Refresh, built per refresh"
   private val PerRound   = "a field of LookupFillBudget, built per fill round"
   private val PerDraft   = "a field of LeanVenueSlots, built per draft (ScopeDrafting)"
@@ -67,31 +67,31 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     // ── the agreement stage
     s"${A}ClusterKeys.scala#live"              -> Name("each live cluster key's model decision, re-keyed every apply"),
     s"${A}ClusterKeys.scala#firsts"            -> Store("the key store's rows: each live key's first listing"),
-    s"${A}AgreementStage.scala#held"           -> Digested("listings", "a Memo: heldFor compares StoredVerdict.listings, and an entry is checked under the listings' digest"),
-    s"${A}AgreementStage.scala#heldByDigest"   -> Content("the held verdicts by their listings' digest"),
-    s"${A}AgreementStage.scala#askedNow"       -> Content("the shapes (listings' digests) asked inline, no key"),
-    s"${A}AgreementStage.scala#shapes"         -> Pass(PerApply),
-    s"${A}AgreementStage.scala#waiting"        -> Digested("listings", "Waiting.listings: a wait for another shape is dropped (verdictOf) and never read"),
-    s"${A}AgreementStage.scala#candidateFilms" -> Digested("digest", "a Memo: CandidateFilms.digest compared, its receipt checked"),
+    s"${A}VerdictIndex.scala#memo"             -> Digested("listings", "a Memo: heldFor compares StoredVerdict.listings, and an entry is checked under the listings' digest"),
+    s"${A}VerdictIndex.scala#byDigest"         -> Content("the held verdicts by their listings' digest"),
+    s"${A}InlineAsker.scala#asked"             -> Content("the shapes (listings' digests) asked inline, no key"),
+    s"${A}AgreementPass.scala#shapes"          -> Pass(PerApply),
+    s"${A}ClusterVerdicts.scala#waiting"        -> Digested("listings", "Waiting.listings: a wait for another shape is dropped (verdictOf) and never read"),
+    s"${A}AgreementCandidates.scala#candidateFilms" -> Digested("digest", "a Memo: CandidateFilms.digest compared, its receipt checked"),
     s"${A}StandingTakes.scala#settledTakes"    -> Digested("members", "ResolverDecision.members: a take settled for other listings under the key stands for none (standing)"),
     s"${A}StandingTakes.scala#holds"           -> Digested("members", "Hold.members: outcomeOf and waitingOn read a hold only for the members it was made for; standing drops a reshaped one"),
-    s"${A}AgreementStage.scala#correctionWaits" -> Digested("listings", "Waiting.listings: a correction's waits for another shape of its take are dropped (corrected)"),
-    s"${A}AgreementStage.scala#takeWaits"       -> Digested("listings", "Waiting.listings: what an agreed take pending asked, read only for the cluster shape it was asked for (outcomeOf compares the decision's digest)"),
+    s"${A}AgreementCorrections.scala#correctionWaits" -> Digested("listings", "Waiting.listings: a correction's waits for another shape of its take are dropped (corrected)"),
+    s"${A}AgreementTakes.scala#takeWaits"       -> Digested("listings", "Waiting.listings: what an agreed take pending asked, read only for the cluster shape it was asked for (outcomeOf compares the decision's digest)"),
     s"${A}TmdbReadTracking.scala#recordsReading" -> Content("TMDB ids the apply read"),
     s"${A}TmdbReadTracking.scala#findsReading"   -> Content("the IMDb ids whose TMDB finds the apply read"),
-    s"${A}AgreementStage.scala#seen"           -> Pass(PerApply),
-    s"${A}AgreementStage.scala#correcting"     -> Pass(PerApply),
-    s"${A}AgreementStage.scala#inline"         -> Pass(PerApply),
-    s"${A}AgreementStage.scala#backfilled"     -> Pass(PerApply),
-    s"${A}AgreementStage.scala#venues"         -> Pass("a field of AgreementStage.Read, built per apply: poster answers by URL"),
-    s"${A}AgreementStage.scala#films"          -> Pass("a field of AgreementStage.Read, built per apply: poster answers by TMDB id"),
+    s"${A}AgreementPass.scala#seen"            -> Pass(PerApply),
+    s"${A}AgreementPass.scala#correcting"      -> Pass(PerApply),
+    s"${A}AgreementPass.scala#inline"          -> Pass(PerApply),
+    s"${A}AgreementPass.scala#backfilled"      -> Pass(PerApply),
+    s"${A}AgreementPass.scala#venues"          -> Pass("a field of AgreementPass.Read, built per apply: poster answers by URL"),
+    s"${A}AgreementPass.scala#films"           -> Pass("a field of AgreementPass.Read, built per apply: poster answers by TMDB id"),
     s"${A}AgreementVerdicts.scala#kept"        -> Store("InMemoryAgreementVerdicts' rows, each carrying its listings' digest"),
     s"${A}AgreementKeys.scala#kept"            -> Store("InMemoryAgreementKeys' rows"),
     s"${A}FamilyVerdicts.scala#kept"           -> Digested("listings", "Kept.listings compared whole, and every answer it read by digest"),
-    s"${A}Agreement.scala#numbers"             -> Pass(Lookups),
-    s"${A}Agreement.scala#named"               -> Pass(Lookups),
-    s"${A}Agreement.scala#bestRank"            -> Pass(Lookups),
-    s"${A}Agreement.scala#read"                -> Pass(Lookups),
+    s"${A}FamilyLookups.scala#numbers"         -> Pass(Lookups),
+    s"${A}FamilyLookups.scala#named"           -> Pass(Lookups),
+    s"${A}FamilyLookups.scala#bestRank"        -> Pass(Lookups),
+    s"${A}FamilyLookups.scala#read"            -> Pass(Lookups),
     // ── the Memo itself: each Memo a class keeps is reviewed where it is kept
     s"${I}Memo.scala#entries"                  -> Digested("value", "the Memo's own entries: each user's value carries its receipt, and is reviewed as that user's field"),
     s"${I}Memo.scala#checks"                   -> Digested("value", "each check holds the stamp (the caller's content digest) it was found standing under"),

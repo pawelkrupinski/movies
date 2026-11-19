@@ -5,7 +5,7 @@ import tools.TempDirectories
 import clients.{HttpTmdbClient, TmdbClient}
 import play.api.libs.json.{JsArray, Json}
 
-import services.identity.agreement.AgreementStage.PosterQuestion
+import services.identity.agreement.PosterQuestion
 import services.sharecards.{HttpPosterDownload, PosterDownload, PosterFailure}
 
 import java.nio.file.{Files, Path, StandardCopyOption}

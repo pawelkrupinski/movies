@@ -1,13 +1,12 @@
 package services.identity.agreement
 
-import scala.util.chaining.scalaUtilChainingOps
-import services.identity.{Answer, CandidateQuery, CatalogueAnswers, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision}
+import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups,
+  Listing, Memo, PosterAnswers, Question, Resolution, ResolverDecision}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
-import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+
 
 /**
  * The film a cluster the model left unmatched is, when ≥3 other film database families agree on it ([[Agreement]]) —
@@ -110,14 +109,18 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val clusterKeys: ClusterKeys = new ClusterKeys(new InMemoryAgreementKeys),
                            private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking,
                            private[agreement] val pressed: () => Boolean = () => false,
-                           private[agreement] val fullValidationEvery: Int = AgreementStage.FullValidationEvery)
-    extends AgreementCorrections, AgreementTakes, AgreementCandidates {
+                           private[agreement] val fullValidationEvery: Int = AgreementStage.FullValidationEvery) {
 
   /** What a stored verdict was decided under: the stage's code, the selected rules' version, and what the composition
    *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
    *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
   private[agreement] val decidedUnder: String =
     s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(families.keySet, identities, listedOn, calibration)}"
+
+  /** What each model decision is taken as ([[AgreementPipeline]]): the stage runs it over each resolution, an apply at a
+   *  time — what is read when, kept how long, served how. */
+  private[agreement] val pipeline = new AgreementPipeline(families, venuePages, normalizer, calibration, tmdbOf, stored, clock,
+    changes, tmdb, identities, rules, catalogue, listedOn, askNow, attempted, tmdbReads, decidedUnder)
 
   /** Every question the last [[apply]] met unanswered or stale, one each: the families' questions, TMDB's finds of agreed
    *  IMDb ids, the posters not hashed yet (the corrections' a few at a time), the catalogue ids not mapped and venue pages
@@ -130,114 +133,25 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it ([[ClusterKeys.keyOf]]): read from any thread. */
   def keyOf(decision: ResolverDecision): String = clusterKeys.keyOf(decision)
 
-  /** The families in their order: the order their verdicts and searches are read in. */
-  private[agreement] val familiesInOrder: Seq[(VoterFamily, FamilyAnswers)] = families.toSeq.sortBy(_._1.ordinal)
-  /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */
-  private[agreement] val calibrations: Map[VoterFamily, IdentityCalibration] = families.keys.map(family => family -> calibration.withPriorSpread(family.priorSpread)).toMap
   /** The verdicts kept, by their cluster's key: each a cache of its receipt ([[Memo]]), standing while none of it moved —
    *  checked at a version under its listings' digest, and indexed by every TMDB record and search it read, what [[reads]]
    *  tells the filing thread. */
-  private[agreement] lazy val held: Memo[String, StoredVerdict] = {
-    val memo = new Memo[String, StoredVerdict](_.reads, _.readsTmdb, AgreementStage.pushed)
-    stored.all().foreach(v => memo.put(v.id, v))
-    memo
-  }
-  /** The held verdicts by their listings' digest, a model take's correction apart from a cluster's: what a verdict is found
-   *  by, its key only naming it ([[heldFor]]). Kept beside [[held]] by every apply that moves it. */
-  private[agreement] lazy val heldByDigest: (mutable.LongMap[StoredVerdict], mutable.LongMap[StoredVerdict]) = {
-    val index = (mutable.LongMap.empty[StoredVerdict], mutable.LongMap.empty[StoredVerdict])
-    held.values.foreach(indexed(index, _))
-    index
-  }
+  private[agreement] def held: Memo[String, StoredVerdict] = pipeline.held
 
   /** Does a verdict the stage keeps read the TMDB record or search a filing under `id` comes as? Then that filing must
    *  reach the stage, as every answer it read does: the verdict is a cache of what it read. Read from any thread. */
   def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
 
-  /** The receipt the decision being made notes what it reads in ([[Noting]]): set by [[receipting]] on the applying
-   *  thread. */
-  private[agreement] var receipt: mutable.Map[Dependency, Long] = null
-  /** `decide`, everything it reads through the stage's lookups noted in `into`, its receipt. */
-  private[agreement] def receipting[A](into: mutable.Map[Dependency, Long])(decide: => A): A = {
-    val was = receipt
-    receipt = into
-    try decide finally receipt = was
-  }
-  /** The venues' lookups: their pages, and nothing of TMDB's, whatever `venuePages` answers besides ([[AgreementStage.PagesOnly]]) —
-   *  what the worker hands the stage there (VenueDetailLookups), so a harness handing one lookups for both roles reads
-   *  as production reads. Handed TMDB's records through this role, every harness read the model's vote by its facts
-   *  where production read it unknown, and none of them saw prod keep 26 takes a whole resolve made (2026-10-27). */
-  private[agreement] val venues: IdentityLookups = AgreementStage.PagesOnly(venuePages)
-
-  /** TMDB's and the venues' lookups as the stage reads them: each read noted ([[Noting]]). */
-  private[agreement] lazy val looked: Option[IdentityLookups] = tmdb.map(new Noting(_, Dependency.Via.Tmdb))
-  private[agreement] lazy val venuesLooked: IdentityLookups   = new Noting(venues, Dependency.Via.Venues)
-
-  /** `inner`, each read noted: among what the current apply read ([[reads]]), and in the [[receipt]] being made, if any —
-   *  as the question it reads, through `via`, with the digest of what it read, nothing there yet too
-   *  ([[AgreementStage.Receipt.reread]] reads it again). */
-  private[agreement] final class Noting(inner: IdentityLookups, via: Dependency.Via) extends services.identity.ForwardingIdentityLookups(inner) {
-    private def noted[A](aspect: Dependency.Aspect, question: Question, answer: Answer[A]): Answer[A] = {
-      if (receipt != null) receipt(Dependency.Lookup(via, aspect, question)) = Dependency.digest(answer)
-      answer
-    }
-    private def record[A](aspect: Dependency.Aspect, tmdbId: Int, answer: Answer[A]): Answer[A] = { tmdbReads.record(tmdbId); noted(aspect, Question.FilmRecord(tmdbId), answer) }
-    override def detail(listing: Listing): Answer[Option[DetailFacts]]               = noted(Dependency.Aspect.Answer, Question.VenuePage(listing.key), inner.detail(listing))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { tmdbReads.queried(); noted(Dependency.Aspect.Answer, Question.Candidate(query), inner.candidates(query)) }
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]            = record(Dependency.Aspect.Answer, tmdbId, inner.film(tmdbId))
-    override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record(Dependency.Aspect.Release, tmdbId, inner.releaseDay(tmdbId))
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record(Dependency.Aspect.Cast, tmdbId, inner.cast(tmdbId))
-    override def overview(tmdbId: Int): Answer[Option[services.identity.ProseWords]] = record(Dependency.Aspect.Overview, tmdbId, inner.overview(tmdbId))
-  }
   /** The `version` the stored verdicts were loaded at: what this worker's families answered cannot have moved while it
    *  was down — it alone files them — so a verdict kept under these rules, its listings as they were, stands then without
    *  a single answer read again (prod PL 2026-10-05: re-reading every verdict's answers at boot was a 40 s, 514 MB pass). */
   private[agreement] var loadedAt: Option[Long] = None
-  /** Whether the apply under way is this stage's first: the one that meets every cluster, and asks none inline. Kept apart
-   *  from [[loadedAt]], a version of the families' answers, which moves only when one is filed: judged by it, every apply
-   *  after a deploy was the first until a family answer was filed, and a take that moved meanwhile -- a record filed --
-   *  had its correction's questions left on the queue, the model's film served until they came in (UK Chichester's "The
-   *  Ties That Bind Us": 2008's film from its record's filing to a later queue round, drift slice seed 3). */
-  private[agreement] var firstPass: Boolean = true
-  /** Each model decision the stage took, with what it took it as: handed back as that same object while neither moved,
-   *  so the projection, which diffs decisions by identity, redrafts an agreed cluster only when its verdict moved. */
-  private[agreement] val takenAs = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
-  /** Each model decision's cluster id, listings and their digest, kept while the decision is the same object: the model
-   *  hands over a new decision when one of its listings or a fact it reads moves, so a quiet tick reads no listing again
-   *  — and one re-published with a field only the stage reads is forgotten ([[apply]]'s `republished`). */
-  private[agreement] val digested = new java.util.IdentityHashMap[ResolverDecision, AgreementStage.Digested]()
-  /** Each model decision's verdict as an event no film database holds ([[NonFilmEvents]]), kept while the decision is
-   *  the same object: such a cluster is asked nothing — neither the agreement's questions nor a model take's correction. */
-  private[agreement] val events = new java.util.IdentityHashMap[ResolverDecision, Option[String]]()
-  /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
-   *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
-  private[agreement] val waiting = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The SHAPES (listings' digests) whose families were asked inline ([[askNow]]): each asked so once, whichever key
-   *  names its cluster — a key only names (docs/design/identity-no-drift.md, "One dependency index"). Kept while a
-   *  cluster of that shape is met. */
-  private[agreement] val askedNow = mutable.HashSet.empty[Long]
-  /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against — a cache
-   *  of the TMDB answers the read took ([[Memo]]): kept while none of them was filed since. */
-  private[agreement] val candidateFilms = new Memo[String, AgreementCandidates.CandidateFilms](_.reads, _ => false)
-  /** The `version` the current [[apply]] runs at. */
-  private[agreement] var applying = -1L
-  /** The year the current [[apply]] reads a release as current by — an input every verdict's receipt names
-   *  ([[Dependency.Year]]): a year turning reads every verdict again, as a whole resolve in it would. */
-  private[agreement] var yearNow = -1
-  /** What a correction still waiting on an answer asks, by its stored id, at the digest of the take's listings it was
-   *  read at: a take's posters, families' questions and finds while the backfill hashes them — none kept once its
-   *  evidence is all answered, nor once the take's listings move. */
-  private[agreement] val correctionWaits = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The clusters whose agreed take the last apply left pending ([[AgreementTakes.Take.Pending]]: a venue poster not
-   *  hashed, an IMDb id not found in TMDB yet), with what it asked: the model's take is served meanwhile, typed Pending
-   *  ([[StageWaits.outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
-   *  posters of the candidates it read again, the model's no film served. */
-  private[agreement] val takeWaits = TrieMap.empty[String, AgreementStage.Waiting]
   /** Each cluster's last settled take, standing while the same listings' take waits ([[StandingTakes]]). */
   private[agreement] val standingTakes = new StandingTakes(clock)
+
   /** What each cluster waits on, as the last [[apply]] left it, and what a decision comes to meanwhile ([[StageWaits]]):
    *  read from any thread. */
-  val waits = new StageWaits(waiting, takeWaits, correctionWaits, keyOf, standingTakes, digested, id => held.get(id), readNow, tried, givenUp)
+  val waits: StageWaits = pipeline.waits(keyOf, standingTakes, givenUp)
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -259,9 +173,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
             republished: Option[Iterable[ListingKey]] = Some(Nil)): Resolution = synchronized {
     val year = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear
     // the year an input no filing announces: its turning reaches the verdicts that read another year, through the index
-    if (year != yearNow) { yearNow = year; held.moved(_ == Dependency.Year, readNow); last = None }
-    val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
-    val waited = questions.attemptedSince(tried)
+    if (pipeline.yearTurned(year)) last = None
+    val reread = republished.fold { pipeline.forgetAllRead(); true }(pipeline.forgetRead(resolution, _))
+    val waited = questions.attemptedSince(pipeline.tried)
     if (waited) uncheckAttempted()
     last.collect { case (was, at, came) if !reread && !waited && !unread && !standingTakes.due && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
@@ -278,18 +192,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  and has no reading of it again but afresh (run 1641). Found through the held verdicts' push index ([[Memo.moved]]):
    *  each attempt a receipt names read once, and only its readers visited. How many it unchecked: [[attemptUnchecked]]. */
   private[agreement] def uncheckAttempted(): Unit =
-    attemptUnchecked = held.moved(AgreementStage.isAttempt, readNow)
+    attemptUnchecked = pipeline.uncheckAttempted()
   /** How many verdicts the last attempt marked read again ([[uncheckAttempted]]). */
   private[agreement] var attemptUnchecked = 0
 
-  /** Forget the listings read for each decision holding one of `keys`; whether one the stage reads — a cluster nothing
-   *  took, a model take it corrects — holds any. */
-  private[agreement] def forgetRead(resolution: Resolution, keys: Iterable[ListingKey]): Boolean = keys.nonEmpty && {
-    val moved   = keys.toSet
-    val touched = resolution.decisions.filter(_.members.exists(moved))
-    touched.foreach(digested.remove)
-    touched.exists(decision => decision.film.isEmpty || correctable(decision))
-  }
 
   /** The same decisions, object for object: the model hands each unchanged decision over as the same object. */
   private[agreement] def sameDecisions(a: Resolution, b: Resolution): Boolean = {
@@ -299,7 +205,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
   /** One apply that reads, in its phases: [[opened]] (the pass, its keys, its reads begun), [[decidedAll]] (each
-   *  model decision read by [[decide]]), [[servedAll]] (what is kept and served of them), the staging screen told the
+   *  model decision read by [[AgreementPipeline.decide]]), [[servedAll]] (what is kept and served of them), the staging screen told the
    *  waits that moved ([[tellWaits]]), and [[closed]] (what the apply read and asks, handed over). */
   private[agreement] def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
     val started      = tools.Stopwatch.start()
@@ -312,34 +218,25 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     resolution.copy(decisions = served)
   }
 
-  /** The apply at `version` begins: its [[AgreementStage.Pass]], the memos' passes, each decision of `resolution` keyed
-   *  ([[ClusterKeys.assign]]), on the stage's first pass every verdict stored under these rules trusted ([[trustStored]]),
+  /** The apply at `version` begins: its [[AgreementPass]], the memos' passes, each decision of `resolution` keyed
+   *  ([[ClusterKeys.assign]]), on the stage's first pass every verdict stored under these rules trusted ([[AgreementPipeline.opened]]),
    *  TMDB's reads begun afresh, and the full validation's turn taken ([[validating]]). */
-  private def opened(resolution: Resolution, version: Long): AgreementStage.Pass = {
-    val pass = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)), backfillPerApply)
-    held.newPass(); candidateFilms.newPass()
+  private def opened(resolution: Resolution, version: Long): AgreementPass = {
+    val pass = new AgreementPass(version, correctionsPerApply, new AgreementPass.Read(posters, listedOn.flatMap(families.get)), backfillPerApply)
     clusterKeys.assign(resolution, first = loadedAt.isEmpty, pass.keys, pass.merged)
-    firstPass = loadedAt.isEmpty
-    if (loadedAt.isEmpty) trustStored(version)
-    applying = version
+    val first = loadedAt.isEmpty
+    if (first) loadedAt = Some(version)
+    pipeline.opened(version, first)
     tmdbReads.begin()
     validating(pass)
     pass
   }
 
-  /** The first pass: every verdict kept under these rules, of the year it read, stands at `version` ([[loadedAt]]). */
-  private def trustStored(version: Long): Unit = {
-    loadedAt = Some(version)
-    val year = readNow(Dependency.Year)
-    held.values.filter(v => v.rules == decidedUnder && v.reads.get(Dependency.Year).forall(year.contains)).foreach { v =>
-      held.check(v.id, v.listings, version)
-    }
-  }
 
-  /** Each model decision of `resolution` as [[decide]] takes it, in content order ([[AgreementStage.inContentOrder]]) —
+  /** Each model decision of `resolution` as the pipeline takes it ([[AgreementPipeline.decide]]), in content order ([[AgreementStage.inContentOrder]]) —
    *  what it was taken as keyed as the decision is: the projection's takes are these. */
-  private def decidedAll(resolution: Resolution, listingOf: ListingKey => Option[Listing], pass: AgreementStage.Pass): Seq[ResolverDecision] = {
-    val decisions = AgreementStage.inContentOrder(resolution.decisions)(decide(_, listingOf, pass))
+  private def decidedAll(resolution: Resolution, listingOf: ListingKey => Option[Listing], pass: AgreementPass): Seq[ResolverDecision] = {
+    val decisions = AgreementStage.inContentOrder(resolution.decisions)(pipeline.decide(_, listingOf, pass))
     resolution.decisions.iterator.zip(decisions).foreach { case (model, took) =>
       if (!(took eq model)) { val key = pass.keys.get(model); if (key != null) pass.keys.put(took, key) }
     }
@@ -347,28 +244,32 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
   /** The takes served of what the apply `took`: its keys published, what the clusters gone were kept with forgotten and
-   *  the verdicts it moved stored ([[forgetGone]]), and each take as it stands ([[StandingTakes]]). */
-  private def servedAll(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementStage.Pass): Seq[ResolverDecision] = {
+   *  the verdicts it moved stored ([[AgreementPipeline.forgetGone]]), and each take as it stands ([[StandingTakes]]). */
+  private def servedAll(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementPass): Seq[ResolverDecision] = {
     clusterKeys.publish(pass.keys)
-    forgetGone(resolution, pass)
+    pipeline.forgetGone(resolution, pass)
     standingTakes.served(resolution, took, pass, waits.openWaits)
   }
 
   /** The apply ends: what it read of TMDB published, what it met unanswered handed to the queue, whether its budget left
    *  a take unread, and the families' verdicts it did not read again dropped. */
-  private def closed(pass: AgreementStage.Pass): Unit = {
+  private def closed(pass: AgreementPass): Unit = {
     tmdbReads.publish()
-    questions.handOver(pass.wanted(correctionPostersAtOnce, tried), pass.version, tried)
+    questions.handOver(pass.wanted(correctionPostersAtOnce, pipeline.tried), pass.version, pipeline.tried)
     unread = pass.spent
-    familyVerdicts.applied()
+    pipeline.closed()
   }
+
+  /** The questions `listing`'s own facts lead the stage to ask ([[AgreementPipeline.questionsOf]]): what the model's input
+   *  gate waits on before a listing's version is taken in. */
+  def questionsOf(listing: Listing): Set[Question] = pipeline.questionsOf(listing, posters)
 
   /** Makes every `fullValidationEvery`th apply that reads anything, unless the heap is `pressed`, a FULL VALIDATION: up to
    *  [[AgreementStage.FullValidationBudget]] of the kept verdicts the dirty index calls standing ([[Memo.clean]]) are read
    *  again whole ([[Memo.verified]]) — the next budget's worth each time, round the set — and one whose receipt moved
    *  unannounced is DRIFT, counted and decided again. The proof the index equals full validation: `drifted` must read
    *  zero. A correction stands on its filings alone, and is not read. */
-  private[agreement] def validating(pass: AgreementStage.Pass): Unit = {
+  private[agreement] def validating(pass: AgreementPass): Unit = {
     appliesSinceValidation += 1
     if (appliesSinceValidation >= fullValidationEvery && !pressed()) {
       appliesSinceValidation = 0
@@ -384,7 +285,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
    *  that waits no more. A cluster gone — regrouped, or taken by the model — is no wait ended: its listings are another
    *  cluster's now. */
-  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementStage.Pass): Unit = {
+  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementPass): Unit = {
     import services.identity.staging.StagingEvent
     val after  = waits.waitingClusters
     val now    = clock.millis()
@@ -400,579 +301,111 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (told.nonEmpty) tell(told)
   }
 
-  /** The verdict held for the cluster `key` names with listings digesting to `digest` — under its key, else under
-   *  whichever key it was filed by (a restart's keys lost or numbered otherwise, a pre-key verdict under its first
-   *  listing): filed under `key` from now, the move stored with the apply's. A verdict stands on its listings and receipt,
-   *  never on the key it was filed by. */
-  private[agreement] def heldFor(key: String, digest: Long, pass: AgreementStage.Pass): Option[StoredVerdict] =
-    held.get(key).filter(_.listings == digest).orElse {
-      val index = if (key.startsWith(AgreementStage.CorrectionPrefix)) heldByDigest._2 else heldByDigest._1
-      index.get(digest).filter(_.listings == digest).map { found =>
-        val under = found.copy(id = key)
-        file(under); pass.moved += under
-        // checked as it was under the key it was filed by (a boot's every standing verdict), its waits not carried
-        held.moveCheck(found.id, key, digest)
-        correctionWaits -= key
-        under
-      }
-    }
 
-  /** `verdict` in `index`, by its listings' digest. */
-  private[agreement] def indexed(index: (mutable.LongMap[StoredVerdict], mutable.LongMap[StoredVerdict]), verdict: StoredVerdict): Unit =
-    (if (verdict.correction.isDefined) index._2 else index._1)(verdict.listings) = verdict
 
-  /** What the model's `decision` is taken as: a model take read against the evidence that may correct it, a no-match
-   *  the families, the posters, the screening days, a fill or the catalogue ids take a film for — else the decision as
-   *  the model left it. What it reads and waits on is noted in `pass`. */
-  private[agreement] def decide(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], pass: AgreementStage.Pass): ResolverDecision =
-    if (correctable(decision) && eventOf(decision, listingOf).isEmpty) {
-      val key = AgreementStage.correctionId(pass.keys.get(decision))
-      pass.correcting += key
-      corrected(decision, listingOf, key, pass)
-    }
-    else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
-    else {
-      val now = eventOf(decision, listingOf) match {
-        // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept
-        case Some(why) => taking(decision)(ResolverDecision.Basis.Event, s"event, not a film: $why")
-        case None      => unmatched(decision, listingOf, pass)
-      }
-      if (now eq decision) decision else takenAsBefore(decision, now)
-    }
 
-  /** What a model no-match that bills a film is taken as: its cluster read, its families' verdict found or decided
-   *  ([[verdictOf]]), and that verdict's take ([[verdictTake]]) — the decision as the model left it while there is none.
-   *  What its take asks is noted in `pass`. */
-  private def unmatched(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], pass: AgreementStage.Pass): ResolverDecision = {
-    val AgreementStage.Digested(id, listings, digest) = digestedOf(decision, pass.keys.get(decision), listingOf)
-    pass.seen += id
-    pass.shapes += digest
-    val verdict = verdictOf(decision, id, listings, digest, pass)
-    // what this cluster's take asks -- its posters, its finds -- kept apart, so a take pending on them names them
-    val asking = mutable.Set.empty[Question]
-    takeWaits -= id
-    // the venue posters' distances to the cluster's candidates and to the film the families agree on
-    // read through the apply's memo, as a correction's are: each poster decoded once an apply, not once a take
-    val distances: AgreementTakes.Distances = also => posterDistances(id, digest, listings, also, asking, hashes = pass.reading.posters)
-    // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
-    verdict.fold(decision)(v => verdictTake(AgreementTakes.Unagreed(decision, id, digest, listings, v, distances, asking), pass))
-      .tap(_ => pass.asked ++= asking)
-  }
 
-  /** The take of the families' verdict on `cluster`: the film they agree on, unless a venue poster vetoes it, the venue's
-   *  synopsis refuses it, or an answer it waits on is not in (pending); else the first of [[AgreementTakes.FallThrough]]
-   *  to take one, and the line saying why none did. */
-  private def verdictTake(cluster: AgreementTakes.Unagreed, pass: AgreementStage.Pass): ResolverDecision = {
-    val AgreementTakes.Unagreed(decision, id, digest, listings, v, _, asking) = cluster
-    pieceOf(v, listings).fold(agreedTake(cluster) match {
-      // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
-      // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-      case AgreementTakes.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
-        takeOf(AgreementTakes.BroadcastTake, cluster, pass).getOrElse(agreed)
-      case AgreementTakes.Take.Taken(agreed) => agreed
-      case AgreementTakes.Take.Pending       => takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet); decision
-      case AgreementTakes.Take.Vetoed        => pass.posterVetoed += 1; fellWaiting(cluster, pass)
-      // the venue's synopsis naming a namesake's description says why, where nothing else takes one
-      case AgreementTakes.Take.Refused(why)  =>
-        val fell = fellWaiting(cluster, pass)
-        if (fell eq decision) taking(decision)(decision.basis, why) else fell
-      // the guard that refused the film the families would agree on says why, where nothing else takes one
-      case AgreementTakes.Take.Untaken       =>
-        val fell = fellWaiting(cluster, pass)
-        v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
-    })(line => taking(decision)(decision.basis, line))
-  }
 
-  /** What became of the film the families agree on for `cluster` ([[taken]]): none to take where they agree on none. */
-  private def agreedTake(cluster: AgreementTakes.Unagreed): AgreementTakes.Take[ResolverDecision] = {
-    val AgreementTakes.Unagreed(decision, id, digest, listings, v, distances, asking) = cluster
-    v.agreed.fold[AgreementTakes.Take[ResolverDecision]](AgreementTakes.Take.Untaken)(taken(decision, _, asking, distances,
-      film => synopsisAgainst(id, digest, listings, film)))
-  }
 
-  /** The first of the fall-through takes to take a film for `cluster` ([[fellThrough]]) — and where none did while one of
-   *  them waits on a question (a find, a poster, a broadcast's record), the cluster pending on it, as an agreed take is
-   *  (PL "SEVENTEEN World Tour": filled by IMDb once TMDB's find of its id was filed, read as no film before it; the
-   *  property "refine each take as answers are only filed"). */
-  private def fellWaiting(cluster: AgreementTakes.Unagreed, pass: AgreementStage.Pass): ResolverDecision = {
-    val fell = fellThrough(cluster, pass)
-    if ((fell eq cluster.decision) && cluster.asking.nonEmpty) takeWaits(cluster.id) = AgreementStage.Waiting(cluster.digest, cluster.asking.toSet)
-    fell
-  }
 
-  /** A cluster the stage meets in this SHAPE (its listings digesting to `digest`) for the first time since it started —
-   *  no verdict, wait or inline ask of that shape held, under ANY key: found by the digest, as a verdict is ([[heldFor]]),
-   *  never by the key naming the cluster now — past its first pass, which meets every cluster:
-   *  what [[askNow]] asks inline. A new key and a known key a scrape reshaped alike: under its kept key, PL "Bez końca" ×7
-   *  (2026-10-23, 10-26) gained a listing whose title no family had been asked, waited on the queue, and was published
-   *  lost until the answers came in half a minute later — where a cluster new to its key would have read them. */
-  private[agreement] def newCluster(digest: Long): Boolean =
-    asksInline(digest, heldByDigest._1) && !waiting.valuesIterator.exists(_.listings == digest)
-
-  /** A model take's correction the stage meets in this SHAPE (`digest`, [[correctionDigest]]) for the first time since it
-   *  started — none held of that shape under any key, none asked inline — past its first pass: what [[askNow]] asks the
-   *  families of inline, as [[newCluster]] does a cluster's. */
-  private[agreement] def newCorrection(digest: Long): Boolean = asksInline(digest, heldByDigest._2)
-
-  /** What [[newCluster]] and [[newCorrection]] share: an inline ask is wired, the first pass is over, and no verdict of
-   *  `index` (the clusters' or the corrections') nor an inline ask has met the SHAPE `digest` yet. */
-  private def asksInline(digest: Long, index: mutable.LongMap[StoredVerdict]): Boolean =
-    (askNow ne AgreementStage.AskNow.Never) && !firstPass && !index.get(digest).exists(_.listings == digest) && !askedNow(digest)
-
-  /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
-   *  corrections and the model's decisions — and store the verdicts `pass` moved. */
-  private[agreement] def forgetGone(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
-    // a verdict under other rules decided again to a wait, none under these rules in its place: a cache of nothing now
-    val renewed    = pass.moved.iterator.filter(_.rules == decidedUnder).map(_.id).toSet
-    val superseded = pass.backfilled.toSet -- renewed
-    val removed    = held.keys.toSet -- pass.seen -- pass.correcting ++ superseded
-    val moved      = pass.moved.filterNot(verdict => superseded(verdict.id))
-    waiting --= waiting.keySet.toSet -- pass.seen
-    askedNow.filterInPlace(pass.shapes)
-    (candidateFilms.keys.toSet -- pass.seen).foreach(candidateFilms.remove)   // a correction's candidates are read, never kept
-    correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
-    takeWaits --= takeWaits.keySet.toSet -- pass.seen
-    if (removed.nonEmpty || moved.nonEmpty) {
-      stored.replace(removed, moved.toSeq)
-      removed.foreach(unfile)
-      moved.foreach(file)
-    }
-    val current = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean]())
-    resolution.decisions.foreach(current.add)
-    takenAs.keySet.retainAll(current)   // the model's decisions this resolution no longer holds
-    digested.keySet.retainAll(current)
-    events.keySet.retainAll(current)
-  }
-
-  /** `verdict` held under its id — found by its digest ([[heldByDigest]]) — the verdict it replaces dropped. */
-  private[agreement] def file(verdict: StoredVerdict): Unit = {
-    val index = heldByDigest   // built from what is held before it moves
-    held.get(verdict.id).foreach(dropped)
-    held.put(verdict.id, verdict); indexed(index, verdict)
-  }
-
-  /** The verdict held under `id`, if any, dropped. */
-  private[agreement] def unfile(id: String): Unit = {
-    val _ = heldByDigest
-    held.remove(id).foreach(dropped)
-  }
-
-  private def dropped(verdict: StoredVerdict): Unit = {
-    val index = if (verdict.correction.isDefined) heldByDigest._2 else heldByDigest._1
-    if (index.get(verdict.listings).exists(_ eq verdict)) index -= verdict.listings
-  }
 
   /** What the apply came to, for [[metrics]]. */
-  private[agreement] def report(decisions: Seq[ResolverDecision], pass: AgreementStage.Pass, started: tools.Stopwatch.Started): Unit = {
-    val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
-    val byBasis   = decisions.groupMapReduce(_.basis)(_ => 1)(_ + _)
-    def taken(basis: ResolverDecision.Basis) = byBasis.getOrElse(basis, 0)
-    val open      = mutable.Map.empty[VoterFamily, Int]
-    var finds, postersOpen, catalogueOpen, undated = 0
-    questions.wanted.foreach {
-      case Question.Family(family, _) => open(family) = open.getOrElse(family, 0) + 1
-      case Question.Find(_)           => finds += 1
-      case Question.Poster(_)         => postersOpen += 1
-      case Question.Catalogue(_)      => catalogueOpen += 1
-      case Question.Record(_)         => undated += 1
-      case _                          => ()
-    }
-    metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.values.count(_.correction.isEmpty),
-      agreed = held.values.count(_.agreed.isDefined),
-      takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
-      open = open.toMap, finds = finds, resolves = pass.resolves, seconds = started.seconds,
-      takenPoster = taken(ResolverDecision.Basis.Poster), posterVetoed = pass.posterVetoed, posters = postersOpen,
-      takenBroadcast = taken(ResolverDecision.Basis.Broadcast), takenFilled = taken(ResolverDecision.Basis.Filled),
-      takenCatalogue = taken(ResolverDecision.Basis.Catalogue), catalogue = catalogueOpen, undated = undated,
-      withdrawn = taken(ResolverDecision.Basis.Withdrawn), corrected = taken(ResolverDecision.Basis.Corrected),
-      correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
-      events = taken(ResolverDecision.Basis.Event),
-      incomplete = held.values.count(_.rules != decidedUnder), validated = pass.validated.read, drifted = pass.validated.drifted,
-      held = standingTakes.held(), holdsEnded = pass.holdsEnded.toSeq, holdsBounded = pass.holdsBounded.toSeq))
-  }
+  private[agreement] def report(decisions: Seq[ResolverDecision], pass: AgreementPass, started: tools.Stopwatch.Started): Unit =
+    metrics.applied(AgreementStage.Applied.of(decisions, questions.wanted, pipeline.waitingClusters, () => held.values, decidedUnder, pass,
+      standingTakes.held(), started.seconds))
 
-  /** `d` taken on `basis`, `line` explaining it — with the `film`, `fallback` and `agreed` ids it takes, where they move. */
-  private[agreement] def taking(d: ResolverDecision)(basis: ResolverDecision.Basis, line: String, film: Option[Int] = d.film,
-                                          fallback: Option[ResolverDecision.Fallback] = d.fallback, agreed: Map[String, String] = d.agreed,
-                                          rule: Option[String] = None): ResolverDecision =
-    d.copy(film = film, basis = basis, explanation = d.explanation :+ line, fallback = fallback, agreed = agreed)(
-      rule.fold(d.trace)(r => d.trace.copy(stage = Some(r))))
 
-  /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
-  private[agreement] def eventOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Option[String] =
-    Option(events.get(decision)).getOrElse {
-      // a title shaped as a franchise's marathon is a film's own as the MODEL's searches found ([[ResolverDecision.filmTitled]]):
-      // its answers, in its decision -- one moved hands the stage a new decision, read again -- never a search of the stage's
-      val event = NonFilmEvents.of(decision.members.flatMap(listingOf), listing => decision.filmTitled(listing.key))
-      events.put(decision, event); event
-    }
 
-  /** The decision's listings, sorted by key. */
-  private[agreement] def sortedListings(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
-    decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
 
-  /** The decision's cluster key (`key`), its listings sorted and their digest, kept while the model hands the same
-   *  decision over — which keeps its key as long. */
-  private[agreement] def digestedOf(decision: ResolverDecision, key: String, listingOf: ListingKey => Option[Listing]): AgreementStage.Digested =
-    Option(digested.get(decision)).getOrElse {
-      val listings = sortedListings(decision, listingOf)
-      val fresh    = AgreementStage.Digested(key, listings,
-        AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
-          PosterEvidence.urls(listings).mkString("\u0001"))))
-      digested.put(decision, fresh); fresh
-    }
 
-  /** TMDB's own vote on a no-match: the film it leans to, else the best-ranked candidate it weighed — its record as
-   *  `lookups` reads it (the verdict's receipt), so it links to a family's pick by facts as well as by ids. */
-  private[agreement] def voteOf(decision: ResolverDecision, lookups: IdentityLookups): Option[SourceRecord] =
-    decision.leaning.orElse(decision.candidate).map { vote =>
-      val ids = AgreementStage.leanRecord(vote)
-      lookups.film(vote.film).answered.flatten.fold(ids)(film => SourceRecord(film,
-        ids.crossIds ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _)))
-    }
 
-  /** The listings as published, the people their own text names, and the venue detail page the picks read of each. */
-  private[agreement] def digestOf(listings: Seq[Listing]): Long =
-    AgreementStage.digest(listings.map(l => l.sortKey + l.screenedSeason.fold("")(season => s"\u0002$season") +
-      (if (l.names.isEmpty) "" else s"\u0003${l.names.##}") +
-      (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
 
-  /** The cluster's verdict: the stored one while its listings and everything it read stand (its receipt,
-   *  [[StoredVerdict.reads]]), else the resolver's over the answers now — `None` while a family's is a gap. */
-  private[agreement] def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long,
-                        pass: AgreementStage.Pass): Option[StoredVerdict] = {
-    // a wait is decided for one shape of the cluster: one kept for another is no wait of this one, whatever decides it now
-    if (waiting.get(id).exists(_.listings != digest)) waiting -= id
-    val found = heldFor(id, digest, pass)
-    // settled without some families: their questions asked on every pass — one answered reads the verdict again
-    found.foreach(v => pass.asked ++= unreached(v))
-    found.filter(_.rules == decidedUnder).filter(stands(_, id, digest, listings, pass))
-    // decided under other rules (a deploy's, or before receipts were whole): decided again while the apply's backfill
-    // budget lasts, standing as it was until a later apply's reaches it — a deploy's boot resolves no whole corpus. One
-    // under these rules whose answers moved spends none of it: decided again now, never standing on a stale receipt.
-    // One decided again to a wait is dropped with the apply ([[forgetGone]]): it neither stands again nor spends a
-    // later apply's budget again while its cluster waits
-    .orElse(found.filter(_.rules != decidedUnder).filter(_ => !backfilled(id, pass)))
-    .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
-      // its questions not all answered yet: a resolve now could reach no verdict — or, its fill read blind, the verdict
-      // that read gave, at answers nothing has been filed over since: a resolve now would read the very same
-      case Some(w) => pass.asked ++= w.gaps; w.read
-      case None    => resolved(decision, id, digest, listings, pass)
-    })
-  }
 
-  /** Does `kept`, a verdict of cluster `id` decided under these rules, stand at the apply's version? While none of its
-   *  reads was filed since it was checked ([[Memo.clean]]), else while each reads as it did: a stale answer among its
-   *  reads, read again, asked again — and, at the full validation's turn, read again whole though the index calls it
-   *  standing, a drift decided again. */
-  private def stands(kept: StoredVerdict, id: String, digest: Long, listings: Seq[Listing], pass: AgreementStage.Pass): Boolean = {
-    val version = pass.version
-    // a filing of what it read is compared by value, that answer alone read again ([[Memo.clean]]'s `again`): one that
-    // moved nothing leaves it standing — every TMDB search is filed under one id (QueryFiled), so any search filed
-    // anywhere read every verdict that read one whole (DE 2026-10-27: ~4 s, 1.5 GB an apply)
-    var reread = false
-    val clean  = held.clean(id, digest, version, changes.changedSince, again = { (read, recorded) =>
-      reread = true
-      digestNow(read, listingIn(listings)).contains(recorded)
-    })
-    // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
-    def askStale(): Unit = pass.asked ++= kept.reads.keys.flatMap(staleOf)
-    if (clean && reread) askStale()
-    if (clean && pass.validating()) {
-      // the full validation's: read again whole, though the index calls it standing — a drift is decided again
-      val checked = held.verified(id, kept, digestNow(_, listingIn(listings)))
-      pass.validated += checked
-      checked.drifted == 0
-    } else clean || {
-      val stands = held.stands(kept, digestNow(_, listingIn(listings)))
-      if (stands) { held.check(id, digest, version); askStale() }
-      stands
-    }
-  }
 
-  /** Is cluster `id`'s verdict, decided under other rules, decided again this apply — its backfill budget not spent? */
-  private def backfilled(id: String, pass: AgreementStage.Pass): Boolean = {
-    val again = pass.backfill()
-    if (again) pass.backfilled += id
-    again
-  }
 
-  /** The digest of what `read` reads now ([[reread]]), of the listings `listingOf` names: the one digest a receipt
-   *  records it by ([[Dependency.digest]]), so no kind is compared in another form than it was recorded in. */
-  private[agreement] def digestNow(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Long] =
-    reread(read, listingOf).map(Dependency.digest)
-  /** What `read` — one no listing names: the year, an attempt — digests to now. A receipt records it by this, the reader it
-   *  is compared through ([[digestNow]]): one form both ways. */
-  private[agreement] def readNow(read: Dependency): Option[Long] = digestNow(read, _ => None)
 
-  /** One of `listings`, by its key: a receipt reads the detail page of its cluster's own listings alone. */
-  private[agreement] def listingIn(listings: Seq[Listing]): ListingKey => Option[Listing] = key => listings.find(_.key == key)
 
-  /** Every family's verdict on `listings`, in the families' order — each question read noted in `reads`, each gap in
-   *  `gaps`. */
-  private[agreement] def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[Question], reads: mutable.Map[Dependency, Long]): Seq[Answer[FamilyVerdict]] =
-    familiesInOrder.map { case (_, answers) => familyVerdicts.verdict(listings, answers, gaps, reads) }
 
-  /** The questions `listing`'s OWN facts lead the stage to ask -- its titles' and directors' searches and the records
-   *  their hits name, as the stage asks them of any cluster holding it (the family verdicts over the listing alone, every
-   *  gap they meet), and the posters the poster vote and veto read of it while they are not hashed: its venue poster
-   *  ([[PosterEvidence.urls]]), then those of the films its own searches find ([[posterDistances]] over the listing
-   *  alone). None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked nor its poster
-   *  hashed -- a title shaped as a franchise's marathon reads as one here, the model's searches that may make it a film's
-   *  ([[ResolverDecision.filmTitled]]) not read yet: its families are asked once its decision says so. What the model's
-   *  input gate waits on before a listing's version is taken in (docs/design/identity-structural-fixes.md, fix 1: asking
-   *  apart from deciding): a population-independent set, a
-   *  function of the listing and the answers filed. Without the posters, a listing joined a cluster with one unhashed, the
-   *  take waited on it, and the model's "no film" stood until the poster was filed seconds later (prod 11-07..11-10: UK
-   *  "Hadoota" x14 and ES "DUNE" x6 on their own venue posters; US "Parkway Drive: Home" x83 and UK "Touché" x5 on a
-   *  candidate film's). */
-  def questionsOf(listing: Listing): Set[Question] =
-    if (NonFilmEvents.of(listing).isDefined) Set.empty
-    else {
-      val gaps = mutable.Set.empty[Question]
-      verdictsOf(Seq(listing), gaps, mutable.Map.empty)
-      // none of the films while a search is unanswered: the search is a question already, and the posters its answer
-      // leads to are asked once it is (ModelInputGate's askLedTo); the id and digest key only the cluster's cache, unread
-      posterDistances("", 0L, Seq(listing), also = None, gaps,
-        candidates = (_, _, alone) => looked.flatMap(searchedFilms(alone, _)).getOrElse(Nil), hashes = posters)
-      gaps.toSet
-    }
 
-  /** The families' verdicts the last applies resolved, each handed back while all it read reads alike ([[FamilyVerdicts]]). */
-  private[agreement] val familyVerdicts = new FamilyVerdicts(venues, normalizer, calibrations)
-
-  /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
-   *  waiting on its questions, while one is a gap. */
-  private[agreement] def resolved(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing],
-                       pass: AgreementStage.Pass): Option[StoredVerdict] = {
-    pass.resolves += 1
-    // the verdict's receipt: everything its decision reads, each by its id with the digest of what it read — nothing
-    // there yet too — so a filing of any of it reads the verdict again ([[Noting]])
-    val reads = mutable.Map.empty[Dependency, Long]
-    val gaps  = mutable.Set.empty[Question]
-    val verdicts = familiesAsked(id, digest, listings, gaps, reads, pass)
-    pass.asked ++= gaps
-    val unknown = verdicts.contains(Answer.Unknown)
-    // settled once every question it waits on was attempted: the question memory's to say, never the cluster's past
-    val settling = unknown && gaps.forall(tried)
-    if (unknown && !settling) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet); None }
-    else {
-      waiting -= id
-      Some(weighedVerdict(decision, id, digest, listings, verdicts, reads, pass))
-    }
-  }
-
-  /** Every family's verdict on cluster `id`'s listings, each gap noted in `gaps` and each read in `reads` — a cluster met
-   *  in a new shape ([[newCluster]]) having its families asked inline first ([[askedInline]]). */
-  private def familiesAsked(id: String, digest: Long, listings: Seq[Listing], gaps: mutable.Set[Question],
-                            reads: mutable.Map[Dependency, Long], pass: AgreementStage.Pass): Seq[Answer[FamilyVerdict]] = {
-    val first = verdictsOf(listings, gaps, reads)
-    if (!first.contains(Answer.Unknown) || !newCluster(digest)) first
-    else {
-      // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers —
-      // and the questions those answers lead to (a search's hits' records), a round each, asking only what no round
-      // before did, all within the one bound. Else such a question waited on the queue, and the take came at a later
-      // apply none of its own inputs moved at, another cluster's ask having filed it (UK Rio's "Rocky Horror",
-      // convergence #2473: the record of a hit Metacritic's search found)
-      askedNow += digest
-      pass.inline(id) = (clock.millis(), gaps.toSet)
-      askedInline(first, gaps.toSet) { () => gaps.clear(); reads.clear(); verdictsOf(listings, gaps, reads) } { (now, asked) =>
-        if (now.contains(Answer.Unknown)) gaps.toSet -- asked else Set.empty
-      }
-    }
-  }
-
-  /** The verdict the families' answers (`verdicts`) come to — their agreement weighed, and the fill where none names a
-   *  film — with its receipt `reads`: kept and checked at the apply's version, or, its fill having met a TMDB question
-   *  not answered yet, held as cluster `id`'s wait and kept by none. */
-  private def weighedVerdict(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing],
-                             verdicts: Seq[Answer[FamilyVerdict]], reads: mutable.Map[Dependency, Long],
-                             pass: AgreementStage.Pass): StoredVerdict = {
-    val version  = pass.version
-    val thisYear = yearNow
-    readNow(Dependency.Year).foreach(reads(Dependency.Year) = _)
-    val known    = verdicts.flatMap(_.answered)
-    val stated   = listings.map(asStated)
-    val (weighed, fill) = receipting(reads) {
-      // the vote's record is TMDB's: the venues' lookups answer venue pages alone, every film unknown (the worker's
-      // VenueDetailLookups), so read there the vote linked to no family's pick by its facts in production, while a
-      // whole resolve handed one lookups for both linked it -- 26 takes prod kept as none on 2026-10-27 (DE
-      // "Rental Family" ×9, "Dolly" ×9, PL "Ice Cream Man" ×4, …): each verdict read its vote's record as unknown
-      val lean    = voteOf(decision, looked.getOrElse(venuesLooked))
-      val weighed = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
-      // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
-      weighed -> (if (weighed.agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None)
-        else filledOf(decision, listings, known, stated, thisYear, version, pass.asked, reads))
-    }
-    val agreed   = weighed.agreed
-    // settled: what none answered is in the receipt as unanswered ([[Recording]]), so its answer, once filed, reads
-    // the verdict again
-    val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.answered.flatten, refused = weighed.refused)
-    if (fill == Answer.Unknown) {
-      // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
-      // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5).
-      // The wait holds what the pass read, handed back while nothing is filed: dropped, the next decision of the same
-      // cluster at the same answers read no verdict and took none — a re-resolve of the family elsewhere flipped the
-      // take, the next filing flipped it back (UK Cineworld's "RBO Cinema Season 2026-27: La Fanciulla Del West" ×73)
-      waiting(id) = AgreementStage.Waiting(digest, Set.empty, blindAt = Some(version), read = Some(verdict))
-      held.uncheck(id)
-    } else {
-      if (!held.get(id).contains(verdict)) pass.moved += verdict
-      held.check(id, digest, version)
-    }
-    verdict
-  }
-
-  /** The INLINE ASK ([[askNow]]) of a cluster or a take's correction met in a new shape: `first`, read, asks `firstAsking`
-   *  now, reads again, and asks what that read leads to (`asking`, given what was asked) — a round each, asking only what
-   *  no round before did, all rounds within [[AgreementStage.AskNowWithin]] and at most [[AgreementStage.InlineRounds]] of
-   *  them. What the last read came to; a question still open there is handed to the queue as every other is. */
-  private[agreement] def askedInline[A](first: A, firstAsking: Set[Question])(read: () => A)(asking: (A, Set[Question]) => Set[Question]): A = {
-    val deadline = clock.millis() + AgreementStage.AskNowWithin.toMillis
-    var asked    = Set.empty[Question]
-    var now      = first
-    var next     = firstAsking
-    var rounds   = 0
-    while (next.nonEmpty && rounds < AgreementStage.InlineRounds && clock.millis() < deadline) {
-      asked ++= next
-      rounds += 1
-      askNow(next, scala.concurrent.duration.Duration(deadline - clock.millis(), java.util.concurrent.TimeUnit.MILLISECONDS))
-      now  = read()
-      next = asking(now, asked)
-    }
-    now
-  }
-
-  /** Has the family answered `question` since — any answer, fresh? Read per waiting cluster, per tick: an answer filed
-   *  for another cluster's question resolves none of the rest again (prod PL 2026-10-04: re-resolving every waiting
-   *  cluster on each filing ran a 24 s, 540 MB agreement phase back to back). */
-  private[agreement] def answered(gap: Question): Boolean = gap match {
-    case Question.Family(family, question) => families.get(family).exists(_.fresh(question))
-    case _                                 => false
-  }
-
-  /** Is a waiting cluster due a resolve? Once every question it waits on is answered — any gap left, and the families
-   *  could reach no verdict, so resolving on each answer as a backlog drains (every cluster gets one, every tick) only
-   *  re-ran the same partial resolve: prod PL 2026-10-04, 25–48 s an agreement phase after the per-question fix — or once
-   *  it settles ([[settles]]): then it is decided on the families that answered. */
-  private[agreement] def due(waiting: AgreementStage.Waiting): Boolean =
-    // a fill read blind waits on no family's question but on TMDB's answer: due once something is filed, not every pass
-    waiting.blindAt.fold(waiting.gaps.forall(answered))(_ != applying) || settles(waiting)
-
-  /** The one settle rule (docs/design/identity-questions.md, step 4): a cluster every one of whose questions has been
-   *  attempted ([[tried]]) is decided on the families that answered, the rest left out as no verdict — no clock, and a
-   *  question merely handed to `ask` holds it. Settling ends the wait, not the asking: its unanswered questions stay in
-   *  [[unreached]], asked on every pass, and the first of them answered reads the cluster again ([[verdictOf]]). */
-  private[agreement] def settles(waiting: AgreementStage.Waiting): Boolean =
-    waiting.blindAt.isEmpty && waiting.gaps.forall(tried)
-
-  /** Has `gap` been attempted: an answer to it held — a stale one too, read all the same — or, by `attempted`, asked and
-   *  come to a durable non-answer or a failure? */
-  private[agreement] def tried(gap: Question): Boolean = gap match {
-    case family: Question.Family => answered(gap) || reread(Dependency.Answer(family), _ => None).exists(_ != Answer.Unknown) || attempted(gap)
-    case _                                 => attempted(gap)
-  }
-
-  /** [[AgreementStage.settledBy]] this stage's `attempted`. */
-  private[agreement] def settled[A](question: Question, answer: Answer[A]): Answer[A] =
-    AgreementStage.settledBy(attempted)(question, answer)
-
-  /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
-   *  ([[Dependency.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
-   *  keys lost or renumbered ask each cluster's own. */
-  private[agreement] def unreached(verdict: StoredVerdict): Iterator[Question] =
-    verdict.reads.iterator.collect { case (read, Dependency.Unanswered) => read }.flatMap(staleOf)
-
-  /** A family's answer a receipt holds that is stale, as the question to ask again. */
-  private[agreement] def staleOf(read: Dependency): Option[Question] = read match {
-    case Dependency.Answer(question @ Question.Family(family, asked)) if families.get(family).exists(!_.fresh(asked)) => Some(question)
-    case _                                                                                                           => None
-  }
-
-  /** What a receipt's dependency reads now — the one reader a receipt is compared through: a family's answer, as
-   *  [[Recording]] notes it; TMDB's and the venues' lookups', as [[Noting]] notes them, a detail page of a listing
-   *  `listingOf` names; whether a question was attempted; the year the apply reads by. None for one nothing reads again —
-   *  what holds it never stands. */
-  private[agreement] def reread(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Answer[?]] = read match {
-    case Dependency.Attempted(question)     => Some(Dependency.attemptRead(attempted(question)))
-    case Dependency.Year                    => Some(Dependency.yearRead(yearNow))
-    case Dependency.Lookup(Dependency.Via.Venues, aspect, question) => AgreementStage.Receipt.reread(venues, aspect, question, listingOf)
-    case Dependency.Lookup(Dependency.Via.Tmdb, aspect, question)   => tmdb.flatMap(AgreementStage.Receipt.reread(_, aspect, question, listingOf))
-    case Dependency.Answer(Question.Family(family, question)) => families.get(family).flatMap(familyAnswer(_, question))
-    case Dependency.Asked(_) | Dependency.Unparsed(_) => None
-  }
-
-  /** `answers`' answer now to a family's `question`, as [[Recording]] names it (`title|…`, `director|…`, `record|…`,
-   *  `showing|…`); None for a question named otherwise. */
-  private def familyAnswer(answers: FamilyAnswers, question: String): Option[Answer[?]] =
-    question.split("\\|", 2) match {
-      case Array("title", text)    => Some(answers.titled(text))
-      case Array("director", text) => Some(answers.directedBy(text))
-      case Array("record", text)   => Some(answers.record(text))
-      case Array("showing", text)  => Some(answers.showing(text))
-      case _                       => None
-    }
-
-  /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
-   *  not answered yet, the IMDb id then noted in `finding`; `Failed` once it was attempted and not answered
-   *  ([[Agreement.tmdbFound]]), which a reader decides on as naming none ([[Answer.failedAs]]). */
-  private[agreement] def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[Question]): Answer[Option[Int]] =
-    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None)) { id =>
-      tmdbReads.find(id)
-      Agreement.tmdbFound(tmdbOf, id, finding, attempted)
-    })(film => Answer.Known(Some(film)))
 }
 
 object AgreementStage {
-  /** `answer` to `question`, or -- not answered though `attempted` (it failed, or came to nothing durable) -- `Failed`:
-   *  read as no evidence where it is decided on ([[Answer.failedAs]]), the take decided without it (the settle rule,
-   *  docs/design/identity-questions.md step 4). THE one place an answer not given yet is decided on as if given up -- the
-   *  stage's reads ([[AgreementStage.settled]]), the catalogue's ([[Catalogue]]), TMDB's finds ([[Agreement.tmdbFound]])
-   *  and the house productions ([[AgreementCandidates.productionsOf]]) alike: an attempt still inside its retries is
-   *  read as Failed too (docs/design/identity-structural-fixes.md, fix 4; fix 1 removes it). The caller notes the
-   *  question asked all the same, so it is asked on every pass and read again once answered. */
-  def settledBy[A](attempted: Question => Boolean)(question: Question, answer: Answer[A]): Answer[A] =
-    if (answer == Answer.Unknown && attempted(question)) Answer.Failed else answer
+  /** Told what each [[AgreementStage.apply]] that read anything came to ([[Applied]]). */
+  trait Metrics { def applied(applied: Applied): Unit }
+  object Metrics { val Silent: Metrics = _ => () }
 
-  /** `inner`'s venue pages alone: TMDB's searches and records unknown, a film's cast and description none to go on —
-   *  as the worker's venue lookups answer them (VenueDetailLookups). TMDB is the stage's `tmdb`. */
-  final class PagesOnly private (val inner: IdentityLookups) extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                       = inner.hasDetail(listing)
-    def detail(listing: Listing): Answer[Option[DetailFacts]]      = inner.detail(listing)
-    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
-      inner.prefetch(Nil, Nil, details)
-    override def prefetchAnswered(): Unit                          = inner.prefetchAnswered()
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Unknown
+  /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
+   *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
+   *  and TMDB finds, how many clusters it resolved again, and how long it took; and the venue posters' part: the decisions
+   *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet; and the
+   *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]), a fill rule took
+   *  ([[ResolverDecision.Basis.Filled]]) and the listings' catalogue ids took ([[ResolverDecision.Basis.Catalogue]]), with
+   *  the catalogue questions still open, and the TMDB records the broadcast take waits on to read again; and the verdicts
+   *  decided under other rules still to be decided again (`incomplete`: a deploy's backfill, [[BackfillPerApply]]);
+   *  and the full validation's kept verdicts read again and those found drifted ([[FullValidationEvery]]). */
+  final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
+                           finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
+                           takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0,
+                           withdrawn: Int = 0, corrected: Int = 0, correcting: Int = 0, correctionPosters: Int = 0,
+                           events: Int = 0, incomplete: Int = 0, validated: Int = 0, drifted: Int = 0,
+                           held: Held = Held.None, holdsEnded: Seq[Double] = Nil, holdsBounded: Seq[Double] = Nil)
+  object Applied {
+    /** What an apply at `pass` came to: its `decisions`, the questions it left `wanted`, the clusters `waiting` and the
+     *  verdicts `held` (decided under `decidedUnder`, or still to be decided again), the takes standing (`standing`) and
+     *  how long it took. */
+    def of(decisions: Seq[ResolverDecision], wanted: Set[Question], waiting: Int, held: () => Iterator[StoredVerdict], decidedUnder: String,
+           pass: AgreementPass, standing: Held, seconds: Double): Applied = {
+      val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
+      val byBasis   = decisions.groupMapReduce(_.basis)(_ => 1)(_ + _)
+      def taken(basis: ResolverDecision.Basis) = byBasis.getOrElse(basis, 0)
+      val open      = mutable.Map.empty[VoterFamily, Int]
+      var finds, postersOpen, catalogueOpen, undated = 0
+      wanted.foreach {
+        case Question.Family(family, _) => open(family) = open.getOrElse(family, 0) + 1
+        case Question.Find(_)           => finds += 1
+        case Question.Poster(_)         => postersOpen += 1
+        case Question.Catalogue(_)      => catalogueOpen += 1
+        case Question.Record(_)         => undated += 1
+        case _                          => ()
+      }
+      Applied(waiting = waiting, verdicts = held().count(_.correction.isEmpty), agreed = held().count(_.agreed.isDefined),
+        takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
+        open = open.toMap, finds = finds, resolves = pass.resolves, seconds = seconds,
+        takenPoster = taken(ResolverDecision.Basis.Poster), posterVetoed = pass.posterVetoed, posters = postersOpen,
+        takenBroadcast = taken(ResolverDecision.Basis.Broadcast), takenFilled = taken(ResolverDecision.Basis.Filled),
+        takenCatalogue = taken(ResolverDecision.Basis.Catalogue), catalogue = catalogueOpen, undated = undated,
+        withdrawn = taken(ResolverDecision.Basis.Withdrawn), corrected = taken(ResolverDecision.Basis.Corrected),
+        correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
+        events = taken(ResolverDecision.Basis.Event),
+        incomplete = held().count(_.rules != decidedUnder), validated = pass.validated.read, drifted = pass.validated.drifted,
+        held = standing, holdsEnded = pass.holdsEnded.toSeq, holdsBounded = pass.holdsBounded.toSeq)
+    }
   }
-  object PagesOnly {
-    def apply(lookups: IdentityLookups): IdentityLookups = lookups match {
-      case pages: PagesOnly => pages
-      case other            => new PagesOnly(other)
+  /** The previous takes standing after an apply ([[StandingTakes]]): the `listings` they hold, the oldest's
+   *  `oldestSeconds` (0 with none). */
+  final case class Held(listings: Int, oldestSeconds: Double)
+  object Held { val None: Held = Held(0, 0.0) }
+
+
+
+
+  /** `decisions` each decided by `decide` in their content's order — by the least of their listings' keys, which no two
+   *  clusters share — and handed back in theirs: the budgets ([[AgreementStage.BackfillPerApply]], [[AgreementStage.CorrectionsPerApply]]) reach the
+   *  same clusters first however the resolution was read, never by an iteration or arrival order. The model hands them
+   *  over in that order already ([[services.identity.IncrementalResolver.decisions]]), so it is only checked. */
+  private[agreement] def inContentOrder(decisions: Seq[ResolverDecision])(decide: ResolverDecision => ResolverDecision): Seq[ResolverDecision] = {
+    val byFirst = Ordering.Option(using ListingKey.ordering)
+    val firsts  = decisions.iterator.map(_.members.minOption(using ListingKey.ordering)).toIndexedSeq
+    if (firsts.indices.drop(1).forall(i => byFirst.lteq(firsts(i - 1), firsts(i)))) decisions.map(decide)
+    else {
+      val all     = decisions.toIndexedSeq
+      val decided = new Array[ResolverDecision](all.size)
+      all.indices.sortBy(firsts)(using byFirst).foreach(i => decided(i) = decide(all(i)))
+      scala.collection.immutable.ArraySeq.unsafeWrapArray(decided)
     }
   }
 
-  /** A family's answers that note every question still a gap, and the digest of every answer read. */
-  private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[Dependency, Long]) extends FamilyAnswers {
-    val family: VoterFamily = answers.family
-    private def noted[A](question: String, answer: Answer[A]): Answer[A] = {
-      AgreementStage.noted(answers, question, Dependency.digest(answer), answer == Answer.Unknown, asked, reads)
-      answer
-    }
-    def titled(text: String): Answer[Seq[SourceHit]]     = noted(s"title|$text", answers.titled(text))
-    def directedBy(name: String): Answer[Seq[SourceHit]] = noted(s"director|$name", answers.directedBy(name))
-    def record(id: String): Answer[Option[SourceRecord]] = noted(s"record|$id", answers.record(id))
-    override def showing(venue: String): Answer[Seq[Showing]] = noted(s"showing|$venue", answers.showing(venue))
-  }
 
-  /** A family's answer to `question` read, as its digest and whether it was a gap: in the receipt `reads` — answered or
-   *  not, so an answer filed where none was reads the verdict again as one that moved does — and among the questions
-   *  `asked` when a gap, or read and stale (asked again). */
-  private[agreement] def noted(answers: FamilyAnswers, question: String, digest: Long, unknown: Boolean, asked: mutable.Set[Question],
-                               reads: mutable.Map[Dependency, Long]): Unit = {
-    reads(Dependency.Answer(Question.Family(answers.family, question))) = digest
-    if (unknown || !answers.fresh(question)) asked += Question.Family(answers.family, question)
-  }
 
   /** 64 bits of `parts`' text, two MurmurHash3 seeds: stable across runs, as a stored digest must be. */
   def digest(parts: Seq[String]): Long = {
@@ -987,119 +420,17 @@ object AgreementStage {
   def recordOf(id: String): Option[Int] = Question.parse(id).collect { case Question.Record(film) => film }
   /** What TMDB's find of an IMDb id is filed as ([[services.identity.Question.Find]]'s id). */
   val FindPrefix = "find|"
-  object Receipt {
-    /** The answer a lookup's dependency names (as [[AgreementStage.Noting]] notes it), read from `lookups` now: a detail
-     *  page of a listing `listingOf` names (one it does not reads as moved). */
-    def reread(lookups: IdentityLookups, aspect: Dependency.Aspect, question: Question, listingOf: ListingKey => Option[Listing]): Option[Answer[?]] =
-      (question, aspect) match {
-        case (Question.VenuePage(key), Dependency.Aspect.Answer)  => listingOf(key).map(lookups.detail)
-        case (Question.Candidate(query), Dependency.Aspect.Answer) => Some(lookups.candidates(query))
-        case (Question.FilmRecord(film), Dependency.Aspect.Answer)   => Some(lookups.film(film))
-        case (Question.FilmRecord(film), Dependency.Aspect.Release)  => Some(lookups.releaseDay(film))
-        case (Question.FilmRecord(film), Dependency.Aspect.Cast)     => Some(lookups.cast(film))
-        case (Question.FilmRecord(film), Dependency.Aspect.Overview) => Some(lookups.overview(film))
-        case _                                                       => None
-      }
-  }
 
-  /** One apply at the families' `version`: where its takes and corrections note what they wait on (`asked`: the families'
-   *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again
-   *  for their day) with the verdicts it moved, the clusters and model takes it read, and its cost. */
-  private[agreement] final class Pass(val version: Long, corrections: Int, val reading: Read, backfills: Int = Int.MaxValue) {
-    val asked        = mutable.Set.empty[Question]
-    /** The posters the model takes' corrections wait on: handed to the queue a few at a time ([[wanted]]). */
-    val correctionPosters = mutable.Set.empty[PosterQuestion]
-    val moved        = mutable.ArrayBuffer.empty[StoredVerdict]
-    /** The clusters read, by id, and the model takes read against the evidence, by their correction's id. */
-    val seen         = mutable.Set.empty[String]
-    val correcting   = mutable.Set.empty[String]
-    /** The shapes (listings' digests) of the clusters read. */
-    val shapes       = mutable.Set.empty[Long]
-    /** The new clusters whose families this apply asked inline ([[AgreementStage.askNow]]), with when and what. */
-    val inline       = mutable.Map.empty[String, (Long, Set[Question])]
-    /** Each decision's cluster key ([[ClusterKeys.assign]]), and the keys a merge absorbed, with the survivor's. */
-    val keys         = new java.util.IdentityHashMap[ResolverDecision, String]()
-    val merged       = mutable.ArrayBuffer.empty[(String, String)]
-    /** What the apply's full validation of the kept verdicts came to ([[AgreementStage.FullValidationEvery]]). */
-    var validated    = services.identity.Memo.Validation.None
-    private var cleanHits = 0
-    private var validateAt, validateUntil = 0
-    /** A full validation of the clean verdicts this apply meets from the `from`th, `budget` of them. */
-    def validateFrom(from: Int, budget: Int): Unit = { validateAt = from; validateUntil = from + budget }
-    /** Is the clean verdict met now one the apply's full validation reads again? Each asking counts one met. */
-    def validating(): Boolean = { val at = cleanHits; cleanHits += 1; at >= validateAt && at < validateUntil }
-    /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
-    var resolves     = 0
-    var posterVetoed = 0
-    /** How long each previous take that stopped standing this apply stood ([[StandingTakes]]): its answers in, or its bound. */
-    val holdsEnded   = mutable.ArrayBuffer.empty[Double]
-    val holdsBounded = mutable.ArrayBuffer.empty[Double]
-    private val freshReads    = new Budget(corrections)
-    private val backfillReads = new Budget(backfills)
-    /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
-    def fresh(): Boolean = freshReads.spend()
-    /** The clusters whose verdict decided under other rules this apply decided again, by id. */
-    val backfilled = mutable.Set.empty[String]
-    /** May one more verdict decided under other rules be decided again ([[BackfillPerApply]])? Each asking spends one. */
-    def backfill(): Boolean = backfillReads.spend()
-    /** Did a take or a verdict go unread for want of budget: asked once the budget was spent? */
-    def spent: Boolean = freshReads.overdrawn || backfillReads.overdrawn
-    /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
-     *  take's posters draining behind every other task — those not `tried` yet first, so posters that keep failing hold
-     *  no slot another poster could use. A poster any take asks AGAIN — `tried` already: its hashes stale, its cap raised
-     *  since, a failure retried — waits on none (the settle rule reads what is filed) and drains with them: a renewal of
-     *  thousands at once (a cap raised, 2026-11-11: ~8.7k films over the five countries) spread over applies, never one
-     *  burst on the queue. */
-    def wanted(postersAtOnce: Int, tried: Question => Boolean): Set[Question] = {
-      val (renewed, rest) = asked.partition { case question @ Question.Poster(_) => tried(question); case _ => false }
-      val draining = correctionPosters ++ renewed.iterator.collect { case Question.Poster(poster) => poster }
-      val capped = if (draining.sizeIs <= postersAtOnce) draining
-        else draining.toSeq.sortBy(poster => (tried(Question.Poster(poster)), PosterAnswers.idOf(poster))).take(postersAtOnce)
-      rest.toSet ++ capped.iterator.map(Question.Poster(_))
-    }
-  }
 
-  /** One apply's allowance of some costly read: each [[spend]] asks for one, granted while any is left; [[overdrawn]] once
-   *  one was asked for past it — a read left for a later apply. */
-  private[agreement] final class Budget(allowance: Int) {
-    private var left = allowance
-    def spend(): Boolean = { val granted = left > 0; left -= 1; granted }
-    def overdrawn: Boolean = left < 0
-  }
+  /** [[PosterQuestion]] by the name it had here: the tool files compiled into older refs
+   *  (`WhatIfAnswers`, `OlderRefs`) name it so, which both a ref before its move and one after compile. */
+  type PosterQuestion = _root_.services.identity.agreement.PosterQuestion
+  val PosterQuestion: _root_.services.identity.agreement.PosterQuestion.type = _root_.services.identity.agreement.PosterQuestion
 
-  /** A poster to hash: a venue's, by its URL, or a TMDB film's. */
-  enum PosterQuestion {
-    case Venue(url: String)
-    case Film(tmdbId: Int)
-  }
-
-  /** `inner`, a listings site's catalogue entry linked as a listing's page read as no page at all ([[uncatalogued]]). */
-  private[agreement] final class CatalogueBlind(inner: IdentityLookups) extends services.identity.ForwardingIdentityLookups(inner) {
-    private def entry(listing: Listing) = listing.page.exists(services.identity.SourceReliability.listingsSiteEntry)
-    override def hasDetail(listing: Listing): Boolean                  = !entry(listing) && inner.hasDetail(listing)
-    override def detail(listing: Listing): Answer[Option[DetailFacts]] = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
-  }
-
-  /** `inner`, noting whether any answer it gave was `Unknown` — a cast, overview or release day not known left unnoted:
-   *  it leaves the evidence that reads it unread, never the fill waiting. */
-  private[agreement] final class UnknownNoting(inner: IdentityLookups) extends services.identity.ForwardingIdentityLookups(inner) {
-    @volatile var unknown = false
-    private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) unknown = true; answer }
-    override def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
-  }
 
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last
    * found standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and
    * the questions it waits on. */
-  /** The dependencies no filing announces, which the held verdicts' index keeps their readers of ([[Memo.moved]]): the
-   *  year, and the question memory's attempts. */
-  val pushed: Dependency => Boolean = read => read == Dependency.Year || isAttempt(read)
-  val isAttempt: Dependency => Boolean = {
-    case Dependency.Attempted(_) => true
-    case _                       => false
-  }
 
   /** A model take's correction's id among the stored verdicts. */
   def correctionId(cluster: String): String = s"$CorrectionPrefix$cluster"
@@ -1107,12 +438,8 @@ object AgreementStage {
   /** How long a cluster's previous take stands at most while its take waits ([[StandingTakes]]): the input
    *  gate's bound (`ModelInputGate.MaxHold`), one bound for every hold of a take on its answers. */
   val HoldAtMost: java.time.Duration = java.time.Duration.ofMinutes(10)
-  /** A cluster's previous take standing since `since` (by the stage's clock) while its take waits on `waits`, over its
-   *  `members` (what a reader compares: a reshaped cluster under the key is no hold of this one); `expired` once it stood
-   *  [[HoldAtMost]] -- the take served as it stands until it settles. */
-  private[agreement] final case class Hold(since: Long, waits: Set[Question], members: Seq[ListingKey], expired: Boolean = false)
   /** What a correction's stored id is its cluster's id behind. */
-  val CorrectionPrefix = "correction|"
+  val CorrectionPrefix: String = VerdictIndex.CorrectionPrefix
   /** How many model takes with a decided correction standing — decided under a deploy's previous rules, or before an
    *  answer it read was filed again — one apply reads the evidence of afresh, the rest standing as decided until a later
    *  apply: a deploy's backfill spread over applies, never one boot's spike. A take with none standing — never read at
@@ -1125,21 +452,6 @@ object AgreementStage {
    *  working set) spread over applies, the rest standing as they were meanwhile. */
   val BackfillPerApply = 500
 
-  /** `decisions` each decided by `decide` in their content's order — by the least of their listings' keys, which no two
-   *  clusters share — and handed back in theirs: the budgets ([[BackfillPerApply]], [[CorrectionsPerApply]]) reach the
-   *  same clusters first however the resolution was read, never by an iteration or arrival order. The model hands them
-   *  over in that order already ([[services.identity.IncrementalResolver.decisions]]), so it is only checked. */
-  private[agreement] def inContentOrder(decisions: Seq[ResolverDecision])(decide: ResolverDecision => ResolverDecision): Seq[ResolverDecision] = {
-    val byFirst = Ordering.Option(using ListingKey.ordering)
-    val firsts  = decisions.iterator.map(_.members.minOption(using ListingKey.ordering)).toIndexedSeq
-    if (firsts.indices.drop(1).forall(i => byFirst.lteq(firsts(i - 1), firsts(i)))) decisions.map(decide)
-    else {
-      val all     = decisions.toIndexedSeq
-      val decided = new Array[ResolverDecision](all.size)
-      all.indices.sortBy(firsts)(using byFirst).foreach(i => decided(i) = decide(all(i)))
-      scala.collection.immutable.ArraySeq.unsafeWrapArray(decided)
-    }
-  }
   /** How many of the posters the model takes' corrections wait on are handed to the queue at once: a one-off backfill of
    *  every take's posters (17.6k over the five corpora, 2026-10-06) drained a few at a time behind every other task. */
   val CorrectionPostersAtOnce = 64
@@ -1150,68 +462,8 @@ object AgreementStage {
    *  successive validations, never one apply's spike (re-reading every verdict at once was prod PL's 40 s, 514 MB boot). */
   val FullValidationBudget = 2000
 
-  /** `posters` and `programmes` (the family whose site lists the venues' programmes), each answer decoded once: an
-   *  apply's reads, dropped with it. A poster's hashes, whether it is fresh and whether it was given up on are each read
-   *  of the store once an apply, however many takes and corrections compare it (each a document read and decode). */
-  private[agreement] final class Read(hashes: PosterAnswers, family: Option[FamilyAnswers]) {
-    private val venues = mutable.HashMap.empty[String, Answer[Option[PosterHash]]]
-    private val films  = mutable.HashMap.empty[Int, Answer[Seq[PosterHash]]]
-    private val freshness, givenUp = mutable.HashMap.empty[PosterQuestion, Boolean]
-    val posters: PosterAnswers = new PosterAnswers {
-      def venue(url: String): Answer[Option[PosterHash]] = venues.getOrElseUpdate(url, hashes.venue(url))
-      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.getOrElseUpdate(tmdbId, hashes.film(tmdbId))
-      override def unread(question: PosterQuestion): Boolean = givenUp.getOrElseUpdate(question, hashes.unread(question))
-      override def fresh(question: PosterQuestion): Boolean  = freshness.getOrElseUpdate(question, hashes.fresh(question))
-    }
-    val programmes: Option[FamilyAnswers] = family.map { answers =>
-      val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]
-      val records  = mutable.HashMap.empty[String, Answer[Option[SourceRecord]]]
-      new FamilyAnswers {
-        val family: VoterFamily = answers.family
-        def titled(text: String): Answer[Seq[SourceHit]]     = answers.titled(text)
-        def directedBy(name: String): Answer[Seq[SourceHit]] = answers.directedBy(name)
-        def record(id: String): Answer[Option[SourceRecord]] = records.getOrElseUpdate(id, answers.record(id))
-        override def showing(venue: String): Answer[Seq[Showing]] = showings.getOrElseUpdate(venue, answers.showing(venue))
-        override def fresh(question: String): Boolean = answers.fresh(question)
-      }
-    }
-  }
 
-  /** A model decision's cluster key, its listings sorted, and their digest with TMDB's vote on it. */
-  private[agreement] final case class Digested(id: String, listings: Seq[Listing], digest: Long)
 
-  /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
-  def leanRecord(lean: ResolverDecision.Leaning): SourceRecord =
-    SourceRecord(services.identity.IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString) ++
-      services.identity.IdentityMeasures.imdbId(lean.imdbNumber).map("imdb" -> _))
-
-  /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
-   *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
-   *  and TMDB finds, how many clusters it resolved again, and how long it took; and the venue posters' part: the decisions
-   *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet; and the
-   *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]), a fill rule took
-   *  ([[ResolverDecision.Basis.Filled]]) and the listings' catalogue ids took ([[ResolverDecision.Basis.Catalogue]]), with
-   *  the catalogue questions still open, and the TMDB records the broadcast take waits on to read again; and the verdicts
-   *  decided under other rules still to be decided again (`incomplete`: a deploy's backfill, [[BackfillPerApply]]); and
-   *  the full validation's kept verdicts read again and those found drifted ([[FullValidationEvery]]). */
-  final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
-                           finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
-                           takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0,
-                           withdrawn: Int = 0, corrected: Int = 0, correcting: Int = 0, correctionPosters: Int = 0,
-                           events: Int = 0, incomplete: Int = 0, validated: Int = 0, drifted: Int = 0,
-                           held: Held = Held.None, holdsEnded: Seq[Double] = Nil, holdsBounded: Seq[Double] = Nil)
-  /** The previous takes standing after an apply ([[StandingTakes]]): the `listings` they hold, the oldest's
-   *  `oldestSeconds` (0 with none). */
-  final case class Held(listings: Int, oldestSeconds: Double)
-  object Held { val None: Held = Held(0, 0.0) }
-  trait Metrics { def applied(applied: Applied): Unit }
-  object Metrics { val Silent: Metrics = _ => () }
-
-  /** A cluster (or a take's correction) waiting on answers: its listings' digest and the questions it waits on — none where
-   *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed, and until then read as
-   *  the verdict that resolve gave (`read`). */
-  private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None,
-                                              read: Option[StoredVerdict] = None)
   /** Asks families' questions now, on the calling thread, for at most `within`, filing what they answer: a cluster with a
    *  newly scraped listing reads its families' answers in its first take (docs/design/identity-questions.md, step 3, the
    *  owner's choice). A question not answered by then is handed to the queue as every other is. */

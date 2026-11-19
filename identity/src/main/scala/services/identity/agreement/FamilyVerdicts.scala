@@ -14,7 +14,7 @@ import scala.collection.mutable
  *  A kept verdict is the one a resolve now would make, never the stage's past standing in for it (identity-no-stickiness):
  *  it is keyed by its listings, compared whole, and handed back only once every answer the resolve read reads alike now —
  *  the resolve is a function of those and of the stage's fixed normaliser and calibrations. Handing it back notes what it
- *  read in the caller's receipt and gaps exactly as reading it afresh does ([[AgreementStage.noted]]).
+ *  read in the caller's receipt and gaps exactly as reading it afresh does ([[AgreementEvidence.noted]]).
  *
  *  Kept for [[FamilyVerdicts.KeptApplies]] applies after its last use: a quiet production tick reads no verdict, so what a
  *  burst of applies (a boot, a settle) shares is dropped once it is over. Its own lock guards what is kept alone ([[verdict]]). */
@@ -26,7 +26,7 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
   /** How many verdicts were resolved and how many handed back kept, since the stage was made. */
   private[agreement] var resolved, handedBack = 0L
 
-  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementStage.Recording]] does.
+  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementEvidence.Recording]] does.
    *  A verdict not kept is resolved, and a kept one checked against what it read, OUTSIDE the lock, so verdicts over other
    *  listings are read side by side (the model's input gate reading many listings' questions at once: `scripts.IdentityDrift`'s
    *  replay): the lock guards what is kept, never a resolve nor a check, which read the answers and a kept verdict's own
@@ -45,7 +45,7 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
         k.verdict
       case None =>
         val tape    = mutable.ArrayBuffer.empty[Read]
-        val verdict = Agreement.verdict(listings, new AgreementStage.Recording(new Taping(answers, tape), asked, reads),
+        val verdict = Agreement.verdict(listings, new AgreementEvidence.Recording(new Taping(answers, tape), asked, reads),
           new TapingVenues(venues, tape), normalizer, calibrations(answers.family))
         synchronized {
           kept(key) = Kept(listings, tape.distinct.toArray, verdict, applies)
@@ -73,14 +73,14 @@ private[agreement] object FamilyVerdicts {
   /** One thing a verdict's resolve read, by the digest of what it read. */
   private sealed trait Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean
-    /** Noted as a [[AgreementStage.Recording]] notes it: a venue page is in no receipt of a family's verdict. */
+    /** Noted as a [[AgreementEvidence.Recording]] notes it: a venue page is in no receipt of a family's verdict. */
     def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit = ()
   }
-  /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementStage.Recording]] names it). */
+  /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementEvidence.Recording]] names it). */
   private final case class FamilyRead(question: String, digest: Long, unknown: Boolean) extends Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean = digestOf(ask(answers, question)) == digest
     override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit =
-      AgreementStage.noted(answers, question, digest, unknown, asked, reads)
+      AgreementEvidence.noted(answers, question, digest, unknown, asked, reads)
   }
   private final case class DetailRead(listing: Listing, digest: Long) extends Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean = digestOf(venues.detail(listing)) == digest

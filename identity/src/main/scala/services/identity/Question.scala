@@ -1,6 +1,7 @@
 package services.identity
 
-import services.identity.agreement.AgreementStage.PosterQuestion
+import services.identity.agreement.PosterQuestion
+
 import services.identity.agreement.VoterFamily
 import models.ListingKey
 import tools.HttpPath

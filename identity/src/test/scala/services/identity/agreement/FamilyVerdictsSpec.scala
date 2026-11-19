@@ -33,7 +33,7 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
   /** The verdict, its receipt and its gaps, resolved afresh. */
   private def afresh(listings: Seq[Listing], answers: FamilyAnswers) = {
     val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.Dependency, Long])
-    (Agreement.verdict(listings, new AgreementStage.Recording(answers, asked, reads), NoVenueDetails, normalizer, IdentityCalibration.resolver), asked.toSet, reads.toMap)
+    (Agreement.verdict(listings, new AgreementEvidence.Recording(answers, asked, reads), NoVenueDetails, normalizer, IdentityCalibration.resolver), asked.toSet, reads.toMap)
   }
   private def through(kept: FamilyVerdicts, listings: Seq[Listing], answers: FamilyAnswers) = {
     val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.Dependency, Long])

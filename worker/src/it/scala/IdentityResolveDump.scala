@@ -156,7 +156,7 @@ object IdentityResolveDump {
   private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
     val harness = new settings.HarnessConfiguration(configuration.env)
-    import services.identity.agreement.{AgreementStage, VoterFamily}
+    import services.identity.agreement.VoterFamily
     val fetch    = new ExperimentCacheFetch(cache.value)
     val answered = new InMemoryTmdbDocuments
     val store    = new FamilyAnswerStore(answered, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))

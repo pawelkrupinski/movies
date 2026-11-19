@@ -1,6 +1,8 @@
 package services.identity
 package adapters
 
+import services.identity.agreement.PosterQuestion
+
 import services.identityadapters.*
 import tools.SpecTimeouts
 
@@ -62,7 +64,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var unhashed   = Set.empty[String]
     def awaiting(listing: Listing): Set[Question] =
       (if (unanswered(listing.title)) Set(question(listing)) else Set.empty) ++ ledTo.getOrElse(listing.title, Set.empty) ++
-        listing.poster.filter(unhashed).map(url => Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url)))
+        listing.poster.filter(unhashed).map(url => Question.Poster(PosterQuestion.Venue(url)))
     def ask(listing: Listing, questions: Set[Question]): Unit = asked ++= questions
   }
 
@@ -802,7 +804,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)).copy(posterUrl = Some(poster))))
     service.drain()
     multikino.loneElement.poster shouldBe None                                   // the version it holds stands
-    world.families.asked.toSet shouldBe Set(Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(poster)))
+    world.families.asked.toSet shouldBe Set(Question.Poster(PosterQuestion.Venue(poster)))
     world.pendingStore.read().map(_.key) shouldBe multikino.map(_.key)          // held across a restart too
     world.families.unhashed = Set.empty                                          // the poster hashed
     service.drain()
@@ -831,7 +833,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var filed  = Set.empty[String]
     val queued = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val readiness = new AgreementReadiness(
-      listing => listing.poster.filterNot(filed).map(url => Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url))).toSet,
+      listing => listing.poster.filterNot(filed).map(url => Question.Poster(PosterQuestion.Venue(url))).toSet,
       memory.admits, questions => { val due = memory.due(questions); if (due.nonEmpty) queued += due }, retrying = memory.attempted)
   }
 
@@ -853,7 +855,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
   }
   private def multikinoPoster(service: IdentityModelService) =
     service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.poster
-  private def venuePoster(url: String): Question = Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url))
+  private def venuePoster(url: String): Question = Question.Poster(PosterQuestion.Venue(url))
 
   // The owner, 2026-11-13 ("yes" to: should a listing whose replacement poster fails to download stay held until a retry
   // succeeds, within the 10-minute cap?): a failed fetch was an attempt the gate took the listing in on, so it was decided

@@ -342,10 +342,10 @@ object IncrementalWholeEquivalenceSpec {
 
     /** The posters' hashes, each a gap until filed. */
     val posters: PosterAnswers = new PosterAnswers {
-      private def gated[A](question: AgreementStage.PosterQuestion)(answer: => A): Answer[A] =
+      private def gated[A](question: PosterQuestion)(answer: => A): Answer[A] =
         if (filed(PosterAnswers.idOf(question))) Answer.Known(answer) else Answer.Unknown
-      def venue(url: String): Answer[Option[PosterHash]] = gated(AgreementStage.PosterQuestion.Venue(url))(of.venuePosters.get(url))
-      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = gated(AgreementStage.PosterQuestion.Film(tmdbId))(of.filmPosters.getOrElse(tmdbId, Nil))
+      def venue(url: String): Answer[Option[PosterHash]] = gated(PosterQuestion.Venue(url))(of.venuePosters.get(url))
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = gated(PosterQuestion.Film(tmdbId))(of.filmPosters.getOrElse(tmdbId, Nil))
     }
 
     /** Given up on: asked and failed for good -- the memory's give-up after its failures in a row -- never filed. One that

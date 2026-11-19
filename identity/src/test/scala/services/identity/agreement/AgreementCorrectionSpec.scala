@@ -69,7 +69,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val waiting = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
     decided(waiting).basis shouldBe ResolverDecision.Basis.OwnMatch
-    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1001))
+    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Venue(venuePoster), PosterQuestion.Film(1001))
     // the take's own poster matches the venue's: no veto can stand, nothing more is asked
     val own = stage(takingHas, new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(2)))))
     decided(own).basis shouldBe ResolverDecision.Basis.OwnMatch
@@ -113,7 +113,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val s = stage(takingHas, posters, changes = _ => Some(filed))
     val first = decided(s)
     first.basis shouldBe ResolverDecision.Basis.OwnMatch
-    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Film(1002))
     // a filing it never read decides nothing again
     films = films + (1002 -> Seq(near(3)))
     filed = Set("imdb|title|Something else")
@@ -275,7 +275,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed), posters = posters, tmdb = Some(table()), correctionsPerApply = 0)
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
-    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Film(1002))
     films = films + (1002 -> Seq(near(3)))
     filed = Set("poster|film|1002")
     val taken = decided(s, version = 2)
@@ -351,7 +351,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   // correction of "Ktoś całkiem obcy" waited on it for ever. A poster given up on is no evidence: the rest is read
   // as for a take a poster questions, and decides only what it decides without the poster.
   private val givenUp = new HeldPosters(Map(venuePoster -> None), Map(1001 -> Seq(far), 1002 -> Seq(near(3))),
-    Set(AgreementStage.PosterQuestion.Venue(venuePoster)))
+    Set(PosterQuestion.Venue(venuePoster)))
   private def listedBy(record: SourceRecord) = silent + (VoterFamily.Filmweb ->
     new HeldFamilyAnswers(VoterFamily.Filmweb, Map("1174" -> record), programmes = Map(listing.venue -> Seq(Showing("1174", ScreeningDays.of(Seq(day)))))))
   private val hasOnFilmweb = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
@@ -378,7 +378,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   // prod PL 2026-10-06: biletyna.pl's 226 posters, refused by the origin and filed unread, were read as such for good —
   // nothing ever asked a filed poster again, however old, so a route that now reads them never would
   "a model take whose venue poster's answer is stale" should "read it meanwhile, and ask it again" in {
-    val unreadVenue = AgreementStage.PosterQuestion.Venue(venuePoster)
+    val unreadVenue = PosterQuestion.Venue(venuePoster)
     val stale = new HeldPosters(Map(venuePoster -> None), Map(1001 -> Seq(far), 1002 -> Seq(near(3))), Set(unreadVenue), Set(unreadVenue))
     val s = stage(takingHas, stale)
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch

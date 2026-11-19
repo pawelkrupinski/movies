@@ -70,3 +70,4 @@ member	models.ResolvedMovie	served	web	the read model's film: its identity, rati
 member	models.Movie	served	web	a film's own fields within it
 member	models.Cinema	served	web	the venue a screening is at
 member	models.Showtime	served	web	one screening
+class	services.identity.agreement.AgreementPipeline	21	identity	pipeline composition: builds the stages a model decision is read by (evidence, held verdicts, candidates, inline asks, corrections, takes, cluster verdicts), wires each to what it reads and routes each decision to its stage; only AgreementStage depends on it	2026-11-19

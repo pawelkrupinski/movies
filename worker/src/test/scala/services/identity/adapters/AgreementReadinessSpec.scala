@@ -1,6 +1,8 @@
 package services.identity
 package adapters
 
+import services.identity.agreement.PosterQuestion
+
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -50,7 +52,7 @@ class AgreementReadinessSpec extends AnyFlatSpec with Matchers {
   it should "hold a listing on its poster while the poster's fetch fails, asking it again once each backoff ends" in {
     val clock   = new MutableClock(Instant.parse("2026-11-13T10:00:00Z"))
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "de-DE", clock)
-    val poster  = Question.Poster(agreement.AgreementStage.PosterQuestion.Venue("https://example.org/p.jpg"))
+    val poster  = Question.Poster(PosterQuestion.Venue("https://example.org/p.jpg"))
     val asked   = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val ready   = new AgreementReadiness(_ => Set(title, poster), memory.admits, asked += memory.due(_), retrying = memory.attempted)
     memory.failed(Seq(title, poster))

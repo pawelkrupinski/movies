@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{AgreementStage, VoterFamily}
+import services.identity.agreement.{VerdictIndex, VoterFamily}
 
 import scala.collection.mutable
 import scala.util.Random
@@ -34,7 +34,7 @@ class DependencyIndexSpec extends AnyFlatSpec with Matchers {
     val inputs   = mutable.Map.from(universe.map(_ -> random.nextInt(3).toLong))
     val filings  = mutable.ArrayBuffer.empty[(Long, String)]
     var version  = 0L
-    val memo     = new Memo[String, Entry](_.reads, _.readsTmdb, AgreementStage.pushed)
+    val memo     = new Memo[String, Entry](_.reads, _.readsTmdb, VerdictIndex.pushed)
     val filedSince: Long => Option[Set[String]] = since => Some(filings.iterator.collect { case (at, id) if at > since => id }.toSet)
     def record(key: String): Unit = {
       val reads = universe.filter(_ => random.nextInt(3) == 0)
@@ -53,7 +53,7 @@ class DependencyIndexSpec extends AnyFlatSpec with Matchers {
       val readers = memo.keys.filter(key => memo.get(key).exists(_.reads.contains(read))).toSet
       val movedFor = readers.filter(key => !stands(key))
       val wasChecked = memo.keys.filter(memo.isChecked).toSet
-      val pushedWrong = if (AgreementStage.pushed(read)) {
+      val pushedWrong = if (VerdictIndex.pushed(read)) {
         val reached   = memo.moved(_ == read, inputs.get)
         val unchecked = wasChecked -- memo.keys.filter(memo.isChecked)
         if (reached != movedFor.size) Some(s"$read moved for ${movedFor.size} readers, the push index reached $reached")
@@ -81,13 +81,13 @@ class DependencyIndexSpec extends AnyFlatSpec with Matchers {
   }
 
   "a pushed change" should "visit only the entries whose receipt names it, and leave every other checked" in {
-    val memo  = new Memo[String, Entry](_.reads, _.readsTmdb, AgreementStage.pushed)
+    val memo  = new Memo[String, Entry](_.reads, _.readsTmdb, VerdictIndex.pushed)
     val tried = Dependency.Attempted(Question.Record(913760))
     memo.put("moved", Entry(Map(tried -> 1L, Dependency.Year -> 5L))); memo.check("moved", 0L, 0L)
     memo.put("same", Entry(Map(tried -> 2L))); memo.check("same", 0L, 0L)
     memo.put("none", Entry(Map(universe.head -> 1L))); memo.check("none", 0L, 0L)
     memo.readersOf(tried) shouldBe Set("moved", "same")
-    memo.moved(AgreementStage.isAttempt, Map[Dependency, Long](tried -> 2L).get) shouldBe 1
+    memo.moved(VerdictIndex.isAttempt, Map[Dependency, Long](tried -> 2L).get) shouldBe 1
     Seq("moved", "same", "none").map(memo.isChecked) shouldBe Seq(false, true, true)
     // the year turning: a correction's receipt names no year, and is not read again for it
     memo.check("moved", 0L, 0L)

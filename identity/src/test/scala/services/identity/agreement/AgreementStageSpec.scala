@@ -291,12 +291,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   "the settle rule" should "type a question attempted and not answered as Failed, decided on as no evidence, never Known" in {
     // docs/design/identity-structural-fixes.md fix 4c: the one collapse of a not-yet-answered question is typed, so a
     // reader decides on it only through Answer.failedAs
-    val poster = Question.Poster(AgreementStage.PosterQuestion.Venue("https://example.org/p.jpg"))
+    val poster = Question.Poster(PosterQuestion.Venue("https://example.org/p.jpg"))
     def stage(tried: Boolean) = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = _ => tried)
-    stage(tried = true).settled(poster, Answer.Unknown) shouldBe Answer.Failed
-    stage(tried = false).settled(poster, Answer.Unknown) shouldBe Answer.Unknown
-    stage(tried = true).settled(poster, Answer.Known(1)) shouldBe Answer.Known(1)
+    stage(tried = true).pipeline.evidence.settled(poster, Answer.Unknown) shouldBe Answer.Failed
+    stage(tried = false).pipeline.evidence.settled(poster, Answer.Unknown) shouldBe Answer.Unknown
+    stage(tried = true).pipeline.evidence.settled(poster, Answer.Known(1)) shouldBe Answer.Known(1)
     val finding = scala.collection.mutable.Set.empty[Question]
     Agreement.tmdbFound(_ => Answer.Unknown, "tt1", finding, _ => true) shouldBe Answer.Failed
     Agreement.tmdbFound(_ => Answer.Unknown, "tt1", finding, _ => false) shouldBe Answer.Unknown
@@ -940,12 +940,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val beforeScrape = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 3, republished = None).decisions.head.film shouldBe Some(913760)
     resolves should be > beforeScrape
-    stage.held.values.flatMap(stage.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
+    stage.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
     filmwebAnswered = true
     val beforeAnswer = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 4).decisions.head.film shouldBe Some(913760)   // its answer came: read again
     resolves should be > beforeAnswer
-    stage.held.values.flatMap(stage.unreached).toSeq shouldBe empty
+    stage.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).toSeq shouldBe empty
   }
 
   // A quiet apply (nothing filed) reads what it waits on again only once the memory behind `attempted` marked something:
@@ -1087,14 +1087,14 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       askNow = (_, _) => ())
     stage.loadedAt = Some(1L)
-    stage.firstPass = false
+    stage.pipeline.inline.firstPass = false
     val (decided, waited, asked, fresh) = (11L, 12L, 13L, 14L)
-    stage.file(StoredVerdict("7", decided, Map.empty, None, stage.decidedUnder))
-    stage.waiting("8") = AgreementStage.Waiting(waited, Set.empty)
-    stage.askedNow += asked
-    Seq(decided, waited, asked, fresh).map(stage.newCluster) shouldBe Seq(false, false, false, true)
-    stage.firstPass = true
-    stage.newCluster(fresh) shouldBe false   // the first pass meets every cluster
+    stage.pipeline.verdicts.file(StoredVerdict("7", decided, Map.empty, None, stage.decidedUnder))
+    stage.pipeline.clusterVerdicts.waiting("8") = ClusterWait(waited, Set.empty)
+    stage.pipeline.inline.asked += asked
+    Seq(decided, waited, asked, fresh).map(stage.pipeline.clusterVerdicts.newCluster) shouldBe Seq(false, false, false, true)
+    stage.pipeline.inline.firstPass = true
+    stage.pipeline.clusterVerdicts.newCluster(fresh) shouldBe false   // the first pass meets every cluster
   }
 
   // The first pass is the stage's first apply, never "no family answer filed since it loaded": a deploy then a record
@@ -1105,10 +1105,10 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       askNow = (_, _) => ())
     stage.apply(resolution, listingOf, version = 1)
-    stage.firstPass shouldBe true
+    stage.pipeline.inline.firstPass shouldBe true
     stage.apply(resolution, listingOf, version = 1)   // the families' answers unmoved: the same version
-    stage.firstPass shouldBe false
-    stage.newCluster(99L) shouldBe true
+    stage.pipeline.inline.firstPass shouldBe false
+    stage.pipeline.clusterVerdicts.newCluster(99L) shouldBe true
   }
 
   // A wait is decided for one shape of its cluster, as a verdict is: kept by the cluster's key alone, a shape that waited

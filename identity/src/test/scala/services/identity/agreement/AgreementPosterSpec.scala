@@ -147,11 +147,11 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val waiting = stage(new HeldPosters(Map.empty, Map.empty), ask = handed += _)
     waiting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
-    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
+    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Venue(venuePoster))
     val films = stage(new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(shown))), ask = handed += _)
     films.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
-    films.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
-    handed.flatten.collect { case Question.Poster(q) => q }.toSet shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1002))
+    films.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Film(1002))
+    handed.flatten.collect { case Question.Poster(q) => q }.toSet shouldBe Set(PosterQuestion.Venue(venuePoster), PosterQuestion.Film(1002))
   }
 
   // The model's input gate (fix 1) waits on a listing's own questions; its venue poster is one, a function of the listing
@@ -160,7 +160,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   // (UK Cineworld Cardiff's "Hadoota" x14, ES Artesiete's "DUNE" x6, each a new listing's own poster asked inline)
   "a listing's own questions" should "name its venue poster while it is not hashed, and none once it is or it speaks for no film" in {
     def postersAsked(posters: PosterAnswers, listing: Listing) = stage(posters).questionsOf(listing).collect { case Question.Poster(q) => q }
-    postersAsked(new HeldPosters(Map.empty, Map.empty), lalka()) shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
+    postersAsked(new HeldPosters(Map.empty, Map.empty), lalka()) shouldBe Set(PosterQuestion.Venue(venuePoster))
     postersAsked(new HeldPosters(Map(venuePoster -> None), Map.empty), lalka()) shouldBe empty   // read, nothing there
     postersAsked(new HeldPosters(Map.empty, Map.empty), lalka(poster = None)) shouldBe empty
     // a stage relay's poster speaks for no film (PosterEvidence.shows): never read, so never waited on
@@ -177,8 +177,8 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   it should "name the posters of the films its own searches find once its venue poster is hashed, and none once they are" in {
     def postersAsked(posters: PosterAnswers) = stage(posters).questionsOf(lalka()).collect { case Question.Poster(q) => q }
     val hashed = Map(venuePoster -> Some(shown))
-    postersAsked(new HeldPosters(hashed, Map.empty)) shouldBe Set(AgreementStage.PosterQuestion.Film(1001), AgreementStage.PosterQuestion.Film(1002))
-    postersAsked(new HeldPosters(hashed, Map(1001 -> Seq(near(3))))) shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    postersAsked(new HeldPosters(hashed, Map.empty)) shouldBe Set(PosterQuestion.Film(1001), PosterQuestion.Film(1002))
+    postersAsked(new HeldPosters(hashed, Map(1001 -> Seq(near(3))))) shouldBe Set(PosterQuestion.Film(1002))
     postersAsked(new HeldPosters(hashed, Map(1001 -> Seq(near(3)), 1002 -> Nil))) shouldBe empty
   }
 
@@ -214,12 +214,12 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     }
     val voting = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table),
-      attempted = { case Question.Poster(AgreementStage.PosterQuestion.Film(1002)) => failed; case _ => false })
+      attempted = { case Question.Poster(PosterQuestion.Film(1002)) => failed; case _ => false })
     def decided(version: Long) = voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version).decisions.head
     decided(1).film shouldBe None                                         // 1002's poster never hashed: held
     failed = true
     decided(1).film shouldBe Some(1001)                                   // its hashing failed: decided on 1001's alone
-    voting.wanted should contain (Question.Poster(AgreementStage.PosterQuestion.Film(1002)))
+    voting.wanted should contain (Question.Poster(PosterQuestion.Film(1002)))
     films = films + (1002 -> Seq(near(2)))                                // hashed at last, as near: no poster speaks for one
     decided(2).film shouldBe None
   }
@@ -232,8 +232,8 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val counting = new PosterAnswers {
       def venue(url: String) = { reads += s"venue $url"; held.venue(url) }
       def film(tmdbId: Int)  = { reads += s"film $tmdbId"; held.film(tmdbId) }
-      override def unread(question: AgreementStage.PosterQuestion) = { reads += s"unread $question"; held.unread(question) }
-      override def fresh(question: AgreementStage.PosterQuestion)  = { reads += s"fresh $question"; held.fresh(question) }
+      override def unread(question: PosterQuestion) = { reads += s"unread $question"; held.unread(question) }
+      override def fresh(question: PosterQuestion)  = { reads += s"fresh $question"; held.fresh(question) }
     }
     val two = Resolution(Seq(muza, multikino).map(l => ResolverDecision(Seq(l.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(muza.key -> 0, multikino.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
@@ -245,7 +245,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   // to hash again, each read meanwhile and nothing waiting on them: asked a few at a time as the corrections' posters are
   it should "hand the posters it asks again a few at a time, as the corrections' posters" in {
     val listing = lalka()
-    val films   = Seq(1001, 1002).map(AgreementStage.PosterQuestion.Film(_))
+    val films   = Seq(1001, 1002).map(PosterQuestion.Film(_))
     val renewing = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), correctionPostersAtOnce = 1,
       posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))), stale = films.toSet),

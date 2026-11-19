@@ -152,11 +152,11 @@ object LateInputs {
     val families: Map[VoterFamily, FamilyAnswers] = s.families.map { case (of, inner) => of -> family(of, inner) }
     val tmdbOf: String => Answer[Option[Int]] = imdb => gate(Input.Agreement(Question.Find(imdb)), Option.empty[Int])(s.finds(imdb))
     val posters: PosterAnswers = new PosterAnswers {
-      private def q(question: AgreementStage.PosterQuestion) = Input.Agreement(Question.Poster(question))
-      def venue(url: String): Answer[Option[PosterHash]] = gate(q(AgreementStage.PosterQuestion.Venue(url)), Option.empty[PosterHash])(s.posters.venue(url))
-      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = gate(q(AgreementStage.PosterQuestion.Film(tmdbId)), Seq.empty[PosterHash])(s.posters.film(tmdbId))
-      override def unread(question: AgreementStage.PosterQuestion): Boolean = s.posters.unread(question)
-      override def fresh(question: AgreementStage.PosterQuestion): Boolean  = s.posters.fresh(question)
+      private def q(question: PosterQuestion) = Input.Agreement(Question.Poster(question))
+      def venue(url: String): Answer[Option[PosterHash]] = gate(q(PosterQuestion.Venue(url)), Option.empty[PosterHash])(s.posters.venue(url))
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = gate(q(PosterQuestion.Film(tmdbId)), Seq.empty[PosterHash])(s.posters.film(tmdbId))
+      override def unread(question: PosterQuestion): Boolean = s.posters.unread(question)
+      override def fresh(question: PosterQuestion): Boolean  = s.posters.fresh(question)
     }
     val catalogue: CatalogueAnswers = new CatalogueAnswers {
       private def q(question: CatalogueQuestion) = Input.Agreement(Question.Catalogue(question))

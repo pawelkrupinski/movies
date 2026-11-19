@@ -52,25 +52,25 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
     val stage = new AgreementStage(Map(VoterFamily.Imdb -> answers), venues, SingleCountryNormalizer.titleNormalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb),
       attempted = q => tried(q))
-    stage.yearNow = 2026
+    stage.pipeline.evidence.yearNow = 2026
     val listingOf: ListingKey => Option[Listing] = Map(listing.key -> listing).get
 
     /** A receipt of every kind, recorded as the stage records each: its lookups through [[AgreementStage.Noting]], a
-     *  family's answers through [[AgreementStage.Recording]], the year and an attempt through the one reader. */
+     *  family's answers through [[AgreementEvidence.Recording]], the year and an attempt through the one reader. */
     def recorded(): Map[Dependency, Long] = {
       val reads = mutable.Map.empty[Dependency, Long]
-      stage.receipting(reads) {
-        val looked = stage.looked.get
+      stage.pipeline.evidence.receipting(reads) {
+        val looked = stage.pipeline.evidence.looked.get
         looked.film(film); looked.releaseDay(film); looked.cast(film); looked.overview(film); looked.candidates(query)
-        stage.venuesLooked.detail(listing)
+        stage.pipeline.evidence.venuesLooked.detail(listing)
       }
-      val recording = new AgreementStage.Recording(answers, mutable.Set.empty, reads)
+      val recording = new AgreementEvidence.Recording(answers, mutable.Set.empty, reads)
       recording.titled("Lalka"); recording.record("tt1"); recording.record("tt2")
-      Seq[Dependency](Dependency.Year, Dependency.Attempted(Question.Record(film))).foreach(read => stage.readNow(read).foreach(reads(read) = _))
+      Seq[Dependency](Dependency.Year, Dependency.Attempted(Question.Record(film))).foreach(read => stage.pipeline.evidence.readNow(read).foreach(reads(read) = _))
       reads.toMap
     }
     def moved(receipt: Map[Dependency, Long]): Set[Dependency] =
-      receipt.collect { case (read, digest) if !stage.digestNow(read, listingOf).contains(digest) => read }.toSet
+      receipt.collect { case (read, digest) if !stage.pipeline.evidence.digestNow(read, listingOf).contains(digest) => read }.toSet
   }
 
   private val kinds: Seq[(String, World => Unit, Dependency)] = Seq(
@@ -84,7 +84,7 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
     ("a family's record", w => w.family = w.family.map { case (id, r) => id -> r.copy(crossIds = Map.empty) }, Dependency.Answer(Question.Family(VoterFamily.Imdb, "record|tt1"))),
     ("a family's record answered later", w => w.family += "tt2" -> w.family("tt1"), Dependency.Answer(Question.Family(VoterFamily.Imdb, "record|tt2"))),
     ("an attempt", w => w.tried += Question.Record(film), Dependency.Attempted(Question.Record(film))),
-    ("the year", w => w.stage.yearNow = 2027, Dependency.Year))
+    ("the year", w => w.stage.pipeline.evidence.yearNow = 2027, Dependency.Year))
 
   "a receipt of every kind" should "stand when read again over the inputs it was recorded over" in {
     val w       = new World

@@ -11,9 +11,9 @@ import scala.collection.concurrent.TrieMap
  *  maps and decides what goes in them; this reads them, beside the previous takes standing meanwhile (`standingTakes`)
  *  and the verdicts kept (`held`, by key: read only once something asks, loading them being the first apply's), each
  *  cluster named by `keyOf` ([[ClusterKeys.keyOf]]). */
-final class StageWaits(waiting: TrieMap[String, AgreementStage.Waiting], takeWaits: TrieMap[String, AgreementStage.Waiting],
-                       correctionWaits: TrieMap[String, AgreementStage.Waiting], keyOf: ResolverDecision => String,
-                       standingTakes: StandingTakes, digested: java.util.IdentityHashMap[ResolverDecision, AgreementStage.Digested],
+final class StageWaits(waiting: TrieMap[String, ClusterWait], takeWaits: TrieMap[String, ClusterWait],
+                       correctionWaits: TrieMap[String, ClusterWait], keyOf: ResolverDecision => String,
+                       standingTakes: StandingTakes, digested: java.util.IdentityHashMap[ResolverDecision, AgreementEvidence.Cluster],
                        held: String => Option[StoredVerdict], readNow: Dependency => Option[Long],
                        tried: Question => Boolean, givenUp: Question => Boolean) {
 

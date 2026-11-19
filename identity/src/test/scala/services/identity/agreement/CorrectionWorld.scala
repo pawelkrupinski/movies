@@ -44,7 +44,7 @@ final class CorrectionWorld {
     def film(tmdbId: Int): Answer[Seq[PosterHash]] = Answer.Known(if (tmdbId == Corrected) Seq(near(3)) else Seq(far))
   }
   private def tried(question: Question): Boolean = question match {
-    case Question.Poster(AgreementStage.PosterQuestion.Venue(url)) => url != joinedPoster || posterFiled
+    case Question.Poster(PosterQuestion.Venue(url)) => url != joinedPoster || posterFiled
     case Question.Family(_, asked)                                 => !joinedQuestion(asked) || familyFiled
     case _                                                         => true
   }

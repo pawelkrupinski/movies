@@ -3,7 +3,7 @@ package integration
 import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, FamilySource, FilmwebFamily, ImdbFamily, InMemoryTmdbDocuments, MetacriticFamily, PosterAnswerStore, RottenTomatoesFamily, TmdbKind, WikiFamily}
 import services.identity._
 
-import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{Agreement, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord, VoterFamily}
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.file.{Files, Path}
@@ -171,7 +171,7 @@ object ModelTakeAnswersFill {
           // a poster names another film against the take only where the evidence reaches two films or more
           val films = (scored ++ named).distinct
           if (films.size < 2) Nil
-          else urls.map(AgreementStage.PosterQuestion.Venue(_)) ++ films.map(AgreementStage.PosterQuestion.Film(_))
+          else urls.map(services.identity.agreement.PosterQuestion.Venue(_)) ++ films.map(services.identity.agreement.PosterQuestion.Film(_))
         }
       }.distinct
       val posterStart = tools.Stopwatch.start()

@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.agreement.PosterQuestion
+
 import services.identityadapters.{InMemoryTmdbDocuments, TmdbKind}
 import tools.SpecPool
 import clients.tools.FixtureFile
@@ -74,8 +76,7 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   }
 
   "a live what-if" should "re-ask a film's posters its own code calls out of date, and read the mirror's where it calls them fresh" in {
-    import services.identity.agreement.AgreementStage.PosterQuestion
-    // filed by prod: film 1 under a cap of 4 (cut: today's cap is higher, TMDB may keep more), film 2 under today's cap
+        // filed by prod: film 1 under a cap of 4 (cut: today's cap is higher, TMDB may keep more), film 2 under today's cap
     def filed(cap: Int, hashes: Int) = new BsonDocument("hashes", new org.bson.BsonArray((1 to hashes).map(h => new org.bson.BsonInt64(h.toLong)).asJava))
       .append("cap", new org.bson.BsonInt32(cap)).append(services.identityadapters.TmdbStore.FetchedAt, new org.bson.BsonInt64(clock.millis()))
     val mirror = new InMemoryTmdbDocuments

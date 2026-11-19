@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.agreement.PosterQuestion
+
 import services.titles.billing.BillingPieces
 
 import java.awt.image.BufferedImage
@@ -79,10 +81,10 @@ trait PosterAnswers {
   def film(tmdbId: Int): Answer[Seq[PosterHash]]
   /** Was `question`'s poster GIVEN UP on — filed as none because its fetch kept failing, not because there is none? It
    *  is no evidence either way: what it might have vetoed is read without it. */
-  def unread(question: agreement.AgreementStage.PosterQuestion): Boolean = false
+  def unread(question: PosterQuestion): Boolean = false
   /** Is `question`'s filed answer still fresh? One that is not — a hash a year old, a poster unread a week — is read
    *  meanwhile and asked again, as a family's stale answer is. */
-  def fresh(question: agreement.AgreementStage.PosterQuestion): Boolean = true
+  def fresh(question: PosterQuestion): Boolean = true
 }
 
 object PosterAnswers {
@@ -115,9 +117,9 @@ object PosterAnswers {
   }
 
   /** The id a poster's hashes are filed under among the families' answers: `poster|venue|<url>`, `poster|film|<tmdbId>`. */
-  def idOf(question: agreement.AgreementStage.PosterQuestion): String = question match {
-    case agreement.AgreementStage.PosterQuestion.Venue(url)   => s"poster|venue|$url"
-    case agreement.AgreementStage.PosterQuestion.Film(tmdbId) => s"poster|film|$tmdbId"
+  def idOf(question: PosterQuestion): String = question match {
+    case PosterQuestion.Venue(url)   => s"poster|venue|$url"
+    case PosterQuestion.Film(tmdbId) => s"poster|film|$tmdbId"
   }
 }
 

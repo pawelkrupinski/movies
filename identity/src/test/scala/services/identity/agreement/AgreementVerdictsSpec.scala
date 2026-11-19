@@ -61,7 +61,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
 
   "a stored correction of a model take" should "read back with its film, its line, its receipt and whether it waits" in {
     val reads     = Map(read("imdb|title|Klondike") -> 7L, Dependency.Asked(Question.Find("tt1")) -> 0L,
-      Dependency.Asked(Question.Poster(AgreementStage.PosterQuestion.Venue("https://v/p.jpg"))) -> 0L)
+      Dependency.Asked(Question.Poster(PosterQuestion.Venue("https://v/p.jpg"))) -> 0L)
     val corrected = StoredVerdict(AgreementStage.correctionId("k"), 42L, reads, None, "r",
       correction = Some(StoredCorrection(Some(30497), Some("corrected from … by families and poster"), waiting = false)))
     AgreementVerdicts.decode(AgreementVerdicts.encode(corrected)) shouldBe corrected

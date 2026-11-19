@@ -24,10 +24,10 @@ final class StandingTakes(clock: java.time.Clock) {
   /** Each cluster's last take served with nothing open -- a film or an IMDb fallback -- by cluster key. */
   private val settledTakes = TrieMap.empty[String, ResolverDecision]
   /** The clusters whose last settled take stands while their take waits, since when and on what. */
-  private val holds = TrieMap.empty[String, AgreementStage.Hold]
+  private val holds = TrieMap.empty[String, StandingTakes.Hold]
 
   /** The previous take standing for cluster `id` — one made for `members`, not past its bound. */
-  def holdOf(id: String, members: Seq[models.ListingKey]): Option[AgreementStage.Hold] =
+  def holdOf(id: String, members: Seq[models.ListingKey]): Option[StandingTakes.Hold] =
     holds.get(id).filter(h => !h.expired && h.members == members)
 
   /** Has a previous take stood its bound? Then the next apply reads again, though nothing moved, and serves the take as
@@ -48,7 +48,7 @@ final class StandingTakes(clock: java.time.Clock) {
    *  (`waitsOf` its cluster key: the cluster's, its take's and its correction's open waits) and takes no film served the
    *  cluster's last settled take — keyed as its cluster in `pass` — while that stands; how long each hold that ended
    *  stood is noted in `pass`. */
-  def served(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementStage.Pass,
+  def served(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementPass,
              waitsOf: String => Seq[Set[Question]]): Seq[ResolverDecision] = {
     val now  = clock.millis()
     val live = mutable.Set.empty[String]
@@ -70,7 +70,7 @@ final class StandingTakes(clock: java.time.Clock) {
   private def filmed(d: ResolverDecision) = d.film.isDefined || d.fallback.isDefined
 
   /** `take`, of cluster `id`, waits on nothing: its hold ends, and a filmed take is the cluster's settled one. */
-  private def settled(id: String, take: ResolverDecision, now: Long, pass: AgreementStage.Pass): ResolverDecision = {
+  private def settled(id: String, take: ResolverDecision, now: Long, pass: AgreementPass): ResolverDecision = {
     holds.remove(id).filterNot(_.expired).foreach(h => pass.holdsEnded += (now - h.since).max(0L) / 1000.0)
     if (!filmed(take)) settledTakes -= id else if (!settledTakes.get(id).exists(_ eq take)) settledTakes(id) = take
     take
@@ -78,12 +78,12 @@ final class StandingTakes(clock: java.time.Clock) {
 
   /** `take`, of cluster `id`, waits on `waits`: the cluster's last settled take over the same listings, while `take`
    *  takes no film and the hold is within its bound — else `take`. */
-  private def standing(id: String, take: ResolverDecision, waits: Seq[Set[Question]], now: Long, pass: AgreementStage.Pass): ResolverDecision =
+  private def standing(id: String, take: ResolverDecision, waits: Seq[Set[Question]], now: Long, pass: AgreementPass): ResolverDecision =
     settledTakes.get(id).filter(before => !filmed(take) && before.members == take.members) match {
       case None         => holds -= id; take
       case Some(before) =>
         val waiting = take.awaits ++ waits.flatten
-        val hold    = holds.getOrElse(id, AgreementStage.Hold(now, waiting, take.members))
+        val hold    = holds.getOrElse(id, StandingTakes.Hold(now, waiting, take.members))
         if (hold.expired) take
         else if (now - hold.since >= AgreementStage.HoldAtMost.toMillis) {
           holds(id) = hold.copy(expired = true)
@@ -96,4 +96,11 @@ final class StandingTakes(clock: java.time.Clock) {
           before
         }
     }
+}
+
+private[agreement] object StandingTakes {
+  /** A cluster's previous take standing since `since` (by the stage's clock) while its take waits on `waits`, over its
+   *  `members` (what a reader compares: a reshaped cluster under the key is no hold of this one); `expired` once it stood
+   *  [[HoldAtMost]] -- the take served as it stands until it settles. */
+  final case class Hold(since: Long, waits: Set[Question], members: Seq[models.ListingKey], expired: Boolean = false)
 }

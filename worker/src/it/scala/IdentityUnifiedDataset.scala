@@ -3,7 +3,7 @@ package integration
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
 
-import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, VoterFamily}
+import services.identity.agreement.{Agreement, FamilyAnswers, VoterFamily}
 import models.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
@@ -204,11 +204,11 @@ object IdentityUnifiedDataset {
       val urls = PosterEvidence.urls(listings)
       if (urls.isEmpty) Nil
       else {
-        def answered[A](ask: => Answer[A], question: AgreementStage.PosterQuestion): Option[A] = ask.answered.orElse {
+        def answered[A](ask: => Answer[A], question: services.identity.agreement.PosterQuestion): Option[A] = ask.answered.orElse {
           posters.foreach(_.file(posterStore, Seq(question)))
           ask.answered
         }
-        val shown = urls.flatMap(url => answered(posterStore.venue(url), AgreementStage.PosterQuestion.Venue(url)).flatten)
+        val shown = urls.flatMap(url => answered(posterStore.venue(url), services.identity.agreement.PosterQuestion.Venue(url)).flatten)
         if (shown.isEmpty) Nil
         else {
           val showing = listings.filter(x => PosterEvidence.shows(x) && x.poster.isDefined)
@@ -217,7 +217,7 @@ object IdentityUnifiedDataset {
           val named   = verdicts.flatMap(v => v.pick.map(_.record) ++ v.leaning).flatMap(r => r.crossIds.get("tmdb").flatMap(_.toIntOption)
             .orElse(r.crossIds.get("imdb").flatMap(finds.get).flatten))
           val films   = (scored ++ named).distinct.sorted
-          val hashes  = films.map(film => film -> answered(posterStore.film(film), AgreementStage.PosterQuestion.Film(film)).getOrElse(Nil))
+          val hashes  = films.map(film => film -> answered(posterStore.film(film), services.identity.agreement.PosterQuestion.Film(film)).getOrElse(Nil))
           shown.map(poster => hashes.map { case (film, held) => film -> PosterEvidence.nearest(Seq(poster), held) }.toMap)
         }
       }

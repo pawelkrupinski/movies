@@ -44,7 +44,7 @@ object Catalogue {
   def named(listings: Seq[Listing], catalogue: CatalogueAnswers, asked: mutable.Set[Question],
             attempted: Question => Boolean = _ => false): Answer[Option[Named]] = {
     var open = false
-    def known[A](answer: Answer[A], question: Question): Option[A] = AgreementStage.settledBy(attempted)(question, answer) match {
+    def known[A](answer: Answer[A], question: Question): Option[A] = Agreement.settledBy(attempted)(question, answer) match {
       case Answer.Known(value) => Some(value)
       case Answer.Unknown      => asked += question; open = true; None
       // attempted and not answered, or given up on: naming nothing, decided on, still asked on its backoff
@@ -148,6 +148,6 @@ object Catalogue {
     val answer   = family.record(id)
     val question = Question.Family(family.family, s"record|$id")
     if (answer == Answer.Unknown || !family.fresh(s"record|$id")) asked += question
-    AgreementStage.settledBy(attempted)(question, answer).failedAs(None)
+    Agreement.settledBy(attempted)(question, answer).failedAs(None)
   }
 }

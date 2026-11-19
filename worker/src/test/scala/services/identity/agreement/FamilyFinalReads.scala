@@ -41,7 +41,7 @@ object FamilyFinalReads {
   }
 
   /** What `read`, a receipt's, digests to in `now`'s stage. */
-  def digestNow(read: Dependency, now: Settled): Option[Long] = now.stage.digestNow(read, now.listingOf)
+  def digestNow(read: Dependency, now: Settled): Option[Long] = now.stage.pipeline.evidence.digestNow(read, now.listingOf)
 
   /** What of `was`'s reads digests otherwise in `now`: a receipted read through `now`'s stage (a filed answer, an attempt,
    *  the year, a lookup), every lookup through `now`'s lookups, and each member's whole listing (its days, poster, names). `Asked` names a question to read again on its filing,
@@ -64,7 +64,7 @@ object FamilyFinalReads {
     private val stage   = answers.stage(lookups, new InMemoryAgreementVerdicts, budgets = false)
     def digest(read: Dependency): Option[Long] = read match {
       case Dependency.Answer(Question.Family(family, asked)) =>
-        synchronized { answers.fileOne(family, asked); stage.digestNow(read, _ => None) }
+        synchronized { answers.fileOne(family, asked); stage.pipeline.evidence.digestNow(read, _ => None) }
       case _ => None
     }
   }

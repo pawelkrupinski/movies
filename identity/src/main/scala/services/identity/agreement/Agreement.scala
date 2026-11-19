@@ -2,181 +2,14 @@ package services.identity.agreement
 
 import services.titles.billing.BillingPieces
 
-import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
+import services.identity.{Acceptance, Answer, FactRelations, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ListingShape, PosterEvidence, Question}
 import services.identity.toAnswer
 import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
 import services.titles.{TitleContainment, TitleNormalizer}
 
-import scala.annotation.unused
 import scala.collection.mutable
-
-/**
- * The film database families a cluster TMDB matched to nothing may be identified by when several of them, each on its
- * own, identify the same film (signal-combination experiment, 2026-10-04: "≥3 independent families agree, none names a
- * different film, and the listing's title names the film" — 17 right, 0 wrong titles; every family alone added wrongs,
- * 15–45% of its gains). A family's sources mirror each other and count once. Each family's search is weighed with
- * TMDB's calibration, its search priors' spread scaled by `priorSpread` (chosen per source by cross-validation, REPORT
- * §10: 19 right, 0 wrong, against 17 / 0 with TMDB's own spread).
- */
-enum VoterFamily(val label: String, val database: String, val priorSpread: Double, val searchesDirectors: Boolean, val latinTitlesOnly: Boolean,
-                 val namesFilms: Boolean = true) {
-  /** IMDb's own title and name search, and its records (Cinemeta and OMDb mirror it). */
-  case Imdb extends VoterFamily("imdb", "imdb", 1.5, searchesDirectors = true, latinTitlesOnly = false)
-  /** Wikidata's film items, and the Wikipedia articles that name them. */
-  case Wiki extends VoterFamily("wiki", "wikidata", 0.5, searchesDirectors = true, latinTitlesOnly = false)
-  /** Filmweb's search and film records — a voter where it indexes the country's titles (PL, DE, ES). */
-  case Filmweb extends VoterFamily("filmweb", "filmweb", 0.5, searchesDirectors = false, latinTitlesOnly = false)
-  case Metacritic extends VoterFamily("metacritic", "metacritic", 1.0, searchesDirectors = false, latinTitlesOnly = true, namesFilms = false)
-  case RottenTomatoes extends VoterFamily("rt", "rt", 1.5, searchesDirectors = false, latinTitlesOnly = true, namesFilms = false)
-}
-// `database`: the name a record's cross-ids file the family's own ids under (`SourceRecord.crossIds`), and a fallback
-// film's source when the family's id is the one a film stands on (`AgreementStage.identities`). `namesFilms`: its record is
-// a film database's, not a review site's page — a film only review sites take is never taken (`AgreementStage`).
-// What each family is asked, measured on prod's 20,310 answers (2026-10-05, agreement-question-value.md): a director
-// search decided an agreed film on IMDb (10) and Wikidata (8), never on Filmweb, Metacritic or Rotten Tomatoes
-// (`searchesDirectors`); Rotten Tomatoes' and Metacritic's English searches answer nothing useful for a title with no
-// Latin-script word (`latinTitlesOnly`).
-
-/** One film a family's search names: the family's own id for it, and its title and year as the search gave them. */
-final case class SourceHit(id: String, title: String, originalTitle: Option[String], year: Option[Int])
-
-/** A family's record of a film: what the identity measures read of it, and the ids other databases know it by
- *  (`"imdb" -> "tt0087843"`, `"tmdb" -> "311"`) — what links two families' films without comparing their facts. */
-final case class SourceRecord(film: IdentityMeasures.Film, crossIds: Map[String, String] = Map.empty)
-
-object SourceRecord {
-  /** TMDB's record of film `tmdbId`: linked by its TMDB id, and by the IMDb id TMDB names, if any. */
-  def ofTmdb(tmdbId: Int, film: IdentityMeasures.Film): SourceRecord =
-    SourceRecord(film, Map("tmdb" -> tmdbId.toString) ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _))
-}
-
-/** One film a venue's programme on a family's site screens — the family's own id for it — and the days it does. */
-final case class Showing(film: String, days: services.identity.ScreeningDays)
-
-/** What a family answers, from what it keeps: `Unknown` while a question is not answered yet — a gap, never "no film". */
-trait FamilyAnswers {
-  def family: VoterFamily
-  def titled(text: String): Answer[Seq[SourceHit]]
-  /** The films a person of this name directed; `Known(Nil)` for a family with no person search. */
-  def directedBy(name: String): Answer[Seq[SourceHit]]
-  def record(id: String): Answer[Option[SourceRecord]]
-  /** The films the family's site lists a venue screening ([[VenueListings]]): its own programme of the venue, else its
-   *  town's; `Known(Nil)` for a family that lists no programmes. */
-  def showing(@unused venue: String): Answer[Seq[Showing]] = Answer.Known(Nil)
-  /** Is there an answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`, `showing|<venue>`), and is it
-   *  still fresh? A stale one is read all the same, and asked again; a missing one is a gap. */
-  def fresh(question: String): Boolean = true
-}
-
-/** Which family answers were filed since a version of them (`<family>|<kind>|<text>`, as a verdict's reads name them):
- *  `None` when that is not known — the stage then reads a verdict's answers again to tell. */
-trait AnswerChanges { def changedSince(version: Long): Option[Set[String]] }
-object AnswerChanges { val Unknown: AnswerChanges = _ => None }
-
-/**
- * The one feed answers are announced on, whichever store filed them: a key per filing (a TMDB document's
- * `<collection>:<id>`, a family answer's `<family>|<kind>|<text>`, a venue page's detail key). Each store decides what
- * counts as a filing — the TMDB store a document whose value moved, the family store every answer it files, the venue
- * page index a page whose answer moved at a settle — and publishes it here. Readers subscribe (called on the publishing
- * thread, in order: what the model reads of the asking thread, `ObservationReads.changed`, is that thread's), or count
- * the keys they read through a [[AnswerFeed.View]] of their own.
- */
-trait AnswerFeed {
-  /** Announces a filing under `key`: counted by every view accepting it, then handed to every subscriber, on this thread. */
-  def publish(key: String): Unit
-  /** Calls `listener` with every key published from now on. */
-  def subscribe(listener: String => Unit): Unit
-  /** The filings `read` takes, each under the key `read` names it by (the key itself, or the id its reader asks it
-   *  under), numbered by a version of the view's own: one it does not take (`None`) moves nothing. */
-  def view(read: String => Option[String]): AnswerFeed.View
-}
-object AnswerFeed {
-  /** One reader's count of the filings it reads ([[version]]), and which ones came since a version ([[changedSince]]). */
-  trait View extends AnswerChanges { def version: Long }
-  /** The keys the agreement stage reads: those an agreement question names ([[services.identity.Question.parse]]) —
-   *  never a TMDB document's or a venue page's, so the model's filings leave its version where it was. */
-  val agreementKeys: String => Option[String] = key => Option.when(services.identity.Question.parse(key).isDefined)(key)
-}
-
-/** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
-final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
-
-/** What a family made of a cluster: the film it took, if any, every film's record it weighed on the way, and the film its
- *  evidence `leaning` favours though no rule took it ([[Agreement.leaningOf]]) — a family that weighed a film and took
- *  none, leaning to another, has looked at it and turned it down. */
-final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil,
-                               leaning: Option[SourceRecord] = None)
-
-/** The film a cluster's families agree on, with the families that named it, those whose evidence leaned to it, and what
- *  else corroborated it ([[Agreement.ListingFacts]], [[Agreement.ModelVote]]). */
-final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty,
-                            corroborated: Set[String] = Set.empty) {
-  /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
-  def crossId(database: String): Option[String] = record.crossIds.get(database)
-}
-
-/** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
- *  are numbered as this resolve meets them (it asks its questions in one sorted order), so the resolve is a function of
- *  the answers; the venues' own detail pages come from `venues`. */
-final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listingTitles: Seq[String] = Nil) extends IdentityLookups {
-  private val numbers = mutable.LinkedHashMap.empty[String, Int]
-  private val named   = mutable.HashMap.empty[Int, SourceHit]
-  /** Each numbered film's best place in a search that named it: what [[fetched]] reads. */
-  private val bestRank = mutable.HashMap.empty[Int, Int]
-  private val listingTokens: Set[String] = listingTitles.flatMap(TitleContainment.tokens).toSet
-  private val read    = mutable.LinkedHashMap.empty[String, SourceRecord]
-  /** Every film's record this resolve read, in the order it read them. */
-  def weighed: Seq[SourceRecord] = read.values.toSeq
-  private def hitOf(hit: SourceHit): Hit = {
-    val number = numbers.getOrElseUpdate(hit.id, numbers.size + 1)
-    named.getOrElseUpdate(number, hit)
-    Hit(number, hit.title, hit.originalTitle, hit.year, 0.0)
-  }
-  /** The family's own id of a film this resolve numbered. */
-  def idOf(number: Int): Option[String] = named.get(number).map(_.id)
-  override def numbersFilmsByTmdbId: Boolean = false
-
-  override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
-  override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
-  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !tools.LatinScript.hasLetter(text) => Answer.Known(Nil)
-    case CandidateQuery.Title(text)    => answers.titled(text).map(ranked)
-    case CandidateQuery.Director(_) if !answers.family.searchesDirectors => Answer.Known(Nil)
-    case CandidateQuery.Director(name) => answers.directedBy(name).map(ranked)
-    case _                             => Answer.Known(Nil)
-  }
-  private def ranked(hits: Seq[SourceHit]): Seq[Hit] = hits.zipWithIndex.map { case (hit, rank) =>
-    val numbered = hitOf(hit)
-    bestRank.updateWith(numbered.tmdbId)(was => Some(was.fold(rank)(_ min rank)))
-    numbered
-  }
-
-  /** Is a numbered film's record worth asking for? Its search ranked it first, or its title shares a word with the
-   *  listing's, or the search gave no title to judge it by — and in any case within the first [[FamilyLookups.Records]]
-   *  a search returned. A hit failing that is read as no record (`film` is `None`): its question is never asked.
-   *  Replayed on prod's answers (2026-10-05): ~29% fewer questions, 45% fewer record fetches, no agreed film lost —
-   *  the first hit kept whatever its title (it rescues translated titles), the cap at 6 (4 lost one). */
-  private def fetched(number: Int, hit: SourceHit): Boolean = bestRank.get(number).forall { rank =>
-    rank < FamilyLookups.Records && (rank == 0 || {
-      val titles = (Seq(hit.title) ++ hit.originalTitle).filter(_.nonEmpty)
-      titles.isEmpty || titles.exists(title => TitleContainment.tokens(title).exists(listingTokens))
-    })
-  }
-
-  override def film(number: Int): Answer[Option[IdentityMeasures.Film]] =
-    named.get(number).filter(fetched(number, _)).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
-      val answer = answers.record(hit.id)
-      answer.answered.flatten.foreach(record => read(hit.id) = record)
-      answer.map(_.map(_.film))
-    }
-}
-
-object FamilyLookups {
-  /** How many of a search's films are read at most. */
-  val Records = 6
-}
 
 object Agreement {
 
@@ -332,6 +165,16 @@ object Agreement {
       turnedDown)
   }
 
+  /** `answer` to `question`, or -- not answered though `attempted` (it failed, or came to nothing durable) -- `Failed`:
+   *  read as no evidence where it is decided on ([[Answer.failedAs]]), the take decided without it (the settle rule,
+   *  docs/design/identity-questions.md step 4). THE one place an answer not given yet is decided on as if given up -- the
+   *  stage's reads ([[AgreementStage.settled]]), the catalogue's ([[Catalogue]]), TMDB's finds ([[tmdbFound]])
+   *  and the house productions ([[AgreementCandidates.productionsOf]]) alike: an attempt still inside its retries is
+   *  read as Failed too (docs/design/identity-structural-fixes.md, fix 4; fix 1 removes it). The caller notes the
+   *  question asked all the same, so it is asked on every pass and read again once answered. */
+  def settledBy[A](attempted: Question => Boolean)(question: Question, answer: Answer[A]): Answer[A] =
+    if (answer == Answer.Unknown && attempted(question)) Answer.Failed else answer
+
   /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet — `Unknown`
    *  until it was `attempted` (the settle rule, docs/design/identity-questions.md step 4), then none. */
   private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[Question],
@@ -340,7 +183,7 @@ object Agreement {
     // asked every pass; once attempted and not answered, Failed: read as TMDB holding none where it is decided on
     // (Answer.failedAs), the take decided without it
     if (answer == Answer.Unknown) finding += Question.Find(tt)
-    AgreementStage.settledBy(attempted)(Question.Find(tt), answer)
+    settledBy(attempted)(Question.Find(tt), answer)
   }
 
   /** Did `verdict` weigh the film (`isIt`, its takers' `records`) and turn it down — take none, its evidence leaning to

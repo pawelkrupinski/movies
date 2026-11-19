@@ -1,7 +1,7 @@
 package services.identity
 
 import play.api.libs.json.{Json, OFormat}
-import services.identity.agreement.{Agreement, AgreementStage, Broadcast, FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
+import services.identity.agreement.{Agreement, Broadcast, FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
 
 /**
  * The UNIFIED evidence model's signals: every signal the resolver's model and the agreement stage after it read about
@@ -184,7 +184,7 @@ object UnifiedEvidence {
 
     // the agreement's own verdict and the posters' vote, as the stage reaches them: signals beside the evidence they rest on
     private val modelVote = c.decision.leaning.orElse(c.decision.candidate).map(lean =>
-      scored.get(lean.film).map(cs => SourceRecord.ofTmdb(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
+      scored.get(lean.film).map(cs => SourceRecord.ofTmdb(lean.film, cs.head.film)).getOrElse(SourceRecord.ofLeaning(lean)))
     // as the stage reads it: the listings as their venues' own pages state them, and a film only review sites take is none
     private val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
       .filter(_.families.exists(_.namesFilms))

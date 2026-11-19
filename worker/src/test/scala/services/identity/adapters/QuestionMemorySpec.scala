@@ -1,10 +1,11 @@
 package services.identity
 package adapters
 
+import services.identity.agreement.PosterQuestion
+
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import tools.MutableClock
 
