@@ -19,7 +19,9 @@
 # the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
 # limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
 # and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
-# carrying `Coupling: <why>`. A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
+# carrying `Coupling: <why>` -- and a fan-out row added (an agent's exemption of a new class, the owner 2026-11-19) only
+# with a SPECIFIC why (its role and the collaborators it needs: reason_problems), its `added` date, and the adding commit's
+# own `Coupling: exempt <Class> — <reason>` trailer (the exemption table's header, A FAN-OUT ROW ADDED). A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
 # A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
 # name gone).
 #
@@ -75,6 +77,9 @@
 #       writes the baseline: the measured rows, each frozen distance row followed by its ceiling (THE CEILING) -- the
 #       least of the file's own, of every side of it git holds while it is unmerged, and the measured row + 0.02.
 #       What scripts/coupling-report --update writes.
+#   coupling_ratchet.py new-exemptions [--since 7d] [--rev REV]
+#       the exemption rows added since then on REV (default origin/main), each with its date, commit, why and trailer,
+#       and whether it is still there: the weekly list the owner strikes from (scripts/coupling-report --new-exemptions).
 #   coupling_ratchet.py refs --current <rows> --fanouts <file>
 #       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
 #       scripts/coupling-report --update writes to test/resources/coupling-fanout-refs.tsv.
@@ -732,6 +737,136 @@ def exemption_loosening(old: Dict[Tuple[str, str], str], new: Dict[Tuple[str, st
     return out
 
 
+FAN_OUT_KINDS = ("root", "registry", "config", "class")  # project/Coupling.scala's Exemptions.FanOutKinds
+REASON_MIN_CHARS, REASON_MIN_WORDS, ROLE_MAX_WORDS = 40, 6, 5
+# What says nothing of the class (the owner, 2026-11-19: "not a generic 'complex' or 'needed'"): each a pattern over the
+# lowercased why, and the phrase to name.
+GENERIC_REASONS = (
+    (r"\bcomplex(ity)?\b", "complex"),
+    (r"(^|\b(is|are|it's|they're|all|were|was|be)\s+)(needed|necessary|required)\b", "needed"),
+    (r"\bfor now\b", "for now"),
+    (r"\btodo\b", "TODO"),
+    (r"\btemporar(y|ily)\b", "temporary"),
+    (r"\b(fix|split|cut|clean|refactor)\w*\s+(\w+\s+)?later\b", "later"),
+    (r"\bhard to (split|cut|refactor|break)\b", "hard to split"),
+    (r"\b(can'?t|cannot|could not) be (split|cut)\b", "cannot be split"),
+    (r"\btoo (many|big|large)\b", "too many"),
+    (r"\blegacy\b", "legacy"),
+    (r"\b(big|large|god) class\b", "big class"),
+    (r"\buses (a lot|lots|many things)\b", "uses a lot"),
+)
+EXEMPT_TRAILER = re.compile(r"exempt\s+(\S+)\s*(?:—|–|--|-|:)\s*(.*)$")
+ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}$")
+REASON_SHAPE = ("`<role>: <what it does, and why it needs these collaborators>`, e.g. `pipeline stage: clusters a family's"
+                " members; needs the evidence, edges and solver it sequences`")
+
+
+def reason_problems(pattern: str, why: str) -> List[str]:
+    """Why `why` is no SPECIFIC reason for exempting `pattern` (A FAN-OUT ROW ADDED, the exemption table's header): it
+    leads with the class's role, says 40+ characters and 6+ words besides the class's name, and no generic phrase."""
+    text = why.strip()
+    out = []
+    role, sep, _ = text.partition(":")
+    if not sep or not role.strip() or len(role.split()) > ROLE_MAX_WORDS:
+        out.append(f"lead with the class's role: {REASON_SHAPE}")
+    rest = text
+    for name in sorted({pattern, pattern.rsplit(".", 1)[-1]}, key=len, reverse=True):
+        rest = rest.replace(name, " ")
+    if not re.sub(r"[\W_]+", "", rest):
+        out.append("the class's name is the whole reason")
+    elif len(rest.strip()) < REASON_MIN_CHARS or len(rest.split()) < REASON_MIN_WORDS:
+        out.append(f"too short: {REASON_MIN_CHARS}+ characters and {REASON_MIN_WORDS}+ words besides the class's name")
+    lowered = text.lower()
+    out += [f"`{phrase}` is generic: say what the class does and which collaborators it needs for it"
+            for rx, phrase in GENERIC_REASONS if re.search(rx, lowered)]
+    return out
+
+
+def exemption_columns(text: str) -> Dict[Tuple[str, str], List[str]]:
+    """The exemption table's fan-out rows, (kind, pattern) -> all its columns."""
+    return {(cols[0], cols[1]): cols for cols in (line.split("\t") for line in text.splitlines()
+                                                  if line.strip() and not line.startswith("#"))
+            if len(cols) >= 5 and cols[0] in FAN_OUT_KINDS}
+
+
+def coupling_trailers(sha: str) -> List[str]:
+    """The `Coupling:` trailers of `sha` as git reads them (the final trailer block)."""
+    out = git("log", "-1", "--format=%(trailers:key=Coupling,valueonly,separator=%x1e)", sha)
+    return [v.strip() for v in out.split("\x1e") if v.strip()]
+
+
+def exempt_trailer(pattern: str, values: List[str]) -> Optional[str]:
+    """The reason of `sha`'s `Coupling: exempt <pattern> — <reason>` trailer (its full or simple name), None for none."""
+    names = {pattern, pattern.rsplit(".", 1)[-1]}
+    found = [m.group(2) for m in (EXEMPT_TRAILER.match(v) for v in values) if m and m.group(1) in names]
+    return found[0] if found else None
+
+
+def rows_added(sha: str) -> List[List[str]]:
+    """The fan-out exemption rows commit `sha` adds (a commit creating the table adds none: no step)."""
+    before, after = trailers.text_at(f"{sha}^", EXEMPTIONS_PATH), trailers.text_at(sha, EXEMPTIONS_PATH)
+    if not before or not after:
+        return []
+    old = exemption_columns(before)
+    return [cols for key, cols in sorted(exemption_columns(after).items()) if key not in old]
+
+
+def unadmitted_exemptions(rng: str) -> List[str]:
+    """Each fan-out exemption row a commit of `rng` adds without what admits it (A FAN-OUT ROW ADDED): a specific why,
+    its `added` date, and the commit's own `Coupling: exempt <Class> — <reason>` trailer."""
+    out = []
+    for sha in git("rev-list", "--reverse", rng, "--", EXEMPTIONS_PATH).split():
+        added = rows_added(sha)
+        if not added:
+            continue
+        values = coupling_trailers(sha)
+        subject = git("log", "-1", "--format=%s", sha).strip()
+        for cols in added:
+            kind, pattern, why = cols[0], cols[1], cols[4]
+            where = f"{sha[:9]} {subject}: {kind} {pattern}"
+            out += [f"{where}: its why ({why!r}): {p}" for p in reason_problems(pattern, why)]
+            if len(cols) < 6 or not ISO_DATE.match(cols[5]):
+                out.append(f"{where}: no `added` date (the sixth column, YYYY-MM-DD: the day it is added)")
+            reason = exempt_trailer(pattern, values)
+            if reason is None:
+                out.append(f"{where}: no `Coupling: exempt {pattern.rsplit('.', 1)[-1]} — <reason>` trailer in the commit's"
+                           " final trailer block")
+            else:
+                out += [f"{where}: its trailer's reason ({reason!r}): {p}" for p in reason_problems(pattern, reason)]
+    return out
+
+
+def new_exemptions(since: str, rev: str = "") -> int:
+    """The exemption rows added since `since` (`7d`, or anything `git log --since` reads) on `rev` (default origin/main,
+    else HEAD): each one's date, commit, reason and trailer, and whether it is still in the table -- the weekly list the
+    owner strikes from (`scripts/coupling-report --new-exemptions --since 7d`)."""
+    if not rev:
+        rev = "origin/main" if subprocess.run(["git", "rev-parse", "-q", "--verify", "origin/main"],
+                                              capture_output=True).returncode == 0 else "HEAD"
+    days = re.fullmatch(r"(\d+)d", since)
+    after = f"{days.group(1)} days ago" if days else since
+    shas = git("log", "--reverse", f"--since={after}", "--format=%H", rev, "--", EXEMPTIONS_PATH).split()
+    present = exemption_columns(file_at(rev, EXEMPTIONS_PATH))
+    print(f"# Coupling exemptions added since {since} (on {rev}, {EXEMPTIONS_PATH})\n")
+    found = 0
+    for sha in shas:
+        values = coupling_trailers(sha)
+        day, subject = git("log", "-1", "--format=%cs%x1f%s", sha).strip().split("\x1f", 1)
+        for cols in rows_added(sha):
+            found += 1
+            kind, pattern, why = cols[0], cols[1], cols[4]
+            added = cols[5] if len(cols) > 5 else day
+            struck = "" if (kind, pattern) in present else " (struck since)"
+            print(f"- {added} {sha[:9]} `{kind}` **{pattern}**{struck} ({cols[2]}, {cols[3]}): {why}")
+            print(f"  commit: {subject}")
+            reason = exempt_trailer(pattern, values)
+            print(f"  trailer: Coupling: exempt {pattern.rsplit('.', 1)[-1]} — {reason}" if reason is not None else "  trailer: none")
+    if not found:
+        print("No exemption rows added.")
+    print(f"\nTo strike one: drop its row from {EXEMPTIONS_PATH} (no trailer needed) and cut the class below the limit.")
+    return 0
+
+
 def oversized_contracts(rows: Dict[Tuple[str, str], str]) -> List[str]:
     """The declared contracts past CONTRACT_MAX_MEMBERS members, or past their own `contract-size` row (a contract
     declared before the cap, grandfathered at its size with its why), one sentence each."""
@@ -934,6 +1069,16 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                     print(f"  - {item}")
                 print_unjustified(unjustified_exemptions)
                 print_misplaced(rng, EXEMPTIONS_PATH)
+    for rng in ranges:
+        unadmitted = unadmitted_exemptions(rng)
+        if unadmitted:
+            failed = True
+            print(f"A FAN-OUT EXEMPTION ROW IS NOT ADMITTED in {rng} ({exemptions_path}): a row added carries a specific why, its"
+                  " `added` date and the commit's own `Coupling: exempt <Class> — <reason>` trailer:")
+            for item in unadmitted:
+                print(f"  - {item}")
+            print(f"  The why: {REASON_SHAPE}.")
+            print_misplaced(rng, EXEMPTIONS_PATH)
     down = falls(current, baseline)
     if down:
         print(f"coupling fell ({len(down)} rows below the baseline, not yet recorded: scripts/coupling-report --update"
@@ -1067,6 +1212,9 @@ def main(argv: List[str]) -> int:
     u = sub.add_parser("update")
     u.add_argument("--current", required=True)
     u.add_argument("--baseline", default=BASELINE_PATH)
+    n = sub.add_parser("new-exemptions")
+    n.add_argument("--since", default="7d")
+    n.add_argument("--rev", default="")
     r = sub.add_parser("refs")
     r.add_argument("--current", required=True)
     r.add_argument("--fanouts", required=True)
@@ -1074,6 +1222,8 @@ def main(argv: List[str]) -> int:
     try:
         if args.command == "update":
             return update(args.current, args.baseline)
+        if args.command == "new-exemptions":
+            return new_exemptions(args.since, args.rev)
         if args.command == "refs":
             return refs(args.current, args.fanouts)
         if args.command == "split-check":

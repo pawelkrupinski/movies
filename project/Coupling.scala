@@ -524,8 +524,9 @@ object Coupling {
 
   /** One row of the exemption table (test/resources/coupling-exemptions.tsv): what it names (`pattern`: a class or package
    *  name, `*` any run of characters, `p.*` also `p` itself), its `kind` and `value` (`exempt` or a limit of its own, or,
-   *  for a contract's rows, the contract's name), whose it is and why. */
-  final case class Exemption(kind: String, pattern: String, value: String, owner: String, why: String) {
+   *  for a contract's rows, the contract's name), whose it is and why, and the day it was added (`added`, an optional
+   *  sixth column: every fan-out row added since 2026-11-19 carries one, scripts/ci/coupling_ratchet.py holds it). */
+  final case class Exemption(kind: String, pattern: String, value: String, owner: String, why: String, added: String = "") {
     def matches(name: String): Boolean = Exemptions.matches(pattern, name)
   }
 
@@ -551,7 +552,10 @@ object Coupling {
   }
 
   object Exemptions {
-    val FanOutKinds: Set[String] = Set("root", "registry", "config")
+    /** `class`: one class past the fan-out limit by its role, an agent's exemption (the owner, 2026-11-19): its why names
+     *  the role and the collaborators it needs (scripts/ci/coupling_ratchet.py lints it), listed weekly for the owner to
+     *  strike (`scripts/coupling-report --new-exemptions --since 7d`). */
+    val FanOutKinds: Set[String] = Set("root", "registry", "config", "class")
     val DistanceKinds: Set[String] = Set("root", "foundation")
     val ContractKinds: Set[String] = Set("contract", "member")
     /** `contract-size`: a contract declared before the member cap (scripts/ci/coupling_ratchet.py's CONTRACT_MAX_MEMBERS,
@@ -563,7 +567,8 @@ object Coupling {
       (pattern.endsWith(".*") && name == pattern.dropRight(2)) ||
         name.matches(pattern.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString(".*"))
 
-    /** The table's rows, `kind<TAB>pattern<TAB>limit|exempt|contract<TAB>owner<TAB>why`; `#` and blank lines are comments.
+    /** The table's rows, `kind<TAB>pattern<TAB>limit|exempt|contract<TAB>owner<TAB>why[<TAB>added]` (`added` a date,
+     *  YYYY-MM-DD); `#` and blank lines are comments.
      *  An unknown kind, a value that is neither `exempt` nor a number (for an exempting kind), a member of a contract no
      *  `contract` row has users for (or the reverse), or a row without its owner or why is an error. */
     def parse(lines: Seq[String]): Exemptions = {
@@ -573,8 +578,10 @@ object Coupling {
         if (line.trim.isEmpty || line.startsWith("#")) None
         else {
           val cols: Array[String] = line.split("\t", -1)
-          if (cols.length != 5) bad("not `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why`")
-          val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4))
+          if (cols.length != 5 && cols.length != 6) bad("not `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why[<TAB>added]`")
+          val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4), if (cols.length == 6) cols(5) else "")
+          if (cols.length == 6 && !row.added.matches("""\d{4}-\d{2}-\d{2}""")) bad(s"`${row.added}` is no date (YYYY-MM-DD)")
+          if (row.kind == "class" && row.pattern.contains("*")) bad("a `class` row names one class, no `*`")
           if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds + ContractSizeKind)(row.kind)) bad(s"unknown kind `${row.kind}`")
           if (row.pattern.isEmpty) bad("no pattern")
           if (!ContractKinds(row.kind) && row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))

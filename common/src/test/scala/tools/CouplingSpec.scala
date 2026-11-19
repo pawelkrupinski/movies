@@ -173,6 +173,16 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
       "member\tmodels.Cinema\tscrape\to\tw", "contract-size\tscrape\texempt\to\tw"))
   }
 
+  "a class exemption" should "exempt one named class from the fan-out limit, carrying the day it was added" in {
+    val table = Coupling.Exemptions.parse(Seq("class\tservices.identity.Clustering\texempt\tidentity\tpipeline stage: clusters a " +
+      "family's members; needs the evidence, edges and solver it sequences\t2026-11-19"))
+    table.fanOutLimit("services.identity.Clustering", 9) shouldBe None
+    table.fanOutLimit("services.identity.Voting", 9) shouldBe Some(9)
+    table.rows.map(_.added) shouldBe Seq("2026-11-19")
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("class\tservices.identity.*\texempt\to\tw\t2026-11-19"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("class\tservices.identity.Voting\texempt\to\tw\tyesterday"))
+  }
+
   "the checked-in exemption table" should "parse, exempt the roots, registries, config root and foundations, and declare the scrape contract" in {
     val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
     Seq("modules.WorkerMain", "modules.wiring.HttpWiring", "services.cinemas.pl.venues.KrakowVenues", "services.cinemas.CinemaScraperCatalog",

@@ -246,8 +246,9 @@ class CouplingRatchetTest(RatchetHarness):
         self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED", "registry worker.Wiring (exempt) added", rng=f"{self.base}..{head}")
 
     def test_an_exemption_row_added_with_a_trailer_passes(self):
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "registry\tworker.Wiring\texempt\tworker\ta table\n"},
-                           "exempt it\n\nCoupling: a venue table, one row a venue")
+        why = "venue table: one row a venue, each naming the scraper class that reads it"
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + f"registry\tworker.Wiring\texempt\tworker\t{why}\t2026-11-19\n"},
+                           f"exempt it\n\nCoupling: exempt Wiring — {why}")
         self.assert_passes(ROWS, rng=f"{self.base}..{head}")
 
     def test_an_exemption_limit_raised_without_a_trailer_fails(self):
@@ -632,6 +633,17 @@ class CouplingRenameTest(RatchetHarness):
         out = self.assert_passes(rewritten, rng=f"{self.base}..{head}")
         self.assertIn(f"scripts/pure-move-check calls {moved[:9]} a PURE MOVE", out)
 
+    def test_a_commit_that_is_no_pure_move_credits_no_rename_git_no_longer_sees(self):
+        recorded = frozen_identity(*((("ListingCannotLinks" if old == "ListingsApart" else old), v) for old, _, v in REAL_RENAMES))
+        changed = identity_class("ListingCannotLinks", members_of("ListingsApart")).replace("take(corpus.size)", "take(3)")
+        self.commit({BASELINE: recorded, identity_path("ListingsApart"): None, identity_path("ListingCannotLinks"): changed},
+                    "renamed, and its behaviour changed")
+        rewritten = recorded.replace("ListingCannotLinks\t15", "ListingCannotLinks\t11")
+        head = self.commit({BASELINE: rewritten, identity_path("ListingCannotLinks"):
+                            "package services.identity\n\nprivate[identity] final class ListingCannotLinks(a: A) {\n"
+                            "  def decide(x: X): Boolean = a.cannotLink(x)\n}\n"}, "rewrite it smaller")
+        self.assert_fails(rewritten, "fanout services.identity.ListingCannotLinks added at 11", rng=f"{self.base}..{head}")
+
     def test_the_real_renames_of_2026_11_19_keep_their_rows(self):
         recorded, head = self.rename({old: new for old, new, _ in REAL_RENAMES},
                                      "Resolver pieces named for what they decide; ScopeDrafting, LeanVenueSlots, FilmRecords")
@@ -656,6 +668,75 @@ class CouplingRenameTest(RatchetHarness):
         head = self.commit({BASELINE: raised}, "it rose")
         self.assert_fails(raised, "distance services.resolve added at 31", "but 31 is past services.identity's frozen row 30",
                           rng=f"{base}..{head}")
+
+
+# A FAN-OUT ROW ADDED (the owner, 2026-11-19: "3 a yes with specific reason"): an agent may exempt a genuinely new class
+# past the fan-out limit -- with a specific why, its date, and the commit's own `Coupling: exempt <Class> — <reason>`.
+STAGE = "services.identity.Clustering"
+STAGE_WHY = "pipeline stage: clusters a family's members; needs the evidence, edges and solver it sequences"
+
+
+def class_row(why: str = STAGE_WHY, added: str = "\t2026-11-19", cls: str = STAGE) -> str:
+    return f"class\t{cls}\texempt\tidentity\t{why}{added}\n"
+
+
+class ExemptionAdmissionTest(RatchetHarness):
+    def exempt(self, row: str, message: str) -> str:
+        return self.commit({EXEMPTIONS: EXEMPTION_ROWS + row}, message)
+
+    def test_a_row_with_a_specific_reason_and_its_trailer_passes(self):
+        head = self.exempt(class_row(), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_the_trailer_may_name_the_class_in_full_and_use_two_hyphens(self):
+        head = self.exempt(class_row(), f"Clustering exempt\n\nCoupling: exempt {STAGE} -- {STAGE_WHY}")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_a_generic_reason_fails(self):
+        why = "resolver class: it is complex and all of its collaborators are needed here"
+        head = self.exempt(class_row(why), f"Clustering exempt\n\nCoupling: exempt Clustering — {why}")
+        self.assert_fails(ROWS, "A FAN-OUT EXEMPTION ROW IS NOT ADMITTED", "`complex` is generic", "`needed` is generic",
+                          rng=f"{self.base}..{head}")
+
+    def test_the_class_name_as_the_whole_reason_fails(self):
+        head = self.exempt(class_row("Clustering"), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")
+        self.assert_fails(ROWS, "the class's name is the whole reason", "lead with the class's role", rng=f"{self.base}..{head}")
+
+    def test_a_short_reason_fails(self):
+        head = self.exempt(class_row("stage: runs the Clustering"), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")
+        self.assert_fails(ROWS, "too short: 40+ characters and 6+ words besides the class's name", rng=f"{self.base}..{head}")
+
+    def test_a_missing_trailer_fails(self):
+        head = self.exempt(class_row(), "Clustering exempt\n\nCoupling: a pipeline stage")
+        self.assert_fails(ROWS, "no `Coupling: exempt Clustering — <reason>` trailer in the commit's final trailer block",
+                          rng=f"{self.base}..{head}")
+
+    def test_a_trailer_outside_the_final_block_fails(self):
+        head = self.exempt(class_row(), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}\n\n"
+                                        "Co-Authored-By: someone <someone@example.com>")
+        self.assert_fails(ROWS, "no `Coupling: exempt Clustering", rng=f"{self.base}..{head}")
+
+    def test_a_generic_trailer_reason_fails(self):
+        head = self.exempt(class_row(), "Clustering exempt\n\nCoupling: exempt Clustering — needed")
+        self.assert_fails(ROWS, "its trailer's reason ('needed')", rng=f"{self.base}..{head}")
+
+    def test_a_row_without_its_date_fails(self):
+        head = self.exempt(class_row(added=""), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")
+        self.assert_fails(ROWS, "no `added` date", rng=f"{self.base}..{head}")
+
+    def test_the_weekly_report_lists_each_new_row_with_its_reason_and_commit(self):
+        head = self.exempt(class_row(), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")
+        voting = class_row("pipeline stage: votes a cluster's film from the scored candidates it gathers", cls="services.identity.Voting")
+        later = self.commit({EXEMPTIONS: EXEMPTION_ROWS + voting}, "Voting exempt, Clustering struck\n\nCoupling: exempt Voting — "
+                            "pipeline stage: votes a cluster's film from the scored candidates it gathers")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+        done = subprocess.run([sys.executable, "-I", TOOL, "new-exemptions", "--since", "7d", "--rev", "HEAD"], cwd=self.repo,
+                              env=env, capture_output=True, text=True)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        self.assertIn(f"- 2026-11-19 {head[:9]} `class` **{STAGE}** (struck since) (exempt, identity): {STAGE_WHY}", done.stdout)
+        self.assertIn(f"  trailer: Coupling: exempt Clustering — {STAGE_WHY}", done.stdout)
+        self.assertIn(f"{later[:9]} `class` **services.identity.Voting** (exempt", done.stdout)
 
 
 class CouplingSplitTest(RatchetHarness):

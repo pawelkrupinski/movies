@@ -119,7 +119,19 @@ mutants=(
   'any commit is a pure move @@ self._pure[sha] = done.returncode == 0 @@ self._pure[sha] = True'
   'a renamed package takes a fresh ceiling @@ elif ("distance", key) in renamed and @@ elif False and'
   'a split claim of a rename is judged as a split @@ return bool(targets) and len(named) == 1 @@ return False and len(named) == 1'
-
+  'any why admits an exemption row @@ out += [f"{where}: its why ({why!r}): {p}" for p in reason_problems(pattern, why)] @@ pass'
+  'a generic why passes @@ for rx, phrase in GENERIC_REASONS if re.search(rx, lowered)] @@ for rx, phrase in GENERIC_REASONS if False]'
+  'a short why passes @@ elif len(rest.strip()) < REASON_MIN_CHARS or len(rest.split()) < REASON_MIN_WORDS: @@ elif False:'
+  'the class name alone passes @@ if not re.sub(r"[\W_]+", "", rest): @@ if False:'
+  'a why without its role passes @@ if not sep or not role.strip() or len(role.split()) > ROLE_MAX_WORDS: @@ if False:'
+  'an exemption row needs no date @@ if len(cols) < 6 or not ISO_DATE.match(cols[5]): @@ if False:'
+  'an exemption row needs no exempt trailer @@             if reason is None:
+                out.append @@             if False:
+                out.append'
+  'the trailer reason is not linted @@ out += [f"{where}: its trailer'"'"'s reason ({reason!r}): {p}" for p in reason_problems(pattern, reason)] @@ pass'
+  'an unadmitted exemption never fails @@         if unadmitted:
+            failed = True @@         if unadmitted:
+            failed = False'
 )
 
 mkdir -p "$work/mutants"
