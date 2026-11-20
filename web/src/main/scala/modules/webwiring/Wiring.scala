@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, ReviewWiring, UsersWiring}
+import modules.webwiring.{AdminWiring, CityPagesWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, ReviewWiring, SiteWiring, UsersWiring}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.MongoConnection
@@ -22,7 +22,7 @@ import settings.MongoAddress
  */
 trait Wiring
     extends MongoWiring with UsersWiring with ReadModelWiring with DebugWiring with ReviewWiring
-    with AdminWiring with MetricsWiring with ControllersWiring {
+    with AdminWiring with MetricsWiring with SiteWiring with CityPagesWiring {
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode

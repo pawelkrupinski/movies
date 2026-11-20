@@ -65,4 +65,8 @@ trait AdminWiring { self: Wiring =>
       settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))), threadPools = threadPools))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction,
     new services.config.EnvConfigAdmin(envOverrideStore, envRegistryStore))
+
+  /** The controllers the router serves the operator pages' routes and the poster beacon with ([[modules.AppComponents.router]]). */
+  lazy val adminRouted = (uptimeController, uptimeStreamController, imageEventController, tasksController, taskRunController,
+    envConfigController)
 }

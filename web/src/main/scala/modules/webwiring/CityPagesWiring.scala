@@ -1,30 +1,13 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, FilmPageController, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CityRequests, CrawlerController, CrawlerFiles, EncodedResponseCache, FilmPageController, LegacyRedirectController, MovieApiController}
 
-/** ── The public site ───────────────────────────────────────────────────────
- *  The controllers a visitor (or the mobile apps) reach without signing in:
- *  the landing page, the per-city listing + film pages, the app catalog, the
- *  legal/support pages and the operational `/health` + `.well-known` answers. */
-trait ControllersWiring { self: Wiring =>
+/** ── The city pages ────────────────────────────────────────────────────────
+ *  Everything under `/{city}/`: the listing, the film pages, the JSON the mobile apps read, robots.txt and the
+ *  sitemaps, and the legacy addresses still answered — over one shared [[CityRequests]] and the gzip cache it serves
+ *  conditional GETs from. */
+trait CityPagesWiring { self: Wiring =>
 
-  // The deployment's DEFAULT, and ONLY, `Lang` — Poland → pl → default
-  // `messages`; other countries → their own bundle. `LandingController` /
-  // `MovieController` render every visitor in this; an explicit language
-  // pick swaps the visible copy client-side instead (`shared.js`'s
-  // `applyLanguage`), never by re-rendering server-side.
-  lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(country.language)
-
-  // The fixed deployment `Messages` — what every visitor-facing render uses,
-  // plus the `DebugController`-adjacent, ops/crawler-facing ones.
-  implicit lazy val deploymentMessages: play.api.i18n.Messages =
-    messagesApi.preferred(Seq(deploymentLang))
-
-  // Every country's `/` picker fragment, rendered once for the life of the process:
-  // the landing embeds its own country's, `/api/picker/:country` serves the rest.
-  lazy val pickerFragments = PickerFragments.rendered()
-  lazy val landingController = new LandingController(controllerComponents, country, pickerFragments)
-  lazy val pickerController  = new PickerController(controllerComponents, pickerFragments)
   // Where a cached page superseded by a read-model change is re-rendered while the
   // previous copy keeps being served (`EncodedResponseCache.gzippedBody`). Capped at
   // two: a render is ~1 s of CPU for the biggest cities, and an uncapped burst of
@@ -63,13 +46,6 @@ trait ControllersWiring { self: Wiring =>
     CrawlerFiles.live(country, movieControllerService, webReadModel))
   // The addresses no longer minted but still answered, each redirected onto its current one.
   lazy val legacyRedirectController = new LegacyRedirectController(controllerComponents, cityRequests)
-  // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
-  // identically by every deployment — no per-country/read-model dependency.
-  lazy val catalogController = new CatalogController(controllerComponents)
-  lazy val clientSupportController = new ClientSupportController(controllerComponents)
-  lazy val healthController = new HealthController(controllerComponents, readiness = () => webReadModel.hydrated,
-    databases = Seq(mongoConnection, usersConnection))
-  lazy val wellKnownController = new WellKnownController(controllerComponents)
-  lazy val legalController   = new LegalController(controllerComponents, country)
-  lazy val supportController = new SupportController(controllerComponents, country)
+  /** The controllers the router serves the city routes with ([[modules.AppComponents.router]]). */
+  lazy val cityPagesRouted = (movieController, filmPageController, movieApiController, crawlerController, legacyRedirectController)
 }

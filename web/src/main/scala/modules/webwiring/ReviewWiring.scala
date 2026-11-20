@@ -52,4 +52,8 @@ trait ReviewWiring { self: Wiring =>
 
   lazy val reviewAnswerController: ReviewAnswerController = new ReviewAnswerController(controllerComponents, environmentMode,
     reviewSources, reviewAnswers, reviewLabelsPath, clock, labelsWritable = processConfiguration.reviewLabelsFile.isDefined)
+
+  /** The controllers the router serves the identity review routes with ([[modules.AppComponents.router]]). */
+  lazy val reviewRouted = (reviewQueueController, agentJudgedController, reviewListingController, tmdbPosterController,
+    reviewAnswerController)
 }

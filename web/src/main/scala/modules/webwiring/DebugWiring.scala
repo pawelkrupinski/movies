@@ -178,4 +178,8 @@ trait DebugWiring { self: Wiring =>
   lazy val identityStagingController = new controllers.IdentityStagingController(controllerComponents, environmentMode,
     debugStores(conn => services.identity.staging.IdentityStaging.in(conn.database, clock)),
     country, clock)
+
+  /** The controllers the router serves the /debug routes with ([[modules.AppComponents.router]]). */
+  lazy val debugRouted = (debugController, cadenceController, debugReadModelController, tuneController, shareCardGalleryController,
+    rehydrateController, identityStagingController, debugStreamController)
 }

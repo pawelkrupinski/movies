@@ -209,10 +209,13 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
   // `router.RoutesPrefix`, so every reverse route (`controllers.routes.*`, the
   // asset URLs in every template) emits the deployment's mount point too.
   // `ConstructByType` hands each controller to the generated constructor by its type: that constructor's parameter
-  // order is the order controllers first appear in the routes file, so moving a route must not touch this line.
+  // order is the order controllers first appear in the routes file, so moving a route must not touch this line. Each
+  // area's wiring hands over its own group of controllers (`siteRouted`, `cityPagesRouted`, ...), so a controller added
+  // to an area is listed where that area is wired.
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
-      .orElse(ConstructByType[Routes](httpErrorHandler, landingController, wellKnownController, movieController, filmPageController, movieApiController, crawlerController, legacyRedirectController, catalogController, clientSupportController, pickerController, debugController, cadenceController, debugReadModelController, tuneController, shareCardGalleryController, rehydrateController, identityStagingController, debugStreamController, ssoController, authController, userStateController, accountController, healthController, metricsController, uptimeController, uptimeStreamController, imageEventController, tasksController, taskRunController, legalController, supportController, facebookDataDeletionController, envConfigController, reviewQueueController, agentJudgedController, reviewListingController, tmdbPosterController, reviewAnswerController, assets)
+      .orElse(ConstructByType.grouped[Routes](httpErrorHandler, assets, metricsController,
+        siteRouted, cityPagesRouted, debugRouted, usersRouted, adminRouted, reviewRouted)
         .withPrefix(httpConfiguration.context))
 
   // Every metric family's series from boot, the routes seeded off the router: the inventory the "longest uncalled

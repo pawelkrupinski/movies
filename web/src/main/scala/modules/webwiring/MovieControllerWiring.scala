@@ -6,7 +6,7 @@ import play.api.Mode
 import play.api.mvc.ControllerComponents
 
 /** The city listing's controller and its pieces — the listing's HTML, how it is served, the browse pages — wired over
- *  one deployment's [[CityRequests]] and schedules: the composition root's (`ControllersWiring`) and the controller
+ *  one deployment's [[CityRequests]] and schedules: the composition root's (`CityPagesWiring`) and the controller
  *  specs' one assembly. */
 object MovieControllerWiring {
   def movieController(cc: ControllerComponents, cityRequests: CityRequests, movieControllerService: MovieControllerService,

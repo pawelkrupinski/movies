@@ -99,4 +99,7 @@ trait UsersWiring { self: Wiring =>
   lazy val accountController = new AccountController(controllerComponents, accountDeletion, userRepository)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, country, processConfiguration.facebookAppSecret, userRepository, accountDeletion)
+
+  /** The controllers the router serves the sign-in, account and per-user routes with ([[modules.AppComponents.router]]). */
+  lazy val usersRouted = (ssoController, authController, userStateController, accountController, facebookDataDeletionController)
 }
