@@ -1,5 +1,7 @@
 package tools
 
+import scala.annotation.nowarn
+
 import services.identity._
 
 import scala.jdk.CollectionConverters._
@@ -7,7 +9,9 @@ import OlderRefTypes.TmdbFilm
 
 /** [[IdentityLookups]] with every answer memoised, so the permutation runs pay each lookup
  *  once. The memo changes how often the source is reached, never what the resolver ISSUES. */
+@nowarn("msg=unused import")
 final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
+  import services.identity.vocabulary.*
   private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[TmdbFilm]]]()
@@ -58,7 +62,7 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
     (queries.asScala.toMap, films.asScala.toMap)
   // a tool file, dropped into old refs (scripts/identity-slice TOOL_FILES): read through `Known`, which every ref has, not
   // `Answer.isAnswered` (2026-11-06) nor the `isKnown` before it
-  private def answered(answer: services.identity.Answer[?]): Boolean = answer.isInstanceOf[services.identity.Answer.Known[?]]
+  private def answered(answer: Answer[?]): Boolean = answer.isInstanceOf[Answer.Known[?]]
   def unknown: (Int, Int, Int) = (details.values.asScala.count(!answered(_)), queries.values.asScala.count(!answered(_)),
     films.values.asScala.count(!answered(_)))
 }

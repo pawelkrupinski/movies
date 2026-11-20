@@ -5,12 +5,14 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools.{SpecClock, SpecTimeouts}
 
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
+import services.identity.vocabulary.Question
+import services.identity.vocabulary.Answer
 
 /** A new cluster's family questions asked inline: filed before the resolve reads them, the wait capped by the deadline,
  *  and an answer that comes later filed and announced as the queue's would be. */

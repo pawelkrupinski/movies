@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity._
 
 import java.nio.file.Files
+import services.identity.vocabulary.Answer
 
 /** A capture taken without the casts its candidates' evidence asked (through a [[MemoLookups]] that passed none on) or the
  *  records' original languages and genres, filled from a recording's TMDB tree ([[UnmatchedClusters.withRecorded]]), and both kept

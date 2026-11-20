@@ -3,6 +3,7 @@ package scripts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.identity.vocabulary.{Answer, CandidateQuery}
 
 /** identity-slice --faithfulness: why this code's model decides a captured listing otherwise — the questions it left
  *  unanswered, and whether the capture could have held them ([[IdentitySlice.modelMovedWhy]], [[IdentitySlice.Asking]]). */

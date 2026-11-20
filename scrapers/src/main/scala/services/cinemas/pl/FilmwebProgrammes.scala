@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import play.api.libs.json.{JsObject, Json}
-import services.identity.ScreeningDays
+import services.identity.vocabulary.ScreeningDays
 import services.identity.agreement.Showing
 import tools.{HttpFetch, HttpRead}
 

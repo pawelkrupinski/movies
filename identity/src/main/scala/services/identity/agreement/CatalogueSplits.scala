@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.CatalogueId
+import services.identity.vocabulary.CatalogueId
 import services.identity.agreement.SuspectTakes.Take
 
 /**

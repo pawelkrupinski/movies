@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, Listing, NonFilmEvents,
-  PosterAnswers, PosterEvidence, Question, Resolution, ResolverDecision, VoterFamily}
+import services.identity.{IdentityCalibration, IdentityLookups, Listing, NonFilmEvents, PosterEvidence, Resolution, ResolverDecision}
+import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -187,7 +187,7 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
   }
 
   /** The verdicts kept, by their cluster's key ([[VerdictIndex.memo]]). */
-  def held: services.identity.Memo[String, StoredVerdict] = verdicts.memo
+  def held: services.identity.vocabulary.Memo[String, StoredVerdict] = verdicts.memo
 
   /** Does a verdict kept, or this apply's TMDB reads, read the TMDB record or search a filing under `id` comes as? */
   def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
@@ -209,10 +209,10 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
   def tried(question: Question): Boolean = evidence.tried(question)
 
   /** Is `year` another than the one the verdicts were read in? Then it is the year read from now, and every verdict that
-   *  read another is read again ([[services.identity.Dependency.Year]]: an input no filing announces). */
+   *  read another is read again ([[services.identity.vocabulary.Dependency.Year]]: an input no filing announces). */
   def yearTurned(year: Int): Boolean = year != evidence.yearNow && {
     evidence.yearNow = year
-    verdicts.memo.moved(_ == services.identity.Dependency.Year, evidence.readNow)
+    verdicts.memo.moved(_ == services.identity.vocabulary.Dependency.Year, evidence.readNow)
     true
   }
 
@@ -227,8 +227,8 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
     verdicts.memo.newPass(); candidates.candidateFilms.newPass()
     inline.firstPass = first
     if (first) {
-      val year = evidence.readNow(services.identity.Dependency.Year)
-      verdicts.memo.values.filter(v => v.rules == decidedUnder && v.reads.get(services.identity.Dependency.Year).forall(year.contains))
+      val year = evidence.readNow(services.identity.vocabulary.Dependency.Year)
+      verdicts.memo.values.filter(v => v.rules == decidedUnder && v.reads.get(services.identity.vocabulary.Dependency.Year).forall(year.contains))
         .foreach(v => verdicts.check(v.id, v.listings, version))
     }
     evidence.version = version

@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{Denial, PinConstraints, TitleDecorations}
 
 /**
  * THE EVIDENCE PROVENANCE TABLE ([[Authority]]; docs/investigations/2026-11-01-flip-unification.md, stage 3): what each

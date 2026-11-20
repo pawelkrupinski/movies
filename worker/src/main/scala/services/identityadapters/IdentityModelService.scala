@@ -8,6 +8,7 @@ import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUn
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, ObservationReads}
 
 /** The model as a reader sees it: its resolution, what its lookups do not know yet, its listings. */
 final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing],

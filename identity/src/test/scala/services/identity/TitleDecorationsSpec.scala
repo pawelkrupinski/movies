@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.TitleDecorations
 
 /** The venue decorations the resolver strips (`TitleDecorations`); how they are learned is `TitleDecorationsLearnerSpec`'s (worker
  *  tests). The titles below are test data: nothing here reaches the resolver as a rule. */

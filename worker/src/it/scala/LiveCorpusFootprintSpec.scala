@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
+import services.identity.vocabulary.{Answer, CandidateQuery, Hit, PinConstraints, TitleDecorations}
 
 /** What the live corpus keeps per film. Its film-keyed maps each boxed every TMDB id — above the
  *  JVM's small-integer cache, so one `Integer` per map per film — and spent a hash-map node on each:

@@ -9,6 +9,7 @@ import models.ListingKey
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 import scala.util.{Random, Try}
+import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, ProseWords, Question}
 
 /**
  * THE FAMILY INDEX IS COMPLETE ([[FamilyIndex]]), over real slices: the committed drift slices

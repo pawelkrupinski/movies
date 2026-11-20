@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{Pin, PinStore}
+
 /** Pins held in memory, each written as [[MongoPinStore]] stores it to BSON and read back — for tests. */
 final class InMemoryPinStore extends PinStore {
   private val pins = new java.util.concurrent.ConcurrentHashMap[String, Pin]()

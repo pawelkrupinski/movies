@@ -1,13 +1,13 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources,
-  Listing, ListingShape, Question, SourceReliability, VoterFamily}
+import services.identity.{Listing, ListingShape, SourceReliability}
+import services.identity.vocabulary.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Question, VoterFamily}
 import services.identity.SourceReliability.Trust
 
 import scala.collection.mutable
 
 /**
- * The film a cluster's own catalogue ids name ([[services.identity.CatalogueSources]]): the venue's exact naming of it in
+ * The film a cluster's own catalogue ids name ([[services.identity.vocabulary.CatalogueSources]]): the venue's exact naming of it in
  * another film database — Webedia's id, a Letterboxd, Rotten Tomatoes or IMDb link on its film page — mapped by
  * Wikidata's statement of the id (its item's TMDB and IMDb ids), else the source's own page, an IMDb id by TMDB's find.
  *

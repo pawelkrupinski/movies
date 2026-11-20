@@ -1,6 +1,7 @@
 package services.identity
 
 import play.api.libs.json.{Json, OFormat}
+import services.identity.vocabulary.ClasspathResource
 
 /**
  * How likely a CANDIDATE decoration ([[TitleDecorationsLearner.candidates]], [[TitleDecorationsLearner.aligned]]) is one whose

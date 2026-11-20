@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.Question
+import services.identity.vocabulary.Question
 
 /** The agreement's [[services.identity.agreement.AgreementStage.AskNow]]: a new cluster's family questions, each asked
  *  through `asker` — as the queue asks it — on `pool` at once, waited on for at most `within`, each timed to `metrics`

@@ -7,6 +7,7 @@ import models.EmbeddedYear
 import services.titles.TitleContainment
 import services.titles.SearchTitles
 import Measure.{Category, Missing, Number}
+import services.identity.vocabulary.{Hit, PopularityBucket}
 
 /**
  * The LIVE rating gate's measurements, frozen: [[IdentityMeasures]] as it was when the gate's
@@ -27,7 +28,6 @@ object PinnedGateMeasures {
 
   /** The venue's own year, as the pinned gate read it: its field, else a year its title brackets. */
   private def statedYear(l: MeasuredListing): Option[Int] = l.year.orElse(EmbeddedYear.ofAll(l.rawTitle.toSeq :+ l.title, Int.MaxValue))
-
 
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */

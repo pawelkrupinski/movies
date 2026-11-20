@@ -1,9 +1,8 @@
 package services.identity.agreement
 
-
 import scala.collection.mutable
-import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups, Listing,
-  ListingShape, MeasuredListing, Memo, PosterAnswers, PosterEvidence, PosterHash, PosterQuestion, Question, VoterFamily}
+import services.identity.{Evidence, FallbackIds, IdentityLookups, Listing, ListingShape, MeasuredListing, PosterEvidence}
+import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, Memo, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
 /** The TMDB films a cluster's own evidence reaches, as the stage's takes and corrections read them: its candidates, its
  *  titles' searches and picks, the venue posters' distances to them, and the records and productions the broadcast

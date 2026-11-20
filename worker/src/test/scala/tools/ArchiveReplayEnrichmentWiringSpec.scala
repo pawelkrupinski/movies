@@ -794,7 +794,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   it should "answer its model from prod's recorded TMDB store ahead of what the tree files over it" in {
     
     val question = TmdbStore.titleSearchId("pl-PL", "Dziki")
-    val dziki    = services.identity.Hit(1536001, "Dziki", None, Some(2026), 1.0)
+    val dziki    = services.identity.vocabulary.Hit(1536001, "Dziki", None, Some(2026), 1.0)
     val recorded = ProdLookupInputs.Captured(answers = Map(
       TmdbKind.Query -> Map(question -> new org.bson.BsonDocument("ids", new org.bson.BsonArray(java.util.List.of(new org.bson.BsonInt32(1536001))))),
       TmdbKind.Film  -> Map("1536001" -> new org.bson.BsonDocument("hit", TmdbStore.hitDoc(dziki)))), whole = Map.empty, pages = Nil)
@@ -805,6 +805,6 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     replay.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Dziki&language=pl-PL",
       scala.util.Success("""{"results":[{"id":1184918,"title":"Dziki robot","original_title":"The Wild Robot","release_date":"2024-09-12","popularity":23.0},""" +
         """{"id":1536001,"title":"Dziki","original_title":"Dziki","release_date":"2026-01-01","popularity":1.0}]}"""))
-    replay.storedLookups().candidates(services.identity.CandidateQuery.Title("Dziki")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1536001))
+    replay.storedLookups().candidates(services.identity.vocabulary.CandidateQuery.Title("Dziki")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1536001))
   }
 }

@@ -8,6 +8,7 @@ import services.enrichment.ImdbClient
 
 import scala.util.Try
 import services.identity.Film
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
 
 /**
  * [[IdentityLookups]] answered by TMDB, IMDb's title suggestions and the venues' own detail pages

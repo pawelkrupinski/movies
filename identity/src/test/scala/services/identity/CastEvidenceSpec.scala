@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{FilmCast, ListedCast, TitleDecorations, VenueNames}
 
 /**
  * The cast tie-break on the real cases its offline measure met (2026-10-06, 244 labelled clusters: 24 decided, 24 right):

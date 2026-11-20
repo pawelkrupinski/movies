@@ -75,7 +75,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     arguments.flag("apply") shouldBe true
     arguments.get("only") shouldBe Some("prefix:kino-konesera")
     arguments.requiredInt("limit") shouldBe 10
-    parsed(DecorationDiscovery.commandLine).requiredInt("min-remainders") shouldBe services.identity.TitleDecorations.MinCandidateRemainders
+    parsed(DecorationDiscovery.commandLine).requiredInt("min-remainders") shouldBe services.identity.vocabulary.TitleDecorations.MinCandidateRemainders
   }
 
   "the training-row fits" should "refuse a valued option left without a value rather than read the next flag as it" in {

@@ -7,6 +7,7 @@ import services.titles.TitleSeason
 import services.identity.IdentityMeasures.ListingListing
 import services.identity.StageRelays.{Billing, Houses}
 import Measure.{Category, Missing, Number}
+import services.identity.vocabulary.{TitleDecorations, VenueNames}
 
 /** What the calibrated score reads must separate facts that mean different things: a venue's
  *  published year, a year the venue put in its title, a season a broadcast names, and whether a
@@ -48,8 +49,6 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // SPECIAL - ZOMBIE-DAWN OF THE DEAD & …", measure 41348646489)
     IdentityMeasures.joinedEvents(billed("HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD")) shouldBe empty
   }
-
-
 
   they should "cost a title that ends in neither no scan of it" in {
     val long = ("Kino Seniora " * 1500).trim
@@ -551,7 +550,6 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(MeasuredListing("RBO live 2027: Tosca")) should contain ("Tosca 2027")
     IdentityMeasures.searchQueries(MeasuredListing("Royal Opera: Tosca (2027)")) should contain ("Tosca 2027")
   }
-
 
   it should "be searched by every name of its work, whatever language the venue names it in" in {
     // TMDB titles the Met's record "The Metropolitan Opera 2026/27: Samson et Dalila": neither "Samson i dalila 2026"
@@ -1756,7 +1754,6 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       MeasuredListing("Nowy film", year = Some(2024), directors = Seq("Jan Kowalski"))),
       Seq(1 -> Film("A", year = Some(2025), directors = Some(Seq("Anna Nowak"))), 2 -> Film("B", year = Some(2024), directors = Some(Seq("Jan Kowalski"))))) shouldBe empty
   }
-
 
   "a venue's one-letter typo in a long word" should "still name the film's title exactly" in {
     // US: "Shaun the Sheep: The Beast of Mossy Botton" (×6) and "Pradhama Drishtiya Kuttakkar" (×16)

@@ -3,7 +3,8 @@ package scripts
 import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.Json
-import services.identity.{TitleDecorations, TitleDecorationsLearner}
+import services.identity.TitleDecorationsLearner
+import services.identity.vocabulary.TitleDecorations
 import scripts.IdentityCalibrationData.{ProdSnapshot, listings, queries}
 import tools.CommandLine
 

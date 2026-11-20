@@ -9,6 +9,7 @@ import java.nio.file.Path
 import java.time.{Clock, ZoneOffset}
 import scala.util.Try
 import scala.util.hashing.MurmurHash3
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, Question}
 
 /**
  * READ-SET CLOSURE over REAL families (docs/investigations/2026-11-01-flip-unification.md, stage 4): property 1 of the

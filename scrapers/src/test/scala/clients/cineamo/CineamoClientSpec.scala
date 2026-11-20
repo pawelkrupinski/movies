@@ -6,7 +6,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import services.cinemas.common.{CineamoClient, ListingReads}
-import services.identity.{CatalogueId, SourceReliability}
+import services.identity.SourceReliability
+import services.identity.vocabulary.CatalogueId
 import tools.{GetOnlyHttpFetch, HttpFetch}
 
 import java.io.IOException

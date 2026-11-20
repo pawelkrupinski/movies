@@ -15,7 +15,7 @@ import java.nio.file.{Files, Paths}
  *  - the agreement's inline asks, kept by cluster key: a reshaped cluster under its old key was never asked again (now
  *    `askedNow`, a set of the shapes' digests: no key at all);
  *  - verdicts found by key, not by the listings they were decided for (now `heldFor`, by `StoredVerdict.listings`);
- *  - the dirty index's `checked` by id, which a reshaped cluster inherited (now checked under a stamp, [[services.identity.Memo]]);
+ *  - the dirty index's `checked` by id, which a reshaped cluster inherited (now checked under a stamp, [[services.identity.vocabulary.Memo]]);
  *  - a cluster's waits and a correction's waits, kept by key: a cluster back to a shape whose verdict stands, or a
  *    reshaped take its budget left unread, went on waiting on what another shape asked (now `Waiting.listings`).
  *
@@ -93,10 +93,10 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${A}FamilyLookups.scala#bestRank"        -> Pass(Lookups),
     s"${A}FamilyLookups.scala#read"            -> Pass(Lookups),
     // ── the Memo itself: each Memo a class keeps is reviewed where it is kept
-    s"${I}Memo.scala#entries"                  -> Digested("value", "the Memo's own entries: each user's value carries its receipt, and is reviewed as that user's field"),
-    s"${I}Memo.scala#checks"                   -> Digested("value", "each check holds the stamp (the caller's content digest) it was found standing under"),
-    s"${I}Memo.scala#readers"                  -> Content("the dirty index: by dependency filing"),
-    s"${I}Memo.scala#filings"                  -> Pass("the filings since a version, read once per pass (newPass clears it)"),
+    s"${I}vocabulary/Memo.scala#entries"                  -> Digested("value", "the Memo's own entries: each user's value carries its receipt, and is reviewed as that user's field"),
+    s"${I}vocabulary/Memo.scala#checks"                   -> Digested("value", "each check holds the stamp (the caller's content digest) it was found standing under"),
+    s"${I}vocabulary/Memo.scala#readers"                  -> Content("the dirty index: by dependency filing"),
+    s"${I}vocabulary/Memo.scala#filings"                  -> Pass("the filings since a version, read once per pass (newPass clears it)"),
     // ── the family index: a measure, recorded per family resolve, deciding nothing
     s"${I}FamilyIndex.scala#values"   -> Pass("the reads one family's resolve made, by what they read (a context fact or a lookup); its recorder is built per family resolve"),
     s"${I}FamilyIndex.scala#detailed" -> Pass("whether each member's venue publishes a detail page, as one family's resolve asked; its recorder is built per family resolve"),
@@ -142,9 +142,9 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}LiveCorpus.scala#segments"     -> Pass(PerRefresh),
     s"${I}LiveCorpus.scala#moved"        -> Pass(PerRefresh),
     s"${I}LiveCorpus.scala#bannersBefore" -> Pass(PerRefresh),
-    s"${I}ObservationReads.scala#readers" -> Name("store key → the questions that read it, forgotten when a question is asked again"),
-    s"${I}ObservationReads.scala#films"   -> Content("prefetched records by TMDB id"),
-    s"${I}ObservationReads.scala#details" -> Pass("prefetched venue pages: cleared at each prefetch and consumed in the same read"),
+    s"${I}vocabulary/ObservationReads.scala#readers" -> Name("store key → the questions that read it, forgotten when a question is asked again"),
+    s"${I}TrackedLookups.scala#films"   -> Content("prefetched records by TMDB id"),
+    s"${I}TrackedLookups.scala#details" -> Pass("prefetched venue pages: cleared at each prefetch and consumed in the same read"),
     // ── a resolve's scratch
     // ── one solve, update or stored decision's read: the state each builds and drops
     s"${I}ConstraintSolver.scala#cannot"    -> Pass("a field of ConstraintSolver's Partition, built per solve: each root's cannot-links"),
@@ -213,7 +213,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${W}LookupFill.scala#overloaded"    -> Pass(PerRound),
     s"${W}LookupFill.scala#wanted"        -> Pass(PerRound),
     s"${W}LookupFill.scala#byHost"        -> Pass(PerRound),
-    s"${I}EventTrigger.scala#bursts"              -> Pass("each debounce window's burst since the last run: timing, no decision"),
+    s"${I}vocabulary/EventTrigger.scala#bursts"              -> Pass("each debounce window's burst since the last run: timing, no decision"),
     s"${I}IdentityListingIntake.scala#entries"    -> Store("each venue's latest listings as written, with their stamp"),
     s"${I}IdentityProjectionPlan.scala#kept"      -> Digested("members", "as `drafted`, the shapes it commits"),
     s"${I}IdentityProjectionPlan.scala#priorsHeld" -> Digested("_1", "as `priorsUsed`, the priors it commits"),
@@ -251,7 +251,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
         |    memo
         |  }
         |  private var awaiting = Set.empty[Question]
-        |  var validated = services.identity.Memo.Validation.None
+        |  var validated = services.identity.vocabulary.Memo.Validation.None
         |  def apply(): Unit = {
         |    val local = mutable.HashMap.empty[ListingKey, Int]
         |    val fresh = new Object {

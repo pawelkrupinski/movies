@@ -9,6 +9,7 @@ import tools.MutableClock
 
 import java.time.{Duration, Instant}
 import services.identity.Film
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit, Question}
 
 /** The model asks live what is new, at once; a gap it already asked and was left without waits out its backoff, the
  *  fill's to ask (docs/design/identity-questions.md, step 3). */

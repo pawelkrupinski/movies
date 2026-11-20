@@ -12,6 +12,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import services.identity.Film
+import services.identity.vocabulary.{BsonFields, CandidateQuery, Hit, PopularityBucket, StripedLocks}
 
 /** The kinds of document the normalized TMDB store keeps, each its own collection. */
 enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {

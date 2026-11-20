@@ -81,7 +81,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     source.slots(Seq(ListingKey.serialised(Held))).values.map(_.facts.synopsis) shouldBe Seq(Some("Biografia Kafki."))
     source.updatedSince(now.minusSeconds(5400)).keySet shouldBe Set(ListingKey.serialised(Matched))
     source.feeds(Seq("Kino Opalenica" -> "FRANZ KAFKA")) shouldBe
-      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00"),
+      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.vocabulary.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00"),
         Some("https://b24/kafka.jpg")))
     source.venuePages(Seq(Held.nativeId)).values.map(_.runtime) shouldBe Seq(Some(127))
     source.films(Seq(1157322, 42)) shouldBe Map(1157322 ->
@@ -89,8 +89,8 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
   }
 
   "a candidate's TMDB record" should "carry the poster the poster corroboration hashed it from, the first of its paths" in {
-    import services.identity.PosterAnswers
-    import services.identity.PosterQuestion
+    import services.identity.vocabulary.PosterAnswers
+    import services.identity.vocabulary.PosterQuestion
     insert(DebugMirrorCollections.TmdbFilms,
       new BsonDocument("_id", BsonString("1599768")).append("record", new BsonDocument("title", BsonString("Ghost School")).append("year", BsonInt32(2026))),
       new BsonDocument("_id", BsonString("603")).append("hit", new BsonDocument("title", BsonString("The Matrix"))))

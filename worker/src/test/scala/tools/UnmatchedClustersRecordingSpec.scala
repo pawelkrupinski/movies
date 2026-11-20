@@ -3,6 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
 
 /** A capture's recording gives every answer it noted again, never its live source asked anew: its rounds decide over
  *  what the file holds and the replay reads (Identity capture #2079, UK: a capture that replayed to other takes, now

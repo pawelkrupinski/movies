@@ -16,6 +16,8 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 import services.identity.Film
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads, PopularityBucket}
+import services.identity.vocabulary.{ProseWords, Question}
 
 /** TMDB's answers normalized as they are fetched: read back exactly as the client parses them, with
  *  one film, one person and one question each, and moved — announced — only when a value the

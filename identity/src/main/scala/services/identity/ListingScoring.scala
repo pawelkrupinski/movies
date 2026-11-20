@@ -1,6 +1,7 @@
 package services.identity
 
 import services.identity.IdentityMeasures.ListingFilm
+import services.identity.vocabulary.Denial
 
 /** One [[FamilyScope.score]] of `listing` against its family's pool: the pool as the listing's titles relate to it, the candidates it reaches
  *  measured, the release veto, then the denials one candidate's evidence makes of another. */

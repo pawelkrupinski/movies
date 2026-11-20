@@ -13,6 +13,7 @@ import services.movies.{InMemoryMovieRepository, SingleCountryNormalizer}
 import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
+import services.identity.vocabulary.Question
 
 /**
  * The identity projection wired over the real cache and an in-memory store: what a cut-over

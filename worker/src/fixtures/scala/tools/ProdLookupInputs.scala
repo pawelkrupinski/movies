@@ -19,6 +19,7 @@ import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._
 import scala.util.Using
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads, Pin}
 
 /**
  * What prod's identity model answers its questions from, as a recording captures it beside its corpus

@@ -4,6 +4,7 @@ import services.titles.billing.DecorationWords
 import play.api.libs.json.{JsValue, Json}
 
 import scala.util.Try
+import services.identity.vocabulary.{FilmCast, ProseWords}
 
 /**
  * TMDB's record of one film, as the identity measures read it, from every answer TMDB gave about
@@ -13,7 +14,6 @@ import scala.util.Try
  * so the fitted weights and the scored values are one definition.
  */
 object TmdbFilmRecord {
-
 
   /** The film and its IMDb id, or `None` when no answer carries a title. A body a recorder
    *  wrapped as `{"text": …}` is unwrapped. */

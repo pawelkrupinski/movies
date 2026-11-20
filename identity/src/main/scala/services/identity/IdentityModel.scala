@@ -7,6 +7,7 @@ import services.movies.ScrapeListing
 import services.titles.{TitleNormalizer, TitleSeason}
 
 import scala.annotation.unused
+import services.identity.vocabulary.{Answer, CandidateQuery, CatalogueId, DetailFacts, Hit, ListedCast, ProseWords, ScreeningDays, TitleDecorations, VenueNames}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -204,93 +205,6 @@ final case class Listing(
   def sortKey: String = Listing.SortFields.map(_(this)).mkString("\u0000")
 }
 
-/** The days a listing screens on, each once, in order — held as epoch days: a corpus holds a listing per film and
- *  venue, and most screen on a handful of days. Or [[ScreeningDays.Unknown]]: a read of them that failed — no day,
- *  but never "screens on none" (a failed read is not data): the broadcast take waits on it. Or the SEASON alone
- *  ([[ScreeningDays.ofSeason]]): a lean read keeps no day of a film billing no stage work, only the first it screens
- *  on, which dates the season it screens in and nothing else — no day of it is read as a screening day. */
-final class ScreeningDays private (private val epochDays: Array[Int], private val seasonOnly: Option[Int] = scala.None,
-                                   private val firstYearOnly: Option[Int] = scala.None) {
-  /** No day, and known to be none. */
-  def isEmpty: Boolean = epochDays.isEmpty
-  /** The days could not be read. */
-  def isUnknown: Boolean = this eq ScreeningDays.Unknown
-  def days: Seq[java.time.LocalDate] = if (isUnknown) Nil else epochDays.toSeq.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
-  def contains(day: java.time.LocalDate): Boolean = !isUnknown && java.util.Arrays.binarySearch(epochDays, day.toEpochDay.toInt) >= 0
-  def first: Option[java.time.LocalDate] = days.headOption
-  def last: Option[java.time.LocalDate]  = days.lastOption
-  /** The performing season the first day falls in, by the year it opens: a season runs from July to June, so
-   *  January 2027 is the 2026/27 season's, as August 2026 is. Of a lean read's season alone, that season. */
-  def season: Option[Int] = first.map(ScreeningDays.seasonOf).orElse(seasonOnly)
-  /** The year of the first day — of a lean read's season alone too, which keeps it ([[ScreeningDays.ofSeason]]): what a rule
-   *  dating a film against its screenings reads. Read off [[first]], it was none in prod's lean read, and the current-release
-   *  test of a billed piece never passed there (DE "Über Unterbiberger – Vom Woid in die Welt" ×9, LeanWholeGuard 10-21). */
-  def firstYear: Option[Int] = first.map(_.getYear).orElse(firstYearOnly)
-  /** `other`'s days beside these — unknown when either is. */
-  def ++(other: ScreeningDays): ScreeningDays =
-    if (isUnknown || other.isUnknown) ScreeningDays.Unknown
-    else if (isEmpty && other.isEmpty) (seasonOnly ++ other.seasonOnly).minOption.fold(ScreeningDays.None)(season =>
-      new ScreeningDays(Array.emptyIntArray, Some(season), (firstYearOnly ++ other.firstYearOnly).minOption))
-    // days date the season themselves: a season alone beside them adds nothing
-    else if (other.isEmpty) this else if (isEmpty) other else new ScreeningDays((epochDays ++ other.epochDays).distinct.sorted)
-  override def equals(other: Any): Boolean = other match {
-    case that: ScreeningDays => java.util.Arrays.equals(epochDays, that.epochDays) && seasonOnly == that.seasonOnly
-    case _ => false
-  }
-  override def hashCode: Int = java.util.Arrays.hashCode(epochDays) * 31 + seasonOnly.##
-  override def toString: String =
-    if (isUnknown) "ScreeningDays(unknown)" else seasonOnly.fold(days.mkString("ScreeningDays(", ", ", ")"))(s => s"ScreeningDays(season $s)")
-}
-
-object ScreeningDays {
-  val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
-  /** How many years before its screenings' a film's may be and still be a current release ([[BilledPiece]], a feed link's
-   *  overrule: [[FeedLinkOverrule]]). */
-  val CurrentRelease = 1
-  /** The day standing for "not read" where days travel as showtimes (`models.LeanListing.unread`). */
-  val UnreadDay: java.time.LocalDate = models.LeanListing.UnreadDay
-  /** The day marking, where days travel as showtimes, the other day as the season's alone (`models.LeanListing.seasonOnly`). */
-  val SeasonOnlyDay: java.time.LocalDate = models.LeanListing.SeasonOnlyDay
-  /** Days that could not be read. */
-  val Unknown: ScreeningDays = new ScreeningDays(Array(UnreadDay.toEpochDay.toInt))
-  /** The month a performing season opens in. */
-  val SeasonOpens = 7
-  def of(days: Iterable[java.time.LocalDate]): ScreeningDays =
-    if (days.isEmpty) None
-    else if (days.exists(_ == UnreadDay)) Unknown
-    else if (days.exists(_ == SeasonOnlyDay)) days.filter(_ != SeasonOnlyDay).minOption.fold(None)(ofSeason)
-    else new ScreeningDays(days.iterator.map(_.toEpochDay.toInt).toArray.distinct.sorted)
-  /** No day, only the season `firstDay` falls in (and its year, [[ScreeningDays.firstYear]]): what a lean read knows of a
-   *  film billing no stage work. Two films screening in one season are equal however their first days move — the year is
-   *  outside equality and hash — so a day passing moves no listing. */
-  def ofSeason(firstDay: java.time.LocalDate): ScreeningDays =
-    new ScreeningDays(Array.emptyIntArray, Some(seasonOf(firstDay)), Some(firstDay.getYear))
-  private def seasonOf(day: java.time.LocalDate): Int = if (day.getMonthValue >= SeasonOpens) day.getYear else day.getYear - 1
-}
-
-/** A film's id in a cinema chain's own catalogue (`CinemaMovie.externalIds`: Gatsby's "boxoffice",
- *  Flicks', Cinema City's "cc", Multikino's "mk"…): the chain lists one film under one id at every
- *  venue, a bare listing beside its credited siblings. Measured on recording 36633286921 across the
- *  five corpora: no chain reuses an id for another film, and its ids are global to it. A box office's own
- *  event numbering is not ([[CatalogueSources.BoxOfficeOwn]]): its id is scoped by the venue that published it. */
-final case class CatalogueId(source: String, id: String) {
-  /** Its family block key and must-link identity. */
-  def key: String = s"c:$source:$id"
-}
-
-object CatalogueId {
-  given Ordering[CatalogueId] = Ordering.by(c => (c.source, c.id))
-
-  /** `cm`'s catalogue ids as `cinema` publishes them, blank ones dropped: a box office's own event id
-   *  ([[CatalogueSources.BoxOfficeOwn]]) under its venue's name, so another venue's system numbering another film
-   *  the same never names one film with it. */
-  def of(cinema: Cinema, cm: CinemaMovie): Seq[CatalogueId] =
-    cm.externalIds.toSeq.collect { case (source, id) if source.trim.nonEmpty && id.trim.nonEmpty =>
-      val own = id.trim
-      CatalogueId(source.trim, if (CatalogueSources.BoxOfficeOwn(source.trim)) s"${cinema.displayName}/$own" else own)
-    }.sorted
-}
-
 object Listing {
   /** How many seasons before the one it screens in a relay's stated year dates its staging with no further test
    *  ([[Listing.airDays]]): UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] screening in the 2026/27 season. */
@@ -322,7 +236,6 @@ object Listing {
 
   /** `l`'s facts alone: its screenings, names and words (what re-publishes it daily, and most of its weight) off. */
   def factsAlone(l: Listing): Listing = l.copy(screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None)
-
 
   /** The facts `scraped`'s title bills, in its own fields and off its title, as intake gives the slot
    *  (`ScrapeListing.prepare`). */
@@ -449,17 +362,6 @@ object Listing {
   def distinct(listings: Seq[Listing]): Seq[Listing] = listings.sorted.distinctBy(_.key)
 }
 
-/** What a venue's own detail page adds to its listing: the identity fields the model reads, and the page's synopsis and
- *  cast, which only the cast evidence reads ([[names]]) — the page's own strings, as the venue page index holds them,
- *  never copied. */
-final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime: Option[Int], originalTitle: Option[String],
-                             countries: Seq[String] = Nil, synopsis: Option[String] = None, cast: Seq[String] = Nil) {
-  /** The people the page's synopsis and cast name: worked out when the cast evidence asks, never held. */
-  def names: VenueNames = if (synopsis.isEmpty && cast.isEmpty) VenueNames.None else VenueNames.of(synopsis, cast)
-  /** The words the page's synopsis capitalises ([[ProseWords.ofProse]]): worked out when the synopsis evidence asks, never held. */
-  def words: ProseWords = synopsis.fold(ProseWords.None)(text => ProseWords.ofProse(Seq(text)))
-}
-
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
  *  question, and the resolver treats them as one node. */
@@ -558,15 +460,6 @@ object Evidence {
     anniversaryScreeningYear = listing.anniversaryScreeningYear)
 }
 
-/** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
- *  carries — the film's own record is an `Film`. */
-final case class Hit(tmdbId: Int, title: String, originalTitle: Option[String], year: Option[Int], popularity: Double)
-
-object Hit {
-  /** The hit standing for its film among `hits` naming it: the most popular, ties by title, original title and year. */
-  def best(hits: Seq[Hit]): Option[Hit] = hits.minByOption(h => (-h.popularity, h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0)))
-}
-
 /** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own
  *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. `awaitingRecord`: its
  *  record is not answered yet (a record given up on is not awaited: decided on its hits), so the hits alone carry it and nothing its record states (a running time, credits, where it
@@ -590,122 +483,6 @@ object Candidate {
       Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
         popularity = popularity)), awaitingRecord = record.isAwaited)
   }
-}
-
-/** A lookup's answer, one of three and nothing else (docs/design/identity-structural-fixes.md, fix 4):
- *  - `Known`: what the source said, an empty answer (no film, no hit) included;
- *  - `Failed`: TERMINAL -- given up on (`QuestionMemory.failedPastGiveUp`: failed its kind's give-up count in a row); a decision
- *    may read it as no evidence, and is decided on;
- *  - `Unknown`: NOT YET answered -- never asked, in flight, or failed and due again. Never "no film": a decision that
- *    reads one is not decided, it awaits the question ([[ResolverDecision.awaits]]).
- *  The case keeps its name `Unknown` because [[Dependency.digest]] digests an answer by its text: every stored receipt's
- *  unanswered read is `digest(Unknown)` ([[Dependency.Unanswered]]). */
-enum Answer[+A] {
-  case Known(value: A)
-  case Failed
-  case Unknown
-
-  /** The answer given, else none -- a failure for good and a question not answered yet alike. A reader that DECIDES on
-   *  it reads both as no evidence: for `Failed` that is the rule ([[failedAs]]), for `Unknown` only where the decision is
-   *  typed as awaiting it ([[ResolverDecision.awaits]], the stage's waits); every such reader is listed in
-   *  docs/design/identity-structural-fixes.md, fix 4d. (Was `toOption`, which named no such duty.) */
-  def answered: Option[A] = this match {
-    case Known(v)         => Some(v)
-    case Failed | Unknown => None
-  }
-  /** Answered: neither failed nor still awaited. (Was `isKnown`.) */
-  def isAnswered: Boolean = this match {
-    case Known(_)         => true
-    case Failed | Unknown => false
-  }
-  /** Not answered yet: what a decision awaits ([[ResolverDecision.awaits]]); a failure for good is not. */
-  def isAwaited: Boolean = this == Unknown
-  def map[B](f: A => B): Answer[B] = this match {
-    case Known(v) => Known(f(v))
-    case Failed   => Failed
-    case Unknown  => Unknown
-  }
-  def flatMap[B](f: A => Answer[B]): Answer[B] = this match {
-    case Known(v) => f(v)
-    case Failed   => Failed
-    case Unknown  => Unknown
-  }
-  /** A terminal failure read as `absent`, no evidence -- the ONE way a decision reads a [[Failed]] (fix 4); an answer
-   *  not yet given stays Unknown, never "none". */
-  def failedAs[B >: A](absent: => B): Answer[B] = this match {
-    case Failed => Known(absent)
-    case other  => other
-  }
-  /** This answer, or -- the source not answering it -- `other`'s. */
-  def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isAnswered) this else other
-}
-
-object Answer {
-  /** Every answer's value; else Unknown when any one is still awaited, else Failed. */
-  def sequence[A](answers: Seq[Answer[A]]): Answer[Seq[A]] =
-    if (answers.forall(_.isAnswered)) Known(answers.flatMap(_.answered))
-    else if (answers.contains(Unknown)) Unknown
-    else Failed
-}
-
-/** What a store holds, as an answer: none held is Unknown. */
-extension [A](held: Option[A]) def toAnswer: Answer[A] = held.fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
-
-/** The questions the resolver asks. A function of one evidence: which is what makes the whole
- *  query set a function of the listing SET (assumption A1). */
-enum CandidateQuery {
-  /** A yearless title search (`IdentityMeasures.searchQueries`). */
-  case Title(query: String)
-  /** Every film a person of this name directed (or, with no directing credit, wrote). */
-  case Director(name: String)
-  /** Every film IMDb lists under this very title, found in TMDB by its IMDb id: a path to a record
-   *  TMDB's own search does not return ("Caligula: The Ultimate Cut", whose record only an IMDb id
-   *  reaches). A path, never a rank: its films are scored on the listing's facts alone. */
-  case Imdb(title: String)
-  /** Every film IMDb lists under this very title in ANY language — its own title, its original or one of its
-   *  AKAs — found in TMDB by its IMDb id: the record a local title names when TMDB carries no translation of it
-   *  ("Camino dla opornych" is IMDb's Polish title of TMDB's "Compostelle", "Kuźma" IMDb's "Kuzma"). Each film
-   *  found reads the title as one of its own ([[CorpusContext.titlesByFacts]]); a path, never a rank. The ones TMDB holds
-   *  no record of are answered too, under their FALLBACK ids ([[FallbackIds]]): never a candidate TMDB's rules weigh,
-   *  only what a cluster no TMDB film was taken for may fall back to ([[ResolverDecision.fallback]]). */
-  case ImdbTitled(title: String)
-  /** Every film the director a title CLOSES on directed ([[TitleCredit]]): the name its closing bracket holds, when a
-   *  search for the very title suggests a director of that name — DE "ES (ULRICH SCHAMONI)" reaches Schamoni's 1966
-   *  "Es", which no search of "Es" ranks. Asked only of a title closing on such a bracket, crediting nobody. A path,
-   *  never a rank: its films are scored on the listing's facts, the credit among them ([[IdentityMeasures.bannerNamesItsDirector]]). */
-  case TitleCredit(title: String)
-
-  def sortKey: String = this match {
-    case Title(q)       => s"t\u0000$q"
-    case Director(n)    => s"d\u0000$n"
-    case Imdb(t)        => s"i\u0000$t"
-    case ImdbTitled(t)  => s"a\u0000$t"
-    case TitleCredit(t) => s"c\u0000$t"
-  }
-
-}
-
-object CandidateQuery {
-  implicit val ordering: Ordering[CandidateQuery] = Ordering.by(_.sortKey)
-
-  /** The query a [[CandidateQuery.sortKey]] names. */
-  def fromSortKey(key: String): Option[CandidateQuery] = key.split("\u0000", 2) match {
-    case Array("t", text) => Some(Title(text))
-    case Array("d", name) => Some(Director(name))
-    case Array("i", text) => Some(Imdb(text))
-    case Array("a", text) => Some(ImdbTitled(text))
-    case Array("c", text) => Some(TitleCredit(text))
-    case _                => None
-  }
-
-  /** A director credit as TMDB's person search knows it: without a trailing IMDb disambiguator —
-   *  " (I)", " (II)", " (III)", … Case-sensitive and limited to well-formed numerals below C, because
-   *  that is all IMDb ever writes: a lowercase "(mix)" or "(vi)", a malformed "(IIII)", or a word-like
-   *  "(MIX)" is part of the credit. */
-  def personName(name: String): String = ImdbDisambiguatorSuffix.replaceFirstIn(name, "").trim
-
-  private val ImdbDisambiguatorSuffix: scala.util.matching.Regex =
-    """\s+\((?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\)$""".r
 }
 
 /**

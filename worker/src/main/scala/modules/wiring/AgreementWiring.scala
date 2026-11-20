@@ -1,6 +1,6 @@
 package modules.wiring
 
-import services.identity.toAnswer
+import services.identity.vocabulary.toAnswer
 import services.identityadapters.IdentityProjection
 
 /**
@@ -14,8 +14,8 @@ trait AgreementWiring { self: WorkerWiring =>
   lazy val familyAnswerStore: services.identityadapters.FamilyAnswerStore = identityTmdbLayer.familyAnswers
   /** The families asked in this country: Filmweb only where it indexes the country's titles (measured 2026-10-04: it helps
    *  in PL, DE and ES, adds nothing in the UK, and its dissent blocks a right US agreement). */
-  def agreementFamilies: Seq[services.identity.VoterFamily] = {
-    import services.identity.VoterFamily
+  def agreementFamilies: Seq[services.identity.vocabulary.VoterFamily] = {
+    import services.identity.vocabulary.VoterFamily
     Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(AgreementWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
   }
@@ -39,7 +39,7 @@ trait AgreementWiring { self: WorkerWiring =>
     stage
   }
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
-  private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
+  private def enqueueAgreementQuestions(questions: Set[services.identity.vocabulary.Question]): services.tasks.Enqueued =
     services.identityadapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
   /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once the
    *  questions its own facts put to the families were each attempted once (a poster: hashed, known gone or given up on, a
@@ -63,7 +63,7 @@ trait AgreementWiring { self: WorkerWiring =>
    *  nothing, asks nothing and reads every take at once. Both read what was attempted from the one memory
    *  ([[identityQuestionMemory]]): a cluster settles once every question it waits on was. */
   def newAgreementStage(stored: services.identity.agreement.AgreementVerdicts, stageClock: java.time.Clock,
-                        ask: Set[services.identity.Question] => Unit = _ => (),
+                        ask: Set[services.identity.vocabulary.Question] => Unit = _ => (),
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
                         budgets: Boolean = true,
                         askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never,
@@ -120,7 +120,7 @@ trait AgreementWiring { self: WorkerWiring =>
     mongoConnection.database.fold[services.identity.agreement.AgreementKeys](new services.identity.agreement.InMemoryAgreementKeys)(
       new services.identity.agreement.MongoAgreementKeys(_))
   /** The families' live sources the agreement fill asks. */
-  lazy val familySources: Map[services.identity.VoterFamily, services.identityadapters.FamilySource] = {
+  lazy val familySources: Map[services.identity.vocabulary.VoterFamily, services.identityadapters.FamilySource] = {
     val all: Seq[services.identityadapters.FamilySource] = Seq(new services.identityadapters.ImdbFamily(imdbClient),
       new services.identityadapters.WikiFamily(wikidataClient, country.language.getLanguage),
       new services.identityadapters.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
@@ -143,7 +143,7 @@ trait AgreementWiring { self: WorkerWiring =>
       posterAnswerStore, posterHashing, catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)
-        identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+        identityProjectionTrigger.request(services.identity.vocabulary.EventTrigger.Answer)
         // a listing the model's input gate holds on this question is taken in at the model's next drain (fix 1)
         identityModel.wake()
       }, identityQuestionMemory, agreementQuestionMetrics)
@@ -175,10 +175,10 @@ object AgreementWiring {
    *  everywhere, Filmweb's in Poland alone — a Polish database, its records of other countries' releases no identity.
    *  Replayed on the unmatched clusters (2026-10-05): DE "Jeder Acker, jede Fabrik" and "Chasing Hope – Der andere Blick"
    *  (Wikidata), PL "Płazy. Pionierzy życia na lądzie" (Filmweb), none wrong. */
-  def identities(country: String): Seq[services.identity.VoterFamily] =
-    Seq(services.identity.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.VoterFamily.Filmweb)
+  def identities(country: String): Seq[services.identity.vocabulary.VoterFamily] =
+    Seq(services.identity.vocabulary.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.vocabulary.VoterFamily.Filmweb)
   /** The family whose site lists each venue's programme, that the agreement joins the venues' listings to: Filmweb, in
    *  Poland alone (it lists no other country's cinemas). */
-  def listedOn(country: String): Option[services.identity.VoterFamily] =
-    Option.when(country == "pl")(services.identity.VoterFamily.Filmweb)
+  def listedOn(country: String): Option[services.identity.vocabulary.VoterFamily] =
+    Option.when(country == "pl")(services.identity.vocabulary.VoterFamily.Filmweb)
 }

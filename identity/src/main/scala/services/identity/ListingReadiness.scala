@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.Question
+
 /**
  * The model's input gate (docs/design/identity-structural-fixes.md, fix 1: asking apart from deciding): which questions a
  * listing's own facts lead to that have no answer yet -- its venue page, and the questions its titles and directors put

@@ -1,6 +1,7 @@
 package services.identity
 
 import services.titles.{FormatTags, TitleContainment}
+import services.identity.vocabulary.TitleDecorations
 
 /**
  * Decoration stripping learned SUPERVISED, token by token: which words of a venue's title are the venue's (a programme

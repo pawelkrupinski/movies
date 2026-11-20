@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 
 import java.nio.file.Files
 import java.util.concurrent.{CountDownLatch, TimeUnit}

@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.titles.TitleNormalizer
 
 import FilmTable.{F, listing}
+import services.identity.vocabulary.ScreeningDays
 
 /**
  * Billings of one film-less event ([[NonFilmEvents.facts]]) are one web film whatever running time each venue

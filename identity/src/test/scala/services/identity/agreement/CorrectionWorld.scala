@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, Film, FilmTable, Listing, PosterAnswers,
-  PosterHash, PosterQuestion, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
+import services.identity.{Film, FilmTable, Listing, Resolution, ResolverDecision}
+import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, PosterHash, PosterQuestion, Question, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import services.movies.SingleCountryNormalizer
 

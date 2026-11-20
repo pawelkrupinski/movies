@@ -2,6 +2,7 @@ package services.identity
 
 import services.titles.billing.{BillingParse, BillingPieces}
 import services.titles.{TitleContainment, TitleSeason}
+import services.identity.vocabulary.TitleDecorations
 
 /** What one venue published about one film. `decorations`: the venue decorations learned around
  *  titles (`TitleDecorations`), which the title shapes read — not a fact the venue published. */
@@ -15,7 +16,7 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
                                  /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
                                   *  what picks among a house's records of its work's seasons, never searched. */
                                  screenedSeason: Option[Int] = None,
-                                 /** The season its first screening falls in, unconditionally ([[services.identity.ScreeningDays.season]]):
+                                 /** The season its first screening falls in, unconditionally ([[services.identity.vocabulary.ScreeningDays.season]]):
                                   *  the seasons its title can name ([[TitleSeason.near]]). */
                                  screeningsSeason: Option[Int] = None,
                                  /** Its screening days, held only where its stated year is more than a season before the season

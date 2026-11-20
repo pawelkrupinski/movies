@@ -3,6 +3,7 @@ package services.identity
 import services.identity.agreement.{UnifiedEvidence, UnifiedRules}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{Answer, ScreeningDays}
 
 /**
  * Where two copies of one concept DISAGREED, found while consolidating the rules (identity-resolver-rules-inventory.md

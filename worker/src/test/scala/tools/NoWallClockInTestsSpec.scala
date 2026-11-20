@@ -282,12 +282,12 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   /** Main-source files still timing work on the companion's helpers rather than a passed stopwatch — the backlog
    *  this rule froze on 2026-10-20 (it only shrinks). The identity resolver's (AgreementStage, IncrementalResolver,
-   *  ObservationReads) change the resolver closure, which re-resolves every worker on deploy (batch them); the scrape
+   *  TrackedLookups) change the resolver closure, which re-resolves every worker on deploy (batch them); the scrape
    *  decorators sit behind the catalog's diagnostic door. */
   private val SystemStopwatchBacklog: Set[String] = Set(
     "http/src/main/scala/tools/RetryWithBackoff.scala",
     "common/src/main/scala/services/MonitoringHttpFetch.scala",
-    "identity/src/main/scala/services/identity/ObservationReads.scala",
+    "identity/src/main/scala/services/identity/TrackedLookups.scala",
     "identity/src/main/scala/services/identity/IncrementalResolver.scala",
     "identity/src/main/scala/services/identity/agreement/AgreementStage.scala",
     "scrapers/src/main/scala/services/cinemas/common/CinemaScrapeRunner.scala",

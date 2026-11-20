@@ -4,6 +4,7 @@ import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, B
 
 import scala.jdk.CollectionConverters._
 import scala.util.chaining.scalaUtilChainingOps
+import services.identity.vocabulary.{BsonFields, CandidateQuery, ListingKeyBson, Question}
 
 /** A [[ResolverDecision]] as BSON fields — the one encoding every identity collection storing a
  *  decision uses (`identity_model_families`). */

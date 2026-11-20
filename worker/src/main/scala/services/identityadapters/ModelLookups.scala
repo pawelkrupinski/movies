@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.Film
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords, Question}
 
 /**
  * The identity model's venue detail and nothing else: a listing's page as venue_pages holds it

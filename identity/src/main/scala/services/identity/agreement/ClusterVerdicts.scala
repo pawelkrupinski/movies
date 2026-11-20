@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, IdentityLookups, IdentityMeasures, Listing, Question, ResolverDecision}
+import services.identity.{IdentityLookups, IdentityMeasures, Listing, ResolverDecision}
+import services.identity.vocabulary.{Answer, Dependency, Question}
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -181,8 +182,6 @@ private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verd
     verdict
   }
 
-
-
   /** Is a waiting cluster due a resolve? Once every question it waits on is answered — any gap left, and the families
    *  could reach no verdict, so resolving on each answer as a backlog drains (every cluster gets one, every tick) only
    *  re-ran the same partial resolve: prod PL 2026-10-04, 25–48 s an agreement phase after the per-question fix — or once
@@ -197,8 +196,6 @@ private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verd
    *  [[unreached]], asked on every pass, and the first of them answered reads the cluster again ([[verdictOf]]). */
   private def settles(waiting: ClusterWait): Boolean =
     waiting.blindAt.isEmpty && waiting.gaps.forall(evidence.tried)
-
-
 
   /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
    *  ([[Dependency.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's

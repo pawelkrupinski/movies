@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.Denial
+
 /** The denial a feed's copied original title makes in a family ([[FamilyScope]]): a film only the title a feed copied
  *  names, never the billed title, is the copy's pull, not the venue's film. */
 private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLinkOverrule, recorded: Map[Int, Candidate]) {

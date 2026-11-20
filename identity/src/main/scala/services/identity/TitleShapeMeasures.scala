@@ -5,6 +5,7 @@ import services.titles.TitleContainment
 import services.titles.SearchTitles
 
 import IdentityMeasures.*
+import services.identity.vocabulary.TitleDecorations
 
 /** The parts a title numbers, its capitalised tags, and the SHAPES it is billed in — the titles a listing's billing
  *  can stand for, delimited, quoted, or with its screening year dropped.

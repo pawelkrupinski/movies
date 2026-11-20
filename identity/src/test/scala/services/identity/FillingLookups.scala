@@ -2,6 +2,7 @@ package services.identity
 
 import scala.collection.mutable
 import scala.util.Random
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit}
 
 /** `inner` with some questions not answered yet — a question is a gap the first time it is seen with
  *  probability 0.3 — and `answer` closing about half of the open ones, as a fill round does. */

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Dependency, Memo}
+import services.identity.vocabulary.{Dependency, Memo}
 
 import scala.collection.mutable
 

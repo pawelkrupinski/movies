@@ -2,9 +2,9 @@ package services.identity.agreement
 
 import services.titles.billing.BillingPieces
 
-import services.identity.{Acceptance, Answer, FactRelations, Film, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, Question, SourceReliability}
-import services.identity.toAnswer
+import services.identity.{Acceptance, FactRelations, Film, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, SourceReliability}
+import services.identity.vocabulary.{Answer, Question}
+import services.identity.vocabulary.toAnswer
 import services.identity.SourceReliability.{Fact, Trust}
 import services.titles.{TitleContainment, TitleNormalizer}
 
@@ -503,7 +503,6 @@ object Agreement {
    *  ([[services.identity.TitleTextMeasures.namedWithinAnother]], the agreement's readers' name for it)? Over spans
    *  [[billedSpans]] found: `own` the film's, `others` every candidate's, this one's among them. */
   def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean = services.identity.TitleTextMeasures.namedWithinAnother(own, others)
-
 
   /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a
    *  house or a season ([[ListingShape.billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's

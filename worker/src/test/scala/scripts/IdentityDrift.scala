@@ -6,7 +6,8 @@ import models.Country
 import org.bson.BsonDocument
 
 import services.identity.agreement.AgreementStage
-import services.identity.{VoterFamily, _}
+import services.identity._
+import services.identity.vocabulary.VoterFamily
 import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 
@@ -15,6 +16,7 @@ import java.nio.file.{Files, Path}
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit, Question}
 
 /**
  * INCREMENTAL = WHOLE, on a recording: production's identity state is kept event by event — the model

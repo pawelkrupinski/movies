@@ -6,14 +6,8 @@ import services.titles.TitleNormalizer
 
 import scala.collection.mutable
 
-import MultiMaps.*
-
-/** Which lookups gained an answer since the model last read them — candidate queries, film
- *  records, and the listings whose detail page did. */
-final case class AnswersChanged(queries: Set[CandidateQuery], films: Set[Int], details: Set[ListingKey] = Set.empty) {
-  def isEmpty: Boolean = queries.isEmpty && films.isEmpty && details.isEmpty
-}
-object AnswersChanged { val Empty: AnswersChanged = AnswersChanged(Set.empty, Set.empty) }
+import services.identity.vocabulary.MultiMaps.*
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, PinConstraints, Question, TitleDecorations}
 
 /**
  * The identity model kept current EVENT BY EVENT — listings a scrape saw, listings it no longer

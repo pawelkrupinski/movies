@@ -13,6 +13,7 @@ import scala.util.Try
  *  For the measures and the fixture tools only. */
 @nowarn("msg=unused import")
 final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch: HttpFetch) {
+  import services.identity.vocabulary.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
@@ -43,6 +44,7 @@ final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch:
 
 @nowarn("msg=unused import")
 object CatalogueFill {
+  import services.identity.vocabulary.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*

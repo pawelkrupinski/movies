@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import services.movies.SingleCountryNormalizer
+import services.identity.vocabulary.{Denial, PinConstraints, TitleDecorations}
 
 /** The refusals the listing's own evidence gives ([[CandidateScoring.evidenceDenial]]), each pinned by its text and kind:
  *  the trace names a denial by its text (`refused:…`, the ablation's `veto:<id>`, [[RuleContract]]'s declarations), so a

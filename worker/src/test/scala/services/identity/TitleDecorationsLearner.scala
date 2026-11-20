@@ -1,9 +1,10 @@
 package services.identity
 
-import services.identity.TitleDecorations.{LastBillJoin, Learned, MinCandidateRemainders, Tail, TailRun}
+import services.identity.vocabulary.TitleDecorations.{LastBillJoin, Learned, MinCandidateRemainders, Tail, TailRun}
 import services.titles.TitleContainment
 
 import scala.collection.mutable
+import services.identity.vocabulary.TitleDecorations
 
 /**
  * The OFFLINE learner of the venue decorations the resolver strips ([[TitleDecorations]]): what

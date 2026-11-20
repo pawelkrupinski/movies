@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.Question
+import services.identity.vocabulary.Question
 
 /**
  * The agreement stage's questions on their way to the queue: what the last apply met unanswered ([[wanted]]), each

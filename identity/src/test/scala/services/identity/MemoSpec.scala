@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{Dependency, Memo, Question, VoterFamily}
 
 /** A value cached by its full dependency set: valid only while every dependency's digest is unchanged, the dirty index
  *  (checked at a version, nothing it read filed since) agreeing with full validation, and a disagreement counted. */

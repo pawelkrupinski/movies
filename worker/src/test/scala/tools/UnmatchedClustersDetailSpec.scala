@@ -3,7 +3,8 @@ package tools
 import models.{Country, KinoApollo}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{DetailFacts, Listing}
+import services.identity.Listing
+import services.identity.vocabulary.DetailFacts
 import models.ListingKey
 
 /** A capture whose venue detail a host refused wholesale — the UK capture of 2026-10-12 (run 38308006014) over recording

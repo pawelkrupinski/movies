@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.PosterQuestion
+import services.identity.vocabulary.PosterQuestion
 
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,6 +9,8 @@ import org.scalatest.matchers.should.Matchers
 import tools.MutableClock
 
 import java.time.Instant
+import services.identity.vocabulary.Question
+import services.identity.vocabulary.VoterFamily
 
 /** The model's input gate over the families (docs/design/identity-structural-fixes.md fix 1): a listing waits on each of
  *  its own questions until the question memory holds an attempt of it -- answered, a durable non-answer, or a failure

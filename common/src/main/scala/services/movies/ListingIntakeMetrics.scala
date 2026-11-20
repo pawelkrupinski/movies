@@ -1,7 +1,7 @@
 package services.movies
 
 /**
- * Observability for a scrape's intake (`services.identity.ListingIntake`): its two health guards'
+ * Observability for a scrape's intake (`services.identity.vocabulary.ListingIntake`): its two health guards'
  * verdicts, and whether a cache write actually reached the store. Before 2026-09-13 both guards only
  * logged their decisions, so "has this country's depth or breadth guard been stuck rejecting for hours"
  * meant grepping logs by hand — which is how long Kino Aurum's breadth-guard deadlock took to notice.

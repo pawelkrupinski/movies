@@ -164,6 +164,6 @@ object CineamoClient {
     Option.when(ReReleaseBilling.recent(premiere, today) && !ReReleaseBilling.bills(title))(premiere.getYear)
 
   /** The catalogue-id source a Cineamo listing's film record is filed under. */
-  val CatalogueSource: String = services.identity.CatalogueSources.Cineamo
+  val CatalogueSource: String = services.identity.vocabulary.CatalogueSources.Cineamo
 
 }

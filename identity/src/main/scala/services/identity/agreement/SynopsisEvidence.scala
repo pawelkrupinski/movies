@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.ProseWords
+import services.identity.vocabulary.ProseWords
 
 /**
  * The venue's own SYNOPSIS against the TMDB descriptions of the films its cluster reaches: a film the families agree on

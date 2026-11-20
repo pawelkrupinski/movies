@@ -9,6 +9,7 @@ import clients.HttpTmdbClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{Answer, CandidateQuery}
 
 /** The resolver's TMDB lookups over RECORDED answers: a film's identity record is read by the
  *  calibration's own parser from the two answers the client already asks for it, and a request

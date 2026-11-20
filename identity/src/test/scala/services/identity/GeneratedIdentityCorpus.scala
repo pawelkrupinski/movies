@@ -5,6 +5,7 @@ import models.ListingKey
 import services.titles.TitleNormalizer
 
 import scala.util.Random
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /**
  * Random corpora shaped like the ones that broke, with a synthetic film database honest to the

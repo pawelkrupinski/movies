@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.Question
+
 /**
  * What a listing's take still waits on, the model's and the agreement's alike (docs/design/identity-questions.md, step
  * 2): the model's candidate queries with no answer yet (`modelGaps`, a count: the resolver keeps no more of them), the

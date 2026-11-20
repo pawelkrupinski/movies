@@ -3,7 +3,7 @@ package tools
 import java.nio.file.Path
 
 /**
- * The state a class KEEPS: every mutable map, set or [[services.identity.Memo]] declared in a class, trait or object
+ * The state a class KEEPS: every mutable map, set or [[services.identity.vocabulary.Memo]] declared in a class, trait or object
  * body — what outlives one call — with the type it is keyed by. A local in a method body is one call's scratch and is
  * not listed.
  *

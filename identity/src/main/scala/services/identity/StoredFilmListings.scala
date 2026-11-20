@@ -5,6 +5,7 @@ import models.StoredMovieRecord
 import models.ListingKey
 import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
+import services.identity.vocabulary.StoredSlots
 
 /** The stored films as the published listings' sets ([[ProjectionIndexing.index]]): each listing's previous film, and
  *  each stored film's listings. */

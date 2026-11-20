@@ -79,7 +79,6 @@ class AlamoDrafthouseClient(
 
   import AlamoDrafthouseClient._
 
-
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
   /** A national chain fed by one central schedule service, so the per-cinema
@@ -144,8 +143,8 @@ object AlamoDrafthouseClient {
    *  venues, 2026-10-06) — the venue's own exact naming of the film, which the
    *  identity's catalogue take maps to TMDB. The id sits in the JSON the show page
    *  reads, not in the page's HTML, so the links are read off [[presentationUrl]]. */
-  val CatalogueLinkPages: services.identity.CatalogueLinkPages =
-    services.identity.CatalogueLinkPages(CinemaScraper.hostsOf(BaseUrl), Set("imdb"),
+  val CatalogueLinkPages: services.identity.vocabulary.CatalogueLinkPages =
+    services.identity.vocabulary.CatalogueLinkPages(CinemaScraper.hostsOf(BaseUrl), Set("imdb"),
       readAt = page => presentationUrl(showSlugOf(page)))
 
   /** The shared scrape horizon — see [[ScrapeHorizon]]. Here it bounds the

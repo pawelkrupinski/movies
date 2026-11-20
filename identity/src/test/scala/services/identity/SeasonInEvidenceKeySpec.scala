@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.titles.TitleNormalizer
 
 import FilmTable.listing
+import services.identity.vocabulary.{CandidateQuery, PinConstraints, ScreeningDays, TitleDecorations}
 
 /** The season a stage work's screenings fall in is read by its season rules ([[SearchMeasures.stageWorkQueries]]'s closing
  *  year, [[RelayStage.of]], [[StageRelays.bareWorksSeasonRecord]]), so it is part of the evidence a node is keyed by

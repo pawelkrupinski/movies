@@ -6,7 +6,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.AgreementStage
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 
 /** The agreement's series read 0 from boot — a backlog asked and none at all look different from no data — and carry
  *  the stage's last pass and each question's outcome. */

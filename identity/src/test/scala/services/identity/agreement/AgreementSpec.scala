@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, ListingShape,
-  VenueNames, VoterFamily}
+import services.identity.{Film, FilmTable, IdentityCalibration, Listing, ListingShape}
+import services.identity.vocabulary.{Answer, VenueNames, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -167,7 +167,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // the venue's own page bills as Noxon's 2017 feature — the catalogue's claim, weighed, not the venue's word
     val feature  = SourceRecord(film("To the Bone", 2017, "Marti Noxon", 107), Map("imdb" -> "tt5541240"))
     val fed      = listing(KinoMuza, "To The Bone", year = Some(2014), director = Some("Erin Li"))
-      .copy(catalogueIds = Seq(services.identity.CatalogueId("webedia", "227420")))
+      .copy(catalogueIds = Seq(services.identity.vocabulary.CatalogueId("webedia", "227420")))
     fed.factsFromCatalogue shouldBe true
     val three    = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", feature)))
     val leaning  = FamilyVerdict(VoterFamily.Metacritic, None, Seq(feature), leaning = Some(feature))
@@ -185,7 +185,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // and US venue): the facts read off it are that catalogue's claim. What the venue's day listing states itself (the
     // card's directors and running time) stays the venue's
     val flicks = stated.copy(page = Some("https://www.flicks.us/movie/a-night-at-the-opera/"),
-      catalogueIds = Seq(services.identity.CatalogueId("flicks", "21959")))
+      catalogueIds = Seq(services.identity.vocabulary.CatalogueId("flicks", "21959")))
     flicks.factsFromCatalogue shouldBe false
     flicks.copy(pageFacts = true).factsFromCatalogue shouldBe true
     stated.copy(page = Some("https://www.bilety24.pl/kino/776-crash-pokaz-w-dkf-megaron--164901?id=991024"), pageFacts = true)
@@ -286,7 +286,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val imago    = film("Imago", 2023, "Olga Chajdas", 113)
     val verdicts = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "872645", SourceRecord(imago, Map("filmweb" -> "872645")))),
       FamilyTook(FamilyPick(VoterFamily.Metacritic, "imago", SourceRecord(imago.copy(year = None), Map("metacritic" -> "imago")))))
-    def catalogued(id: String) = Seq(listing(KinoMuza, "Imago", year = Some(2023)).copy(catalogueIds = Seq(services.identity.CatalogueId("filmweb", id))))
+    def catalogued(id: String) = Seq(listing(KinoMuza, "Imago", year = Some(2023)).copy(catalogueIds = Seq(services.identity.vocabulary.CatalogueId("filmweb", id))))
     Agreement.agreed(catalogued("872645"), verdicts).map(_.corroborated) shouldBe Some(Set(Agreement.Catalogue))
     Agreement.agreed(catalogued("999"), verdicts) shouldBe None
     // IMDb weighed Zengotita's 2025 short, "Imago" in the original, beside Chajdas's own record, "Imago" in the original
@@ -495,7 +495,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       def record(id: String)       = { asked += id; Answer.Known(None) }
     }
     val lookups = new FamilyLookups(family, NoVenueDetails, Seq("Klondike"))
-    val numbered = lookups.candidates(services.identity.CandidateQuery.Title("Klondike")).answered.get
+    val numbered = lookups.candidates(services.identity.vocabulary.CandidateQuery.Title("Klondike")).answered.get
     numbered.foreach(hit => lookups.film(hit.tmdbId))
     asked.toSeq shouldBe Seq("a", "b", "d", "k1", "k2")   // first (any title), a shared word, no title to judge; then the cap of 6
   }
@@ -510,8 +510,8 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     }, NoVenueDetails)
     Seq(VoterFamily.RottenTomatoes, VoterFamily.Metacritic, VoterFamily.Filmweb, VoterFamily.Imdb).foreach { family =>
       val lookups = counting(family)
-      lookups.candidates(services.identity.CandidateQuery.Director("Andrzej Wajda"))
-      lookups.candidates(services.identity.CandidateQuery.Title("Сталкер"))
+      lookups.candidates(services.identity.vocabulary.CandidateQuery.Director("Andrzej Wajda"))
+      lookups.candidates(services.identity.vocabulary.CandidateQuery.Title("Сталкер"))
     }
     searched.toSeq shouldBe Seq("filmweb title Сталкер", "imdb director Andrzej Wajda", "imdb title Сталкер")
   }
@@ -539,7 +539,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // families that had agreed on IMDb's tt33394780 agreed on nothing.
     val film444 = film("444", 2026, "Aleksandr Petrov", 90)
     val bare = listing(KinoMuza, "Der Film 444 und ein Treffen mit dem Protagonisten und dem Autor").copy(originalTitle = Some("444"))
-    val fed  = bare.copy(catalogueIds = Seq(services.identity.CatalogueId("cineamo", "1669788m")))
+    val fed  = bare.copy(catalogueIds = Seq(services.identity.vocabulary.CatalogueId("cineamo", "1669788m")))
     def chosen(of: Listing) = Agreement.verdict(Seq(of), new HeldFamilyAnswers(VoterFamily.Imdb,
       Map("tt33394780" -> SourceRecord(film444, Map("imdb" -> "tt33394780")))),
       NoVenueDetails, normalizer, IdentityCalibration.resolver).answered.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))

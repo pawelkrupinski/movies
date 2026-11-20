@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.CandidateQuery
 
 /** The records a listing's own title searches found — what a record's local title may be learned from
  *  (`CorpusContext.titlesByFacts`), never a director's filmography alone. */

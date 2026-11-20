@@ -1,6 +1,7 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.vocabulary.StoredSlots
 
 /** Why each take of a projection's change list moved ([[TakeChange.Cause]]): read off what the take stood on, never off when
  *  it moved. The stored film a listing was on before the writes ([[TakeChange.previousFilm]], as the projection read it)

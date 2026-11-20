@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ClasspathResource
+
 /** The cuts of a film cinemas bill at their own running time (`identity-film-cuts.tsv`, hand-kept, each row citing
  *  its source): TMDB keeps ONE record per film at its theatrical runtime — "The Return of the King" at 201 minutes,
  *  none for the 263-minute extended edition; "Apocalypse Now" at 147, none for the Final Cut (183) or Redux (202) —

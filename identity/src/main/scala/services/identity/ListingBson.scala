@@ -5,6 +5,7 @@ import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString, BsonValue}
 import models.ListingKey
 
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{CatalogueId, ListedCast, ProseWords, ScreeningDays, VenueNames}
 
 /** A listing as BSON, every field the model and the stages after it read: what the unmatched-cluster capture keeps of
  *  its listings, and what the identity history keeps of each listing the model takes in (`IdentityHistory`) — read back

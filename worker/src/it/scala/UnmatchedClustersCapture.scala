@@ -5,13 +5,14 @@ import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, Post
 import services.identity._
 
 import services.identity.agreement.FamilyAnswers
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools._
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.identity.vocabulary.{Answer, Question}
 
 /**
  * Records [[UnmatchedClusters]]' fixture for one country: the clusters the resolver leaves with no film over its recorded

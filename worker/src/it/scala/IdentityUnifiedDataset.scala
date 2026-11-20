@@ -4,7 +4,7 @@ import services.identity.agreement.{Agreement, FamilyAnswers, UnifiedEvidence}
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
 
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import models.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
@@ -13,6 +13,7 @@ import java.nio.file.{Files, Path}
 import java.util.zip.GZIPOutputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.Answer
 
 /**
  * The UNIFIED evidence model's training rows (docs/design/identity-resolver.md §20): for every cluster of the recorded
@@ -205,11 +206,11 @@ object IdentityUnifiedDataset {
       val urls = PosterEvidence.urls(listings)
       if (urls.isEmpty) Nil
       else {
-        def answered[A](ask: => Answer[A], question: services.identity.PosterQuestion): Option[A] = ask.answered.orElse {
+        def answered[A](ask: => Answer[A], question: services.identity.vocabulary.PosterQuestion): Option[A] = ask.answered.orElse {
           posters.foreach(_.file(posterStore, Seq(question)))
           ask.answered
         }
-        val shown = urls.flatMap(url => answered(posterStore.venue(url), services.identity.PosterQuestion.Venue(url)).flatten)
+        val shown = urls.flatMap(url => answered(posterStore.venue(url), services.identity.vocabulary.PosterQuestion.Venue(url)).flatten)
         if (shown.isEmpty) Nil
         else {
           val showing = listings.filter(x => PosterEvidence.shows(x) && x.poster.isDefined)
@@ -218,7 +219,7 @@ object IdentityUnifiedDataset {
           val named   = verdicts.flatMap(v => v.pick.map(_.record) ++ v.leaning).flatMap(r => r.crossIds.get("tmdb").flatMap(_.toIntOption)
             .orElse(r.crossIds.get("imdb").flatMap(finds.get).flatten))
           val films   = (scored ++ named).distinct.sorted
-          val hashes  = films.map(film => film -> answered(posterStore.film(film), services.identity.PosterQuestion.Film(film)).getOrElse(Nil))
+          val hashes  = films.map(film => film -> answered(posterStore.film(film), services.identity.vocabulary.PosterQuestion.Film(film)).getOrElse(Nil))
           shown.map(poster => hashes.map { case (film, held) => film -> PosterEvidence.nearest(Seq(poster), held) }.toMap)
         }
       }

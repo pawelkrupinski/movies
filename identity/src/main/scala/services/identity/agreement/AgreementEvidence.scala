@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, Film, Hit, IdentityCalibration,
-  IdentityLookups, Listing, Question, VoterFamily}
+import services.identity.{Film, IdentityCalibration, IdentityLookups, Listing}
+import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -83,7 +83,7 @@ private[agreement] final class AgreementEvidence(val families: Map[VoterFamily, 
     override def film(tmdbId: Int): Answer[Option[Film]]            = record(Dependency.Aspect.Answer, tmdbId, inner.film(tmdbId))
     override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record(Dependency.Aspect.Release, tmdbId, inner.releaseDay(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record(Dependency.Aspect.Cast, tmdbId, inner.cast(tmdbId))
-    override def overview(tmdbId: Int): Answer[Option[services.identity.ProseWords]] = record(Dependency.Aspect.Overview, tmdbId, inner.overview(tmdbId))
+    override def overview(tmdbId: Int): Answer[Option[services.identity.vocabulary.ProseWords]] = record(Dependency.Aspect.Overview, tmdbId, inner.overview(tmdbId))
   }
 
   /** The digest of what `read` reads now ([[reread]]), of the listings `listingOf` names: the one digest a receipt

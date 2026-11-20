@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, Question,
-  VoterFamily}
+import services.identity.{Film, FilmTable, IdentityCalibration, Listing}
+import services.identity.vocabulary.{Answer, Question, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,11 +33,11 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
 
   /** The verdict, its receipt and its gaps, resolved afresh. */
   private def afresh(listings: Seq[Listing], answers: FamilyAnswers) = {
-    val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.Dependency, Long])
+    val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.vocabulary.Dependency, Long])
     (Agreement.verdict(listings, new AgreementEvidence.Recording(answers, asked, reads), NoVenueDetails, normalizer, IdentityCalibration.resolver), asked.toSet, reads.toMap)
   }
   private def through(kept: FamilyVerdicts, listings: Seq[Listing], answers: FamilyAnswers) = {
-    val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.Dependency, Long])
+    val (asked, reads) = (mutable.Set.empty[Question], mutable.Map.empty[services.identity.vocabulary.Dependency, Long])
     (kept.verdict(listings, answers, asked, reads), asked.toSet, reads.toMap)
   }
 

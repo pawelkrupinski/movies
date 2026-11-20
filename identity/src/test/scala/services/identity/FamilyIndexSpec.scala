@@ -4,6 +4,7 @@ import models.{Helios, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
+import services.identity.vocabulary.{Dependency, Question}
 
 /** The family index's query side ([[FamilyIndex]]): which family holds a listing, which families read a lookup or a
  *  context fact, in which a rule fired, its content digest, and which entries a moved input leaves standing. Its

@@ -6,6 +6,7 @@ import services.identity.agreement.VerdictIndex
 
 import scala.collection.mutable
 import scala.util.Random
+import services.identity.vocabulary.{CandidateQuery, Dependency, Memo, Question, VoterFamily}
 
 /** The one dependency index (docs/design/identity-no-drift.md, "One dependency index"), as a property over random
  *  receipts and random changes of EVERY kind: a dependency change puts every entry that read it into the next pass — a

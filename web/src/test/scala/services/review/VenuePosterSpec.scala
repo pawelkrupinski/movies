@@ -2,7 +2,7 @@ package services.review
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.CatalogueId
+import services.identity.vocabulary.CatalogueId
 import models.ListingKey
 
 import java.time.Instant

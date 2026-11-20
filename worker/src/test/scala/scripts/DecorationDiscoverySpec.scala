@@ -3,7 +3,7 @@ package scripts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.DecorationDiscovery._
-import services.identity.TitleDecorations
+import services.identity.vocabulary.TitleDecorations
 import services.titles.rules.TitleRuleTable
 
 /** The decoration discovery's own decisions on venue titles from the unmatched clusters' fixture: what it mines, the

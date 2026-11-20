@@ -4,7 +4,7 @@ import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
-import services.identity.TitleDecorations
+import services.identity.vocabulary.TitleDecorations
 
 import java.nio.file.{Files, Path}
 

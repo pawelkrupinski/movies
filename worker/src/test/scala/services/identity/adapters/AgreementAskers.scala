@@ -2,12 +2,13 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import services.sharecards.{PosterDownload, VipsPosterShrinker}
 import services.tasks.Task
 import services.tasktypes.TaskType
 
 import java.time.Clock
+import services.identity.vocabulary.Question
 
 /** An [[AgreementAsker]] for a spec that asks one kind of question: the collaborators it names, and for the rest the
  *  families' store's posters and catalogue, no family sources, a TMDB, poster image or catalogue source that fails the

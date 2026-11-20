@@ -4,7 +4,8 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, Measure, VoterFamily}
+import services.identity.{Film, Measure}
+import services.identity.vocabulary.VoterFamily
 import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact,
   StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
 import models.ListingKey
@@ -12,6 +13,7 @@ import tools.MutableClock
 
 import java.time.Instant
 import scala.concurrent.duration.*
+import services.identity.vocabulary.Question
 
 /**
  * The staging screen's publisher: a cluster whose take waits stages, with each question it waits on and what the
@@ -393,7 +395,6 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     live.publish()
     heldBy.last shouldBe ((Map("Vetoed" -> 1, "Agreed" -> 1), Map("Vetoed" -> 1, "Agreed" -> 2)))
   }
-
 
   it should "list the longest waiting up to its cap" in {
     val docs = new InMemoryStagingDocuments

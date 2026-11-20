@@ -1,8 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion,
-  DetailFacts, Film, FilmTable, Hit, IdentityCalibration, IdentityLookups, Listing, Question,
-  Resolution, ResolverDecision, VoterFamily}
+import services.identity.{Film, FilmTable, IdentityCalibration, IdentityLookups, Listing, Resolution, ResolverDecision}
+import services.identity.vocabulary.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, Hit, Question, VoterFamily}
 import models.{Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

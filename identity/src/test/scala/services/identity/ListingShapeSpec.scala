@@ -5,6 +5,7 @@ import services.titles.billing.BillingParse
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{CatalogueId, CatalogueSources, ScreeningDays}
 
 /** The one reading of a listing's shape every rule shares ([[ListingShape]]): the predicates the agreement, posters,
  *  catalogue take, broadcast join and fill each used to define for themselves. */

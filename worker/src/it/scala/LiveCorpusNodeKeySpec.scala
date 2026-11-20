@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
+import services.identity.vocabulary.{PinConstraints, TitleDecorations}
 
 /** A node is the listings sharing one evidence; the corpus keyed every listing by its OWN copy of
  *  the node's key — a tuple per listing where the nodes are far fewer (~3 MB of Tuple2 on worker-us). */

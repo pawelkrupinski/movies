@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 import java.time.LocalDateTime
 import scala.util.Random
+import services.identity.vocabulary.ScreeningDays
 
 /**
  * [[LiveProjectionIndex]] moved step by step is, after every step, the index [[ProjectionIndexing.index]] builds afresh

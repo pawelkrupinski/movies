@@ -1,5 +1,7 @@
 package services.identity
 
+import scala.annotation.nowarn
+
 import models.ListingKey
 
 import services.titles.TitleNormalizer
@@ -18,7 +20,9 @@ import services.titles.TitleNormalizer
  *
  * Package `services.identity` for the resolver's own stages; the slice tool copies this file into an older ref's tree.
  */
+@nowarn("msg=unused import")
 object IdentitySlicing {
+  import services.identity.vocabulary.*
 
   /** What a CHANGED projection ([[IdentityProjection.tickChanged]]) hands its agreement stage after scrapes of the
    *  `rescraped` venues: EVERY listing the intake holds — its changed read re-reads only those venues and keeps every

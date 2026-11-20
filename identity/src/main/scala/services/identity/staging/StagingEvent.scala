@@ -1,6 +1,7 @@
 package services.identity.staging
 
-import services.identity.{Question, TakeChange}
+import services.identity.TakeChange
+import services.identity.vocabulary.Question
 
 /**
  * What the identity system tells the staging screen AS IT HAPPENS (docs/design/identity-questions.md, "The staging

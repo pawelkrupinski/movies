@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
+
 /**
  * `inner`'s answers, every question forwarded as asked: the base of a source that changes a few of `inner`'s answers
  * (blinds a page, notes a gap, asks a second source on a gap) and leaves the rest as they were. A question

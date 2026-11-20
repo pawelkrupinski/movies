@@ -5,6 +5,7 @@ import services.titles.billing.BillingParse
 import services.evidence.ListingConstraints
 
 import scala.collection.mutable
+import services.identity.vocabulary.{Denial, PinConstraints}
 
 /** How every node scores the candidates it has an evidence path to, family by family
  *  (each family its [[FamilyScope]]), with the corpus-wide facts the scoring reads: which house each banner is,

@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, Listing, Question, ResolverDecision}
+import services.identity.{Listing, ResolverDecision}
+import services.identity.vocabulary.{Answer, Dependency, Question}
 
 import scala.collection.mutable
 

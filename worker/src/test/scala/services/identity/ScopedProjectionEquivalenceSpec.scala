@@ -12,6 +12,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.{CinemaSlotBuilder, InMemoryMovieRepository, VenuePageFacts}
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.util.Random
+import services.identity.vocabulary.Question
 
 /**
  * A projection of a SCOPE — only the films its changes reach ([[ProjectionScope]]) — leaves the store exactly as a

@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, DetailFacts, ForwardingIdentityLookups, IdentityCalibration, IdentityLookups, Listing,
-  VoterFamily}
+import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups, Listing}
+import services.identity.vocabulary.{Answer, DetailFacts, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -32,8 +32,8 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
    *  listings are read side by side (the model's input gate reading many listings' questions at once: `scripts.IdentityDrift`'s
    *  replay): the lock guards what is kept, never a resolve nor a check, which read the answers and a kept verdict's own
    *  immutable tape alone. Two callers resolving one verdict at once both keep it, alike: a function of its reads. */
-  def verdict(listings: Seq[Listing], answers: FamilyAnswers, asked: mutable.Set[services.identity.Question],
-              reads: mutable.Map[services.identity.Dependency, Long]): Answer[FamilyVerdict] = {
+  def verdict(listings: Seq[Listing], answers: FamilyAnswers, asked: mutable.Set[services.identity.vocabulary.Question],
+              reads: mutable.Map[services.identity.vocabulary.Dependency, Long]): Answer[FamilyVerdict] = {
     val key    = (answers.family, listings.map(_.key))
     val handed = synchronized(kept.get(key)).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues)))
     handed match {
@@ -69,18 +69,18 @@ private[agreement] object FamilyVerdicts {
 
   private final case class Kept(listings: Seq[Listing], read: Array[Read], verdict: Answer[FamilyVerdict], var usedAt: Long)
 
-  private def digestOf(answer: Answer[?]): Long = services.identity.Dependency.digest(answer)
+  private def digestOf(answer: Answer[?]): Long = services.identity.vocabulary.Dependency.digest(answer)
 
   /** One thing a verdict's resolve read, by the digest of what it read. */
   private sealed trait Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean
     /** Noted as a [[AgreementEvidence.Recording]] notes it: a venue page is in no receipt of a family's verdict. */
-    def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit = ()
+    def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.vocabulary.Question], reads: mutable.Map[services.identity.vocabulary.Dependency, Long]): Unit = ()
   }
   /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementEvidence.Recording]] names it). */
   private final case class FamilyRead(question: String, digest: Long, unknown: Boolean) extends Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean = digestOf(ask(answers, question)) == digest
-    override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit =
+    override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.vocabulary.Question], reads: mutable.Map[services.identity.vocabulary.Dependency, Long]): Unit =
       AgreementEvidence.noted(answers, question, digest, unknown, asked, reads)
   }
   private final case class DetailRead(listing: Listing, digest: Long) extends Read {

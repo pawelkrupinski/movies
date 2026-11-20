@@ -4,6 +4,7 @@ import services.identity.*
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 
 import java.time.{Clock, Instant}
+import services.identity.vocabulary.{AnswersChanged, BsonFields, Question, QuestionKind}
 
 /**
  * The identity system's one memory of what it asked and got no answer to, keyed by the [[Question]]: the model's

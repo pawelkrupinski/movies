@@ -2,7 +2,8 @@ package services.identity.agreement
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Listing, Question}
+import services.identity.Listing
+import services.identity.vocabulary.Question
 import models.ListingKey
 
 import scala.collection.mutable

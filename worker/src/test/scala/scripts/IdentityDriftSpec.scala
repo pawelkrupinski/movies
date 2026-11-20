@@ -5,8 +5,8 @@ import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, AnswersChanged, CandidateQuery, Film, ForwardingIdentityLookups, Hit, IdentityLookups,
-  IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips, VoterFamily}
+import services.identity.{Film, ForwardingIdentityLookups, IdentityLookups, IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, Hit, VoterFamily}
 
 import tools.MutableClock
 
@@ -60,7 +60,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // the replay's attempts, so the settle goes quiet. Unmarked, every DE family walk meeting webedia 186596 ran its settle's
   // 60 rounds on every subset (Identity family explorer #5).
   "the replay's catalogue asks" should "mark a failed ask attempted, in its backoff until given up as unreachable" in {
-    import services.identity.{CatalogueId, CatalogueQuestion, Question}
+    import services.identity.vocabulary.{CatalogueId, CatalogueQuestion, Question}
     val de  = models.Country.all.find(_.code == "de").get
     val gap = new ConstantHttpFetch("{}")
     val sources = new StageAnswers.Sources {
@@ -70,7 +70,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       def sources: Map[VoterFamily, services.identityadapters.FamilySource] = Map.empty
       def fetch: tools.HttpFetch                             = gap
       def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = Nil
-      def find(imdb: String): services.identity.Answer[Option[Int]] = services.identity.Answer.Unknown
+      def find(imdb: String): services.identity.vocabulary.Answer[Option[Int]] = services.identity.vocabulary.Answer.Unknown
     }
     val clock    = new MutableClock(Instant.parse("2026-11-07T08:00:00Z"))
     val answers  = new StageAnswers(sources, new InMemoryTmdbDocuments, clock, _ => None)
@@ -179,7 +179,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   }
 
   "the replay's fill" should "announce its TMDB filings as the worker's TMDB store does: the stage's version moves for a search it read or a record it waits on" in {
-    import services.identity.{Dependency, Question}
+    import services.identity.vocabulary.{Dependency, Question}
     val store   = new FamilyAnswerStore(new InMemoryTmdbDocuments, new MutableClock(Instant.parse("2026-10-30T12:00:00Z")))
     val keys    = IdentityDrift.filingKeys(AnswersChanged(Set(CandidateQuery.Title("Swan Lake")), Set(1702782)), "en")
     keys.size shouldBe 2
@@ -214,8 +214,8 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // scripts/ci/commit_rules.py; convergence-failures-2026-10-29 recommendation 2): what a new or tightened check
   // finds at birth is listed TEMPORARY, with an owner and when it goes, so the check lands green -- and the list only shrinks.
   it should "move with what its stage verdict read: an answer filed at a scrape moves it, the same receipt does not" in {
-    import services.identity.{Dependency, Question}
-    import services.identity.VoterFamily
+    import services.identity.vocabulary.{Dependency, Question}
+    import services.identity.vocabulary.VoterFamily
     val asked    = Dependency.Answer(Question.Family(VoterFamily.Imdb, "title|Titans"))
     val unread   = services.identity.agreement.StoredVerdict("c1", 42L, Map(asked -> Dependency.Unanswered), None)
     val filed    = unread.copy(reads = Map(asked -> 7L))
@@ -535,9 +535,9 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val (arriving, booted) = run.listings.partition(l => core(l.key))
     var answered = false
     val readiness = new services.identity.ListingReadiness {
-      def awaiting(listing: services.identity.Listing): Set[services.identity.Question] =
-        if (answered) Set.empty else Set(services.identity.Question.VenuePage(listing.key))
-      def ask(listing: services.identity.Listing, questions: Set[services.identity.Question]): Unit = ()
+      def awaiting(listing: services.identity.Listing): Set[services.identity.vocabulary.Question] =
+        if (answered) Set.empty else Set(services.identity.vocabulary.Question.VenuePage(listing.key))
+      def ask(listing: services.identity.Listing, questions: Set[services.identity.vocabulary.Question]): Unit = ()
     }
     val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock, gating = _ => readiness)
     worker.boot(booted); worker.project()

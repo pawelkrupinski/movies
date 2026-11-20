@@ -12,6 +12,7 @@ import tools._
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Try
+import services.identity.vocabulary.{Answer, CatalogueQuestion, Question}
 
 /**
  * The resolver alone over a recorded full corpus, every listing's decision written out — the fast loop for
@@ -158,7 +159,7 @@ object IdentityResolveDump {
   private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
     val harness = new settings.HarnessConfiguration(configuration.env)
-    import services.identity.VoterFamily
+    import services.identity.vocabulary.VoterFamily
     val fetch    = new ExperimentCacheFetch(cache.value)
     val answered = new InMemoryTmdbDocuments
     val store    = new FamilyAnswerStore(answered, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))

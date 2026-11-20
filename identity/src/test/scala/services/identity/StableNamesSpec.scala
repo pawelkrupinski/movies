@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import models.ListingKey
 
 import scala.util.Random
+import services.identity.vocabulary.StableNames
 
 /** Stable names by overlap — the rule behind the projection's film ids and the agreement stage's cluster keys: the laws,
  *  invariance under input order on random histories, and the input-order tie-break mutant caught. */

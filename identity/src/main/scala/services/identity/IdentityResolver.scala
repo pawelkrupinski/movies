@@ -3,6 +3,7 @@ package services.identity
 import models.ListingKey
 
 import services.titles.TitleForms
+import services.identity.vocabulary.{CandidateQuery, PinConstraints, TitleDecorations}
 
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the

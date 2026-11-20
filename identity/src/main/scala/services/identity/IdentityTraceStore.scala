@@ -9,6 +9,7 @@ import models.ListingKey
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.util.chaining.scalaUtilChainingOps
+import services.identity.vocabulary.{BsonFields, DocumentDigest, ListingKeyBson}
 
 /** Which rules decided one listing ([[DecisionTrace]], plus the title rules its title took), filed under its
  *  family: the record `identity_traces` keeps per listing, so a listing's rules and a rule's listings are each

@@ -1,6 +1,7 @@
 package services.identity
 
 import services.identity.Scored.Accepted
+import services.identity.vocabulary.{Denial, RateBounds, ResolverEdge}
 
 /** GROUP-LEVEL VOTING for the clusters no member matched alone: a facts-free cluster in a split
  *  title family follows the family's clear majority ([[familyMajority]]); every other cluster votes

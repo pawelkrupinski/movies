@@ -11,7 +11,8 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import services.tasks.{RatingTasks, TaskWorker}
 
 import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
-import services.identity.{Hit, PinnedGateMeasures, StoredIdentityConfidence}
+import services.identity.{PinnedGateMeasures, StoredIdentityConfidence}
+import services.identity.vocabulary.Hit
 import scala.util.{Failure, Try}
 
 /**

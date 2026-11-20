@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.titles.TitleNormalizer
 
 import FilmTable.{F, listing}
+import services.identity.vocabulary.{ScreeningDays, TitleDecorations}
 
 /**
  * One stage house's relay of one work in one season is ONE film however each venue spells the house's banner beside the

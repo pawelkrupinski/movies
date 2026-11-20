@@ -9,7 +9,7 @@ import java.nio.file.{Files, Path, Paths}
 /**
  * Identity code reads no input the rules versions cannot see: no reflection, no class loaded by name, no environment
  * variable or system property, no file, and no classpath resource but through the one seam that reads the checked-in
- * artefacts ([[services.identity.ClasspathResource]], whose every resource the rules closure digests:
+ * artefacts ([[services.identity.vocabulary.ClasspathResource]], whose every resource the rules closure digests:
  * `IdentityRuntimeInputsSpec`).
  *
  * Why (docs/design/identity-no-drift.md): a stored family or agreement verdict stands while its rules version and its
@@ -38,7 +38,7 @@ class NoRuntimeLookupsInIdentitySpec extends AnyFlatSpec with Matchers {
 
   /** file -> why its lookup cannot reach a decision. Shrink it by moving the read behind a constructor parameter. */
   private val Allowlist: Map[String, String] = Map(
-    "identity/src/main/scala/services/identity/ClasspathResource.scala" ->
+    "identity/src/main/scala/services/identity/vocabulary/ClasspathResource.scala" ->
       ("the one reader of the checked-in artefacts (weights, decorations, tables, the version stamps); every resource it " +
         "is handed is in a rules closure (IdentityRuntimeInputsSpec)"),
     "identity/src/main/scala/services/identity/MeasuredListing.scala" ->

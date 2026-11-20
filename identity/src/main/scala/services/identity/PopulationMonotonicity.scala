@@ -6,6 +6,7 @@ import services.titles.TitleForms
 
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
+import services.identity.vocabulary.CandidateQuery
 
 /**
  * THE POPULATION PROPERTY (docs/investigations/2026-11-01-flip-unification.md, stage 1): as a title's listings only

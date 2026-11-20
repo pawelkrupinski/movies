@@ -10,6 +10,7 @@ import services.evidence.ListingConstraints
 import models.MovieRecordMerge
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
+import services.identity.vocabulary.{ClasspathResource, ContentHash, SortedLongMap}
 
 // Everything a venue slot is built and fingerprinted by, and nothing else: this file is what the venue slot code version
 // digests (`IdentityRulesSources.VenueSlotRoots`), so a change to the rest of the projection keeps every recorded slot.
@@ -191,7 +192,6 @@ object VenueSlotMemo {
    *  can match its own. */
   private[identity] def mark(environment: Long): Long = ContentHash.of(("venue-slot-environment", environment))
 }
-
 
 /** How one film's slots at one venue are built from the venue's rows ([[IdentityProjectionPlan.draftOf]]). */
 object VenueSlots {

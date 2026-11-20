@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads}
 
 /** The model's lookups: a prefetch asks its questions in parallel, each read still filed under its
  *  own question; the asks that follow are served once each from what it fetched; and the next

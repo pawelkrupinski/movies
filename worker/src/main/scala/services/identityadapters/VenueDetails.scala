@@ -1,6 +1,7 @@
 package services.identityadapters
 
-import services.identity.{Answer, DetailFacts, Listing}
+import services.identity.Listing
+import services.identity.vocabulary.{Answer, DetailFacts}
 import models.Cinema
 import services.cinemas.common.DetailEnricher
 

@@ -1,6 +1,7 @@
 package services.identityadapters
 
-import services.identity.{Film, VoterFamily}
+import services.identity.Film
+import services.identity.vocabulary.VoterFamily
 import services.enrichment.{MetacriticClient, RottenTomatoesClient}
 import services.identity.agreement.{SourceHit, SourceRecord}
 

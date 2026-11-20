@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.Question
+
 /** What one cluster's decision reads: its film, its pooled scoring, the confidence and basis they make, and what it
  *  falls back to, leans to or waits on. */
 private[identity] final class ClusterDecisionFacts(scoring: CandidateScoring, families: Families, acceptance: Acceptance,

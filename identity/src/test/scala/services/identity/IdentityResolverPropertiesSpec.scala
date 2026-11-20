@@ -1,6 +1,5 @@
 package services.identity
 
-
 import models.ListingKey
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -8,6 +7,7 @@ import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 
 import scala.util.Random
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /**
  * The resolver's properties on GENERATED corpora (`GeneratedIdentityCorpus`), each beside the

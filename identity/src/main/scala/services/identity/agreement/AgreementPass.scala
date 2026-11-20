@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, ResolverDecision, VoterFamily}
+import services.identity.ResolverDecision
+import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
 import scala.collection.mutable
 
@@ -23,7 +24,7 @@ private[agreement] final class AgreementPass(val version: Long, corrections: Int
   val keys         = new java.util.IdentityHashMap[ResolverDecision, String]()
   val merged       = mutable.ArrayBuffer.empty[(String, String)]
   /** What the apply's full validation of the kept verdicts came to ([[AgreementStage.FullValidationEvery]]). */
-  var validated    = services.identity.Memo.Validation.None
+  var validated    = services.identity.vocabulary.Memo.Validation.None
   private var cleanHits = 0
   private var validateAt, validateUntil = 0
   /** A full validation of the clean verdicts this apply meets from the `from`th, `budget` of them. */

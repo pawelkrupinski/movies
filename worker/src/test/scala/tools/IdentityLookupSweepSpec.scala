@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /**
  * The recording sweep issues EXACTLY the identity resolver's query set — every listing's detail

@@ -2,12 +2,12 @@ package services.identity
 
 import models.{FilmId, LeanRecords}
 
-
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey}
 import services.titles.TitleNormalizer
 import models.TmdbAttempt
 
 import java.time.Instant
+import services.identity.vocabulary.ContentHash
 
 /** One listing a venue publishes: the resolver's view of it, and digests of the row as scraped — of everything but
  *  its showtimes (`row`), and of its showtimes. A US projection held every listing's row and showtimes (1.7M, ~560 MB

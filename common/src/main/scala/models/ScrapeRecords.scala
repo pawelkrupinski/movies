@@ -68,7 +68,7 @@ object LeanListing {
   val UnreadDay: java.time.LocalDate = java.time.LocalDate.of(1, 1, 1)
 
   /** A kept film's days a lean read could not read: one showtime on [[UnreadDay]], which its listing reads as days
-   *  unknown (`services.identity.ScreeningDays.Unknown`) — never as none. */
+   *  unknown (`services.identity.vocabulary.ScreeningDays.Unknown`) — never as none. */
   val unread: Seq[models.Showtime] = Seq(models.Showtime(UnreadDay.atStartOfDay, None))
 
   /** The day marking a lean film's other showtime as standing for the season it screens in alone ([[seasonOnly]]): no
@@ -76,7 +76,7 @@ object LeanListing {
   val SeasonOnlyDay: java.time.LocalDate = java.time.LocalDate.of(2, 1, 1)
 
   /** A lean film's showtimes when its days are not kept: its first day and [[SeasonOnlyDay]] — which its listing reads
-   *  as the season that day falls in and no screening day (`services.identity.ScreeningDays.ofSeason`). A rule reading
+   *  as the season that day falls in and no screening day (`services.identity.vocabulary.ScreeningDays.ofSeason`). A rule reading
    *  the season (a festival's catalogue namesake, a namesake only streamed in the venue's country) reads it in prod's
    *  lean take-up as in a whole read; with no day at all it never fired there (DE "The Killer", 2026-10-21). */
   def seasonOnly(first: java.time.LocalDate): Seq[models.Showtime] =

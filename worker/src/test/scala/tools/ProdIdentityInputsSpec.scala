@@ -3,7 +3,7 @@ package tools
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Pin, PinClaim}
+import services.identity.vocabulary.{Pin, PinClaim}
 import models.ListingKey
 
 import java.time.Instant

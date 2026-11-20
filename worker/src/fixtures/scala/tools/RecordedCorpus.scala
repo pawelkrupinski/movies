@@ -12,7 +12,9 @@ import java.nio.file.Path
  * [[GapLeaf]] that names every request neither answers. What `integration.IdentityShadow` and `scripts.IdentitySlice`
  * both read a recording through.
  */
+@nowarn("msg=unused import")
 object RecordedCorpus {
+  import services.identity.vocabulary.*
 
   /** An archived scrape, in either package a ref keeps it: `models` since 2026-11-18, `services.scrapes` before (this file
    *  is compiled into old refs by scripts/identity-slice; services.identity.OlderRefs). */

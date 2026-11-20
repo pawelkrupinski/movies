@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Dependency, Film, PosterQuestion, Question, VoterFamily}
+import services.identity.Film
+import services.identity.vocabulary.{Dependency, PosterQuestion, Question, VoterFamily}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -30,7 +31,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     // piece and took the film the whole resolve refuses (identity-slice --drift, recording 573)
     val film = Film("Roots", Some("Raíces"), Seq("Raices", "Wurzeln"), Some(1954), Some(83), Some(Seq("Benito Alazraki")),
       Some(Seq("MX")), Some(1.5), 47395, Some(java.time.LocalDate.of(1955, 4, 21)), Some("MXUS"), Seq(85, 80), Some("MX1955P"), 123,
-      Some("US=PG"), Some("es"), 18, services.identity.FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
+      Some("US=PG"), Some("es"), 18, services.identity.vocabulary.FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
     val agreed = StoredVerdict("r", 7L, Map(read("imdb|title|Raíces") -> 1L),
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb), SourceRecord(film, Map("imdb" -> "tt0047395", "tmdb" -> "122769")),
         Map(VoterFamily.Imdb -> "tt0047395", VoterFamily.Wiki -> "Q7366720", VoterFamily.Filmweb -> "100"))))
@@ -48,7 +49,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
       services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val stored = new InMemoryAgreementVerdicts
-    AgreementStageFixture(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.Answer.Known(None),
+    AgreementStageFixture(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.vocabulary.Answer.Known(None),
       stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
       rules = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current")))
       .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1)
@@ -85,9 +86,9 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
       Dependency.Answer(Question.Family(VoterFamily.RottenTomatoes, "record|lalka|x")),
       Dependency.Attempted(Question.Record(913760)),
       Dependency.Asked(Question.Find("tt0064570")),
-      Dependency.Asked(Question.Catalogue(services.identity.CatalogueQuestion.Page("https://a/b|c"))),
+      Dependency.Asked(Question.Catalogue(services.identity.vocabulary.CatalogueQuestion.Page("https://a/b|c"))),
       Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Answer, Question.VenuePage(key)),
-      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.CandidateQuery.Title("Pat Garrett & Billy the Kid"))),
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.vocabulary.CandidateQuery.Title("Pat Garrett & Billy the Kid"))),
       Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Release, Question.FilmRecord(7)),
       Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Answer, Question.FilmRecord(7)),
       Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Cast, Question.FilmRecord(7)),
@@ -110,7 +111,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
   "a dependency's filing" should "be the id its answer is filed under on the answers' changes" in {
     read("imdb|title|Klondike").filing shouldBe "imdb|title|Klondike"
     Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Cast, Question.FilmRecord(7)).filing shouldBe AgreementStage.recordReadId(7)
-    Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.CandidateQuery.Title("x"))).filing shouldBe Dependency.QueryFiled
+    Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.vocabulary.CandidateQuery.Title("x"))).filing shouldBe Dependency.QueryFiled
     Dependency.Asked(Question.Find("tt1")).filing shouldBe Question.Find("tt1").id.get
   }
 }

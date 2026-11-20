@@ -3,8 +3,9 @@ package services.identity
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.FamilyClosure.Edge
+import services.identity.vocabulary.FamilyClosure.Edge
 import services.titles.TitleNormalizer
+import services.identity.vocabulary.FamilyClosure
 
 /**
  * The family (block closure): a resolve may run family by family only while no constraint edge

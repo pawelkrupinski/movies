@@ -7,6 +7,7 @@ import tools.IndependentCases
 
 import scala.jdk.CollectionConverters.*
 import scala.util.Random
+import services.identity.vocabulary.{CandidateQuery, PinConstraints, TitleDecorations}
 
 /** The corpus context kept current event by event equals the one derived whole from the listings
  *  held, on every key, after every event of a random sequence. */

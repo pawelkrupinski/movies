@@ -5,13 +5,15 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.{Film, VoterFamily}
+import services.identity.Film
+import services.identity.vocabulary.VoterFamily
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task}
 import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, MutableClock}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import services.identity.vocabulary.{Answer, CatalogueId, Question, ScreeningDays}
 
 /** The agreement's open questions go on the task queue once each, one task type naming them by id; the asker asks the
  *  family's source, files the answer and asks for a projection — a refused query or a missing page filed as no film, a

@@ -867,8 +867,6 @@ abstract class CountryConvergenceBehaviour(
     rows.size
   }
 
-
-
   s"the ${country.displayName} pipeline" should
     "converge on the first settle and stay churn-free under identical re-scrapes" in {
     {
@@ -1264,7 +1262,6 @@ abstract class CountryConvergenceBehaviour(
       }
     }
   }
-
 
   /**
    * What the pipeline identifies, against what PRODUCTION identifies for the same
@@ -1890,7 +1887,7 @@ abstract class CountryConvergenceBehaviour(
             .map(key => (r.title, key.toString, r.record.tmdbId))), modelTake)
           .foreach(line => println(s"[${country.code}] day-one lag: $line"))
         awaited.take(40).foreach {
-          case question @ services.identity.Question.VenuePage(ListingKey.Native(venue, page, _)) =>
+          case question @ services.identity.vocabulary.Question.VenuePage(ListingKey.Native(venue, page, _)) =>
             enricherOf.getOrElse(venue, Nil).foreach { e =>
               def stamp(key: String) = w.freshnessStore.lastFetchedAt(key).fold("none")(_.toString)
               println(s"[${country.code}] day-one await: $question — stored ${w.venuePageStore.get(services.venuepages.VenuePageKey(e.detailGroup, page)).isDefined}" +

@@ -4,6 +4,7 @@ import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.SourceReliability.{Fact, Trust}
+import services.identity.vocabulary.{CatalogueId, CatalogueSources}
 
 /** The one model of how far each source of a listing's facts is trusted ([[SourceReliability]]): every source a rule
  *  for every fact, with its reason; each listing's facts recognised as the right source's. */

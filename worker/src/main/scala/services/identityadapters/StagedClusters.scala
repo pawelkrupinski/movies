@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.{StagedCluster, StagedFact, StagedQuestion}
+import services.identity.vocabulary.Question
 
 /** A staging-screen snapshot's ([[StagingSnapshots]]) cluster documents: one staging now, and one that stopped waiting. */
 private[services] object StagedClusters {

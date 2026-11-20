@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import services.identity.IdentityMeasures.{ListingFilm, ListingListing}
 import Measure.{Category, Missing, Number}
+import services.identity.vocabulary.Hit
 
 /**
  * `identity-weights.json` is DATA fitted by `scripts.IdentityCalibrate`

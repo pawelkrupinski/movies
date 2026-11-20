@@ -46,9 +46,9 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
 
   // services.identity <-> services.identity.agreement: one package, no cycle, until the agreement is measured on its own
   private val deeper = Graph(
-    Seq(t("services.identity.Question", "identity"), t("services.identity.Resolver", "identity"),
+    Seq(t("services.identity.vocabulary.Question", "identity"), t("services.identity.Resolver", "identity"),
       t("services.identity.agreement.Stage", "identity"), t("services.identity.agreement.Family", "identity"), t("models.Film")),
-    Set("services.identity.Question" -> "services.identity.agreement.Family", "services.identity.agreement.Stage" -> "services.identity.Resolver",
+    Set("services.identity.vocabulary.Question" -> "services.identity.agreement.Family", "services.identity.agreement.Stage" -> "services.identity.Resolver",
       "services.identity.Resolver" -> "models.Film"))
 
   "a deeper package with a row of its own" should "be measured as a package: its Ca, Ce and D, and the cycles through it" in {
@@ -89,7 +89,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.units shouldBe Set("services.identity.agreement")
     Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "layer\t0\tservices.identity.low\tb")).units shouldBe Set("services.identity.low")
     Coupling.rankViolations(deeper.copy(units = table.units), table) shouldBe
-      Seq(("services.identity", "services.identity.agreement") -> Seq("services.identity.Question" -> "services.identity.agreement.Family"))
+      Seq(("services.identity", "services.identity.agreement") -> Seq("services.identity.vocabulary.Question" -> "services.identity.agreement.Family"))
     Coupling.rankViolations(deeper, table) shouldBe empty
   }
 

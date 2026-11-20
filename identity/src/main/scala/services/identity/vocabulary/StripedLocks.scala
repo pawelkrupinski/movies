@@ -1,0 +1,23 @@
+package services.identity.vocabulary
+
+import java.util.concurrent.locks.ReentrantLock
+
+/** A lock per key, striped over [[StripedLocks.Stripes]] locks: work on one key is serial, work on different keys
+ *  proceeds side by side (bar a stripe they happen to share). Several keys are locked in one order,
+ *  so two holders never deadlock. */
+private[services] final class StripedLocks {
+  import StripedLocks.Stripes
+  private val locks = Array.fill(Stripes)(new ReentrantLock())
+
+  /** `body` holding the locks of every key in `keys`. */
+  def locking[A](keys: Iterable[String])(body: => A): A = {
+    val held = keys.iterator.map(key => Math.floorMod(key.hashCode, Stripes)).toSeq.distinct.sorted.map(locks)
+    held.foreach(_.lock())
+    try body finally held.reverseIterator.foreach(_.unlock())
+  }
+}
+
+private[services] object StripedLocks {
+  /** Enough that the threads a take-up or a scrape walk runs on rarely meet on one stripe. */
+  val Stripes = 1024
+}

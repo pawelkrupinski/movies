@@ -59,7 +59,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         fed -> SlotFacts(VenueFacts(year = Some(2020), directors = Seq("Someone")), now),
         own -> SlotFacts(VenueFacts(year = Some(2019), directors = Seq("May el-Toukhy")), now)),
       feedsHeld = Map(("Planken Lichtspiele Mannheim", "Queen") ->
-        ListingFeed(Seq(services.identity.CatalogueId("webedia", "279943")), 2, None, None)))),
+        ListingFeed(Seq(services.identity.vocabulary.CatalogueId("webedia", "279943")), 2, None, None)))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
@@ -72,7 +72,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       slotsHeld = Map(
         ReviewFixtures.Held -> SlotFacts(VenueFacts(year = Some(2025), cast = (1 to 7).map(i => s"Venue Actorwithaverylongname $i") :+ "<i>x</i>"), now),
         fed -> SlotFacts(VenueFacts(year = Some(2025), cast = Seq("Catalogue Actor")), now)),
-      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
+      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.vocabulary.CatalogueId("webedia", "1")), 1, None, None)),
       recordsHeld = Map(ReviewFixtures.kafka.tmdb -> ReviewFixtures.kafka.copy(cast = (1 to 6).map(i => s"TMDB Actor $i"))))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }

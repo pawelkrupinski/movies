@@ -3,8 +3,8 @@ package scripts
 import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.identity.{Backer, Film, IdentityCalibration, IdentityMeasures, Measure, SourceReliability, StageRelays,
-  TitleDecorations, VenueBacking}
+import services.identity.{Backer, Film, IdentityCalibration, IdentityMeasures, Measure, SourceReliability, StageRelays, VenueBacking}
+import services.identity.vocabulary.TitleDecorations
 import services.identity.agreement.Agreement
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
 import scripts.IdentityCalibrationData.*
@@ -259,8 +259,8 @@ object IdentityCalibrate {
   /** Additive (Jeffreys) smoothing for every likelihood ratio. */
   private val Alpha = 0.5
 
-  /** The Wilson bounds, shared with the resolver (`services.identity.RateBounds`). */
-  export services.identity.RateBounds.{upperBound, upper95}
+  /** The Wilson bounds, shared with the resolver (`services.identity.vocabulary.RateBounds`). */
+  export services.identity.vocabulary.RateBounds.{upperBound, upper95}
 
   /** The standard normal quantile, by bisection on the complementary error function
    *  (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7). */

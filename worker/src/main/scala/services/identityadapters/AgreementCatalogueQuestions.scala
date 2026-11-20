@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.vocabulary.CatalogueQuestion
 
 object AgreementCatalogueQuestions {
   /** How many ids of one source one task maps: one SPARQL query ([[AgreementQuestions.enqueue]]). */

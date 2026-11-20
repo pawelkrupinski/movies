@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.*
 import org.bson.BsonDocument
+import services.identity.vocabulary.Hit
 
 /**
  * `inner`, what the stores other than [[TmdbStore]] file appended to `history` ([[HistoryEntry.answer]]) — the

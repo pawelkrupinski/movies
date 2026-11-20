@@ -1,8 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Film, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration,
-  Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
-  ScreeningDays, VoterFamily}
+import services.identity.{Film, FilmTable, ForwardingIdentityLookups, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.vocabulary.{Answer, CandidateQuery, Hit, PosterAnswers, PosterHash, PosterQuestion, Question, ScreeningDays, VoterFamily}
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -195,9 +194,9 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val fresh = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()))
     decided(fresh).basis shouldBe ResolverDecision.Basis.Corrected
-    verdicts.all().flatMap(_.reads.keys).exists { case services.identity.Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false } shouldBe true   // its receipt names a search
+    verdicts.all().flatMap(_.reads.keys).exists { case services.identity.vocabulary.Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false } shouldBe true   // its receipt names a search
     decided(s, version = 1).basis shouldBe ResolverDecision.Basis.Corrected
-    filed += services.identity.Dependency.QueryFiled
+    filed += services.identity.vocabulary.Dependency.QueryFiled
     read = 0
     decided(s, version = 2).basis shouldBe ResolverDecision.Basis.Corrected
     s.backlog shouldBe false

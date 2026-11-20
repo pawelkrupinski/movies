@@ -10,6 +10,7 @@ import tools._
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.Answer
 
 /**
  * The recorded corpora the whole-corpus [[IdentityResolver]] tools read (`IdentityResolveDump`, the

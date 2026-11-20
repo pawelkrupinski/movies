@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.vocabulary.Question
 
 /**
  * The model's input gate over the film databases' families ([[ListingReadiness]]; docs/design/identity-structural-fixes.md

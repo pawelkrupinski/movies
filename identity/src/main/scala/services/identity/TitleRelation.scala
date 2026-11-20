@@ -1,6 +1,7 @@
 package services.identity
 
 import services.titles.TitleForms
+import services.identity.vocabulary.{FamilyClosure, TitleDecorations}
 
 /**
  * THE TITLE RELATION (docs/investigations/2026-11-01-flip-unification.md, stage 2): how two listings' TITLES relate,

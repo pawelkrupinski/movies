@@ -7,6 +7,7 @@ import tools._
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.identity.vocabulary.{Answer, Question}
 
 /**
  * Fills what one country's [[UnmatchedClusters]] capture lacks after a change that asks the agreement stage new questions

@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.StagedCluster
+import services.identity.vocabulary.Question
 
 /** What a staging-screen snapshot ([[StagingSnapshots]]) shows as resolved since the last publish: the clusters that
  *  stopped waiting, and the projections' change lists as `changes` documents them. */

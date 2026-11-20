@@ -14,7 +14,8 @@ import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.enrichment.{ImdbClient, ImdbIdResolverOf}
 import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
-import services.identity.{AnswersChanged, CandidateQuery, Question, UnansweredTmdbLookups}
+import services.identity.UnansweredTmdbLookups
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, Question}
 import services.identity.adapters.AgreementAskers
 import services.metrics.worker.WorkerHttpMetrics
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
@@ -55,7 +56,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     val store = new TmdbStore(new InMemoryTmdbDocuments, clock)
     new LookupFill(() => gaps, wire.tmdbOver, wire.fetch, new TmdbNormalizer(store), IdentityLookupFillRate(600),
       IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (),
-      () => refreshes.map(services.identity.Question.Candidate(_)), new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock,
+      () => refreshes.map(services.identity.vocabulary.Question.Candidate(_)), new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock,
       tools.TickRecorder.Unrecorded)
   }
 

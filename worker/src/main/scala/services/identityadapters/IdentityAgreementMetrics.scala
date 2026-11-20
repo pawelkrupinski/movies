@@ -3,7 +3,7 @@ package services.identityadapters
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.agreement.AgreementStage
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 
 /**
  * The identity agreement's series (`agreement.AgreementStage`, `AgreementQuestions`) — the no-matches ≥3 other film
@@ -27,7 +27,7 @@ import services.identity.VoterFamily
  *    pass's wall time: what it costs a projection (a quiet tick resolves none);
  *  - `kinowo_worker_identity_agreement_validated_total{result}` — kept verdicts the stage's full validation read again
  *    (`read`), and of them those the dirty index called standing whose receipt had moved (`drifted`: ZERO IS THE HEALTHY
- *    READING, the proof the index equals full validation; `services.identity.Memo`);
+ *    READING, the proof the index equals full validation; `services.identity.vocabulary.Memo`);
  *  - `kinowo_worker_identity_agreement_enqueued_total{family,result}` — questions put on the task queue (`added`, or
  *    `duplicate`: one already queued);
  *  - `kinowo_worker_identity_agreement_answers_total{family,outcome}` — questions asked: answered, nothing (filed as no

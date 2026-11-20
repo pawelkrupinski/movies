@@ -3,7 +3,7 @@ package integration
 import services.identityadapters.{FamilySource, FilmwebFamily, ImdbFamily, MetacriticFamily, RottenTomatoesFamily,
   WikiFamily}
 
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools.HttpFetch
 
 /** The film-database families the agreement stage asks when a capture, a fill or the resolver-only dump answers its

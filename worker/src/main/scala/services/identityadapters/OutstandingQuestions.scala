@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.*
 import java.time.Clock
+import services.identity.vocabulary.{Question, QuestionSystem}
 
 /**
  * The agreement's OUTSTANDING questions: those the stage waits on (`open`, `AgreementStage.wanted`) that were handed to

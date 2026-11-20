@@ -9,7 +9,7 @@ package modules.wiring
  */
 trait IdentityModelWiring { self: WorkerWiring =>
 
-  lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
+  lazy val identityReads: services.identity.vocabulary.ObservationReads = new services.identity.vocabulary.ObservationReads
 
   // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
   // a person and a question each once, as native BSON holding only what the resolver reads. Filled
@@ -99,7 +99,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
    *  people it reads, while it is taken up. */
   lazy val identityRenewals: services.identityadapters.QuestionRenewals =
     new services.identityadapters.QuestionRenewals(identityTmdbStore, identityTmdbLayer.backend, country.language.toLanguageTag,
-      questions = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(Seq.empty[(Set[services.identity.CandidateQuery], Boolean)])(_.questions),
+      questions = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(Seq.empty[(Set[services.identity.vocabulary.CandidateQuery], Boolean)])(_.questions),
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   // The model is the country's identity: the intake's accepted listings, answered from the model's
   // store and asked live on a gap (`cutoverLookups`).
@@ -143,10 +143,10 @@ trait IdentityModelWiring { self: WorkerWiring =>
   }
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
    *  ([[venuePageIndex]]) — what the model reads first ([[cutoverLookups]]). */
-  def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
+  def storedLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identity.IdentityLookups =
     new services.identityadapters.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
   /** What the venues' own detail pages state of their listings ([[venuePageIndex]]). */
-  def venueDetailLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identityadapters.VenueDetailLookups =
+  def venueDetailLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identityadapters.VenueDetailLookups =
     new services.identityadapters.VenueDetailLookups(services.identityadapters.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
@@ -158,7 +158,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
-  def cutoverLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups = {
+  def cutoverLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identity.IdentityLookups = {
     val counted = new services.identityadapters.LiveAsks.Counted(identityLookupFetch)
     new services.identityadapters.StoredFirstLookups(storedLookups(reads),
       new services.identityadapters.TmdbIdentityLookups(tmdbClientOver(counted), new services.enrichment.ImdbClient(counted), Nil),
@@ -218,7 +218,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
   lazy val lookupFill: services.identityadapters.LookupFill =
     new services.identityadapters.LookupFill(
-      questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.AnswersChanged.Empty)(_.gaps),
+      questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.vocabulary.AnswersChanged.Empty)(_.gaps),
       tmdb        = tmdbClientOver,
       liveFetch   = enrichmentFetch,
       normalizer  = identityTmdbNormalizer,
@@ -234,8 +234,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
    *  due, gaps remembered as unanswered). A round asks what the rate allows since the last. */
-  lazy val identityFillTrigger: services.identity.EventTrigger =
-    new services.identity.EventTrigger(() => { lookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
+  lazy val identityFillTrigger: services.identity.vocabulary.EventTrigger =
+    new services.identity.vocabulary.EventTrigger(() => { lookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
 
   def identityLookupFillInterval: settings.IdentityLookupFillInterval =

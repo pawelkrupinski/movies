@@ -2,6 +2,8 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{Answer, Dependency}
+import services.identity.vocabulary.toAnswer
 
 /** A lookup's answer kept Unknown through every combination: a gap is never read as "no film". */
 class AnswerSpec extends AnyFlatSpec with Matchers {

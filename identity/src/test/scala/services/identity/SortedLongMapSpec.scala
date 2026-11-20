@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.util.Random
+import services.identity.vocabulary.SortedLongMap
 
 class SortedLongMapSpec extends AnyFlatSpec with Matchers {
   "a sorted long map" should "answer as the map it was merged from, removals applied before additions" in {

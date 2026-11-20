@@ -4,7 +4,8 @@ import tools.CommandLine
 import models.SourceData
 import play.api.libs.json.{JsObject, JsValue, Json}
 import models.TitleSearch
-import services.identity.{Hit, IdentityCalibration, IdentityMeasures, PinnedGateMeasures, StoredIdentityConfidence}
+import services.identity.{IdentityCalibration, IdentityMeasures, PinnedGateMeasures, StoredIdentityConfidence}
+import services.identity.vocabulary.Hit
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}

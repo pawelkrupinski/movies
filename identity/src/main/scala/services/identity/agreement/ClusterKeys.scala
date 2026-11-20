@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Resolution, ResolverDecision, StableNames, StoredFamily}
+import services.identity.{Resolution, ResolverDecision, StoredFamily}
+import services.identity.vocabulary.StableNames
 import models.ListingKey
 
 import scala.collection.mutable
@@ -93,7 +94,6 @@ final class ClusterKeys(store: AgreementKeys) {
       keys.put(unkeyed(i), keyOfIndex(i).toString)
     }
   }
-
 
   /** `keys`, the apply's (what [[assign]] filled, and what the apply took each keyed decision as), are the keys
    *  [[keyOf]] reads from now; the last apply's stay readable beside them. `keys` must not change after. */

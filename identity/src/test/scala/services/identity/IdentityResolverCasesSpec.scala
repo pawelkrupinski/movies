@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 import Measure.Category
+import services.identity.vocabulary.{Answer, CandidateQuery, CatalogueId, CatalogueSources, DetailFacts, Hit, Pin, PinClaim, PinConstraints, ScreeningDays, TitleDecorations}
 /**
  * The resolver on hand-built families shaped like historical incidents. The film database is a
  * small table; each case asserts only what the evidence decides. The cases are TEST LABELS: no

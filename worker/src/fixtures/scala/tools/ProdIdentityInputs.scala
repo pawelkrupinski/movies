@@ -3,7 +3,8 @@ package tools
 import org.bson.BsonDocument
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.identity.{MongoPinStore, Pin}
+import services.identity.MongoPinStore
+import services.identity.vocabulary.Pin
 import services.identityadapters.TmdbKind
 
 import java.nio.charset.StandardCharsets

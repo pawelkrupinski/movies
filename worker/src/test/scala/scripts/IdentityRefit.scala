@@ -12,6 +12,7 @@ import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
 import services.identity.Measure.{Category, Missing, Number}
+import services.identity.vocabulary.TitleDecorations
 
 /**
  * The weekly identity RULE REFIT (`.github/workflows/identity-refit.yml`): re-tunes the numbers the resolver's EXISTING

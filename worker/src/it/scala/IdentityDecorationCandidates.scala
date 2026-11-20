@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Try
+import services.identity.vocabulary.TitleDecorations
 
 /**
  * The PROGRAMME- AND FORMAT-DECORATION DETECTOR: proposes the decorations [[TitleDecorationsLearner.learn]] cannot see yet

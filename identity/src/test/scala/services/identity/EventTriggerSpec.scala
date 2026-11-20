@@ -7,6 +7,7 @@ import tools.{ManualScheduler, MutableClock}
 
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
+import services.identity.vocabulary.EventTrigger
 
 /** [[EventTrigger]] runs a projection once a burst of the model's batches goes quiet, and never later than the cap
  *  after the burst's first — so a scrape's change reaches the films within the cap, a burst in one projection. */

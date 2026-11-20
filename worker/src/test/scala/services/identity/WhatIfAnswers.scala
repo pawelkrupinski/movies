@@ -35,12 +35,12 @@ import scala.jdk.CollectionConverters._
  */
 @nowarn("msg=unused import")
 object WhatIfAnswers {
+  import services.identity.vocabulary.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
   // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
   import services.identity.agreement.*
-
 
   trait Source {
     /** The store both read and file into. */
@@ -114,7 +114,6 @@ object WhatIfAnswers {
     store.foundFirst(imdb).orElse(ask(imdb).flatMap(_ => store.foundFirst(imdb)))
       .fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_))
   }
-
 
   /** No request leaves: a family, poster or catalogue ask fails, as an unreachable site's. */
   object NoFetch extends tools.HttpFetch {

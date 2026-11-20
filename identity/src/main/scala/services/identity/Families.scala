@@ -5,6 +5,7 @@ import services.identity.Scored.Accepted
 import services.titles.TitleForms
 
 import scala.annotation.tailrec
+import services.identity.vocabulary.FamilyClosure
 
 /** The FAMILIES: the closure over title keys and the films members accept, grown until stable —
  *  a node matching a film another family's listings match joins that family, and its pool. Each

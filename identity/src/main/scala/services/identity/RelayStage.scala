@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.vocabulary.ScreeningDays
 
 /** A stage house's RELAY matched as one: the HOUSE its billing names in particular ([[StageRelays.Relay.houses]]), the
  *  stage WORK ([[StageWorks]], in any language) and the SEASON the performance it screens falls in. A record of that

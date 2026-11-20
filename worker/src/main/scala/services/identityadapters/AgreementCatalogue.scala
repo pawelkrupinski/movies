@@ -6,6 +6,8 @@ import org.mongodb.scala.bson.BsonArray
 import services.enrichment.{LetterboxdClient, WikidataClient}
 
 import java.time.Clock
+import services.identity.vocabulary.{Answer, BsonFields, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueLinkPages, CatalogueLinks, CatalogueQuestion, CatalogueSources}
+import services.identity.vocabulary.toAnswer
 
 /**
  * The catalogue mappings the agreement's catalogue take reads ([[agreement.Catalogue]]): what each catalogue id maps to,

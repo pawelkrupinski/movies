@@ -8,6 +8,7 @@ import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
+import services.identity.vocabulary.{Answer, CandidateQuery}
 
 /** A resolve announces every detail page it will read (`IdentityLookups.prefetch`); the memo reads them ahead on its
  *  pool. Read one after another inside the resolve, decompressing and parsing the US's recorded pages was over a third

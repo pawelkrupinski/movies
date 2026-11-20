@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{CandidateQuery, ContentHash, TitleDecorations}
+
 /**
  * What a family's resolve reads from the WHOLE corpus rather than from its own listings — the
  * facts the resolver learns across families:

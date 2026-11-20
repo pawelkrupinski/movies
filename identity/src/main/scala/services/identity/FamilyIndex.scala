@@ -5,6 +5,7 @@ import models.ListingKey
 import services.titles.TitleForms
 
 import scala.collection.concurrent.TrieMap
+import services.identity.vocabulary.{Answer, CandidateQuery, ContentHash, Dependency, DetailFacts, Hit, PinConstraints, ProseWords, Question}
 
 /**
  * THE FAMILY DEPENDENCY INDEX (docs/design/identity-no-drift.md, "One family index"): for every family of a corpus resolve, everything
@@ -250,7 +251,6 @@ object FamilyIndex {
    *  showtime moves no family's model entry. The final take's reads digest the whole listing. */
   def modelDigest(listing: Listing): Long =
     ContentHash.of((Listing.asTheModelReads(listing), listing.screenedSeason))
-
 
   /** An index's build: its entries, the corpus resolve they were read off, and the listings whose take resolved alone
    *  differed from the corpus resolve's (A3: none expected). */

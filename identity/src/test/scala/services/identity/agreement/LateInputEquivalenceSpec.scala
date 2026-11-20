@@ -1,8 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, Film, FilmTable,
-  ForwardingIdentityLookups, Hit, IdentityLookups, Listing, Pin, PinClaim, PosterHash, ProseWords,
-  ScreeningDays, VoterFamily}
+import services.identity.{Film, FilmTable, ForwardingIdentityLookups, IdentityLookups, Listing}
+import services.identity.vocabulary.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, Hit, Pin, PinClaim, PosterHash, ProseWords, ScreeningDays, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -98,8 +97,8 @@ object LateInputEquivalenceSpec {
   private def of(kind: Kind): Input => Boolean = _.kind == kind
   /** `table` with only the searches `reach` lets through answering: a film its title search and IMDb's suggestions miss
    *  is reached only by what `reach` allows — an IMDb id's find, a person's filmography — its record answering all the same. */
-  private def reaching(table: FilmTable)(reach: services.identity.CandidateQuery => Boolean): IdentityLookups = new ForwardingIdentityLookups(table) {
-    override def candidates(query: services.identity.CandidateQuery): Answer[Seq[Hit]] = if (reach(query)) super.candidates(query) else Answer.Known(Nil)
+  private def reaching(table: FilmTable)(reach: services.identity.vocabulary.CandidateQuery => Boolean): IdentityLookups = new ForwardingIdentityLookups(table) {
+    override def candidates(query: services.identity.vocabulary.CandidateQuery): Answer[Seq[Hit]] = if (reach(query)) super.candidates(query) else Answer.Known(Nil)
   }
   private def unsearched(table: FilmTable): IdentityLookups = reaching(table)(_ => false)
   private def everyAbsence(s: Scenario): Seq[Scenario] = Absence.values.toSeq.map(s.withAbsence)
@@ -124,7 +123,7 @@ object LateInputEquivalenceSpec {
   /** A person's search: the director's filmography reaches Klondike where its title does not. */
   val people: Seq[Scenario] = everyAbsence(Scenario("Klondike's director", Kind.People,
     Seq(FilmTable.listing(KinoMuza, "Klondike", year = Some(2022), director = Some("Maryna Er Gorbach"))),
-    reaching(klondikeTable)(_.isInstanceOf[services.identity.CandidateQuery.Director]), silent, late = of(Kind.People)))
+    reaching(klondikeTable)(_.isInstanceOf[services.identity.vocabulary.CandidateQuery.Director]), silent, late = of(Kind.People)))
 
   // ── two Lalkas: posters, venue pages, pins, searches ──────────────────────────────────────────────────────────
 
@@ -186,8 +185,8 @@ object LateInputEquivalenceSpec {
     val tmdb = new IdentityLookups {
       def hasDetail(listing: Listing): Boolean = true
       def detail(listing: Listing) = Answer.Known(Some(DetailFacts(None, Nil, None, None, synopsis = Some(page))))
-      def candidates(query: services.identity.CandidateQuery) = query match {
-        case services.identity.CandidateQuery.Title(title) if title.equalsIgnoreCase("Binti") =>
+      def candidates(query: services.identity.vocabulary.CandidateQuery) = query match {
+        case services.identity.vocabulary.CandidateQuery.Title(title) if title.equalsIgnoreCase("Binti") =>
           Answer.Known(Seq(Hit(855156, "Binti", Some("Binti"), Some(2021), 1.5), Hit(577285, "Binti", Some("Binti"), Some(2019), 1.1)))
         case _ => Answer.Known(Nil)
       }

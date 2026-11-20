@@ -1,7 +1,8 @@
 package services.identity
 package adapters
 
-import services.identity.{Film, PosterQuestion}
+import services.identity.Film
+import services.identity.vocabulary.PosterQuestion
 
 import services.identityadapters.*
 import tools.SpecTimeouts
@@ -14,6 +15,8 @@ import services.movies.SingleCountryNormalizer
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import scala.concurrent.duration._
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads, Question}
+import services.identity.vocabulary.VoterFamily
 
 /** The model kept by the pipeline's events: venues' archived scrapes diffed into listings seen and
  *  gone, new observations mapped back to the questions that read them, a restart taking up what

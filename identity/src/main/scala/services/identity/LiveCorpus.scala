@@ -7,7 +7,8 @@ import services.titles.TitleForms
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
-import MultiMaps.*
+import services.identity.vocabulary.MultiMaps.*
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, FamilyClosure, Hit, PinConstraints, Question, TitleDecorations}
 
 /**
  * The corpus context ([[CorpusContext]]) kept current event by event: every fact is held per key —

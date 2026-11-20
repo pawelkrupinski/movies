@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Dependency, Question, ResolverDecision, WaitingOn}
+import services.identity.{ResolverDecision, WaitingOn}
+import services.identity.vocabulary.{Dependency, Question}
 
 import scala.collection.concurrent.TrieMap
 

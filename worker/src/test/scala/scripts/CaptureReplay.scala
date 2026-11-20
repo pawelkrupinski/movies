@@ -8,6 +8,7 @@ import tools.UnmatchedClusters
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{CandidateQuery, Hit}
 
 /**
  * One country's unmatched-cluster capture ([[UnmatchedClusters]]) re-resolved under a measure's change — a title rule

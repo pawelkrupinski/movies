@@ -42,12 +42,12 @@ import tools.OlderRefTypes.TmdbFilm
  */
 @nowarn("msg=unused import")
 object IdentitySlice {
+  import services.identity.vocabulary.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
   // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
   import services.identity.agreement.*
-
 
   final case class Selector(venue: Option[String], title: Option[String], exact: Boolean) {
     def label: String = (if (exact) "key" else "match") + s" ${venue.getOrElse("*")} | ${title.getOrElse("*")}"
@@ -261,7 +261,7 @@ object IdentitySlice {
     val model = new IncrementalResolver(reads.lookups, reads.normalizer, calibration, pins, decorations)
     // the one replay world's order: each listing placed by the seed and its own key, so one more or fewer moves none other
     val all   = tools.ReplayOrder.of(core ++ context, seed)(l => models.ListingKey.serialised(l.key))
-    all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
+    all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, AnswersChanged.Empty))
     val coreKeys = core.map(_.key).toSet
     model.decisions.filter(_.members.exists(coreKeys))
   }
@@ -723,7 +723,7 @@ object IdentitySlice {
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     val wanted    = slice.seeds.toSeq.sortBy(ListingKey.serialised)
     // a tool file: `Known`, which every ref it is dropped into has, not `Answer.answered` (2026-11-06)
-    val films     = (id: Int) => reads.lookups.film(id) match { case services.identity.Answer.Known(film) => film; case _ => None }
+    val films     = (id: Int) => reads.lookups.film(id) match { case Answer.Known(film) => film; case _ => None }
     val takes     = rows(slice.selector, wanted, decided, labels, slice.country, films)
     println(s"\n## ${slice.selector}: ${wanted.size} listing(s); slice core ${slice.core.size}, context ${slice.context.size}, " +
       s"${slice.http.size} answers (${slice.http.values.count(_ == SliceHttp.Outcome.Gap)} recording gaps); decided in " +

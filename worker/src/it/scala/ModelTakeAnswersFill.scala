@@ -5,13 +5,14 @@ import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, FamilyS
 import services.identity._
 
 import services.identity.agreement.{Agreement, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.identity.vocabulary.Answer
 
 /**
  * Answers what the families and the posters would say of the clusters the MODEL matched — the evidence that can
@@ -173,7 +174,7 @@ object ModelTakeAnswersFill {
           // a poster names another film against the take only where the evidence reaches two films or more
           val films = (scored ++ named).distinct
           if (films.size < 2) Nil
-          else urls.map(services.identity.PosterQuestion.Venue(_)) ++ films.map(services.identity.PosterQuestion.Film(_))
+          else urls.map(services.identity.vocabulary.PosterQuestion.Venue(_)) ++ films.map(services.identity.vocabulary.PosterQuestion.Film(_))
         }
       }.distinct
       val posterStart = tools.Stopwatch.start()

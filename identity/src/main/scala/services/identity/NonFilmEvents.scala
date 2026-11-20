@@ -179,11 +179,11 @@ object NonFilmEvents {
   /** No search of the model's at hand: a title shaped as a franchise's marathon reads as one, the conservative reading. */
   val NoneTitled: FilmTitled = _ => false
   /** What `hits` -- a node's own searches' -- tell of its listings ([[namesItsOwnFilm]]). */
-  def titledBy(hits: => Seq[services.identity.Hit]): FilmTitled = listing => namesItsOwnFilm(listing.rawTitle, hits)
+  def titledBy(hits: => Seq[services.identity.vocabulary.Hit]): FilmTitled = listing => namesItsOwnFilm(listing.rawTitle, hits)
 
   /** Is `listing`, billed as a franchise's marathon, a film's own by `hits`, the model's own searches for it? What the
    *  model files with its decision ([[FilmTitled]]); read only of a title naming the marathon, so no other listing pays. */
-  def filmTitled(listing: Listing, hits: => Seq[services.identity.Hit]): Boolean =
+  def filmTitled(listing: Listing, hits: => Seq[services.identity.vocabulary.Hit]): Boolean =
     MarathonStem.findFirstIn(listing.rawTitle).isDefined && of(listing).contains("franchise marathon") &&
       namesItsOwnFilm(listing.rawTitle, hits)
   private val MarathonStem = "(?i)marat".r
@@ -196,10 +196,10 @@ object NonFilmEvents {
    *  found a film titled so, whole ("Skid Row Marathon", the 2017 documentary), and the words beside the marathon name
    *  no franchise: no two other films found are titled by them ("Twilight Saga Marathon" beside "Twilight Saga: New
    *  Moon" and "Twilight Saga: Eclipse" stays the night of the saga, whatever record bears its whole billing). */
-  private[identity] def namesItsOwnFilm(raw: String, hits: Seq[services.identity.Hit]): Boolean = {
+  private[identity] def namesItsOwnFilm(raw: String, hits: Seq[services.identity.vocabulary.Hit]): Boolean = {
     val whole = words(raw)
     val named = whole.filterNot(MarathonWord)
-    def titles(hit: services.identity.Hit) = (hit.title +: hit.originalTitle.toSeq).map(words)
+    def titles(hit: services.identity.vocabulary.Hit) = (hit.title +: hit.originalTitle.toSeq).map(words)
     val (itsOwn, others) = hits.partition(hit => titles(hit).contains(whole))
     itsOwn.nonEmpty && named.nonEmpty && others.count(hit => titles(hit).exists(_.startsWith(named))) < 2
   }

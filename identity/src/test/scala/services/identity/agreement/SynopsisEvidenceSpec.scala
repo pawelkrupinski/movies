@@ -2,7 +2,7 @@ package services.identity.agreement
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ProseWords
+import services.identity.vocabulary.ProseWords
 
 class SynopsisEvidenceSpec extends AnyFlatSpec with Matchers {
   import ProseWords.{ofDescription, ofProse, ofWords}

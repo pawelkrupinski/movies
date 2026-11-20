@@ -1,12 +1,13 @@
 package services.identity
 
-
 import models.ListingKey
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.FamilyClosure.Edge
+import services.identity.vocabulary.FamilyClosure.Edge
 import services.identity.KnownCasePins._
 import services.evidence.ListingConstraints
+import services.identity.vocabulary.{Pin, PinClaim, PinConstraints}
+import services.identity.vocabulary.FamilyClosure
 /**
  * Pins as HARD constraints: what the resolver reads from the pin set through
  * `PinConstraints`.

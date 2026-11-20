@@ -2,7 +2,7 @@ package services.identity.agreement
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.Dependency
+import services.identity.vocabulary.Dependency
 
 /** What the agreement stage's takes read of TMDB afresh ([[TmdbReadTracking]]): a filing reaches the stage while the
  *  last PUBLISHED apply read it — not what an apply under way has read so far, and not what an earlier apply read. */

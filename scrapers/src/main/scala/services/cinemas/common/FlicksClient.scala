@@ -215,8 +215,8 @@ object FlicksClient {
   /** A Flicks film page (`/movie/<slug>/`) links the film's Letterboxd and Rotten Tomatoes pages in its ratings block
    *  (about 70% of pages, measured 2026-10-05) — exact ids the identity's catalogue take maps to TMDB. Those links are
    *  not detail fields: the agreement reads them for a cluster nothing else took, apart from the detail read. */
-  val CatalogueLinkPages: services.identity.CatalogueLinkPages =
-    services.identity.CatalogueLinkPages(FlicksMarket.all.map(_.host).toSet, Set("letterboxd", "rt"))
+  val CatalogueLinkPages: services.identity.vocabulary.CatalogueLinkPages =
+    services.identity.vocabulary.CatalogueLinkPages(FlicksMarket.all.map(_.host).toSet, Set("letterboxd", "rt"))
 
   private val DataDate = """data-date="(\d{4}-\d{2}-\d{2})"""".r
   // The venue programme page's day-tab container. Rendered on EVERY venue page,

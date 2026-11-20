@@ -117,8 +117,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */
-  lazy val identityProjectionTrigger: services.identity.EventTrigger = {
-    val trigger = new services.identity.EventTrigger(() => identityProjection.tickChangedQuietly(),
+  lazy val identityProjectionTrigger: services.identity.vocabulary.EventTrigger = {
+    val trigger = new services.identity.vocabulary.EventTrigger(() => identityProjection.tickChangedQuietly(),
       services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
     movieCache.onChanged { _ => identityProjection.asked(IdentityProjection.Trigger.FilmChange); trigger.request() }
@@ -179,8 +179,6 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools))
   }
 }
-
-
 
 object IdentityProjectionWiring {
   /** How long a projection waits for the model to catch up — a rebuild after a deploy included —

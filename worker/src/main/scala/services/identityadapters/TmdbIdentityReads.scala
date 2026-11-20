@@ -3,6 +3,7 @@ package services.identityadapters
 import services.identity.*
 import clients.TmdbClient
 import services.identity.Film
+import services.identity.vocabulary.ProseWords
 
 /**
  * A film as the identity measures read it, off the answers [[TmdbClient]] fetches for it: its record, its top-billed

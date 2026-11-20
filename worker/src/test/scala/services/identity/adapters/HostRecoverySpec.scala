@@ -5,13 +5,14 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue}
 import tools.HostCircuitBreakerHttpFetch.Transition
 import tools.{CircuitOpenException, HostCircuitBreakerHttpFetch, HttpFetch, HttpStatusException, MutableClock}
 
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
+import services.identity.vocabulary.Question
 
 /** A host that is back has the identity questions that failed against it asked again at once, not after their failure
  *  wait (the owner, 2026-10-24): an open breaker closing, or an answer after a run of failures that never opened it. */

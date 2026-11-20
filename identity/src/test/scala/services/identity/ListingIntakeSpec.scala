@@ -3,10 +3,11 @@ package services.identity
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ListingIntake.{Offer, Outcome}
+import services.identity.vocabulary.ListingIntake.{Offer, Outcome}
 import services.movies.{ScrapeGuardState, ScrapeHealth, SingleCountryNormalizer}
 
 import java.time.LocalDateTime
+import services.identity.vocabulary.ListingIntake
 
 /** The cut-over venue's listing after a scrape: the old landing's scrape-health rules, deciding
  *  the evidence set instead of which slots to write and prune. */

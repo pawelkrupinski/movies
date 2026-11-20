@@ -18,7 +18,9 @@ import scala.jdk.CollectionConverters._
  * recording's gap (counted, so a lookup reads it `Unknown`), and a request it does not hold as a LOUD miss, named in
  * [[Replaying.lacking]], or, when `widen` holds the full recording, from it, named in [[Replaying.widened]].
  */
+@nowarn("msg=unused import")
 object SliceHttp {
+  import services.identity.vocabulary.*
 
   enum Outcome {
     case Body(text: String)

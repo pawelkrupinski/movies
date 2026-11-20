@@ -1,12 +1,13 @@
 package services.identityadapters
 
 import services.identity.*
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import services.tasks.{Enqueued, Task, TaskQueue}
 import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, UnexpectedBodyException}
 
 import java.time.Clock
+import services.identity.vocabulary.{CatalogueQuestion, PosterAnswers, Question, QuestionSystem}
 
 /**
  * The agreement's questions as QUEUE TASKS (`agreement.AgreementStage.wanted`): what the other film database families

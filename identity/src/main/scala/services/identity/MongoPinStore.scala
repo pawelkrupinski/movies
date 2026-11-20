@@ -10,6 +10,7 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
+import services.identity.vocabulary.{ListingKeyBson, Pin, PinClaim, PinStore}
 
 /**
  * The `identity_pins` collection: one document per pin, `_id` = the pin's content id. Tiny (an

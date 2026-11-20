@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.FilmwebProgrammes
-import services.identity.ScreeningDays
+import services.identity.vocabulary.ScreeningDays
 import services.identity.agreement.Showing
 
 import java.time.LocalDate

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.Dependency
+import services.identity.vocabulary.Dependency
 
 /**
  * What the agreement stage's takes read of TMDB afresh on every apply — its records, whether a search, the IMDb ids

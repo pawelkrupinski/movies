@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.CatalogueId
+
 /** A TMDB-keyed feed's link of a node to one film ([[SourceReliability.tmdbLinked]]: Cineamo's [[SourceReliability.Fact.Link]]) that the title's other sources OVERRULE.
  *
  *  The feed's id is a HINT, not ground truth: the venue's operator picked the film from TMDB, and the facts the feed copies

@@ -1,6 +1,7 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.vocabulary.StableNames
 
 /**
  * Stable film ids for clusters, by OVERLAP (docs/design/identity-resolver.md §6, assumption A4): [[StableNames]]' rule

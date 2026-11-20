@@ -1,8 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, BilledPiece, CastEvidence, Certificates, ClasspathResource, FactRelations,
-  FallbackIds, FeedLink, Film, IdentityMeasures, IdentityResolver, Listing, ListingShape, Measure, MeasuredListing,
-  PosterEvidence, ResolverDecision, SourceReliability, VenueNames, VoterFamily}
+import services.identity.{BilledPiece, CastEvidence, Certificates, FactRelations, FallbackIds, FeedLink, Film, IdentityMeasures, IdentityResolver, Listing, ListingShape, Measure, MeasuredListing, PosterEvidence, ResolverDecision, SourceReliability}
+import services.identity.vocabulary.{Answer, ClasspathResource, VenueNames, VoterFamily}
 import play.api.libs.json.{Json, OFormat}
 
 /**

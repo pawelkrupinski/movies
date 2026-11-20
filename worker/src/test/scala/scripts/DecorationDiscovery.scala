@@ -13,6 +13,7 @@ import play.api.libs.json.Json
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
+import services.identity.vocabulary.TitleDecorations
 
 /**
  * The weekly DECORATION DISCOVERY (`.github/workflows/decoration-discovery.yml`): mines the listing titles the

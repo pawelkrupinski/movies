@@ -3,7 +3,8 @@ package integration
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{MongoPinStore, Pin, PinClaim}
+import services.identity.MongoPinStore
+import services.identity.vocabulary.{Pin, PinClaim}
 import models.ListingKey
 import org.mongodb.scala.SingleObservableFuture
 import tools.IsolatedMongoDatabase

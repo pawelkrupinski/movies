@@ -6,6 +6,7 @@ import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 
 import scala.util.Random
+import services.identity.vocabulary.{ListingKeyBson, TitleDecorations}
 
 /** The incremental model taken up from its store after a restart: whatever moved while it was
  *  down — listings, answers — it decides as a resolve of what it holds, re-resolving only the
@@ -15,7 +16,6 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
   private val Seeds       = 1L to 24L
-
 
   private def apply(model: IncrementalResolver, event: IdentityEvent): Unit = event match {
     case IdentityEvent.Seen(listings) => model.batch(seen = listings)

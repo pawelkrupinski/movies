@@ -11,6 +11,7 @@ import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
+import services.identity.vocabulary.{PopularityBucket, ProseWords}
 
 /**
  * Each identity response, as it arrives, into [[TmdbStore]]'s normalized documents — read through
@@ -108,8 +109,6 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
       else None
     partial.foreach(p => store.filmPartial(id, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
   }
-
-
 
   /** Files the responses of film `id`'s record its store does not hold as TMDB's absent ones -- as a 404 files them -- for
    *  a record whose read kept failing ([[QuestionPolicies.RecordGiveUpFailures]]): the model then reads it filed, never

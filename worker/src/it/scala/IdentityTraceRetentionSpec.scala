@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
+import services.identity.vocabulary.{Answer, CandidateQuery, Hit}
 
 /** What a resolve hands the trace store keeps alive until the store's one writer thread gets to it — and a
  *  seed or restore hands over the WHOLE corpus at once. The refusal reasons of 3f4bf656a were a thunk closing

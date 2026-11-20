@@ -1,9 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, AnswersChanged, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId,
-  CatalogueQuestion, DetailFacts, Film, Hit, IdentityCalibration, IdentityLookups, IdentityResolver,
-  InMemoryIdentityModelStore, IncrementalResolver, Listing, Pin, PinConstraints, PosterAnswers, PosterHash,
-  PosterQuestion, ProseWords, Question, Resolution, TitleDecorations, VoterFamily}
+import services.identity.{Film, IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore, IncrementalResolver, Listing, Resolution}
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, Hit, Pin, PinConstraints, PosterAnswers, PosterHash, PosterQuestion, ProseWords, Question, TitleDecorations, VoterFamily}
 
 import models.ListingKey
 import services.movies.SingleCountryNormalizer
@@ -196,7 +194,7 @@ object LateInputs {
         correctionsPerApply = Int.MaxValue, correctionPostersAtOnce = Int.MaxValue, attempted = tried, clusterKeys = new ClusterKeys(keyStore),
         metrics = applied => drifted += applied.drifted, fullValidationEvery = 1)
     /** The kept verdicts the stage's dirty index called standing whose receipt had moved, every apply a full validation
-     *  ([[services.identity.Memo]]): none, or the index is unsound. */
+     *  ([[services.identity.vocabulary.Memo]]): none, or the index is unsound. */
     var drifted = 0
 
     private val held  = mutable.LinkedHashMap.from((s.listings.filterNot(s.joining.contains) ++ s.leaving).map(l => l.key -> l))
@@ -233,8 +231,8 @@ object LateInputs {
         case Input.Record(id)                       => record(id)
         case Input.Cast(id)                         => record(id)
         case Input.Overview(id)                     => record(id)
-        case Input.NewFilm(id)                      => record(id) ++ Option.when(read(services.identity.Dependency.QueryFiled))(services.identity.Dependency.QueryFiled)
-        case Input.Search(_)                        => Option.when(read(services.identity.Dependency.QueryFiled))(services.identity.Dependency.QueryFiled)
+        case Input.NewFilm(id)                      => record(id) ++ Option.when(read(services.identity.vocabulary.Dependency.QueryFiled))(services.identity.vocabulary.Dependency.QueryFiled)
+        case Input.Search(_)                        => Option.when(read(services.identity.vocabulary.Dependency.QueryFiled))(services.identity.vocabulary.Dependency.QueryFiled)
         case Input.Agreement(q)                     => q.id
         case Input.Page(_)                          => None
       }

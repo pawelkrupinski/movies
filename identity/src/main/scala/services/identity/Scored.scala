@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.vocabulary.Denial
 
 /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
  *  1-based). `seasonProduction`: the film's record names the listing's season production

@@ -10,6 +10,8 @@ import java.time.{Clock, Instant, ZoneOffset}
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 import services.identity.Film
+import services.identity.vocabulary.{CandidateQuery, Hit, ObservationReads}
+import services.identity.vocabulary.Answer
 
 /** The cache keeps the documents' storage contract… */
 class CachedTmdbDocumentsContractSpec extends TmdbDocumentRetentionBehaviour {

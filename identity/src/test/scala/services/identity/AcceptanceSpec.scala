@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityMeasures.{ListingFilm, Qualifiers}
 import services.identity.StageRelays.Houses
+import services.identity.vocabulary.Denial
 
 /** The acceptance rules read one listing's RANKED candidates ([[Scored]]) — no resolve needed. */
 class AcceptanceSpec extends AnyFlatSpec with Matchers {

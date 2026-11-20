@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, Evidence, Film, Listing, ListingShape, PosterEvidence, PosterHash,
-  PosterQuestion, Question, ResolverDecision, VoterFamily}
+import services.identity.{Evidence, Film, Listing, ListingShape, PosterEvidence, ResolverDecision}
+import services.identity.vocabulary.{Answer, Dependency, PosterHash, PosterQuestion, Question, VoterFamily}
 import models.ListingKey
 
 import scala.collection.mutable

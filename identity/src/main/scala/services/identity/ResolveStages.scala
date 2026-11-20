@@ -3,6 +3,7 @@ package services.identity
 import services.titles.TitleForms
 
 import IdentityResolver.Mutation
+import services.identity.vocabulary.{PinConstraints, TitleDecorations}
 
 /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
  *  and for [[NodeCandidates.of]]. */

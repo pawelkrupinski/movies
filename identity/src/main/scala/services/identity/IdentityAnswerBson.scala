@@ -2,6 +2,7 @@ package services.identity
 
 import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
+import services.identity.vocabulary.{BsonFields, FilmCast}
 
 /** A film's record as native BSON — explicit, like [[ResolverDecisionBson]]: an absent field is
  *  absent (directors unknown ≠ none), "TMDB knows no such film" is `null`. */

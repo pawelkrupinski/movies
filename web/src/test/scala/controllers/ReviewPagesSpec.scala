@@ -239,7 +239,7 @@ class ReviewPagesSpec extends AnyFlatSpec with Matchers with tools.ScratchDirect
     val html = contentAsString(new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(heldDecision.copy(members = Seq(Held, fed))(heldDecision.trace)),
       slotsHeld = Map(Held -> SlotFacts(VenueFacts(cast = venue), now), fed -> SlotFacts(VenueFacts(year = Some(2025), cast = catalog), now)),
-      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
+      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.vocabulary.CatalogueId("webedia", "1")), 1, None, None)),
       recordsHeld = Map(kafka.tmdb -> kafka.copy(cast = tmdb)))), new ReviewAnswers(new InMemoryReviewAnswerStore),
       tempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
     // the venue's: its first five, the other three behind "+3 more", every name escaped

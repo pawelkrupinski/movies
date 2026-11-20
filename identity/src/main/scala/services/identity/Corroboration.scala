@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ResolverEdge
+
 /** Does a listing's OWN evidence corroborate the film its cluster took — at least one fact independent of the title and
  *  of the search that found the film? A bare title with nothing else takes whichever namesake TMDB ranks first or the
  *  cluster pooled to, and a namesake is the commonest wrong match: DE CITY 46's "THE BLACK HOLE" (Siimets' 2024 film by

@@ -1,7 +1,7 @@
 package services.identity
 
 import services.titles.billing.BillingPieces
-
+import services.identity.vocabulary.{CandidateQuery, Hit, ScreeningDays}
 
 /** Why a film a billing's cluster took — the model's, or the one the families agree on — is none of the billing's: it
  *  names the film as ONE PIECE beside another thing ([[ListingShape.billedBeside]]) — DE "Jens Wawrczeck - Immer Ärger mit Harry" is an actor's reading, not

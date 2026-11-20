@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Film, IdentityMeasures, Listing}
+import services.identity.{Film, IdentityMeasures, Listing}
+import services.identity.vocabulary.Answer
 
 /**
  * The film a cluster's VENUES list on another family's site (Filmweb's programme of each Polish venue,

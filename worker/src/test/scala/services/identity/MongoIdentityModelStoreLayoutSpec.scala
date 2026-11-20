@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import models.ListingKey
 
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.ListingKeyBson
 
 /** How a family's listing-keyed arrays are laid out in its document: in hash buckets once large, so that a listing
  *  joining moves one bucket of each and Mongo's diff of the update is the size of that, not of the document. */

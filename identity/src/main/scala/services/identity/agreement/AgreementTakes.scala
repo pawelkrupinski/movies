@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, BilledPiece, DetailFacts, Listing, PosterEvidence, ProseWords, Question,
-  ResolverDecision, VoterFamily}
+import services.identity.{BilledPiece, Listing, PosterEvidence, ResolverDecision}
+import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, VoterFamily}
 
 import scala.collection.mutable
 
@@ -11,7 +11,7 @@ import scala.collection.mutable
  *  `evidence` ([[AgreementEvidence]]) and the cluster's `candidates`, by the selected `rules`; a film TMDB holds no record of stands
  *  on the first of `identities` that names it, and the listings' catalogue ids are read from `catalogue`. */
 private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candidates: AgreementCandidates, rules: services.identity.agreement.UnifiedRules,
-                                             identities: Seq[VoterFamily], catalogue: services.identity.CatalogueAnswers,
+                                             identities: Seq[VoterFamily], catalogue: services.identity.vocabulary.CatalogueAnswers,
                                              tmdbOf: String => Answer[Option[Int]]) extends ClusterFill {
   import evidence.{looked, venues}
   import candidates.{candidatesOf, measured, productionsOf, titledFilms, titlePicks, undatedOf, uncatalogued}
@@ -83,14 +83,13 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
     fell
   }
 
-
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.agreement.UnifiedRules.filled]] over [[services.identity.agreement.UnifiedEvidence.contenders]]: the cluster's own
    *  TMDB candidates, none denied, and the films the families took or lean to) — `Unknown` while a TMDB answer the
    *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). Everything it
    *  reads is noted in `receipt`, the verdict's. */
   def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int, asked: mutable.Set[Question], receipt: mutable.Map[services.identity.Dependency, Long]): Answer[Option[StoredFill]] =
+                       thisYear: Int, asked: mutable.Set[Question], receipt: mutable.Map[services.identity.vocabulary.Dependency, Long]): Answer[Option[StoredFill]] =
     looked.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
       val noting  = new AgreementEvidence.UnknownNoting(lookups)
       val nodes  = evidence.nodesOf(listings, noting)
@@ -100,7 +99,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
         val cluster = services.identity.agreement.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).answered.flatten,
           productions = () => productionsOf(listings, measured, asked, Some(receipt)), undated = { film =>
-            val attempt = services.identity.Dependency.Attempted(Question.Record(film))
+            val attempt = services.identity.vocabulary.Dependency.Attempted(Question.Record(film))
             evidence.readNow(attempt).foreach(receipt(attempt) = _)
             undatedOf(lookups)(film)
           })
@@ -112,9 +111,9 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
   /** The people the listings' VENUES name — each listing's own synopsis and cast, and its venue's detail page's — that the
    *  cast evidence reads ([[services.identity.CastEvidence]]): none of a listing whose facts a feed catalogue states, whose
    *  text describes the catalogue's own entry, maybe another film than the venue's. */
-  private def venueNames(listings: Seq[Listing]): services.identity.VenueNames =
-    venueStated(listings).foldLeft(services.identity.VenueNames.None) { case (named, (listing, page)) =>
-      named ++ listing.names ++ page.fold(services.identity.VenueNames.None)(_.names)
+  private def venueNames(listings: Seq[Listing]): services.identity.vocabulary.VenueNames =
+    venueStated(listings).foldLeft(services.identity.vocabulary.VenueNames.None) { case (named, (listing, page)) =>
+      named ++ listing.names ++ page.fold(services.identity.vocabulary.VenueNames.None)(_.names)
     }
 
   /** The listings whose text is their VENUE's own — none whose facts a feed catalogue states, its text describing the

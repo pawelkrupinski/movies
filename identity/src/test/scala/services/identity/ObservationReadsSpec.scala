@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.vocabulary.{CandidateQuery, ObservationReads, Question}
 
 /** Which questions a change wakes: those that read the key before it changed. The question whose own ask filed it has
  *  read what it filed (`StoredFirstLookups`), and one asked after the change read the new value -- neither is asked

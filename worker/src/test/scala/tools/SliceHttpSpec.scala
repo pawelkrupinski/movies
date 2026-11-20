@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.Answer
+import services.identity.vocabulary.Answer
 
 import scala.jdk.CollectionConverters._
 

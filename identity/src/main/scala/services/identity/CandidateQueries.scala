@@ -1,6 +1,7 @@
 package services.identity
 
 import services.titles.billing.Credits
+import services.identity.vocabulary.CandidateQuery
 
 /**
  * CANDIDATE GENERATION's question set (docs/design/identity-resolver.md, phase 2, stage a): what

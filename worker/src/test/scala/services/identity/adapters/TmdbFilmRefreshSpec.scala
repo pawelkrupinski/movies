@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.collection.mutable
+import services.identity.vocabulary.CandidateQuery
 
 /** An operator's "these TMDB films were just edited" (the `tmdb-films` source of a `RefreshSource` task): each film's record fetched again into
  *  the model's store, then the questions of exactly the families the films reach — a decision naming the film, or a

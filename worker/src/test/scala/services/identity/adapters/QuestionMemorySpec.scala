@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.{PosterQuestion, VoterFamily}
+import services.identity.vocabulary.{PosterQuestion, VoterFamily}
 
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,6 +10,7 @@ import tools.MutableClock
 
 import java.time.{Duration, Instant}
 import scala.jdk.DurationConverters._
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, Question}
 
 /** A question its source left unanswered is asked again after its kind's wait, not every round — whoever asks it, the
  *  model's fill and live asks or the agreement's asker — and only the asking backs off. */

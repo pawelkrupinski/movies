@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+import services.identity.vocabulary.{Answer, AnswersChanged, Question}
 
 /** One fill round's live asks: at most `allowance`, one per `pace`, and none to a host after it
  *  overloaded. `deferred` counts the gaps it had no budget left for. Single-threaded by

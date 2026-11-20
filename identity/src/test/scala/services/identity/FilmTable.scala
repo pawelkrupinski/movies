@@ -3,6 +3,7 @@ package services.identity
 import models.Cinema
 import models.ListingKey
 import services.titles.TitleNormalizer
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /** A film database of `films`: search by all-words containment of a title or an alternative title,
  *  the directors' filmographies, the films IMDb lists under a title (its own, exactly), and each

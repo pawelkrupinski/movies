@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import services.identity.*
 import play.api.Logging
 import tools.HostCircuitBreakerHttpFetch.Transition
+import services.identity.vocabulary.Question
 
 /**
  * Asks again, at once, the identity questions that failed against a host that is back: what the owner asked for on

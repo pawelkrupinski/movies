@@ -17,10 +17,12 @@ import OlderRefTypes.TmdbFilm
  * where the recording does not answer, notes which it read ([[Noting]], [[Lookups]]), keeps exactly those, and names
  * them as filed, never as the recording's.
  */
+@nowarn("msg=unused import")
 final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String,
                               /** The capture's live HTTP answers ([[FiledAnswers.liveOf]]): held beside `capture`, never in it, so
                                *  this file compiles dropped into a ref whose `Capture` predates them (identity-slice's tool files). */
                               live: Map[String, String] = Map.empty) {
+  import services.identity.vocabulary.*
   def families: Map[String, BsonDocument] = capture.families
   def finds: Map[String, Option[Int]] = capture.finds
   def isEmpty: Boolean = capture.families.isEmpty && capture.finds.isEmpty && capture.queries.isEmpty && capture.films.isEmpty &&
@@ -32,6 +34,7 @@ final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String
 
 @nowarn("msg=unused import")
 object FiledAnswers {
+  import services.identity.vocabulary.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*

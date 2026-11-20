@@ -4,6 +4,7 @@ import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, S
 import services.identity._
 
 import tools.HttpFetch
+import services.identity.vocabulary.{Answer, CandidateQuery, Hit, ObservationReads, PopularityBucket}
 
 /**
  * The normalized TMDB store against the recorded answers: every question a resolve asked is

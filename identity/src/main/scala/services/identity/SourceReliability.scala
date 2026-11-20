@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{CatalogueId, CatalogueSources}
+
 /**
  * How far each SOURCE of a listing's facts may be trusted, fact by fact — in one place.
  *

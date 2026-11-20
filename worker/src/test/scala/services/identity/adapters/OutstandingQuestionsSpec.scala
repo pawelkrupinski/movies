@@ -4,10 +4,11 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools.MutableClock
 
 import java.time.{Duration, Instant}
+import services.identity.vocabulary.Question
 
 /** A question the stage waits on that was handed to the queue and never attempted holds its cluster under the settle
  *  rule (docs/design/identity-questions.md, step 4): the reaper asks it again, and a failed one past its retry, and

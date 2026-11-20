@@ -10,6 +10,7 @@ import tools.MutableClock
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
 import scala.util.Success
+import services.identity.vocabulary.{CandidateQuery, Question}
 
 /** What the model asks TMDB again because it has aged: its questions — a day for what it has not settled, a week for the
  *  rest, oldest first, and a re-fetch that changes nothing re-dates the answer without waking anyone — then the records

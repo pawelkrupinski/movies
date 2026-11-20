@@ -1,7 +1,7 @@
 package services.identityadapters
 
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 
 /**
  * Another film database FAMILY asked live ([[VoterFamily]]): its title search's films, a credited person's films where

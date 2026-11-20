@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
+
 /** A source that has asked everything and found no film anywhere: no venue detail page, every
  *  TMDB search empty and every film id unknown to TMDB. The model over it settles every listing
  *  unmatched, with nothing left to ask. */

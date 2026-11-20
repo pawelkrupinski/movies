@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.enrichment.ImdbClient
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 
 /** IMDb's own title search (any language IMDb lists a title under), its directors' credits, and its record. */
 final class ImdbFamily(imdb: ImdbClient) extends FamilySource {

@@ -3,6 +3,7 @@ package services.identity
 import models.ListingKey
 
 import java.time.Instant
+import services.identity.vocabulary.{Pin, PinClaim}
 
 /**
  * TEST FIXTURE ONLY — pins an admin could write for the cases the proof found undecidable or

@@ -5,11 +5,12 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{AgreementStage, SourceHit}
-import services.identity.VoterFamily
+import services.identity.vocabulary.VoterFamily
 import tools.MutableClock
 
 import java.time.Instant
 import scala.collection.mutable
+import services.identity.vocabulary.{Hit, Question}
 
 /** One feed for every store's filings: the agreement's version and changes, the model's TMDB keys and venue page keys
  *  come out of it as each source announced them on its own before — side by side, filing by filing. */
@@ -123,9 +124,9 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     families.version shouldBe 0   // neither read: nothing moves
     film(7, 2026)
     families.changedSince(0) shouldBe Some(Set(AgreementStage.recordReadId(7)))
-    read += services.identity.Dependency.QueryFiled
+    read += services.identity.vocabulary.Dependency.QueryFiled
     tmdb.question(TmdbStore.titleSearchId("pl", "lalka"), Seq(Hit(10, "Lalka", None, Some(2026), 1.0)))
-    families.changedSince(1) shouldBe Some(Set(services.identity.Dependency.QueryFiled))
+    families.changedSince(1) shouldBe Some(Set(services.identity.vocabulary.Dependency.QueryFiled))
     tmdb.question(TmdbStore.findId("tt3"), Nil)   // a find is the agreement's own question: counted only as one
     families.version shouldBe 2
   }

@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.{PosterQuestion, VoterFamily}
+import services.identity.vocabulary.{PosterQuestion, VoterFamily}
 
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -12,6 +12,9 @@ import services.tasktypes.TaskType
 import tools.HttpPath
 
 import scala.concurrent.duration._
+import services.identity.vocabulary.{Question, QuestionKind}
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, CatalogueQuestion, PosterAnswers}
+import services.identity.vocabulary.{CatalogueId, QuestionSystem}
 
 /** Every identity question, the model's and the agreement's, is one [[Question]] of a [[QuestionKind]] with a policy, and
  *  the table holds today's values: a change to one of them is a change to docs/design/identity-questions.md too. */

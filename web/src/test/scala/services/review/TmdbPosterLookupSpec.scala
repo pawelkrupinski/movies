@@ -3,7 +3,7 @@ package services.review
 import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.PosterAnswers
+import services.identity.vocabulary.PosterAnswers
 
 import java.util.Locale
 

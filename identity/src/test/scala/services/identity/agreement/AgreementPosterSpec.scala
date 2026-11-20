@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, PosterAnswers,
-  PosterHash, PosterQuestion, Question, Resolution, ResolverDecision, VoterFamily}
+import services.identity.{Film, FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -48,7 +48,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val lookups = new services.identity.IdentityLookups {
       def hasDetail(l: Listing): Boolean = now.hasDetail(l)
       def detail(l: Listing) = now.detail(l)
-      def candidates(q: services.identity.CandidateQuery) = now.candidates(q)
+      def candidates(q: services.identity.vocabulary.CandidateQuery) = now.candidates(q)
       def film(id: Int) = now.film(id)
     }
     val posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))))
@@ -58,8 +58,8 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val running = stageOver()
     running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
     now = table
-    filed += services.identity.Dependency.QueryFiled
-    running.reads(services.identity.Dependency.QueryFiled) shouldBe true
+    filed += services.identity.vocabulary.Dependency.QueryFiled
+    running.reads(services.identity.vocabulary.Dependency.QueryFiled) shouldBe true
     val whole = stageOver().apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head
     (whole.film, whole.basis) shouldBe ((Some(1001), ResolverDecision.Basis.Poster))
     running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head.film shouldBe whole.film
@@ -89,7 +89,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val searching = new services.identity.IdentityLookups {
       def hasDetail(listing: Listing): Boolean = false
       def detail(listing: Listing) = Answer.Known(None)
-      def candidates(query: services.identity.CandidateQuery) = if (answered) table.candidates(query) else Answer.Unknown
+      def candidates(query: services.identity.vocabulary.CandidateQuery) = if (answered) table.candidates(query) else Answer.Unknown
       def film(tmdbId: Int) = table.film(tmdbId)
     }
     val listing = lalka()
@@ -127,7 +127,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val blind = new services.identity.IdentityLookups {
       def hasDetail(listing: Listing): Boolean = false
       def detail(listing: Listing) = Answer.Known(None)
-      def candidates(query: services.identity.CandidateQuery) = { searches += 1; Answer.Unknown }
+      def candidates(query: services.identity.vocabulary.CandidateQuery) = { searches += 1; Answer.Unknown }
       def film(tmdbId: Int) = table.film(tmdbId)
     }
     val listing = lalka()

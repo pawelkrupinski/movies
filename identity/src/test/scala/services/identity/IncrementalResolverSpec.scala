@@ -1,6 +1,5 @@
 package services.identity
 
-
 import models.ListingKey
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -10,6 +9,7 @@ import tools.IndependentCases
 
 import scala.collection.mutable
 import scala.util.Random
+import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit, TitleDecorations, VenueNames}
 
 /**
  * The incremental resolver against the reference: after EVERY event of a random sequence —
@@ -23,7 +23,6 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
   private val Seeds       = 1L to 24L
-
 
   /** The first event after which the model differs from a resolve of what it holds. */
   private def divergence(seed: Long, mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,

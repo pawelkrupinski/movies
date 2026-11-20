@@ -1,7 +1,7 @@
 package services.identityadapters
 
 import services.freshness.{Freshness, FreshnessKind}
-import services.identity.QuestionKind
+import services.identity.vocabulary.QuestionKind
 import services.venuepages.MongoVenuePageStore
 
 import scala.concurrent.duration._

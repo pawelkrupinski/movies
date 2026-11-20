@@ -2,6 +2,8 @@ package services.identity
 
 import services.identityadapters.TmdbIdentityLookups
 import scala.util.Try
+import services.identity.vocabulary.Answer
+import services.identity.vocabulary.toAnswer
 
 /** A replay counting the requests it could not answer in one counter (`misses`): a lookup during
  *  which it grew met a gap. The counter is the replay's, not the lookup's, so lookups take turns. */

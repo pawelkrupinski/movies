@@ -1,6 +1,7 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.vocabulary.{CandidateQuery, Question, ResolverEdge}
 
 /**
  * The resolver's verdict on one CLUSTER (`IdentityResolver`): which listings are one film, which
@@ -151,15 +152,13 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet
   lazy val decisionOf: Map[ListingKey, ResolverDecision] = decisions.flatMap(d => d.members.map(_ -> d)).toMap
 }
+
 object Resolution {
   /** The identity model's resolution ([[IncrementalResolver.resolution]]): its `decisions` and the `films` they took, over
    *  its `nodes`, with no families, edges or lookups -- those are a whole resolve's. */
   def ofModel(decisions: Seq[ResolverDecision], nodes: Int, films: Map[Int, Film]): Resolution =
     Resolution(decisions, nodes, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, films)
 }
-
-/** One constraint edge between two nodes (named by their smallest listing's sort key). */
-final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, reason: String)
 
 /** Which rules decided a [[ResolverDecision]], as rule ids — the structured twin of its explanation, for the
  *  identity trace (`identity_traces`): every listing's rules, and every rule's listings. Outside the decision's

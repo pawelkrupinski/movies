@@ -4,6 +4,7 @@ import services.identity.*
 import play.api.Logging
 
 import java.time.Clock
+import services.identity.vocabulary.{CandidateQuery, Question}
 
 /**
  * Which of the model's answers to ask again because they have aged, at the ages [[QuestionPolicies]] sets, for the

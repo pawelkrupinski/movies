@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ClasspathResource
+
 /** The stage works — operas and ballets — a season broadcast is billed by, each under every name it goes by
  *  (`identity-stage-works.tsv`, built from Wikidata by `scripts/identity-stage-works.py`, and the hand-kept
  *  `identity-stage-works-extra.tsv`): cinemas show one season's "Royal Ballet & Opera 2026/27: The Nutcracker" as

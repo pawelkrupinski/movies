@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.Denial
+
 /**
  * THE EVIDENCE PROVENANCE TABLE (docs/investigations/2026-11-01-flip-unification.md, stage 3): what each kind of evidence
  * may do, said once. Every rule that weighs one listing's evidence for another reads it here -- the backing that counts

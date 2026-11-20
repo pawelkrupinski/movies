@@ -7,7 +7,8 @@ import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonS
 import org.bson.json.{JsonMode, JsonWriterSettings}
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts}
-import services.identity.{VoterFamily, _}
+import services.identity._
+import services.identity.vocabulary.VoterFamily
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -16,6 +17,7 @@ import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{Answer, CandidateQuery, CatalogueAnswers, CatalogueLinkPages, DetailFacts, Hit, PosterAnswers, ProseWords, Question}
 
 /**
  * The clusters the identity model leaves UNMATCHED on a recorded full corpus, captured with every answer the resolver

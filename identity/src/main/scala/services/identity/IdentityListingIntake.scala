@@ -7,6 +7,7 @@ import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
 
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
+import services.identity.vocabulary.{ListingIntake, ListingValuePool, StripedLocks}
 
 /**
  * A cut-over country's scrape sink (docs/design/identity-resolver.md §8, phase 5): each venue's

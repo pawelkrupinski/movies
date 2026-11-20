@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.Question
+import services.identity.vocabulary.Question
 
 import scala.collection.mutable
 

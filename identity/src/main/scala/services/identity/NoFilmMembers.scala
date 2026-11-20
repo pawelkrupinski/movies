@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.{CandidateQuery, Hit}
+
 /** The members of a family's cluster decided apart from the film the cluster took, as no film ([[ResolverRun]]): a
  *  programme billed under its banner beside a member billing several works, a member billing the film as one piece
  *  beside another thing ([[BilledPiece]]), a member quoting it beside a venue's own screening of it. */

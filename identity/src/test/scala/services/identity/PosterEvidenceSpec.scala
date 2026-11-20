@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.awt.image.BufferedImage
+import services.identity.vocabulary.{CatalogueId, PosterHash}
 
 /** A poster's hash tells two prints of one poster from two posters, and the cluster's venue posters vote for the one
  *  candidate they match and veto a film when they match another. */

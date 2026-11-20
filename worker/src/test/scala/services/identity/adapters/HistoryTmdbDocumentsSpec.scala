@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.FilmDetail
 import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 import tools.{MutableClock, TestWiring}
+import services.identity.vocabulary.BsonFields
 
 /** The history keeps CHANGES ([[HistoryTmdbDocuments]], [[HistoryVenuePageStore]]): an answer whose value moved, before and
  *  after as an answer reads it; a deleted one; never a re-stamp of the same value — but every marker, whose stamps are

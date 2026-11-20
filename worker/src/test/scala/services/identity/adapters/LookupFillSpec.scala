@@ -13,6 +13,8 @@ import tools.{DaemonExecutors, HttpFetch, HttpStatusException, PacedHttpFetch, T
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
 import scala.concurrent.duration._
+import services.identity.vocabulary.{AnswersChanged, CandidateQuery, ObservationReads, Question}
+import services.identity.vocabulary.Answer
 
 /** The shadow run's paced live lookup fill: asks exactly the resolver's unanswered questions, once
  *  each, into the model's normalized TMDB store only; never more than its rate allows; stops at the

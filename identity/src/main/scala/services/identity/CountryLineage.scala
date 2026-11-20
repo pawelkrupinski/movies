@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ClasspathResource
+
 /** The states that ceased to exist and those that succeeded them (`identity-country-lineage.tsv`, hand-kept): TMDB codes a
  *  film by the state it was made in, a venue by the country it knows today, so Chytilová's "Daisies" (TMDB: XC,
  *  Czechoslovakia) read as made somewhere other than MAC Birmingham's "Czechia". A country and its predecessor or

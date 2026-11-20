@@ -3,6 +3,7 @@ package services.identity
 import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonString, BsonValue}
 
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{BsonFields, FilmCast}
 
 /**
  * A film record ([[Film]]) as a stored document, EVERY fact of it: what a store keeps of a record a

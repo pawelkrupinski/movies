@@ -10,6 +10,7 @@ import tools.{CommandLine, ConvergenceStorage, SpecClock, UnmatchedClusters}
 import java.nio.file.Files
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.Answer
 
 /**
  * MEASUREMENT: what reading the model's takes against the evidence that can correct them (`agreement.Correction`) costs a
@@ -103,7 +104,7 @@ object ModelTakeCorrectionCost {
         val stages = cold(correcting)
         // a warm apply: the same decisions, one answer filed elsewhere since (under an agreement id no verdict reads)
         val warms = (1 to 5).map { n => measured(inputs.indices.foreach { i =>
-          inputs(i)._2.noteFiled(FamilyAnswerStore.questionId(services.identity.VoterFamily.values.head, s"cost|$n")); stages(i).apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version) }) }
+          inputs(i)._2.noteFiled(FamilyAnswerStore.questionId(services.identity.vocabulary.VoterFamily.values.head, s"cost|$n")); stages(i).apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version) }) }
         val before = used()
         val held   = cold(correcting)
         val after  = used()

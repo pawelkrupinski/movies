@@ -43,7 +43,7 @@ object ListingConstraints {
      *  (`MixedFilmDetector.creditSamePerson`): Marion Theatre Ocala's "Planet of the Apes"
      *  (Schaffner) beside "Planet of the Apes (2001)" (Burton). */
     case VenueCreditsApart
-    /** An admin pinned the listing as never this film (`services.identity.PinClaim.NeverFilm`):
+    /** An admin pinned the listing as never this film (`services.identity.vocabulary.PinClaim.NeverFilm`):
      *  it cannot share a film with any listing that is that film. */
     case PinnedNotFilm
     /** A title naming a SEASON ("2026/27") lists that season's production: another season, or a

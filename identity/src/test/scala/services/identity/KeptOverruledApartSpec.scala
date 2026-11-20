@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 
 import scala.util.Random
+import services.identity.vocabulary.{CatalogueId, TitleDecorations}
 
 /**
  * A kept listing ([[Listing.kept]], [[ListingRetention]]) never joins a present listing whose feed link the PRESENT

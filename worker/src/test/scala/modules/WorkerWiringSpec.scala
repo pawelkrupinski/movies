@@ -511,11 +511,11 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       tools.Env.of("TMDB_API_KEY" -> "test-key")) {
       override lazy val enrichmentFetch: HttpFetch = counting
     }
-    val question = services.identity.CandidateQuery.Title("dune")
-    wiring.cutoverLookups().candidates(question) shouldBe services.identity.Answer.Known(Nil)
+    val question = services.identity.vocabulary.CandidateQuery.Title("dune")
+    wiring.cutoverLookups().candidates(question) shouldBe services.identity.vocabulary.Answer.Known(Nil)
     val asked = requests.get
     asked should be > 0
-    wiring.cutoverLookups().candidates(question) shouldBe services.identity.Answer.Known(Nil)
+    wiring.cutoverLookups().candidates(question) shouldBe services.identity.vocabulary.Answer.Known(Nil)
     requests.get shouldBe asked
     wiring.stop()
   }
@@ -523,7 +523,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // The agreement's fill resolves a cluster alone, asking TMDB what the model's whole-corpus resolve never did: read from
   // the store alone, those were gaps nothing asked, and the fill never took (PL "Lalka (Dolly)" ×5, right → unmatched).
   "the agreement stage's fill" should "read TMDB as the model does: what the store lacks asked live" in {
-    import services.identity.VoterFamily
+    import services.identity.vocabulary.VoterFamily
     val requests = new java.util.concurrent.atomic.AtomicInteger()
     val counting: HttpFetch = new AnyMethodByUrlHttpFetch(_ => { requests.incrementAndGet(); """{"results":[]}""" })
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("TMDB_API_KEY" -> "test-key")) {
@@ -539,7 +539,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     apply()
     // every family answers that it knows no such film, so the families agree on nothing and the fill reads the cluster
     var rounds = 0
-    def asked = services.identity.Question.families(wiring.agreementStage.wanted)
+    def asked = services.identity.vocabulary.Question.families(wiring.agreementStage.wanted)
     while (asked.nonEmpty && rounds < 5) {
       rounds += 1
       asked.foreach { case (family: VoterFamily, question) => question.split("\\|", 2) match {
@@ -656,8 +656,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // A host that is back has the identity questions that failed against it asked again at once (the owner, 2026-10-24):
   // the enrichment chain's breakers tell the identity side, which releases the host's failures in the question memory.
   "the enrichment chain's host breakers" should "release the identity questions that failed against a host once it answers again" in {
-    import services.identity.Question
-    import services.identity.VoterFamily
+    import services.identity.vocabulary.Question
+    import services.identity.vocabulary.VoterFamily
     val host    = "films.example.org"
     @volatile var down = true
     val leaf: HttpFetch = new AnyMethodByUrlHttpFetch(_ =>

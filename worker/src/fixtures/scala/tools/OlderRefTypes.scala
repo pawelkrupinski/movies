@@ -13,10 +13,14 @@ import scala.annotation.nowarn
 object OlderRefTypes {
   import services.identity.*
   import services.identity.IdentityMeasures.*
+  import services.identity.vocabulary.*
 
   /** TMDB's record of a candidate film: `IdentityMeasures.Film` before 2026-11-20, `services.identity.Film` since. */
   type TmdbFilm = Film
 
   /** The record of a film known by its title alone. */
   def tmdbFilm(title: String): TmdbFilm = Film(title)
+
+  /** An operator's pin: `services.identity.Pin` before 2026-11-20, `services.identity.vocabulary.Pin` since. */
+  type OperatorPin = Pin
 }

@@ -111,7 +111,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
     scala.jdk.CollectionConverters.EnumerationHasAsScala(getClass.getClassLoader.getResources(resource)).asScala.toSeq
 
   private def closureOf(name: String): Seq[String] =
-    copies(s"${services.identity.ClasspathResource.Stamps}/$name-sources.txt").headOption.fold(Seq.empty[String])(url =>
+    copies(s"${services.identity.vocabulary.ClasspathResource.Stamps}/$name-sources.txt").headOption.fold(Seq.empty[String])(url =>
       scala.util.Using.resource(scala.io.Source.fromURL(url, "UTF-8"))(_.getLines().toVector))
 
   // A stamp left in another module's output by an older build (common generated them until the resolver moved into its
@@ -119,7 +119,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   // reads stops moving, and no stored family or verdict is decided again when the rules change.
   "Every rules version stamp" should "be on the classpath once, so no stale copy can shadow the build's own" in {
     val stamps = Seq("identity-rules", "agreement-rules", "venue-slot").flatMap(name => Seq(s"$name-version.txt", s"$name-sources.txt"))
-      .map(stamp => s"${services.identity.ClasspathResource.Stamps}/$stamp")
+      .map(stamp => s"${services.identity.vocabulary.ClasspathResource.Stamps}/$stamp")
     val twice  = stamps.map(stamp => stamp -> copies(stamp)).filter(_._2.size != 1)
     withClue(s"Not exactly one copy on the classpath (a stale build output? clean that module):\n${twice.map { case (stamp, urls) =>
       s"$stamp: ${urls.mkString(", ")}" }.mkString("\n")}\n") {

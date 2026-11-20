@@ -4,6 +4,7 @@ import services.identity.*
 import play.api.Logging
 import services.tasks.{BulkRefreshResult, RefreshableSource, RefreshableSources}
 import tools.{HttpFetch, HttpPath}
+import services.identity.vocabulary.{Answer, CandidateQuery}
 
 /**
  * An operator's "these TMDB films were just edited": each film's record fetched again into the model's TMDB store, then

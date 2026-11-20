@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.util.hashing.MurmurHash3
+import services.identity.vocabulary.{CandidateQuery, ContentHash, TitleDecorations}
 
 /** The slice digest a stored family keeps: equal content hashes equally however it was built, in
  *  every JVM, and any change to it — however deep — moves the hash. */

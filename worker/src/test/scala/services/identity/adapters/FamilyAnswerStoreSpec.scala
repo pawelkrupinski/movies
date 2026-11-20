@@ -5,11 +5,13 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
-import services.identity.{Film, VoterFamily}
+import services.identity.Film
+import services.identity.vocabulary.VoterFamily
 import tools.MutableClock
 
 import java.time.Instant
 import scala.concurrent.duration._
+import services.identity.vocabulary.{Answer, ScreeningDays}
 
 /** What another family answered is read back as filed — and a question never filed is a gap, never "no film"; a search
  *  is asked again after months, a record after a year. */

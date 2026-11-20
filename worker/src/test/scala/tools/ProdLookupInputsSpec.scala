@@ -9,6 +9,7 @@ import services.identityadapters.{InMemoryTmdbDocuments, QuestionMemory, TmdbKin
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.jdk.CollectionConverters._
+import services.identity.vocabulary.{Answer, CandidateQuery, Hit, Question}
 
 /** The live drift check's whole resolve answers its questions as the worker answers its model — prod's TMDB store, venue
  *  pages and question memory first, the recording only where the worker would ask live — over what a recording captured

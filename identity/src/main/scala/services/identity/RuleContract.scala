@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.RuleKind
+
 /**
  * THE PER-RULE MONOTONICITY CONTRACT (structural step 4 of docs/investigations/2026-11-01-flip-unification.md): every rule
  * that can decide a listing's take declares how that take may depend on the POPULATION -- which other listings are
@@ -28,12 +30,6 @@ package services.identity
  * a corroborated suggested-only rival outweighs it (Acceptance's takenBy), its catalogue id is contested
  * (ResolverRun.contested) or a sibling denies its film (Families.deniedBySibling).
  */
-enum RuleKind(val label: String) {
-  case PopulationIndependent extends RuleKind("i")
-  case Monotone extends RuleKind("ii")
-  case NonMonotone extends RuleKind("iii")
-}
-
 object RuleContract {
 
   /** One declaration: the id (or `*` pattern) and why the rule is of its kind. */

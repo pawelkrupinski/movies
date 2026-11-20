@@ -1,6 +1,7 @@
 package services.identity
 
 import scala.collection.mutable
+import services.identity.vocabulary.{CatalogueId, Denial}
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). A `fallback` scope's pool is

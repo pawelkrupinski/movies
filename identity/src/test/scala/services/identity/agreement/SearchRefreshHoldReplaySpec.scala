@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, Film, FilmTable, IdentityCalibration, IdentityLookups, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, TakeOutcome, VoterFamily}
+import services.identity.{Film, FilmTable, IdentityCalibration, IdentityLookups, Listing, Resolution, ResolverDecision, TakeOutcome}
+import services.identity.vocabulary.{Answer, Dependency, PosterAnswers, PosterHash, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -91,7 +92,7 @@ object SearchRefreshHoldReplaySpec {
     private val lookups = new IdentityLookups {
       def hasDetail(l: Listing): Boolean = false
       def detail(l: Listing) = table.detail(l)
-      def candidates(q: services.identity.CandidateQuery) = table.candidates(q)
+      def candidates(q: services.identity.vocabulary.CandidateQuery) = table.candidates(q)
       def film(id: Int) = table.film(id)
     }
     private val posters: PosterAnswers = new PosterAnswers {

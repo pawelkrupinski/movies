@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Film, IdentityMeasures, VoterFamily}
+import services.identity.{Film, IdentityMeasures}
+import services.identity.vocabulary.{Answer, VoterFamily}
 
 import scala.annotation.unused
 
@@ -22,7 +23,7 @@ object SourceRecord {
 }
 
 /** One film a venue's programme on a family's site screens — the family's own id for it — and the days it does. */
-final case class Showing(film: String, days: services.identity.ScreeningDays)
+final case class Showing(film: String, days: services.identity.vocabulary.ScreeningDays)
 
 /** What a family answers, from what it keeps: `Unknown` while a question is not answered yet — a gap, never "no film". */
 trait FamilyAnswers {
@@ -64,7 +65,7 @@ trait AnswerFeed {
 object AnswerFeed {
   /** One reader's count of the filings it reads ([[version]]), and which ones came since a version ([[changedSince]]). */
   trait View extends AnswerChanges { def version: Long }
-  /** The keys the agreement stage reads: those an agreement question names ([[services.identity.Question.parse]]) —
+  /** The keys the agreement stage reads: those an agreement question names ([[services.identity.vocabulary.Question.parse]]) —
    *  never a TMDB document's or a venue page's, so the model's filings leave its version where it was. */
-  val agreementKeys: String => Option[String] = key => Option.when(services.identity.Question.parse(key).isDefined)(key)
+  val agreementKeys: String => Option[String] = key => Option.when(services.identity.vocabulary.Question.parse(key).isDefined)(key)
 }

@@ -2,6 +2,7 @@ package services.identity
 
 import services.identity.agreement.UnifiedEvidence
 import play.api.libs.json.{Json, OFormat}
+import services.identity.vocabulary.ClasspathResource
 
 /**
  * The unified evidence model's weights ([[UnifiedEvidence]]), as DATA: `identity-unified-weights.json`, written by
