@@ -22,10 +22,13 @@
 # Every module's main, test, integration, page and fixtures sources are rewritten (`<module>/<config>/scalafix`: the
 # configurations refactor-tools.sbt gives scalafix besides Compile and Test).
 
-SCALAFIX_CONFIGURATIONS="geodata/Compile geodata/Test base/Compile base/Test http/Compile http/Test http/Fixtures
-common/Compile common/Test identity/Compile identity/Test testkit/Compile testkit/Test itkit/Compile scrapers/Compile
-scrapers/Test scrapers/Fixtures repochecks/Test repochecks/Fixtures worker/Compile worker/Test worker/Fixtures
-worker/IntegrationTest web/Compile web/Test web/IntegrationTest web/PageTest e2e/Test quality/Compile quality/Test"
+# DEPENDENTS FIRST: sbt-scalafix compiles each configuration before rewriting it, so a configuration is rewritten only
+# after everything that depends on it -- a rewritten dependency (the moved class's own source) would leave a later
+# dependent uncompilable against it mid-run.
+SCALAFIX_CONFIGURATIONS="quality/Test quality/Compile e2e/Test web/PageTest web/IntegrationTest web/Test web/Compile
+worker/IntegrationTest worker/Test worker/Fixtures worker/Compile repochecks/Test repochecks/Fixtures scrapers/Test
+scrapers/Fixtures scrapers/Compile itkit/Compile testkit/Test testkit/Compile identity/Test identity/Compile common/Test
+common/Compile http/Test http/Fixtures http/Compile base/Test base/Compile geodata/Test geodata/Compile"
 
 scalafix_tree_open() {
   local tool=$1 dirty
