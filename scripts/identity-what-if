@@ -401,15 +401,19 @@ record_verdict() { # <cc> <diff exit>
   what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv"
 }
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
-tree_of "$base_sha" > /dev/null || exit 2
-head_tree=$(tree_of "$head_sha") || exit 2
+# Each step before the resolve that fails says which it was and its status (Order independence #90: an exit 2 here
+# printed nothing, so the cause could not be told from the log)
+step_failed() { harness_error "$1 failed (exit $2)"; exit 2; }
+tree_of "$base_sha" > /dev/null || step_failed "laying out the base ${base_sha:0:12}" $?
+head_tree=$(tree_of "$head_sha") || step_failed "laying out the head $head_label" $?
 # HEAD = BASE (the same tree): a control, whose every moved take is the harness's own (below)
 same_code=0; [ "$head_sha" = . ] || ! git -C "$repo" diff --quiet "$base_sha" "$head_sha" -- || same_code=1
 judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.tsv}
 # Whether the head resolves at all: the code alone says whether any change reaches a take (identity_what_if.py reaches).
 # None (docs, tests, scripts, comments) and no --all/--verify: the selection is empty, so the head is not compiled
 # beside the base -- and an empty selection (below) starts no head JVM at all.
-reach=$(python3 -I "$repo/scripts/identity_what_if.py" reaches --repo "$repo" --base "$base_sha" --head "$head_sha") || exit 2
+reach=$(python3 -I "$repo/scripts/identity_what_if.py" reaches --repo "$repo" --base "$base_sha" --head "$head_sha") ||
+  step_failed "identity_what_if.py reaches (whether the head's change reaches a take)" $?
 head_resolves=1; [ "$reach" != none ] || [ "$all" = 1 ] || [ "$verify" = 1 ] || head_resolves=0
 # The head's compile, started beside the base's resolve when the base side is not kept (it takes its own JVM slot);
 # waited for before the head resolves -- and on every exit before that (a harness error after the base): left running,

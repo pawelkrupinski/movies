@@ -215,7 +215,7 @@ identity_tree() {
   local sha dir ref=$1; shift
   sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
   dir=$IDENTITY_CACHE/refs/$sha
-  [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+  identity_tree_whole "$dir" || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
   identity_tree_judgements "$sha" "$dir" || return 1
   # one agent a tree drops the files in: a second, comparing while the first copies, would copy over it again and move
   # the time the first's compile reads — or read (and remove) the seed marker the first still needs
@@ -237,7 +237,7 @@ identity_tree_claimed() {
   held=$(cat "$dir/$mark" 2>/dev/null || true)
   if [ -n "$held" ] && [ "$held" != "$hash" ]; then
     dir=$dir-t$hash
-    [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha-t$hash" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+    identity_tree_whole "$dir" || identity_locked "tree-$sha-t$hash" identity_tree_layout "$ref" "$sha" "$dir" || return 1
     identity_tree_judgements "$sha" "$dir" || return 1
   fi
   identity_tree_tools "$dir" "$@" || return 1
@@ -324,9 +324,15 @@ identity_tree_judgements() {
 }
 
 # identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole
+# identity_tree_whole <dir> -> whether <dir> is a whole laid-out tree: its mark, written last into <dir>.part before
+# the move. (build.sbt was the mark until 2026-11-20: a tree holding none -- identity-what-if-test.sh's scratch refs --
+# was removed and laid out again by every call, under the steps still reading it: Order independence #90.)
+IDENTITY_TREE_MARK=.identity-tree-whole
+identity_tree_whole() { [ -f "$1/$IDENTITY_TREE_MARK" ]; }
+
 identity_tree_layout() {
   local ref=$1 sha=$2 dir=$3 t part
-  [ -f "$dir/build.sbt" ] && return 0
+  identity_tree_whole "$dir" && return 0
   identity_log "laying out $ref ($sha) in $dir"
   part=$dir.part
   rm -rf "$part" "$dir"; mkdir -p "$part"
@@ -354,6 +360,7 @@ identity_tree_layout() {
     sed "s#$seed/#$dir/#g" "$seed/target/identity-tools/classpath" > "$part/target/identity-tools/classpath"
     echo "$seed" > "$part/target/identity-tools/seed"
   fi
+  : > "$part/$IDENTITY_TREE_MARK"
   mv "$part" "$dir"
 }
 

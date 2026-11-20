@@ -208,4 +208,20 @@ check "head = base taking otherwise: exit 2, the same code moved takes" "yes" \
 check "...and the base side kept from that run is not kept" "no" \
   "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T20:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 
+# A REF IS LAID OUT ONCE (Order independence #90): the trees here hold no build.sbt, which identity_tree took for "not
+# laid out yet", so every run removed and laid out again the trees another step of it was reading -- a run on a slow
+# runner then died between the layout and its next step. Both refs were laid out above: a run over them lays out none.
+out=$(what_if "$c0" "$c4" 2026-11-06T20:30:00Z --no-serve)
+check "a ref laid out before is not laid out again" "0" "$(grep -cE "laying out [0-9a-f]{40} " "$work/err")"
+
+# A STEP BEFORE THE RESOLVE FAILING says which one (Order independence #90: exit 2, nothing on stderr after "laying out"
+# the head, so neither the case nor the cause could be told): a head whose tree cannot be laid out (its refs directory
+# read-only) is a HARNESS ERROR naming the head and the step's exit status
+c6=$(commit "a head laid out nowhere")
+chmod 555 "$work/cache/refs"
+out=$(what_if "$c0" "$c6" 2026-11-06T21:00:00Z --no-serve); rc=$?
+chmod 755 "$work/cache/refs"
+check "a head whose tree cannot be laid out: exit 2, naming the step and its status" "yes" \
+  "$(harness_error "HARNESS ERROR.*laying out the head ${c6:0:12}.* failed (exit [0-9]*)" "$rc" "$out")"
+
 spec_summary
