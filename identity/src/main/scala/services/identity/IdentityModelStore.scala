@@ -14,8 +14,11 @@ import services.identity.vocabulary.{BsonFields, CandidateQuery, DocumentDigest,
 
 /** One family of the incremental model as stored: what it decided, what it blocks under, what it
  *  asked and read, the node each listing was, and the digest of the corpus facts it read — all an
- *  [[IncrementalResolver]] needs, after a restart, to tell whether the family still stands. */
-final case class StoredFamily(id: String, family: IdentityResolver.RegionFamily, digest: Long)
+ *  [[IncrementalResolver]] needs, after a restart, to tell whether the family still stands. After one under other title
+ *  rules, also the titles it read through the title forms and the digest of its members as the model read them
+ *  ([[TitleRuleChange]]): `None` for a family stored before either was kept, which such a restart re-resolves. */
+final case class StoredFamily(id: String, family: IdentityResolver.RegionFamily, digest: Long,
+                              titles: Option[TitleFormInputs] = None, members: Option[Long] = None)
 
 object StoredFamily {
   /** A family's id: its smallest listing, stable for as long as that listing is its member. */
@@ -34,17 +37,24 @@ trait IdentityModelStore {
   /** The rules the stored families were decided under ([[IncrementalResolver.rulesVersion]]). */
   def rulesVersion: Option[String]
   def recordRulesVersion(version: String): Unit
+  /** The title rules the stored families were decided under ([[TitleRuleRecord]]), kept apart from the rules version: a
+   *  change to them alone re-resolves only the families that read what moved. */
+  def titleRules: Option[String]
+  def recordTitleRules(record: String): Unit
 }
 
 /** The families as [[MongoIdentityModelStore]] would hold them: each written through its codec to BSON and read back. */
 final class InMemoryIdentityModelStore extends IdentityModelStore {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[String, StoredFamily]
   @volatile private var rules: Option[String] = None
+  @volatile private var titles: Option[String] = None
   private val stored = tools.BsonRoundTrip.via(MongoIdentityModelStore.encode, MongoIdentityModelStore.decode)
   def families(): Seq[StoredFamily] = synchronized(kept.values.toSeq)
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = synchronized { kept --= removed; added.foreach(f => kept(f.id) = stored(f)) }
   def rulesVersion: Option[String] = rules
   def recordRulesVersion(version: String): Unit = rules = Some(version)
+  def titleRules: Option[String] = titles
+  def recordTitleRules(record: String): Unit = titles = Some(record)
 }
 
 /** The families in `identity_model_families` (one document per family, `_id` its [[StoredFamily.id]])
@@ -98,6 +108,15 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
       ReplaceOptions().upsert(true)).toFuture(), Timeout)
     ()
   }
+
+  def titleRules: Option[String] =
+    Await.result(meta.find(Filters.equal("_id", TitleRulesDocument)).headOption(), Timeout).flatMap(_.get[BsonString]("rules")).map(_.getValue)
+
+  def recordTitleRules(record: String): Unit = {
+    Await.result(meta.replaceOne(Filters.equal("_id", TitleRulesDocument), Document("_id" -> TitleRulesDocument, "rules" -> record),
+      ReplaceOptions().upsert(true)).toFuture(), Timeout)
+    ()
+  }
 }
 
 object MongoIdentityModelStore {
@@ -108,6 +127,7 @@ object MongoIdentityModelStore {
   /** How many families one read of stored digests and one bulk write carry. */
   val WriteBatch         = 500
   private val RulesDocument = "rules"
+  private val TitleRulesDocument = "titleRules"
 
   /** About how many entries one bucket of a family's listing-keyed array holds ([[bucketed]]). */
   val ListingsPerBucket = 16
@@ -118,14 +138,25 @@ object MongoIdentityModelStore {
    *  documents array index by array index, so in one sorted array a listing joining a ~3,000-listing family shifted
    *  every entry after it, and the diff was up to the whole document; bucketed, only the entries of its bucket shift.
    *  The count changes only as the array doubles, and a reader takes either layout ([[BsonFields.bucketed]]). */
-  private[identity] def bucketed[A](entries: Seq[A])(key: A => ListingKey, encode: A => BsonValue): BsonArray = {
+  private[identity] def bucketed[A](entries: Seq[A])(key: A => ListingKey, encode: A => BsonValue): BsonArray =
+    bucketedBy(entries)(entry => ListingKey.serialised(key(entry)), encode)
+
+  /** [[bucketed]], each entry's bucket by the hash of `name`. */
+  private def bucketedBy[A](entries: Seq[A])(name: A => String, encode: A => BsonValue): BsonArray = {
     val count = Integer.highestOneBit(math.max(1, entries.size / ListingsPerBucket))
     if (count == 1) BsonArray.fromIterable(entries.map(encode))
     else {
       val buckets = Array.fill(count)(new BsonArray())
-      entries.foreach(entry => buckets(Math.floorMod(ListingKey.serialised(key(entry)).hashCode, count)).add(encode(entry)))
+      entries.foreach(entry => buckets(Math.floorMod(name(entry).hashCode, count)).add(encode(entry)))
       BsonArray.fromIterable(buckets.toSeq)
     }
+  }
+
+  /** Titles as a family's [[TitleFormInputs]] keep them: sorted and bucketed, so a title the family newly reads moves
+   *  only its bucket in the oplog's diff. */
+  private def titles(values: Set[String]): BsonArray = bucketedBy(values.toSeq.sorted)(identity, BsonString(_))
+  private def readTitles(reader: org.bson.BsonReader): Set[String] = {
+    val all = Set.newBuilder[String]; BsonFields.bucketed(reader)(all += reader.readString()); all.result()
   }
 
   /** A decision's members, bucketed when they are in the sorted order a reader of buckets restores; else as they
@@ -141,7 +172,7 @@ object MongoIdentityModelStore {
   private[identity] def encode(stored: StoredFamily): BsonDocument = {
     val family = stored.family
     val reads  = family.reads
-    new BsonDocument()
+    val document = new BsonDocument()
       .append("_id", BsonString(stored.id))
       .append("listings", bucketed(family.listings.toSeq.sorted(using ListingKey.ordering))(identity, ListingKeyBson.encode))
       .append("decisions", BsonArray.fromIterable(family.decisions.map(ResolverDecisionBson.encodeWith(_, members))))
@@ -154,6 +185,9 @@ object MongoIdentityModelStore {
       .append("nodes", bucketed(family.nodeKeys.toSeq.sortBy(_._1)(using ListingKey.ordering))(_._1, { case (listing, node) =>
         new BsonDocument().append("listing", ListingKeyBson.encode(listing)).append("node", BsonString(node)) }))
       .append("digest", BsonInt64(stored.digest))
+    stored.titles.foreach(inputs => document.append("titleKeys", titles(inputs.keys)).append("titleSearches", titles(inputs.searches)))
+    stored.members.foreach(digest => document.append("members", BsonInt64(digest)))
+    document
   }
 
   private[identity] def decode(d: BsonDocument): StoredFamily = read(new org.bson.BsonDocumentReader(d))
@@ -178,6 +212,8 @@ object MongoIdentityModelStore {
     var reads: CorpusContext.Reads              = null
     var nodes: Vector[(ListingKey, String)]     = null
     var digest: java.lang.Long                  = null
+    var titleKeys, titleSearches: Set[String]   = null
+    var members: Option[Long]                   = None
     BsonFields.document(reader) {
       case "_id"       => id = reader.readString()
       case "listings"  => listings = { val all = Set.newBuilder[ListingKey]; BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader)); all.result() }
@@ -188,6 +224,9 @@ object MongoIdentityModelStore {
       case "reads"     => reads = readReads(reader)
       case "nodes"     => nodes = readNodes(reader)
       case "digest"    => digest = reader.readInt64()
+      case "titleKeys" => titleKeys = readTitles(reader)
+      case "titleSearches" => titleSearches = readTitles(reader)
+      case "members"   => members = Some(reader.readInt64())
       case _           => reader.skipValue()
     }
     val held = BsonFields.required(listings, "listings")
@@ -195,7 +234,8 @@ object MongoIdentityModelStore {
       held, BsonFields.required(decisions, "decisions"), BsonFields.required(blockKeys, "blockKeys"),
       BsonFields.required(queries, "queries"), BsonFields.required(films, "films"), BsonFields.required(reads, "reads"),
       sharedNodes(held, BsonFields.required(nodes, "nodes"))),
-      BsonFields.required(digest, "digest").longValue)
+      BsonFields.required(digest, "digest").longValue,
+      Option.when(titleKeys != null && titleSearches != null)(TitleFormInputs(titleKeys, titleSearches)), members)
   }
 
   /** One instance of each listing key and each node text per family: the `nodes` pairs repeat the `listings` keys

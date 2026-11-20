@@ -22,6 +22,12 @@ object IdentityRulesSources {
     "identity/src/main/scala/services/identity/IncrementalResolver.scala",
     "identity/src/main/scala/services/identity/IdentityModelStore.scala")
 
+  /** Of what the resolver reads, the data its rules version leaves out because the model versions it itself, per country:
+   *  the title-rule table, which reaches a family only through its country's normaliser -- recorded with the stored
+   *  families (`services.identity.TitleRuleRecord`), so a change to it re-resolves only the families that read what moved
+   *  (`TitleRuleChange`) -- and through its relay rows, which `IncrementalResolver.rulesVersion` digests. */
+  val RuntimeVersioned: Set[String] = Set("common/src/main/resources/title-rules.tsv")
+
   /** The agreement stage (`AgreementStage.RulesVersion`): its rules and all they reach — the resolver its families run,
    *  the agreement's guards — so a deploy that changes any of them decides every stored verdict again, and one that
    *  changes none keeps them across the restart. */

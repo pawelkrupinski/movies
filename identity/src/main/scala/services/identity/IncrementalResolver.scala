@@ -105,21 +105,26 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  whose family changed while the model was not running, or that no stored family holds — is
    *  resolved anew, a title-key component at a time. What moved while it was down is exactly what
    *  those checks find, so a restart needs no replay of what it missed. Its regions are resolved `takeUpThreads` side by
-   *  side: a take-up is the worker's boot, and every listing no family stands for is resolved in it. */
+   *  side: a take-up is the worker's boot, and every listing no family stands for is resolved in it.
+   *
+   *  Families decided under another rules version stand for nothing. Under the same version but other title rules -- the
+   *  country's, which the version leaves out ([[TitleRuleRecord]]) -- a family stands only when it also reads the title
+   *  rules as it read them ([[TitleRuleChange]]): a title-rule change re-resolves the families that read what it moved. */
   def restore(taken: Seq[Listing]): Unit = {
     val listings = IncrementalResolver.onePerKey(taken)
     listings.foreach(hold)
     clock.context(corpus.seen(listings))
-    // Families decided under other rules stand for nothing: every one is re-resolved.
-    val (stored, outruled) =
-      if (store.rulesVersion.contains(rules)) (store.families(), Set.empty[String]) else (Nil, store.families().map(_.id).toSet)
+    val since = if (store.rulesVersion.contains(rules)) titlesSinceStored else None
+    val (stored, outruled) = since.fold((Seq.empty[StoredFamily], store.families().map(_.id).toSet))(_ => (store.families(), Set.empty[String]))
+    val titles = since.flatten
     // The keys two stored families claim, found in one pass — not by grouping every stored key.
     val claimed = { val once = mutable.HashSet.empty[ListingKey]
                     stored.iterator.flatMap(_.family.listings).filterNot(once.add).toSet }
     val (standing, fallen) = stored.partition { family =>
       family.family.listings.forall(key => isHeld(key) && !claimed(key)) &&
         family.family.nodeKeys.forall { case (key, node) => corpus.nodeKeyOf(key).contains(node) } &&
-        (mutation == Mutation.TrustStored || clock.slices(corpus.slice(family.family.reads).digest) == family.digest)
+        (mutation == Mutation.TrustStored || clock.slices(corpus.slice(family.family.reads).digest) == family.digest) &&
+        titles.forall(readsTitlesAlike(family, _))
     }
     // A standing family's slice digests to what it stored — the check above just computed it — so it
     // is kept, not digested again (half a UK take-up's hashing when it was).
@@ -137,6 +142,27 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       traces.settle(gone, Nil)
     }
     ruled()
+  }
+
+  /** The country's title rules as the model records them ([[TitleRuleRecord]]). */
+  private lazy val titleRules: String = TitleRuleRecord.of(normalizer.rules)
+
+  /** How the title rules moved since the stored families were decided: `Some(None)` not at all; `Some(change)` they did,
+   *  and the store's record rebuilds the rules they were decided under; `None` when the store holds no record this code
+   *  can read, under which no stored family can be told to stand. */
+  private def titlesSinceStored: Option[Option[TitleRuleChange]] = store.titleRules match {
+    case Some(record) if record == titleRules => Some(None)
+    case Some(record)                          => TitleRuleRecord.normalizer(record, normalizer).map(was => Some(new TitleRuleChange(was, normalizer)))
+    case None                                  => None
+  }
+
+  /** Does a stored family read the title rules as it read them, after they changed ([[TitleRuleChange]])? Its members as
+   *  the model reads them, and every title it read through the title forms; a family stored before either was kept
+   *  stands for nothing. */
+  private def readsTitlesAlike(family: StoredFamily, change: TitleRuleChange): Boolean = {
+    val members = family.family.listings.toSeq.flatMap(heldListing)
+    (mutation == Mutation.IgnoreMembers || family.members.contains(IncrementalResolver.membersDigest(members))) &&
+      (mutation == Mutation.IgnoreTitleForms || family.titles.exists(change.readsAlike(_, members)))
   }
 
   /** The model as a [[Resolution]] — what the projection reads: its decisions and the records of the films it decided.
@@ -201,7 +227,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // component (or a batch's worth of one) at a time.
     rounds.resolve((touched ++ stale).toSeq.sorted.map(id => families(id).resolved.listings) ++
       clock.context(corpus.titleComponents(loose)).sortBy(_.size).flatMap(_.grouped(regionBatch)).map(_.toSet))
-    settle(rounds.settled.values.toSeq, rounds.replaced, context)
+    settle(rounds.settled.values.toSeq, rounds.replaced, context, rounds.titlesOf)
   }
 
   /** A family reading none of the keys the event moved reads what it read before; one that does is stale only if the
@@ -216,6 +242,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  as every family an event touched. */
   private final class UpdateRounds(val replaced: mutable.HashSet[Int], context: CorpusContext, threads: Int) {
     val settled = mutable.LinkedHashMap.empty[Set[ListingKey], RegionFamily]
+    /** The titles each settled family's region read through the title forms: every family of a region is told all its
+     *  region read, which holds what each read. */
+    val titlesOf = mutable.HashMap.empty[Set[ListingKey], TitleFormInputs]
     // The settled families by block key: what a result looks its settled neighbours up in, not a scan
     // of every family settled so far (a seed settles them all, so the scan was quadratic in families).
     private val settledOfKey = mutable.HashMap.empty[String, mutable.Set[Set[ListingKey]]]
@@ -232,18 +261,21 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     private def round(units: Seq[Set[ListingKey]]): Seq[Set[ListingKey]] = {
       val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
       val regions = Regions.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
-      val resolved = Regions.inOrder(regions, threads)(listings =>
-        clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context)))
-      resolved.foreach { result =>
+      val resolved = Regions.inOrder(regions, threads) { listings =>
+        val forms = new RecordingTitleForms(normalizer)
+        val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, forms, calibration, pins, decorations, context))
+        (result, forms.inputs)
+      }
+      resolved.foreach { case (result, titles) =>
         reResolved += result.size
-        result.foreach(family => fold(family).foreach(next += _))
+        result.foreach(family => fold(family, titles).foreach(next += _))
       }
       next.toSeq
     }
 
     /** Settles `family`, or — sharing a block key with a family left alone or one settled already — the unit to resolve
      *  again with them. */
-    private def fold(family: RegionFamily): Option[Set[ListingKey]] = {
+    private def fold(family: RegionFamily, titles: TitleFormInputs): Option[Set[ListingKey]] = {
       val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
                    else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
       val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
@@ -251,11 +283,13 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                      .filter(_.blockKeys.exists(family.blockKeys)).toSeq
       if (joined.isEmpty && back.isEmpty) {
         settled(family.listings) = family
+        titlesOf(family.listings) = titles
         family.blockKeys.foreach(key => settledOfKey.getOrElseUpdate(key, mutable.HashSet.empty) += family.listings)
         None
       } else {
         back.foreach { again =>
           settled.remove(again.listings)
+          titlesOf.remove(again.listings)
           again.blockKeys.foreach(key => settledOfKey.get(key).foreach(_ -= again.listings))
         }
         replaced ++= joined
@@ -269,7 +303,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  listings' venue and title — and the model keeps the decisions with only what a stage after it reads of them
    *  ([[DecisionTrace.kept]]). One family's hand-over holds only its own: a store may drop it unbuilt, once a later
    *  update re-resolves the family. The canonical and search tiers are read once per cleaned title across the batch. */
-  private def settle(settled: Seq[RegionFamily], replaced: mutable.HashSet[Int], context: CorpusContext): Unit = {
+  private def settle(settled: Seq[RegionFamily], replaced: mutable.HashSet[Int], context: CorpusContext,
+                     titlesOf: collection.Map[Set[ListingKey], TitleFormInputs]): Unit = {
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
     val byClean = mutable.HashMap.empty[String, Seq[String]]
@@ -282,8 +317,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     clock.slices(settled.foreach(family => remember(family.copy(decisions = family.decisions.map(_.withTraceKept)),
       context.slice(family.reads).digest)))
-    val added   = settled.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
-      .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
+    val added   = settled.flatMap(family => familyOf(family.listings.head).flatMap(families.get).map { kept =>
+      StoredFamily(kept.storeId, kept.resolved, kept.digest, titlesOf.get(family.listings),
+        Some(IncrementalResolver.membersDigest(family.listings.toSeq.flatMap(heldListing))))
+    })
     store.replace(removed -- added.map(_.id), added)
     traces.settle(removed, traced)
     ruled()
@@ -291,7 +328,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 
   /** The store's families are this model's: record the rules they are decided under, once. */
   private var rulesRecorded = false
-  private def ruled(): Unit = if (!rulesRecorded) { store.recordRulesVersion(rules); rulesRecorded = true }
+  private def ruled(): Unit = if (!rulesRecorded) { store.recordRulesVersion(rules); store.recordTitleRules(titleRules); rulesRecorded = true }
 
   // A listing is filed under its OWN key object — the one its families, decisions and node maps are made to name
   // ([[remember]]), and the corpus files it under: a listing re-published with other fields comes with a new one,
@@ -367,10 +404,17 @@ object IncrementalResolver {
   val RegionBatch = 500
 
   /** The version of the rules a model's families are decided under: the resolver's code
-   *  ([[IdentityRules.codeVersion]]), the calibration and decorations it runs with, and the pins.
-   *  Stored families decided under another version are re-resolved on restore. */
+   *  ([[IdentityRules.codeVersion]]), the calibration and decorations it runs with, the pins, and the title-rule rows read
+   *  outside the country's normaliser ([[TitleRuleRecord.relayVersion]]). Stored families decided under another version
+   *  are re-resolved on restore. The country's own title rules are not in it: the store records them apart
+   *  ([[TitleRuleRecord]]), and a change to them re-resolves only the families that read what moved. */
   def rulesVersion(code: String, calibration: IdentityCalibration, decorations: TitleDecorations, pins: PinConstraints): String =
-    Seq(code, calibration.hashCode, decorations.hashCode, pins.hashCode).mkString(":")
+    Seq(code, calibration.hashCode, decorations.hashCode, pins.hashCode, TitleRuleRecord.relayVersion).mkString(":")
+
+  /** A family's members as the model reads them ([[FamilyIndex.modelDigest]]), in no order: what a restore under other
+   *  title rules compares, since the archive builds every listing's fields by the rules ([[Listing.of]]). */
+  private[identity] def membersDigest(members: Iterable[Listing]): Long =
+    services.identity.vocabulary.ContentHash.of(members.iterator.map(FamilyIndex.modelDigest).toSet)
 
   /** How many of the largest families, and of each one's busiest nodes, the model reports. */
   val Largest = 3
@@ -415,5 +459,9 @@ object IncrementalResolver {
     case NoExpansion
     /** A restart takes every stored family as it was, whatever its corpus facts now read. */
     case TrustStored
+    /** A restart under other title rules keeps a family whatever titles it read through the title forms. */
+    case IgnoreTitleForms
+    /** A restart under other title rules keeps a family whatever its members now read as. */
+    case IgnoreMembers
   }
 }

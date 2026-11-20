@@ -112,8 +112,8 @@ object MongoCollections {
     RegisteredCollection("identity_model_families", Corpus, Sweep("MongoIdentityModelStore"), Set(Worker))
       .mirror("The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five " +
         "countries with the other review collections (2026-10-06).")
-      .resolveState("the model's families, a cache: one stands only under the same rules version and slice digest " +
-        "(IncrementalResolver.restore, no-drift item 1)"),
+      .resolveState("the model's families, a cache: one stands only under the same rules version and slice digest, and " +
+        "under other title rules only when the titles it read read alike (IncrementalResolver.restore, no-drift item 1)"),
     RegisteredCollection("identity_listings", Corpus, OnePerVenue, Set(Worker))
       .mirror("Review pages: each venue's last scrape as the identity intake holds it (catalogue ids, " +
         "screenings).")
@@ -214,7 +214,7 @@ object MongoCollections {
     RegisteredCollection("freshness", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
       .resolveState("when a venue page is due to be read: a listing's first resolve waits on it, its arrival in venue_pages reopens the family"),
     RegisteredCollection("identity_model_meta", Corpus, KeptForever("the model store's meta documents, a fixed set"), Set(Worker))
-      .resolveState("the rules version the stored families were decided under: their cache key"),
+      .resolveState("the rules version and the title rules the stored families were decided under: their cache key"),
     RegisteredCollection("fleet_host_pace", Fleet, KeptForever("one document per fleet-paced host, rewritten in place"), Set(Worker)),
     RegisteredCollection("omdb_budget", Fleet, KeptForever("one ~50-byte document per OMDb day, ~18 kB a year"), Set(Worker)),
     RegisteredCollection("http_unrecovered_hosts", Corpus, Sweep("HostCircuitBreakerHttpFetch"), Set(Worker)),

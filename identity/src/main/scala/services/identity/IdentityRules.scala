@@ -9,7 +9,9 @@ import services.identity.vocabulary.ClasspathResource
  *  comments or spare whitespace (`project/SourceDigest.scala`), so an edit to a comment re-resolves nothing; and a digest
  *  proven to decide what an earlier one decides (a pure move, a refactor no take moved under) carries that one's stamp
  *  (`project/StampCarry.scala`, `identity-rules-digest.txt` beside it holding the digest itself), so its deploy re-resolves
- *  nothing either. */
+ *  nothing either. The title-rule table is not in it (`IdentityRulesSources.RuntimeVersioned`): the model records each
+ *  country's title rules with its families ([[TitleRuleRecord]]) and re-resolves, on a change to them, only the families
+ *  that read what moved. */
 object IdentityRules {
   val Resource = s"/${ClasspathResource.Stamps}/identity-rules-version.txt"
 

@@ -64,6 +64,29 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
     resource("/services/identity/agreement-rules-sources.txt").linesIterator.filter(ids).toSeq shouldBe empty
   }
 
+  // The model records each country's title rules with its families (TitleRuleRecord) and, on a change to them alone,
+  // re-resolves only the families that read what moved (TitleRuleChange): digested here, every title-rule edit
+  // re-resolved every family of every country, a rule for one billing at one venue too.
+  it should "leave out the title-rule table, which the model versions per country with its families" in {
+    digested should not contain "common/src/main/resources/title-rules.tsv"
+    digested should contain allOf ("common/src/main/resources/title-words.tsv", "common/src/main/scala/services/titles/rules/TitleRuleSet.scala")
+  }
+
+  // What lets the rules version leave the table out: the resolver reads it only through the country's normaliser it is
+  // handed (whose rules the model records) and the relay rows (which `IncrementalResolver.rulesVersion` digests). A
+  // source it reaches that read the table another way -- the whole table, another country's set -- would decide by rules
+  // no record holds.
+  it should "reach the title-rule table only through the country's normaliser and the relay rows" in {
+    // each source's code, its comments off (what the digest reads), so a doc naming one is no reader
+    def mentioning(pattern: String) = digested.filter(_.endsWith(".scala")).filter { path =>
+      SourceDigest.lexed(new String(Files.readAllBytes(main.resolve(path)), StandardCharsets.UTF_8)).exists(pattern.r.findFirstIn(_).isDefined)
+    }.map(_.split('/').last).toSet
+    mentioning("\\bTitleRuleTable\\b") shouldBe Set("TitleRuleTable.scala", "TitleRules.scala", "ExtraTitleRules.scala", "RelayBanner.scala",
+      "TitleRuleRecord.scala")
+    mentioning("\\b(?:Extra)?TitleRules\\.") shouldBe Set("TitleRuleSet.scala")
+    mentioning("\\b(?:TitleRuleSet|TitleNormalizer)\\.forCountry\\b") shouldBe Set("TitleNormalizer.scala")
+  }
+
   private def read(edit: (String, String => String)*)(path: String): Array[Byte] = {
     val bytes = Files.readAllBytes(main.resolve(path))
     edit.find(_._1 == path).fold(bytes)(e => e._2(new String(bytes, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8))

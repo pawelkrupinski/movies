@@ -379,6 +379,8 @@ lazy val identity = (project in file("identity"))
     // from — the sources the compiler records the resolver and its store as reaching, here and in common, and the
     // resources none but other code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's
     // families; one that changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
+    // The title-rule table is left out of it (`IdentityRulesSources.RuntimeVersioned`): the model records each country's
+    // title rules with its families and re-resolves, on a change to them, only the families that read what moved.
     // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`), from what builds
     // a slot (`IdentityRulesSources.VenueSlotRoots`, not following the leaves that reach the resolver): a deploy that
     // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
@@ -404,6 +406,7 @@ lazy val identity = (project in file("identity"))
           ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
         val sources   = IdentityRulesSources.of(modules, roots, leaves)
         val resources = IdentityRulesSources.resources(repo, modules.map(_.name), sources.filterNot(leaves))
+          .filterNot(path => name == "identity-rules" && IdentityRulesSources.RuntimeVersioned(path))
         val paths     = sources ++ resources
         // under the module's own package (`ClasspathResource.Stamps`): a stale copy elsewhere can never shadow it
         val stamps  = (Compile / resourceManaged).value / "services" / "identity"

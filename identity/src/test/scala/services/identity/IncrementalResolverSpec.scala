@@ -226,7 +226,8 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
         .batch(seen = corpus.listings.take(corpus.listings.size / 2))
       Seq("empty store" -> (() => new InMemoryIdentityModelStore), "half stood" -> (() => {
         val copy = new InMemoryIdentityModelStore
-        copy.replace(Set.empty, stored.families()); stored.rulesVersion.foreach(copy.recordRulesVersion); copy
+        copy.replace(Set.empty, stored.families()); stored.rulesVersion.foreach(copy.recordRulesVersion)
+        stored.titleRules.foreach(copy.recordTitleRules); copy
       })).flatMap { case (label, store) =>
         def takeUp(threads: Int) = {
           val model = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None,

@@ -151,6 +151,8 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
       def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = { familiesDropped += removed; keptFamilies.replace(removed, added) }
       def rulesVersion: Option[String] = keptFamilies.rulesVersion
       def recordRulesVersion(version: String): Unit = keptFamilies.recordRulesVersion(version)
+      def titleRules: Option[String] = keptFamilies.titleRules
+      def recordTitleRules(record: String): Unit = keptFamilies.recordTitleRules(record)
     }
     val traces: IdentityTraceStore = (removed: Set[String], added: Seq[FamilyTraces]) => {
       tracesDropped += removed; keptTraces.replace(removed, added)
@@ -276,6 +278,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = written).batch(seen = corpus.listings)
     val decoded = new InMemoryIdentityModelStore
     written.rulesVersion.foreach(decoded.recordRulesVersion)
+    written.titleRules.foreach(decoded.recordTitleRules)
     decoded.replace(Set.empty, written.families().map(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family))))
     val held     = corpus.listings.map(ownKey)
     val restored = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = decoded)
