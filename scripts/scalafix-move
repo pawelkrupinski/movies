@@ -45,7 +45,7 @@ fi
 others=$(grep -cE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|trait|object|enum) [A-Za-z]" "$SF_TREE/$source" || true)
 own=$(grep -cE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|trait|object|enum) $from_name\b" "$SF_TREE/$source" || true)
 [ "$others" -eq "$own" ] || die "$source defines more than $from_name (and its companion): split it first"
-target_dir="${source%/$pkg_dir/*}/$(echo "$to_pkg" | tr . /)"
+target_dir="${source%/"$pkg_dir"/*}/$(echo "$to_pkg" | tr . /)"
 target="$target_dir/$to_name.scala"
 [ ! -e "$SF_TREE/$target" ] || die "$target exists already"
 

@@ -21,6 +21,7 @@
 set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die): a measure that failed gives no verdict, 2
 DIE_STATUS=2
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 update="" runs=3 out=""
