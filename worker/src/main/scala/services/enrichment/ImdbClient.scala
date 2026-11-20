@@ -29,7 +29,7 @@ class ImdbClient(http: HttpFetch) {
    *  caller must be able to tell "no rating" from "we never found out": see
    *  [[tools.ReadOutcome]] and the 2026-07-30 IMDb outage it documents. */
   def lookup(imdbId: String): Option[Double] =
-    graphQl(queryBody(imdbId)).flatMap(ratingOf)
+    graphQl(askingId(RatingQuery, imdbId)).flatMap(ratingOf)
 
   /** POST one GraphQL query and return its response. `None` when IMDb answered that it
    *  has no such title (a 404, or `data.title` null); a response that is not GraphQL's
@@ -79,7 +79,7 @@ class ImdbClient(http: HttpFetch) {
    *  rows where the cinema-side synopsis was short or missing, producing
    *  inappropriate English blurbs for Polish films. */
   def details(imdbId: String): Option[ImdbClient.Details] =
-    graphQl(detailsQueryBody(imdbId)).map(detailsOf)
+    graphQl(askingId(DetailsQuery, imdbId)).map(detailsOf)
 
   def parseDetails(body: String): ImdbClient.Details = detailsOf(Json.parse(body))
 
@@ -90,14 +90,9 @@ class ImdbClient(http: HttpFetch) {
     val originalT  = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.nonEmpty)
     val releaseYr  = (title \ "releaseYear" \ "year").asOpt[Int]
     val runtimeS   = (title \ "runtime" \ "seconds").asOpt[Int].map(s => (s / 60).max(1))
-    val credits    = (title \ "principalCredits").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-    def namesFor(category: String): Seq[String] = credits
-      .filter(c => (c \ "category" \ "id").asOpt[String].contains(category))
-      .flatMap(c => (c \ "credits").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
-      .flatMap(c => (c \ "name" \ "nameText" \ "text").asOpt[String])
-      .filter(_.nonEmpty)
-    val directors = namesFor("director")
-    val stars     = namesFor("cast").take(MaxCastNames)
+    val credits    = (title \ "principalCredits").asOpt[Seq[JsValue]].getOrElse(Nil)
+    val directors  = creditedNames(credits, "director").filter(_.nonEmpty)
+    val stars      = creditedNames(credits, "cast").filter(_.nonEmpty).take(MaxCastNames)
     val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(c => (c \ "text").asOpt[String]).filter(_.nonEmpty)
     val poster = (title \ "primaryImage" \ "url").asOpt[String].filter(_.nonEmpty)
@@ -112,42 +107,6 @@ class ImdbClient(http: HttpFetch) {
       countries      = countries,
       posterUrl      = poster
     )
-  }
-
-  private def queryBody(imdbId: String): String = {
-    // GraphQL with `id` as a String variable; sent as a JSON object body.
-    val query = "query Rating($id:ID!){title(id:$id){ratingsSummary{aggregateRating voteCount}}}"
-    Json.stringify(Json.obj(
-      "query"     -> query,
-      "variables" -> Json.obj("id" -> imdbId)
-    ))
-  }
-
-  // Larger GraphQL query covering rating + credits + title info. IMDb's
-  // caching CDN accepts the same `title(id)` query shape — this is
-  // exactly what their site uses to render the title page header. Plot
-  // (`plot{plotText{plainText}}`) deliberately omitted; see `details`.
-  private def detailsQueryBody(imdbId: String): String = {
-    val query =
-      """query TitleDetails($id:ID!){
-        |  title(id:$id){
-        |    titleText{text}
-        |    originalTitleText{text}
-        |    releaseYear{year}
-        |    runtime{seconds}
-        |    ratingsSummary{aggregateRating voteCount}
-        |    countriesOfOrigin{countries{text}}
-        |    primaryImage{url}
-        |    principalCredits{
-        |      category{id}
-        |      credits{name{nameText{text}}}
-        |    }
-        |  }
-        |}""".stripMargin
-    Json.stringify(Json.obj(
-      "query"     -> query,
-      "variables" -> Json.obj("id" -> imdbId)
-    ))
   }
 
   /** Find an IMDb tt-id by title (+ optional year) using IMDb's public
@@ -337,23 +296,51 @@ object ImdbClient {
 
   val Endpoint                = "https://caching.graphql.imdb.com/"
 
+  /** A GraphQL body asking `query` about the title or person `id`, sent as a JSON object. */
+  private def askingId(query: String, id: String): String =
+    Json.stringify(Json.obj("query" -> query, "variables" -> Json.obj("id" -> id)))
+  /** The id an [[askingId]] body for `query` asks about; `None` for any other body. */
+  private def idAsked(query: String, body: String): Option[String] =
+    Option.when(body.contains(Json.stringify(JsString(query))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  /** The names a title's `principalCredits` credit under `category` ("director", "cast"), in IMDb's order. */
+  private def creditedNames(credits: Seq[JsValue], category: String): Seq[String] =
+    credits.filter(c => (c \ "category" \ "id").asOpt[String].contains(category))
+      .flatMap(c => (c \ "credits").asOpt[Seq[JsValue]].getOrElse(Nil)).flatMap(c => (c \ "name" \ "nameText" \ "text").asOpt[String])
+
+  /** The GraphQL query [[ImdbClient.lookup]] asks: a title's rating and vote count. */
+  private val RatingQuery = "query Rating($id:ID!){title(id:$id){ratingsSummary{aggregateRating voteCount}}}"
+  /** The GraphQL query [[ImdbClient.details]] asks: rating, credits and title info — the shape IMDb's own title
+   *  page header is rendered from. Plot (`plot{plotText{plainText}}`) deliberately omitted; see `details`. */
+  private val DetailsQuery =
+    """query TitleDetails($id:ID!){
+        |  title(id:$id){
+        |    titleText{text}
+        |    originalTitleText{text}
+        |    releaseYear{year}
+        |    runtime{seconds}
+        |    ratingsSummary{aggregateRating voteCount}
+        |    countriesOfOrigin{countries{text}}
+        |    primaryImage{url}
+        |    principalCredits{
+        |      category{id}
+        |      credits{name{nameText{text}}}
+        |    }
+        |  }
+        |}""".stripMargin
+
   /** The GraphQL query [[ImdbClient.titlesOf]] asks: a title's own, original and alternative titles. */
   private val TitlesQuery = "query Titles($id:ID!){title(id:$id){titleText{text} originalTitleText{text} akas(first:100){edges{node{text}}}}}"
-  def titlesQueryBody(imdbId: String): String =
-    Json.stringify(Json.obj("query" -> TitlesQuery, "variables" -> Json.obj("id" -> imdbId)))
+  def titlesQueryBody(imdbId: String): String = askingId(TitlesQuery, imdbId)
   /** The IMDb id a [[titlesQueryBody]] asks about; `None` for any other body. */
-  def titlesQueryId(body: String): Option[String] =
-    Option.when(body.contains(Json.stringify(JsString(TitlesQuery))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  def titlesQueryId(body: String): Option[String] = idAsked(TitlesQuery, body)
   /** The GraphQL query [[identityRecord]] asks: what the identity measures read of a title — its titles in every
    *  language, year, running time, directors and countries (ISO codes) — in one round-trip. */
   private val IdentityRecordQuery = "query IdentityRecord($id:ID!){title(id:$id){titleText{text} originalTitleText{text} " +
     "releaseYear{year} runtime{seconds} countriesOfOrigin{countries{id}} principalCredits{category{id} credits{name{nameText{text}}}} " +
     "akas(first:100){edges{node{text}}}}}"
-  def identityRecordBody(imdbId: String): String =
-    Json.stringify(Json.obj("query" -> IdentityRecordQuery, "variables" -> Json.obj("id" -> imdbId)))
+  def identityRecordBody(imdbId: String): String = askingId(IdentityRecordQuery, imdbId)
   /** The IMDb id an [[identityRecordBody]] asks about; `None` for any other body. */
-  def identityRecordId(body: String): Option[String] =
-    Option.when(body.contains(Json.stringify(JsString(IdentityRecordQuery))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  def identityRecordId(body: String): Option[String] = idAsked(IdentityRecordQuery, body)
   /** An [[IdentityRecordQuery]] answer as the identity measures read a film; `None` when IMDb has no such title. Its
    *  directors and countries are unknown, not "none", when the answer carries no credits or countries at all. */
   def identityRecordIn(js: JsValue): Option[services.identity.IdentityMeasures.Film] = {
@@ -361,9 +348,7 @@ object ImdbClient {
     val titles   = titlesIn(js)
     val own      = (title \ "titleText" \ "text").asOpt[String].filter(_.trim.nonEmpty).orElse(titles.headOption)
     val credits  = (title \ "principalCredits").asOpt[Seq[JsValue]]
-    val directed = credits.map(_.filter(c => (c \ "category" \ "id").asOpt[String].contains("director"))
-      .flatMap(c => (c \ "credits").asOpt[Seq[JsValue]].getOrElse(Nil)).flatMap(c => (c \ "name" \ "nameText" \ "text").asOpt[String])
-      .filter(_.trim.nonEmpty).distinct)
+    val directed = credits.map(creditedNames(_, "director").filter(_.trim.nonEmpty).distinct)
     val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[Seq[JsValue]].map(_.flatMap(c => (c \ "id").asOpt[String]).filter(_.nonEmpty))
     own.map { name =>
       val original = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.trim.nonEmpty)
@@ -411,8 +396,7 @@ object ImdbClient {
 
   private val DirectingCreditsQuery = "query DirectingCredits($id:ID!){name(id:$id){credits(first:100, filter:{categories:[\"director\"]})" +
     "{edges{node{title{id titleType{id}}}}}}}"
-  def directingCreditsBody(personId: String): String =
-    Json.stringify(Json.obj("query" -> DirectingCreditsQuery, "variables" -> Json.obj("id" -> personId)))
+  def directingCreditsBody(personId: String): String = askingId(DirectingCreditsQuery, personId)
   /** The film-like titles a [[directingCreditsBody]] answer's `data` credits the person with directing. */
   def directingCreditsIn(data: JsObject): Seq[String] =
     (data \ "name" \ "credits" \ "edges").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap { edge =>
