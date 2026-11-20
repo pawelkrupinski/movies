@@ -23,6 +23,8 @@
 
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/shell-spec.sh
+. "$HERE/../shell-spec.sh" # wait_until
 
 LOCAL_URI="mongodb://127.0.0.1:28017/?directConnection=true"
 # Unique per run: two agents running this spec against the one :28017 server would otherwise share
@@ -238,19 +240,22 @@ a_fence_holds_the_tail() {
   reset_dbs
   src "$GHOST_COLL" ".insertOne({_id:'before'})" >/dev/null
   run_script "$HERE/mirror-targets.js" "$HERE/seed.js"
-  local fences; fences="$(mktemp -d)"
+  local fences log; fences="$(mktemp -d)"; log="$fences/tail.log"
   mkdir -p "$fences/$SRC_DB"
   echo "$(( $(date +%s) + 600 )) run" > "$fences/$SRC_DB/what-if-1"
-  FENCE_DIR="$fences" run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/fence-rule.js" "$HERE/tail.js" &
+  # the tailer's own output, unlike run_script's: its "holding" line is the moment the change is in hand and held
+  mongosh "$LOCAL_URI" --quiet --eval "var DST='$LOCAL_URI'; var SRC_DB='$SRC_DB'; var FENCE_DIR='$fences'" \
+    --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/fence-rule.js" --file "$HERE/tail.js" \
+    > "$log" 2>&1 &
   local tailpid=$!
-  sleep 2
+  wait_until "the tailer watches" grep -q 'watching' "$log"
   src "$GHOST_COLL" ".insertOne({_id:'during'})" >/dev/null
-  sleep 5
-  if [ "$(mir "$GHOST_COLL" ".countDocuments({_id:'during'})" | tr -d '[:space:]')" = "0" ]; then pass "$what_held"
-  else fail "$what_held (the tailer applied it through the fence)"; fi
+  if wait_until "the tailer holds the change for the fence" grep -q 'holding changes for the what-if fence what-if-1' "$log" &&
+     [ "$(mir "$GHOST_COLL" ".countDocuments({_id:'during'})" | tr -d '[:space:]')" = "0" ]; then pass "$what_held"
+  else fail "$what_held (the tailer applied it through the fence: $(cat "$log"))"; fi
   rm -f "$fences/$SRC_DB/what-if-1"
-  sleep 8 # the tailer looks again every 5 s
-  if [ "$(mir "$GHOST_COLL" ".countDocuments({_id:'during'})" | tr -d '[:space:]')" = "1" ]; then pass "$what_lifted"
+  if wait_until "the held change reaches the mirror" \
+       "[ \"\$(mir $GHOST_COLL \".countDocuments({_id:'during'})\" | tr -d '[:space:]')\" = 1 ]"; then pass "$what_lifted"
   else fail "$what_lifted (the change never reached the mirror)"; fi
   kill "$tailpid" 2>/dev/null; wait "$tailpid" 2>/dev/null
   rm -rf "$fences"
