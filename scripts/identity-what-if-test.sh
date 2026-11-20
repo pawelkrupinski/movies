@@ -36,6 +36,7 @@ case " \$* " in
 esac
 echo "freshness \$*" >> "$work/freshness-calls"
 cat "$work"/fence/kinowo_uk/* >> "$work/fences-seen" 2>/dev/null
+cat "$work"/fence/kinowo_de/* >> "$work/fences-seen-de" 2>/dev/null
 case " \$* " in *" --tail "*) echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; *" --generation "*) echo "GENERATION \$1 \$gen"; echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; esac
 exit 0
 STUB
@@ -223,6 +224,11 @@ check "...drains, then fences and resolves: CLEAN" "0 yes yes" \
 check "...the generation pinned only after the drain: every read of it sees the run's own fence" "run run run" \
   "$(awk '{ print $2 }' "$work/fences-seen" | tail -3 | paste -sd' ' -)"
 rm -f "$work/behind"
+# A RUN OF SEVERAL COUNTRIES fences each for its own sides only: a country done lingers while the next resolves
+rm -rf "$work/fence" "$work/fences-seen" "$work/fences-seen-de"
+out=$(what_if "$c0" "$c4" 2026-11-06T15:55:00Z --no-serve de); rc=$?
+check "two countries: de's fence lingers while uk's sides resolve" "0 linger" \
+  "$rc $(awk '{ print $2 }' "$work/fences-seen-de" 2>/dev/null | tail -1)"
 # the kept JVM's loaded corpus is keyed by the generation too: a corpus loaded off a torn copy is never served again
 out=$(what_if "$c0" "$c4" 2026-11-06T16:00:00Z)
 check "every side is asked with the mirror generation it must read (the kept JVM's corpus key)" "yes" \

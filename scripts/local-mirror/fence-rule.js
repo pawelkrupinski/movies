@@ -4,7 +4,7 @@
 // what-if moved a take that its own base-vs-base control moved too, and a rerun moved none). So a what-if, for its run,
 // writes a fence file `<FENCE_DIR>/<prod db>/<holder>` reading `<expiry epoch seconds> <run|linger>`, and tail.js holds
 // every change while a fence holds it (mirror.sh skips its re-seed audit then too); a run's fence turns into a `linger`
-// one when it ends, so the next what-if within the linger finds the copy -- and the base side it kept -- unchanged.
+// one once its country's sides are read, so the next what-if within the linger finds the copy -- and the base side it kept -- unchanged.
 //
 // A fence holds the change while it has not expired, but never past a lag: a `run` fence for at most runMaxLagMs
 // (the age past which the mirror is not fresh: scripts/local-mirror/freshness; one run is never torn), a `linger`

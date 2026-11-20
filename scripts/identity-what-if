@@ -227,7 +227,7 @@ mirror_generation() {
   printf '%s-tail%s\n' "$gen" "$(printf '%s' "$tail" | shasum | cut -c1-12)"
 }
 # THE FENCE (scripts/local-mirror/fence-rule.js): mirror_fence <cc> holds <cc>'s tailer for this run -- a `run` fence,
-# its expiry the longest a run takes -- and the exit turns each into a `linger` one (mirror_fence_linger), so a rerun
+# its expiry the longest a run takes -- and each turns into a `linger` one (mirror_fence_linger) once its sides are read, or at the exit, so a rerun
 # within the linger reads the same copy. A fence of a what-if that died without its exit (its pid gone) is dropped.
 # THE DRAIN: back-to-back what-ifs of many agents would hold the tail for good, so a run that finds the mirror more than
 # $KINOWO_WHAT_IF_DRAIN_MINUTES (20: fence-rule.js's linger lag, past which no linger holds) behind first waits for every
@@ -551,6 +551,9 @@ for cc in "${ccs[@]}"; do
     answers_ok "$head_dir" head || exit 2
   fi
   mirror_unchanged "$cc" "$mirror_gen" "after the head" || { [ "$base_state" = kept ] || rm -rf "$base_dir"; exit 2; }
+  # both sides read: this country's fence lingers now, not once every later country is done too (a run of five held
+  # the first one's tail for all five)
+  mirror_fence_linger
   head_seconds=$(elapsed "$head_started")
   diff_args=(diff --cc "$cc" --base "$base_dir" --head "$head_dir" --judgements "$judgements" --tsv "$out/takes-diff-$cc.tsv")
   [ "$verify" = 0 ] || diff_args+=(--verify)
