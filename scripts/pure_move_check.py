@@ -652,6 +652,12 @@ def import_findings(old: Normalised, new: Normalised, old_path: str, new_path: s
             continue
         if name not in ("_", "*", "given") and "=>" not in entry and not re.search(rf"\b{re.escape(name)}\b", used):
             continue
+        # a wildcard the move left with nothing to bring: the file names none of the package's members at the head (what
+        # it named of it moved, and is imported by its new name above), so dropping it -- as the unused-import lint
+        # requires -- resolves no name otherwise
+        if name in ("_", "*") and not any(re.search(rf"\b{re.escape(m)}\b", used)
+                                          for m in moves.package_members(moves.head, package_name)):
+            continue
         found.append(f"import removed: {entry}")
     return found
 

@@ -256,6 +256,31 @@ class PureMoveCheckTest(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("import added: models.* (a wildcard bringing names that did not move: Bar)", out)
 
+    def wildcard_user(self, body: str) -> str:
+        """A user that reached the old package by a wildcard: committed at a base of its own, returned."""
+        self.repo.write("common/src/main/scala/services/users/Wild.scala",
+                        f"package services.users\n\nimport services.old.*\n\nobject Wild {{\n{body}\n}}\n")
+        return self.repo.commit("a wildcard user")
+
+    def test_a_wildcard_left_with_no_use_by_the_move_is_dropped_purely(self):
+        base = self.wildcard_user("  def foo: Foo = Foo(1)")
+        self.move_foo()
+        self.repo.write("common/src/main/scala/services/users/Wild.scala",
+                        "package services.users\n\nimport models.Foo\n\nobject Wild {\n  def foo: Foo = Foo(1)\n}\n")
+        head = self.repo.commit("move; the wildcard brought only Foo")
+        code, out = self.repo.check(f"{base}..{head}")
+        self.assertEqual(0, code, out)
+
+    def test_a_wildcard_dropped_while_the_file_names_a_member_left_behind_is_not_pure(self):
+        base = self.wildcard_user("  def foo: Foo = Foo(1)\n  def sibling = Sibling.foo")
+        self.move_foo()
+        self.repo.write("common/src/main/scala/services/users/Wild.scala",
+                        "package services.users\n\nimport models.Foo\n\nobject Wild {\n  def foo: Foo = Foo(1)\n  def sibling = Sibling.foo\n}\n")
+        head = self.repo.commit("move; the wildcard dropped under Sibling")
+        code, out = self.repo.check(f"{base}..{head}")
+        self.assertEqual(1, code, out)
+        self.assertIn("import removed: services.old.*", out)
+
     def test_a_range_moving_nothing_is_not_a_move(self):
         self.repo.write("scripts/tool-files.txt", TOOL_LIST + "x\n")
         head = self.repo.commit("an edit, no move")
