@@ -107,7 +107,7 @@ object RepositoryWrite {
     catch {
       // Shutdown race: the lifecycle closed the MongoClient while a worker was mid-write. The
       // driver throws IllegalStateException("state should be: open"). Nothing to retry into.
-      case NonFatal(exception) if isClientClosed(exception) =>
+      case NonFatal(exception) if tools.MongoWriteErrors.isClientClosed(exception) =>
         logger.debug(s"$what skipped — Mongo client closing.")
         onFailure(WriteOutcome.Declined("client-closing"))
       case NonFatal(exception) =>
@@ -120,7 +120,4 @@ object RepositoryWrite {
   def unit(collection: String, op: String, what: => String, metrics: RepositoryWriteMetrics, logger: Logger)
           (body: => Any): WriteOutcome =
     attempt(collection, op, what, metrics, logger) { body; WriteOutcome.Written }
-
-  def isClientClosed(exception: Throwable): Boolean =
-    Option(exception.getMessage).exists(_.contains("state should be: open"))
 }

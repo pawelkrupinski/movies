@@ -14,7 +14,6 @@ import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Aggregates, CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.RepositoryWrite
 import tools.KeysetScan
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
@@ -279,7 +278,7 @@ class MongoReadModelRepository(
   private def write(coll: MongoCollection[?], op: String, id: String)(body: => scala.concurrent.Future[?]): Unit =
     try { tools.MongoWriteErrors.counted(coll)(Await.result(body, 10.seconds)); () }
     catch {
-      case NonFatal(exception) if RepositoryWrite.isClientClosed(exception) => ()
+      case NonFatal(exception) if tools.MongoWriteErrors.isClientClosed(exception) => ()
       case NonFatal(exception) =>
         logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
         throw exception

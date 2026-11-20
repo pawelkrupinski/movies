@@ -89,6 +89,11 @@ object MongoWriteErrors {
   /** Seed `database`'s refusals: a connection opening it calls this. */
   def opened(database: String): Unit = sink.opened(database)
 
+  /** Whether `exception` is the driver refusing a call on a client the lifecycle closed under it — the shutdown race:
+   *  it throws `IllegalStateException("state should be: open")`, and there is nothing to retry into. */
+  def isClientClosed(exception: Throwable): Boolean =
+    Option(exception.getMessage).exists(_.contains("state should be: open"))
+
   /** Whether `exception` (or a cause) is Mongo's "not authorized on <db>": code 13, Unauthorized. */
   def isUnauthorized(exception: Throwable): Boolean = causes(exception).exists {
     case server: com.mongodb.MongoServerException => server.getCode == UnauthorizedCode

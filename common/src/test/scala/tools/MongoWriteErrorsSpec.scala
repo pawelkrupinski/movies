@@ -32,6 +32,12 @@ class MongoWriteErrorsSpec extends AnyFlatSpec with Matchers {
     MongoWriteErrors.kindOf(new IllegalStateException("state should be: open")) shouldBe None
   }
 
+  "a client closing under a shutdown" should "be told by the driver's closed-state message, and nothing else" in {
+    MongoWriteErrors.isClientClosed(new IllegalStateException("state should be: open")) shouldBe true
+    MongoWriteErrors.isClientClosed(new IllegalStateException(null: String)) shouldBe false
+    MongoWriteErrors.isClientClosed(writeError(121)) shouldBe false
+  }
+
   "a refused grant" should "be told from every other command failure" in {
     MongoWriteErrors.isUnauthorized(commandError(MongoWriteErrors.UnauthorizedCode, "not authorized on kinowo_es to execute command { insert: \"tasks\" }")) shouldBe true
     MongoWriteErrors.isUnauthorized(commandError(10107, "not primary")) shouldBe false
