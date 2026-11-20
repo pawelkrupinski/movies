@@ -59,12 +59,17 @@ class ObservationReads {
   def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.get(_).fold(Set.empty[Question])(_.questions)).toSet))
 
   /** The questions whose answers each change can have changed: those that read its key and began asking before it, but
-   *  never the one that filed its newest content -- it has read what the key holds -- and, for a change no question
-   *  filed, every reader. */
-  def changedBy(changes: Map[String, Change]): AnswersChanged = synchronized(answersOf(changes.toSeq.flatMap { case (key, change) =>
-    readers.get(key).fold(Set.empty[Question])(_.questions).filter(question =>
-      !change.filed || (!change.newestFiler.contains(question) && keysOf.get(question).forall(_.at < change.at)))
-  }.toSet))
+   *  not the one that filed its newest content -- it has read what the key holds -- unless the model still `holdsOpen` it
+   *  (holds it unanswered: [[IncrementalResolver.holdsOpen]]), and, for a change no question filed, every reader. The
+   *  model holds a question's answer in more than one place: a family's resolve asks a film's record for itself
+   *  (`CandidateGeneration.records`) while the corpus holds the record it read before, and the family's live ask filing
+   *  it left the corpus's gap open for good -- every later filing of it the same content, announced to no one (Main
+   *  #2712, #2716, #2717: 359 UK records, the 2013 "Catching Fire" among them, never read after a TMDB outage). */
+  def changedBy(changes: Map[String, Change], holdsOpen: Question => Boolean = _ => false): AnswersChanged =
+    synchronized(answersOf(changes.toSeq.flatMap { case (key, change) =>
+      readers.get(key).fold(Set.empty[Question])(_.questions).filter(question =>
+        !change.filed || (keysOf.get(question).forall(_.at < change.at) && (!change.newestFiler.contains(question) || holdsOpen(question))))
+    }.toSet))
 
   private def answersOf(questions: Set[Question]): AnswersChanged =
     AnswersChanged(

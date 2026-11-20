@@ -205,6 +205,43 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     service.drain() shouldBe None
   }
 
+  /** The model holds a film's record in more than one place: the corpus keeps the one it read, and a family's resolve asks
+   *  it again for itself (`CandidateGeneration.records`) -- live on a gap, its filing announced as that question's own,
+   *  which excused the question from waking. The corpus's copy stayed the gap it read before, and every later filing
+   *  of the record was the same content, announced to no one: after a TMDB outage 359 UK records stayed gaps for good
+   *  and Odeon Cabot Circus's "The Hunger Games: Catching Fire (2026)" took Sunrise on the Reaping (Main #2712, #2716,
+   *  #2717). A filing by a question the model still holds unanswered wakes it. */
+  "a record filed by its own question's ask elsewhere" should "still be read by the model that holds it as a gap" in {
+    import models.{Movie, CinemaMovie, Multikino, Showtime}
+    val w        = new World
+    val reads    = new ObservationReads
+    val titles   = services.movies.SingleCountryNormalizer.titleNormalizer
+    val listings = Listing.distinct(Listing.all(Seq(Multikino -> Seq(CinemaMovie(Movie("Lalka", releaseYear = Some(2025)), Multikino, None,
+      Some("Multikino/Lalka"), None, Nil, Nil, Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 1, 18, 0), None))))), titles))
+    val (search, records) = lalka(popularity = 12.4).partition(_._1.contains("/search/"))
+    search.foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) }   // the search answered, no record yet
+    var model  = Option.empty[IncrementalResolver]
+    val service = new IdentityModelService(
+      () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads), reads,
+        Some(java.util.concurrent.Executors.newFixedThreadPool(2))), titles, IdentityCalibration.resolver); model = Some(m); m },
+      reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned)
+    w.store.onChanged(service.filed)   // as WorkerWiring wires the model
+    service.takeUp()
+    model.get.gaps.films shouldBe Set(1, 2)
+    // each record asked and filed by its own question's ask -- as a family's resolve asks it, the store first, then live
+    // -- not by the corpus's
+    val family = new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads)
+    Seq(1, 2).foreach { id =>
+      reads.asking(Question.FilmRecord(id)) {
+        family.film(id) shouldBe Answer.Unknown
+        records.filter(_._1.contains(s"/movie/$id?")).foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) }
+      }
+    }
+    service.drain()
+    model.get.gaps.films shouldBe empty
+    model.get.decisions.flatMap(_.film) shouldBe Seq(2)
+  }
+
   /** What TMDB answers for "Lalka": its search, and both films' two responses each. */
   private def lalka(popularity: Double): Seq[(String, String)] = {
     def record(id: Int, year: Int, director: String, popularity: Double) = Seq(
@@ -309,6 +346,21 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     stored.candidates(query) shouldBe Answer.Unknown
     lalka(popularity = 12.4).foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) }
     stored.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(2, 1))
+  }
+
+  /** A film is filed one partial response at a time, and a drain can fall between the two: its prefetch holds the film
+   *  with its localized response only, which is no record yet. The live ask then files the English one -- and the model
+   *  read the record again from what the prefetch held, still none, while the filing, the asker's own, woke no one: the
+   *  record stayed a gap for good, re-filed unchanged by every fill round (Main #2712, #2716, #2717: Odeon Cabot Circus's
+   *  "The Hunger Games: Catching Fire (2026)" took Sunrise on the Reaping, its 2013 film's record never read). */
+  it should "read a film the prefetch held without a record again, once its other response is filed" in {
+    val w      = new World
+    val stored = w.lookups
+    w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
+    stored.prefetch(Nil, Seq(film), Nil)
+    stored.film(film) shouldBe Answer.Unknown
+    w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
+    stored.film(film).answered.flatten.map(_.title) shouldBe Some("Mulholland Drive")
   }
 
   /** One instance of the store's lookups is asked from two threads: the live agreement stage's, its apply on the

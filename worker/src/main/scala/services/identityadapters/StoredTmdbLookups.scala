@@ -120,10 +120,13 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each
       // copy worked its titles, tokens and credits out afresh (worker-pl's identity model, JFR 2026-10-05). The document is
       // the prefetch's, unchanged until the next one, so its record is too.
-      case Some(prefetched) if prefetched.document.isDefined =>
+      case Some(prefetched) if prefetched.document.exists(_.containsKey("record")) =>
         reads.read(TmdbStore.keyOf(TmdbKind.Film, tmdbId.toString))
         now.films.computeIfAbsent(tmdbId, _ => filmOf(prefetched.document))
-      case _ => filmOf(document(TmdbKind.Film, tmdbId.toString))
+      // Held with no record -- one response of its two filed, or a search's hit only -- is read again from the store, as
+      // a document held absent is: a drain falling between the two responses' filings prefetched it so, the gap's live ask
+      // files the other, and its filing wakes no one, the asker's own (Main #2712, #2716, #2717).
+      case _ => filmOf(storedDocument(TmdbKind.Film, tmdbId.toString))
     } }
 
   private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
@@ -200,6 +203,12 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     // instance: `StoredFirstLookups.storedFirst` asks here, on a gap asks live (filing into this store), then asks
     // here AGAIN to answer as the store holds it — a remembered absence would hand it the unbucketed live answer.
     holding.document(kind, id).orElse(store.answers(kind, Seq(id)).get(id))
+  }
+
+  /** The document as the store holds it now, never as a prefetch held it -- filed with `reads` as [[document]]'s is. */
+  private def storedDocument(kind: TmdbKind, id: String): Option[BsonDocument] = {
+    reads.read(TmdbStore.keyOf(kind, id))
+    store.answers(kind, Seq(id)).get(id)
   }
 
   /** Each of `finds`' first film, as its hit reads — `Unknown` while any find, or any of those films, is not held. */

@@ -157,6 +157,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 
   /** The questions and records the model's lookups do not know yet: what a fill should ask. */
   def gaps: AnswersChanged = corpus.gaps
+  /** Is `question` one of [[gaps]]? A drain wakes it then even when its own ask filed the change
+   *  ([[ObservationReads.changedBy]]). */
+  def holdsOpen(question: Question): Boolean = corpus.holdsOpen(question)
 
   /** Every decision, in the whole resolve's order. */
   def decisions: Seq[ResolverDecision] = families.values.flatMap(_.resolved.decisions).toSeq.sortBy(_.members.head)(using ListingKey.ordering)

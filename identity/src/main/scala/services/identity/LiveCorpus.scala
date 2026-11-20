@@ -117,6 +117,12 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   /** The questions a node asked whose answer is not known, and the named films whose record is not. */
   def gaps: AnswersChanged =
     AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isAnswered => id.toInt }.toSet)
+  /** Is `question` one of [[gaps]]: asked, and held here unanswered? */
+  def holdsOpen(question: Question): Boolean = question match {
+    case Question.Candidate(query) => named.get(query).contains(None)
+    case Question.FilmRecord(id)   => records.get(id.toLong).exists(!_.isAnswered)
+    case _                         => false
+  }
 
   // ── events ──────────────────────────────────────────────────────────────────────────────────
   def seen(arrived: Seq[Listing]): CorpusContext.Changed = {

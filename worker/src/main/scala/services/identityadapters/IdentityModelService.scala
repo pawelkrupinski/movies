@@ -262,7 +262,7 @@ final class IdentityModelService(
       // afresh from every listing that left on each drain; one back replaces what was kept of it (ListingRetention)
       val (seen, gone) = retention.retaining(engine, scrapedSeen, leaving)
       kept(engine, seen, gone)
-      engine.batch(seen, gone, reads.changedBy(changes))
+      engine.batch(seen, gone, reads.changedBy(changes, engine.holdsOpen))
       val batch = ModelBatch(scraped.size, changes.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
       metrics.batch(batch)
