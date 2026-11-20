@@ -1,7 +1,5 @@
 package services.titles
 
-import scala.io.Source
-
 /** An opera or ballet HOUSE as a title bills it: the word table's house words ([[TitleWords.Concept.StageHouse]]), the
  *  houses billed under more than one name (`stage-houses.tsv`, hand-kept: Covent Garden's Royal Opera House, Royal Ballet
  *  and Opera since 2024, billed under both names and both initials), and every name's initials, derived from it ("RBO",
@@ -16,14 +14,8 @@ object StageHouse {
       .map(_.split('|').toSeq.map(name => TitleContainment.tokens(name).toSeq).filter(_.nonEmpty)).filter(_.sizeIs >= 2).toSeq
 
   /** Every house's names on the classpath. */
-  lazy val houses: Seq[Seq[Seq[String]]] = readResource(Resource)(parse)
+  lazy val houses: Seq[Seq[Seq[String]]] = tools.ClasspathTable.read(Resource)(parse)
 
-  /** `path`'s lines read by `read`. A missing resource fails loudly, as every hand-kept table's does ([[TitleWords]]): an
-   *  empty table would silently read every banner as none. */
-  private def readResource[A](path: String)(read: Iterator[String] => A): A = {
-    val in = Option(getClass.getClassLoader.getResourceAsStream(path)).getOrElse(throw new IllegalStateException(s"no $path on the classpath"))
-    try read(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-  }
 
   val SeasonBannersResource = "cinema-season-banners.tsv"
 
@@ -52,7 +44,7 @@ object StageHouse {
   /** A CINEMA SEASON's banners over stage relays (`cinema-season-banners.tsv`): names under which venues bill more than
    *  one house's productions — the Royal Ballet & Opera's UK cinema season, "RBO Cinema Season 2026-27: Macbeth" the
    *  Met's. A relay under one may be another house's record of its season; under any other house's name, never. */
-  lazy val seasonBanners: Seq[SeasonBanner] = readResource(SeasonBannersResource)(parseSeasonBanners)
+  lazy val seasonBanners: Seq[SeasonBanner] = tools.ClasspathTable.read(SeasonBannersResource)(parseSeasonBanners)
 
   /** Does a house fragment's words (a relay's banner, numbers out), billed at a venue in `country` (ISO-3166-1), carry a
    *  cinema's season banner of that country ([[seasonBanners]]) as a run of its words? A banner is a season only where

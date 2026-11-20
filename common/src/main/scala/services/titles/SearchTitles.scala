@@ -25,55 +25,53 @@ object SearchTitles {
    *  "Ojczyzna"). Blanks and duplicates collapse. Callers must verify a hit found via one
    *  of these derived fragments — they are shorter, more generic strings than any
    *  title a cinema printed (see [[wholeCandidates]]). */
-  def candidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
-    def deDecorate(certified: String): Seq[String] = {
-      // without the BBFC certificate a box office bills behind it ("Obsession (18)", "Digger - Cert 15"): no part of any
-      // title, and searched whole it finds what the number names, "80 Day Obsession: Day 18 AAA" for "Obsession (18)"
-      val t = services.titles.billing.BillingParse(certified).uncertified
-      val pipeParts       = if (t.contains(" | ")) PipeSeparator.split(t).toIndexedSeq else Nil
-      // A programme banner is joined with a DASH as often as a pipe or a colon, and
-      // the film's own title is the part after it. Hyphen, en dash and em dash all
-      // appear; the surrounding spaces are what mark it as a separator rather than
-      // a hyphenated word ("Spider-Man" is untouched). Purely ADDITIVE — the
-      // undivided title stays a candidate — and a candidate only ever becomes a
-      // resolution by matching, so an over-eager split costs nothing.
-      val dashParts       = if (DashedTitle.matcher(t).matches()) DashSeparator.split(t).toIndexedSeq else Nil
-      // A programme banner is also introduced with a ": " prefix ("Akademia
-      // Kina Polskiego: Człowiek z żelaza", "Modoteka: Tootsie"). Only the
-      // FIRST colon is used, so one further into a legitimate title ("Kill
-      // Bill: Vol. 2: Redux") doesn't lose its undivided form (already kept
-      // via `Seq(t)`) — this only ADDS the post-banner half as an extra
-      // candidate. A colon with nothing meaningful on either side (leading
-      // or trailing) is skipped.
-      //
-      // Deliberately COLON-ONLY, not period — a ". " split was tried and
-      // reverted (2026-09-15): unlike a colon, a mid-title ". " is a real,
-      // fairly common Polish film-title punctuation choice, not a reliable
-      // banner signal. "Vincent. Legenda oceanu" is a film's OWN stylised
-      // title (period included), not "Vincent" the banner + "Legenda oceanu"
-      // the film — splitting it manufactured a spurious "Legenda oceanu…"
-      // candidate that raced the ALREADY-AMBIGUOUS bare title (TMDB itself
-      // returns different films for "Vincent. Legenda oceanu" depending on
-      // which year happens to be attached at resolution time) and made a
-      // `PolandConvergenceSpec` settle-on-a-settled-corpus run fold a row
-      // that hadn't folded on the previous pass — exactly the order-dependence
-      // this file's resolution architecture exists to prevent. A colon
-      // essentially never appears mid-title in this corpus's real titles, so
-      // it doesn't carry the same risk; a period does, so it's not worth it.
-      def afterBanner(separator: String): Option[String] = t.indexOf(separator) match {
-        case idx if idx > 0 =>
-          val post = t.substring(idx + separator.length).trim
-          if (post.nonEmpty) Some(post) else None
-        case _ => None
-      }
-      val bannerParts     = afterBanner(": ").toSeq
-      val noTrailingParen = withoutTrailingParenthesis(t)
-      (Seq(t) ++ pipeParts ++ dashParts ++ bannerParts :+ noTrailingParen)
-    }
-    (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
-      .map(_.trim).filter(_.nonEmpty).distinct
-      .flatMap(deDecorate)
-      .map(_.trim).filter(_.nonEmpty).distinct
+  def candidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] =
+    wholeCandidates(title, originalTitle, extraTitles).flatMap(deDecorated).map(_.trim).filter(_.nonEmpty).distinct
+
+  /** One of the row's own titles and its de-decorated forms ([[candidates]]). */
+  private def deDecorated(certified: String): Seq[String] = {
+    // without the BBFC certificate a box office bills behind it ("Obsession (18)", "Digger - Cert 15"): no part of any
+    // title, and searched whole it finds what the number names, "80 Day Obsession: Day 18 AAA" for "Obsession (18)"
+    val t = services.titles.billing.BillingParse(certified).uncertified
+    val pipeParts       = if (t.contains(" | ")) PipeSeparator.split(t).toIndexedSeq else Nil
+    // A programme banner is joined with a DASH as often as a pipe or a colon, and
+    // the film's own title is the part after it. Hyphen, en dash and em dash all
+    // appear; the surrounding spaces are what mark it as a separator rather than
+    // a hyphenated word ("Spider-Man" is untouched). Purely ADDITIVE — the
+    // undivided title stays a candidate — and a candidate only ever becomes a
+    // resolution by matching, so an over-eager split costs nothing.
+    val dashParts       = if (DashedTitle.matcher(t).matches()) DashSeparator.split(t).toIndexedSeq else Nil
+    // A programme banner is also introduced with a ": " prefix ("Akademia
+    // Kina Polskiego: Człowiek z żelaza", "Modoteka: Tootsie"). Only the
+    // FIRST colon is used, so one further into a legitimate title ("Kill
+    // Bill: Vol. 2: Redux") doesn't lose its undivided form (already kept
+    // via `Seq(t)`) — this only ADDS the post-banner half as an extra
+    // candidate. A colon with nothing meaningful on either side (leading
+    // or trailing) is skipped.
+    //
+    // Deliberately COLON-ONLY, not period — a ". " split was tried and
+    // reverted (2026-09-15): unlike a colon, a mid-title ". " is a real,
+    // fairly common Polish film-title punctuation choice, not a reliable
+    // banner signal. "Vincent. Legenda oceanu" is a film's OWN stylised
+    // title (period included), not "Vincent" the banner + "Legenda oceanu"
+    // the film — splitting it manufactured a spurious "Legenda oceanu…"
+    // candidate that raced the ALREADY-AMBIGUOUS bare title (TMDB itself
+    // returns different films for "Vincent. Legenda oceanu" depending on
+    // which year happens to be attached at resolution time) and made a
+    // `PolandConvergenceSpec` settle-on-a-settled-corpus run fold a row
+    // that hadn't folded on the previous pass — exactly the order-dependence
+    // this file's resolution architecture exists to prevent. A colon
+    // essentially never appears mid-title in this corpus's real titles, so
+    // it doesn't carry the same risk; a period does, so it's not worth it.
+    val bannerParts     = afterBanner(t).toSeq
+    val noTrailingParen = withoutTrailingParenthesis(t)
+    (Seq(t) ++ pipeParts ++ dashParts ++ bannerParts :+ noTrailingParen)
+  }
+
+  /** The part of `t` after its first `": "`, when the colon has something on both sides. */
+  private def afterBanner(t: String): Option[String] = t.indexOf(": ") match {
+    case idx if idx > 0 => Some(t.substring(idx + 2).trim).filter(_.nonEmpty)
+    case _              => None
   }
 
   /** `title` without its trailing parenthetical: "Ojczyzna (pokaz przedpremierowy)" is "Ojczyzna", "Black Water (GLOBALE)"

@@ -1,7 +1,5 @@
 package services.titles
 
-import scala.io.Source
-
 /**
  * The words venues bill AROUND a film — an anniversary, a premiere, a talk, a sneak, an audience, a double bill, a
  * house's banner — by concept and language, in ONE checked-in table (`title-words.tsv`), read by every rule that
@@ -88,10 +86,7 @@ object TitleWords {
       }
     }.toSeq
 
-  lazy val entries: Seq[Entry] = {
-    val in = Option(getClass.getClassLoader.getResourceAsStream(Resource)).getOrElse(throw new IllegalStateException(s"no $Resource on the classpath"))
-    try parse(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-  }
+  lazy val entries: Seq[Entry] = tools.ClasspathTable.read(Resource)(parse)
 
   def phrases(concepts: Concept*): Seq[String] = entries.collect { case e if concepts.contains(e.concept) => e.phrase }.distinct
   /** The concepts' phrases in `languages` only: what one country's venues write. */
@@ -130,18 +125,22 @@ object TitleWords {
   /** [[rawPattern]] over the phrases of `languages` only ([[phrasesIn]]). */
   def rawPatternIn(languages: Set[String], concepts: Concept*): String = rawAlternation(phrasesIn(languages, concepts*))
   private def rawAlternation(phrases: Seq[String]): String =
-    s"(?:${alternationOf(phrases) { phrase =>
-      phrase.split("\\s+").toSeq.map { word =>
-        val body = word.stripPrefix("*").stripSuffix("*").map { ch =>
-          val bare = tools.TextNormalization.deburr(ch.toString)
-          if (bare != ch.toString && bare.length == 1) s"[$ch$bare]"
-          else if (ch.isLetterOrDigit) ch.toString
-          else if (ch == '-') "[\\s-]*"
-          else java.util.regex.Pattern.quote(ch.toString)
-        }.mkString
-        if (word.endsWith("*")) s"$body\\p{L}*" else body
-      }.mkString("[\\s-]*")
-    }})"
+    s"(?:${alternationOf(phrases)(_.split("\\s+").toSeq.map(rawWord).mkString("[\\s-]*"))})"
+
+  /** One word of a phrase as billed: a `*` stem is open-ended. */
+  private def rawWord(word: String): String = {
+    val body = word.stripPrefix("*").stripSuffix("*").map(rawCharacter).mkString
+    if (word.endsWith("*")) s"$body\\p{L}*" else body
+  }
+
+  /** One character as billed: an accented letter also its bare letter, a hyphen also a space or nothing. */
+  private def rawCharacter(ch: Char): String = {
+    val bare = tools.TextNormalization.deburr(ch.toString)
+    if (bare != ch.toString && bare.length == 1) s"[$ch$bare]"
+    else if (ch.isLetterOrDigit) ch.toString
+    else if (ch == '-') "[\\s-]*"
+    else java.util.regex.Pattern.quote(ch.toString)
+  }
 
   private def alternationOf(phrases: Seq[String])(compile: String => String): String =
     phrases.sortBy(p => (-p.length, p)).map(compile).mkString("|")

@@ -3,8 +3,6 @@ package services.titles.rules
 import models.Country
 import play.api.libs.json.Json
 
-import scala.io.Source
-
 /** Every title rule as one row of data (`title-rules.tsv`), read by the few mechanisms a row's KIND names:
  *
  *  - `banner` — a programme banner off the front of the lookup query, which the display also finds to case apart
@@ -93,10 +91,7 @@ object TitleRuleTable {
     }
   }
 
-  lazy val rows: Seq[Row] = {
-    val in = Option(getClass.getClassLoader.getResourceAsStream(Resource)).getOrElse(throw new IllegalStateException(s"no $Resource on the classpath"))
-    try parse(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-  }
+  lazy val rows: Seq[Row] = tools.ClasspathTable.read(Resource)(parse)
 
   /** Every rule of the table, in its order. */
   lazy val all: Seq[TitleRule] = rows.map(_.rule)

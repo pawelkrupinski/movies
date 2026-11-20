@@ -120,16 +120,22 @@ object TitleFacts {
     /** `title` without the credit at `start`–`end`: inside brackets, the comma-separated piece holding it (the bracket
      *  goes when nothing else is in it: "(reż. Ozon)", "(Der neue Film von Andreas Dresen mit …)"), else the credit and
      *  what it runs on to before the billing goes on (", Polska"; a separator and what follows it stay). */
-    private def cutCredit(title: String, start: Int, end: Int): String = {
-      val open  = title.lastIndexWhere(c => c == '(' || c == '[', start - 1)
-      val close = if (open >= 0 && title.lastIndexWhere(c => c == ')' || c == ']', start - 1) < open) title.indexWhere(c => c == ')' || c == ']', end) else -1
-      if (close >= 0) {
+    private def cutCredit(title: String, start: Int, end: Int): String = enclosingBracket(title, start, end) match {
+      case Some((open, close)) =>
         val inside = title.substring(open + 1, close)
         val from   = inside.lastIndexOf(',', start - open - 1) + 1
         val comma  = inside.indexOf(',', end - open - 1)
         val kept   = (inside.substring(0, from) + (if (comma >= 0) inside.substring(comma + 1) else "")).split(',').map(_.trim).filter(_.nonEmpty)
         joined(title.substring(0, open), (if (kept.isEmpty) "" else kept.mkString(s"${title(open)}", ", ", s"${title(close)}")) + " " + title.substring(close + 1))
-      } else joined(title.substring(0, start), GoesOn.findFirstMatchIn(title.substring(end)).fold("")(m => title.substring(end + m.start)))
+      case None =>
+        joined(title.substring(0, start), GoesOn.findFirstMatchIn(title.substring(end)).fold("")(m => title.substring(end + m.start)))
+    }
+
+    /** Where the bracket the credit at `start`–`end` sits in opens and closes — none when it sits in no open one. */
+    private def enclosingBracket(title: String, start: Int, end: Int): Option[(Int, Int)] = {
+      val open = title.lastIndexWhere(c => c == '(' || c == '[', start - 1)
+      Option.when(open >= 0 && title.lastIndexWhere(c => c == ')' || c == ']', start - 1) < open)(title.indexWhere(c => c == ')' || c == ']', end))
+        .filter(_ >= 0).map(open -> _)
     }
 
     /** `before` and `after` as one title: no comma, colon or open bracket left dangling between or around them. */
