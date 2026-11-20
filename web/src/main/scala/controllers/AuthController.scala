@@ -4,7 +4,7 @@ import models.User
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.auth.{AuthExchangeCodes, NativeTokenVerifier, OauthAccounts, OauthProvider}
+import services.auth.{AuthExchangeCodes, NativeTokenVerifier, OauthAccounts, OauthProfile, OauthProvider}
 import services.users.UserRepository
 
 import java.net.URLEncoder
@@ -41,14 +41,20 @@ import scala.util.{Failure, Success, Try}
  *   - `oauthProvider` — which provider issued the state (defends against
  *     mixing state from /auth/google/start with a callback to
  *     /auth/facebook/callback)
- *   - `userId`        — set on successful callback, dropped on logout
+ *   - `oauthStateTimestamp` — when the state was issued; a callback after
+ *     `OauthStateTtl` is refused
+ *   - `mobileClient`  — "1" when a native app started the flow
  *   - `mobileChallenge` — a native start's PKCE-style `challenge`, stamped
  *     onto the deep-link code the callback mints
+ *   - `userId`        — set on successful callback, dropped on logout
+ *
+ * All but `userId` are the flow's own ([[AuthController.FlowKeys]]): a start
+ * replaces them, a finished sign-in spends them.
  */
 class AuthController(
   cc:                     ControllerComponents,
   providers:              Map[String, OauthProvider],
-  userRepository:               UserRepository,
+  userRepository:         UserRepository,
   // One-shot codes for the two handoffs a session cookie cannot make: the
   // native apps' `kinowo://` deep link, and the cross-domain country switch.
   exchangeCodes:          AuthExchangeCodes,
@@ -71,13 +77,10 @@ class AuthController(
   private val OauthStateTtl = java.time.Duration.ofMinutes(10)
 
   // Composed from the collaborators above: the account a profile signs in as.
-  private val accounts     = new OauthAccounts(userRepository, clock)
+  private val accounts = new OauthAccounts(userRepository, clock)
 
   def start(provider: String): Action[AnyContent] = Action { request =>
-    providers.get(provider) match {
-      case None    => NotFound(s"Provider not configured: $provider")
-      case Some(p) => startFlow(p, provider, request)
-    }
+    providers.get(provider).fold(NotFound(s"Provider not configured: $provider"))(startFlow(_, provider, request))
   }
 
   private def startFlow(p: OauthProvider, provider: String, request: RequestHeader): Result = {
@@ -98,11 +101,11 @@ class AuthController(
       // provider must not lend it `mobileClient` or its challenge — Android's
       // Custom Tab shares the browser's cookie jar with ordinary web visits.
       Redirect(p.authUrl(state, callbackUrl(provider, request)))
-        .withSession(request.session - "mobileClient" - AuthController.MobileChallengeKey
-          + ("oauthState"     -> state)
-          + ("oauthProvider"  -> provider)
-          + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
-          ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty)
+        .withSession(request.session -- AuthController.FlowKeys
+          + ("oauthState"          -> state)
+          + ("oauthProvider"       -> provider)
+          + ("oauthStateTimestamp" -> clock.instant().toEpochMilli.toString)
+          ++ Option.when(isMobile)("mobileClient" -> "1")
           ++ challenge.map(AuthController.MobileChallengeKey -> _))
   }
 
@@ -161,12 +164,19 @@ class AuthController(
         logger.warn(s"OAuth callback for $provider rejected: $reason")
         BadRequest(s"OAuth callback failed: $reason")
       case Right((p, code)) =>
-        Try(accounts.signIn(provider, p.exchangeCode(code, callbackUrl(provider, request)))) match {
-          case Failure(exception) =>
-            logger.error(s"OAuth sign-in failed for $provider: ${exception.getMessage}", exception)
-            InternalServerError("Couldn't complete sign-in. Please try again.")
-          case Success(user) => signedInRedirect(user, request)
-        }
+        signIn(provider, p.exchangeCode(code, callbackUrl(provider, request)),
+          failed = InternalServerError("Couldn't complete sign-in. Please try again."))(signedInRedirect(_, request))
+    }
+
+  /** `profile`'s account signed in and answered by `signedIn`. A failure — the
+   *  profile itself (a provider's exchange), or the account it names (no email,
+   *  an unwritable store) — is logged and answered with `failed`. */
+  private def signIn(provider: String, profile: => OauthProfile, failed: Result)(signedIn: User => Result): Result =
+    Try(accounts.signIn(provider, profile)) match {
+      case Failure(exception) =>
+        logger.error(s"Sign-in through $provider failed: ${exception.getMessage}", exception)
+        failed
+      case Success(user) => signedIn(user)
     }
 
   /** The provider and its `code`, once the callback is proven to finish the flow
@@ -181,30 +191,18 @@ class AuthController(
       issuedMs      <- request.session.get("oauthStateTimestamp").flatMap(_.toLongOption).toRight("Missing or unparseable oauthStateTimestamp")
       _             <- Either.cond(state == expectedState, (), "OAuth state mismatch (possible CSRF)")
       _             <- Either.cond(sessionProv == provider, (), s"Provider mismatch: session=$sessionProv, callback=$provider")
-      _             <- Either.cond(
-                         clock.instant().toEpochMilli - issuedMs <= OauthStateTtl.toMillis,
-                         (),
-                         s"OAuth state expired (issued ${(clock.instant().toEpochMilli - issuedMs)/1000}s ago, max ${OauthStateTtl.toMinutes}min)"
-                       )
+      ageMs          = clock.instant().toEpochMilli - issuedMs
+      _             <- Either.cond(ageMs <= OauthStateTtl.toMillis, (),
+                         s"OAuth state expired (issued ${ageMs / 1000}s ago, max ${OauthStateTtl.toMinutes}min)")
     } yield (p, code)
 
-  /** The finished web or native flow's redirect, `user` signed in and the flow's own session keys spent. */
-  private def signedInRedirect(user: User, request: RequestHeader): Result = {
-    val nextSession = SignedInUser.establish(
-      request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient" - AuthController.MobileChallengeKey,
-      user)
-    if (request.session.get("mobileClient").contains("1")) {
-      // The native apps keep their own cookie jar per host and finish
-      // through the deep link, so there is no sibling to pair.
-      PerUserResponse(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
-        challenge = request.session.get(AuthController.MobileChallengeKey))}").withSession(nextSession))
-    } else {
-      PerUserResponse(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
-    }
-  }
-
-  /** Route the finished sign-in through the OTHER domain on its way home, so the
-   *  visitor ends up signed in on both.
+  /** The finished flow's redirect, `user` signed in and the flow's own session keys spent.
+   *
+   *  A native app finishes through the `kinowo://` deep link, carrying a one-shot
+   *  code: the apps keep their own cookie jar per host, so there is no sibling to pair.
+   *
+   *  A browser is routed through the OTHER domain on its way home, so the visitor
+   *  ends up signed in on both.
    *
    *  WHY HERE AND NOT ON ARRIVAL. kinowo.net and showtimes.cc share no cookie, so
    *  something has to establish a session on each. Asking on arrival — the shape
@@ -224,22 +222,25 @@ class AuthController(
    *  code minted for it (see [[SsoController.ssoFinish]]).
    *
    *  No pairing without a sibling, and none FROM the pairing leg itself —
-   *  [[SsoController.ssoFinish]] never calls this, so the chain is one hop by construction. */
-  private def pairSiblingThen(landing: String, request: RequestHeader): String =
-    viaSibling(SsoController.SsoFinishPath, landing, request)
+   *  [[SsoController.ssoFinish]] never pairs, so the chain is one hop by construction. */
+  private def signedInRedirect(user: User, request: RequestHeader): Result = {
+    val target =
+      if (request.session.get("mobileClient").contains("1"))
+        s"kinowo://auth-done?code=${exchangeCodes.mint(user.id, challenge = request.session.get(AuthController.MobileChallengeKey))}"
+      else viaSibling(SsoController.SsoFinishPath, landingFor(request), request)
+    PerUserResponse(Redirect(target).withSession(SignedInUser.establish(request.session -- AuthController.FlowKeys, user)))
+  }
 
   /** `landing` by way of the other domain's `path`, which sends the visitor on to
-   *  it — or `landing` itself when this origin has no sibling. */
-  private def viaSibling(path: String, landing: String, request: RequestHeader): String =
-    models.DeploymentOrigins.siblingOfOrigin(ForwardedUrl.base(request)) match {
+   *  it (made absolute — see [[AuthController.absoluteLanding]]) — or `landing`
+   *  itself when this origin has no sibling. */
+  private def viaSibling(path: String, landing: String, request: RequestHeader): String = {
+    val origin = ForwardedUrl.base(request)
+    models.DeploymentOrigins.siblingOfOrigin(origin) match {
       case None          => landing
-      case Some(sibling) => s"$sibling$path${AuthController.query(Seq("next" -> absolute(landing, request)))}"
+      case Some(sibling) => s"$sibling$path${AuthController.query(Seq("next" -> AuthController.absoluteLanding(origin, landing)))}"
     }
-
-  /** `landing` as an absolute URL, so the far side can send the visitor back to
-   *  it across the domain boundary — see [[AuthController.absoluteLanding]]. */
-  private def absolute(landing: String, request: RequestHeader): String =
-    AuthController.absoluteLanding(ForwardedUrl.base(request), landing)
+  }
 
   /** Where a finished sign-in drops the visitor: the site they started on.
    *
@@ -269,12 +270,7 @@ class AuthController(
             logger.warn(s"Token validation failed for $provider: ${exception.getMessage}", exception)
             Unauthorized(Json.obj("error" -> AuthController.TokenRejected))
           case Success(profile) =>
-            Try(accounts.signIn(provider, profile)) match {
-              case Failure(exception) =>
-                logger.error(s"Token sign-in failed for $provider: ${exception.getMessage}", exception)
-                InternalServerError(Json.obj("error" -> "Couldn't complete sign-in."))
-              case Success(user) => signedInJson(user)
-            }
+            signIn(provider, profile, failed = InternalServerError(Json.obj("error" -> "Couldn't complete sign-in.")))(signedInJson)
         }
     }
 
@@ -336,16 +332,12 @@ class AuthController(
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
 
   private def redeemExchangeCode(body: JsValue): Result = {
-    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem(_, verifier = (body \ "verifier").asOpt[String])) match {
-      case None =>
-        Unauthorized(Json.obj("error" -> "invalid or expired code"))
-      case Some(userId) =>
-        userRepository.findById(userId) match {
-          case None =>
-            Unauthorized(Json.obj("error" -> "user not found"))
-          case Some(user) => signedInJson(user)
-        }
-    }
+    val user = for {
+      userId <- (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem(_, verifier = (body \ "verifier").asOpt[String]))
+                  .toRight("invalid or expired code")
+      user   <- userRepository.findById(userId).toRight("user not found")
+    } yield user
+    user.fold(error => Unauthorized(Json.obj("error" -> error)), signedInJson)
   }
 
   /** The `redirect_uri` handed to the provider, and handed back at exchange —
@@ -425,6 +417,9 @@ object AuthController {
 
   /** Session key holding a native flow's `challenge` from start to callback. */
   val MobileChallengeKey = "mobileChallenge"
+
+  /** Every session key a flow carries from start to callback. */
+  private val FlowKeys = Seq("oauthState", "oauthProvider", "oauthStateTimestamp", "mobileClient", MobileChallengeKey)
 
   /** `params` as a query string, keys and values encoded; empty for none. */
   private[controllers] def query(params: Seq[(String, String)]): String =
