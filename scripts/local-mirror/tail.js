@@ -3,8 +3,11 @@
 //
 // Invoked by mirror.sh, one process per database (do not run directly):
 //   mongosh "<PROD_URI>" \
-//     --eval "var DST='<LOCAL_URI>'; var SRC_DB='kinowo_uk'" \
-//     --file mirror-targets.js --file stream-start.js --file tail.js
+//     --eval "var DST='<LOCAL_URI>'; var SRC_DB='kinowo_uk'; var FENCE_DIR='<dir>'" \
+//     --file mirror-targets.js --file stream-start.js --file fence-rule.js --file tail.js
+//
+// Each change is HELD, unapplied, while a what-if's fence holds the database (fence-rule.js): the reader's base and
+// head then read one corpus. The held change is applied once the fence lifts, and its token saved only then.
 //
 // One stream per DATABASE, not per collection: a stream per mirrored
 // collection would be N blocking cursors that a single-threaded mongosh cannot
@@ -45,12 +48,28 @@ print(`[tail] ${SRC_DB}: watching ${MIRRORED_COLLECTIONS.join(", ")}…`);
 // it around only the open, the resume error escaped uncaught from `hasNext()`,
 // mongosh exited 1, and mirror.sh re-ran us on the SAME dead token forever
 // instead of re-seeding.
+// Hold `ev` while a fence holds this database; says so once a holder, and once when it lifts. A cursor left idle long
+// enough for prod to reap it fails the next getMore, which is the ordinary "stream failed" exit 1: mirror.sh resumes
+// from the token saved before the held change, so nothing is lost.
+const FENCE_POLL_MS = 5000;
+function holdWhileFenced(ev) {
+  const eventMs = ev.clusterTime ? ev.clusterTime.getHighBits() * 1000 : Date.now();
+  let held = null, holder;
+  while ((holder = fenceHolding(fencesIn(typeof FENCE_DIR === "undefined" ? "" : FENCE_DIR, SRC_DB), Date.now(), eventMs)) !== null) {
+    if (holder !== held) print(`[tail] ${SRC_DB}: holding changes for the what-if fence ${holder}`);
+    held = holder;
+    sleep(FENCE_POLL_MS);
+  }
+  if (held !== null) print(`[tail] ${SRC_DB}: fence lifted -- applying changes again`);
+}
+
 try {
   const cs = srcDb.watch(pipeline, opts);
   cs.disableBlockWarnings();   // hasNext() blocking on an idle stream is expected, not a problem
   let n = 0;
   while (cs.hasNext()) {
     const ev = cs.next();
+    holdWhileFenced(ev);
     // Route by the event's own collection — one stream feeds every mirrored one.
     const dst = dstDb.getCollection(ev.ns.coll);
     switch (ev.operationType) {

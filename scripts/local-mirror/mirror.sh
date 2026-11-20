@@ -397,7 +397,12 @@ bounded() {
 # restarted the whole mirror (570 restarts in the log by 2026-11-04, one every
 # ten minutes while `kinowo_fleet` read as stale).
 needs_reseed() {
-  local code=0
+  local code=0 holder
+  # A what-if's fence (fence-rule.js) wants the copy to stand still: tail.js holds every change meanwhile, so the mirror
+  # falls behind prod ON PURPOSE -- a lag this audit would answer with a re-seed, tearing the very copy the fence
+  # holds. The audit waits for the fence to lift (a fence expires on its own: fence-rule.js's limits).
+  holder="$(fence_holder "$1")"
+  if [ -n "$holder" ]; then echo "[mirror] $1: held by the what-if fence $holder — no re-seed audit meanwhile" >&2; return 1; fi
   bounded "$STALENESS_TIMEOUT" mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
     --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js" || code=$?
   case "$code" in
@@ -405,6 +410,14 @@ needs_reseed() {
     3) return 0 ;;
     *) echo "[mirror] $1: staleness check could not run (exit $code) — tailing anyway" >&2; return 1 ;;
   esac
+}
+
+# Where identity-what-if writes its fences (fence-rule.js), one directory a prod database; the reader's default is the same.
+FENCE_DIR="${KINOWO_MIRROR_FENCE_DIR:-$HOME/.cache/kinowo/mirror-fence}"
+# fence_holder <db> -> the name of a what-if fence in force on <db>, or nothing
+fence_holder() {
+  mongosh --nodb --quiet --eval "var FENCE_DIR='$FENCE_DIR'; var SRC_DB='$1'" \
+    --file "$HERE/fence-rule.js" --file "$HERE/fence-check.js" 2>/dev/null || true
 }
 
 # ── Resilient per-database sync loop ─────────────────────────────────────────
@@ -457,8 +470,8 @@ supervise_db() {
     local launched_with; launched_with="$(published_fingerprint)"
     local retargeted=0 drifted=0 polls=0
 
-    "$MONGOSH_AT" "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
-      --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
+    "$MONGOSH_AT" "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'; var FENCE_DIR='$FENCE_DIR'" \
+      --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/fence-rule.js" --file "$HERE/tail.js" &
     tailpid=$!
     # Watch for a retarget while the tailer streams. An empty reading means the
     # digest could not be computed — treated as "unchanged", never as an edit.

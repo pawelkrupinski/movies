@@ -52,6 +52,10 @@ check("a seed in flight is `seeding`, whatever the state", seedGeneration({ _id:
 check("no state (a lost resume token, its re-seed not begun) is `reseed-due`", seedGeneration(null, false), "reseed-due");
 check("a state with no seed stamp is `untracked`", seedGeneration({ _id: "kinowo_us", resumeToken: {} }, false), "untracked");
 
+check("the tail position is the resume token's data", tailPosition({ resumeToken: { _data: "826ACE076B0000005D2B042C0100" } }), "826ACE076B0000005D2B042C0100");
+check("...`none` before the tailer applied any change", tailPosition({ startAtOperationTime: ts }), "none");
+check("...and with no state", tailPosition(null), "none");
+
 check("cc pl is prod's kinowo", prodDbOf("pl"), "kinowo");
 check("any other cc is kinowo_<cc>", prodDbOf("UK"), "kinowo_uk");
 

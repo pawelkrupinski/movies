@@ -70,9 +70,14 @@
 #
 # A MIRROR CHANGING UNDER THE RUN IS A HARNESS ERROR, never takes moved (2026-11-19: lane C's US what-if reported 87k
 # takes moved off a base read while the mirror re-seeded, 16k of its live asks failed; a rerun moved none). Both sides
-# read the mirror's CURRENT listings (the snapshot moment replays identity history over them), so the run is pinned to
-# the mirror's seed generation (scripts/local-mirror/freshness --generation): refused while a seed is in flight or due,
-# and exit 2 when it is not the same before the base, between the sides and after the head. Kept base sides and the kept
+# read the mirror's CURRENT listings (the snapshot moment replays identity history over them), so both must read ONE
+# copy. The run FENCES the mirror's tailer (scripts/local-mirror/fence-rule.js: a file under $KINOWO_MIRROR_FENCE_DIR,
+# ~/.cache/kinowo/mirror-fence by default, that tail.js holds every change for; mirror.sh holds its re-seed audit), and
+# its fence LINGERS $KINOWO_WHAT_IF_FENCE_LINGER_MINUTES (20) after it, so a rerun finds the same copy and the base side
+# it kept. It is pinned to the mirror's generation (scripts/local-mirror/freshness --generation): its seed generation and
+# its tail position (the resume token of the last change tailed: 2026-11-20, lane A3's DE what-if moved a take a write
+# tailed between its sides moved, its base-vs-base control the same one). Refused while a seed is in flight or due, and
+# exit 2 when either is not the same before the base, between the sides and after the head. Kept base sides and the kept
 # JVM's corpora are keyed by it, so nothing resolved off one copy is served against another. A side whose live asks
 # failed past $KINOWO_WHAT_IF_MAX_FAILED_ASKS (25) is exit 2 too, and is not kept: an unanswered question is a gap the
 # side takes as pending, and the diff would read every one as a move.
@@ -207,16 +212,46 @@ cache=$IDENTITY_CACHE/what-if
 
 max_failed_asks=${KINOWO_WHAT_IF_MAX_FAILED_ASKS:-25}
 harness_error() { identity_log "HARNESS ERROR: $*"; echo "HARNESS ERROR: $*" >&2; }
-# mirror_generation <cc> -> the mirror's seed generation for <cc> (freshness --generation; its report to stderr), or
-# exit 2 when the mirror does not answer
+# mirror_generation <cc> -> the mirror's generation for <cc>: `<seed generation>-tail<tail position's digest>`, or the
+# bare `seeding` / `reseed-due` (freshness --generation; its report to stderr); exit 2 when the mirror does not answer
 mirror_generation() {
-  local report rc=0 gen
+  local report rc=0 gen tail
   report=$(scripts/local-mirror/freshness "$1" --quiet --generation) || rc=$?
-  grep -v '^GENERATION ' <<< "$report" >&2 || true
+  grep -vE '^(GENERATION|TAIL) ' <<< "$report" >&2 || true
   [ "$rc" != 2 ] || { identity_log "$1: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
   gen=$(awk -v cc="$1" '$1 == "GENERATION" && $2 == cc { print $3 }' <<< "$report")
+  tail=$(awk -v cc="$1" '$1 == "TAIL" && $2 == cc { print $3 }' <<< "$report")
   [ -n "$gen" ] || { harness_error "$1: mirror not ready: freshness reported no seed generation"; exit 2; }
-  printf '%s\n' "$gen"
+  case "$gen" in seeding|reseed-due) printf '%s\n' "$gen"; return 0 ;; esac
+  [ -n "$tail" ] || { harness_error "$1: mirror not ready: freshness reported no tail position"; exit 2; }
+  printf '%s-tail%s\n' "$gen" "$(printf '%s' "$tail" | shasum | cut -c1-12)"
+}
+# THE FENCE (scripts/local-mirror/fence-rule.js): mirror_fence <cc> holds <cc>'s tailer for this run -- a `run` fence,
+# its expiry the longest a run takes -- and the exit turns each into a `linger` one (mirror_fence_linger), so a rerun
+# within the linger reads the same copy. A fence of a what-if that died without its exit (its pid gone) is dropped.
+fence_root=${KINOWO_MIRROR_FENCE_DIR:-$HOME/.cache/kinowo/mirror-fence}
+fence_linger_minutes=${KINOWO_WHAT_IF_FENCE_LINGER_MINUTES:-20}
+fences=()
+mirror_fence() {
+  local dir f pid kind expiry
+  dir=$fence_root/$([ "$1" = pl ] && echo kinowo || echo "kinowo_$1")
+  mkdir -p "$dir"
+  for f in "$dir"/what-if-*; do
+    [ -f "$f" ] || continue
+    read -r expiry kind < "$f" 2>/dev/null || continue
+    pid=${f##*/what-if-}
+    if [ "${expiry:-0}" -le "$(date +%s)" ] 2>/dev/null || { [ "$kind" = run ] && ! kill -0 "$pid" 2>/dev/null; }; then rm -f "$f"; fi
+  done
+  f=$dir/what-if-$$
+  echo "$(( $(date +%s) + 4 * 3600 )) run" > "$f.part" && mv "$f.part" "$f"
+  fences+=("$f")
+}
+mirror_fence_linger() {
+  local f
+  for f in ${fences[@]+"${fences[@]}"}; do
+    [ -f "$f" ] && echo "$(( $(date +%s) + fence_linger_minutes * 60 )) linger" > "$f.part" && mv "$f.part" "$f"
+  done
+  fences=()
 }
 # mirror_ready <cc> -> the generation a run of <cc> pins itself to; exit 2 while a seed is in flight or due
 mirror_ready() {
@@ -227,11 +262,16 @@ mirror_ready() {
   esac
   printf '%s\n' "$gen"
 }
-# mirror_unchanged <cc> <pinned generation> <when> -> 0, or exit 2 when the mirror re-seeded (or began to) since
+# mirror_unchanged <cc> <pinned generation> <when> -> 0, or exit 2 when the mirror re-seeded (or began to), or tailed a
+# write, since
 mirror_unchanged() {
   local now; now=$(mirror_generation "$1") || exit 2
   [ "$now" = "$2" ] && return 0
-  harness_error "$1: the mirror was re-seeded during the run (generation $2 before the base, $now $3): the sides read different corpora, so no take is reported moved and nothing is recorded -- run again once scripts/local-mirror/freshness $1 is quiet"
+  if [ "${now%%-tail*}" = "${2%%-tail*}" ]; then
+    harness_error "$1: the mirror tailed a write during the run (generation $2 before the base, $now $3): the sides read different corpora, so no take is reported moved and nothing is recorded -- its fence did not hold (is the mirror service running a checkout with scripts/local-mirror/fence-rule.js? a fence older than its limits?); run again"
+  else
+    harness_error "$1: the mirror was re-seeded during the run (generation $2 before the base, $now $3): the sides read different corpora, so no take is reported moved and nothing is recorded -- run again once scripts/local-mirror/freshness $1 is quiet"
+  fi
   return 2
 }
 # answers_ok <side dir> <label> -> 0, or 2 when the side's live asks failed past the bound (answers.txt: WhatIfAnswers'
@@ -357,6 +397,8 @@ if [ -n "$bisect_good" ]; then
   serve=0
   good=$(git -C "$repo" rev-parse --verify "$bisect_good^{commit}") || { echo "--bisect: no commit $bisect_good" >&2; exit 2; }
   bad=$(git -C "$repo" rev-parse --verify "$bisect_bad^{commit}") || { echo "--bisect: no commit $bisect_bad" >&2; exit 2; }
+  trap mirror_fence_linger EXIT
+  mirror_fence "$cc"
   mirror_gen=$(mirror_ready "$cc") || exit 2
   snapshot=${at:-$(cached_at "$cc" "$bad")}; snapshot=${snapshot:-$(date -u +%Y-%m-%dT%H:%M:00Z)}
   commits=("$good"); while IFS= read -r c; do commits+=("$c"); done < <(git -C "$repo" rev-list --first-parent --reverse "$good..$bad")
@@ -426,9 +468,10 @@ compile_head_beside() {
   identity_classpath "$head_tree" > /dev/null & head_compile=$!
 }
 head_compile_done() { [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }; }
-trap head_compile_done EXIT
+trap 'head_compile_done; mirror_fence_linger' EXIT
 status=0
 for cc in "${ccs[@]}"; do
+  mirror_fence "$cc"
   mirror_gen=$(mirror_ready "$cc") || exit 2
   started=$(seconds)
   snapshot=${at:-$(cached_at "$cc")}
@@ -477,7 +520,7 @@ for cc in "${ccs[@]}"; do
     if [ "$moved" -gt 0 ]; then
       # the base side is dropped whether kept or not: one of the two read other inputs, and a kept one is the suspect
       rm -rf "$base_dir"
-      harness_error "$cc: the same code moved $moved take(s) (head ${head_label} = base ${base_sha:0:12}): the sides read different inputs -- a mirror changed under a kept base side, or live answers one side had and the other did not (answers above); nothing recorded, the base side dropped -- run again"
+      harness_error "$cc: the same code moved $moved take(s) (head ${head_label} = base ${base_sha:0:12}): the sides read different inputs -- a mirror changed under a kept base side or its fence, or live answers one side had and the other did not (answers above); nothing recorded, the base side dropped -- run again"
       exit 2
     fi
   fi

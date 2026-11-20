@@ -13,8 +13,9 @@
 #   --quiet          the per-database line only, not each collection's count and newest write
 #   --generation     also a `GENERATION <cc> <token>` line a country: the seed generation a reader pins its run to --
 #                    `seeding` (a seed in flight, or a torn one), `reseed-due` (its state gone, a re-seed next), else the
-#                    last whole seed's start (`<seconds>.<increment>`), unchanged by tailing; identity-what-if refuses a
-#                    run it is not the same for before, between and after its sides
+#                    last whole seed's start (`<seconds>.<increment>`), unchanged by tailing -- and a `TAIL <cc> <position>`
+#                    line, the resume token of the last change tailed (`none` before one); identity-what-if fences the
+#                    tailer for its run and refuses one either is not the same for before, between and after its sides
 #
 # Prints each database's sync moment (the last change the tailer applied, from its resume token) and lag, then each
 # mirrored collection's count and newest stamped write. Exit 0 fresh, 3 when any is not (each reason WARNed), 2 when a

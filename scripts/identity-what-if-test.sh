@@ -22,15 +22,16 @@ cp "$REPO_ROOT"/scripts/ci/*.py "$repo/scripts/ci/"
 # the tool files the tool keys its sides by (TOOL_FILES), as the checkout holds them
 eval "$(sed -n '/^TOOL_FILES=(/,/)/p' "$REPO_ROOT/scripts/identity-what-if")"
 for f in "${TOOL_FILES[@]}"; do mkdir -p "$repo/$(dirname "$f")"; cp "$REPO_ROOT/$f" "$repo/$f"; done
-# THE MIRROR'S SEED GENERATION, as freshness --generation reports it: each call takes the next line of $work/generations
-# (the last one stays), so a case can seed mid-run; `100.1` (one finished seed) by default
+# THE MIRROR'S GENERATION, as freshness --generation reports it: each call takes the next line of $work/generations
+# (the seed generation) and of $work/tails (the tail position) -- the last one stays --, so a case can seed or tail a
+# write mid-run; `100.1` (one finished seed) and `T0` by default. Each call also notes the fences in force then.
 cat > "$repo/scripts/local-mirror/freshness" <<STUB
 #!/usr/bin/env bash
-gens="$work/generations"
-gen=\$(head -1 "\$gens" 2>/dev/null); gen=\${gen:-100.1}
-[ "\$(wc -l 2>/dev/null < "\$gens" || echo 0)" -le 1 ] || { tail -n +2 "\$gens" > "\$gens.next"; mv "\$gens.next" "\$gens"; }
+next() { local v; v=\$(head -1 "\$1" 2>/dev/null); [ "\$(wc -l 2>/dev/null < "\$1" || echo 0)" -le 1 ] || { tail -n +2 "\$1" > "\$1.next"; mv "\$1.next" "\$1"; }; echo "\${v:-\$2}"; }
+gen=\$(next "$work/generations" 100.1) tail=\$(next "$work/tails" T0)
 echo "freshness \$*" >> "$work/freshness-calls"
-case " \$* " in *" --generation "*) echo "GENERATION \$1 \$gen" ;; esac
+cat "$work"/fence/kinowo_uk/* >> "$work/fences-seen" 2>/dev/null
+case " \$* " in *" --generation "*) echo "GENERATION \$1 \$gen"; echo "TAIL \$1 \$tail" ;; esac
 exit 0
 STUB
 chmod +x "$repo/scripts/local-mirror/freshness"
@@ -42,15 +43,17 @@ c0=$(commit "good") c1=$(commit "inert") c2=$(commit "moves the take") c3=$(comm
 hash=$(cd "$repo" && bash -c '. scripts/identity-tools.sh; identity_tools_hash "$@"' _ "${TOOL_FILES[@]}")
 at=2026-11-05T20:10:00Z since=2026-11-04T20:10:00Z
 key=$'Pthe venue\x1ethe film'
+# the mirror generation the tool keys its sides by: the seed generation and the tail position's digest
+gen=100.1-tail$(printf '%s' T0 | shasum | cut -c1-12)
 side() { # <sha> <snapshot> <model take> <final take>: a kept whole side of that commit
-  local d="$work/cache/what-if/uk/$1-$hash-live-mirror100.1/$2"
+  local d="$work/cache/what-if/uk/$1-$hash-live-mirror$gen/$2"
   mkdir -p "$d"
   printf 'key\tvenue\trawTitle\tfamily\ttake\trules\n%s\tThe Venue\tThe Film\t%s\t%s\t\n' "$key" "$key" "$3" > "$d/takes.tsv"
   printf 'key\tfinal\tbasis\n%s\t%s\tAgreed\n' "$key" "$4" > "$d/final.tsv"
   printf 'key\tprod\tbasis\n%s\t%s\t-\n' "$key" "$4" > "$d/prod.tsv"
 }
 bisect() {
-  ( cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_JVM_GATE_FOLLOW_MAIN=0 TMDB_API_KEY=stub spec_bounded \
+  ( cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" KINOWO_JVM_GATE_FOLLOW_MAIN=0 TMDB_API_KEY=stub spec_bounded \
       scripts/identity-what-if --base "$c0" --bisect "$c0" "$c3" --listing 'The Venue|The Film' --at "$at" "$@" uk 2> "$work/err" )
 }
 side "$c0" "$at" none none; side "$c1" "$at" none none; side "$c2" "$at" tmdb:5 tmdb:5; side "$c3" "$at" tmdb:5 tmdb:5
@@ -105,7 +108,7 @@ c4=$(echo row > "$repo/common-row.txt"; mkdir -p "$repo/common/src/main/resource
   scratch_git "$repo" add -A; scratch_git "$repo" commit -q -m "a resource the lookups read"; scratch_git "$repo" rev-parse HEAD)
 what_if() { # <base> <head> <snapshot> [args...]
   local b=$1 h=$2 s=$3; shift 3; rm -f "$work/calls" "$work/calls.args"
-  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
+  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
       KINOWO_GOVERNOR=0 KINOWO_JVM_SLOTS=0 KINOWO_MEMORY_GATE=0 TMDB_API_KEY=stub spec_bounded scripts/identity-what-if \
       --base "$b" --head "$h" --at "$s" --judgements "$REPO_ROOT/test/resources/fixtures/identity-judgements.tsv" "$@" uk 2> "$work/err" )
 }
@@ -170,7 +173,7 @@ out=$(STUB_SLOW_SBT=$c4 what_if "$c0" "$c4" 2026-11-06T14:00:00Z --no-serve); rc
 check "a re-seed between the base and the head: exit 2, naming both generations" "yes" \
   "$(harness_error 'HARNESS ERROR.*re-seeded during the run.*100.1.*200.1' "$rc" "$out")"
 check "...and the base side it resolved on the old generation is not kept" "no" \
-  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T14:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
+  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror$gen/2026-11-06T14:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 check "...and no verdict is recorded for identity-measure's gate" "$verdicts_before" "$(verdicts)"
 # an exit leaves no compile of the head behind it: an orphan wrote into the head's tree while the next run laid it out
 # again, and that run failed with no word (Order independence #90, the case below)
@@ -183,17 +186,33 @@ check "a seed starting during the head: exit 2, caught after the head" "yes" \
 check "...the generation read before the base, between the sides and after the head" "3" \
   "$(grep -c -- '--generation' "$work/freshness-calls")"
 rm -f "$work/generations" "$work/freshness-calls"
+# A WRITE TAILED BETWEEN THE SIDES (2026-11-20, lane A3: a DE what-if moved a take its own base-vs-base control moved too,
+# a rerun none): the seed generation stands, the tail position moved -- each side read another corpus. Exit 2, never moves
+printf 'T0\nT1\n' > "$work/tails"; rm -rf "$work/fence" "$work/fences-seen"
+out=$(what_if "$c0" "$c4" 2026-11-06T15:30:00Z --no-serve); rc=$?
+check "a write tailed between the base and the head: exit 2, the mirror tailed a write" "yes" \
+  "$(harness_error 'HARNESS ERROR.*tailed a write during the run' "$rc" "$out")"
+check "...and the base side it resolved off the earlier copy is not kept" "no" \
+  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror$gen/2026-11-06T15:30:00Z" >/dev/null 2>&1 && echo yes || echo no)"
+rm -f "$work/tails"
+# THE FENCE: every read of the generation is made while the run's fence holds the tailer; the exit leaves it lingering
+rm -rf "$work/fence" "$work/fences-seen"
+out=$(what_if "$c0" "$c4" 2026-11-06T15:40:00Z --no-serve); rc=$?
+check "the tailer is fenced for the run: each generation read sees the run's fence" "0 run run run" \
+  "$rc $(awk '{ print $2 }' "$work/fences-seen" 2>/dev/null | paste -sd' ' -)"
+check "...and the exit leaves it lingering, so a rerun reads the same copy" "linger" \
+  "$(cat "$work"/fence/kinowo_uk/what-if-* 2>/dev/null | awk '{ print $2 }' | paste -sd' ' -)"
 # the kept JVM's loaded corpus is keyed by the generation too: a corpus loaded off a torn copy is never served again
 out=$(what_if "$c0" "$c4" 2026-11-06T16:00:00Z)
 check "every side is asked with the mirror generation it must read (the kept JVM's corpus key)" "yes" \
-  "$(grep -q -- '--mirror-generation 100.1' "$work/calls.args" && echo yes || echo "no: $(cat "$work/calls.args" 2>/dev/null)")"
+  "$(grep -q -- "--mirror-generation $gen" "$work/calls.args" && echo yes || echo "no: $(cat "$work/calls.args" 2>/dev/null)")"
 # a side whose live asks failed past the bound (lane C: 16k failed on the base) is a HARNESS ERROR, never moves
 out=$(STUB_ANSWERS="16000 live request(s) (api.themoviedb.org 16000; 16000 failed) in 300s, ~53.3 req/s" \
   what_if "$c0" "$c4" 2026-11-06T17:00:00Z --no-serve); rc=$?
 check "16000 failed live asks: exit 2, 'answers failed', nothing reported moved" "yes" \
   "$(harness_error 'HARNESS ERROR.*answers failed.*16000 of 16000' "$rc" "$out")"
 check "...and the base side holding those failures is not kept" "no" \
-  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T17:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
+  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror$gen/2026-11-06T17:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 out=$(STUB_ANSWERS="400 live request(s) (api.themoviedb.org 400; 3 failed) in 30s, ~13.3 req/s" \
   what_if "$c0" "$c4" 2026-11-06T18:00:00Z --no-serve); rc=$?
 check "a few failed asks (3, within the bound) still diff" "0 yes" "$rc $(grep -q CLEAN <<<"$out" && echo yes || echo "no: $(cat "$work/err")")"
@@ -206,7 +225,7 @@ out=$(STUB_HEAD_TAKE=tmdb:6 what_if "$c0" "$c0" 2026-11-06T20:00:00Z --all --no-
 check "head = base taking otherwise: exit 2, the same code moved takes" "yes" \
   "$(if [ "$rc" = 2 ] && grep -q 'HARNESS ERROR.*same code.*moved' "$work/err"; then echo yes; else echo "no: exit $rc, err: $(cat "$work/err")"; fi)"
 check "...and the base side kept from that run is not kept" "no" \
-  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T20:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
+  "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror$gen/2026-11-06T20:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 
 # A REF IS LAID OUT ONCE (Order independence #90): the trees here hold no build.sbt, which identity_tree took for "not
 # laid out yet", so every run removed and laid out again the trees another step of it was reading -- a run on a slow

@@ -34,6 +34,15 @@ function seedGeneration(saved, seedIncomplete) {
   return `${t.getHighBits()}.${t.getLowBits()}`;
 }
 
+// THE TAIL POSITION a reader pins its run to beside the seed generation: the resume token of the last change the tailer
+// applied (`none` before its first), which moves with every tailed write the seed generation ignores. identity-what-if
+// fences the tailer for its run (fence-rule.js) and refuses one this moved under: a write landing between its base and
+// its head had each side read another corpus (2026-11-20, lane A3).
+function tailPosition(saved) {
+  const data = saved && saved.resumeToken && saved.resumeToken._data;
+  return typeof data === "string" && data !== "" ? data : "none";
+}
+
 // observed: { syncedAtMs, nowMs, maxLagMs, notBeforeMs?, seedIncomplete?, missing? } — the sync moment (null when the
 // database was never tailed), the wall clock, the lag allowed, the moment the mirror must not predate (the recording's),
 // whether a seed is in flight, and the collections the reader needs that the mirror holds nothing of.

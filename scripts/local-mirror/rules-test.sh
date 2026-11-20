@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The local mirror's pure rules, through their own specs: the re-seed decision (staleness-rule-spec.js), whether a
 # reader may trust the mirror (freshness-rule-spec.js), where a tailer opens its stream (stream-start-spec.js) and the
-# mirrored-collection digest (targets-fingerprint-spec.js). No Mongo: each is a pure function, run under
+# mirrored-collection digest (targets-fingerprint-spec.js), and whether a what-if's fence holds the tailer
+# (fence-rule-spec.js). No Mongo: each is a pure function, run under
 # `mongosh --nodb` when mongosh is installed and under Node (nodb.js) when it is not, as on a CI runner.
 #
 #   scripts/local-mirror/rules-test.sh
@@ -20,5 +21,6 @@ failed=0
 nodb --file staleness-rule.js --file staleness-rule-spec.js || failed=1
 nodb --file staleness-rule.js --file freshness-rule.js --file freshness-rule-spec.js || failed=1
 nodb --file stream-start.js --file stream-start-spec.js || failed=1
+nodb --file fence-rule.js --file fence-rule-spec.js || failed=1
 nodb --eval 'var FINGERPRINT_SILENT=1' --file targets-fingerprint.js --file targets-fingerprint-spec.js || failed=1
 exit "$failed"
