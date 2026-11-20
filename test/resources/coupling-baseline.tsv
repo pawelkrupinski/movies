@@ -92,14 +92,9 @@ ce	services.venuepages	11
 ce	settings	2
 ce	tools	0
 fanout	services.corpus.CorpusCensus	10
-fanout	services.identity.FamilyScope	12
 fanout	services.identity.agreement.AgreementStage	17
 fanout	services.identity.agreement.AgreementStageComposition	11
 fanout	services.identityadapters.AgreementAsker	12
-fanout	services.identityadapters.IdentityModelService	10
-fanout	services.identityadapters.IdentityProjection	16
-fanout	services.identityadapters.LookupFill	16
-fanout	services.identityadapters.ProjectionDrafter	10
 fanout	services.movies.CaffeineMovieCache	14
 fanout	services.movies.CorpusHydrate	12
 fanout	services.movies.CorpusMirror	10
