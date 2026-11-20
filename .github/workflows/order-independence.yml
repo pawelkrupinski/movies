@@ -286,18 +286,22 @@ jobs:
               env:
                   SYNC_MODEL_SEEDS: '2000'
 
-            # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout` and shellcheck;
-            # this image has neither (run 41294275183: ten self-tests failed "timeout: command not found" / "shellcheck
-            # is not installed"). Only `timeout` is linked unprefixed, as on the laptop -- no coreutils gnubin, so
-            # the tests still meet macOS's own sed, date and friends. (ScriptSelfTestsRunInCiSpec)
-            - name: GNU timeout and shellcheck, as Linux CI and the laptop have them
+            # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout`, shellcheck and
+            # rsync 3; this image has none of them (run 41294275183: ten self-tests failed "timeout: command not
+            # found" / "shellcheck is not installed"; run 44664123050: backtest_alerts_local_test.py "rsync on PATH is
+            # not rsync 3", the image's rsync being openrsync). Only `timeout` and `rsync` are linked, ahead of
+            # /usr/bin, as on the laptop -- no coreutils gnubin, so the tests still meet macOS's own sed, date and
+            # friends. (ScriptSelfTestsRunInCiSpec)
+            - name: GNU timeout, shellcheck and rsync 3, as Linux CI and the laptop have them
               if: ${{ !cancelled() }}
               env:
                   HOMEBREW_NO_AUTO_UPDATE: '1'
               run: |
-                  brew install coreutils shellcheck
+                  brew install coreutils shellcheck rsync
                   mkdir -p "$RUNNER_TEMP/gnu-timeout"
                   ln -sf "$(brew --prefix)/bin/gtimeout" "$RUNNER_TEMP/gnu-timeout/timeout"
+                  ln -sf "$(brew --prefix rsync)/bin/rsync" "$RUNNER_TEMP/gnu-timeout/rsync"
+                  "$RUNNER_TEMP/gnu-timeout/rsync" --version | head -1
                   echo "$RUNNER_TEMP/gnu-timeout" >> "$GITHUB_PATH"
 
             # Not an order leg, but the one nightly macOS job: the script tools promise macOS's /bin/bash 3.2 and
