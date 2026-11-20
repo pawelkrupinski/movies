@@ -48,6 +48,11 @@ check "...SemanticDB on, scalafix asked of every configuration" "1 1 1" \
   "$(grep -c '|set ThisBuild / semanticdbEnabled := true|' "$STUB_CALLS") $(grep -c '|worker/IntegrationTest/scalafix |' "$STUB_CALLS") $(grep -c '|web/PageTest/scalafix |' "$STUB_CALLS")"
 check "...in the kept tree" "$work/tree" "$(cut -d'|' -f1 "$STUB_CALLS")"
 
+: > "$STUB_CALLS"
+out=$(run --check --main); status=$?
+check "--main: only the Compile configurations asked" "0 1" \
+  "$(tr '|' '\n' < "$STUB_CALLS" | grep -c '/Test/scalafix') $(tr '|' '\n' < "$STUB_CALLS" | grep -c '^base/Compile/scalafix')"
+
 out=$(run); status=$?
 check "a rewrite: exit 0" "0" "$status"
 check "...laid over the checkout and staged" "M  $src" "$(scratch_git "$repo" status --porcelain)"

@@ -4,10 +4,11 @@
 # from the compiler's own record (SemanticDB), in the kept scalafix tree (scripts/scalafix-tree.sh: the caller's
 # checkout never recompiles with SemanticDB on), the result laid back over the checkout and its index.
 #
-#   scripts/scalafix-organize [--check]
+#   scripts/scalafix-organize [--check] [--main]
 #
 #   --check   change nothing in the checkout: list the sources whose imports scalafix would change (exit 1 when there
 #             are any)
+#   --main    the production sources only (every module's Compile configuration), not the specs and fixtures
 #
 # Run it after a move or a merge that left imports out of order, instead of editing them by hand; commit what it
 # changed on its own (`git diff --cached --stat` shows it), with the layers the sources touch green. RemoveUnused
@@ -19,11 +20,12 @@ set -euo pipefail
 # shellcheck source=scripts/scalafix-tree.sh
 . "$(dirname "$0")/scalafix-tree.sh"
 
-check=""
+check="" main=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage_from_header; exit 0 ;;
     --check) check=1 ;;
+    --main) main=1 ;;
     *) usage_error "unknown argument $1" ;;
   esac
   shift
@@ -32,7 +34,10 @@ done
 scalafix_tree_open scalafix-organize
 started=$SECONDS
 commands=()
-while IFS= read -r c; do commands+=("$c"); done < <(scalafix_tree_commands "")
+while IFS= read -r c; do
+  case "$c" in */Compile/*) ;; *) [ -z "$main" ] || continue ;; esac
+  commands+=("$c")
+done < <(scalafix_tree_commands "")
 "$SF_TOOLS/scripts/gov-run" --job scalafix --cores 4 --mem 4 -- \
   bash -c '. "$1/scripts/scalafix-tree.sh"; SF_TOOLS=$1 SF_TREE=$2; shift 2; scalafix_tree_sbt "$@"' _ "$SF_TOOLS" "$SF_TREE" \
   "$SF_OUT/scalafix.log" "${commands[@]}" || { tail -30 "$SF_OUT/scalafix.log" >&2; die "scalafix failed (log above)"; }
