@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.Listing
 import services.titles.{TitleForms, TitleNormalizer}
 
 import java.util.concurrent.ConcurrentHashMap
