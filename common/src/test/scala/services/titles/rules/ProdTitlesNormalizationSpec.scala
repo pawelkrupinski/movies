@@ -34,14 +34,15 @@ class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
     else Files.readAllLines(fixture).asScala.toSeq.filter(_.nonEmpty)
 
   "the default rules" should "match the frozen legacy normalisation for every prod title" in {
-    val timestamp = titles
-    if (timestamp.isEmpty) cancel("prod-movies fixture absent — run tools.SnapshotProdTitlesToFixture")
-    timestamp.foreach { t =>
-      // The structural and search tiers merged — `rs.search` is the single
-      // lookup strip, byte-identical to the frozen legacy `apiQuery`.
-      withClue(s"apiQuery('$t'): ")(rs.search(t) shouldBe FrozenLegacyNormalizer.apiQuery(t))
-      withClue(s"sanitize('$t'): ")(sanitize(t) shouldBe FrozenLegacyNormalizer.sanitize(t))
-      withClue(s"programmePrefix('$t'): ")(rs.programmePrefix(t) shouldBe FrozenLegacyNormalizer.programmePrefix(t))
-    }
+    val prod = titles
+    if (prod.isEmpty) cancel("prod-movies fixture absent — run tools.SnapshotProdTitlesToFixture")
+    // The structural and search tiers merged — `rs.search` is the single
+    // lookup strip, byte-identical to the frozen legacy `apiQuery`.
+    val frozen: String => Seq[String] = t =>
+      Seq(s"apiQuery ${FrozenLegacyNormalizer.apiQuery(t)}", s"sanitize ${FrozenLegacyNormalizer.sanitize(t)}",
+        s"programmePrefix ${FrozenLegacyNormalizer.programmePrefix(t)}")
+    val rules: String => Seq[String] = t => Seq(s"apiQuery ${rs.search(t)}", s"sanitize ${sanitize(t)}", s"programmePrefix ${rs.programmePrefix(t)}")
+    val verdict = tools.Equivalence.assertEquivalent(prod, frozen, rules, minimum = 1000, show = t => s"'$t'")
+    info(s"${verdict.compared} prod titles, ${verdict.distinct} distinct readings")
   }
 }

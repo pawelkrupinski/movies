@@ -133,6 +133,16 @@ The restore overwrites the still-tracked July `cinema-scrapes-{pl,de}.json.gz` /
 committing. Everything else it writes is gitignored. A pair expired from the release
 or its artifact gone: `gh workflow run "Record scrape fixtures" --ref main` (~10 min).
 
+## A refactor's equivalence phase: `tools.Equivalence`
+
+A rewrite that must change no output (a rule table, a parser split) keeps a frozen copy of the old code in the test tree
+and compares the two over recorded inputs -- captures, drift slices, fixtures -- with testkit's
+`tools.Equivalence.assertEquivalent(inputs, frozen, current, minimum, show)`: each side's reading rendered as lines (its
+outputs and trace strings), every input's lines byte-identical. Before comparing, it breaks each side's reading of the
+first input and must catch it, and it refuses one function handed twice, a corpus below `minimum` and a reading that is
+the same for every input. It is compiled into common's and identity's tests too (build.sbt's `sharedTestDoubles`);
+`ProdTitlesNormalizationSpec` uses it. The frozen copy and its spec go once the rewrite has landed (99723fb1b).
+
 ## Run the narrowest scope you can
 
 `sbt web/PageTest/test` runs the page specs in ~30 s. `sbt 'web/PageTest/testOnly
