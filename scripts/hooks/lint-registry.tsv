@@ -25,6 +25,7 @@ common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala
 common:testsupport.ModuleSourcesSpec	@repo *.scala
 common:tools.CouplingSpec	@repo test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv test/resources/coupling-exemptions.tsv	the coupling baseline in the rows' shape, its limits the build's, and the layer table parsing (the ratchet itself is the sbt check's coupling step)
+common:tools.ExemptionSlackSpec	@repo common/src/test/scala/tools/couplingfixture/slack/* project/ExemptionSlack.scala project/ClassReferences.scala	the exemption slack over its fixture's compiled classes (read from the test classpath)
 common:tools.DeepExpressionLintSpec	@repo *.scala
 common:tools.JvmDefaultsLintSpec	@repo *.scala
 common:tools.NoEnvLocalReadersSpec	@repo *.scala
