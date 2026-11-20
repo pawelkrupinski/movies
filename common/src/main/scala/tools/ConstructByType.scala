@@ -12,21 +12,28 @@ import scala.quoted.*
  *
  * The constructor used is the shortest one that takes every argument. Each argument must fit exactly one of its
  * parameters, and no argument may go unused; anything else is a compile error that names the types involved.
+ *
+ * [[grouped]] takes each argument that is a tuple as its members, listed: the composition root hands the router each
+ * area's own group of controllers, so a controller added to an area is listed where that area is wired, not here.
  */
 object ConstructByType {
 
   /** `new R(...)` with every parameter supplied by the one argument of its type. */
-  inline def apply[R](inline arguments: Any*): R = ${ construct[R]('arguments, partial = false) }
+  inline def apply[R](inline arguments: Any*): R = ${ construct[R]('arguments, partial = false, grouped = false) }
 
   /** As [[apply]], with `null` for every parameter no argument fits: for a spec that exercises only part of `R`. */
-  inline def partially[R](inline arguments: Any*): R = ${ construct[R]('arguments, partial = true) }
+  inline def partially[R](inline arguments: Any*): R = ${ construct[R]('arguments, partial = true, grouped = false) }
 
-  private def construct[R: Type](arguments: Expr[Seq[Any]], partial: Boolean)(using Quotes): Expr[R] = {
+  /** As [[apply]], each argument that is a tuple (a GROUP, a stable value: each member is read off it) taken as its
+   *  members, each fitting a parameter of its own. */
+  inline def grouped[R](inline arguments: Any*): R = ${ construct[R]('arguments, partial = false, grouped = true) }
+
+  private def construct[R: Type](arguments: Expr[Seq[Any]], partial: Boolean, grouped: Boolean)(using Quotes): Expr[R] = {
     import quotes.reflect.*
 
     val target = TypeRepr.of[R]
     val supplied = arguments match {
-      case Varargs(exprs) => exprs.map(_.asTerm)
+      case Varargs(exprs) => exprs.map(_.asTerm).flatMap(membersOf(_, grouped))
       case _              => report.errorAndAbort("ConstructByType takes its arguments listed out, not as a sequence")
     }
     val constructors = target.classSymbol.toList.flatMap(_.declarations).filter(s => s.isClassConstructor && !s.flags.is(Flags.Private))
@@ -38,6 +45,15 @@ object ConstructByType {
         val reasons = fits.collect { case (c, Left(why)) => s"  (${c.paramSymss.flatten.size} parameters) $why" }
         report.errorAndAbort(s"No constructor of ${target.show} fits these arguments:\n${reasons.mkString("\n")}")
     }
+  }
+
+  /** A group's members (a tuple's, when `grouped`), read off it one by one (`_1`, `_2`, ...); any other argument is
+   *  itself. */
+  private def membersOf(using q: Quotes)(term: q.reflect.Term, grouped: Boolean): Seq[q.reflect.Term] = {
+    import q.reflect.*
+    val group = term.tpe.widen.dealias
+    if (grouped && group <:< TypeRepr.of[Tuple] && group.typeArgs.nonEmpty) group.typeArgs.indices.map(i => Select.unique(term, s"_${i + 1}"))
+    else Seq(term)
   }
 
   /** `constructor` of `target` over the `supplied` arguments: `Right(the arguments in parameter order)`, or

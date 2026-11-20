@@ -38,6 +38,18 @@ class ConstructByTypeSpec extends AnyFlatSpec with Matchers {
     (router.handler, router.listing, router.detail, router.prefix) shouldBe ((null, listing, null, "/"))
   }
 
+  it should "spread each group (a tuple) into its members when grouped, as if each were listed" in {
+    val handler = new LoudHandler
+    val listing = new Listing
+    val detail  = new Detail
+    val pages   = (listing, detail)
+    val router  = ConstructByType.grouped[Router](pages, handler)
+    (router.handler, router.listing, router.detail, router.prefix) shouldBe ((handler, listing, detail, "/"))
+    typeCheckErrors("""ConstructByType.grouped[ConstructByTypeSpec.Router]((new ConstructByTypeSpec.Listing, new ConstructByTypeSpec.Detail),
+      new ConstructByTypeSpec.Listing, new ConstructByTypeSpec.LoudHandler)""").map(_.message).mkString should include(
+      "more than one argument fits")
+  }
+
   it should "refuse to compile a missing, an ambiguous or an unused argument" in {
     typeCheckErrors("ConstructByType[ConstructByTypeSpec.Router](new ConstructByTypeSpec.Listing)")
       .map(_.message).mkString should include("no argument of type")
