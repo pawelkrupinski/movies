@@ -45,7 +45,7 @@ mir() { m "db.getSiblingDB('$MIRROR_DB').getCollection('$1')${2}"; }
 # Runs one of the sync's own mongosh entry points exactly as mirror.sh does,
 # with the local server standing in for both prod and the mirror.
 run_script() {
-  mongosh "$LOCAL_URI" --quiet --eval "var DST='$LOCAL_URI'; var SRC_DB='$SRC_DB'" \
+  mongosh "$LOCAL_URI" --quiet --eval "var DST='$LOCAL_URI'; var SRC_DB='$SRC_DB'; var FENCE_DIR='${FENCE_DIR:-}'" \
     "${@/#/--file=}" >/dev/null 2>&1
 }
 
@@ -83,7 +83,7 @@ seed_tail_gap() {
   # The race: a write landing between the copy and the tailer's first read.
   src "$GHOST_COLL" ".deleteOne({_id:'doomed'})" >/dev/null
 
-  run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/tail.js" &
+  run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/fence-rule.js" "$HERE/tail.js" &
   local tailpid=$!
   # The tailer blocks on an idle stream by design, so it is stopped on the clock
   # rather than trusted to end. Generous enough that a slow apply cannot be read
@@ -217,7 +217,7 @@ keeps_number_types() {
   src "$GHOST_COLL" ".insertOne(Object.assign({_id:'inserted'}, $NUMBERS_DOC))" >/dev/null
   src "$GHOST_COLL" ".insertOne({_id:'updated'})" >/dev/null
   src "$GHOST_COLL" ".updateOne({_id:'updated'}, {\$set: $NUMBERS_DOC})" >/dev/null
-  run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/tail.js" &
+  run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/fence-rule.js" "$HERE/tail.js" &
   local tailpid=$!
   sleep 5
   kill "$tailpid" 2>/dev/null; wait "$tailpid" 2>/dev/null
@@ -226,6 +226,34 @@ keeps_number_types() {
   updated="$(mirrored_types updated)"
   if [ "$inserted" = "$EXPECTED_TYPES" ] && [ "$updated" = "$EXPECTED_TYPES" ]; then pass "$what_tail"
   else fail "$what_tail (expected $EXPECTED_TYPES, got insert ${inserted:-nothing} / update ${updated:-nothing})"; fi
+}
+
+# ── A what-if's fence holds the tailer ───────────────────────────────────────
+# identity-what-if resolves its base and its head minutes apart over the mirror's current listings; a change tailed
+# between them had each side read another corpus (2026-11-20, lane A3). While its fence is in force (fence-rule.js)
+# tail.js holds every change unapplied, and applies it once the fence lifts.
+a_fence_holds_the_tail() {
+  local what_held="a change tailed while a what-if's fence is in force is held, unapplied"
+  local what_lifted="...and applied once the fence lifts"
+  reset_dbs
+  src "$GHOST_COLL" ".insertOne({_id:'before'})" >/dev/null
+  run_script "$HERE/mirror-targets.js" "$HERE/seed.js"
+  local fences; fences="$(mktemp -d)"
+  mkdir -p "$fences/$SRC_DB"
+  echo "$(( $(date +%s) + 600 )) run" > "$fences/$SRC_DB/what-if-1"
+  FENCE_DIR="$fences" run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/fence-rule.js" "$HERE/tail.js" &
+  local tailpid=$!
+  sleep 2
+  src "$GHOST_COLL" ".insertOne({_id:'during'})" >/dev/null
+  sleep 5
+  if [ "$(mir "$GHOST_COLL" ".countDocuments({_id:'during'})" | tr -d '[:space:]')" = "0" ]; then pass "$what_held"
+  else fail "$what_held (the tailer applied it through the fence)"; fi
+  rm -f "$fences/$SRC_DB/what-if-1"
+  sleep 8 # the tailer looks again every 5 s
+  if [ "$(mir "$GHOST_COLL" ".countDocuments({_id:'during'})" | tr -d '[:space:]')" = "1" ]; then pass "$what_lifted"
+  else fail "$what_lifted (the change never reached the mirror)"; fi
+  kill "$tailpid" 2>/dev/null; wait "$tailpid" 2>/dev/null
+  rm -rf "$fences"
 }
 
 # The README's one-off "re-seed every mirror" lever plants the torn-seed mark
@@ -242,6 +270,7 @@ a_planted_seed_mark_re_seeds() {
 
 seed_tail_gap
 keeps_number_types
+a_fence_holds_the_tail
 a_planted_seed_mark_re_seeds
 leaves_a_clean_mirror_alone
 tolerates_a_first_sighting
