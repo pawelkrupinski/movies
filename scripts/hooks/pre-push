@@ -274,7 +274,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
 # THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
 # check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
-is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--script-test-plan|--failure-summary) return 0 ;; esac; return 1; }
 is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
 case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
 case "$dry_run" in
@@ -891,6 +891,22 @@ lint_plan() {
     return 0
 }
 
+# ── Which script self-tests the scripttests check runs ──────────────────────────────────────────
+# One line per path on stdin; prints the self-tests `scripts/run-script-tests --changed` would select for them (their
+# own test, the tests of the tools sourcing or importing them, the tests naming them or declaring they read them), one
+# path a line. The `scripttests` word of --plan is the CHECK; this is what it reads, per test: agentctl's land queue
+# (MINIMAL RECHECKS) re-checks a change main moved under only when a test both sides select is among them -- the one
+# `scripttests` word made every two script changes share a check (33 of 131 rechecks, 2026-11-17..20).
+script_test_plan() {
+    local paths
+    paths="$(mktemp "${TMPDIR:-/tmp}/script-test-plan.XXXXXX")" || return 1
+    cat > "$paths"
+    "$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --paths "$paths" --list | cut -f1
+    local rc=${PIPESTATUS[0]}
+    rm -f "$paths"
+    return "$rc"
+}
+
 # What a failed sbt (or area) run shows of its log: every failing test with its message's first lines, THEN sbt's
 # [error] lines (`Failed tests:`, the specs, the task), each capped. Failures first, so the cap never cuts them: a single
 # `grep -E 'FAILED|should|...' | head -60` once filled its 60 lines with passing `- should ...` names and left a failed
@@ -918,6 +934,7 @@ case "${1:-}" in
     --unit-universe) unit_universe; exit 0 ;;
     --source-lints) source_lint_lines "${2:-}"; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
+    --script-test-plan) script_test_plan; exit $? ;;
     --failure-summary) failure_summary "$2"; exit 0 ;;
 esac
 

@@ -101,6 +101,15 @@ scratch_git "$tree" checkout -q -- scripts/lib/deeper.sh
 echo '# edited' >> "$tree/scripts/ci/takes_lib.py"
 check "--changed: a module a test or its tool imports selects it" "scripts/ci/m_test.py scripts/ci/n_test.py" "$(listed --changed "$libs")"
 scratch_git "$tree" checkout -q -- scripts/ci/takes_lib.py
+# --paths FILE --list: --changed's selection for the paths a file lists, with no git range (the land queue asks it which
+# tests two changes share: scripts/hooks/pre-push --script-test-plan)
+printf '%s\n' scripts/lib/deeper.sh scripts/ci/takes_lib.py > "$work/paths"
+check "--paths: the tests the listed paths select, as --changed would" \
+  "scripts/ci/m_test.py scripts/ci/n_test.py scripts/k-test.sh" "$(listed --paths "$work/paths")"
+: > "$work/paths"
+check "...none for no path" "" "$(listed --paths "$work/paths")"
+check "...a file it cannot read fails" "2" "$(run --list --paths "$work/no-such-file")"
+check "...and a run (not --list) is a usage error" "64" "$(run --paths "$work/paths")"
 
 # READS: a test holding the repository's own files to a rule names none of them (download_artifact_layout_test.py over
 # every workflow, Tool self-tests #259-263), so it says what it reads; and an extensionless tool's edit selects a test

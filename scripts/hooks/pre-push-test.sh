@@ -173,6 +173,14 @@ check "...and so does the exemption table: an exemption row added is judged by t
 check "...and so do the frozen reference sets: a split claim is held to them" "sbt" \
   "$(plan test/resources/coupling-fanout-refs.tsv)"
 
+printf '\033[36m▸\033[0m pre-push --script-test-plan\n'
+script_tests() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --script-test-plan | tr '\n' ' ' | sed 's/ $//'; }
+check "a tool's edit selects its own self-test, per test (the land queue's read set, not one scripttests word)" \
+  "1" "$(script_tests scripts/agent-procs | tr ' ' '\n' | grep -cx scripts/agent-procs-test.sh)"
+# (its name built here: written out whole, this very test would name it, and so select itself)
+check "...and a source no self-test reads selects none" "" \
+  "$(script_tests "web/src/main/scala/controllers/$(printf 'Nobody%sReads' This).scala")"
+
 printf '\033[36m▸\033[0m pre-push --compile-plan\n'
 compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }
 check "a worker source compiles worker's Test and It configs, and e2e's tests over it" \
@@ -284,7 +292,7 @@ for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scr
 printf '#!/usr/bin/env bash\necho checked >> "%s/root-checked"\n' "$planrepo" > "$planrepo/scripts/root-checkout-check"
 chmod +x "$planrepo/scripts/root-checkout-check"
 scratch_git "$planrepo" add -A; scratch_git "$planrepo" commit -qm base
-for mode in --plan --compile-plan --unit-plan --lint-plan; do
+for mode in --plan --compile-plan --unit-plan --lint-plan --script-test-plan; do
   (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
 done
 check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
@@ -977,7 +985,7 @@ out="$(PREPUSH_DELEGATED_FROM=/elsewhere scratch_git "$hp/wt" push origin HEAD:r
 check "a hook already handed over to runs itself (no recursion)" "old" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
 # a dry-run mode names the file it means: every plan query runs the copy it was asked of, from whatever checkout
 # (--lint-plan was missing from the list and handed over to the cwd's copy: lint_registry_reads.py asks its own)
-for mode in --plan --compile-plan --unit-plan --lint-plan; do
+for mode in --plan --compile-plan --unit-plan --lint-plan --script-test-plan; do
   rm -f "$hp/ran"
   (cd "$hp/wt" && bash "$hp/clone/scripts/hooks/pre-push" "$mode" < /dev/null > /dev/null 2>&1)
   check "a $mode query from another checkout runs the copy asked of, never hands over" "old" \

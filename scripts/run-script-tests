@@ -10,6 +10,8 @@
 #   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
 #   scripts/run-script-tests --reads               # every glob a test declares it reads (see READS), one a line
 #   scripts/run-script-tests --changed A --readers # only those a glob they declare they read selects (READS)
+#   scripts/run-script-tests --paths FILE --list   # what --changed would select for the paths FILE lists, one a line
+#                                                  # (no git: the land queue asks which tests two changes share)
 #   scripts/run-script-tests --bash "$(scripts/floor-bash)"  # every self-test under the floor bash 3.2 (macOS's
 #                                                  # /bin/bash; elsewhere scripts/floor-bash --install builds it)
 #   scripts/run-script-tests --changed origin/main --bash "$(scripts/floor-bash)"  # the floor's own scope (FLOOR)
@@ -112,7 +114,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
 stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-watch.sh"
 linux_tree_sync="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/linux-tree-sync.py" # --linux's copy of the checkout
-jobs=8 timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" test_bash="" floor_bash="" linux=0 filters=()
+jobs=8 timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" paths_file="" test_bash="" floor_bash="" linux=0 filters=()
 usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
 # A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
 usage_error() { echo "run-script-tests: $*" >&2; usage; }
@@ -128,6 +130,7 @@ while [ $# -gt 0 ]; do
     --readers) readers=1 ;;
     --tag) flag_value "$@"; tag="$2"; shift ;;
     --changed) flag_value "$@"; changed_base="$2"; shift ;;
+    --paths) flag_value "$@"; paths_file="$2"; changed_base="(the paths in $2)"; shift ;;
     --bash) flag_value "$@"; test_bash="$2"; shift ;;
     --floor) flag_value "$@"; floor_bash="$2"; shift ;;
     --linux) linux=1 ;;
@@ -139,6 +142,7 @@ while [ $# -gt 0 ]; do
 done
 cd "$root" || exit 64
 [ "$readers" = 0 ] || [ -n "$changed_base" ] || usage_error "--readers needs --changed"
+[ -z "$paths_file" ] || [ "$list" = 1 ] || usage_error "--paths only lists (--list): a run is --changed's"
 [ -z "$floor_bash" ] || { [ -n "$changed_base" ] && [ -z "$test_bash" ]; } || usage_error "--floor needs --changed, and no --bash"
 # --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
 [ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
@@ -197,6 +201,11 @@ matches_filter() { # <path>: no filters, or one names a directory above it, a su
 
 # The paths a --changed run is about: committed since leaving the base, plus uncommitted and untracked.
 changed_paths() {
+  if [ -n "$paths_file" ]; then # --paths: the paths given, the working tree's scripts reading them
+    [ -r "$paths_file" ] || { echo "run-script-tests: --paths $paths_file cannot be read" >&2; return 2; }
+    grep -v '^$' "$paths_file" | LC_ALL=C sort -u
+    return 0
+  fi
   git rev-parse -q --verify "$changed_base^{commit}" >/dev/null 2>&1 \
     || { echo "run-script-tests: --changed $changed_base is no commit" >&2; return 2; }
   { git diff --name-only "$changed_base...HEAD" && git diff --name-only HEAD && git ls-files --others --exclude-standard; } \
