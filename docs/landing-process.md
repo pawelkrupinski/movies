@@ -19,35 +19,43 @@ waiting on `agentctl land` 39%, the model's own work 22%, idle gaps 10%, local s
 Landing is the cost, so land fewer, bigger, cleaner changes and keep working while one is queued.
 
 1. **Worktree:** `git worktree add -b <lane>/<step> ../movies-<lane>-<step> origin/main`; `eval "$(~/bin/agentctl env --print)"`.
-2. **Edit, then commit each stable step** with the test that proves it (the commit gate). A refactor's proof is the
+2. **Before the first edit, pin what you will rewrite** (a report each, never a gate; the `test-layers` skill,
+   "Refactoring safety tools"): `scripts/coverage-touched <base>..<head>` lists the touched methods the reaching specs
+   leave unrun, and `scripts/mutation-check <base>..<head>` the behaviour changes they would miss (surviving mutants) --
+   run both on the range you are about to change (a draft of the refactor, or the commits that last touched the
+   code), and write the missing pinning tests first. Move a class with `scripts/scalafix-move <from> <to>`, fix import
+   order with `scripts/scalafix-organize`, never by hand; `scripts/dead-code` lists what nothing calls any more.
+   Changed the resolver's hot paths or the take-up? `scripts/identity-boot-cost` (bytes a family, held to its
+   baseline).
+3. **Edit, then commit each stable step** with the test that proves it (the commit gate). A refactor's proof is the
    existing tests staying green plus, for a fall, `scripts/ratchet-diff --measure origin/main` (paste its table; never
    write numbers by hand). Record a fall with `scripts/coupling-report --update` / `scripts/quality-report --update`;
    a rise needs its `Coupling:` / `Complexity:` / `Length:` / `Duplication:` trailer; splitting a frozen class, ask
    `scripts/coupling-report --check-split <X> <piece>...` before landing (it prints the `Coupling: split of` trailer).
-3. **A pure move?** Run `scripts/pure-move-check origin/main..HEAD`. `PURE MOVE` -> put `Pure-Move: verified` in the
+4. **A pure move?** Run `scripts/pure-move-check origin/main..HEAD`. `PURE MOVE` -> put `Pure-Move: verified` in the
    message's LAST paragraph, directly above `Co-Authored-By:` with no blank line between (a line above a blank line is
    prose to git; 2 of 2026-11-19's 3 claims were lost that way). `NOT PURE` names the edits: move them to a commit of
    their own, then check the move again. Such a commit owes
    no what-if, its identity paths select no identity area in the landing check (the hook's `puremove` check re-proves
    it instead) and it may join a backlog batch like any non-identity change. Keep moves and edits in separate commits:
    only the edits then pay for identity.
-4. **Identity code changed beyond a move:** `scripts/identity-what-if` (it skips a pure move by itself; its base side
+5. **Identity code changed beyond a move:** `scripts/identity-what-if` (it skips a pure move by itself; its base side
    is kept per mirror moment, so a second run is the head side only). 0 takes moved in every country -> land. Any take
    moved -> it is a behaviour change, not a refactor: stop and judge it (`identity-investigation` skill).
-   **The stamps are kept by themselves** either way (step 3 or 4): `agentctl land` runs `scripts/land-before-queue`
+   **The stamps are kept by themselves** either way (step 4 or 5): `agentctl land` runs `scripts/land-before-queue`
    after its rebase, whose `scripts/identity-stamp-carry auto` commits the carry rows into the same push (each pure
    move, or the change by its whole five-country what-if). The deploy then re-resolves no stored family on boot; the
    hook's `stampcarry` check proves each row again.
-5. **Local layers, narrowed:** `scripts/sbt-warm "<module>/testOnly <the specs you touched or that read it>"`, the
+6. **Local layers, narrowed:** `scripts/sbt-warm "<module>/testOnly <the specs you touched or that read it>"`, the
    module's `testUnit` only when you changed shared code, `scripts/run-script-tests --changed origin/main` for any
    script. The landing check runs the rest on ci-runner -- don't run it twice on the laptop.
-6. **Rebase onto origin/main, then land:** `~/bin/agentctl land --until-done > <scratchpad>/land-<lane>-<n>.log 2>&1`
+7. **Rebase onto origin/main, then land:** `~/bin/agentctl land --until-done > <scratchpad>/land-<lane>-<n>.log 2>&1`
    (Bash `run_in_background=true`). Conflicts in the generated baselines resolve themselves (the queue merges or
    regenerates them).
-7. **While it is queued, keep working:** start the next step in a NEW worktree branched from your queued branch
+8. **While it is queued, keep working:** start the next step in a NEW worktree branched from your queued branch
    (`git worktree add -b <lane>/<next> ../movies-<lane>-<next> <lane>/<step>`) and land it only after the first one
    says `DONE`/`LANDED` (its landed commits then drop out of the rebase). Don't sit on the land log.
-8. **Verdict:** `DONE` -> report the sha and the ratchet table. `NOT LANDED` -> do the `next:` line it prints; a
+9. **Verdict:** `DONE` -> report the sha and the ratchet table. `NOT LANDED` -> do the `next:` line it prints; a
    checks failure is yours (reproduce it with the named test locally), never a re-land to see if it passes.
 
 ## The policy

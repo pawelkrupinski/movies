@@ -95,6 +95,36 @@ is that the local toolchain is missing (e.g. no full Xcode for
   (Sonar's published examples) and `scripts/run-script-tests quality` (the ratchet and its mutation test).
   `scripts/hotspots` ranks where to clean first (churn × complexity, change-coupled pairs): a report, not a layer.
 
+## Refactoring safety tools (on demand; reports, never gates)
+
+None runs in `testUnit` or the pre-push hook, and none instruments, mutates or recompiles the caller's checkout: the
+touched-code pair measures in a throwaway worktree at the range's head (`scripts/touched-tree.sh`), the scalafix pair in
+a kept worktree with SemanticDB on (`scripts/scalafix-tree.sh`). Each prints its own `--help`.
+
+- **`scripts/coverage-touched <base>..<head>`** (scoverage, ~1.5 min on a three-file scraper lane): each production
+  method the range touches, with its statement coverage by the specs that reach it (`touchedSpecs`: the method's own
+  source's specs and its callers' specs), the ones under 80% first. Before a refactor: write the pinning tests for
+  every method it lists.
+- **`scripts/mutation-check <base>..<head>`** (Stryker4s, ~3 min on the same lane): mutates only the touched methods'
+  sources, runs only the reaching specs, and lists each touched method's killed and SURVIVING mutants -- a survivor is
+  a behaviour change no test would catch (2026-11-20: a "behaviour-preserving" scraper lane widened two venues' genre
+  parsing, tests green; the check on that fix found 10 survivors in KinoGramClient.movieOf at 89.7% coverage).
+  `--max-specs` (default 60) refuses a range whose helper every spec reaches: scope it tighter.
+- **`scripts/identity-boot-cost [--update]`** (~2 min): bytes and time a family for a cold resolve, a take-up
+  re-resolving every family, and one with nothing moved, over the pinned identity slices in a JVM without escape
+  analysis; fails a phase whose bytes a family rose over the baseline's tolerance (2%:
+  `test/resources/identity-boot-cost-baseline.tsv`). Run it on any change to the resolver's hot paths or the take-up.
+- **`scripts/scalafix-move <from.pkg.Name> <to.pkg.Name>`**: moves a class (and companion) to another package,
+  every reference re-pointed from SemanticDB (`scripts/scalafix-rules/MoveSymbol.scala`), every configuration
+  compiled before the result is staged in the checkout. Use it instead of hand-editing imports; then
+  `scripts/pure-move-check`, as any move.
+- **`scripts/scalafix-organize [--check] [--main]`**: OrganizeImports (and RemoveUnused) over the sources
+  (`.scalafix.conf`): java/javax, scala, everything else, each import's own selectors kept. After a move or merge
+  that left imports out of order.
+- **`scripts/dead-code`** (~2 min warm): production classes and methods nothing calls, from Zinc's dependencies and
+  used names (entry points -- routes, configuration, the AOT list, a `main`, library overrides -- excluded), ranked:
+  unreferenced first (delete, in a cleanup commit), then test-only (a seam on purpose, or a displaced caller).
+
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 
 `GermanyConvergenceSpec` and its PL/UK/ES/US siblings (plus the `*SampleConvergenceSpec`
