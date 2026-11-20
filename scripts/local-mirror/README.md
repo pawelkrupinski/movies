@@ -102,7 +102,7 @@ FENCES the tailer for its run (`fence-rule.js`): a file `~/.cache/kinowo/mirror-
 (`KINOWO_MIRROR_FENCE_DIR`) reading `<expiry epoch seconds> run|linger`; `tail.js` holds each change unapplied while one
 is in force, and `mirror.sh` holds its re-seed audit (the lag a fence causes is on purpose). A run's fence turns
 `linger` (20 min, `KINOWO_WHAT_IF_FENCE_LINGER_MINUTES`) once that country's sides are read (or the run exits), so a rerun reads the same copy and its kept base.
-A fence holds a change at most 6 h old (`run`) or 20 min old (`linger`), and an expiry reads as at most 4 h past its
+A fence holds a change at most 6 h old (`run`) or 20 min old (`linger`; none while a what-if drains: its `drain` fence lifts every linger), and an expiry reads as at most 4 h past its
 write. A what-if that finds the mirror more than 20 min behind (`KINOWO_WHAT_IF_DRAIN_MINUTES`) first waits for every
 other run's fence to go and lets the tail drain its backlog, then fences: back-to-back what-ifs from many agents hold
 the mirror at most that far behind plus the longest run in flight; a change that goes through anyway moves the tail

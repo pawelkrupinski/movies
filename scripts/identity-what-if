@@ -231,8 +231,8 @@ mirror_generation() {
 # within the linger reads the same copy. A fence of a what-if that died without its exit (its pid gone) is dropped.
 # THE DRAIN: back-to-back what-ifs of many agents would hold the tail for good, so a run that finds the mirror more than
 # $KINOWO_WHAT_IF_DRAIN_MINUTES (20: fence-rule.js's linger lag, past which no linger holds) behind first waits for every
-# other run's fence to go, then for the tail to apply its backlog (behind by under 2 min, or its position standing
-# still: nothing left), and only then fences. Each wait is bounded; one that runs out is said and the run goes on --
+# other run's fence to go, then -- its own `drain` fence lifting every linger -- for the tail to apply its backlog
+# (behind by under 2 min, or its position standing still for 3 polls: nothing left), and only then fences. Each wait is bounded; one that runs out is said and the run goes on --
 # still one copy for both sides, only an older one.
 fence_root=${KINOWO_MIRROR_FENCE_DIR:-$HOME/.cache/kinowo/mirror-fence}
 fence_linger_minutes=${KINOWO_WHAT_IF_FENCE_LINGER_MINUTES:-20}
@@ -252,13 +252,13 @@ other_runs() {
     [ -f "$f" ] || continue
     read -r expiry kind < "$f" 2>/dev/null || continue
     pid=${f##*/what-if-}
-    if [ "${expiry:-0}" -le "$(date +%s)" ] 2>/dev/null || { [ "$kind" = run ] && ! kill -0 "$pid" 2>/dev/null; }; then rm -f "$f"; continue; fi
+    if [ "${expiry:-0}" -le "$(date +%s)" ] 2>/dev/null || { [ "$kind" != linger ] && ! kill -0 "$pid" 2>/dev/null; }; then rm -f "$f"; continue; fi
     if [ "$kind" = run ] && [ "$pid" != $$ ]; then echo "${f##*/}"; fi
   done
   return 0
 }
 mirror_drain() { # <cc> <fence dir>
-  local state behind started=$SECONDS others last="" position
+  local state behind started=$SECONDS others last="" position still=0
   state=$(tail_state "$1"); behind=${state#* }
   case "$behind" in ''|'?'|*[!0-9]*) return 0 ;; esac
   [ "$behind" -gt $(( drain_minutes * 60 )) ] || return 0
@@ -268,10 +268,13 @@ mirror_drain() { # <cc> <fence dir>
     identity_log "$1: waiting for the runs holding the tail to end: $(tr "\n" " " <<< "$others")"
     sleep "$drain_poll_seconds"
   done
+  # this run's drain fence (fence-rule.js): lingers hold nothing while it stands; mirror_fence replaces it with the run's
+  echo "$(( $(date +%s) + drain_wait_seconds + 60 )) drain" > "$2/what-if-$$.part" && mv "$2/what-if-$$.part" "$2/what-if-$$"
   while :; do
     state=$(tail_state "$1"); position=${state% *}; behind=${state#* }
     case "$behind" in *[!0-9]*|'') return 0 ;; esac
-    if [ "$behind" -lt 120 ] || [ "$position" = "$last" ]; then identity_log "$1: drained (${behind}s behind) in $(( SECONDS - started ))s"; return 0; fi
+    if [ "$position" = "$last" ]; then still=$((still + 1)); else still=0; fi
+    if [ "$behind" -lt 120 ] || [ "$still" -ge 3 ]; then identity_log "$1: drained (${behind}s behind) in $(( SECONDS - started ))s"; return 0; fi
     [ $(( SECONDS - started )) -lt "$drain_wait_seconds" ] || { identity_log "$1: the tail did not drain in ${drain_wait_seconds}s (${behind}s behind): fencing as it is"; return 0; }
     last=$position
     sleep "$drain_poll_seconds"

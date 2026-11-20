@@ -35,6 +35,11 @@ check("a run's fence holds past that lag (a run in flight is not torn)",
   fenceHolding([fence("what-if-1", "run", NOW + HOUR)], NOW, NOW - 3 * HOUR), "what-if-1");
 check("...but not past the age the mirror stops being fresh",
   fenceHolding([fence("what-if-1", "run", NOW + HOUR)], NOW, NOW - 6 * HOUR - 1), null);
+check("a drain fence holds nothing itself", fenceHolding([fence("what-if-2", "drain", NOW + HOUR)], NOW, fresh), null);
+check("...and lifts every linger while it drains, so the backlog drains to now",
+  fenceHolding([fence("what-if-1", "linger", NOW + 20 * MIN), fence("what-if-2", "drain", NOW + HOUR)], NOW, fresh), null);
+check("...but never another run's fence", fenceHolding([fence("what-if-1", "run", NOW + HOUR), fence("what-if-2", "drain", NOW + HOUR)], NOW, fresh), "what-if-1");
+check("an expired drain lifts nothing", fenceHolding([fence("what-if-1", "linger", NOW + 20 * MIN), fence("what-if-2", "drain", NOW - 1)], NOW, fresh), "what-if-1");
 check("any one fence of several holds", fenceHolding([fence("a", "run", NOW - 1), fence("b", "run", NOW + HOUR)], NOW, fresh), "b");
 check("with no change in hand (mirror.sh's audit), any unexpired fence is in force, whatever the lag",
   fenceHolding([fence("what-if-1", "linger", NOW + MIN)], NOW, null), "what-if-1");

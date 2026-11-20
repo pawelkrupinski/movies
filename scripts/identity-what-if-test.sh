@@ -221,6 +221,8 @@ kill "$other"; wait "$other" 2>/dev/null
 wait_until "the run goes on once the other ended" test -s "$work/drain-rc"
 check "...drains, then fences and resolves: CLEAN" "0 yes yes" \
   "$(cat "$work/drain-rc") $(grep -q 'drained (60s behind)' "$work/err" && echo yes || echo "no: $(cat "$work/err")") $(grep -q CLEAN "$work/drain-out" && echo yes || echo no)"
+check "...and while it drains, its drain fence lifts the lingers" "yes" \
+  "$(grep -q ' drain$' "$work/fences-seen" && echo yes || echo "no: $(cat "$work/fences-seen")")"
 check "...the generation pinned only after the drain: every read of it sees the run's own fence" "run run run" \
   "$(awk '{ print $2 }' "$work/fences-seen" | tail -3 | paste -sd' ' -)"
 rm -f "$work/behind"
