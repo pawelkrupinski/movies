@@ -150,6 +150,21 @@ jobs:
                       identity/**
                       build.sbt
                       project/**
+                      # The build definition no image is built from (project/ImageInputs.scala's `buildOnly`): the coupling and
+                      # test-impact reports, the test guards, `sbt run`'s hooks. A change there publishes nothing (d7a733703 restarted
+                      # every worker into a full re-resolve for project/Coupling.scala); ImagePathGateSpec holds the list to the build's.
+                      !project/ClassReferences.scala
+                      !project/Coupling.scala
+                      !project/CouplingAnalysis.scala
+                      !project/ForkedTests.scala
+                      !project/HeadlessSafeInteractionMode.scala
+                      !project/ImageInputs.scala
+                      !project/ReaderNames.scala
+                      !project/StaleTastyRetry.scala
+                      !project/TestImpact.scala
+                      !project/UnitClasspathGuard.scala
+                      !project/Warmup.scala
+                      !project/WriteFailureTripwire.scala
                       Dockerfile
                       infra/nix/files/heap-dumps.sh
                       infra/jvm/web.options
@@ -197,6 +212,19 @@ jobs:
                       test/resources/fixtures/identity-judgements.tsv
                       build.sbt
                       project/**
+                      # The build-only definition, as the web's set excludes it (ImagePathGateSpec).
+                      !project/ClassReferences.scala
+                      !project/Coupling.scala
+                      !project/CouplingAnalysis.scala
+                      !project/ForkedTests.scala
+                      !project/HeadlessSafeInteractionMode.scala
+                      !project/ImageInputs.scala
+                      !project/ReaderNames.scala
+                      !project/StaleTastyRetry.scala
+                      !project/TestImpact.scala
+                      !project/UnitClasspathGuard.scala
+                      !project/Warmup.scala
+                      !project/WriteFailureTripwire.scala
                       Dockerfile
                       infra/nix/files/heap-dumps.sh
                       infra/jvm/worker.options

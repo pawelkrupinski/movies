@@ -107,7 +107,7 @@ repochecks:deploy.IdentityModelConvergenceWiringSpec	@repo
 repochecks:deploy.IdentityRefitWorkflowSpec	@repo
 repochecks:deploy.IdentitySliceOldRefGateSpec	@repo
 repochecks:deploy.IdentityTakesWiringSpec	@repo
-repochecks:deploy.ImagePathGateSpec	@repo infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
+repochecks:deploy.ImagePathGateSpec	@repo infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/* test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
 repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	@repo ios/Kinowo/*
 repochecks:deploy.JdkVersionParitySpec	@repo Dockerfile
 repochecks:deploy.JunitReportNoCheckRunSpec	@repo

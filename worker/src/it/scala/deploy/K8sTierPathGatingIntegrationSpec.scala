@@ -91,6 +91,19 @@ class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers with Sc
     matches(workerFilter, Seq("identity/src/test/scala/services/identity/IncrementalResolverSpec.scala")) shouldBe false
   }
 
+  /** The build definition no image is built from (project/ImageInputs.scala's `buildOnly`) publishes neither tier; the
+   *  rest of project/ -- the dependencies, the plugins, the resource generators -- publishes both (ImagePathGateSpec). */
+  it should "publish neither tier for a build-only change of project/, and both for one that builds the image" in {
+    Seq(Seq("project/Coupling.scala"), Seq("project/Coupling.scala", "project/TestImpact.scala", "coupling.sbt")).foreach { push =>
+      withClue(s"$push: ")(matches(webFilter, push) shouldBe false)
+      withClue(s"$push: ")(matches(workerFilter, push) shouldBe false)
+    }
+    Seq("project/Dependencies.scala", "project/plugins.sbt", "project/IdentityRulesSources.scala").foreach { path =>
+      withClue(s"$path: ")(matches(webFilter, Seq("project/Coupling.scala", path)) shouldBe true)
+      withClue(s"$path: ")(matches(workerFilter, Seq("project/Coupling.scala", path)) shouldBe true)
+    }
+  }
+
   /**
    * The heap-dump budget script lives under infra/ (the Nix flake root, so the node's timer can run
    * the same file) but is copied into BOTH images as `bin/heap-dumps.sh` by build.sbt. A change to
