@@ -78,35 +78,48 @@ object MongoIndex extends Logging {
     }
   }
 
+  /** `createIndex` refused the wanted index for one already there: find the index on the same keys (the one named as
+   *  wanted, else the first) and settle the wanted one against it. */
   private def reconcile(database: MongoDatabase, collection: String, ns: String,
                         keys: BsonDocument, options: IndexOptions, label: String): Outcome = {
     val wantedName = Option(options.getName).getOrElse(defaultName(keys))
-    val wantedKeys = normalisedKeys(keys)
     Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout).map(_.toBsonDocument)) match {
       case Failure(exception) =>
         logger.warn(s"$label: index `$wantedName` on $ns conflicts with an existing one, which could not be read: ${exception.getMessage}")
         Outcome.NotInPlace(exception.getMessage)
       case Success(indexes) =>
-        val sameKeys = indexes.filter(index => Option(index.get("key")).collect { case key: BsonDocument => normalisedKeys(key) }.contains(wantedKeys))
-        sameKeys.find(_.getString("name").getValue == wantedName).orElse(sameKeys.headOption) match {
+        onSameKeys(indexes, keys, wantedName) match {
+          case Some(existing) => settleAgainst(existing, database, collection, ns, wantedName, options, label)
           case None =>
             val reason = s"an index named `$wantedName` exists on other keys"
             logger.error(s"$label: cannot build `$wantedName` ${keys.toJson} on $ns — $reason; it is left as it is.")
             Outcome.NotInPlace(reason)
-          case Some(existing) =>
-            val existingUnique = existing.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue
-            if (comparable(existing) != wantedComparable(options)) {
-              val reason = s"the existing index ${existing.toJson} differs in more than uniqueness"
-              logger.error(s"$label: cannot build `$wantedName` on $ns in place — $reason; the old index is kept. Rebuild it by hand.")
-              Outcome.NotInPlace(reason)
-            } else if (existingUnique == options.isUnique) Outcome.Present   // the same spec under another name (85)
-            else if (options.isUnique) convertToUnique(database, collection, ns, existing.getString("name").getValue, label)
-            else {
-              val reason = s"the existing index ${existing.toJson} is unique and a plain one is wanted"
-              logger.error(s"$label: cannot build `$wantedName` on $ns — $reason; the unique index is kept.")
-              Outcome.NotInPlace(reason)
-            }
         }
+    }
+  }
+
+  /** Of `indexes`, the one on `keys` named `name`, else the first on `keys`. */
+  private def onSameKeys(indexes: Seq[BsonDocument], keys: BsonDocument, name: String): Option[BsonDocument] = {
+    val wantedKeys = normalisedKeys(keys)
+    val sameKeys = indexes.filter(index => Option(index.get("key")).collect { case key: BsonDocument => normalisedKeys(key) }.contains(wantedKeys))
+    sameKeys.find(_.getString("name").getValue == name).orElse(sameKeys.headOption)
+  }
+
+  /** The wanted index against the `existing` one on its keys: the same spec under another name is present (85), a
+   *  plain one where unique is wanted is converted in place, and anything else is left serving for an operator. */
+  private def settleAgainst(existing: BsonDocument, database: MongoDatabase, collection: String, ns: String,
+                            wantedName: String, options: IndexOptions, label: String): Outcome = {
+    val existingUnique = existing.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue
+    if (comparable(existing) != wantedComparable(options)) {
+      val reason = s"the existing index ${existing.toJson} differs in more than uniqueness"
+      logger.error(s"$label: cannot build `$wantedName` on $ns in place — $reason; the old index is kept. Rebuild it by hand.")
+      Outcome.NotInPlace(reason)
+    } else if (existingUnique == options.isUnique) Outcome.Present
+    else if (options.isUnique) convertToUnique(database, collection, ns, existing.getString("name").getValue, label)
+    else {
+      val reason = s"the existing index ${existing.toJson} is unique and a plain one is wanted"
+      logger.error(s"$label: cannot build `$wantedName` on $ns — $reason; the unique index is kept.")
+      Outcome.NotInPlace(reason)
     }
   }
 

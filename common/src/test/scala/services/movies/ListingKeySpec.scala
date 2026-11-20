@@ -80,7 +80,10 @@ class ListingKeySpec extends AnyFlatSpec with Matchers {
       k <- Seq[ListingKey](ListingKey.Native(v, "p/1", "Lalka"), ListingKey.Native(v, "p/1", "Diuna"), ListingKey.Native(v, "p/2", "A"),
         ListingKey.Published(v, "Lalka", None, Nil), ListingKey.Published(v, "Lalka", Some(2026), Nil), ListingKey.Published(v, "Lalka", Some(999), Nil),
         ListingKey.Published(v, "Lalka", Some(2026), Seq("Ab")), ListingKey.Published(v, "Lalka", Some(2026), Seq("Ab", "C")),
-        ListingKey.Published(v, "Lalka", Some(2026), Seq("Abc")), ListingKey.Published(v, "", None, Nil))
+        ListingKey.Published(v, "Lalka", Some(2026), Seq("Abc")), ListingKey.Published(v, "", None, Nil),
+        ListingKey.Published(v, "Lalka", Some(10), Nil), ListingKey.Published(v, "Lalka", Some(9), Nil),
+        ListingKey.Published(v, "Lalka", Some(-5), Nil), ListingKey.Published(v, "Lalka", Some(-12), Nil),
+        ListingKey.Published(v, "Lalka", Some(0), Nil), ListingKey.Published(v, "Lalka", Some(-5), Seq("Ab")))
     } yield k
     val rnd = new scala.util.Random(7)
     (1 to 20).foreach { _ =>

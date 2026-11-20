@@ -36,6 +36,14 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     SearchTitles.of("Pies", Some("כלב"), Nil) shouldBe Seq("כלב")
   }
 
+  // A spelling reads as the strongest script among its letters: an abjad over any other, any other over Latin.
+  it should "read a spelling of mixed scripts by its strongest one, and one with no letters as it is" in {
+    SearchTitles.of("Pies", Some("Σκυλί 2 Dog"), Nil) shouldBe Seq("Σκυλί 2 Dog", "Skyli 2 Dog")
+    SearchTitles.of("Pies", Some("Dog כלב"), Nil) shouldBe Seq("Dog כלב")
+    SearchTitles.of("Pies", Some("Σκυλί"), Seq("Dóg כלב Σ")) shouldBe Seq("Σκυλί", "Skyli", "Dóg כלב Σ")
+    SearchTitles.of("Pies", Some("1917"), Nil) shouldBe Seq("1917")
+  }
+
   // A document projected before the curated spellings existed still offers its original title.
   it should "fall back to the original title when the read model has no curated spellings yet" in {
     SearchTitles.of("Zimna wojna", Some("Cold War"), Nil) shouldBe Seq("Cold War")

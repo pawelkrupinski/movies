@@ -68,6 +68,12 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     TextNormalization.titleCaseIfAllCaps("") shouldBe ""
   }
 
+  it should "start a word after any non-letter, digits included, and case letters beyond ASCII" in {
+    TextNormalization.titleCaseIfAllCaps("ŁÓDŹ 2KINO R2D2") shouldBe "Łódź 2Kino R2D2"
+    TextNormalization.titleCaseIfAllCaps("  ÆON  FLUX ") shouldBe "  Æon  Flux "
+    TextNormalization.titleCaseIfAllCaps("1984 / 2049") shouldBe "1984 / 2049"
+  }
+
   // ── dropTrailingPartialNameIfLong ──────────────────────────────────────────
 
   "dropTrailingPartialNameIfLong" should "leave short strings alone" in {

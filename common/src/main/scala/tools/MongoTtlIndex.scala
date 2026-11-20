@@ -156,11 +156,8 @@ object MongoTtlIndex extends Logging {
   private def currentIndex(collection: MongoCollection[Document], field: String): Try[Option[(String, Long)]] =
     Try {
       Await.result(collection.listIndexes().toFuture(), 10.seconds).flatMap { index =>
-        val onFieldAlone = index.get("key")
-          .collect { case keys: org.bson.BsonDocument => keys }
-          .exists(keys => keys.size == 1 && keys.containsKey(field))
-        if (!onFieldAlone) None
-        else for {
+        for {
+          keys    <- index.get("key").collect { case keys: org.bson.BsonDocument => keys } if keys.size == 1 && keys.containsKey(field)
           name    <- index.get("name").collect { case name: org.bson.BsonString => name.getValue }
           seconds <- index.get("expireAfterSeconds").collect { case seconds: org.bson.BsonNumber => seconds.longValue() }
         } yield name -> seconds

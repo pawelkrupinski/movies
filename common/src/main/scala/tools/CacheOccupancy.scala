@@ -2,6 +2,8 @@ package tools
 
 import com.github.benmanes.caffeine.cache.Cache
 
+import scala.jdk.OptionConverters.*
+
 /**
  * What one in-process cache is holding, against what it is allowed to hold.
  *
@@ -42,19 +44,13 @@ object CacheOccupancy {
    * units across caches.
    */
   def of(cache: Cache[?, ?], weighted: Boolean): CacheOccupancy = {
-    val eviction = {
-      val policy = cache.policy().eviction()
-      if (policy.isPresent) Some(policy.get()) else None
-    }
-    val maximum = eviction.map(_.getMaximum)
-    val stats   = cache.stats()
+    val eviction = cache.policy().eviction().toScala
+    val maximum  = eviction.map(_.getMaximum)
+    val stats    = cache.stats()
     CacheOccupancy(
       entries    = cache.estimatedSize(),
       maxEntries = if (weighted) None else maximum,
-      heldBytes  = if (weighted) eviction.flatMap { e =>
-                     val weight = e.weightedSize()
-                     if (weight.isPresent) Some(weight.getAsLong) else None
-                   } else None,
+      heldBytes  = if (weighted) eviction.flatMap(_.weightedSize().toScala) else None,
       maxBytes   = if (weighted) maximum else None,
       // `recordStats()` off leaves every counter at zero, which is indistinguishable
       // from a healthy cache that has evicted nothing — so report nothing instead.

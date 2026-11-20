@@ -54,32 +54,43 @@ object HtmlScripts {
     @scala.annotation.tailrec
     private def scriptFrom(at: Int): Option[(Script, Int)] =
       if (at < 0) None
-      else {
-        val name = at + 1 + Open.length
-        if (!asciiIgnoringCase(html, at + 1, Open) || wordAt(html, name)) scriptFrom(html.indexOf('<', at + 1))
-        else {
-          val end = html.indexOf('>', name)
-          if (end < 0) None
-          else closing(html, end + 1).map { case (bodyEnd, matchEnd) =>
-            (new Script(html.substring(name, end), html, end + 1, bodyEnd), matchEnd)
-          }
-        }
+      else if (opensScript(at)) scriptOpenedAt(at)
+      else scriptFrom(html.indexOf('<', at + 1))
+
+    /** An opening `<script` at `at`, the name a whole word (the regex's `\b`). */
+    private def opensScript(at: Int): Boolean = asciiIgnoringCase(html, at + 1, Open) && !wordAt(html, at + 1 + Open.length)
+
+    /** The script whose opening tag starts at `at`, with where its match ends: none when no `>` ends the tag or no
+     *  closing follows the body. */
+    private def scriptOpenedAt(at: Int): Option[(Script, Int)] = {
+      val name = at + 1 + Open.length
+      val end  = html.indexOf('>', name)
+      if (end < 0) None
+      else closing(html, end + 1).map { case (bodyEnd, matchEnd) =>
+        (new Script(html.substring(name, end), html, end + 1, bodyEnd), matchEnd)
       }
+    }
   }
 
   /** The first `</script\s*>` at or after `from`: where the body ends, and where the match does. */
+  @scala.annotation.tailrec
   private def closing(html: String, from: Int): Option[(Int, Int)] = {
-    var at = html.indexOf('<', from)
-    while (at >= 0) {
-      if (asciiIgnoringCase(html, at + 1, Close)) {
-        var i = at + 1 + Close.length
-        while (i < html.length && isSpace(html.charAt(i))) i += 1
-        if (i < html.length && html.charAt(i) == '>') return Some((at, i + 1))
-      }
-      at = html.indexOf('<', at + 1)
+    val at = html.indexOf('<', from)
+    if (at < 0) None
+    else closingTagEnd(html, at) match {
+      case Some(end) => Some((at, end))
+      case None      => closing(html, at + 1)
     }
-    None
   }
+
+  /** Where a `</script\s*>` starting at `at` ends, when one does. */
+  private def closingTagEnd(html: String, at: Int): Option[Int] =
+    if (!asciiIgnoringCase(html, at + 1, Close)) None
+    else {
+      var i = at + 1 + Close.length
+      while (i < html.length && isSpace(html.charAt(i))) i += 1
+      Option.when(i < html.length && html.charAt(i) == '>')(i + 1)
+    }
 
   /** `html` holds `lower` at `at`, ASCII letters compared without case — the regex's `(?i)`, which
    *  folds ASCII only. */

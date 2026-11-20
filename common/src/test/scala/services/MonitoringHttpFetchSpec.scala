@@ -180,6 +180,19 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   // lossy base default (`get(url).getBytes(UTF_8)`), the wire bytes get
   // UTF-8-decoded → re-encoded → "ż" becomes "ďż˝". getBytes MUST pass the
   // delegate's RAW bytes straight through.
+  "getAsync" should "record a reply and a 404 as up and a failure as down, as get does" in {
+    val (fetch, delegate, monitor) = fixture()
+    fetch.getAsync("https://api.themoviedb.org/3/movie/1").join() shouldBe "ok"
+    delegate.respond = _ => throw new HttpStatusException(404, "GET", "https://api.themoviedb.org/x", None)
+    an[Exception] should be thrownBy fetch.getAsync("https://api.themoviedb.org/x").join()
+    delegate.respond = _ => throw new IOException("Connection refused")
+    an[Exception] should be thrownBy fetch.getAsync("https://api.themoviedb.org/y").join()
+    val bucket = monitor.history("TMDB").head
+    bucket.successes shouldBe 2
+    bucket.failures shouldBe 1
+    bucket.errors.head should include ("Connection refused")
+  }
+
   "getBytes" should "pass the delegate's raw wire bytes through, not re-encode via get" in {
     // "Dzień" in ISO-8859-2 (ń = 0xF1) — a UTF-8 decode of these bytes is lossy.
     val rawIso88592 = Array[Byte](0x44, 0x7A, 0x69, 0x65, 0xF1.toByte)

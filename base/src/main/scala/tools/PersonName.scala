@@ -118,37 +118,43 @@ object PersonName {
   /** [[capitalized]] over a cast/crew list. */
   def capitalizedAll(names: Seq[String]): Seq[String] = names.map(capitalized)
 
-  /** Case one whitespace-delimited word of an all-lowercase name, in place. */
-  private def capitalizeWord(chars: Array[Char], start: Int, end: Int, leading: Boolean): Unit = {
-    if (!leading && Particles.contains(letterCore(chars, start, end))) return
+  /** Case one whitespace-delimited word of an all-lowercase name, in place: a particle in the middle of the name
+   *  stays as it is; any other word has its sub-words capitalised, then the Mc rule applied. */
+  private def capitalizeWord(chars: Array[Char], start: Int, end: Int, leading: Boolean): Unit =
+    if (leading || !Particles.contains(letterCore(chars, start, end))) {
+      capitalizeSubWords(chars, start, end)
+      applyMcPrefix(chars, start, end)
+    }
 
+  /** Uppercase the first letter of each sub-word of `chars[start, end)`: after a hyphen or dot, and after an
+   *  apostrophe that ends a one- or two-letter prefix. */
+  private def capitalizeSubWords(chars: Array[Char], start: Int, end: Int): Unit = {
     var index = start
     var atSubWordStart = true
     // Letters seen since the last sub-word break — the apostrophe rule's "how
     // long is the prefix" measure.
     var lettersInSegment = 0
     while (index < end) {
-      val character = chars(index)
-      if (Character.isLetter(character)) {
-        if (atSubWordStart) chars(index) = Character.toUpperCase(character)
-        atSubWordStart = false
-        lettersInSegment += 1
-      } else if (isSubWordBreak(character)) {
-        atSubWordStart = true
-        lettersInSegment = 0
-      } else if (isApostrophe(character)) {
-        // `o'toole` / `d'onofrio`: a one- or two-letter prefix is an elided
-        // particle, so the next letter starts the real name. A longer prefix
-        // (`keali'i`) is a word with an apostrophe in it — leave it alone.
-        atSubWordStart = lettersInSegment <= 2
-        lettersInSegment = 0
-      } else {
-        // Digits and other punctuation neither break nor extend the segment.
-        atSubWordStart = false
+      chars(index) match {
+        case letter if Character.isLetter(letter) =>
+          if (atSubWordStart) chars(index) = Character.toUpperCase(letter)
+          atSubWordStart = false
+          lettersInSegment += 1
+        case break if isSubWordBreak(break) =>
+          atSubWordStart = true
+          lettersInSegment = 0
+        case apostrophe if isApostrophe(apostrophe) =>
+          // `o'toole` / `d'onofrio`: a one- or two-letter prefix is an elided
+          // particle, so the next letter starts the real name. A longer prefix
+          // (`keali'i`) is a word with an apostrophe in it — leave it alone.
+          atSubWordStart = lettersInSegment <= 2
+          lettersInSegment = 0
+        case _ =>
+          // Digits and other punctuation neither break nor extend the segment.
+          atSubWordStart = false
       }
       index += 1
     }
-    applyMcPrefix(chars, start, end)
   }
 
   /** `mcconaughey` → `McConaughey`. Runs after the word has been title-cased, so

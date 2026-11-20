@@ -399,6 +399,31 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     cb.get(urlA) shouldBe "ok"
   }
 
+  it should "do the same through getAsync: open, refuse without the wire, admit one re-armed probe, close when it 404s" in {
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val delegate = new RequestLoggingHttpFetch(timeout)
+    val cb       = breaker(delegate, clock)
+    (1 to 4).foreach(_ => (the[java.util.concurrent.CompletionException] thrownBy cb.getAsync(urlA).join()).getCause shouldBe a[HttpTimeoutException])
+    val refused = (the[java.util.concurrent.CompletionException] thrownBy cb.getAsync(urlA).join()).getCause
+    refused shouldBe a[CircuitOpenException]
+    refused.asInstanceOf[CircuitOpenException].openForMs shouldBe 60000L
+    refused.asInstanceOf[CircuitOpenException].lastFailure shouldBe defined
+    delegate.calls shouldBe 4
+
+    clock.advanceSeconds(61) // cooldown elapsed: the next caller is the probe, and the window re-arms behind it
+    var second: Option[Throwable] = None
+    delegate.respond = url => {
+      if (second.isEmpty) second = Some((the[java.util.concurrent.CompletionException] thrownBy cb.getAsync(urlA).join()).getCause)
+      notFound(url)
+    }
+    (the[java.util.concurrent.CompletionException] thrownBy cb.getAsync(urlA).join()).getCause shouldBe a[HttpStatusException]
+    second.value shouldBe a[CircuitOpenException]
+    delegate.calls shouldBe 5
+    withClue("the probe's 404 is the host answering: ")(cb.openRemainingMillis(hostA) shouldBe 0L)
+    delegate.respond = _ => "ok"
+    cb.getAsync(urlA).join() shouldBe "ok"
+  }
+
   // A worker restarts on every deploy (62 in the week to 2026-11-16). With the breaker in memory alone each boot forgot
   // every host that was down: its circuit-open series ended until the host failed four more times, so one two-day
   // outage (kinoikar.mok-jar.pl's certificate) paged seven times. A breaker built over what the last one remembered

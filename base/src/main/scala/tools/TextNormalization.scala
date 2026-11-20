@@ -161,24 +161,14 @@ object TextNormalization {
    * → `Mcnamee` not `McNamee`); acceptable trade-off vs. a custom rule
    * table for one prefix family.
    */
-  def titleCaseIfAllCaps(s: String): String = {
-    if (s.isEmpty || s.exists(c => c.isLetter && c.isLower)) return s
-    val sb = new StringBuilder(s.length)
-    var atWordStart = true
-    var i = 0
-    while (i < s.length) {
+  def titleCaseIfAllCaps(s: String): String =
+    if (s.exists(c => c.isLetter && c.isLower)) s
+    else s.indices.map { i =>
       val character = s.charAt(i)
-      if (character.isLetter) {
-        sb.append(if (atWordStart) character.toUpper else character.toLower)
-        atWordStart = false
-      } else {
-        sb.append(character)
-        atWordStart = true
-      }
-      i += 1
-    }
-    sb.toString
-  }
+      if (!character.isLetter) character
+      else if (i > 0 && s.charAt(i - 1).isLetter) character.toLower
+      else character.toUpper
+    }.mkString
 
   /** Title-case each whitespace-separated word — "science fiction" →
    *  "Science Fiction". Leaves already-mixed-case strings alone (so

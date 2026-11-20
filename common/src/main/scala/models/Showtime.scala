@@ -152,22 +152,22 @@ object Showtime {
   /** The prefix every booking URL of `slots` shares — or empty when fewer than two have
    *  one, where a shared prefix would save nothing. */
   def commonUrlPrefix(slots: Iterable[Showtime]): String = {
-    var first: String = null
-    var length = 0
-    var count  = 0
-    for (slot <- slots; url <- slot.bookingUrl) {
-      if (first == null) { first = url; length = url.length }
-      else {
-        val limit = math.min(length, url.length)
-        var i = 0
-        while (i < limit && first.charAt(i) == url.charAt(i)) i += 1
-        length = i
-      }
-      count += 1
-    }
-    // Never between the two halves of a surrogate pair: each half would be written on its own,
-    // and UTF-8 spells a lone half as '?'.
-    if (length > 0 && first != null && Character.isHighSurrogate(first.charAt(length - 1))) length -= 1
-    if (count < 2) "" else first.substring(0, length)
+    val urls  = slots.iterator.flatMap(_.bookingUrl)
+    val first = if (urls.hasNext) urls.next() else ""
+    if (!urls.hasNext) ""
+    else first.substring(0, wholeCharacters(first, urls.foldLeft(first.length)(sharedLength(first, _, _))))
   }
+
+  /** How many leading characters `url` shares with `first`, at most `limit`. */
+  private def sharedLength(first: String, limit: Int, url: String): Int = {
+    val bound = math.min(limit, url.length)
+    var i = 0
+    while (i < bound && first.charAt(i) == url.charAt(i)) i += 1
+    i
+  }
+
+  /** `length`, or one less when that would cut `text` between the two halves of a surrogate pair: each half
+   *  would be written on its own, and UTF-8 spells a lone half as '?'. */
+  private def wholeCharacters(text: String, length: Int): Int =
+    if (length > 0 && Character.isHighSurrogate(text.charAt(length - 1))) length - 1 else length
 }

@@ -25,26 +25,29 @@ object SearchTitles {
   private val Abjads: Set[Character.UnicodeScript] =
     Set(Character.UnicodeScript.ARABIC, Character.UnicodeScript.HEBREW, Character.UnicodeScript.SYRIAC, Character.UnicodeScript.THAANA)
 
-  /** What a spelling's letters are written in, from one pass over its code points: every render
-   *  cold-builds this for each film's spellings, so no array, iterator or set per spelling. */
-  private enum Written { case Unlettered, Latin, Abjad, Other }
+  /** What a spelling's letters are written in: the strongest script among them, in this order -- an abjad over any
+   *  other script, any other over Latin. From one pass over its code points: every render cold-builds this for each
+   *  film's spellings, so no array, iterator or set per spelling. */
+  private enum Written { case Unlettered, Latin, Other, Abjad }
 
   private def written(text: String): Written = {
-    var latin = false
-    var other = false
-    var i     = 0
-    while (i < text.length) {
+    var strongest = Written.Unlettered
+    var i         = 0
+    while (i < text.length && strongest != Written.Abjad) {
       val cp = text.codePointAt(i)
       if (Character.isLetter(cp)) {
-        val script = Character.UnicodeScript.of(cp)
-        if (script == Character.UnicodeScript.LATIN) latin = true
-        else if (Abjads(script)) return Written.Abjad
-        else other = true
+        val letter = writtenIn(Character.UnicodeScript.of(cp))
+        if (letter.ordinal > strongest.ordinal) strongest = letter
       }
       i += Character.charCount(cp)
     }
-    if (other) Written.Other else if (latin) Written.Latin else Written.Unlettered
+    strongest
   }
+
+  private def writtenIn(script: Character.UnicodeScript): Written =
+    if (script == Character.UnicodeScript.LATIN) Written.Latin
+    else if (Abjads(script)) Written.Abjad
+    else Written.Other
 
   /** Latin-ASCII leaves ASCII as it is, so most titles skip ICU altogether. */
   private def unaccented(text: String): String =

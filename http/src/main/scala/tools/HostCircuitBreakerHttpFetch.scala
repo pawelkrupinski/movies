@@ -4,7 +4,7 @@ import play.api.Logging
 
 import java.time.{Duration => JDuration, Instant}
 import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
-import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
@@ -214,68 +214,56 @@ class HostCircuitBreakerHttpFetch(
     case other                                          => other
   }
 
-  /** Claim the right to hit the wire for `host`, or report the millis left on its
-   *  open window. Admitting the half-open probe RE-ARMS that window in the same
-   *  atomic step, so exactly one caller probes per `openDuration` — without it,
-   *  the open check was a plain read and every caller that arrived once the window
-   *  elapsed went to the wire together, which is not the "one trial call" this
-   *  breaker promises. Re-arming also means a probe that never returns can't wedge
-   *  the host shut: the next cooldown admits a fresh one. */
-  private def admit(host: String): (Long, Option[String]) = {
-    val remaining = new AtomicLong(0L)
-    val cause     = new AtomicReference[Option[String]](None)
-    breakers.compute(host, (_, prev) =>
-      if (prev == null) null // no breaker for this host — closed, nothing to claim
-      else prev.openUntil match {
-        case None => prev // accruing failures but closed
-        case Some(until) =>
-          val left = JDuration.between(clock.instant(), until).toMillis
-          if (left > 0L) { remaining.set(left); cause.set(prev.lastFailure); prev }
-          else prev.copy(openUntil = Some(clock.instant().plusMillis(prev.windowMs)))
-      })
-    (remaining.get(), cause.get())
+  /** Claim the right to hit the wire for `host` — or, while its breaker is open, the refusal to fail the call with
+   *  instead, carrying the millis left on its open window. Admitting the half-open probe RE-ARMS that window in the
+   *  same atomic step ([[Breaker.admitting]]), so exactly one caller probes per `openDuration` — without it, the open
+   *  check was a plain read and every caller that arrived once the window elapsed went to the wire together, which is
+   *  not the "one trial call" this breaker promises. Re-arming also means a probe that never returns can't wedge the
+   *  host shut: the next cooldown admits a fresh one. */
+  private def admit(host: String): Option[CircuitOpenException] = {
+    RequestedHost.note(host)
+    val refusal = new AtomicReference[Option[CircuitOpenException]](None)
+    // No breaker for this host: closed, nothing to claim.
+    breakers.computeIfPresent(host, (_, breaker) => {
+      val (admitted, left) = breaker.admitting(clock.instant())
+      if (left > 0L) refusal.set(Some(new CircuitOpenException(host, left, breaker.lastFailure)))
+      admitted
+    })
+    refusal.get()
+  }
+
+  /** What one finished request to `url` says about its `host`. A trip-worthy failure counts towards opening it. Any
+   *  other failure — a 404, a parse error — means the host ANSWERED, so it is alive and the breaker closes exactly
+   *  as a 200 would close it: left unrecorded, a half-open probe that came back 404 would leave the host blocked for
+   *  another full window, since [[admit]] re-armed it as it handed the probe out. A failure that says nothing of the
+   *  host (an interrupt, a [[NeverSent]] refusal) is not recorded at all. */
+  private def settle(host: String, url: String, failure: Option[Throwable]): Unit = failure match {
+    case Some(e) if HostFailure.saysNothing(e)  => ()
+    case Some(e) if HostFailure.isTripWorthy(e) => onFailure(host, url, e)
+    case _                                      => onSuccess(host)
   }
 
   protected def around[T](url: String)(call: HttpFetch => T): T = hostOf(url) match {
-    case None => call(delegate)// unparseable host — nothing to key a breaker on
+    case None => call(delegate) // unparseable host — nothing to key a breaker on
     case Some(host) =>
-      RequestedHost.note(host)
-      val (remaining, why) = admit(host)
-      if (remaining > 0L) throw new CircuitOpenException(host, remaining, why)
+      admit(host).foreach(refusal => throw refusal)
+      // A fatal error (an OutOfMemoryError, a LinkageError) is this JVM's, never the host's answer: it goes through
+      // unrecorded, as an interrupt does.
       try { val result = call(delegate); onSuccess(host); result }
-      // A NON-trip-worthy throw — a 404, a parse error — means the host ANSWERED, so it is
-      // alive and the breaker closes exactly as a 200 would close it. Letting it fall
-      // through unrecorded used to be harmless when the open check was a pure read, but
-      // `admit` now re-arms the window as it hands out the half-open probe: a probe that
-      // came back 404 would leave the host blocked for another full `openDuration` on the
-      // strength of a reply that proves it recovered. A fatal error (an OutOfMemoryError, a LinkageError) is this
-      // JVM's, never the host's answer: it goes through unrecorded, as an interrupt does.
-      catch {
-        case NonFatal(e) if HostFailure.saysNothing(e)  => throw e
-        case NonFatal(e) if HostFailure.isTripWorthy(e) => onFailure(host, url, e); throw e
-        case NonFatal(e)                    => onSuccess(host); throw e
-      }
+      catch { case NonFatal(e) => settle(host, url, Some(e)); throw e }
   }
 
   override def getAsync(url: String): CompletableFuture[String] = hostOf(url) match {
     case None => delegate.getAsync(url)
     case Some(host) =>
-      RequestedHost.note(host)
-      val (remaining, why) = admit(host)
-      if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining, why))
-      else delegate.getAsync(url).handle[String]((result, throwable) => {
-        if (throwable == null) { onSuccess(host); result }
-        // Same rule as `around`: a non-trip-worthy failure is the host answering, which
-        // closes the breaker rather than leaving a re-armed window in place.
-        else {
-          unwrap(throwable) match {
-            case failure if HostFailure.saysNothing(failure)  => ()
-            case failure if HostFailure.isTripWorthy(failure) => onFailure(host, url, failure)
-            case _                                => onSuccess(host)
-          }
-          throw throwable
-        }
-      })
+      admit(host) match {
+        case Some(refusal) => CompletableFuture.failedFuture(refusal)
+        case None =>
+          delegate.getAsync(url).handle[String]((result, throwable) => {
+            settle(host, url, Option(throwable).map(unwrap))
+            if (throwable == null) result else throw throwable
+          })
+      }
   }
 }
 
@@ -305,7 +293,17 @@ object HostCircuitBreakerHttpFetch {
    *  Wybrzeże's TLS certificate had expired (2026-07-18), which the first failure
    *  had said plainly before the breaker started swallowing it. */
   private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None,
-                                    windowMs: Long = 0L, failedPages: Set[String] = Set.empty)
+                                    windowMs: Long = 0L, failedPages: Set[String] = Set.empty) {
+    /** This breaker after a caller asks, at `now`, to hit the wire, and the millis it must wait first (0: go ahead).
+     *  Closed, it lets the call through as it is; open with time left, it refuses; open with its window run out, it
+     *  admits this caller as the half-open probe and re-arms the window for the next one. */
+    def admitting(now: Instant): (Breaker, Long) = openUntil match {
+      case None => (this, 0L)
+      case Some(until) =>
+        val left = JDuration.between(now, until).toMillis
+        if (left > 0L) (this, left) else (copy(openUntil = Some(now.plusMillis(windowMs))), 0L)
+    }
+  }
 
   /** The default ceiling on a host's cooldown between failed probes: past Filmstarts' ~5-minute 429 blocks (one
    *  probe, at most, lands after a block has ended), short enough that a host that comes back is read again

@@ -117,26 +117,35 @@ object SlotFields {
    *  to the home page is the same screening printed again, and the copy carrying the most specific
    *  link stands for it. */
   def showtimes(raw: Seq[Showtime], base: Option[String]): Seq[Showtime] = {
-    val linked = raw.map(st => st.bookingUrl match {
-      case None    => st
-      case Some(u) => val fixed = url(u, base); if (fixed == st.bookingUrl) st else st.copy(bookingUrl = fixed)
-    })
-    def slotOf(st: Showtime) = (st.dateTime, st.room, st.format)
+    val linked = raw.map(withServedLink(_, base))
+    if (eachSlotOnce(linked)) linked else eachScreeningOnce(linked)
+  }
+
+  /** `st` with its booking link as [[url]] makes it: `st` itself when that is the link it has. */
+  private def withServedLink(st: Showtime, base: Option[String]): Showtime = {
+    val fixed = url(st.bookingUrl, base)
+    if (fixed == st.bookingUrl) st else st.copy(bookingUrl = fixed)
+  }
+
+  private def slotOf(st: Showtime): (java.time.LocalDateTime, Option[String], List[String]) = (st.dateTime, st.room, st.format)
+
+  /** No slot printed twice: the common case, answered without grouping. */
+  private def eachSlotOnce(showtimes: Seq[Showtime]): Boolean = {
     val seen = scala.collection.mutable.HashSet.empty[(java.time.LocalDateTime, Option[String], List[String])]
-    if (linked.forall(st => seen.add(slotOf(st)))) linked   // the common case: no slot printed twice
-    else {
-      val bySlot = linked.indices.groupBy(i => slotOf(linked(i)))
-      {
-        // Per slot, the copies that stand: the first of each specific link, or — where no copy names
-        // its own screening — the one with the lowest-ranked link.
-        val kept = bySlot.valuesIterator.flatMap { slot =>
-          if (slot.sizeIs == 1) slot
-          else if (slot.exists(i => namesItsScreening(linked(i)))) slot.filter(i => namesItsScreening(linked(i))).distinctBy(linked(_).bookingUrl)
-          else Seq(slot.minBy(i => rank(linked(i))))
-        }.toSet
-        linked.indices.collect { case i if kept(i) => linked(i) }
-      }
-    }
+    showtimes.forall(st => seen.add(slotOf(st)))
+  }
+
+  /** The copies that stand for each slot's screenings, in the listing's order. */
+  private def eachScreeningOnce(linked: Seq[Showtime]): Seq[Showtime] = {
+    val kept = linked.indices.groupBy(i => slotOf(linked(i))).valuesIterator.flatMap(standing(linked, _)).toSet
+    linked.indices.collect { case i if kept(i) => linked(i) }
+  }
+
+  /** Of one slot's copies (`slot`, indices into `linked`), the ones that stand: the first of each specific link, or
+   *  — where no copy names its own screening — the one with the lowest-ranked link. */
+  private def standing(linked: Seq[Showtime], slot: Seq[Int]): Seq[Int] = {
+    val specific = slot.filter(i => namesItsScreening(linked(i)))
+    if (specific.nonEmpty) specific.distinctBy(linked(_).bookingUrl) else Seq(slot.minBy(i => rank(linked(i))))
   }
 
   private def namesItsScreening(st: Showtime): Boolean = st.bookingUrl.exists(specific)

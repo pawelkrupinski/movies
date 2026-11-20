@@ -76,6 +76,15 @@ class ShowtimeSpec extends AnyFlatSpec with Matchers {
   "the prefix a group's URLs share" should "be empty for fewer than two URLs" in {
     Showtime.commonUrlPrefix(Seq(whole, Showtime(start, None))) shouldBe ""
     Showtime.commonUrlPrefix(Seq(whole, split, Showtime(start, Some("https://kino.example/buy?show=2")))) shouldBe "https://kino.example/buy?show="
+    Showtime.commonUrlPrefix(Nil) shouldBe ""
+    Showtime.commonUrlPrefix(Seq(Showtime(start, None), Showtime(start, None))) shouldBe ""
+  }
+
+  it should "be the whole URL when every URL is the same, and stop at the shortest one" in {
+    val same = Showtime(start, Some("https://kino.example/buy"))
+    Showtime.commonUrlPrefix(Seq(same, Showtime(start, None), same)) shouldBe "https://kino.example/buy"
+    Showtime.commonUrlPrefix(Seq(Showtime(start, Some("https://kino.example/buy/12")), same, Showtime(start, Some("https://kino.example/buy/13")))) shouldBe "https://kino.example/buy"
+    Showtime.commonUrlPrefix(Seq(same, Showtime(start, Some("ftp://elsewhere")))) shouldBe ""
   }
 
   it should "never end between the two halves of a surrogate pair" in {

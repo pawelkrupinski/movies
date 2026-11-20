@@ -132,15 +132,10 @@ object ListingKey {
     }
     // As the years' text compares: none first; two of as many digits as their numbers do.
     private def years(a: Option[Int], b: Option[Int]): Int =
-      if (a.isEmpty) (if (b.isEmpty) 0 else -1)
-      else if (b.isEmpty) 1
-      else {
-        val x = a.get
-        val y = b.get
-        if (x == y) 0
-        else if (x >= 0 && y >= 0 && digits(x) == digits(y)) Integer.compare(x, y)
-        else x.toString.compareTo(y.toString)
-      }
+      if (a.isEmpty || b.isEmpty) java.lang.Boolean.compare(a.nonEmpty, b.nonEmpty)
+      else if (asManyDigits(a.get, b.get)) Integer.compare(a.get, b.get)
+      else a.get.toString.compareTo(b.get.toString)
+    private def asManyDigits(x: Int, y: Int): Boolean = x >= 0 && y >= 0 && digits(x) == digits(y)
     private def digits(n: Int): Int = if (n < 10) 1 else 1 + digits(n / 10)
     // As the directors joined by NUL compare: name by name, a list that runs out first ordering first.
     private def directors(a: Seq[String], b: Seq[String]): Int =

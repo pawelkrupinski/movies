@@ -66,4 +66,17 @@ class SlotFieldsSpec extends AnyFlatSpec with Matchers {
     SlotFields.showtimes(Seq(at(Some("/kup/1"))), Some("https://kino.pl/film/lalka")) shouldBe Seq(at(Some("https://kino.pl/kup/1")))
     SlotFields.showtimes(Seq(at(Some(""))), None) shouldBe Seq(at(None))
   }
+
+  it should "keep the listing's order across slots, a slot printed once among them, and hand back a served link's showtime as it is" in {
+    def later(url: Option[String]) = Showtime(LocalDateTime.of(2026, 10, 6, 21, 0), url)
+    val booked = at(Some("https://kino.pl/kup/1"))
+    val other  = at(Some("https://kino.pl/kup/2"))
+    val lone   = later(Some("https://kino.pl"))
+    SlotFields.showtimes(Seq(lone, at(Some("https://kino.pl")), booked, other, booked, at(None)), None) shouldBe Seq(lone, booked, other)
+    SlotFields.showtimes(Seq(later(None), at(Some("https://b.kino.pl")), later(Some("https://a.kino.pl")), at(Some("https://a.kino.pl"))), None) shouldBe
+      Seq(later(Some("https://a.kino.pl")), at(Some("https://a.kino.pl")))
+    val served = SlotFields.showtimes(Seq(booked, lone), None)
+    assert(served.head eq booked)
+    assert(served(1) eq lone)
+  }
 }

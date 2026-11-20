@@ -72,6 +72,13 @@ class PersonNameSpec extends AnyFlatSpec with Matchers {
     PersonName.capitalized("ángela molina")    shouldBe "Ángela Molina"
   }
 
+  it should "let a digit or other punctuation end a word's start, and every break and apostrophe spelling count" in {
+    PersonName.capitalized("2pac shakur")        shouldBe "2pac Shakur"
+    PersonName.capitalized("(van) damme, jr")    shouldBe "(van) Damme, Jr"
+    PersonName.capitalized("jean–luc o’toole")   shouldBe "Jean–Luc O’Toole"
+    PersonName.capitalized("ac/dc")              shouldBe "Ac/Dc"
+  }
+
   it should "pass an already-correct name through byte-identical" in {
     // The most important property: the helper runs over a MIXED corpus, so a
     // name any source already cased must survive untouched.

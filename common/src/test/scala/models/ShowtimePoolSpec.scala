@@ -42,4 +42,34 @@ class ShowtimePoolSpec extends AnyFlatSpec with Matchers {
     a.bookingUrl shouldBe Some("https://web.picturehouses.com/order/showtimes/021-98528/seats")
     b.bookingUrl shouldBe Some("https://web.picturehouses.com/order/showtimes/021-98558/seats")
   }
+
+  private def screening(showtimes: Seq[Showtime]) = CityScreening("f|2026#poznan#Muza", "f|2026", "poznan", "Muza", None, showtimes)
+
+  "a pool's row" should "take the shared instants and split every booking URL at the prefix the row's URLs share" in {
+    val pool   = new ShowtimePool
+    val read   = screening(Seq(Showtime(at, Some("https://muza.example/buy/1")), Showtime(at, Some("https://muza.example/buy/22")), Showtime(at, None)))
+    val shared = pool.share(read)
+    shared.showtimes.map(_.bookingUrl) shouldBe read.showtimes.map(_.bookingUrl)
+    shared.showtimes.flatMap(_.urlSplitPrefix) shouldBe Seq("https://muza.example/buy/", "https://muza.example/buy/")
+    assert(shared.showtimes.forall(_.dateTime eq pool.canonical(at)))
+    val other = pool.share(screening(Seq(Showtime(at, Some("https://muza.example/buy/3")), Showtime(at, Some("https://muza.example/buy/4")))))
+    assert(other.showtimes.head.urlSplitPrefix.get eq shared.showtimes.head.urlSplitPrefix.get)
+  }
+
+  it should "be the row itself when its showtimes already share everything" in {
+    val pool   = new ShowtimePool
+    val shared = pool.share(screening(Seq(Showtime(at, Some("https://muza.example/buy/1")), Showtime(at, Some("https://muza.example/buy/2")))))
+    assert(pool.share(shared) eq shared)
+    val lone = pool.share(screening(Seq(Showtime(at, Some("https://muza.example/buy/1")))))
+    lone.showtimes.head.urlSplitPrefix shouldBe None
+    assert(pool.share(lone) eq lone)
+  }
+
+  it should "split no URL when fewer than two share a prefix, sharing the instants still" in {
+    val pool  = new ShowtimePool
+    val fresh = LocalDateTime.of(2026, 10, 5, 19, 0)
+    val row   = pool.share(screening(Seq(Showtime(fresh, Some("https://muza.example/buy/1")), Showtime(LocalDateTime.of(2026, 10, 5, 19, 0), None))))
+    row.showtimes.flatMap(_.urlSplitPrefix) shouldBe Nil
+    assert(row.showtimes(0).dateTime eq row.showtimes(1).dateTime)
+  }
 }

@@ -50,15 +50,12 @@ final class ShowtimePool {
    *  shared prefix — the row itself when they all already are. */
   def share(row: CityScreening): CityScreening = {
     val common = Showtime.commonUrlPrefix(row.showtimes)
-    val prefix = if (common.isEmpty) null else prefixes.intern(common)
-    var changed = false
+    val prefix = Option.when(common.nonEmpty)(prefixes.intern(common))
     val shared = row.showtimes.map { st =>
-      val at     = canonical(st.dateTime)
-      val dated  = if (at eq st.dateTime) st else st.copy(dateTime = at)
-      val held   = if (prefix == null) dated else dated.withUrlPrefix(prefix)
-      if (!(held eq st)) changed = true
-      held
+      val at    = canonical(st.dateTime)
+      val dated = if (at eq st.dateTime) st else st.copy(dateTime = at)
+      prefix.fold(dated)(dated.withUrlPrefix)
     }
-    if (changed) row.copy(showtimes = shared) else row
+    if (shared.corresponds(row.showtimes)(_ eq _)) row else row.copy(showtimes = shared)
   }
 }

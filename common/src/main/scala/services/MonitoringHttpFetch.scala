@@ -87,18 +87,12 @@ class MonitoringHttpFetch(
       case None => call(delegate)
       case Some(service) =>
         val started = Stopwatch.start()
-        def ms = started.millis
         try {
           val result = call(delegate)
-          monitor.recordSuccess(service, ms)
+          monitor.recordSuccess(service, started.millis)
           result
         } catch {
-          // Abandoned by its caller before the service answered: neither up nor down, so no sample.
-          case e: Exception if CallerCancelled(e) => throw e
-          case e: Exception =>
-            if (isFailure(e)) monitor.recordFailure(service, errorDescription(e))
-            else monitor.recordSuccess(service, ms)  // reached the server (e.g. 404 not-found) → success
-            throw e
+          case e: Exception => record(service, started.millis, Some(e)); throw e
         }
     }
   }
@@ -108,17 +102,17 @@ class MonitoringHttpFetch(
       case None => delegate.getAsync(url)
       case Some(service) =>
         val started = Stopwatch.start()
-        delegate.getAsync(url).whenComplete { (_, exception) =>
-          val ms = started.millis
-          if (exception == null) monitor.recordSuccess(service, ms)
-          else {
-            val cause = unwrap(exception)
-            if (CallerCancelled(cause)) ()
-            else if (isFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
-            else monitor.recordSuccess(service, ms)
-          }
-        }
+        delegate.getAsync(url).whenComplete((_, exception) => record(service, started.millis, Option(exception).map(unwrap)))
     }
+  }
+
+  /** One finished call's sample, `millis` after it started: a call abandoned by its caller before the service
+   *  answered is none (neither up nor down); a [[isFailure]] is down; anything else -- a reply, or a 404 that
+   *  reached the server -- is up. */
+  private def record(service: String, millis: Long, failure: Option[Throwable]): Unit = failure match {
+    case Some(e) if CallerCancelled(e) => ()
+    case Some(e) if isFailure(e)       => monitor.recordFailure(service, errorDescription(e))
+    case _                             => monitor.recordSuccess(service, millis)
   }
 
   private def unwrap(exception: Throwable): Throwable = exception match {

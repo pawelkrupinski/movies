@@ -96,31 +96,46 @@ object ShowingsMarkup {
       out.append("</div>")
       for (cinemaShowtimes <- cinemas) {
         val cinema = cinemaShowtimes.cinema
-        val slots  = linkableOnly(cinemaShowtimes.showtimes)
-        val prefix = Showtime.commonUrlPrefix(slots)
-        out.append("<div class=\"cinema-group\"")
-        if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
-        out.append("><div class=\"cinema-label\">")
-        filmUrlOf.get(cinema) match {
-          case Some(url) if firstListing.get(cinema).contains(date) =>
-            out.append("<a href=\""); escapeInto(out, url.url)
-            out.append("\" target=\"_blank\" rel=\"nofollow\" class=\"cinema-label-link\">")
-            escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
-          case Some(_) =>
-            out.append("<a>"); escapeInto(out, cinema.displayName); out.append(" &#8599;</a>")
-          case None =>
-            escapeInto(out, cinema.displayName)
-        }
-        out.append("</div><div>")
-        // A venue across a zone line from its city lapses on its own clock, so its pills carry
-        // their own expiry rather than the day's city-zone base plus their time.
-        val venueZone = models.VenueClock.zoneOf(cinema, zone)
-        for (slot <- slots) badgeInto(out, slot, day, venueZone, clock, commonToks, prefix)
-        out.append("</div></div>")
+        val label  = CinemaLabel(cinema, filmUrlOf.get(cinema).map(_.url), linksPage = firstListing.get(cinema).contains(date))
+        cinemaGroupInto(out, label, cinemaShowtimes.showtimes, day, zone, clock, commonToks)
         flush()
       }
       out.append("</div>")
     }
+  }
+
+  /** A `.cinema-group`'s label: the cinema, its page for the film (`page`), and whether this listing is the one whose
+   *  label links it ([[firstListings]]). */
+  private final case class CinemaLabel(cinema: Cinema, page: Option[String], linksPage: Boolean)
+
+  /** One `.cinema-group` of `day` into `out`: its label, then a pill per slot, the URL prefix they share on the group.
+   *  `cityZone` is the city's: a venue across a zone line from its city lapses on its own clock, so its pills carry
+   *  their own expiry rather than the day's city-zone base plus their time. */
+  private def cinemaGroupInto(out: java.lang.StringBuilder, label: CinemaLabel, showtimes: Seq[Showtime], day: Day,
+                              cityZone: ZoneId, clock: models.ClockStyle, commonToks: Set[String]): Unit = {
+    val slots  = linkableOnly(showtimes)
+    val prefix = Showtime.commonUrlPrefix(slots)
+    out.append("<div class=\"cinema-group\"")
+    if (prefix.nonEmpty) { out.append(" data-u=\""); escapeInto(out, prefix); out.append('"') }
+    out.append("><div class=\"cinema-label\">")
+    cinemaLabelInto(out, label)
+    out.append("</div><div>")
+    val venueZone = models.VenueClock.zoneOf(label.cinema, cityZone)
+    for (slot <- slots) badgeInto(out, slot, day, venueZone, clock, commonToks, prefix)
+    out.append("</div></div>")
+  }
+
+  /** The cinema's name: a link to its page for the film on the listing that carries it, a bare `<a>` that borrows
+   *  that link on the cinema's later listings, plain text for a cinema with no page. */
+  private def cinemaLabelInto(out: java.lang.StringBuilder, label: CinemaLabel): Unit = label.page match {
+    case Some(url) if label.linksPage =>
+      out.append("<a href=\""); escapeInto(out, url)
+      out.append("\" target=\"_blank\" rel=\"nofollow\" class=\"cinema-label-link\">")
+      escapeInto(out, label.cinema.displayName); out.append(" &#8599;</a>")
+    case Some(_) =>
+      out.append("<a>"); escapeInto(out, label.cinema.displayName); out.append(" &#8599;</a>")
+    case None =>
+      escapeInto(out, label.cinema.displayName)
   }
 
   /** `slots` with any booking URL that is not a [[WebHref]] dropped — the pill stays, as
