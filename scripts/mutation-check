@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# MUTATION TESTING OF THE METHODS A CHANGE TOUCHES (Stryker4s; a report, never a gate): whether the specs that reach
+# the touched production methods would catch a change of behaviour in them. Run it on the range a refactor is about to
+# rewrite, BEFORE the refactor: every surviving mutant is a behaviour the pinning tests do not pin (2026-11-20: a
+# "behaviour-preserving" scraper lane widened two venues' genre parsing and every test stayed green).
+#
+#   scripts/mutation-check <base>..<head> [--out DIR] [--max-specs N] [--concurrency N]
+#
+# Over a throwaway worktree at <head> (scripts/touched-tree.sh; the caller's checkout and its build are never touched):
+# the touched methods (a hunk's line inside a `def`: scripts/touched_methods.py over quality.MethodSpans) and the specs
+# that reach them (`touchedSpecs`: a spec of the method's source, or of a production caller using its name); then, a
+# module at a time, Stryker4s mutates ONLY the sources holding a touched method (`strykerMutate`) and runs ONLY that
+# module's reaching specs (`strykerTestFilter`; Stryker's own coverage pass then runs, per mutant, only the specs that
+# executed it). The report counts each touched
+# method's mutants -- killed, survived, not covered -- and names every survivor (line, mutator, replacement); mutants of
+# the same files outside the touched methods are counted apart, not reported. A spec of ANOTHER module (a worker spec
+# over a common class) cannot kill a mutant: Stryker runs a module's own specs. The mutated compile drops -Werror (a
+# mutant may warn) and never reaches the normal build. Stryker's base directory is the repository root, which its test
+# JVMs run in: specs read `test/resources/...` by a root-relative path (project/ForkedTests.scala).
+#
+#   --out DIR         keep touched.tsv, specs.txt, the sbt logs, every Stryker report.json and report.md in DIR
+#                     (default: a temporary directory, removed)
+#   --max-specs N     refuse a module whose reaching specs number more than N (default 60): scope the range tighter, or
+#                     raise it knowingly -- each spec runs once whole, then per mutant it covers
+#   --concurrency N   Stryker's test runners (forked JVMs; default 2)
+#
+# Exit 0 with the report (also when nothing is touched); 1 when a step failed; 2 a usage error. Each module's run holds
+# one governor ticket (scripts/gov-run --job mutation-check).
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+# shellcheck source=scripts/touched-tree.sh
+. "$(dirname "$0")/touched-tree.sh"
+
+range="" keep="" max_specs=60 concurrency=2
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage_from_header; exit 0 ;;
+    --out) flag_value "$@"; keep=$2; shift ;;
+    --max-specs) flag_value "$@"; max_specs=$2; shift ;;
+    --concurrency) flag_value "$@"; concurrency=$2; shift ;;
+    -*) usage_error "unknown flag $1" ;;
+    *) [ -z "$range" ] || usage_error "one range, not '$range' and '$1'"; range=$1 ;;
+  esac
+  shift
+done
+[ -n "$range" ] || usage_error "a range <base>..<head>"
+case "$max_specs$concurrency" in *[!0-9]*) usage_error "--max-specs and --concurrency want whole numbers" ;; esac
+
+TT_OUT=$keep
+touched_tree_open mutation-check "$range"
+started=$SECONDS
+if ! touched_tree_methods; then
+  echo "mutation-check: the range touches no production method"
+  exit 0
+fi
+touched_tree_specs
+
+reports=() notes=()
+for m in $(touched_tree_modules); do
+  files=$(awk -F'\t' -v m="$m" 'index($1, m "/") == 1 { print $1 }' "$TT_OUT/touched.tsv" | sort -u)
+  specs=$(awk -v m="$m" '$1 == m { print $2 }' "$TT_OUT/specs.txt")
+  count=$(printf '%s\n' "$specs" | grep -c . || true)
+  if [ "$count" -eq 0 ]; then
+    notes+=("$m: no spec of $m reaches the touched methods -- none can kill a mutant there; write the pinning tests first")
+    continue
+  fi
+  [ "$count" -le "$max_specs" ] || die "$m: $count specs reach the touched methods, over --max-specs $max_specs (list: $TT_OUT/specs.txt)"
+  mutate=$(printf '%s\n' "$files" | awk '{ printf "%s\"%s\"", (NR > 1 ? ", " : ""), $0 }')
+  filter=$(printf '%s\n' "$specs" | awk '{ printf "%s\"%s\"", (NR > 1 ? ", " : ""), $0 }')
+  echo "mutation-check: $m -- $(printf '%s\n' "$files" | grep -c .) source(s) mutated, $count spec(s) run"
+  log="$TT_OUT/stryker-$m.log"
+  rm -rf "$TT_TREE/target/stryker4s-report"
+  rc=0
+  "$TT_TOOLS/scripts/gov-run" --job mutation-check --cores 4 --mem 6 -- \
+    bash -c '. "$1/scripts/touched-tree.sh"; TT_TREE=$2 TT_TOOLS=$1; shift 2; touched_tree_sbt "$@"' _ "$TT_TOOLS" "$TT_TREE" "$log" \
+    "set $m/strykerBaseDir := (LocalRootProject / baseDirectory).value" \
+    "set $m/strykerMutate := Seq($mutate)" "set $m/strykerTestFilter := Seq($filter)" \
+    "set $m/strykerReporters := Seq(\"json\", \"console\")" "set $m/strykerConcurrency := $concurrency" \
+    "set $m/strykerOpenReport := false" "set $m/scalacOptions ~= (_.filterNot(_ == \"-Werror\"))" "$m/stryker" || rc=$?
+  report=$(find "$TT_TREE/target/stryker4s-report" -name report.json 2>/dev/null | sort | tail -1 || true)
+  if [ "$rc" -ne 0 ] || [ -z "$report" ]; then
+    tail -30 "$log" >&2
+    die "$m: Stryker failed (exit $rc; log: $log)"
+  fi
+  cp "$report" "$TT_OUT/report-$m.json"
+  reports+=(--report "$TT_OUT/report-$m.json")
+done
+
+{
+  if [ ${#reports[@]} -gt 0 ]; then
+    python3 -I "$TT_TOOLS/scripts/touched_methods.py" mutation --touched "$TT_OUT/touched.tsv" --root "$TT_TREE" "${reports[@]}"
+  fi
+  for n in "${notes[@]+"${notes[@]}"}"; do echo "$n"; done
+  echo "mutation-check: $((SECONDS - started)) s"
+} | tee "$TT_OUT/report.md"
