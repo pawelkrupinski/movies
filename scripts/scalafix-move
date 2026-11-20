@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# A CLASS MOVED TO ANOTHER PACKAGE, its references rewritten compiler-checked (scalafix's MoveSymbol rule,
+# scripts/scalafix-rules/MoveSymbol.scala, reading what every name means from SemanticDB -- never a text search): in the
+# kept scalafix tree (scripts/scalafix-tree.sh), every module's sources rewritten, the source moved to the new package's
+# directory, then every configuration compiled; only a rewrite that compiles is laid back over the checkout and its
+# index. Run scripts/scalafix-organize afterwards for the import order the rewrite's added imports left.
+#
+#   scripts/scalafix-move <from.package.Name> <to.package.Name>
+#
+# <from...Name> is a top-level class, trait or object (with its companion); <to...Name> its new full name -- another
+# package, and optionally another name (references renamed too). The source moves when it holds only that class and
+# companion and is named after it; otherwise the class stays in its file and the file is moved to the new package only
+# when it holds nothing else -- else the tool stops (split the file first). What the rule cannot see -- the class named
+# in a string, a comment, a resource -- the compile cannot either: `grep -rn` the old name afterwards, and run the
+# layers. A pure move then lands with `scripts/pure-move-check` (CLAUDE.md, identity what-if).
+#
+# Exit 0 moved (the changes staged in the checkout); 1 the rewrite did not compile (its errors shown; the checkout
+# untouched), or a step failed; 2 a usage error.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+# shellcheck source=scripts/scalafix-tree.sh
+. "$(dirname "$0")/scalafix-tree.sh"
+
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+[ $# -eq 2 ] || usage_error "scalafix-move <from.package.Name> <to.package.Name>"
+from=$1 to=$2
+for fqn in "$from" "$to"; do
+  case "$fqn" in *.*) ;; *) usage_error "'$fqn' is no full name (package.Name)" ;; esac
+  echo "$fqn" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$' || usage_error "'$fqn' is no full name (package.Name)"
+done
+[ "$from" != "$to" ] || usage_error "from and to are the same name"
+
+scalafix_tree_open scalafix-move
+started=$SECONDS
+from_pkg=${from%.*} from_name=${from##*.} to_pkg=${to%.*} to_name=${to##*.}
+# the source defining it: <module>/src/<config>/scala/<package path>/<Name>.scala, or a file of the package defining it
+pkg_dir=$(echo "$from_pkg" | tr . /)
+source=$(cd "$SF_TREE" && find . -path "./*/src/*/scala/$pkg_dir/$from_name.scala" -not -path '*/target/*' | sed 's|^\./||' | head -1)
+if [ -z "$source" ]; then
+  source=$(cd "$SF_TREE" && grep -rlE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|trait|object|enum) $from_name\b" \
+    --include='*.scala' . 2>/dev/null | grep "/$pkg_dir/[^/]*\.scala$" | grep -v '/target/' | sed 's|^\./||' | head -1 || true)
+fi
+[ -n "$source" ] || die "no source of $from_pkg defines $from_name"
+others=$(grep -cE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|trait|object|enum) [A-Za-z]" "$SF_TREE/$source" || true)
+own=$(grep -cE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|trait|object|enum) $from_name\b" "$SF_TREE/$source" || true)
+[ "$others" -eq "$own" ] || die "$source defines more than $from_name (and its companion): split it first"
+target_dir="${source%/$pkg_dir/*}/$(echo "$to_pkg" | tr . /)"
+target="$target_dir/$to_name.scala"
+[ ! -e "$SF_TREE/$target" ] || die "$target exists already"
+
+commands=()
+while IFS= read -r c; do commands+=("$c"); done < <(scalafix_tree_commands \
+  "--rules=file:scripts/scalafix-rules/MoveSymbol.scala --settings.MoveSymbol.from=$from --settings.MoveSymbol.to=$to")
+echo "scalafix-move: $from -> $to ($source -> $target)"
+"$SF_TOOLS/scripts/gov-run" --job scalafix --cores 4 --mem 4 -- \
+  bash -c '. "$1/scripts/scalafix-tree.sh"; SF_TOOLS=$1 SF_TREE=$2; shift 2; scalafix_tree_sbt "$@"' _ "$SF_TOOLS" "$SF_TREE" \
+  "$SF_OUT/rewrite.log" "${commands[@]}" || { tail -40 "$SF_OUT/rewrite.log" >&2; git -C "$SF_TREE" checkout -q -f "$SF_HEAD"; die "the rewrite failed"; }
+mkdir -p "$SF_TREE/$target_dir"
+git -C "$SF_TREE" mv "$source" "$target"
+"$SF_TOOLS/scripts/gov-run" --job scalafix --cores 4 --mem 4 -- \
+  bash -c '. "$1/scripts/scalafix-tree.sh"; SF_TOOLS=$1 SF_TREE=$2; shift 2; scalafix_tree_sbt "$@"' _ "$SF_TOOLS" "$SF_TREE" \
+  "$SF_OUT/compile.log" "Test/compile" "worker/IntegrationTest/compile" "web/IntegrationTest/compile" "web/PageTest/compile" \
+  || { grep -E '^\[error\]' "$SF_OUT/compile.log" | head -40 >&2; git -C "$SF_TREE" reset -q --hard "$SF_HEAD"
+       die "the moved code does not compile: the checkout is untouched (fix the rule's gap by hand, or move in two steps)"; }
+scalafix_tree_apply || die "the rewrite changed nothing"
+git -C "$SF_REPO" diff --cached --stat | tail -1
+echo "scalafix-move: compiled and staged in the checkout ($((SECONDS - started)) s); now grep -rn '$from_name' for strings and docs"
