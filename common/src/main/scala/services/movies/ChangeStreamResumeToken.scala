@@ -90,6 +90,15 @@ class ChangeStreamResumeToken(
     if (deliveredAt == generations.get()) lastToken.set(token)
   }
 
+  /** A new cursor's acknowledgements: call it with each event's token as the cursor delivers it, in delivery
+   *  order; the acknowledgement it returns marks that event applied, and this position is advanced — and saved, on
+   *  the throttle — past each contiguous run of applied events ([[tools.AppliedPrefix]]). The generation is captured
+   *  at delivery, so an event delivered before a [[clear]] cannot re-arm the token. One per cursor. */
+  def acknowledgements(): BsonDocument => (() => Unit) = {
+    val prefix = new tools.AppliedPrefix((token, deliveredAt) => { advance(token, deliveredAt); save(force = false) })
+    token => prefix.deliver(token, generation)
+  }
+
   /** The position a save would persist now — for specs. */
   private[movies] def current: Option[BsonDocument] = Option(lastToken.get())
 

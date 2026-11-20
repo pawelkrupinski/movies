@@ -1,6 +1,8 @@
 package services.corpus
 
-import models.City
+import models.{City, StoredMovieRecord}
+import services.movies.LatestTitleYear
+import services.titles.TitleNormalizer
 
 import java.time.Clock
 
@@ -11,6 +13,12 @@ final case class CensusReading(corpus: Seq[(String, Int)], served: Map[(String, 
 }
 
 object CensusReading {
+
+  /** The census of `rows` against `clock` — what a census holding exactly these films reads. */
+  def of(rows: Iterable[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: TitleNormalizer)(using LatestTitleYear): CensusReading = {
+    val parts = rows.map(FilmCensus.of(_, normalizer, None)).toSeq
+    tally(parts.iterator, CensusSubsets.counted(parts.map(_.subsets)), cities, clock)
+  }
 
   /** The census of `films`, their static subsets counted already (`static`, in [[CensusSubsets.StaticNames]]' order). */
   private[corpus] def tally(films: Iterator[FilmCensus], static: Seq[Long], cities: Seq[City], clock: Clock): CensusReading = {

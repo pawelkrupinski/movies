@@ -1,14 +1,10 @@
 package services.corpus
 
-import models.{CacheKey, StoredMovieRecord}
-
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import play.api.Logging
-import services.movies.{LatestTitleYear, MovieCache}
-import services.titles.TitleNormalizer
-import models.MovieRecord
+import services.movies.MovieCache
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.Clock
@@ -64,12 +60,7 @@ final class CorpusCensus(
   threadPools:     ThreadPools
 ) extends tools.Stoppable with Logging {
   // What the cache noted, and each film's part: the specs note a film straight into it.
-  private[corpus] val parts = {
-    // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-    given LatestTitleYear = LatestTitleYear(clock)
-    val normalizer = cache.normalizer
-    new CensusParts[CacheKey, StoredMovieRecord](FilmCensus.of(_, normalizer, _), _.cleanTitle, cities, clock)
-  }
+  private[corpus] val parts = CensusParts.ofFilms(cache.normalizer, cities, clock)
   private val gauges = new CensusGauges(corpus, served, showtimes, widest, mayBeDark, countryCode, cities)
   @volatile private var seeded = false
 
@@ -142,26 +133,4 @@ object CorpusCensus {
         "their last complete values — so a rising rate here is the only sign those gauges have gone stale.")
       .labelNames("country")
       .register(registry)
-
-  /** What each of [[CensusSubsets.StaticNames]] counts, in its order: the bits of [[FilmCensus.subsets]]. */
-  private[corpus] val StaticSubsets: IndexedSeq[MovieRecord => LatestTitleYear ?=> Boolean] = {
-    val counts: IndexedSeq[MovieRecord => LatestTitleYear ?=> Boolean] = IndexedSeq(
-      _ => true,
-      r => r.imdbRating.isDefined || r.filmwebRating.isDefined || r.rottenTomatoes.isDefined || r.metascore.isDefined,
-      _.tmdbId.isDefined,
-      _.imdbId.isDefined,
-      _.imdbRating.isDefined,
-      _.rottenTomatoes.isDefined,
-      _.metascore.isDefined,
-      _.filmwebRating.isDefined,
-      r => CinemaCorroboration.contradicts(r))
-    require(counts.size == CensusSubsets.StaticNames.size, "a static subset without its name, or a name without its count")
-    counts
-  }
-
-  /** The census of `rows` against `clock` — what a census holding exactly these films reads. */
-  def read(rows: Iterable[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: TitleNormalizer)(using LatestTitleYear): CensusReading = {
-    val parts = rows.map(FilmCensus.of(_, normalizer, None)).toSeq
-    CensusReading.tally(parts.iterator, CensusSubsets.counted(parts.map(_.subsets)), cities, clock)
-  }
 }

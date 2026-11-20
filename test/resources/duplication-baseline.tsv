@@ -15,6 +15,7 @@ copies	base/src/main/scala/tools/TextNormalization.scala|identity/src/main/scala
 copies	common/src/main/scala/models/GermanRoster.scala|common/src/main/scala/models/SpanishRoster.scala	2
 copies	common/src/main/scala/services/MongoCachingDetailFetch.scala|http/src/main/scala/tools/CachingDetailFetch.scala	2
 copies	common/src/main/scala/services/cadence/RatingCadenceStore.scala	2
+copies	common/src/main/scala/services/movies/InPlaceMovieUpdate.scala|common/src/main/scala/services/movies/WholeRecordUpsert.scala	2
 copies	common/src/main/scala/services/movies/MovieCodecs.scala	2
 copies	common/src/main/scala/services/movies/ScreeningsRepository.scala|common/src/main/scala/services/movies/SlotsRepository.scala	12
 copies	common/src/main/scala/services/movies/SlotsRepository.scala	2

@@ -1,6 +1,8 @@
 package services.corpus
 
+import models.MovieRecord
 import services.metrics.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
+import services.movies.LatestTitleYear
 
 /** The census's series names: the corpus subsets of the [[CorpusCensus]] — those that do not move with the clock
  *  ([[StaticNames]]) in the order of their bits in [[FilmCensus.subsets]] — and the scopes a city's films are served in. */
@@ -11,10 +13,26 @@ object CensusSubsets {
   val ServedTomorrow: String    = WorkerSourceFilmsMetrics.Scope.Tomorrow
 
   /** The corpus subsets that do not move with the clock, in the order of their bits in [[FilmCensus.subsets]]; what
-   *  each counts is [[CorpusCensus.StaticSubsets]]. */
+   *  each counts is [[StaticCounts]]. */
   val StaticNames: IndexedSeq[String] = {
     import WorkerCorpusMetrics.Subset._
     IndexedSeq(Total, WithAnyRating, WithTmdbId, WithImdbId, ImdbRating, RtRating, McRating, FwRating, Misresolved)
+  }
+
+  /** What each of [[StaticNames]] counts, in its order: the bits of [[FilmCensus.subsets]]. */
+  val StaticCounts: IndexedSeq[MovieRecord => LatestTitleYear ?=> Boolean] = {
+    val counts: IndexedSeq[MovieRecord => LatestTitleYear ?=> Boolean] = IndexedSeq(
+      _ => true,
+      r => r.imdbRating.isDefined || r.filmwebRating.isDefined || r.rottenTomatoes.isDefined || r.metascore.isDefined,
+      _.tmdbId.isDefined,
+      _.imdbId.isDefined,
+      _.imdbRating.isDefined,
+      _.rottenTomatoes.isDefined,
+      _.metascore.isDefined,
+      _.filmwebRating.isDefined,
+      r => CinemaCorroboration.contradicts(r))
+    require(counts.size == StaticNames.size, "a static subset without its name, or a name without its count")
+    counts
   }
 
   /** Every corpus subset's count, in `WorkerCorpusMetrics.Subset.all`'s order: the static ones' (`static`, in

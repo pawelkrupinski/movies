@@ -114,7 +114,7 @@ class MongoMovieRepository(
   // How a whole record is written over `movies` and its side collections; none without a store.
   private lazy val upserts = coll.map(new WholeRecordUpsert(_, screenings, slots, slotsForStorage, stamps, writeMetrics, logger))
   // How a stored row is updated field by field, its dotted-name fallback reading through this class's seam; none without a store.
-  private lazy val updates = coll.map(c => new InPlaceMovieUpdate(c, screenings, slots, slotsForStorage, normalizer, stamps, writeMetrics,
+  private lazy val updates = coll.map(c => new InPlaceMovieUpdate(c, screenings, slots, slotsForStorage, stamps, writeMetrics,
     logger, readWhole = dottedReplaceRead(c, _)))
 
   /** The film's slots at `cinemas`, read from those venues alone — see [[MovieSideStitch.readVenues]]. */
@@ -322,13 +322,13 @@ class MongoMovieRepository(
   def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean =
     updates.exists(_.updateIfPresent(film, cacheKey, before, after))
 
-  /** The stored document the dotted-name fallback of [[InPlaceMovieUpdate]] patches — a seam a spec uses to land
-   *  another write between this read and the replace. */
+  /** The stored document the dotted-name fallback of [[InPlaceMovieUpdate]] patches, decoded under this store's
+   *  title rules — a seam a spec uses to land another write between this read and the replace. */
   protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[InPlaceMovieUpdate.ReadDocument] =
     Option(Await.result(c.withDocumentClass[org.bson.BsonDocument]().find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-      .map(whole => InPlaceMovieUpdate.ReadDocument(
+      .map(whole => InPlaceMovieUpdate.ReadDocument(StoredMovieDto.toDomain(
         c.codecRegistry.get(classOf[StoredMovieDto]).decode(new org.bson.BsonDocumentReader(whole), org.bson.codecs.DecoderContext.builder().build()),
-        whole))
+        normalizer).record, whole))
 
   /** The `movies` collection, None on a disabled store — what [[MongoMovieChangeFeed]] opens its cursor on. */
   private[movies] def collection: Option[MongoCollection[StoredMovieDto]] = coll

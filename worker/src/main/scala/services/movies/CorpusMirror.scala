@@ -66,12 +66,11 @@ final class CorpusMirror(
   sleep:                  FiniteDuration => Unit
 ) {
   /** This mirror over one cache's corpus — once per cache: the result holds the hydrate's state,
-   *  scheduler and change-stream watch. */
-  private[movies] def attach(corpus: MirroredCorpus): Attached = new Attached(corpus)
+   *  scheduler and change-stream watch, and logs to `logger`, the cache's own, as it did before the
+   *  mirror was its own class. */
+  private[movies] def attach(corpus: MirroredCorpus, logger: play.api.Logger): Attached = new Attached(corpus, logger)
 
-  private[services] final class Attached(corpus: MirroredCorpus) {
-    // Logged as the cache it mirrors, as before the mirror was its own class.
-    private val logger = play.api.Logger(classOf[CaffeineMovieCache])
+  private[services] final class Attached(corpus: MirroredCorpus, logger: play.api.Logger) {
     private val hydrate = new CorpusHydrate(corpus, bootHydrateMaxAttempts, bootHydrateRetry, cacheMetrics, bootReaders, sleep, logger)
     private val changes = new CorpusStreamApplies(corpus, logger)
 

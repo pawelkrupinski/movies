@@ -1,6 +1,8 @@
 package services.corpus
 
-import models.City
+import models.{CacheKey, City, StoredMovieRecord}
+import services.movies.LatestTitleYear
+import services.titles.TitleNormalizer
 import play.api.Logging
 
 import java.time.Clock
@@ -54,4 +56,13 @@ private[corpus] final class CensusParts[K, F](derive: (F, Option[FilmCensus]) =>
 
   private def add(subsets: Int, by: Int): Unit =
     CensusSubsets.StaticNames.indices.foreach(i => if ((subsets & (1 << i)) != 0) static(i) += by)
+}
+
+private[corpus] object CensusParts {
+  /** The parts of the cache's films: each derived under `normalizer`'s title rules, with the latest year a title may
+   *  name read off `clock` at each ask (`LatestTitleYear`), and described by its clean title. */
+  def ofFilms(normalizer: TitleNormalizer, cities: Seq[City], clock: Clock): CensusParts[CacheKey, StoredMovieRecord] = {
+    given LatestTitleYear = LatestTitleYear(clock)
+    new CensusParts[CacheKey, StoredMovieRecord](FilmCensus.of(_, normalizer, _), _.cleanTitle, cities, clock)
+  }
 }

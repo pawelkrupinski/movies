@@ -10,7 +10,7 @@ import services.readmodel.ReadModelProjection
 
 /** One film's part in the [[CorpusCensus]], from the film as the cache holds it.
  *
- *  `subsets` has a bit per [[CorpusCensus.StaticSubsets]] the film belongs to. A film ready to project
+ *  `subsets` has a bit per [[CensusSubsets.StaticCounts]] the film belongs to. A film ready to project
  *  (`readyToProject`, the projector's own gate) files its screening venue slots under `cards` — one card per
  *  display-title group, as [[ReadModelProjection.partition]] splits it — and one that is not keeps them in
  *  `screenable`, for `unresolved_with_showtimes`. A venue slot with no showtime start is in neither: it screens nothing. */
@@ -38,8 +38,8 @@ object FilmCensus {
   }
 
   private def subsetsOf(record: MovieRecord)(using LatestTitleYear): Int =
-    CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
-      if (CorpusCensus.StaticSubsets(i)(record)) bits | (1 << i) else bits)
+    CensusSubsets.StaticCounts.indices.foldLeft(0)((bits, i) =>
+      if (CensusSubsets.StaticCounts(i)(record)) bits | (1 << i) else bits)
 
   /** The film's venue slots' parts, over the prior part's own map: only a slot that is not the object it held is
    *  derived again and put in, and a film whose slots all are keeps the map, its title groups and its screenable

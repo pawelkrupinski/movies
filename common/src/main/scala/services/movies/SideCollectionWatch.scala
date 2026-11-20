@@ -1,6 +1,6 @@
 package services.movies
 
-import tools.{AppliedPrefix, ChangeStreamCallback}
+import tools.ChangeStreamCallback
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
@@ -37,7 +37,7 @@ import scala.reflect.ClassTag
  *
  * A row the codec cannot decode is SKIPPED, not fatal — see [[ChangeEventDecoder]]: it is
  * counted, logged, releases its unit of demand and is acknowledged at once — there is nothing to
- * apply, and the position moves only over a contiguous run of acknowledged events ([[AppliedPrefix]]).
+ * apply, and the position moves only over a contiguous run of acknowledged events ([[tools.AppliedPrefix]]).
  *
  * Requires a replica set (a single-node RS counts), like the `movies` stream.
  */
@@ -68,8 +68,8 @@ final class SideCollectionWatch[Dto: ClassTag](
   private final class Cursor(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) {
     private val decoder = ChangeEventDecoder.of[Dto](name, collection.codecRegistry, decodeFailures, stopwatch)
     // The events this cursor has delivered and not yet had applied: the position moves only past
-    // a contiguous run of applied ones — see [[AppliedPrefix]].
-    private val appliedPrefix = new AppliedPrefix((token, generation) => { resumeToken.advance(token, generation); resumeToken.save(force = false) })
+    // a contiguous run of applied ones — see [[ChangeStreamResumeToken.acknowledgements]].
+    private val acknowledge = resumeToken.acknowledgements()
     private val subRef = new AtomicReference[Subscription]()
     // A terminal error is the END of a cursor — the driver never brings it back, and unlike
     // the movies stream there is not even a later registration to re-open this one. Without
@@ -121,9 +121,9 @@ final class SideCollectionWatch[Dto: ClassTag](
       // The resume position moves only when the CALLER says this event is applied —
       // the `applied` it is handed with the film id. `onChange` only queues the re-read;
       // advancing here, at delivery, persisted a position past every queued event, so a
-      // restart resumed after changes that were never applied. The generation stops a
+      // restart resumed after changes that were never applied. The generation captured here stops a
       // late acknowledgement re-arming a token `clear()` has since thrown away.
-      val applied = appliedPrefix.deliver(change.getResumeToken, resumeToken.generation)
+      val applied = acknowledge(change.getResumeToken)
       rowIdOf(change) match {
         // Caught whatever it is, fatal included: this is the driver's `onNext` ([[ChangeStreamCallback]]).
         // The event stays unacknowledged (a restart replays it) and its demand slot unreleased, since

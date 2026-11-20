@@ -117,7 +117,7 @@ class CaffeineMovieCache(
 
   // Hydrate from Mongo on construction, here — after the funnels and the index it fills, before
   // the HTTP request that could read the cache (see `CorpusMirror.Attached.bootHydrate`).
-  private val mirrored = mirror.attach(resident)
+  private val mirrored = mirror.attach(resident, logger)
   mirrored.bootHydrate()
 
   /** Set once a rehydrate's corpus read has been answered whole, and never cleared. */

@@ -1187,7 +1187,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
           val asRead = super.dottedReplaceRead(c, id)
           if (collided.isEmpty) {
-            val readStamp = asRead.getOrElse(fail("row absent")).stored.updatedAt
+            val readStamp = java.time.Instant.ofEpochMilli(asRead.getOrElse(fail("row absent")).whole.getDateTime("updatedAt").getValue)
             val other = new MongoMovieRepository(Some(specDb), new tools.MutableClock(readStamp.minusMillis(1)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System) with MongoMovieChangeFeed()
             try {
               other.updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(8.8))) shouldBe true

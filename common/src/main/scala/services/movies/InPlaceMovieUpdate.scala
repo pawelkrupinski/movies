@@ -15,9 +15,9 @@ import scala.concurrent.Await
  *  `movie_slots`), each skipped when empty, the side writes applied only once the row is known present, and a patch
  *  naming a dotted cinema written as a guarded whole-document replace.
  *
- *  Built by the repository over its side collections, title rules, stamp sequence and write metrics, and logging
- *  under its `logger`. `readWhole` is the repository's read of the stored document the dotted-name fallback
- *  patches — its seam, so a spec can land another write between that read and the replace.
+ *  Built by the repository over its side collections, stamp sequence and write metrics, and logging under its
+ *  `logger`. `readWhole` is the repository's read of the stored document the dotted-name fallback patches, decoded
+ *  under its title rules — its seam, so a spec can land another write between that read and the replace.
  *
  *  @param slotsForStorage the repository's [[MovieRepository.slotsForStorage]]. */
 private[movies] final class InPlaceMovieUpdate(
@@ -25,12 +25,11 @@ private[movies] final class InPlaceMovieUpdate(
   screenings:      Option[ScreeningsRepository],
   slots:           Option[SlotsRepository],
   slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
-  normalizer:      services.titles.TitleNormalizer,
   stamps:          tools.MonotonicStampSequence,
   writeMetrics:    RepositoryWriteMetrics,
   logger:          play.api.Logger,
   readWhole:       String => Option[InPlaceMovieUpdate.ReadDocument]
-)(using LatestTitleYear) {
+) {
 
   /** Update the stored row of `film` from `before` to `after` — see [[MovieRepository.updateIfPresent]]. */
   def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = {
@@ -105,7 +104,7 @@ private[movies] final class InPlaceMovieUpdate(
    *  for the row as read. On a mismatch the patch is applied again to the document as it now is. */
   private def dottedReplace(id: String, key: String, patch: MovieRecordPatch): Long =
     tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => readWhole(id)) { asRead =>
-      InPlaceMovieUpdate.dottedReplaceRecord(asRead.map(read => StoredMovieDto.toDomain(read.stored, normalizer).record), patch)
+      InPlaceMovieUpdate.dottedReplaceRecord(asRead.map(_.record), patch)
     } { (asRead, merged) =>
       // An absent row decided nothing above, so only a row as read reaches here.
       asRead.exists(read => services.MongoGuard.replaceIfUnchanged(movies,
@@ -128,9 +127,9 @@ private[movies] final class InPlaceMovieUpdate(
 }
 
 object InPlaceMovieUpdate {
-  /** A `movies` document as the dotted-name fallback read it: decoded, to patch, and `whole`, as
+  /** A `movies` document as the dotted-name fallback read it: its `record`, to patch, and `whole`, as
    *  stored, for the replace to be guarded on. */
-  final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
+  final case class ReadDocument(record: MovieRecord, whole: org.bson.BsonDocument)
 
   /** The full-document replacement to write in the dotted-displayName fallback of
    *  [[updateIfPresent]] (a per-source `$set sourceData.<name>` is rejected when the
