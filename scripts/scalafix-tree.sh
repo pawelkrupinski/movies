@@ -12,7 +12,8 @@
 #        scripts/fail-before seeds), else moved to SF_HEAD (`checkout --detach -f`, untracked files cleaned, ignored ones
 #        such as target/ kept)
 #   scalafix_tree_sbt <log> <sbt command>...
-#        the commands in the tree's kept sbt server, SemanticDB on first (`set ThisBuild / semanticdbEnabled := true`;
+#        the commands in the tree's kept sbt server, SemanticDB on first (`set ThisBuild / semanticdbEnabled := true`)
+#        and sbt-scalafix's cache off (it skips a source it once rewrote even after the tree is moved back to HEAD;
 #        $KINOWO_SCALAFIX_SBT names another sbt: the tests' seam); its exit status
 #   scalafix_tree_apply
 #        the tree's changes against SF_HEAD as one patch (SF_OUT/rewrite.patch, renames kept), laid over the caller's
@@ -52,7 +53,7 @@ scalafix_tree_sbt() {
   local log=$1
   shift
   (cd "$SF_TREE" && KINOWO_SBT_WARM_ROUTE=local "${KINOWO_SCALAFIX_SBT:-$SF_TOOLS/scripts/sbt-warm}" \
-    "set ThisBuild / semanticdbEnabled := true" "$@") > "$log" 2>&1
+    "set ThisBuild / semanticdbEnabled := true" "set ThisBuild / scalafixCaching := false" "$@") > "$log" 2>&1
 }
 
 # scalafix_tree_commands <scalafix arguments> -> one `<module>/<config>/scalafix <arguments>` command a configuration
