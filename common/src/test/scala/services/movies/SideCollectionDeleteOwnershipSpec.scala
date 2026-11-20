@@ -34,11 +34,13 @@ import testsupport.ModuleSources
 class SideCollectionDeleteOwnershipSpec extends AnyFlatSpec with Matchers {
 
   /** The files allowed to delete from `screenings` / `movie_slots`: the repositories that
-   *  own those collections, and `MongoMovieRepository`, which decides a film is gone and
-   *  delegates the cascade to them. */
+   *  own those collections and `MongoSlotKeyedRows`, the Mongo half both of them are built on
+   *  (their slot and film deletes, written once), and `MongoMovieRepository`, which decides a
+   *  film is gone and delegates the cascade to them. */
   private val Owners = Set(
     "ScreeningsRepository.scala",
     "SlotsRepository.scala",
+    "MongoSlotKeyedRows.scala",
     "MongoMovieRepository.scala"
   )
 

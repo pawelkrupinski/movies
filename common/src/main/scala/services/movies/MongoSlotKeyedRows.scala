@@ -1,7 +1,8 @@
 package services.movies
 
+import com.mongodb.WriteConcern
 import org.mongodb.scala.model.{Filters, Sorts}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -9,22 +10,61 @@ import scala.reflect.ClassTag
 import scala.util.Try
 
 /**
- * [[SlotKeyedRows]]' whole-collection reads and bulk deletes over a Mongo side collection — what
- * [[StrandedSideRows]] sweeps through — and the two row reads both stores make: the keyset scan of every row and
- * one row by its composite `_id`. `screenings` and `movie_slots` share the addressing ([[SlotKeyed]]), so each of
- * these was written twice, once per store, alike but for the store's name.
+ * A Mongo side collection keyed by [[SlotKeyed]] — `screenings` and `movie_slots` share the addressing, so what follows
+ * was written twice, once per store, alike but for the store's name: opening the collection, every write's exception
+ * handling ([[RepositoryWrite]]), the slot and film deletes and what they tell the [[RemovalAudit]], the
+ * whole-collection reads and bulk deletes [[StrandedSideRows]] sweeps through, and the two row reads both stores make
+ * (the keyset scan of every row and one row by its composite `_id`).
  *
+ * @param sharedDb       the database; `None` holds no rows, and every write is declined.
  * @param storeName      the store as its log lines name it (`ScreeningsRepository`).
- * @param collectionName the collection, as its write failures are counted.
+ * @param collectionName the collection, as its write failures are counted and its removals audited.
+ * @param auditedRows    what the removal audit calls a film's rows here (`screenings`, `slots`).
  */
 trait MongoSlotKeyedRows[Dto: ClassTag](
+  sharedDb:       Option[MongoDatabase],
   storeName:      String,
   collectionName: String,
+  auditedRows:    String,
   paging:         SlotKeyed.Paging,
   writeMetrics:   RepositoryWriteMetrics
 ) extends SlotKeyedRows with play.api.Logging {
-  /** The collection; `None` (no database) holds no rows. */
-  protected def rowsCollection: Option[MongoCollection[Dto]]
+  /** The collection, with the movie codecs, unjournaled W1 writes and the slot-keyed indexes; `None` (no database)
+   *  holds no rows. */
+  protected final lazy val rowsCollection: Option[MongoCollection[Dto]] = sharedDb.map { db =>
+    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[Dto](collectionName)
+      .withWriteConcern(WriteConcern.W1.withJournal(false))
+    SlotKeyed.ensureIndexes(c)
+    c
+  }
+
+  /** Every write's exception handling — see [[RepositoryWrite]]. */
+  protected def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
+    RepositoryWrite.attempt(collectionName, op, what, writeMetrics, logger)(body)
+
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = onRows[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("deleteSlot", s"$storeName.deleteSlot($filmId,$slotKey)") {
+      Await.result(c.deleteOne(Filters.eq("_id", SlotKeyed.idOf(filmId, slotKey))).toFuture(), 10.seconds)
+      RemovalAudit.slotRemoved(s"$collectionName.deleteSlot", filmId, slotKey, "slot-deleted")
+      WriteOutcome.Written
+    }
+  }
+
+  def deleteFilm(filmId: String): WriteOutcome = onRows[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("deleteFilm", s"$storeName.deleteFilm($filmId)") {
+      val deleted = Await.result(c.deleteMany(SlotKeyed.filmFilter(filmId)).toFuture(), 10.seconds).getDeletedCount
+      if (deleted > 0)
+        RemovalAudit.screeningsCleared(s"$collectionName.deleteFilm", filmId, deleted.toInt, whole = true,
+          reason = "film-deleted", what = auditedRows)
+      WriteOutcome.Written
+    }
+  }
+
+  /** Tell the removal audit the `pruned` stale rows a `replaceFilm` of `filmId` dropped — all of them when `whole`. */
+  protected def auditStalePrune(filmId: String, pruned: Long, whole: Boolean): Unit =
+    if (pruned > 0)
+      RemovalAudit.screeningsCleared(s"$collectionName.replaceFilm", filmId, pruned.toInt, whole = whole,
+        reason = "stale-slot-prune", what = auditedRows)
 
   private def onRows[A](none: => A)(read: MongoCollection[Dto] => A): A = rowsCollection.fold(none)(read)
 
