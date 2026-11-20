@@ -4,7 +4,7 @@ import scala.collection.mutable
 
 /** A family's pool ([[FamilyScope]]) as its listings' titles relate to it: the candidates, the qualifiers their records
  *  bill, and each title's relation to each candidate, read once. */
-private[identity] final class FamilyPool(val candidates: Seq[Candidate], houses: StageRelays.Houses, related: () => Unit) {
+private[identity] final class FamilyPool(val candidates: Seq[Candidate], houses: BannerHouses, related: () => Unit) {
 
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a

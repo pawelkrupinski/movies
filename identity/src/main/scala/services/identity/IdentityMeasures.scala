@@ -220,11 +220,11 @@ object IdentityMeasures {
    *                   (`exact`, `original` or `alternative`)
    * @param corroboratingVenues how many OTHER venues listing the same title publish this film's
    *                   exact year or credit its director — the family's pooled evidence
-   * @param houses     the houses the listings' banners were learned to be ([[StageRelays.Houses.learn]])
+   * @param houses     the houses the listings' banners were learned to be ([[BannerHouses.learn]])
    * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: MeasuredListing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
+                  houses: BannerHouses = BannerHouses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
     listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers), country)
 
   /** The `country` measure's category against a concert's director-less record ([[Film.concertRecord]]): its own

@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
 import services.titles.TitleSeason
 import services.identity.IdentityMeasures.ListingListing
-import services.identity.StageRelays.{Billing, Houses}
+import services.identity.StageRelays.Billing
 import Measure.{Category, Missing, Number}
 import services.identity.vocabulary.{TitleDecorations, VenueNames}
 
@@ -743,46 +743,46 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     StageRelays.billing(MeasuredListing("Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe None
     StageRelays.billing(MeasuredListing("Throwback: Manon"), Film("Manon")) shouldBe None
     def b(banner: String, house: String, work: String) = Billing(Seq(banner), Seq(house), work)
-    val houses = Houses.learn(Seq(b("rbo", "royal", "swanlake"), b("rbo", "royal", "alice"), b("rbo", "met", "manon"), b("rbo", "royal", "swanlake"),
+    val houses = BannerHouses.learn(Seq(b("rbo", "royal", "swanlake"), b("rbo", "royal", "alice"), b("rbo", "met", "manon"), b("rbo", "royal", "swanlake"),
       b("met", "met", "manon"), b("met", "met", "otello"), b("tie", "royal", "a"), b("tie", "met", "b"), b("tie", "royal", "c"), b("tie", "met", "d"),
       b("once", "nt", "hamlet")))
-    houses shouldBe Houses(Map("rbo" -> "royal", "met" -> "met"))
+    houses shouldBe BannerHouses(Map("rbo" -> "royal", "met" -> "met"))
     houses.other(b("rbo", "met", "manon")) shouldBe true
     houses.same(b("rbo", "royal", "manon")) shouldBe true
     houses.same(b("once", "once", "x")) shouldBe true
     houses.other(b("once", "nt", "hamlet")) shouldBe false
     // A banner's own words name its house before any count of works does.
     def w(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
-    Houses.learn(Seq(w("metropolitan opera live in hd", "royal ballet opera", "carmen"), w("metropolitan opera live in hd", "royal ballet opera", "cosi"),
-      w("metropolitan opera live in hd", "the metropolitan opera", "cosi"))) shouldBe Houses(Map("metropolitanoperaliveinhd" -> "themetropolitanopera"))
+    BannerHouses.learn(Seq(w("metropolitan opera live in hd", "royal ballet opera", "carmen"), w("metropolitan opera live in hd", "royal ballet opera", "cosi"),
+      w("metropolitan opera live in hd", "the metropolitan opera", "cosi"))) shouldBe BannerHouses(Map("metropolitanoperaliveinhd" -> "themetropolitanopera"))
     // Words both rivals share decide nothing, and a house outside the rivalry does not make them decide.
-    Houses.learn(Seq(w("met opera", "the metropolitan opera", "cosi"), w("met opera", "the metropolitan opera", "manon"),
+    BannerHouses.learn(Seq(w("met opera", "the metropolitan opera", "cosi"), w("met opera", "the metropolitan opera", "manon"),
       w("met opera", "the metropolitan opera", "otello"), w("met opera", "royal ballet opera", "cosi"), w("met opera", "royal ballet opera", "manon"),
-      w("met opera", "salzburger festspiele", "carmen"))) shouldBe Houses(Map("metopera" -> "themetropolitanopera"))
-    Houses.learn(Seq(w("nt live", "national theatre live", "earnest"), w("nt live", "national theatre live", "playboy"),
-      w("nt live", "rsc live", "macbeth"))) shouldBe Houses(Map("ntlive" -> "nationaltheatrelive"))
+      w("met opera", "salzburger festspiele", "carmen"))) shouldBe BannerHouses(Map("metopera" -> "themetropolitanopera"))
+    BannerHouses.learn(Seq(w("nt live", "national theatre live", "earnest"), w("nt live", "national theatre live", "playboy"),
+      w("nt live", "rsc live", "macbeth"))) shouldBe BannerHouses(Map("ntlive" -> "nationaltheatrelive"))
     // One shared word does not NAME a house of more: PL "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT! retransmisja koncertu"
     // read its title as a banner over the work "André Rieu", learned it as "André Rieu - Love in Maastricht"'s house
     // by "maastricht" alone, and took the 2019 concert for the 2026 one.
-    Houses.learn(Seq(w("niech zyje maastricht retransmisja koncertu", "love in maastricht", "andrerieu"))) shouldBe Houses.Unknown
+    BannerHouses.learn(Seq(w("niech zyje maastricht retransmisja koncertu", "love in maastricht", "andrerieu"))) shouldBe BannerHouses.Unknown
     // ...but a one-word house its banner spells is named
-    Houses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe Houses(Map("bolshoiballetlive" -> "bolshoi"))
+    BannerHouses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe BannerHouses(Map("bolshoiballetlive" -> "bolshoi"))
   }
 
   "a banner abbreviating its house" should "bill the work under that house, whatever the house was learned as" in {
     // UK recording 38351832400: one candidate filed "NT Live: …" among its alternatives, so the "NT Live" banner was
     // learned as itself; Flicks' "NT Live: Hay Fever" ×131 then read its own record, "National Theatre Live: Hay Fever",
     // as an overlap, and the director's "National Theatre at Home: Samira" pooled in at 49.9%.
-    val learnedAsItself = Houses(Map("ntlive" -> "ntlive"))
+    val learnedAsItself = BannerHouses(Map("ntlive" -> "ntlive"))
     IdentityMeasures.titleRelation(MeasuredListing("NT Live: Hay Fever"), Film("National Theatre Live: Hay Fever"), learnedAsItself) should not be
       Category("overlap")
     // an abbreviation names one house only by its initials, never by a word two houses share
     IdentityMeasures.titleRelation(MeasuredListing("NT Live: Samira"), Film("National Theatre at Home: Samira"), learnedAsItself) shouldBe
-      IdentityMeasures.titleRelation(MeasuredListing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
-    IdentityMeasures.titleRelation(MeasuredListing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
+      IdentityMeasures.titleRelation(MeasuredListing("NT Live: Samira"), Film("National Theatre at Home: Samira"), BannerHouses.Unknown)
+    IdentityMeasures.titleRelation(MeasuredListing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), BannerHouses.Unknown) shouldBe
       Category("overlap")
     // ...nor overrules the house a banner was learned to be: "New Theatre" shares only NT's initials
-    IdentityMeasures.titleRelation(MeasuredListing("NT Live: Hay Fever"), Film("New Theatre: Hay Fever"), Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("NT Live: Hay Fever"), Film("New Theatre: Hay Fever"), BannerHouses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe
       Category("overlap")
   }
 
@@ -818,7 +818,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a season-free listing" should "take its house's current-season record only when its banner spells that house" in {
     // UK venues list "Royal Ballet and Opera: Così fan tutte" beside TMDB's "Royal Ballet & Opera
     // 2026/27: Così fan tutte"; the Paris Opera's banner, learned as the Met, shares only "opera".
-    val houses = Houses(Map("royalballetandopera" -> "royalballetopera", "operanationaldeparis" -> "themetropolitanopera"))
+    val houses = BannerHouses(Map("royalballetandopera" -> "royalballetopera", "operanationaldeparis" -> "themetropolitanopera"))
     StageRelays.billsUnderItsHouse(MeasuredListing("Royal Ballet and Opera: Così fan tutte"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte"), houses) shouldBe true
     StageRelays.billsUnderItsHouse(MeasuredListing("Opéra National de Paris: La fanciulla del West"),
@@ -830,7 +830,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.
     val record = Film("National Theatre Live: The Misanthrope", originalTitle = Some("National Theatre Live: The Misanthrope"),
       alternativeTitles = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope"), year = Some(2026), runtime = Some(105))
-    StageRelays.billsUnderItsHouse(MeasuredListing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
+    StageRelays.billsUnderItsHouse(MeasuredListing("NT Live: The Misanthrope"), record, BannerHouses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
   }
 
   "a title transliterated from another script" should "name the record carrying it in that script" in {
@@ -861,10 +861,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
     def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
-    val tied = Houses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))
+    val tied = BannerHouses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))
     tied("ntlive").map(_.render) shouldBe Seq("nationaltheatrelive (words 1, works 1)", "rsclive (words 1, works 1)")
-    Houses.chosen(tied("ntlive")) shouldBe None
-    Houses.learn(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth"))) shouldBe Houses.Unknown
+    BannerHouses.chosen(tied("ntlive")) shouldBe None
+    BannerHouses.learn(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth"))) shouldBe BannerHouses.Unknown
   }
 
   "a banner learned as one spelling of a house" should "not make another spelling of its own name another house" in {
@@ -872,7 +872,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Schwanensee (Royal Ballet)" ×80 was then denied its season's record billing the work "RBO 26/27: …" as another
     // house's season production; the Met's billing of a work stays another house's.
     def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
-    val houses = Houses(Map("rbolive" -> "rbolive", "metopera" -> "metopera"))
+    val houses = BannerHouses(Map("rbolive" -> "rbolive", "metopera" -> "metopera"))
     houses.other(billed("rbo live", "rbo 26 27", "schwanenseeroyalballet")) shouldBe false
     houses.other(billed("rbo live", "royal ballet opera", "manon")) shouldBe false
     houses.other(billed("met opera", "the metropolitan opera", "manon")) shouldBe false
@@ -1057,7 +1057,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a record billing the listing's work under its learned house" should "be a segment of its title, and only under that house" in {
     val nt = MeasuredListing("NT Live: The Importance of Being Earnest")
     val record = Film("National Theatre Live: The Importance of Being Earnest")
-    val houses = Houses(Map("ntlive" -> "nationaltheatrelive"))
+    val houses = BannerHouses(Map("ntlive" -> "nationaltheatrelive"))
     // a banner abbreviating the record's house names it unlearned ("NT" the initials of "National Theatre")
     IdentityMeasures.titleRelation(nt, record) shouldBe Category("segment")
     IdentityMeasures.titleRelation(nt, record, houses) shouldBe Category("segment")
@@ -1066,7 +1066,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a record billing the listing's work under the listing's own house" should "be one of the house, not a season's or another edition's" in {
-    val houses = Houses(Map("ntlive" -> "nationaltheatrelive",
+    val houses = BannerHouses(Map("ntlive" -> "nationaltheatrelive",
       // TMDB files the Paris Opera's broadcasts' works only under the Met's records, so its banner is
       // learned as the Met; League of Legends' two finals banners share every word but the number.
       "operanationaldeparis" -> "themetropolitanopera", "leagueoflegendsworlds26" -> "leagueoflegendsworlds25"))
@@ -1078,18 +1078,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // A listing naming a season takes its house's record naming none (seasonsApart bounds its year), but never one
     // naming a season: that is the season rule's to read.
     StageRelays.billsUnderItsHouse(MeasuredListing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
-      Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe true
+      BannerHouses(Map("metopera" -> "themetropolitanopera"))) shouldBe true
     StageRelays.billsUnderItsHouse(MeasuredListing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
-      Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe false
+      BannerHouses(Map("metopera" -> "themetropolitanopera"))) shouldBe false
     // A banner numbering its edition otherwise than the record's is another edition.
     StageRelays.billsUnderItsHouse(MeasuredListing("League of Legends Worlds 26 | Finals in Cinema"),
       Film("League of Legends Worlds25 - Finals in Cinema"), houses) shouldBe false
     StageRelays.billsUnderItsHouse(MeasuredListing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
-      Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), Houses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
+      Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), BannerHouses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
     // A cut or an edition is no house: DE Movietown Brandenburg's "Das Boot - Director s Cut" took TMDB's yearless "Das
     // Boot - Directors Cut" record as the house production of "Das Boot", not Petersen's film.
-    StageRelays.billsUnderItsHouse(MeasuredListing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
-    StageRelays.billsUnderItsHouse(MeasuredListing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(MeasuredListing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), BannerHouses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(MeasuredListing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), BannerHouses.Unknown) shouldBe false
   }
 
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
@@ -1102,10 +1102,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // A record titled only the qualifier names nothing; the work's record still names the listing.
     val cut = MeasuredListing("Dark City: Director's Cut")
     IdentityMeasures.titleRelation(cut, Film("Director's Cut")) shouldBe Category("segment")
-    IdentityMeasures.titleRelation(cut, Film("Director's Cut"), Houses.Unknown, q) shouldBe Category("overlap")
+    IdentityMeasures.titleRelation(cut, Film("Director's Cut"), BannerHouses.Unknown, q) shouldBe Category("overlap")
     // the work's record is its title whole once the version tag is dropped (`VersionTags`)
-    IdentityMeasures.titleRelation(cut, Film("Dark City"), Houses.Unknown, q) shouldBe Category("exact")
-    IdentityMeasures.titleRelation(cut, Film("Dark City: Director's Cut"), Houses.Unknown, q) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(cut, Film("Dark City"), BannerHouses.Unknown, q) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(cut, Film("Dark City: Director's Cut"), BannerHouses.Unknown, q) shouldBe Category("exact")
   }
 
   it should "tie to nothing when both pieces are billed alike" in {
@@ -1118,7 +1118,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // PL "Tani wtorek: OBCY": the records bill the work BEFORE its sequels, the listing after its banner.
     val q = IdentityMeasures.Qualifiers.learn(Seq("Obcy", "Obcy: Przymierze", "Obcy: Romulus", "Obcy - 8. pasażer Nostromo").map(Film(_)))
     q.of(MeasuredListing("Tani wtorek: Obcy")) shouldBe empty
-    IdentityMeasures.titleRelation(MeasuredListing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
+    IdentityMeasures.titleRelation(MeasuredListing("Tani wtorek: Obcy"), Film("Obcy"), BannerHouses.Unknown, q) shouldBe Category("segment")
   }
 
   it should "not be a record's whole title when the rest of the listing's names no record's work" in {
@@ -1128,9 +1128,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Dracula: A Love Tale"), Film("Dracula: Dead and Loving It"))
     val q = IdentityMeasures.Qualifiers.learn(draculas)
     q.of(MeasuredListing("Dracula (4K Restoration)")) shouldBe empty
-    IdentityMeasures.titleRelation(MeasuredListing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Dracula (4K Restoration)"), draculas.head, BannerHouses.Unknown, q) shouldBe Category("exact")
     // A work records bill it before stays one: "Dracula: Prince of Darkness" is not the 1958 film.
-    IdentityMeasures.titleRelation(MeasuredListing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
+    IdentityMeasures.titleRelation(MeasuredListing("Dracula: Prince of Darkness"), draculas.head, BannerHouses.Unknown, q) should not be Category("segment")
   }
 
   it should "not be a record's whole title trailing a banner that names no work" in {
@@ -1139,7 +1139,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val q    = IdentityMeasures.Qualifiers.learn(Seq("Primetime", "EliteXC: Primetime", "Dateline: Primetime").map(Film(_)))
     val luna = MeasuredListing("KINO SENIORA | Primetime", decorations = TitleDecorations(Set(Seq("kino", "seniora")), Set.empty))
     q.of(luna) shouldBe empty
-    IdentityMeasures.titleRelation(luna, Film("Primetime"), Houses.Unknown, q) shouldBe Category("segment")
+    IdentityMeasures.titleRelation(luna, Film("Primetime"), BannerHouses.Unknown, q) shouldBe Category("segment")
     // Before anything not learned as a venue's, it stays an edition: "EliteXC: Primetime" is not the 2026 film.
     q.of(MeasuredListing("EliteXC: Primetime")) shouldBe Set("primetime")
   }
@@ -1152,7 +1152,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     q.of(MeasuredListing("Cineworld 30: The Dark Knight")) shouldBe Set("thedarkknight")
     val cineworld = MeasuredListing("Cineworld 30: The Dark Knight", originalTitle = Some("The Dark Knight"))
     q.of(cineworld) shouldBe empty
-    IdentityMeasures.titleRelation(cineworld, Film("The Dark Knight"), Houses.Unknown, q) shouldBe Category("segment")
+    IdentityMeasures.titleRelation(cineworld, Film("The Dark Knight"), BannerHouses.Unknown, q) shouldBe Category("segment")
   }
 
   "an edition" should "be a later record carrying the work's title under a qualifier, never a namesake" in {

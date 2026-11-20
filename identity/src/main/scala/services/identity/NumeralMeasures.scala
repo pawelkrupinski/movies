@@ -102,7 +102,7 @@ private[identity] object NumeralMeasures {
   /** Does the listing's title NAME the film: a naming title relation ([[NamingRelations]]), and not
    *  another instalment of its series ([[numeralRelation]]) — "The Texas Chainsaw Massacre 2"
    *  carries the whole of "The Texas Chainsaw Massacre" and names its sequel. */
-  def namesFilm(l: MeasuredListing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown): Boolean =
+  def namesFilm(l: MeasuredListing, f: Film, houses: BannerHouses = BannerHouses.Unknown): Boolean =
     names(titleRelation(l, f, houses).value, l, f)
   /** [[namesFilm]] on a title relation already measured. */
   def names(relation: String, l: MeasuredListing, f: Film): Boolean =

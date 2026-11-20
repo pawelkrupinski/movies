@@ -227,8 +227,8 @@ object PopulationMonotonicity {
     private def renamed(id: String): Option[String] = touched.get(id).fold(Option(id))(node =>
       node.listings.filterNot(l => absent(l.key)).map(_.sortKey).minOption)
     def candidate(id: Int): Option[Candidate] = context.candidate(id)
-    def houses: StageRelays.Houses = context.houses
-    def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = context.houseRanking
+    def houses: BannerHouses = context.houses
+    def houseRanking: Map[String, Seq[BannerHouses.Contender]] = context.houseRanking
     def titleGroup(key: String): Seq[(String, MeasuredListing)] =
       if (!titles(key)) context.titleGroup(key) else index.groups.getOrElse(key, Nil).collect { case (k, entry) if !absent(k) => entry }
     def wholeTitle(sanitised: String): Boolean = context.wholeTitle(sanitised)

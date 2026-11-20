@@ -9,7 +9,7 @@ import services.identity.vocabulary.{CandidateQuery, ContentHash, TitleDecoratio
  *  - `venueTitles`: the titles venues publish for a record, learned from every listing's original
  *    title that names exactly one record ([[IdentityMeasures.venueTitles]]);
  *  - `houseEvidence`: how every node's candidates bill their works, whence each banner's house
- *    ([[StageRelays.Houses]]);
+ *    ([[BannerHouses]]);
  *  - `titleGroups`: every listing by title key with its venue and whose claim its facts are ([[Backer]]) —
  *    a decorated title is backed by venues listing it plain, whose listings are not title-linked to it ([[VenueBacking]]);
  *  - `wholeTitles`: every node's sanitised whole title (`TitleLinks.titlesBeside`);
@@ -25,9 +25,9 @@ private[identity] trait CorpusContext {
   /** A record any node's answers named, with the titles venues publish for it. */
   def candidate(id: Int): Option[Candidate]
   /** Which house each listing banner is. */
-  def houses: StageRelays.Houses
+  def houses: BannerHouses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
-  def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]]
+  def houseRanking: Map[String, Seq[BannerHouses.Contender]]
   /** Every listing carrying title key `key`, with its venue and whose claim its facts are ([[Backer]]), in node order. */
   def titleGroup(key: String): Seq[(String, MeasuredListing)]
   /** Is `sanitised` some node's whole title? */
@@ -93,8 +93,8 @@ private[identity] final class WholeCorpusContext(
 ) extends CorpusContext {
   def segmentSpread(sanitised: String): Int = segmentSpreads.getOrElse(sanitised, 0)
   def candidate(id: Int): Option[Candidate] = candidates.get(id)
-  lazy val houses: StageRelays.Houses = StageRelays.Houses.learn(houseEvidence)
-  lazy val houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = StageRelays.Houses.ranking(houseEvidence)
+  lazy val houses: BannerHouses = BannerHouses.learn(houseEvidence)
+  lazy val houseRanking: Map[String, Seq[BannerHouses.Contender]] = BannerHouses.ranking(houseEvidence)
   def titleGroup(key: String): Seq[(String, MeasuredListing)] = titleGroups.getOrElse(key, Nil)
   def wholeTitle(sanitised: String): Boolean = wholeTitles(sanitised)
   def reachedBy(key: String): Seq[(String, Set[Int])] = reachedByTitle.getOrElse(key, Nil)
@@ -194,7 +194,7 @@ private[identity] object CorpusContext {
   def seasonProductions(films: Iterable[(Int, Film)]): Map[(String, Int), Set[Int]] =
     films.toSeq.flatMap { case (id, film) => StageRelays.seasonWorks(film).map(_ -> id) }.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
 
-  /** The films a node's banner is billed against (`Houses.evidence`): the ones it reached, then —
+  /** The films a node's banner is billed against (`BannerHouses.evidence`): the ones it reached, then —
    *  a listing naming a season — every recorded production of its work that season, whoever searched
    *  it up. PL Kino 1410's "Cosi fan tutte | metropolitan opera: live in hd 2026/27" reached only
    *  Royal Ballet & Opera's; the Met's record, another venue's hit, is what names its banner's house. */
@@ -222,7 +222,7 @@ private[identity] object CorpusContext {
     val seasonFilms   = seasonProductions(candidates.collect { case (id, candidate) if !candidate.isFallback => id -> candidate.film })
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
-      StageRelays.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
+      BannerHouses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
     val titleGroups = nodes.flatMap(node => node.listings.map(listing => titleOf(node) -> (Backer.of(listing) -> node.evidence.measured)))
       .groupMap(_._1)(_._2)
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet

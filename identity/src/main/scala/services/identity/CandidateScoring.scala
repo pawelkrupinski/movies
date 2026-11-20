@@ -20,11 +20,11 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   def pinnedFilm(node: EvidenceNode): Option[Int] = pins.filmOf(node.listings.head.key)
 
   /** Which house each listing banner is, learned from how every node's candidates bill its works
-   *  (`StageRelays.Houses`): the title relation reads a record of the listing's house as
+   *  (`BannerHouses`): the title relation reads a record of the listing's house as
    *  naming it, and a season production must be of it when it is known. */
-  val houses: StageRelays.Houses = generation.context.houses
+  val houses: BannerHouses = generation.context.houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
-  def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = generation.context.houseRanking
+  def houseRanking: Map[String, Seq[BannerHouses.Contender]] = generation.context.houseRanking
   def namesItsSeasonProduction(listing: MeasuredListing, film: Film): Boolean =
     StageRelays.namesSeasonProduction(listing, film) && !StageRelays.billing(listing, film).exists(houses.other)
 

@@ -68,7 +68,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val billingsOf   = mutable.HashMap.empty[NodeKey, Seq[StageRelays.Billing]]
   private val byBanner     = mutable.HashMap.empty[String, Map[NodeKey, Seq[StageRelays.Billing]]]
   private val houseOf      = mutable.HashMap.empty[String, String]
-  private val rankingOf    = mutable.HashMap.empty[String, Seq[StageRelays.Houses.Contender]]
+  private val rankingOf    = mutable.HashMap.empty[String, Seq[BannerHouses.Contender]]
   private val groups       = mutable.HashMap.empty[String, mutable.TreeMap[String, Seq[(String, MeasuredListing)]]]
   private val wholes       = mutable.HashMap.empty[String, Int]
   // per title piece, the whole titles carrying it, with how many nodes carry each (`segmentSpread`)
@@ -84,11 +84,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def films(ids: Seq[Int]): Map[Int, Film] = ids.flatMap(id => candidate(id).map(id -> _.film)).toMap
   // Read many times per resolve, changed per event: each view is built once after it changes. Built under the corpus's
   // lock: an update's regions may be resolved side by side (IncrementalResolver's `regionThreads`), each reading them.
-  private var housesView: Option[StageRelays.Houses] = None
+  private var housesView: Option[BannerHouses] = None
   private val groupView   = mutable.HashMap.empty[String, Seq[(String, MeasuredListing)]]
   private val reachedView = mutable.HashMap.empty[String, Seq[(String, Set[Int])]]
-  def houses: StageRelays.Houses = synchronized(housesView.getOrElse { val built = StageRelays.Houses(houseOf.toMap); housesView = Some(built); built })
-  def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = rankingOf.toMap
+  def houses: BannerHouses = synchronized(housesView.getOrElse { val built = BannerHouses(houseOf.toMap); housesView = Some(built); built })
+  def houseRanking: Map[String, Seq[BannerHouses.Contender]] = rankingOf.toMap
   def titleGroup(key: String): Seq[(String, MeasuredListing)] =
     synchronized(groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq)))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
@@ -315,7 +315,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       billersOf.foreach { case (id, keys) =>
         val film = fresh(candidates(id)).film
         keys.foreach { key =>
-          val own = StageRelays.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
+          val own = BannerHouses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
           if (own.nonEmpty) billedBy.addEntry(key, id -> own)
         }
       }
@@ -326,8 +326,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     private def relearnHouses(banners: mutable.HashSet[String]): Unit = {
       banners.foreach { banner =>
         val evidence = byBanner.getOrElse(banner, Map.empty).values.flatten.toSeq
-        StageRelays.Houses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
-        StageRelays.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
+        BannerHouses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
+        BannerHouses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
       }
       if (banners.nonEmpty) housesView = None
     }

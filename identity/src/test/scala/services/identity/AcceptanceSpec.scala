@@ -3,14 +3,13 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityMeasures.{ListingFilm, Qualifiers}
-import services.identity.StageRelays.Houses
 import services.identity.vocabulary.Denial
 
 /** The acceptance rules read one listing's RANKED candidates ([[Scored]]) — no resolve needed. */
 class AcceptanceSpec extends AnyFlatSpec with Matchers {
   private val calibration = IdentityCalibration.resolver
   private val acceptance  = new Acceptance(calibration)
-  private val houses      = Houses(Map("ntlive" -> "nationaltheatrelive"))
+  private val houses      = BannerHouses(Map("ntlive" -> "nationaltheatrelive"))
 
   /** `films` scored for `listing` as `FamilyScope.score` scores them: each at its search rank, against
    *  the rivals its title names alike, best first. */
@@ -638,7 +637,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // at 3.4% over Cameron's film at 54% and split it from the film's other listings.
     val listing = MeasuredListing("Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day")
     val makingOf = Film("The Making of 'Terminator 2: Judgment Day'", year = Some(1991))
-    val learned = StageRelays.billing(listing, makingOf).map(billed => Houses(Map(billed.listingHouse -> billed.filmHouse)))
+    val learned = StageRelays.billing(listing, makingOf).map(billed => BannerHouses(Map(billed.listingHouse -> billed.filmHouse)))
     learned should not be empty
     val film = Film("Terminator 2: Judgment Day", year = Some(1991), runtime = Some(137))
     def scored(tmdbId: Int, candidate: Film, rank: Int) = {
@@ -802,7 +801,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // title and IMDb's suggestion alone reaches, scored 47.8% on another venue's listing of it — the film Kryterium shows.
     val listing  = MeasuredListing("Ktoś całkiem obcy")
     val stranger = Film("Ktoś całkiem obcy", year = Some(2007), runtime = Some(109))
-    val measures = IdentityMeasures.listingFilm(listing, stranger, Some(1), 0, 0, Houses.Unknown)
+    val measures = IdentityMeasures.listingFilm(listing, stranger, Some(1), 0, 0, BannerHouses.Unknown)
     val foley    = Scored(Candidate(7183, stranger), 0.463, measures, denial = None, listing, Some(1))
     val andersen = Scored(Candidate(1193128, Film("قضية الغرباء", year = Some(2025), runtime = Some(103))), 0.478,
       measures + ("venues.corroborating" -> Measure.Number(1)), denial = None, listing, None, suggestedOnly = true)

@@ -33,7 +33,7 @@ object FamilyIndex {
     case House(banner: String) extends ContextRead[Option[String]]
     /** Every banner's house at once: a reader that walked the whole map. */
     case Houses extends ContextRead[Map[String, String]]
-    case HouseRanking extends ContextRead[Map[String, Seq[StageRelays.Houses.Contender]]]
+    case HouseRanking extends ContextRead[Map[String, Seq[BannerHouses.Contender]]]
     case TitleGroup(key: String) extends ContextRead[Seq[(String, MeasuredListing)]]
     case WholeTitle(sanitised: String) extends ContextRead[Boolean]
     case SegmentSpread(sanitised: String) extends ContextRead[Int]
@@ -62,8 +62,8 @@ object FamilyIndex {
   private[identity] abstract class ReadingContext extends CorpusContext {
     protected def read[A](what: ContextRead[A]): A
     def candidate(id: Int): Option[Candidate] = read(ContextRead.Record(id))
-    def houses: StageRelays.Houses = StageRelays.Houses(HousesView)
-    def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = read(ContextRead.HouseRanking)
+    def houses: BannerHouses = BannerHouses(HousesView)
+    def houseRanking: Map[String, Seq[BannerHouses.Contender]] = read(ContextRead.HouseRanking)
     def titleGroup(key: String): Seq[(String, MeasuredListing)] = read(ContextRead.TitleGroup(key))
     def wholeTitle(sanitised: String): Boolean = read(ContextRead.WholeTitle(sanitised))
     def segmentSpread(sanitised: String): Int = read(ContextRead.SegmentSpread(sanitised))

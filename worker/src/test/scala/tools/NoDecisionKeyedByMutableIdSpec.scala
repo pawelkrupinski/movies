@@ -177,7 +177,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}TitleLinks.scala#formsOf"          -> Pass("one TitleLinks per resolve's stages: each node's title forms (TitleRelation), for that resolve"),
     // ── the projection
     s"${I}LiveProjectionIndex.scala#venueListings" -> Name("each venue's listings as last read: compared by value to see a move"),
-    s"${I}LiveProjectionIndex.scala#entries"       -> Name("each listing's entry, kept equal to the builder's index (ScopedProjectionEquivalenceSpec)"),
+    s"${I}ListingEntries.scala#entries"            -> Name("each listing's entry, kept equal to the builder's index (ScopedProjectionEquivalenceSpec)"),
     s"${I}LiveProjectionIndex.scala#slots"         -> Name("each slot's published listings and stored films, moved with entries"),
     s"${I}LiveProjectionIndex.scala#decisionsOf"   -> Name("each cluster's current decisions"),
     s"${I}LiveProjectionIndex.scala#afterWrites"   -> Name("the listings moved by writes, consumed by the next update"),
@@ -221,7 +221,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}LiveProjectionIndex.scala#listingsOf"   -> Name("each stored film's listings"),
     s"${I}LiveProjectionIndex.scala#clusters"     -> Name("each cluster's current structure"),
     s"${I}LiveProjectionIndex.scala#replaced"     -> Pass("replaced whole by each update: the decisions it replaced"),
-    s"${I}LiveProjectionIndex.scala#owners"       -> Name("a field of an Entry: the stored films holding its key"),
+    s"${I}ListingEntries.scala#owners"            -> Name("a field of an Entry: the stored films holding its key"),
     s"${I}LiveProjectionIndex.scala#keys"         -> Name("a field of a Slot: the listings published at it"),
     s"${I}LiveProjectionIndex.scala#films"        -> Name("a field of a Slot: the stored films with a slot there"),
     s"${I}VenueSlotFingerprints.scala#kept"       -> Content("venue slot fingerprints"),

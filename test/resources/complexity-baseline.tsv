@@ -14,7 +14,6 @@ cognitive	identity/src/main/scala/services/identity/IdentityCalibration.scala:Id
 cognitive	identity/src/main/scala/services/identity/IdentityMeasures.scala:IdentityMeasures.certificateRelation	13
 cognitive	identity/src/main/scala/services/identity/IdentityMeasures.scala:IdentityMeasures.listingFilmTitled	12
 cognitive	identity/src/main/scala/services/identity/ListingExplanation.scala:ListingExplanation.of	14
-cognitive	identity/src/main/scala/services/identity/LiveProjectionIndex.scala:LiveProjectionIndex.regroup	12
 cognitive	identity/src/main/scala/services/identity/PopulationMonotonicity.scala:PopulationMonotonicity.latticeFlip	14
 cognitive	identity/src/main/scala/services/identity/ProjectionGuard.scala:ProjectionGuard.refusal	11
 cognitive	identity/src/main/scala/services/identity/ResolverDecisions.scala:ResolverDecisions.nodeTrace	12

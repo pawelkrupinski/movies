@@ -29,7 +29,7 @@ private[identity] object TitleRelationMeasures {
    *  alone, so two listings read them too: UK "NT LIVE: Golden Boy (15)" [180′] and "National
    *  Theatre Live: Golden Boy" [150′] measured an `overlap`, which with the half hour between them
    *  kept them apart by the learned cut, and "NT Live: Golden Boy" ×5 with them. */
-  def titleRelation(l: MeasuredListing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
+  def titleRelation(l: MeasuredListing, f: Film, houses: BannerHouses = BannerHouses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
     titleRelation(l, f, Some(houses), qualifiers)
 
   /** Does none of the listing's own titles or its original share a word with any of the film's titles — not even one a
@@ -57,7 +57,7 @@ private[identity] object TitleRelationMeasures {
    *  A record title that is only one of the listing's [[Qualifiers]] names nothing: "Director's
    *  Cut" (2016) shares the words of "Dark City: Director's Cut" but is not its film, so it is
    *  measured on the record's other titles, and as an `overlap` when it has none. */
-  private[identity] def titleRelation(l: MeasuredListing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Category = {
+  private[identity] def titleRelation(l: MeasuredListing, f: Film, houses: Option[BannerHouses], qualifiers: Qualifiers): Category = {
     val ls  = l.ownForms
     val all = f.forms
     val own = l.ownKeys
@@ -96,13 +96,13 @@ private[identity] object TitleRelationMeasures {
   /** How the listing's shapes contain the film's titles ([[containment]]) — those the listing's qualifiers leave
    *  ([[Qualifiers.of]]) — when no title names it whole: a segment also where the billing names a house's season
    *  production or bills works of two titles. None when the qualifiers leave no title. */
-  private def containedIn(l: MeasuredListing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Option[Category] = {
+  private def containedIn(l: MeasuredListing, f: Film, houses: Option[BannerHouses], qualifiers: Qualifiers): Option[Category] = {
     val all = f.forms
     lazy val qualifying = qualifiers.of(l)
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     if (fs.isEmpty) None
     else containment(l.ownForms, l.shapeKeys, fs,
-      houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same) ||
+      houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(BannerHouses.Unknown).same) ||
         billsWorksOfTwoTitles(l, f), l.shapeWords, l.undecoratedWords)
   }
 

@@ -3,7 +3,7 @@ package scripts
 import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.identity.{Backer, Film, IdentityCalibration, IdentityMeasures, Measure, SourceReliability, StageRelays, VenueBacking}
+import services.identity.{BannerHouses, Backer, Film, IdentityCalibration, IdentityMeasures, Measure, SourceReliability, VenueBacking}
 import services.identity.vocabulary.TitleDecorations
 import services.identity.agreement.Agreement
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
@@ -184,8 +184,8 @@ object IdentityCalibrate {
 
     val backing = new VenueBacking(members)
     // The houses the banners bill, learned from the pools as the resolver learns them from its candidates.
-    val houses = StageRelays.Houses.learn(obs.indices.flatMap(i =>
-      StageRelays.Houses.evidence(obs(i).listing, pools(i).toSeq.sortBy(_._1).map(_._2._2))))
+    val houses = BannerHouses.learn(obs.indices.flatMap(i =>
+      BannerHouses.evidence(obs(i).listing, pools(i).toSeq.sortBy(_._1).map(_._2._2))))
 
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>

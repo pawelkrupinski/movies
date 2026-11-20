@@ -82,7 +82,7 @@ private[identity] object TitleTextMeasures {
     private def count(piece: Seq[String], trails: Boolean): Int = companions.getOrElse((piece.mkString, trails), 0)
     /** The listing's qualifier pieces, by key: each piece its whole title adds another to along one
      *  edge, which records bill on the same side beside at least two works — one is a coincidence,
-     *  as a house's is ([[StageRelays.Houses.learn]]) — and beside more than they bill the rest of the title on
+     *  as a house's is ([[BannerHouses.learn]]) — and beside more than they bill the rest of the title on
      *  its side. A tie is no qualifier, and neither is a piece the listing publishes as its original
      *  title: the venue names it as the film ("Cineworld 30: The Dark Knight", originally "The Dark
      *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). Nor is a
