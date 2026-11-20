@@ -31,7 +31,7 @@ trait ReadModelProjectorFixtures {
    *  few sweeps otherwise also counts the content check re-projecting its row — in the one or two
    *  half-hours a day that slice comes up, and nowhere else. */
   protected def clockSkippingSliceOf(id: FilmId): java.time.Clock =
-    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (ReadModelSweeper.contentSliceOf(id) + 1)),
+    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (SweptProjection.contentSliceOf(id) + 1)),
                           java.time.ZoneOffset.UTC)
 
   /** The clock these specs' projectors run on unless a case pins its own: the rolling content

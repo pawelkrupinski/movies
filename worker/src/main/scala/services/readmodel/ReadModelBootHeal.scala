@@ -10,7 +10,7 @@ import scala.util.Try
  *  serves under another city is a re-file, not a lost write, and is counted apart.
  *
  *  Built by the sweeper over the projection it sweeps; the projector runs it between its boot reads. */
-private[readmodel] final class ReadModelBootHeal(projection: ReadModelSweeper.Projection) extends ContinuingSteps with Logging {
+private[readmodel] final class ReadModelBootHeal(projection: SweptProjection) extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.HealTrigger
   private val movieRepository = projection.movieRepository
   private val reader          = projection.reader

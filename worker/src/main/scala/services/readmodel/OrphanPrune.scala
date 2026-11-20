@@ -9,7 +9,7 @@ import play.api.Logging
  *
  *  Built by the sweeper over the projection it sweeps, and logging under the sweeper's `logger`: a prune reads as
  *  its sweep's, which it is. Every method expects the projection lock held. */
-private[readmodel] final class OrphanPrune(projection: ReadModelSweeper.Projection, override protected val logger: play.api.Logger)
+private[readmodel] final class OrphanPrune(projection: SweptProjection, override protected val logger: play.api.Logger)
     extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.PruneReason
   private val reader  = projection.reader
@@ -40,7 +40,7 @@ private[readmodel] final class OrphanPrune(projection: ReadModelSweeper.Projecti
    *  sweep's to judge; this one's heals are in `liveIds` either way. A card read that failed judges
    *  none: an unread card is not an orphan. */
   private def pruneOrphanCards(reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
-    val cardsToJudge = (if (!reproject) baseline.cards else reader.findAllMovieIdsChecked()).answered.getOrElse {
+    val cardsToJudge = (if (!reproject) baseline.cards else reader.findAllMovieIdsChecked().answered).getOrElse {
       logger.warn(s"read-model $kind: the card ids could not be read — no card is pruned this tick."); Seq.empty }
     cardsToJudge.iterator.filterNot(tally.liveIds).foreach { id =>
       val rowOfCard = id.takeWhile(_ != '~')

@@ -8,14 +8,14 @@ import play.api.Logging
  * One whole-corpus pass of a [[ReadModelSweeper]] — the FULL reconcile (`reproject = true`) or the
  * cheap PRUNE sweep: the source scan, the heal of a ready row missing a card or a venue, the prune of
  * what no live row projects to ([[OrphanPrune]]), the rolling content check of one slice
- * ([[ReadModelSweeper.ContentSlices]]), the catch-up of what a silent change stream failed to deliver
+ * ([[SweptProjection.ContentSlices]]), the catch-up of what a silent change stream failed to deliver
  * ([[SweepCatchUp]]), and the sweep's summary line. The sweeper schedules it and judges its heals.
  *
  * @param pruneSeconds the prune's cadence: the content slices are numbered by the clock over it.
  * @param logger the sweeper's: a sweep's lines read as the sweeper's, which they are.
  */
 private[readmodel] final class CorpusSweep(
-  projection:     ReadModelSweeper.Projection,
+  projection:     SweptProjection,
   derivationPass: Option[ReadModelDerivationPass],
   pruneSeconds:   Long,
   // The destructive half of a complete sweep: the orphans and unlisted venues it deletes.
@@ -69,9 +69,7 @@ private[readmodel] final class CorpusSweep(
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
     // `screenings` collection through WiredTiger twice an hour to throw it away — 177,676
     // rows and 129 MB across the five countries (2026-09-05) against a 1.07 GB cache.
-    val scan: (StoredMovieRecord => Unit) => tools.ScanOutcome =
-      if (reproject) projection.movieRepository.foreachRecord else projection.movieRepository.foreachRecordWithSlots
-    val scanComplete = scan(row => sweepRow(row, reproject, kind, baseline, tally)).isComplete
+    val scanComplete = projection.scan(withShowtimes = reproject)(row => sweepRow(row, reproject, kind, baseline, tally)).isComplete
     if (!scanComplete) {
       // The source scan failed mid-way (a Mongo batch read threw after its retries —
       // typically a server-selection / socket timeout while the worker is CPU-throttled,
@@ -108,8 +106,8 @@ private[readmodel] final class CorpusSweep(
    *  or stops short, which the keyset scan reports as EMPTY — heals no venue this tick: "no rows" is
    *  not "could not read them". */
   private def readSweepBaseline(reproject: Boolean, kind: String): SweepBaseline = {
-    val cards = if (reproject) tools.ReadOutcome.Answered(Seq.empty[String]) else projection.reader.findAllMovieIdsChecked()
-    if (!reproject && cards.answered.isEmpty) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
+    val cards = if (reproject) Some(Seq.empty[String]) else projection.reader.findAllMovieIdsChecked().answered
+    if (!reproject && cards.isEmpty) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
     SweepBaseline(cards, if (reproject) None else projection.reader.findAllScreeningRefsChecked().answered)
   }
 
@@ -157,8 +155,8 @@ private[readmodel] final class CorpusSweep(
    *  though nothing about it changes again. Deterministic by row id, so the slices partition the
    *  corpus rather than sampling it, and every row is reached. */
   private def checkContentSlice(kind: String, liveRowIds: collection.Seq[FilmId]): Unit = {
-    val slice = math.floorMod(sweepCount, ReadModelSweeper.ContentSlices.toLong).toInt
-    reprojectSlice(liveRowIds, slice, s"$kind sweep", projection.movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Content))
+    val slice = math.floorMod(sweepCount, SweptProjection.ContentSlices.toLong).toInt
+    reprojectSlice(liveRowIds, slice, s"$kind sweep", projection.read(_, withShowtimes = true), projection.projectRow(_, ProjectTrigger.Content))
     derivationPass.foreach(_.armIfUnchecked(sliceWalk(liveRowIds.toVector)))
   }
 
@@ -179,7 +177,7 @@ private[readmodel] final class CorpusSweep(
                              project: StoredMovieRecord => Int): (Int, Boolean) = {
     var written  = 0
     var complete = true
-    rowIds.iterator.filter(ReadModelSweeper.contentSliceOf(_) == slice).foreach { id =>
+    rowIds.iterator.filter(SweptProjection.contentSliceOf(_) == slice).foreach { id =>
       val projected = continuing(s"read-model $what: a row in content slice $slice failed to project") {
         read(id) match {
           case tools.ReadOutcome.Answered(row)      => written += project(row)
@@ -194,20 +192,20 @@ private[readmodel] final class CorpusSweep(
 
   /** The walk a derivation pass makes over `rowIds`, a slice at a time: each row read whole and re-projected, or, for a
    *  cards-only derivation, read slots-only — no `screenings` read — and its cards alone re-projected (`projectCards`). */
-  private def sliceWalk(rowIds: Vector[FilmId]): ReadModelSweeper.SliceWalk = new ReadModelSweeper.SliceWalk {
+  private def sliceWalk(rowIds: Vector[FilmId]): ReadModelDerivationPass.SliceWalk = new ReadModelDerivationPass.SliceWalk {
     def rows: Int = rowIds.size
     def reproject(slice: Int, scope: DerivationScope): (Int, Boolean) =
       if (scope == DerivationScope.Cards)
         reprojectSlice(rowIds, slice, "derivation pass (cards)",
-                       projection.movieRepository.findByIdWithSlotsChecked, row => projection.projectCards(projection.partition(row)))
+                       projection.read(_, withShowtimes = false), row => projection.projectCards(projection.partition(row)))
       else
-        reprojectSlice(rowIds, slice, "derivation pass", projection.movieRepository.findByIdChecked, projection.projectRow(_, ProjectTrigger.Derivation))
+        reprojectSlice(rowIds, slice, "derivation pass", projection.read(_, withShowtimes = true), projection.projectRow(_, ProjectTrigger.Derivation))
   }
 }
 
 private[readmodel] object CorpusSweep {
   /** A pass over `projection` with its orphan prune and catch-up, every part logging under the sweeper's `logger`. */
-  def apply(projection: ReadModelSweeper.Projection, derivationPass: Option[ReadModelDerivationPass], pruneSeconds: Long,
+  def apply(projection: SweptProjection, derivationPass: Option[ReadModelDerivationPass], pruneSeconds: Long,
             logger: play.api.Logger): CorpusSweep =
     new CorpusSweep(projection, derivationPass, pruneSeconds, new OrphanPrune(projection, logger), new SweepCatchUp(projection, logger), logger)
 }

@@ -29,7 +29,7 @@ import services.movies.MovieRepository
  *  prune must stay the id-only sweep it is there.
  *
  *  Logs as the sweeper it runs for. */
-private[readmodel] final class SweepCatchUp(projection: ReadModelSweeper.Projection, override protected val logger: play.api.Logger)
+private[readmodel] final class SweepCatchUp(projection: SweptProjection, override protected val logger: play.api.Logger)
     extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.ProjectTrigger
 

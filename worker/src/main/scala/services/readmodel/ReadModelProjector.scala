@@ -48,7 +48,9 @@ import services.movies.{MovieChangeFeed, MovieRepositoryReader}
  * so the in-memory last-projection state needs no further synchronisation. A change passes three stages: this class
  * decides which of a row's cards stand and which go; its [[CardProjection]] projects the row's cards and plans their
  * screenings rows; its [[ShareCardGate]] holds a brand-new card back for its share card; its [[CardStore]] writes what
- * stands and removes what goes. [[ReadModelBoot]] runs the boot reads and the change-stream subscription that drive it;
+ * stands and removes what goes. At boot it seeds its memo from the read model ([[seedFromReadModel]]) and learns the
+ * corpus's rows ([[learnAtBoot]], [[learnFromCorpus]]); [[ReadModelBoot]] decides when, and holds the change-stream
+ * subscription that drives it until then;
  * [[ReadModelSweeper]] the passes over the whole corpus, which drive it through its [[projection]]. The projector builds
  * none of them: [[ReadModelProjector.apply]] assembles its stages, and the composition root builds the sweeper and the
  * boot over it.
@@ -80,16 +82,20 @@ class ReadModelProjector private[readmodel] (
 
   // The sweeper over [[projection]], when one is: what this projector tells it of each change it applies,
   // read and replaced under `lock` only.
-  private var sweep: ReadModelSweeper.Listener = ReadModelSweeper.Listener.none
+  private var sweep: SweptProjection.Listener = SweptProjection.Listener.none
 
   /** What a [[ReadModelSweeper]] drives — this projector's stores, its lock, its per-row projection
    *  and its memo. The composition root builds the sweeper over it; a projector constructs none. */
-  val projection: ReadModelSweeper.Projection = new ReadModelSweeper.Projection {
+  val projection: SweptProjection = new SweptProjection {
     def movieRepository: MovieRepositoryReader & MovieChangeFeed = ReadModelProjector.this.movieRepository
+    def scan(withShowtimes: Boolean)(row: StoredMovieRecord => Unit): tools.ScanOutcome =
+      if (withShowtimes) movieRepository.foreachRecord(row) else movieRepository.foreachRecordWithSlots(row)
+    def read(id: models.FilmId, withShowtimes: Boolean): tools.ReadOutcome[StoredMovieRecord] =
+      if (withShowtimes) movieRepository.findByIdChecked(id) else movieRepository.findByIdWithSlotsChecked(id)
     def reader: ReadModelReader = ReadModelProjector.this.reader
     def metrics: ReadModelProjectionMetrics = ReadModelProjector.this.metrics
     def clock: java.time.Clock = ReadModelProjector.this.clock
-    private[readmodel] def reportTo(listener: ReadModelSweeper.Listener): Unit = sweep = listener
+    private[readmodel] def reportTo(listener: SweptProjection.Listener): Unit = sweep = listener
     def exclusively[A](body: => A): A = lock.synchronized(body)
     def partition(row: StoredMovieRecord): ReadModelProjection.Partition = ReadModelProjection.partition(row, normalizer)
     def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = ReadModelProjector.this.project(partition, trigger)
@@ -299,9 +305,46 @@ class ReadModelProjector private[readmodel] (
       .count(projected => cardStore.rewrite(shareCardGate.withShareCard(projected)))
   }
 
-  /** A card the read model serves, as the boot seed reads it ([[ReadModelBoot]]): remembered as written. Caller holds
-   *  `lock`. */
-  private[readmodel] def seedCard(movie: ResolvedMovie): Unit = cardStore.seed(movie)
+  /** Seed the last-projection state from the derived collections, so a restart doesn't
+   *  rewrite documents that are already correct — and so a document this process did not
+   *  write (one left under a renamed city's former slug, say) is one its next projection of
+   *  that film can retire. What a worker does as it boots ([[ReadModelBoot]]); public so a harness can model the
+   *  boot of the next worker over a read model it did not write. */
+  def seedFromReadModel(): Unit = lock.synchronized {
+    // A read that falls short seeds nothing: every card is then rewritten on its first projection,
+    // the costly-but-safe direction.
+    reader.findAllMoviesChecked().answered.getOrElse {
+      logger.warn("read model: the cards could not be read whole at boot — seeding none; each is rewritten on its first projection")
+      Seq.empty
+    }.foreach(cardStore.seed)
+    // Page by page, keeping each row's id and hash only: read whole, US's screenings were
+    // ~400 MB live beside the identity take-up. The content is known, the slots it was
+    // built from are not: no input hash, so the first projection of each venue rebuilds it
+    // rather than trusting it. A read that falls short seeds nothing, as it always has.
+    val byFilm = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.Builder[(String, WrittenScreening), Map[String, WrittenScreening]]]
+    val complete = reader.foreachScreening(s => byFilm.getOrElseUpdate(s.filmId, Map.newBuilder) += s._id -> WrittenScreening(s.##, input = None))
+    if (complete.isComplete) byFilm.foreach { case (fid, rows) => lastScreenings.update(fid, rows.result()) }
+    memo.seeded = true
+  }
+
+  /** Learn every row of the boot hydrate's complete read. Before the seed the memo has no row to vouch:
+   *  learning then would mark each row known with every venue unvouched. */
+  private[readmodel] def learnAtBoot(rows: Seq[BootRow]): Unit = lock.synchronized {
+    if (memo.seeded) rows.foreach(row => memo.learnFrom(row.id.value, row.lesson))
+  }
+
+  /** Learn every ready row from a read of the corpus with its showtimes — what [[learnAtBoot]] takes from the
+   *  hydrate's read, when the boot had none to hand over (it failed, or its derivation ran past its wait). One row at
+   *  a time under the lock, so the change stream's applies interleave; a change at a row not learned yet meanwhile is
+   *  re-read whole, as it would be anyway. */
+  private[readmodel] def learnFromCorpus(): Unit = {
+    val read = movieRepository.foreachRecord { row =>
+      if (row.readyToProject)
+        scala.util.Try(Lesson.of(ReadModelProjection.partition(row, normalizer))).foreach(lesson =>
+          lock.synchronized(if (memo.seeded) memo.learnFrom(row.id.value, lesson)))
+    }
+    logger.info(s"read model: learned the corpus's rows from a read of its own (${read.explain}).")
+  }
 
   /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose
    *  screenings rows under `absentVenues` are known to be missing from the read model —

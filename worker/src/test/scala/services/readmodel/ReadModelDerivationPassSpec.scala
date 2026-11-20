@@ -252,7 +252,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     (31 until 48).foreach(_ => pass.advance())
 
     marker.current shouldBe Some("this-code")
-    val laterRows = repository.findAll().count(row => ReadModelSweeper.contentSliceOf(row.id) >= 30)
+    val laterRows = repository.findAll().count(row => SweptProjection.contentSliceOf(row.id) >= 30)
     repository.wholeReads shouldBe laterRows
     boot.stop()
   }
@@ -301,7 +301,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
     val (boot, sweeper, pass) = booted(repository, rm, marker, history = history(DerivationScope.Full))
     sweeper.pruneOrphans()
-    val firstSliceWithARow = repository.findAll().map(row => ReadModelSweeper.contentSliceOf(row.id)).min
+    val firstSliceWithARow = repository.findAll().map(row => SweptProjection.contentSliceOf(row.id)).min
 
     repository.failing = true
     (1 to 48).foreach(_ => pass.advance())

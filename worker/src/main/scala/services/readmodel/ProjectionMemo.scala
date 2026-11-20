@@ -6,8 +6,8 @@ import scala.collection.mutable
 
 /**
  * What this process knows it has written to the read model, per card, per screenings row and per source row: the
- * [[ReadModelProjector]]'s memo, which its per-row projection diffs against so only what changed is written, which its
- * [[ReadModelBoot]] seeds from the read model and teaches the boot hydrate's lessons, and which every reader and writer
+ * [[ReadModelProjector]]'s memo, which its per-row projection diffs against so only what changed is written, which it
+ * seeds from the read model at boot and teaches the boot hydrate's lessons, and which every reader and writer
  * of it holds [[lock]] for (the change-stream callback, the sweeper's passes and the boot alike).
  */
 private[readmodel] final class ProjectionMemo {

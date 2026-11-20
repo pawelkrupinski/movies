@@ -28,7 +28,7 @@ import play.api.Logging
  *  (`ReadModelWiring`); the sweeper schedules its slices.
  */
 class ReadModelDerivationPass(
-  projection: ReadModelSweeper.Projection,
+  projection: SweptProjection,
   // Which derivation the stored read model was last re-projected whole under — see
   // [[ReadModelDerivationMarker]]. `none` owes no pass.
   derivationMarker:  ReadModelDerivationMarker = ReadModelDerivationMarker.none,
@@ -36,8 +36,8 @@ class ReadModelDerivationPass(
   // [[ReadModelDerivation.owedSince]]). A parameter so a spec can stage a history.
   derivationHistory: Seq[Derivation] = ReadModelDerivation.History
 ) extends ContinuingSteps with Logging {
-  import ReadModelDerivationPass.{Pass, TickSeconds}
-  import ReadModelSweeper.{ContentSlices, SliceWalk}
+  import ReadModelDerivationPass.{Pass, SliceWalk, TickSeconds}
+  import SweptProjection.ContentSlices
 
   // Where the whole-corpus re-projection a derivation change owes stands.
   private var state: Pass = Pass.Unchecked
@@ -138,6 +138,16 @@ object ReadModelDerivationPass {
   /** Seconds between two slices of a derivation pass: 48 slices, the whole corpus in 8 minutes. */
   private[readmodel] val TickSeconds = 10L
 
+  /** The rows a complete prune sweep saw, walked one content slice at a time: what a derivation pass re-projects,
+   *  without knowing the rows or how they are read ([[CorpusSweep]] walks them). */
+  private[readmodel] trait SliceWalk {
+    /** How many rows the walk covers. */
+    def rows: Int
+    /** Caller holds the projection lock. Re-project the rows in content slice `slice` — their cards alone for a
+     *  `Cards` scope: the documents written, and whether every row was read and projected. */
+    def reproject(slice: Int, scope: DerivationScope): (Int, Boolean)
+  }
+
   /** Where the whole-corpus re-projection a derivation change owes stands. */
   private sealed trait Pass
   private object Pass {
@@ -147,7 +157,7 @@ object ReadModelDerivationPass {
     case object Current extends Pass
     /** Re-projecting `walk`'s rows (their cards alone, for a `Cards` scope), slice `nextSlice` next;
      *  `complete` while every row so far was read and projected. */
-    final case class Running(walk: ReadModelSweeper.SliceWalk, scope: DerivationScope, nextSlice: Int, written: Int,
+    final case class Running(walk: SliceWalk, scope: DerivationScope, nextSlice: Int, written: Int,
                              complete: Boolean) extends Pass
   }
 }

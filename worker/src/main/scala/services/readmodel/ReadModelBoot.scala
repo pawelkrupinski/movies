@@ -6,10 +6,10 @@ import tools.Stoppable
 import scala.util.Try
 
 /**
- * The [[ReadModelProjector]]'s boot and its change-stream subscription: the state seed from the read model, the
- * sweeper's missing-card heal and the corpus lessons ([[prepare]]); the attach that holds every change the stream
- * delivers until those boot reads are done, and the release projecting them after ([[attach]]); the watch that opens
- * the stream ([[watch]]). The projector applies each change; this decides when it may.
+ * The [[ReadModelProjector]]'s boot and its change-stream subscription: the boot reads -- the projector's seed from the
+ * read model, the sweeper's missing-card heal and the projector's corpus lessons -- in order ([[prepare]]); the attach
+ * that holds every change the stream delivers until those boot reads are done, and the release projecting them after
+ * ([[attach]]); the watch that opens the stream ([[watch]]). The projector applies each change; this decides when it may.
  *
  * `scheduler` is the projector's thread — its learning off the boot thread; stopped by [[stop]]. `bootStudy` is what
  * the boot reads take from the cache's boot hydrate in place of a corpus read of their own (see [[BootCorpusStudy]]);
@@ -21,32 +21,8 @@ final class ReadModelBoot(
   bootStudy: Option[BootCorpusStudy] = None
 ) extends Stoppable with ContinuingSteps with Logging {
   private val projection = projector.projection
-  private val memo       = projector.memo
 
   @volatile private var watchHandle: Option[AutoCloseable] = None
-
-  /** Seed the last-projection state from the derived collections, so a restart doesn't
-   *  rewrite documents that are already correct — and so a document this process did not
-   *  write (one left under a renamed city's former slug, say) is one its next projection of
-   *  that film can retire. What a worker does as it boots; public so a harness can model the
-   *  boot of the next worker over a read model it did not write. */
-  def seedFromReadModel(): Unit =
-    memo.lock.synchronized {
-      // A read that falls short seeds nothing: every card is then rewritten on its first projection,
-      // the costly-but-safe direction.
-      projection.reader.findAllMoviesChecked().answered.getOrElse {
-        logger.warn("read model: the cards could not be read whole at boot — seeding none; each is rewritten on its first projection")
-        Seq.empty
-      }.foreach(projector.seedCard)
-      // Page by page, keeping each row's id and hash only: read whole, US's screenings were
-      // ~400 MB live beside the identity take-up. The content is known, the slots it was
-      // built from are not: no input hash, so the first projection of each venue rebuilds it
-      // rather than trusting it. A read that falls short seeds nothing, as it always has.
-      val byFilm = scala.collection.mutable.HashMap.empty[String, scala.collection.mutable.Builder[(String, WrittenScreening), Map[String, WrittenScreening]]]
-      val complete = projection.reader.foreachScreening(s => byFilm.getOrElseUpdate(s.filmId, Map.newBuilder) += s._id -> WrittenScreening(s.##, input = None))
-      if (complete.isComplete) byFilm.foreach { case (fid, rows) => memo.lastScreenings.update(fid, rows.result()) }
-      memo.seeded = true
-    }
 
   /** The whole boot at once — [[prepare]] with `sweeper`'s heal, then [[watch]]; scheduling the
    *  sweeper's passes is its owner's. */
@@ -64,12 +40,12 @@ final class ReadModelBoot(
     // life of the process. Without a seed each card is rewritten on its first projection, and the
     // first sweep heals what the missing-card heal would have: costly, but the projector runs.
     try {
-      seedFromReadModel()
+      projector.seedFromReadModel()
       val study = bootStudy.flatMap(_.take())
       sweeper.healMissingCards(study)
       // Without the hydrate's rows, read them for the lessons, off the boot thread: without them every film's first
       // venue change after the boot is re-read whole (78 of the US's 78 venue applies in half an hour, 2026-10-01).
-      study.fold { scheduler.execute(() => continuing("read model: learning the corpus failed")(learnFromCorpus())); () }(learnAtBoot)
+      study.fold { scheduler.execute(() => continuing("read model: learning the corpus failed")(projector.learnFromCorpus())); () }(projector.learnAtBoot)
     } catch {
       case scala.util.control.NonFatal(exception) =>
         logger.error(s"read model: the boot reads failed (${exception.getClass.getSimpleName}: ${exception.getMessage}) — " +
@@ -138,25 +114,6 @@ final class ReadModelBoot(
     logger.info(s"ReadModelProjector started; no periodic reproject (retired); change-stream watch " +
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
-
-  /** Learn every row of the boot hydrate's complete read. Before the seed the memo has no row to vouch:
-   *  learning then would mark each row known with every venue unvouched. */
-  private def learnAtBoot(rows: Seq[BootRow]): Unit = memo.lock.synchronized {
-    if (memo.seeded) rows.foreach(row => memo.learnFrom(row.id.value, row.lesson))
-  }
-
-  /** Learn every ready row from a read of the corpus with its showtimes — what [[learnAtBoot]] takes from the
-   *  hydrate's read, when the boot had none to hand over (it failed, or its derivation ran past its wait). One row at
-   *  a time under the lock, so the change stream's applies interleave; a change at a row not learned yet meanwhile is
-   *  re-read whole, as it would be anyway. */
-  private[readmodel] def learnFromCorpus(): Unit = {
-    val read = projection.movieRepository.foreachRecord { row =>
-      if (row.readyToProject)
-        Try(Lesson.of(projection.partition(row))).foreach(lesson =>
-          memo.lock.synchronized(if (memo.seeded) memo.learnFrom(row.id.value, lesson)))
-    }
-    logger.info(s"read model: learned the corpus's rows from a read of its own (${read.explain}).")
-  }
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))

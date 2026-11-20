@@ -111,12 +111,12 @@ private[readmodel] final class RowDriftLog {
   }
 }
 
-/** The read model's cards and screenings rows as a sweep found them before its scan. `cards` is
- *  what the read answered (an unanswered read heals and prunes no card); `screeningRefs` is None
- *  when the rows were not read, or could not be. */
-private[readmodel] final case class SweepBaseline(cards: tools.ReadOutcome[Seq[String]], screeningRefs: Option[Seq[ScreeningRef]]) {
-  val cardsRead: Boolean                                      = cards.answered.isDefined
-  val cardIds: Set[String]                                    = cards.answered.fold(Set.empty[String])(_.toSet)
+/** The read model's cards and screenings rows as a sweep found them before its scan. `cards` is None
+ *  when the read did not answer (it heals and prunes no card); `screeningRefs` is None when the rows
+ *  were not read, or could not be. */
+private[readmodel] final case class SweepBaseline(cards: Option[Seq[String]], screeningRefs: Option[Seq[ScreeningRef]]) {
+  val cardsRead: Boolean                                      = cards.isDefined
+  val cardIds: Set[String]                                    = cards.fold(Set.empty[String])(_.toSet)
   val screeningIds: Option[Set[String]]                       = screeningRefs.map(_.map(_._id).toSet)
   val screeningsByCard: Option[Map[String, Seq[ScreeningRef]]] = screeningRefs.map(_.groupBy(_.filmId))
 }

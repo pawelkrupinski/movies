@@ -2,14 +2,14 @@ package services.readmodel
 
 /** THE SWEEP'S VERDICT: which of a prune sweep's heals, content rewrites and unlisted-venue prunes were MISSES of the
  *  change stream, and which it merely had in flight. It hears, under the projection lock, each row the stream applies
- *  while a sweep runs ([[ReadModelSweeper.Listener]]) and the content check's rewrites; once the sweep lets go of the
+ *  while a sweep runs ([[SweptProjection.Listener]]) and the content check's rewrites; once the sweep lets go of the
  *  lock it waits for the stream to apply what it held (`awaitStreamApplied`, the sweeper's wait on its source's
  *  stream), then meters and names only the misses.
  *
  *  Built by the [[ReadModelSweeper]] over the projection it sweeps, and logging under the sweeper's `logger`: a
  *  verdict reads as its sweep's, which it is. */
-private[readmodel] final class SweepVerdict(projection: ReadModelSweeper.Projection, awaitStreamApplied: () => Unit,
-                                            logger: play.api.Logger) extends ReadModelSweeper.Listener {
+private[readmodel] final class SweepVerdict(projection: SweptProjection, awaitStreamApplied: () => Unit,
+                                            logger: play.api.Logger) extends SweptProjection.Listener {
   import ReadModelProjectionMetrics.{HealTrigger, ReconcileKind}
   private val metrics = projection.metrics
 

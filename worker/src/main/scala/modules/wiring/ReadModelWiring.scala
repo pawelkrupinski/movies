@@ -34,7 +34,7 @@ trait ReadModelWiring { self: WorkerWiring =>
   lazy val readModelSweeper: ReadModelSweeper = ReadModelSweeper(readModelProjector.projection,
     pruneInterval  = configuration.readModelPruneInterval(ReadModelSweeper.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelSweeper.DefaultPruneBootDelay),
-    awaitStreamApplied = StreamApplyWait.await(_, sleep),
+    awaitStreamApplied = StreamApplyWait.sleeping(sleep),
     derivationPass = Some(readModelDerivationPass))
   // The whole-corpus re-projection a derivation change owes, armed by the sweeper's first complete sweep.
   lazy val readModelDerivationPass: ReadModelDerivationPass = new ReadModelDerivationPass(readModelProjector.projection,

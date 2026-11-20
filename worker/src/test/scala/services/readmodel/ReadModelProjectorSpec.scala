@@ -904,7 +904,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
 
     // Every row lands in exactly one of the 48 content slices, so 48 sweeps re-read each once.
     val before = m.projectCalls
-    (1 to ReadModelSweeper.ContentSlices).foreach(_ => sweeper.pruneOrphans())
+    (1 to SweptProjection.ContentSlices).foreach(_ => sweeper.pruneOrphans())
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) shouldBe m.projectCalls - before
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) should be > 0
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 1

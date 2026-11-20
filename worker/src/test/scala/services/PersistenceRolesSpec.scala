@@ -21,7 +21,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
   "the read-only corpus components" should "take MovieRepositoryReader (and MovieChangeFeed), never MovieRepository" in {
     Seq(
       writerTypedIn(classOf[services.readmodel.ReadModelProjector], classOf[MovieRepository]),
-      writerTypedIn(classOf[services.readmodel.ReadModelSweeper.Projection], classOf[MovieRepository], "movieRepository"),
+      writerTypedIn(classOf[services.readmodel.SweptProjection], classOf[MovieRepository], "movieRepository"),
       writerTypedIn(Class.forName("services.movies.MirroredCorpus"), classOf[MovieRepository], "repository"),
       writerTypedIn(classOf[services.movies.UnscreenedCleanup], classOf[MovieRepository]),
       writerTypedIn(module("services.movies.OrphanFilmStateSweep"), classOf[MovieRepository], "liveTmdbIds"),

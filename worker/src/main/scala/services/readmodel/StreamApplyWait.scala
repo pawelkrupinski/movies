@@ -19,8 +19,12 @@ object StreamApplyWait {
   private[services] val InFlightApplyTimeout: FiniteDuration =
     services.movies.MovieChangeStream.Debounce.Worker.cap + Duration(60L, TimeUnit.SECONDS)
 
+  /** The wait on a swept projection's source stream, sleeping on `sleep`. */
+  def sleeping(sleep: FiniteDuration => Unit): SweptProjection => Unit =
+    projection => await(projection.movieRepository.changeStreamLiveness, sleep)
+
   /** The wait on blocking sleeps — what a sweeper built bare (a spec) waits with. */
-  val Blocking: ChangeStreamLiveness => Unit = await(_, tools.Sleep.Blocking)
+  val Blocking: SweptProjection => Unit = sleeping(tools.Sleep.Blocking)
 
   /** Let the change stream apply what it had in flight when a sweep let go of the lock: wait out
    *  the delivery of a write that landed during the sweep, then until every event handed to the
