@@ -21,9 +21,6 @@ cognitive	common/src/main/scala/services/MonitoringHttpFetch.scala:MonitoringHtt
 cognitive	common/src/main/scala/services/movies/ChangeStreamMetrics.scala:ChangeStreamMetrics.updateKinds#2	12
 cognitive	common/src/main/scala/services/movies/InMemorySlotRows.scala:InMemorySlotRows.replaceFilm	11
 cognitive	common/src/main/scala/services/movies/SlotsRepository.scala:MongoSlotsRepository.upsertSlots	12
-cognitive	common/src/main/scala/services/titles/SearchTitles.scala:SearchTitles.candidates	14
-cognitive	common/src/main/scala/services/titles/TitleFacts.scala:TitleFacts.Rules.cutCredit	14
-cognitive	common/src/main/scala/services/titles/TitleWords.scala:TitleWords.rawAlternation	12
 cognitive	common/src/main/scala/tools/CacheOccupancy.scala:CacheOccupancy.of	13
 cognitive	common/src/main/scala/tools/HtmlScripts.scala:HtmlScripts.Scripts.scriptFrom	14
 cognitive	common/src/main/scala/tools/HtmlScripts.scala:HtmlScripts.closing	11
@@ -69,9 +66,6 @@ cognitive	scrapers/src/main/scala/services/cinemas/uk/SavoyClient.scala:SavoyCli
 cognitive	scrapers/src/main/scala/services/cinemas/uk/SavoyClient.scala:SavoyClient.programmeOf	11
 cognitive	web/src/main/scala/controllers/SearchTitles.scala:SearchTitles.written	11
 cognitive	web/src/main/scala/controllers/ShowingsMarkup.scala:ShowingsMarkup.writeDays	12
-cognitive	web/src/main/scala/controllers/UptimeRows.scala:UptimeBarPayload.writeData	13
-cognitive	web/src/main/scala/modules/FrontDoorRedirectFilter.scala:FrontDoorRedirectFilter.answer	15
-cognitive	web/src/main/scala/services/review/LabelsExport.scala:LabelsExport.Summary.render	15
 cognitive	worker/src/main/scala/services/identityadapters/AgreementAsker.scala:AgreementAsker.asking	13
 cognitive	worker/src/main/scala/services/identityadapters/LookupFill.scala:LookupFillLiveFetch.around	11
 cognitive	worker/src/main/scala/services/identityadapters/ModelInputGate.scala:ModelInputGate.promote	15
