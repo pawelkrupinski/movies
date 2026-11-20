@@ -63,11 +63,6 @@ allow:
   # folkestonecinema.com enrich 17 h, pl bilety.kinoszczytno.pl 14 h, es tickets.ocinegavarres.es 10 h,
   # pl www.mdk-myszkow.pl 11 h, ...), 13.0% of the window in all, inside the episode budget. 15% holds that;
   # the episode budget (7/week) stays the guard against a rule that fires on blips again.
-  WorkerHttpHostCircuitOpen:
-    max_firing_fraction: 0.15
-    reason: >-
-      Per host across every cinema's ticket host: the union of real six-hour-plus third-party outages
-      reached 13% of the fortnight to 2026-11-18. The episode budget still applies.
   EnrichmentApiKeyRefused:
     noisy: true
     reason: >-

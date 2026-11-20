@@ -383,10 +383,11 @@ incidents:
     # until 2026-11-12, so Prometheus holds nothing to replay it from and it cannot be listed here. Its
     # replay is over the CoreDNS `plugin/errors` lines in VictoriaLogs (the rule's comment: firing
     # 11-05 ~10:30Z to 11-06 ~10:40Z, quiet the rest of the 14 days), and its promtool case
-    # (alert-rules/k3s.yml) pins the incident's shape. WorkerHttpHostCircuitOpen was the only alert that did
-    # fire (70f3409dd: "the only alert was the per-host WorkerHttpHostCircuitOpen in the third-party daily
-    # digest"), and must keep catching it (Alert backtest #1 counted its firing here as noise).
-    expect_firing: [WorkerHttpManyHostsCircuitOpen, WorkerHttpHostCircuitOpen]
+    # (alert-rules/k3s.yml) pins the incident's shape. At the time the only alert that fired was the per-host
+    # WorkerHttpHostCircuitOpen in the third-party digest; 70f3409dd made many hosts open at once
+    # WorkerHttpManyHostsCircuitOpen's page, which must catch it. The per-host alert is held 12 h since Alert
+    # backtest #12 (one cinema's ticket host down for over half a day): no longer the alert for this shape.
+    expect_firing: [WorkerHttpManyHostsCircuitOpen]
 
   - id: de-grinch-ratzeburg-flip-2026-11-10
     description: >-

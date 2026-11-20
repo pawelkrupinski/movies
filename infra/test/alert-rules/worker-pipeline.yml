@@ -768,52 +768,52 @@ tests:
         alertname: WorkerExternalServiceRateLimited
         exp_alerts: []
 
-  # A HOST'S BREAKER THAT WILL NOT CLOSE (the 2026-10-25 Helios outage, 8h). Helios's series exists from
-  # t=10m and never ends, across a worker-restart scrape gap at 40m that `last_over_time` must bridge:
-  # quiet before six hours are held, firing after. A second host's breaker opens at t=10m and heals at
-  # 40m (series stops): it never gets near the hold. A healthy fleet has no such series at all. Five
-  # hours open is quiet too: the 1h hold this replaced fired on such third-party blips 47 times a fortnight.
+  # A HOST'S BREAKER THAT WILL NOT CLOSE. One host's series exists from t=10m and never ends, across a
+  # worker-restart scrape gap at 40m that `last_over_time` must bridge: quiet before twelve hours are held,
+  # firing after. A second host's breaker is open eight hours (10m..490m) and heals -- the 2026-10-25 Helios
+  # outage's length, and the 6-12 h municipal ticket-site outages the six-hour hold fired on 15 times a
+  # fortnight (Alert backtest #12): it stays quiet. A healthy fleet has no such series at all.
   - interval: 1m
-    name: a breaker open for six hours fires across a restart gap, a shorter one does not
+    name: a breaker open for twelve hours fires across a restart gap, one open for eight does not
     input_series:
       - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="restapi.helios.pl",job="kinowo-worker"}'
-        values: '_x9 1x30 stale stale stale 1x400'
+        values: '_x9 1x30 stale stale stale 1x800'
       - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="blip.example",job="kinowo-worker"}'
-        values: '_x9 1x30 stale _x400'
+        values: '_x9 1x480 stale _x400'
     alert_rule_test:
       - eval_time: 50m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts: []
-      - eval_time: 310m
+      - eval_time: 700m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts: []
-      - eval_time: 400m
+      - eval_time: 760m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts:
           - exp_labels: { domain: third-party, severity: warning, country: pl, leg: scrape, host: restapi.helios.pl }
             exp_annotations:
-              summary: "pl: restapi.helios.pl has had its circuit breaker open for over six hours -- cinema listings for that host are being held incomplete (nothing pruned)"
-              description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for six hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
+              summary: "pl: restapi.helios.pl has had its circuit breaker open for over twelve hours -- cinema listings for that host are being held incomplete (nothing pruned)"
+              description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for twelve hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned. Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
 
   # ONE OUTAGE ACROSS A BOOT (Kino Ikar, 2026-11-12..14). The host's breaker is open from t=10m;
   # at 90m the worker restarts, and the booting breaker starts the host half-open from what the last
   # one kept (http_unrecovered_hosts), so the series is back at the first scrape, 3m later. Firing at
-  # 420m, one episode held across the boot; once the host heals (its series ends at 494m) it resolves
+  # 760m, one episode held across the boot; once the host heals (its series ends at 894m) it resolves
   # within the 10m bridge -- no hold past it.
   - interval: 1m
     name: a breaker remembered across a worker restart keeps one episode, and resolves promptly once healed
     input_series:
       - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="kinoikar.mok-jar.pl",job="kinowo-worker"}'
-        values: '_x9 1x80 stale _x2 1x400 stale _x200'
+        values: '_x9 1x80 stale _x2 1x800 stale _x200'
     alert_rule_test:
-      - eval_time: 420m
+      - eval_time: 760m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts:
           - exp_labels: { domain: third-party, severity: warning, country: pl, leg: scrape, host: kinoikar.mok-jar.pl }
             exp_annotations:
-              summary: "pl: kinoikar.mok-jar.pl has had its circuit breaker open for over six hours -- cinema listings for that host are being held incomplete (nothing pruned)"
-              description: "Every call to kinoikar.mok-jar.pl (scrape leg) has been fast-failing for six hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for kinoikar.mok-jar.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
-      - eval_time: 520m
+              summary: "pl: kinoikar.mok-jar.pl has had its circuit breaker open for over twelve hours -- cinema listings for that host are being held incomplete (nothing pruned)"
+              description: "Every call to kinoikar.mok-jar.pl (scrape leg) has been fast-failing for twelve hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned. Check the host itself first, then the \"Circuit OPEN for kinoikar.mok-jar.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
+      - eval_time: 920m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts: []
 

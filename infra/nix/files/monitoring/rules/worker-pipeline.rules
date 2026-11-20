@@ -662,26 +662,27 @@ groups:
       # 7ae4900ae's `keep_firing_for: 2h`, which held a firing alert through the gap it can no longer
       # have. The `decodo` leg's breakers (ProxyChain) still forget: no episode in 11-08..11-15 was one.
       #
-      # SIX HOURS, NOT ONE (Alert backtest #8, 2026-11-04..18). With a 1h hold it fired 47 times outside
-      # incidents, on some host 48% of the fortnight: small municipal ticket sites (bilety.dkkozienice.pl,
-      # bilety.kinoszczytno.pl, ...) drop out for 1-4 h every few days, and a cinema's listings held a few
-      # hours are not stale in any way a viewer sees. Six hours is a host really down -- Helios's 8h outage
-      # still fires; 3h left 29%, 6h 13%, every firing a 6-17 h outage (allowlist budget beside it).
-      # The DNS/egress shape is WorkerHttpManyHostsCircuitOpen's, at 30 minutes.
+      # TWELVE HOURS (Alert backtest #8 and #12). Held 1h it fired on some host 47-48% of a fortnight: small
+      # municipal ticket sites (bilety.dkkozienice.pl, bilety.kinoszczytno.pl, ...) drop out for hours every few
+      # days. Held 6h (4528ed223, with a 15% budget fitted to 11-04..18's 13%) it was 15.5% of 11-05..19, 15
+      # episodes: still the same sites, the 6-12 h kind. The alert goes to the third-party DAILY digest, which lists
+      # what is firing when it is sent, so an outage that heals within half a day reaches no reader anyway; held 12h
+      # it was 2.9% of 11-04..18 and 4.6% of 11-05..19 (1.5 episodes a week), inside the default budgets. One host
+      # down for 8h (the 2026-10-25 Helios outage, 52 cinemas) no longer fires here. The DNS/egress shape, many
+      # hosts at once, is WorkerHttpManyHostsCircuitOpen's, at 30 minutes.
       - alert: WorkerHttpHostCircuitOpen
         expr: max by (country, leg, host) (last_over_time(kinowo_worker_http_circuit_open[10m])) == 1
-        for: 6h
+        for: 12h
         labels:
           severity: warning
           domain: third-party
         annotations:
-          summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over six hours -- cinema listings for that host are being held incomplete (nothing pruned)"
+          summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over twelve hours -- cinema listings for that host are being held incomplete (nothing pruned)"
           description: >-
-            Every call to {{ $labels.host }} ({{ $labels.leg }} leg) has been fast-failing for six
+            Every call to {{ $labels.host }} ({{ $labels.leg }} leg) has been fast-failing for twelve
             hours: the breaker tripped and each half-open probe since has failed. Cinemas scraped
             from that host return incomplete listings, which the ScrapeHealth breadth guard rejects,
-            so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25
-            Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then
+            so their listings go stale rather than wrong and nothing is pruned. Check the host itself first, then
             the "Circuit OPEN for {{ $labels.host }}" WARN lines for the last failure reason; the
             breadth-reject rate on worker-diag panel 25 shows the listings being held.
 
