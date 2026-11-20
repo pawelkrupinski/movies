@@ -51,7 +51,7 @@ module-edge	web->geodata	1
 module-edge	web->http	20
 module-edge	web->identity	41
 module-edge	worker->base	80
-module-edge	worker->common	1664
+module-edge	worker->common	1661
 module-edge	worker->http	178
 module-edge	worker->identity	536
 module-edge	worker->scrapers	150

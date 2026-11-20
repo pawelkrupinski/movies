@@ -24,6 +24,14 @@ private[movies] trait MirroredCorpus {
   /** How a row is shaped to be held resident ([[ResidentRecords]]). */
   def shape: ResidentRecords
   def index: CorpusIndex
+  /** The key a stored row is held under: its title as the corpus's title rules read it. */
+  def keyOf(row: StoredMovieRecord): CacheKey = row.cacheKey(normalizer)
+  /** The film held under `key`, from the corpus's index. */
+  def idOf(key: CacheKey): Option[FilmId] = index.idOf(key)
+  /** `record` as the corpus holds it ([[ResidentRecords.of]]). */
+  def asHeld(record: MovieRecord): MovieRecord = shape.of(record)
+  /** The store's fence over the films its writers are writing ([[FilmWriteFence]]). */
+  def writeFence: FilmWriteFence = repository.writeFence
   def held(key: CacheKey): Option[MovieRecord]
   def heldKeys: Seq[CacheKey]
   def heldCount: Long

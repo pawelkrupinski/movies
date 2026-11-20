@@ -10,7 +10,7 @@ import models.MovieRecord
  * cache's own writes ([[FilmWriteFence]]). `logger` is the cache's, which the mirror has always logged as.
  */
 private[movies] final class CorpusStreamApplies(corpus: MirroredCorpus, logger: play.api.Logger) {
-  import corpus.{changed, evict, held as get, index as corpusIndex, normalizer, repository, shape as residentShape, store, touch}
+  import corpus.{changed, evict, held as get, index as corpusIndex, keyOf, shape as residentShape, store, touch, writeFence}
 
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.
    *  Mirrors a single row of `rehydrate` — a direct `positive.put`, bypassing
@@ -22,8 +22,8 @@ private[movies] final class CorpusStreamApplies(corpus: MirroredCorpus, logger: 
    *  the write back until the write's own event re-read the film. That event still comes,
    *  so skipping the older read loses nothing. */
   private[services] def applyUpsert(r: StoredMovieRecord, mark: Long): Unit = {
-    val key = r.cacheKey(normalizer)
-    val applied = repository.writeFence.ifUndisturbed(r.id.value, mark) {
+    val key = keyOf(r)
+    val applied = writeFence.ifUndisturbed(r.id.value, mark) {
       // A retitle arriving from another writer: the id's previous key entry is stale.
       corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
       val held   = get(key)
@@ -50,7 +50,7 @@ private[movies] final class CorpusStreamApplies(corpus: MirroredCorpus, logger: 
       case None => VenueVerdict.Declined(Why.CacheNotResident)
       case Some((_, resident)) if !holdsSameSlots(resident, venues) => VenueVerdict.Declined(Why.CacheSlotsDiffer)
       case Some((key, resident)) =>
-        if (repository.writeFence.ifUndisturbed(venues.filmId.value, mark)(storeVenueSlots(key, resident, venues))) touch()
+        if (writeFence.ifUndisturbed(venues.filmId.value, mark)(storeVenueSlots(key, resident, venues))) touch()
         VenueVerdict.Applied
     }
   }

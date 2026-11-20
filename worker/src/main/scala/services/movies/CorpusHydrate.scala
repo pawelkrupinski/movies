@@ -24,7 +24,7 @@ private[movies] final class CorpusHydrate(
   sleep:                  FiniteDuration => Unit,
   logger:                 play.api.Logger
 ) {
-  import corpus.{evict, held as get, index as corpusIndex, normalizer, repository, shape as residentShape, store, touch}
+  import corpus.{asHeld, evict, held as get, idOf, keyOf, repository, store, touch, writeFence}
 
   // Set once a rehydrate's corpus read has been answered whole — an empty corpus included — and
   // never cleared: from then on a failed read only leaves the cache a little stale. Initialised
@@ -88,7 +88,7 @@ private[movies] final class CorpusHydrate(
     // snapshot, and storing (or evicting) it from the snapshot would undo the write — see
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
-    val marks = repository.writeFence.markAll()
+    val marks = writeFence.markAll()
     // None: a read that could not complete, or an empty answer refused — nothing put or evicted.
     readByKey(onPage, findingAll).flatMap { case (byKey, rows) =>
       val tFindAllMs = findingAll.millis
@@ -148,7 +148,7 @@ private[movies] final class CorpusHydrate(
       // Several documents under one key are the same film twice; the lowest id is the
       // survivor, deterministically, and the others are reconciled later.
       val survivor = held.ids.minBy(_.value)
-      repository.writeFence.ifUndisturbed(survivor.value, marks.of(survivor.value)) {
+      writeFence.ifUndisturbed(survivor.value, marks.of(survivor.value)) {
         if (!get(k).exists(ShowtimesDigest.leanEqual(_, held.record))) changed += 1
         store(k, held.record, survivor)
       }
@@ -161,7 +161,7 @@ private[movies] final class CorpusHydrate(
    *  because it is NEWER, not gone. */
   private def evictGone(byKey: java.util.LinkedHashMap[CacheKey, CorpusHydrate.HydratedRows], marks: FilmWriteFence.Marks): Int = {
     corpus.heldKeys.filterNot(byKey.containsKey).count { k =>
-      corpusIndex.idOf(k).fold { evict(k); true }(id => repository.writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
+      idOf(k).fold { evict(k); true }(id => writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
     }
   }
 
@@ -181,8 +181,8 @@ private[movies] final class CorpusHydrate(
     var rows  = 0
     val scan  = repository.foreachPage { page =>
       page.foreach { row =>
-        val held = CorpusHydrate.HydratedRows(row.id, residentShape.of(row.record))
-        byKey.merge(row.cacheKey(normalizer), held, (first, next) => first.and(next.ids))
+        val held = CorpusHydrate.HydratedRows(row.id, asHeld(row.record))
+        byKey.merge(keyOf(row), held, (first, next) => first.and(next.ids))
         ()
       }
       rows += page.size
@@ -210,7 +210,7 @@ private[movies] final class CorpusHydrate(
         Option.when(reads.forall(read => read.answered.isDefined || read.isInstanceOf[tools.ReadOutcome.Absent])) {
           reads.flatMap(_.answered).map(_.record) match {
             case Seq()  => done
-            case whole  => done :+ (key -> residentShape.of(MovieRecordMerge.unionAll(whole)))
+            case whole  => done :+ (key -> asHeld(MovieRecordMerge.unionAll(whole)))
           }
         }
       }
