@@ -149,6 +149,10 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.Exemptions.matches("modules.*", "modulesX") shouldBe false
     Coupling.Exemptions.parse(Seq("config\tsettings.ProcessConfiguration\t90\tcoupling\tthe typed-config root"))
       .fanOutLimit("settings.ProcessConfiguration", 9) shouldBe Some(90)
+    val byRole = Coupling.Exemptions.parse(Seq("package\tservices.metrics\texempt\tcoupling\tmetric bundles: concrete series, none swapped"))
+    byRole.distanceLimit("services.metrics", 20) shouldBe None
+    byRole.distanceLimit("services.movies", 20) shouldBe Some(20)
+    byRole.fanOutLimit("services.metrics", 9) shouldBe Some(9) // a package's distance, never a class's fan-out
   }
 
   "the baseline rows" should "freeze a class past the limit unless exempt, and a large package past the distance limit unless exempt" in {
@@ -166,6 +170,8 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\tmany\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to\t "))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to"))
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("package\tservices.*\texempt\to\tw")) // one package
+    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("class\tservices.*\texempt\to\tw")) // one class
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("member\tmodels.Cinema\tscrape\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract-size\tscrape\t12\to\tw")) // no such contract

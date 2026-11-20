@@ -7,11 +7,12 @@
 #
 #   kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why[<TAB>added]
 #
-# A FAN-OUT ROW ADDED (root, registry, config, class; the owner, 2026-11-19: an agent may add one for a genuinely new class
-# past the limit) carries, in the commit adding it: a SPECIFIC why, `<role>: <what it does, and why it needs these
+# AN AGENT'S ROW ADDED -- a fan-out row (root, registry, config, class; the owner, 2026-11-19: an agent may add one for a
+# genuinely new class past the limit) or a `package` row (the owner, 2026-11-20) -- carries, in the commit adding it: a
+# SPECIFIC why, `<role>: <what it does, and why it needs these
 # collaborators>` (e.g. `pipeline stage: clusters a family's members; needs the evidence, edges and solver it sequences`;
 # 40+ characters and 6+ words besides the class's name; no generic `complex`, `needed`, `for now`, `hard to split`); its
-# `added` date (YYYY-MM-DD); and a `Coupling: exempt <Class> — <reason>` trailer in the commit's FINAL trailer block.
+# `added` date (YYYY-MM-DD); and a `Coupling: exempt <Class|package> — <reason>` trailer in the commit's FINAL trailer block.
 # `scripts/coupling-report --new-exemptions --since 7d` lists the week's new rows with their reasons and commits. Every
 # Monday, .github/workflows/coupling-exemptions.yml puts that list in an owner-assigned issue so he can strike any.
 #
@@ -23,6 +24,8 @@
 #   config      fan-out: the typed-config root, which resolves every setting into its typed value in one place
 #   class       fan-out: one class past the limit by its role (no `*`): an agent's exemption, its why naming the role
 #               and the collaborators it needs
+#   package     distance: one package past the limit by its role (no `*`): an agent's exemption, its why naming the role
+#               and why its balance of abstractness and stability is right
 #   contract    (column 3: the contract's name) the classes matching `pattern` are its USERS: their fan-out counts every
 #               member of that contract they use as one dependency
 #   member      (column 3: the contract's name) `pattern` is one of the contract's member types -- at most 8 a contract

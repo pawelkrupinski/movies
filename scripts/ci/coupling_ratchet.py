@@ -19,9 +19,10 @@
 # the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
 # limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
 # and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
-# carrying `Coupling: <why>` -- and a fan-out row added (an agent's exemption of a new class, the owner 2026-11-19) only
-# with a SPECIFIC why (its role and the collaborators it needs: reason_problems), its `added` date, and the adding commit's
-# own `Coupling: exempt <Class> — <reason>` trailer (the exemption table's header, A FAN-OUT ROW ADDED). A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
+# carrying `Coupling: <why>` -- and a fan-out or package row added (an agent's exemption of a new class, the owner
+# 2026-11-19, or of one package's distance, 2026-11-20) only with a SPECIFIC why (its role and what it needs:
+# reason_problems), its `added` date, and the adding commit's own `Coupling: exempt <Class|package> — <reason>` trailer
+# (the exemption table's header, AN AGENT'S ROW ADDED). A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
 # A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
 # name gone).
 #
@@ -738,6 +739,8 @@ def exemption_loosening(old: Dict[Tuple[str, str], str], new: Dict[Tuple[str, st
 
 
 FAN_OUT_KINDS = ("root", "registry", "config", "class")  # project/Coupling.scala's Exemptions.FanOutKinds
+# The rows held to AN AGENT'S ROW ADDED: every fan-out kind, and `package` (one package's distance, by its role).
+ADMITTED_KINDS = FAN_OUT_KINDS + ("package",)
 REASON_MIN_CHARS, REASON_MIN_WORDS, ROLE_MAX_WORDS = 40, 6, 5
 # What says nothing of the class (the owner, 2026-11-19: "not a generic 'complex' or 'needed'"): each a pattern over the
 # lowercased why, and the phrase to name.
@@ -762,7 +765,7 @@ REASON_SHAPE = ("`<role>: <what it does, and why it needs these collaborators>`,
 
 
 def reason_problems(pattern: str, why: str) -> List[str]:
-    """Why `why` is no SPECIFIC reason for exempting `pattern` (A FAN-OUT ROW ADDED, the exemption table's header): it
+    """Why `why` is no SPECIFIC reason for exempting `pattern` (AN AGENT'S ROW ADDED, the exemption table's header): it
     leads with the class's role, says 40+ characters and 6+ words besides the class's name, and no generic phrase."""
     text = why.strip()
     out = []
@@ -783,10 +786,10 @@ def reason_problems(pattern: str, why: str) -> List[str]:
 
 
 def exemption_columns(text: str) -> Dict[Tuple[str, str], List[str]]:
-    """The exemption table's fan-out rows, (kind, pattern) -> all its columns."""
+    """The exemption table's admitted rows (fan-out and package), (kind, pattern) -> all its columns."""
     return {(cols[0], cols[1]): cols for cols in (line.split("\t") for line in text.splitlines()
                                                   if line.strip() and not line.startswith("#"))
-            if len(cols) >= 5 and cols[0] in FAN_OUT_KINDS}
+            if len(cols) >= 5 and cols[0] in ADMITTED_KINDS}
 
 
 def coupling_trailers(sha: str) -> List[str]:
@@ -812,7 +815,7 @@ def rows_added(sha: str) -> List[List[str]]:
 
 
 def unadmitted_exemptions(rng: str) -> List[str]:
-    """Each fan-out exemption row a commit of `rng` adds without what admits it (A FAN-OUT ROW ADDED): a specific why,
+    """Each fan-out or package exemption row a commit of `rng` adds without what admits it (AN AGENT'S ROW ADDED): a specific why,
     its `added` date, and the commit's own `Coupling: exempt <Class> — <reason>` trailer."""
     out = []
     for sha in git("rev-list", "--reverse", rng, "--", EXEMPTIONS_PATH).split():
@@ -1073,7 +1076,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         unadmitted = unadmitted_exemptions(rng)
         if unadmitted:
             failed = True
-            print(f"A FAN-OUT EXEMPTION ROW IS NOT ADMITTED in {rng} ({exemptions_path}): a row added carries a specific why, its"
+            print(f"AN EXEMPTION ROW IS NOT ADMITTED in {rng} ({exemptions_path}): a row added carries a specific why, its"
                   " `added` date and the commit's own `Coupling: exempt <Class> — <reason>` trailer:")
             for item in unadmitted:
                 print(f"  - {item}")

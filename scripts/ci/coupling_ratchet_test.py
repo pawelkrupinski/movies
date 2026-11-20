@@ -680,6 +680,14 @@ def class_row(why: str = STAGE_WHY, added: str = "\t2026-11-19", cls: str = STAG
     return f"class\t{cls}\texempt\tidentity\t{why}{added}\n"
 
 
+# A PACKAGE ROW (the owner, 2026-11-20): one package's distance exempted by its role, held like a class row.
+BUNDLES_WHY = "metric bundles: each registers its own Prometheus series and no caller swaps one for another"
+
+
+def package_row(why: str = BUNDLES_WHY, added: str = "\t2026-11-20") -> str:
+    return f"package\tservices.metrics\texempt\tcoupling\t{why}{added}\n"
+
+
 class ExemptionAdmissionTest(RatchetHarness):
     def exempt(self, row: str, message: str) -> str:
         return self.commit({EXEMPTIONS: EXEMPTION_ROWS + row}, message)
@@ -695,7 +703,7 @@ class ExemptionAdmissionTest(RatchetHarness):
     def test_a_generic_reason_fails(self):
         why = "resolver class: it is complex and all of its collaborators are needed here"
         head = self.exempt(class_row(why), f"Clustering exempt\n\nCoupling: exempt Clustering — {why}")
-        self.assert_fails(ROWS, "A FAN-OUT EXEMPTION ROW IS NOT ADMITTED", "`complex` is generic", "`needed` is generic",
+        self.assert_fails(ROWS, "AN EXEMPTION ROW IS NOT ADMITTED", "`complex` is generic", "`needed` is generic",
                           rng=f"{self.base}..{head}")
 
     def test_the_class_name_as_the_whole_reason_fails(self):
@@ -719,6 +727,15 @@ class ExemptionAdmissionTest(RatchetHarness):
     def test_a_generic_trailer_reason_fails(self):
         head = self.exempt(class_row(), "Clustering exempt\n\nCoupling: exempt Clustering — needed")
         self.assert_fails(ROWS, "its trailer's reason ('needed')", rng=f"{self.base}..{head}")
+
+    def test_a_package_row_with_a_specific_reason_and_its_trailer_passes(self):
+        head = self.exempt(package_row(), f"metrics exempt\n\nCoupling: exempt services.metrics — {BUNDLES_WHY}")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
+    def test_a_package_row_is_held_like_a_class_row(self):
+        head = self.exempt(package_row(added=""), "metrics exempt\n\nCoupling: a metrics package")
+        self.assert_fails(ROWS, "AN EXEMPTION ROW IS NOT ADMITTED", "no `added` date", "no `Coupling: exempt metrics — <reason>` trailer",
+                          rng=f"{self.base}..{head}")
 
     def test_a_row_without_its_date_fails(self):
         head = self.exempt(class_row(added=""), f"Clustering exempt\n\nCoupling: exempt Clustering — {STAGE_WHY}")

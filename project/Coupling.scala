@@ -556,7 +556,11 @@ object Coupling {
      *  the role and the collaborators it needs (scripts/ci/coupling_ratchet.py lints it), listed weekly for the owner to
      *  strike (`scripts/coupling-report --new-exemptions --since 7d`). */
     val FanOutKinds: Set[String] = Set("root", "registry", "config", "class")
-    val DistanceKinds: Set[String] = Set("root", "foundation")
+    /** `package`: one package past the distance limit by its role, an agent's exemption (the owner, 2026-11-20), held
+     *  like a `class` row: its why names the role and why its D is right, listed weekly for the owner to strike. */
+    val DistanceKinds: Set[String] = Set("root", "foundation", "package")
+    /** The kinds naming one class or package, never a `*`. */
+    val SingleKinds: Set[String] = Set("class", "package")
     val ContractKinds: Set[String] = Set("contract", "member")
     /** `contract-size`: a contract declared before the member cap (scripts/ci/coupling_ratchet.py's CONTRACT_MAX_MEMBERS,
      *  which holds it), grandfathered at its size -- `pattern` the contract, `value` its members at most. */
@@ -581,7 +585,7 @@ object Coupling {
           if (cols.length != 5 && cols.length != 6) bad("not `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why[<TAB>added]`")
           val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4), if (cols.length == 6) cols(5) else "")
           if (cols.length == 6 && !row.added.matches("""\d{4}-\d{2}-\d{2}""")) bad(s"`${row.added}` is no date (YYYY-MM-DD)")
-          if (row.kind == "class" && row.pattern.contains("*")) bad("a `class` row names one class, no `*`")
+          if (SingleKinds(row.kind) && row.pattern.contains("*")) bad(s"a `${row.kind}` row names one ${row.kind}, no `*`")
           if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds + ContractSizeKind)(row.kind)) bad(s"unknown kind `${row.kind}`")
           if (row.pattern.isEmpty) bad("no pattern")
           if (!ContractKinds(row.kind) && row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))
