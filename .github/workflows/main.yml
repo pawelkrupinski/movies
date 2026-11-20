@@ -153,11 +153,13 @@ jobs:
                       # The build definition no image is built from (project/ImageInputs.scala's `buildOnly`): the coupling and
                       # test-impact reports, the test guards, `sbt run`'s hooks. A change there publishes nothing (d7a733703 restarted
                       # every worker into a full re-resolve for project/Coupling.scala); ImagePathGateSpec holds the list to the build's.
+                      !project/AnalysisUnits.scala
                       !project/ClassCycles.scala
                       !project/ClassReferences.scala
                       !project/Coupling.scala
                       !project/CouplingAnalysis.scala
                       !project/CouplingSimulation.scala
+                      !project/DeadCode.scala
                       !project/ExemptionSlack.scala
                       !project/ForkedTests.scala
                       !project/HeadlessSafeInteractionMode.scala
@@ -165,7 +167,9 @@ jobs:
                       !project/ReaderNames.scala
                       !project/StaleTastyRetry.scala
                       !project/TestImpact.scala
+                      !project/TouchedSpecs.scala
                       !project/UnitClasspathGuard.scala
+                      !project/UsedNamesAccess.scala
                       !project/Warmup.scala
                       !project/WriteFailureTripwire.scala
                       Dockerfile
@@ -216,11 +220,13 @@ jobs:
                       build.sbt
                       project/**
                       # The build-only definition, as the web's set excludes it (ImagePathGateSpec).
+                      !project/AnalysisUnits.scala
                       !project/ClassCycles.scala
                       !project/ClassReferences.scala
                       !project/Coupling.scala
                       !project/CouplingAnalysis.scala
                       !project/CouplingSimulation.scala
+                      !project/DeadCode.scala
                       !project/ExemptionSlack.scala
                       !project/ForkedTests.scala
                       !project/HeadlessSafeInteractionMode.scala
@@ -228,7 +234,9 @@ jobs:
                       !project/ReaderNames.scala
                       !project/StaleTastyRetry.scala
                       !project/TestImpact.scala
+                      !project/TouchedSpecs.scala
                       !project/UnitClasspathGuard.scala
+                      !project/UsedNamesAccess.scala
                       !project/Warmup.scala
                       !project/WriteFailureTripwire.scala
                       Dockerfile

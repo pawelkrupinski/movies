@@ -19,7 +19,7 @@ object ImageInputs {
 
   /**
    * THE BUILD DEFINITION NO IMAGE IS BUILT FROM: the files of `project/` that only measure or test the code (the coupling
-   * and test-impact reports, the test-fork and classpath guards, a batch's stale-TASTy retry, `sbt run`'s hooks, this
+   * and test-impact reports, the refactoring tools' dead-code and touched-spec tasks, the test-fork and classpath guards, a batch's stale-TASTy retry, `sbt run`'s hooks, this
    * file). A change to one ships an image of the same bytes, and publishing it restarted every worker into a full
    * identity re-resolve for nothing (d7a733703, `project/Coupling.scala`, 2026-11-20). Both tiers' publish filters in
    * main.yml exclude exactly these, and `ImagePathGateSpec` holds each to it: no setting the dist is staged from is
@@ -27,10 +27,11 @@ object ImageInputs {
    * starts building the image leaves this list.
    */
   val buildOnly: Seq[String] = Seq(
-    "ClassCycles.scala", "ClassReferences.scala", "Coupling.scala", "CouplingAnalysis.scala", "CouplingSimulation.scala",
-    "ExemptionSlack.scala", "ForkedTests.scala",
+    "AnalysisUnits.scala", "ClassCycles.scala", "ClassReferences.scala", "Coupling.scala", "CouplingAnalysis.scala",
+    "CouplingSimulation.scala", "DeadCode.scala", "ExemptionSlack.scala", "ForkedTests.scala",
     "HeadlessSafeInteractionMode.scala", "ImageInputs.scala", "ReaderNames.scala", "StaleTastyRetry.scala",
-    "TestImpact.scala", "UnitClasspathGuard.scala", "Warmup.scala", "WriteFailureTripwire.scala",
+    "TestImpact.scala", "TouchedSpecs.scala", "UnitClasspathGuard.scala", "UsedNamesAccess.scala", "Warmup.scala",
+    "WriteFailureTripwire.scala",
   ).map("project/" + _)
 
   val stageDefinitions = taskKey[Seq[String]](
