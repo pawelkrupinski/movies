@@ -79,7 +79,7 @@ private[identity] final class SourceCannotLinks(scoring: CandidateScoring, famil
         scored.find(_.candidate.tmdbId == held).exists(_.category("director").contains("different")) &&
         (node.listings.forall(SourceReliability.decides(_, SourceReliability.Fact.Directors)) ||
           scored.exists(s => s.candidate.tmdbId != held && IdentityMeasures.sameDirector(s.measures) && s.category("title").contains("exact") &&
-            (IdentityMeasures.ownAgreement(s.measures)._1("year") || IdentityMeasures.runtimeGap(s.measures).exists(_ <= Corroboration.RuntimeBand))))
+            (IdentityMeasures.ownAgreement(s.measures)._1("year") || IdentityMeasures.runtimeGap(s.measures).exists(_ <= YearRuntimeMeasures.RuntimeBand))))
     }
 
   /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources

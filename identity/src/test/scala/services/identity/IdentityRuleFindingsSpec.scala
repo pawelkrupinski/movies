@@ -15,8 +15,8 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
     // one rule for both: a venue's Latin credit against a record's Cyrillic one, transliterated and sharing no name's
     // stem, is another person — a guard that rules a film out reads the weaker evidence as against it (wrong beats
     // missing), as a correction always did
-    val tarkovsky = IdentityMeasures.Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Андрей Тарковский")), None, None)
-    val muratova  = IdentityMeasures.Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Kira Muratova")), None, None)
+    val tarkovsky = Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Андрей Тарковский")), None, None)
+    val muratova  = Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Kira Muratova")), None, None)
     val billed    = FilmTable.listing(models.KinoMuza, "Zerkalo", director = Some("Kira Muratova"))
     agreement.Agreement.contradictedByAnyListing(Seq(billed), agreement.SourceRecord(tarkovsky)) shouldBe true
     agreement.Correction.contradicts(muratova, tarkovsky) shouldBe true
@@ -27,20 +27,20 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
 
   "F3: a title with a leading article the venue drops" should "be named alike by the measures and by the agreement" in {
     // one article list for both: DE "Camp der Verlorenen" is TMDB's "Das Camp der Verlorenen" to the measures too
-    val listing = IdentityMeasures.Listing("Camp der Verlorenen")
-    IdentityMeasures.titleRelation(listing, IdentityMeasures.Film("Das Camp der Verlorenen")) shouldBe IdentityMeasures.Category("exact")
+    val listing = MeasuredListing("Camp der Verlorenen")
+    IdentityMeasures.titleRelation(listing, Film("Das Camp der Verlorenen")) shouldBe Measure.Category("exact")
     // still three words after it at least, and never the listing's own article dropped
-    IdentityMeasures.titleRelation(IdentityMeasures.Listing("Grande Bellezza"), IdentityMeasures.Film("La Grande Bellezza")) should not be IdentityMeasures.Category("exact")
-    IdentityMeasures.titleRelation(IdentityMeasures.Listing("Das Camp der Verlorenen"), IdentityMeasures.Film("Camp der Verlorenen")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Grande Bellezza"), Film("La Grande Bellezza")) should not be Measure.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Das Camp der Verlorenen"), Film("Camp der Verlorenen")) should not be Measure.Category("exact")
   }
 
   "F4: the broadcast join" should "take the same record in the fill's signal as in the stage's take" in {
     // one join: the fill's `broadcast.take` signal reads the productions the stage credits and waits as it waits. UK
     // Flicks' "RBO Cinema Season 2026-27: Macbeth" crediting Louisa Proske is the Met's 2026/27 Macbeth only by the film
     // database's record of the Met's production crediting her
-    val metMacbeth = IdentityMeasures.Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209),
+    val metMacbeth = Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209),
       released = Some(java.time.LocalDate.of(2026, 10, 17)))
-    val proske     = Seq(IdentityMeasures.Film("The Metropolitan Opera: Macbeth", runtime = Some(209), directors = Some(Seq("Louisa Proske"))))
+    val proske     = Seq(Film("The Metropolitan Opera: Macbeth", runtime = Some(209), directors = Some(Seq("Louisa Proske"))))
     val relay      = FilmTable.listing(models.Multikino, "RBO Cinema Season 2026-27: Macbeth", director = Some("Louisa Proske"))
       .copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 20))))
     val measured   = (listing: Listing) => Evidence.of(listing, None).measured
@@ -54,7 +54,7 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
       measured = Some(measured), productions = () => Answer.Known(proske))
     signal(evidence) shouldBe Some(1.0)
     // …and none while the stage would wait on a record's day
-    val undated = IdentityMeasures.Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209))
+    val undated = Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209))
     val waiting = evidence.copy(nodes = Seq(node.copy(candidates = node.candidates :+ IdentityResolver.CandidateEvidence(1703699, undated, 0.1,
       Some(2), false, titleNamesIt = true, seasonProduction = true, houseProduction = false))), undated = _ == 1703699)
     signal(waiting) shouldBe None

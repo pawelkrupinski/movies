@@ -31,7 +31,7 @@ private[identity] trait AcceptanceBillRules { this: Acceptance =>
    *  Who Came to Tea" bills the two shorts as one programme, as the "+" bills do; one film's titles either side of the
    *  slash ("Le Fabuleux Destin d'Amélie Poulain / Die fabelhafte Welt der Amélie") are its own, and a piece naming no
    *  candidate ("/ Baby Friendly") no second work. */
-  private[identity] def slashesTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
+  private[identity] def slashesTwoWorks(listing: MeasuredListing, ranked: Seq[Scored]): Boolean = {
     def slashed(title: String) = {
       val parts  = SlashBreak.split(title).toSeq
       val pieces = parts.map(pieceKey).filter(_.nonEmpty)
@@ -60,7 +60,7 @@ private[identity] trait AcceptanceBillRules { this: Acceptance =>
    *  "+" and the slash bills do: it took The Tiger Who Came to Tea at 49.6%. A film's own title joining two phrases
    *  ("Willy Wonka and the Chocolate Factory") is its candidate's whole title; a one-word piece ("The Boy and the Heron"
    *  beside a film titled "The Boy") is too short to name a work of its own. */
-  private[identity] def andJoinsTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
+  private[identity] def andJoinsTwoWorks(listing: MeasuredListing, ranked: Seq[Scored]): Boolean = {
     // read for every rule's every ranking: a title with no "and" is split for nothing
     def read(title: String) = AndBreak.findFirstIn(title).isDefined && joinsTwoWorks(title, ranked)
     read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))

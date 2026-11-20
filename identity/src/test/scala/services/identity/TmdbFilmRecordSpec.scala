@@ -28,7 +28,7 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
 
   it should "carry its tagline, the subtitle a venue may bill beside its title" in {
     val (film, _) = TmdbFilmRecord.parse(Seq(recorded("movie-627671-de.json"))).get
-    film.taglineKey shouldBe IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora")
+    film.taglineKey shouldBe Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora")
     film.taglineKey should not be 0
   }
 
@@ -51,13 +51,13 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
 
   "A listing's runtime" should "match a film when it matches the runtime of ANY translation TMDB states, the closest counting" in {
     def measured(minutes: Int) = IdentityMeasures.listingFilm(
-      IdentityMeasures.Listing("Dawno temu w Ameryce", runtime = Some(minutes)), onceUponATimeInAmerica, None, 0, 0)
-    measured(229)("runtime.delta") shouldBe IdentityMeasures.Number(0)
-    measured(139)("runtime.delta") shouldBe IdentityMeasures.Number(0)
+      MeasuredListing("Dawno temu w Ameryce", runtime = Some(minutes)), onceUponATimeInAmerica, None, 0, 0)
+    measured(229)("runtime.delta") shouldBe Measure.Number(0)
+    measured(139)("runtime.delta") shouldBe Measure.Number(0)
     IdentityMeasures.runtimeContradicts(measured(229)) shouldBe false
     IdentityMeasures.runtimeContradicts(measured(139)) shouldBe false
     // 41 minutes off the closest (139): still a contradiction.
-    measured(180)("runtime.delta") shouldBe IdentityMeasures.Number(41)
+    measured(180)("runtime.delta") shouldBe Measure.Number(41)
     IdentityMeasures.runtimeContradicts(measured(180)) shouldBe true
   }
 
@@ -82,19 +82,19 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
 
   "A listing's year" should "be read against the closest of the film's cinema releases in the venue's country" in {
     def measured(year: Int, minutes: Int, country: Option[String] = Some("GB")) = IdentityMeasures.listingFilm(
-      IdentityMeasures.Listing("Apocalypse Now", year = Some(year), runtime = Some(minutes)),
+      MeasuredListing("Apocalypse Now", year = Some(year), runtime = Some(minutes)),
       apocalypseNow, None, 0, 0, country = country)
     // Prince Charles's 2019 Final Cut, 183 minutes: the 2019 release, and the cut table's 183-minute Final Cut ([[FilmCuts]]).
-    measured(2019, 183)("year.distance") shouldBe IdentityMeasures.Number(0)
-    measured(2019, 183)("runtime.delta") shouldBe IdentityMeasures.Number(0)
+    measured(2019, 183)("year.distance") shouldBe Measure.Number(0)
+    measured(2019, 183)("runtime.delta") shouldBe Measure.Number(0)
     // A cut the table doesn't know, longer than every runtime, billed in an edition's year: neutral, never against.
-    measured(2019, 240)("runtime.delta") shouldBe IdentityMeasures.Missing("listing")
+    measured(2019, 240)("runtime.delta") shouldBe Measure.Missing("listing")
     // The original's year reads the original; a year no release of the venue's country dates reads the closest.
-    measured(1979, 147)("year.distance") shouldBe IdentityMeasures.Number(0)
-    measured(2017, 147)("year.distance") shouldBe IdentityMeasures.Number(2)
+    measured(1979, 147)("year.distance") shouldBe Measure.Number(0)
+    measured(2017, 147)("year.distance") shouldBe Measure.Number(2)
     // PL dates only a 2003 Redux and a 2024 Director's Cut: 2019 is five years off the closest there.
-    measured(2019, 183, Some("PL"))("year.distance") shouldBe IdentityMeasures.Number(5)
+    measured(2019, 183, Some("PL"))("year.distance") shouldBe Measure.Number(5)
     // A runtime SHORTER than the film's still counts, edition or not.
-    measured(2019, 100)("runtime.delta") shouldBe IdentityMeasures.Number(-47)
+    measured(2019, 100)("runtime.delta") shouldBe Measure.Number(-47)
   }
 }

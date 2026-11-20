@@ -169,7 +169,7 @@ class ImdbClient(http: HttpFetch) {
 
   /** IMDb's record of `imdbId` as the identity measures read it ([[identityRecordIn]]); `None` when IMDb has no such
    *  title; a failed read throws. */
-  def identityRecord(imdbId: String): Option[services.identity.IdentityMeasures.Film] =
+  def identityRecord(imdbId: String): Option[services.identity.Film] =
     graphQl(ImdbClient.identityRecordBody(imdbId)).flatMap(ImdbClient.identityRecordIn)
 
   /** IMDb's own title search for `text`, best first: GraphQL `mainSearch`, which matches a title in ANY language IMDb
@@ -343,7 +343,7 @@ object ImdbClient {
   def identityRecordId(body: String): Option[String] = idAsked(IdentityRecordQuery, body)
   /** An [[IdentityRecordQuery]] answer as the identity measures read a film; `None` when IMDb has no such title. Its
    *  directors and countries are unknown, not "none", when the answer carries no credits or countries at all. */
-  def identityRecordIn(js: JsValue): Option[services.identity.IdentityMeasures.Film] = {
+  def identityRecordIn(js: JsValue): Option[services.identity.Film] = {
     val title    = js \ "data" \ "title"
     val titles   = titlesIn(js)
     val own      = (title \ "titleText" \ "text").asOpt[String].filter(_.trim.nonEmpty).orElse(titles.headOption)
@@ -352,7 +352,7 @@ object ImdbClient {
     val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[Seq[JsValue]].map(_.flatMap(c => (c \ "id").asOpt[String]).filter(_.nonEmpty))
     own.map { name =>
       val original = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.trim.nonEmpty)
-      services.identity.IdentityMeasures.Film(
+      services.identity.Film(
         title             = name,
         originalTitle     = original,
         alternativeTitles = titles.filterNot(t => t == name || original.contains(t)),

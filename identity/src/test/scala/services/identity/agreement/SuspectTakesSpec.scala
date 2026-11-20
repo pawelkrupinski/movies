@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{CatalogueId, CatalogueSources, FilmTable, IdentityMeasures, Listing, ResolverDecision}
+import services.identity.{CatalogueId, CatalogueSources, Film, FilmTable, Listing, ResolverDecision}
 import models.{Cinema, Helios, KinoApollo, KinoMuza, Multikino, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -13,8 +13,8 @@ class SuspectTakesSpec extends AnyFlatSpec with Matchers {
 
   private val Year = 2026
   private def film(title: String, year: Int, runtime: Option[Int] = None, directors: Seq[String] = Nil) =
-    IdentityMeasures.Film(title, year = Some(year), runtime = runtime, directors = Some(directors))
-  private def take(l: Listing, f: IdentityMeasures.Film, basis: ResolverDecision.Basis = ResolverDecision.Basis.OwnMatch,
+    Film(title, year = Some(year), runtime = runtime, directors = Some(directors))
+  private def take(l: Listing, f: Film, basis: ResolverDecision.Basis = ResolverDecision.Basis.OwnMatch,
                    tmdb: Int = 1, explanation: Seq[String] = Nil) =
     Take(l, s"tmdb:$tmdb", Some(tmdb), f, ResolverDecision(Seq(l.key), Some(tmdb), 0.9, basis, explanation)())
   private def signals(t: Take, billings: Billings = Billings.None): Set[Signal] = SuspectTakes.of(t, Year, billings).map(_.signal).toSet

@@ -33,7 +33,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** Every candidate `l` has an evidence path to, scored ([[ListingScoring]]); a `denial` marks, with its reason, the ones
    *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
-  def score(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
+  def score(listing: MeasuredListing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[Denial], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
             imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty,
             names: String => Boolean = _ => false): Seq[Scored] = {
@@ -93,7 +93,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  record titled with that year is no answer to which house's staging a bare work is. UK Empire Halstead's "Carmen"
    *  [215′] and Riverside Woodbridge's "Carmen (2026)" screen the RBO 2026/27 relay on its day, 10 November 2026; "Carmen
    *  de Bizet 2026" found only Salzburg's festival Carmen, which they took. */
-  private def soleResultsOf(listing: IdentityMeasures.Listing, reached: CandidateGeneration.Reach): Set[Int] =
+  private def soleResultsOf(listing: MeasuredListing, reached: CandidateGeneration.Reach): Set[Int] =
     if (RelayStage.searchedInItsSeason(listing)) reached.soleResults
     else {
       val seasonSearches = SearchMeasures.stageWorkQueries(listing).map(_.trim).toSet
@@ -142,7 +142,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   }
 
   /** The cluster read as one listing ([[pooled]]), under its `lead`'s titles. */
-  private def pooledListing(cluster: Seq[EvidenceNode], lead: EvidenceNode): IdentityMeasures.Listing = {
+  private def pooledListing(cluster: Seq[EvidenceNode], lead: EvidenceNode): MeasuredListing = {
     import FamilyScope.modal
     val evidence = cluster.map(node => node -> evidenceOf(node))
     val runtimes = evidence.flatMap { case (node, stated) => stated.runtime.toSeq.flatMap(runtime => Seq.fill(node.weight)(runtime)) }.sorted
@@ -168,20 +168,4 @@ private[identity] object FamilyScope {
   /** The value of the greatest summed weight, the smallest on a tie. */
   private def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
     values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (value, weight) => (-weight, value) }.headOption.map(_._1)
-
-  /** What a title relation reads of a listing ([[FamilyScope]]'s relations). The decorations by identity:
-   *  one resolve's listings share its instance, and its structural hash was itself a cost. */
-  final class TitleInputs(listing: IdentityMeasures.Listing) {
-    private val title         = listing.title
-    private val rawTitle      = listing.rawTitle
-    private val originalTitle = listing.originalTitle
-    private val searchTitles  = listing.searchTitles
-    private val decorations   = listing.decorations
-    override val hashCode: Int = (title, rawTitle, originalTitle, searchTitles).## * 31 + System.identityHashCode(decorations)
-    override def equals(other: Any): Boolean = other match {
-      case that: TitleInputs => (that.decorations eq decorations) && that.title == title && that.rawTitle == rawTitle &&
-        that.originalTitle == originalTitle && that.searchTitles == searchTitles
-      case _ => false
-    }
-  }
 }

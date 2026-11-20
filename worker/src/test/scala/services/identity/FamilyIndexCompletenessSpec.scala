@@ -85,7 +85,7 @@ object FamilyIndexCompletenessSpec {
     override def numbersFilmsByTmdbId: Boolean = underlying.numbersFilmsByTmdbId
     protected def detailOf(listing: Listing): Answer[Option[DetailFacts]] = underlying.detail(listing)
     protected def searchOf(query: CandidateQuery): Answer[Seq[Hit]] = underlying.candidates(query)
-    protected def recordOf(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = underlying.film(tmdbId)
+    protected def recordOf(tmdbId: Int): Answer[Option[Film]] = underlying.film(tmdbId)
     protected def releaseOf(tmdbId: Int): Answer[Option[java.time.LocalDate]] = underlying.releaseDay(tmdbId)
     protected def castOf(tmdbId: Int): Answer[Option[Seq[String]]] = underlying.cast(tmdbId)
     protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]] = underlying.overview(tmdbId)

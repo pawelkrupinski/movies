@@ -1,7 +1,7 @@
 package integration
 
 import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, StoredTmdbLookups, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
-import services.identity._
+import services.identity.{Film, _}
 
 import tools.HttpFetch
 
@@ -44,7 +44,7 @@ object StoredLookupsEquivalence {
   }
 
   def check(fetch: HttpFetch, misses: () => Long, missed: () => Seq[String], language: java.util.Locale, details: IdentityLookups,
-            asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]])): Result = {
+            asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[Film]]])): Result = {
     val (queries, films) = asked
     val store   = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val through = new NormalizingHttpFetch(new MissAsGap(fetch, misses, missed), new TmdbNormalizer(store))

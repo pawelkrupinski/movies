@@ -1,6 +1,6 @@
 package tools
 
-import services.identity._
+import services.identity.{Film, _}
 
 import scala.jdk.CollectionConverters._
 
@@ -9,12 +9,12 @@ import scala.jdk.CollectionConverters._
 final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
-  private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
+  private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[Film]]]()
   private val casts   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[Seq[String]]]]()
   override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
   override def detail(l: Listing): Answer[Option[DetailFacts]] = details.computeIfAbsent((l.venue, l.page.getOrElse("")), _ => inner.detail(l))
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
-  override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
+  override def film(id: Int): Answer[Option[Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
   // every other lookup the source answers: left to the trait's defaults, a cast read as unknown and a release day off
   // the record alone, whatever the source knew. Only members the oldest ref a slice runs under has (this file compiles
   // into it); a newer one is passed through by name in the slice's wiring (`OlderRefs.NewerLookups`)
@@ -53,7 +53,7 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
   def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!answered(_))
   /** Every candidate question and film record asked through it, with the answer it got. */
-  def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
+  def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[Film]]]) =
     (queries.asScala.toMap, films.asScala.toMap)
   // a tool file, dropped into old refs (scripts/identity-slice TOOL_FILES): read through `Known`, which every ref has, not
   // `Answer.isAnswered` (2026-11-06) nor the `isKnown` before it

@@ -1,7 +1,8 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{Category, SamePersonMeasure, directorRelation}
+import services.identity.IdentityMeasures.{SamePersonMeasure, directorRelation}
 import services.titles.YearWindow
+import Measure.Category
 
 /**
  * The ONE place a rule compares two sides' published facts outside the calibrated measures: a listing's or a family

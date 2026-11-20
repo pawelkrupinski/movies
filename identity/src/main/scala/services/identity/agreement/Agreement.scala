@@ -2,8 +2,8 @@ package services.identity.agreement
 
 import services.titles.billing.BillingPieces
 
-import services.identity.{Acceptance, Answer, FactRelations, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing, ListingShape, PosterEvidence, Question, SourceReliability}
+import services.identity.{Acceptance, Answer, FactRelations, Film, IdentityCalibration, IdentityLookups,
+  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, Question, SourceReliability}
 import services.identity.toAnswer
 import services.identity.SourceReliability.{Fact, Trust}
 import services.titles.{TitleContainment, TitleNormalizer}
@@ -239,7 +239,7 @@ object Agreement {
     if (own.nonEmpty) own else if (listingVotes(listings.map(SourceReliability.stated(_, Trust.Support)), records).nonEmpty) Set(FeedFacts) else Set.empty
   }
 
-  /** Every running time a record states — one per translation fetched ([[IdentityMeasures.Film.runtimes]]) — and its billed
+  /** Every running time a record states — one per translation fetched ([[Film.runtimes]]) — and its billed
    *  cuts' ([[FilmCuts]]): the film's IMDb number is its own, else its IMDb cross-id. */
   private def recordRuntimes(record: SourceRecord): Seq[Int] =
     record.film.runtimes.toSeq ++ services.identity.FilmCuts.of(
@@ -329,17 +329,17 @@ object Agreement {
    *  title names, not the film itself), and none of the film's own directors? A series' banner then says whose film it
    *  shows: DE Babylon (Mitte)'s "Hitchcock & Chabrol: Blood Relatives" is Chabrol's 1978 film, which Wikidata takes and
    *  IMDb weighed, not Noah Segan's 2022 one the four other families take. A director is named by their surname
-   *  ([[IdentityMeasures.Film.directorSurnames]]) where it is no word of that film's titles, which a billing of the title
+   *  ([[Film.directorSurnames]]) where it is no word of that film's titles, which a billing of the title
    *  carries whoever it names. */
   private[identity] def billsAnothersDirector(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
     val namesakes = verdicts.flatMap(_.weighed).filterNot(weighed => records.exists(sameFilm(_, weighed)))
     listings.exists { listing =>
       val billed = TitleContainment.tokens(listing.rawTitle).toSet
-      def credited(film: IdentityMeasures.Film) = film.directorSurnames.exists(surname =>
+      def credited(film: Film) = film.directorSurnames.exists(surname =>
         billed(surname) && !film.titles.exists(title => TitleContainment.tokens(title).contains(surname)))
       // the venue's own synopsis naming a director WHOLE ([[VenueNames.names]]) says whose film it describes as the billing
       // does: UK Southsea's "Unrest" synopsis names Jennifer Brea, director of the 2017 documentary, not Ipson's 2006 horror
-      def described(film: IdentityMeasures.Film) = IdentityMeasures.textNamesItsDirector(listing.names.names, film)
+      def described(film: Film) = IdentityMeasures.textNamesItsDirector(listing.names.names, film)
       (!records.exists(record => credited(record.film)) && namesakes.exists(namesake => credited(namesake.film) && namesIt(listing, Seq(namesake.film)))) ||
         (!records.exists(record => described(record.film)) && namesakes.exists(namesake => described(namesake.film) && namesIt(listing, Seq(namesake.film))))
     }
@@ -386,21 +386,21 @@ object Agreement {
   private val CanonicalIds = Seq("imdb", "tmdb")
 
   /** A record that dates and credits nothing. */
-  private def bare(film: IdentityMeasures.Film): Boolean = film.year.isEmpty && film.directors.forall(_.isEmpty)
+  private def bare(film: Film): Boolean = film.year.isEmpty && film.directors.forall(_.isEmpty)
 
   /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors (one
    *  respelled in the same year and running time is none), and a
    *  shared title — or, titled in two languages, the same director the same year and a shared word of four letters. */
-  def equivalent(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean = {
-    def titles(f: IdentityMeasures.Film) = f.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
-    def words(f: IdentityMeasures.Film)  = f.titles.flatMap(TitleContainment.tokens).filter(_.length >= 4).toSet
+  def equivalent(a: Film, b: Film): Boolean = {
+    def titles(f: Film) = f.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+    def words(f: Film)  = f.titles.flatMap(TitleContainment.tokens).filter(_.length >= 4).toSet
     !factsApart(a, b) && ((titles(a) intersect titles(b)).nonEmpty ||
       (sameDirector(a, b) && a.year.isDefined && a.year == b.year && (words(a) intersect words(b)).nonEmpty))
   }
 
   /** Do the films' facts hold them apart: years more than one apart, or Latin-script directors who are other people (one
    *  respelled in the same year and running time is none)? */
-  private def factsApart(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean = {
+  private def factsApart(a: Film, b: Film): Boolean = {
     val (da, db) = (a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
     // one person in two transliterations ("Andriej Konczałowski", "Andrei Konchalovsky") is no clash where the films
     // share their year and running time
@@ -409,7 +409,7 @@ object Agreement {
     FactRelations.yearsApart(a.year, b.year) || (da.nonEmpty && db.nonEmpty && (da ++ db).forall(tools.LatinScript.lettersOnly) && !sameDirector(a, b) && !respelled)
   }
 
-  private def sameDirector(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean =
+  private def sameDirector(a: Film, b: Film): Boolean =
     FactRelations.samePerson(a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
 
   /** Is the listing's original title a feed's copy ([[SourceReliability.copiesOriginalTitle]]) one edit from its billing's —
@@ -458,7 +458,7 @@ object Agreement {
   }
 
   /** Does the listing's title name one of the films' titles — be it, or carry it whole (four letters at least)? */
-  def namesIt(listing: Listing, films: Seq[IdentityMeasures.Film]): Boolean = {
+  def namesIt(listing: Listing, films: Seq[Film]): Boolean = {
     val own    = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     val titles = films.flatMap(_.titles).distinct
     val raw    = TitleContainment.tokens(listing.rawTitle)
@@ -486,7 +486,7 @@ object Agreement {
       own.zip(its).exists { case (o, t) => o == t }
   }
   /** The runs of every listing's billing the films' titles are (each as its words, articles aside). */
-  def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
+  def billedSpans(listings: Seq[Listing], films: Seq[Film]): Seq[Seq[String]] =
     services.identity.TitleTextMeasures.spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
 
   /** Does another candidate's titles name MORE of the billing than the film's — every word the film's titles name of it,

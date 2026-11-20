@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, Resolution,
+import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, Question, Resolution,
   ResolverDecision, StoredFamily, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -15,7 +15,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   import FilmTable.listing
 
-  private val klondike = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
+  private val klondike = Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
   // RT never answers: once its question is attempted, a cluster settles on the other three, which agree — their reads
   // `counted` (RT's is read on every pass, to tell whether it was attempted)
   private def families(counted: () => Unit): Map[VoterFamily, FamilyAnswers] = Map(

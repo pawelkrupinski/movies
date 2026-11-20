@@ -2,8 +2,7 @@ package scripts
 
 import testsupport.SourceTrees
 import models.Country
-import services.identity._
-import services.identity.ListingShape
+import services.identity.{ListingShape, MeasuredListing, _}
 import models.ListingKey
 import services.titles.{TitleContainment, TitleNormalizer}
 import services.titles.rules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
@@ -199,7 +198,7 @@ object DecorationDiscovery {
           val after   = is.get(k)
           val listing = billed.head
           judge(before, after.fold("")(_.film),
-            ListingShape.billsSeveral(listing) || MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
+            ListingShape.billsSeveral(listing) || MultiFilmBill.billsTwoWorks(MeasuredListing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
             after.flatMap(UnmatchedClusters.verdict(_, labels)))
             .map(v => Change(country.code, venue, raw, was.get(k).fold("")(t => s"${t.film} ${t.title}"), after.fold("")(t => s"${t.film} ${t.title}"), v))
         }

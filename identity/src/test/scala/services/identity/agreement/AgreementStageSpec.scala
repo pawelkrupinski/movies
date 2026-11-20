@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterQuestion, Question,
-  Resolution, ResolverDecision, VoterFamily}
+import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, PosterQuestion,
+  Question, Resolution, ResolverDecision, VoterFamily}
 import models.{KinoMuza, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,7 +12,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   import FilmTable.listing
 
-  private val klondike = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
+  private val klondike = Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
   private val bare     = listing(KinoMuza, "Klondike", year = Some(2022))
   private val matched  = listing(KinoMuza, "Dune", year = Some(2021))
   private def agreeing(rtAnswered: Boolean = true) = Map(
@@ -29,7 +29,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   "an unmatched cluster no families agree on" should "take, by the selected fill rule, the one guard-passing film billed widely as a current release" in {
     // US "SEVENTEEN World Tour 'NEW_'" ×391: IMDb alone holds the 2026 tour film, at venue after venue
-    val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val tour    = Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
     val imdb    = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     def decided(title: String, venues: Seq[models.Cinema], rules: services.identity.agreement.UnifiedRules) = {
@@ -58,7 +58,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // US "A Prayer for the Dying" ×7 (re-capture 2026-10-06): Metacritic and RT agree on the 2026 film, but a film only review
   // sites agree on is taken as nothing — and that agreement kept the fill from being read at all
   it should "fill a cluster whose only agreement is review sites', which the stage does not take" in {
-    val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val tour    = Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
     val record  = SourceRecord(tour, Map("imdb" -> "tt46658626"))
     val reviews = Map(
       VoterFamily.Metacritic     -> new HeldFamilyAnswers(VoterFamily.Metacritic, Map("seventeen-world-tour-new" -> record)),
@@ -84,7 +84,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // PL "Lalka (Dolly)" ×5: the fill's own resolve of the cluster asked TMDB what its store did not hold yet; the verdict
   // was kept with no fill, and stood once TMDB had answered — the families' agreement on Dolly never reached the fill again
   it should "read the fill again once TMDB answers what it could not, never keeping a verdict decided blind" in {
-    val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val tour     = Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
     val families = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     var answered = false
@@ -115,7 +115,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // the no-drift principle (docs/design/identity-no-drift.md): the year a verdict reads "current" by is an input — a
   // verdict decided in December stood into January, filled by a rule a whole resolve then no longer fired
   it should "decide a kept verdict again when the year turns, as a whole resolve in the new year would" in {
-    val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2025), None, None, None, None)
+    val tour     = Film("Seventeen World Tour (New_)", None, Nil, Some(2025), None, None, None, None)
     val families = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "SEVENTEEN World Tour 'NEW_'"))
@@ -142,7 +142,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "take, by the pinned families.current rule, a current release two families take at one venue" in {
     // PL "TAJNY AGENT" (fixture identity-unmatched): IMDb and Filmweb take Mendonça Filho's 2025 film; one venue bills it
-    val agent    = IdentityMeasures.Film("Tajny agent", None, Seq("The Secret Agent"), Some(2025), Some(158), Some(Seq("Kleber Mendonça Filho")), None, None)
+    val agent    = Film("Tajny agent", None, Seq("The Secret Agent"), Some(2025), Some(158), Some(Seq("Kleber Mendonça Filho")), None, None)
     def families(year: Int) = Map(
       VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt27847051" -> SourceRecord(agent.copy(year = Some(year)), Map("imdb" -> "tt27847051")))),
       VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("10063391" -> SourceRecord(agent.copy(year = Some(year))))),
@@ -166,7 +166,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "take, by the pinned family.facts rule, the one film a film database takes that the venue's own year and director credit" in {
     // PL "11. UFF - Dowżenko. Pierwsze spojrzenie" (fixture identity-unmatched): Wikidata alone takes Konovalov's 2026
     // film; the festival's listing dates and credits it — two independent sources naming one film
-    val film  = IdentityMeasures.Film("Dowżenko. Pierwsze spojrzenie", None, Nil, Some(2026), Some(80), Some(Seq("Konstantin Konovalov")), None, None)
+    val film  = Film("Dowżenko. Pierwsze spojrzenie", None, Nil, Some(2026), Some(80), Some(Seq("Konstantin Konovalov")), None, None)
     val families = Map(
       VoterFamily.Wiki -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q1" -> SourceRecord(film, Map("tmdb" -> "1483101")))),
       VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
@@ -199,8 +199,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val ckLublin = "Miłość, która nie zna granic i ambicja, która nie zna ceny. „Lalka” powraca jako wielka filmowa opowieść. " +
       "Marcin Dorociński, Kamila Urzędowska i Marek Kondrat spotykają się na wielkim ekranie w ekranizacji powieści Bolesława Prusa."
     val records = Map(
-      1321666 -> IdentityMeasures.Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(2026), Some(151), Some(Seq("Maciej Kawalski")), None, None),
-      81315   -> IdentityMeasures.Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None))
+      1321666 -> Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(2026), Some(151), Some(Seq("Maciej Kawalski")), None, None),
+      81315   -> Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None))
     val casts = Map(
       1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat", "Andrzej Seweryn", "Krystyna Janda", "Maria Dębska"),
       81315   -> Seq("Mariusz Dmochowski", "Beata Tyszkiewicz", "Tadeusz Fijewski", "Kalina Jędrusik", "Tadeusz Kondrat"))
@@ -269,7 +269,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def hasDetail(listing: Listing): Boolean = false
       def detail(listing: Listing): Answer[Option[services.identity.DetailFacts]] = asked(s"detail of ${listing.rawTitle}")
       def candidates(query: services.identity.CandidateQuery): Answer[Seq[services.identity.Hit]] = asked(query.toString)
-      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = asked(s"film $tmdbId")
+      def film(tmdbId: Int): Answer[Option[Film]] = asked(s"film $tmdbId")
     }
     val stage = AgreementStageFixture(
       Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true)), NoVenueDetails, normalizer,
@@ -318,8 +318,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // PL Janosik "edukacja MH: Binti" (identity-unmatched capture): IMDb, Wikidata and Filmweb agree on Shamte's 2021 film;
     // the venue's page describes Migom's 2019 one — a girl in Belgium who meets Elias
     import services.identity.{CandidateQuery, DetailFacts, Hit, IdentityLookups, Listing, ProseWords}
-    val shamte = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
-    val migom  = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
+    val shamte = Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
+    val migom  = Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
     val families = Map(
       VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt11867140" -> SourceRecord(shamte, Map("imdb" -> "tt11867140")))),
       VoterFamily.Wiki    -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q108940090" -> SourceRecord(shamte, Map("imdb" -> "tt11867140", "tmdb" -> "855156")))),
@@ -679,7 +679,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // DE Museum-Lichtspiele's "Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces" (identity-slice --drift,
     // recording 573): three families agree on 'Roots' (1954), its ORIGINAL title the billing's last piece. A fresh stage
     // refuses it; the stage a deploy brought up from the stored verdict took it, its film kept as a title and year alone
-    val roots   = IdentityMeasures.Film("Roots", Some("Raíces"), Nil, Some(1954), Some(83), None, None, None)
+    val roots   = Film("Roots", Some("Raíces"), Nil, Some(1954), Some(83), None, None, None)
     val record  = SourceRecord(roots, Map("imdb" -> "tt0047395"))
     val three   = Map(
       VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt0047395" -> record)),

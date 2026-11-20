@@ -88,7 +88,7 @@ object ReadSetClosureSpec {
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = if (open(s"q|$query")) Answer.Unknown else inner.candidates(query)
     override def detail(listing: Listing): Answer[Option[DetailFacts]] =
       if (open(s"d|${listing.key}")) Answer.Unknown else inner.detail(listing)
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = if (open(s"f|$tmdbId")) Answer.Unknown else inner.film(tmdbId)
+    override def film(tmdbId: Int): Answer[Option[Film]] = if (open(s"f|$tmdbId")) Answer.Unknown else inner.film(tmdbId)
   }
 
   /** `inner` with the venue pages of `arriving` unread: listings that just arrived, their pages not read yet. */

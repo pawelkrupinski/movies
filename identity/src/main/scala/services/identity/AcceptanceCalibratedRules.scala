@@ -93,7 +93,7 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
    *  the 2013 "Kacper i Emma: Najlepsi przyjaciele". */
   private[identity] def namedWithinAnother(best: Scored, eligible: Seq[Scored]): Boolean = eligible.sizeIs > 1 && {
     val billed = Seq(services.titles.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title)))
-    def spans(film: IdentityMeasures.Film) = TitleTextMeasures.spansIn(billed, Seq(film))
+    def spans(film: Film) = TitleTextMeasures.spansIn(billed, Seq(film))
     TitleTextMeasures.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
   }
 }

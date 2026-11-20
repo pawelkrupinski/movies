@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{CatalogueId, CatalogueSources, FilmTable, IdentityMeasures, ResolverDecision}
+import services.identity.{CatalogueId, CatalogueSources, Film, FilmTable, ResolverDecision}
 import models.{Cinema, Helios, KinoMuza, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,7 +12,7 @@ class CatalogueSplitsSpec extends AnyFlatSpec with Matchers {
 
   private val emil = CatalogueId(CatalogueSources.Webedia.source, "1234")
   private def take(venue: Cinema, title: String, tmdb: Int, year: Int, ids: Seq[CatalogueId] = Seq(emil)) =
-    Take(listing(venue, title).copy(catalogueIds = ids), s"tmdb:$tmdb", Some(tmdb), IdentityMeasures.Film(title, year = Some(year)),
+    Take(listing(venue, title).copy(catalogueIds = ids), s"tmdb:$tmdb", Some(tmdb), Film(title, year = Some(year)),
       ResolverDecision(Nil, Some(tmdb), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
 
   "a catalogue id" should "split where its listings were taken as two films, each film's side naming the other" in {

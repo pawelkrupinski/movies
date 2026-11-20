@@ -2,8 +2,8 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures
-import services.identity.IdentityMeasures.{Category, Measure}
+import services.identity.{IdentityMeasures, Measure}
+import services.identity.Measure.Category
 
 /** The joint (logistic) candidate: it recovers the likelihood the data implies, keeps a
  *  corroborator's naive-Bayes table as a fixed offset, and keeps an evidence order. */
@@ -31,14 +31,14 @@ class IdentityJointFitSpec extends AnyFlatSpec with Matchers {
     // Credited listings: the director tells same from different outright, and both sit low in the
     // search. Bare listings: the rank is all there is, and low means 1 in 4 same.
     val shapes: Seq[(Measure, Double, Boolean, Int)] = Seq((Category("same_person"), 3.0, true, 300), (Category("different"), 3.0, false, 300),
-      (IdentityMeasures.Missing("listing"), 1.0, true, 300), (IdentityMeasures.Missing("listing"), 1.0, false, 100),
-      (IdentityMeasures.Missing("listing"), 3.0, true, 100), (IdentityMeasures.Missing("listing"), 3.0, false, 300))
+      (Measure.Missing("listing"), 1.0, true, 300), (Measure.Missing("listing"), 1.0, false, 100),
+      (Measure.Missing("listing"), 3.0, true, 100), (Measure.Missing("listing"), 3.0, false, 300))
     val rows = (for {
       split <- Seq("train", "calibration")
       (director, rank, same, n) <- shapes
       _ <- 0 until n
     } yield (split, director, rank, same)).zipWithIndex.map { case ((split, director, rank, same), i) =>
-      IdentityCalibrate.Row(split, s"u$i", s"u$i", "us", Map("director" -> director, "search.rank" -> IdentityMeasures.Number(rank)), _ => Some(same))
+      IdentityCalibrate.Row(split, s"u$i", s"u$i", "us", Map("director" -> director, "search.rank" -> Measure.Number(rank)), _ => Some(same))
     }
     val nb    = IdentityCalibrate.fit(IdentityMeasures.ListingFilm, Seq("director", "search.rank"), rows)
     val joint = IdentityJointFit.fit(nb, rows, free = Set("search.rank"), order = Map.empty)

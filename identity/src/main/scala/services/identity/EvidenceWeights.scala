@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{ListingFilm, Measure}
+import services.identity.IdentityMeasures.ListingFilm
 
 /** How much a scored candidate is the listing's film on what the LISTING'S OWN facts say — the
  *  title, year, director, runtime, original title and country measures — as opposed to the film
@@ -34,7 +34,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
     calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => weight > 0 && published(name, weight), (_, _) => 1.0) > 0 &&
       calibration.contributionSumWhere(ListingFilm, scored.measures, published) > 0
   }
-  private def missing(scored: Scored, name: String): Boolean = scored.measures.getOrElse(name, null).isInstanceOf[IdentityMeasures.Missing]
+  private def missing(scored: Scored, name: String): Boolean = scored.measures.getOrElse(name, null).isInstanceOf[Measure.Missing]
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in
    *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
@@ -44,7 +44,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
     // does a title carrying the other's whole (`IdentityMeasures.ContainingRelations`): DE's "…In
     // Buenos Aires: Live" sits inside TMDB's "…: Live Viewing", which is no sign of another film.
     val contains = measures.get("title").exists {
-      case IdentityMeasures.Category(relation) => IdentityMeasures.ContainingRelations(relation)
+      case Measure.Category(relation) => IdentityMeasures.ContainingRelations(relation)
       case _                                   => false
     }
     val veto = calibration.contributionSumWhere(ListingFilm, measures, (name, weight) =>
@@ -61,7 +61,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
   def against(scored: Scored): Seq[String] = {
     val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
-      if !NotOwn(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
+      if !NotOwn(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[Measure.Missing]) => name }.toSet
     if (names.isEmpty) Nil else calibration.evidence(ListingFilm, scored.measures).filter(line => names(line.takeWhile(_ != '=')))
   }
 

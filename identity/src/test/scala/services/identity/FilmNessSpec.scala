@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.funsuite.AnyFunSuite
 
 class FilmNessSpec extends AnyFunSuite {
-  private def listing(raw: String, year: Option[Int] = None) = IdentityMeasures.Listing(raw, year = year)
+  private def listing(raw: String, year: Option[Int] = None) = MeasuredListing(raw, year = year)
 
   test("a factless gig billing reads its event words and its other words") {
     val tanzwut = listing("Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer")
@@ -17,12 +17,12 @@ class FilmNessSpec extends AnyFunSuite {
 }
 
 class FilmNessAcceptanceSpec extends AnyFunSuite {
-  import IdentityMeasures.{Film, ListingFilm}
+  import IdentityMeasures.ListingFilm
   private val calibration = IdentityCalibration.resolver
   private val acceptance  = new Acceptance(calibration)
 
   test("a gig's record found by its event words alone is not taken") {
-    val gig  = IdentityMeasures.Listing("Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer", originalTitle = Some("Number_i LIVE TOUR 2024 No.I 特別編集版"))
+    val gig  = MeasuredListing("Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer", originalTitle = Some("Number_i LIVE TOUR 2024 No.I 特別編集版"))
     val film = Film("Number_i LIVE TOUR 2024 No.I 特別編集版", Some("Number_i LIVE TOUR 2024 No.I 特別編集版"), year = Some(2025), runtime = Some(108))
     val measures = IdentityMeasures.listingFilm(gig, film, Some(1), 0, 0)
     val scored = Scored(Candidate(1419814, film), calibration.probability(ListingFilm, measures), measures, denial = None, gig, Some(1))

@@ -1,7 +1,8 @@
 package scripts
 
 import services.identity.IdentityCalibration.{Calibration, SignalWeights}
-import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
+import services.identity.Measure
+import services.identity.Measure.{Category, Missing, Number}
 
 /**
  * The JOINT candidate beside naive Bayes: a logistic regression over the same cells (each

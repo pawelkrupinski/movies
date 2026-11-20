@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Evidence, FactRelations, IdentityLookups, IdentityMeasures, Listing, ListingShape, Resolution,
-  ResolverDecision, ShortFilms, SourceReliability, TitleDecorations, TmdbFilmRecord}
+import services.identity.{Evidence, FactRelations, Film, IdentityLookups, IdentityMeasures, Listing, ListingShape,
+  MeasuredListing, Resolution, ResolverDecision, ShortFilms, SourceReliability, TitleDecorations, TmdbFilmRecord}
 import services.titles.billing.DecorationWords
 import models.ListingKey
 import services.titles.{TitleContainment, TitleWords}
@@ -47,12 +47,12 @@ object SuspectTakes {
   /** One listing's take: the film its cluster took — TMDB's (`tmdb:<id>`) or a fallback source's (`imdb:<tt>`) — its
    *  record (a fallback's: its title and year alone), and the decision that took it. `listing` as its venue's page states
    *  it ([[Listing.withPage]]). */
-  final case class Take(listing: Listing, film: String, tmdb: Option[Int], record: IdentityMeasures.Film, decision: ResolverDecision)
+  final case class Take(listing: Listing, film: String, tmdb: Option[Int], record: Film, decision: ResolverDecision)
 
   /** Every listing's take among `decisions`: a film whose TMDB record `recordOf` holds, or a fallback film. */
-  def takes(decisions: Seq[ResolverDecision], listingOf: ListingKey => Option[Listing], recordOf: Int => Option[IdentityMeasures.Film]): Seq[Take] =
+  def takes(decisions: Seq[ResolverDecision], listingOf: ListingKey => Option[Listing], recordOf: Int => Option[Film]): Seq[Take] =
     decisions.flatMap { d =>
-      val taken = d.film.fold(d.fallback.map(f => (s"${f.source}:${f.id}", Option.empty[Int], IdentityMeasures.Film(f.title.getOrElse(""), year = f.year))))(
+      val taken = d.film.fold(d.fallback.map(f => (s"${f.source}:${f.id}", Option.empty[Int], Film(f.title.getOrElse(""), year = f.year))))(
         id => recordOf(id).map(record => (s"tmdb:$id", Some(id), record)))
       taken.toSeq.flatMap { case (film, tmdb, record) => d.members.flatMap(listingOf).map(Take(_, film, tmdb, record, d)) }
     }
@@ -63,7 +63,7 @@ object SuspectTakes {
   /** `resolution`'s takes over `listings` (every listing it decided), each listing as its venue's page states it
    *  (`venues`, as the agreement stage reads it), each film's record from the resolution, else `recordOf` (an agreed
    *  film's, which the model never decided) — and what `listings` bill ([[Billings]]). */
-  def corpus(resolution: Resolution, listings: Seq[Listing], venues: IdentityLookups, recordOf: Int => Option[IdentityMeasures.Film]): Corpus = {
+  def corpus(resolution: Resolution, listings: Seq[Listing], venues: IdentityLookups, recordOf: Int => Option[Film]): Corpus = {
     val byKey  = listings.iterator.map(l => l.key -> l).toMap
     val stated = (key: ListingKey) => byKey.get(key).map(l => if (venues.hasDetail(l)) venues.detail(l).answered.flatten.fold(l)(l.withPage) else l)
     val taken = takes(resolution.decisions, stated, id => resolution.films.get(id).orElse(recordOf(id)))
@@ -183,7 +183,7 @@ object SuspectTakes {
   private def decoration(word: String): Boolean = DecorationWords.billedAround(word) || word.exists(_.isDigit) || word.length == 1
 
   /** Where the film's longest title runs in `words` — articles aside — as (start, length). */
-  private def run(words: IndexedSeq[String], film: IdentityMeasures.Film): Option[(Int, Int)] =
+  private def run(words: IndexedSeq[String], film: Film): Option[(Int, Int)] =
     film.titles.map(TitleContainment.tokens).flatMap(t => Seq(t, IdentityMeasures.withoutLeadingArticle(t)))
       .filter(_.nonEmpty).distinct.sortBy(-_.size).iterator
       .flatMap(t => Option(words.indexOfSlice(t)).filter(_ >= 0).map(_ -> t.size)).nextOption()
@@ -192,7 +192,7 @@ object SuspectTakes {
    *  record holds one in the billing's script, and the billing is no stage relay, which a house's record titles in its own
    *  words ("OPERA-MANON" is "The Metropolitan Opera 2026/27: Manon")? "Koncert: Leszek Możdżer - solo" is no "Solo: A
    *  Star Wars Story", "Johnny" no "Johnny English". */
-  private def namesNone(listing: Listing, pieces: Seq[Piece], film: IdentityMeasures.Film, billings: Billings): Boolean = {
+  private def namesNone(listing: Listing, pieces: Seq[Piece], film: Film, billings: Billings): Boolean = {
     // a word of a title, not one the corpus bills widely: "Hayfever" shares none with "Hay Fever", "Johnny" one with
     // "Johnny English" — a respelling or a part is the title relation's to weigh, no word in common is none to weigh
     def rare(words: Iterable[String]) = words.iterator.filter(w => w.length >= 3 && !billings.widely(w)).toSet
@@ -202,7 +202,7 @@ object SuspectTakes {
       tools.LatinScript.hasLetter(listing.rawTitle) && film.season.isEmpty && !ListingShape.stagesAWork(listing) && !Agreement.namesIt(listing, Seq(film))
   }
 
-  private[identity] def fragment(listing: Listing, pieces: Seq[Piece], film: IdentityMeasures.Film, screens: Int,
+  private[identity] def fragment(listing: Listing, pieces: Seq[Piece], film: Film, screens: Int,
                                  billings: Billings): Option[Suspicion] =
     if (ListingShape.billsSeveralBeside(listing, film)) Some(Suspicion(Signal.Fragment, s"the billing bills several works beside '${film.title}'"))
     else if (namesNone(listing, pieces, film, billings)) Some(Suspicion(Signal.Fragment, s"no title of '${film.title}' is in the billing"))
@@ -213,7 +213,7 @@ object SuspectTakes {
 
   /** Does the billing name another work beside the film's title: words of no decoration, banner, credit or title of the
    *  film's, around the run of the film's title in it? */
-  private def billsAnotherWork(pieces: Seq[Piece], film: IdentityMeasures.Film, billings: Billings): Option[Suspicion] = {
+  private def billsAnotherWork(pieces: Seq[Piece], film: Film, billings: Billings): Option[Suspicion] = {
     val words  = pieces.flatMap(_.words).toIndexedSeq
     val people = film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).toSet
     val titled = film.titles.flatMap(TitleContainment.tokens).toSet
@@ -250,7 +250,7 @@ object SuspectTakes {
 
   /** Does the listing bill an old film as one: in its words, an edition, a silent film, an anniversary, the film's
    *  director named? */
-  private def billsAnOldFilm(listing: Listing, measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+  private def billsAnOldFilm(listing: Listing, measured: MeasuredListing, film: Film): Boolean = {
     val titles = Seq(listing.title, listing.rawTitle, listing.cleanTitle) ++ listing.originalTitle
     val words  = titles.flatMap(TitleContainment.tokens).toSet
     // the film's own title words bill nothing: "The Classic" (2003) is no classic billed, as an edition's words are read
@@ -261,7 +261,7 @@ object SuspectTakes {
       (listing.directors.nonEmpty && FactRelations.samePerson(listing.directors, film.directors.getOrElse(Nil)))
   }
 
-  private[identity] def era(listing: Listing, measured: IdentityMeasures.Listing, film: IdentityMeasures.Film, screens: Int,
+  private[identity] def era(listing: Listing, measured: MeasuredListing, film: Film, screens: Int,
                             billings: Billings): Option[Suspicion] =
     film.year.flatMap { year =>
       lazy val old = billsAnOldFilm(listing, measured, film)
@@ -285,7 +285,7 @@ object SuspectTakes {
 
   // ── (c) runtime ──────────────────────────────────────────────────────────────────────────
 
-  private[identity] def runtime(measured: IdentityMeasures.Listing, film: IdentityMeasures.Film, billings: Billings,
+  private[identity] def runtime(measured: MeasuredListing, film: Film, billings: Billings,
                                 listing: Listing): Option[Suspicion] = {
     val runs = ShortFilms.runtimesOf(film)
     val stated = measured.statedRuntime
@@ -306,7 +306,7 @@ object SuspectTakes {
 
   // ── (d) sequel ───────────────────────────────────────────────────────────────────────────
 
-  private[identity] def sequel(pieces: Seq[Piece], measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Option[Suspicion] =
+  private[identity] def sequel(pieces: Seq[Piece], measured: MeasuredListing, film: Film): Option[Suspicion] =
     // a billing numbering nothing — no digit, no closing Roman numeral — numbers no other instalment, read without its
     // title shapes (a season's relay, "RBO: Cosi fan Tutte 27", numbers its season: `numeralRelation` compares nothing)
     Option.when(pieces.exists(p => p.words.exists(_.exists(_.isDigit)) || p.words.lastOption.exists(Roman.matches)) &&

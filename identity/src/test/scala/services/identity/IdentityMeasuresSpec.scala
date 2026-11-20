@@ -4,15 +4,16 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
 import services.titles.TitleSeason
-import services.identity.IdentityMeasures.{Category, Film, Listing, ListingListing, Missing, Number}
+import services.identity.IdentityMeasures.ListingListing
 import services.identity.StageRelays.{Billing, Houses}
+import Measure.{Category, Missing, Number}
 
 /** What the calibrated score reads must separate facts that mean different things: a venue's
  *  published year, a year the venue put in its title, a season a broadcast names, and whether a
  *  title DECORATES a film's title or is a FRAGMENT of a longer one. */
 class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
-  private def measures(l: Listing, f: Film) = IdentityMeasures.listingFilm(l, f, None, 0, 0)
+  private def measures(l: MeasuredListing, f: Film) = IdentityMeasures.listingFilm(l, f, None, 0, 0)
 
   /** Two of a title's shapes need its END: a bracketed format ("Vivaldi i ja [2D LEKTOR]") and a screening year ("Ma to
    *  sens 2026"). Their patterns, anchored at the end but scanning from the start, backtrack over every title that has
@@ -28,7 +29,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK The Garden Cinema's "The Assassin + Q&A" searched "Q&A" and stood Q & A (1990) beside Hou Hsiao-hsien's film as
     // the runner-up its own facts did not outweigh; Ciné Lumière's "Inside Gaza + Q&A" took it as its best candidate
     // (prod 2026-11-01)
-    def billed(raw: String) = IdentityMeasures.Listing(raw, Some(raw), searchTitles = raw.split("""\s*\+\s*""").toSeq)
+    def billed(raw: String) = MeasuredListing(raw, Some(raw), searchTitles = raw.split("""\s*\+\s*""").toSeq)
     val qa = Film("Q & A", year = Some(1990))
     IdentityMeasures.eventNamed(billed("The Assassin + Q&A"), qa) shouldBe true
     IdentityMeasures.eventNamed(billed("The Assassin + Q&A"), Film("The Assassin", year = Some(2015))) shouldBe false
@@ -113,44 +114,44 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "an original title" should "share nothing with the billing only when it is another title altogether, not a spelling of it" in {
     // DE kinoheld's event pages: what a search for the billing hit, copied as the original
-    Listing("Abdul Kader Chahin", originalTitle = Some("秒速5センチメートル")).originalSharesNothingBilled shouldBe true
-    Listing("Dirty Deeds - A Tribute To AC/DC", originalTitle = Some("Salaam-E-Ishq")).originalSharesNothingBilled shouldBe true
+    MeasuredListing("Abdul Kader Chahin", originalTitle = Some("秒速5センチメートル")).originalSharesNothingBilled shouldBe true
+    MeasuredListing("Dirty Deeds - A Tribute To AC/DC", originalTitle = Some("Salaam-E-Ishq")).originalSharesNothingBilled shouldBe true
     // the billed work in its own language, or the billing restated
-    Listing("SEVENTEEN WORLD TOUR 'NEW_'", originalTitle = Some("SEVENTEEN WORLD TOUR [NEW_] ENCORE")).originalSharesNothingBilled shouldBe false
-    Listing("Kardes Türküler ile 30 yil", originalTitle = Some("Kardeş Türküler ile 30 Yıl")).originalSharesNothingBilled shouldBe false
-    Listing("Puella Magi Madoka Magica Der Film - Walpurgisnacht: Rising",
+    MeasuredListing("SEVENTEEN WORLD TOUR 'NEW_'", originalTitle = Some("SEVENTEEN WORLD TOUR [NEW_] ENCORE")).originalSharesNothingBilled shouldBe false
+    MeasuredListing("Kardes Türküler ile 30 yil", originalTitle = Some("Kardeş Türküler ile 30 Yıl")).originalSharesNothingBilled shouldBe false
+    MeasuredListing("Puella Magi Madoka Magica Der Film - Walpurgisnacht: Rising",
       originalTitle = Some("Puella Magi Madoka Magica the Movie -Walpurgisnacht: Rising-")).originalSharesNothingBilled shouldBe false
-    Listing("Bremer Stadtmusikanten").originalSharesNothingBilled shouldBe true
+    MeasuredListing("Bremer Stadtmusikanten").originalSharesNothingBilled shouldBe true
     // what a billing carries of a record's title: words, not articles or years — two make the record the billing's
-    Listing("Madoka Magica - The Movie: Rebellion").wordsBilledOf(
+    MeasuredListing("Madoka Magica - The Movie: Rebellion").wordsBilledOf(
       "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion") shouldBe 4
-    Listing("Über Unterbiberger - Vom Woid in die Welt").wordsBilledOf("Oktober 1917 – Zehn Tage, die die Welt erschütterten") shouldBe 1
-    Listing("Zum Dorfkrug").wordsBilledOf("Zum See") shouldBe 0
+    MeasuredListing("Über Unterbiberger - Vom Woid in die Welt").wordsBilledOf("Oktober 1917 – Zehn Tage, die die Welt erschütterten") shouldBe 1
+    MeasuredListing("Zum Dorfkrug").wordsBilledOf("Zum See") shouldBe 0
   }
 
   "an original title" should "translate the billing word for word only as a cognate of each of its words" in {
     // DE Filmmuseum München: kinoheld copied the Dutch original of the billed German title
-    Listing("Mein Opa der Bankräuber", originalTitle = Some("Mijn Opa de Bankrover")).originalTranslatesBilled shouldBe true
+    MeasuredListing("Mein Opa der Bankräuber", originalTitle = Some("Mijn Opa de Bankrover")).originalTranslatesBilled shouldBe true
     // another title altogether, word counts alike or not
-    Listing("Das Auge des Bösen", originalTitle = Some("Eye of the Devil")).originalTranslatesBilled shouldBe false
-    Listing("ZIRKUS FUMEUSEMENT", originalTitle = Some("The Circus")).originalTranslatesBilled shouldBe false
-    Listing("Abdul Kader Chahin", originalTitle = Some("5 Centimeters per Second")).originalTranslatesBilled shouldBe false
-    Listing("Bremer Stadtmusikanten").originalTranslatesBilled shouldBe false
+    MeasuredListing("Das Auge des Bösen", originalTitle = Some("Eye of the Devil")).originalTranslatesBilled shouldBe false
+    MeasuredListing("ZIRKUS FUMEUSEMENT", originalTitle = Some("The Circus")).originalTranslatesBilled shouldBe false
+    MeasuredListing("Abdul Kader Chahin", originalTitle = Some("5 Centimeters per Second")).originalTranslatesBilled shouldBe false
+    MeasuredListing("Bremer Stadtmusikanten").originalTranslatesBilled shouldBe false
   }
 
   "a bracketed year in a title" should "be its own measure, never the listing's published year" in {
     // A re-release bracket: the 2015 film shown in 2026.
-    val m = measures(Listing("The Hunger Games: Mockingjay - Part 2 (2026)"), Film("The Hunger Games: Mockingjay - Part 2", year = Some(2015)))
+    val m = measures(MeasuredListing("The Hunger Games: Mockingjay - Part 2 (2026)"), Film("The Hunger Games: Mockingjay - Part 2", year = Some(2015)))
     m("year.delta") shouldBe Missing("listing")
     m("titleYear.delta") shouldBe Number(-11)
-    measures(Listing("Belle", year = Some(2013)), Film("Belle", year = Some(2013)))("titleYear.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Belle", year = Some(2013)), Film("Belle", year = Some(2013)))("titleYear.delta") shouldBe Missing("listing")
   }
 
   // prod PL 2026-10-06: Multikino's "Fallen Angels by Noël Coward" (16 venues) — the filmed Broadway production of
   // Coward's play — was taken as Dhont's 2026 "Coward" ("Tchórz"): the playwright's surname, an edge of the title, read
   // as a film's title "decorated" by the rest, as decorated as "Fallen Angels" itself
   "an author's credit after a work ('… by Noël Coward')" should "name no film, and leave the work it credits searched and named" in {
-    val credited = Listing("Fallen Angels by Noël Coward")
+    val credited = MeasuredListing("Fallen Angels by Noël Coward")
     IdentityMeasures.titleRelation(credited, Film("Coward")).value shouldBe "overlap"
     IdentityMeasures.titleRelation(credited, Film("Noël Coward")).value shouldBe "overlap"
     IdentityMeasures.titleRelation(credited, Film("Fallen Angels")).value shouldBe "segment"
@@ -159,15 +160,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val decorated = credited.copy(decorations = TitleDecorations(Set(Seq("fallen", "angels", "by", "noel")), Set.empty))
     IdentityMeasures.titleRelation(decorated, Film("Tchórz", originalTitle = Some("Coward"))).value shouldBe "overlap"
     // a title whose own words hold "by" is no credit: one word after it, or none capitalised
-    IdentityMeasures.titleRelation(Listing("Stand by Me"), Film("Stand by Me")).value shouldBe "exact"
-    IdentityMeasures.titleRelation(Listing("Death by Chocolate"), Film("Chocolate")).value shouldBe "decorated"
-    IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
+    IdentityMeasures.titleRelation(MeasuredListing("Stand by Me"), Film("Stand by Me")).value shouldBe "exact"
+    IdentityMeasures.titleRelation(MeasuredListing("Death by Chocolate"), Film("Chocolate")).value shouldBe "decorated"
+    IdentityMeasures.searchQueries(MeasuredListing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
   }
 
   "an author's credit in any language ('… von Friedrich Dürrenmatt', '… autorstwa …')" should "leave the work it credits searched" in {
     // the billing grammar's Credits reads every language's authorship word; the search once read only English "by"
-    IdentityMeasures.searchQueries(Listing("Die Physiker von Friedrich Dürrenmatt")) should contain ("Die Physiker")
-    IdentityMeasures.searchQueries(Listing("Wesele autorstwa Stanisława Wyspiańskiego")) should contain ("Wesele")
+    IdentityMeasures.searchQueries(MeasuredListing("Die Physiker von Friedrich Dürrenmatt")) should contain ("Die Physiker")
+    IdentityMeasures.searchQueries(MeasuredListing("Wesele autorstwa Stanisława Wyspiańskiego")) should contain ("Wesele")
     IdentityMeasures.creditedWork("Fallen Angels by Noël Coward") shouldBe Some("Fallen Angels")
     IdentityMeasures.creditedWork("Stand by Me") shouldBe None
     // prod DE Kinostar Arthaus Heilbronn (run 1051): the pianist accompanying a silent film is no author of it
@@ -214,79 +215,79 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // UK Picture House Uckfield's "(ROH)" series (capture 2026-10-13): "Tosca (ROH)" {Oliver Mears} [205′] screens the RBO
   // 2026/27 relay, whose record no search of the work's name reaches; a credit kept the season out of its searches
   "a relay billing its house beside a credit or a running time" should "be searched with the season its screenings fall in" in {
-    val tosca = Listing("Tosca (ROH)", runtime = Some(205), directors = Seq("Oliver Mears"), screenedSeason = Some(2026))
+    val tosca = MeasuredListing("Tosca (ROH)", runtime = Some(205), directors = Seq("Oliver Mears"), screenedSeason = Some(2026))
     IdentityMeasures.searchQueries(tosca) should contain ("Tosca 2026")
     // a film named like a stage work, no house billed: its season is no search of it
-    IdentityMeasures.searchQueries(Listing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), screenedSeason = Some(2026))) should
       not contain "Tosca 2026"
     // a bare stage work stating only a running time names no staging: UK Empire Theatre Halstead's "Romeo and Juliet"
     // [170′], screening on 25 May 2027, is searched with its season, which reaches the RBO 2026/27 relay aired that day
-    IdentityMeasures.searchQueries(Listing("Romeo and Juliet", runtime = Some(170), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet", runtime = Some(170), screenedSeason = Some(2026))) should
       contain ("Romeo and Juliet 2026")
     // a year it states that closes the season it screens in is searched as the season's opening year too, as the season's
     // record is titled: UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on 25 May 2027, reached the
     // RBO 2026/27 relay only by joining a sibling whose search did ("Romeo and Juliet 2027" finds nothing)
-    IdentityMeasures.searchQueries(Listing("Romeo and Juliet (2027)", screeningsSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2027)", screeningsSeason = Some(2026))) should
       contain allOf ("Romeo and Juliet 2027", "Romeo and Juliet 2026")
     // a year of another season names none of the one it screens in
-    IdentityMeasures.searchQueries(Listing("Romeo and Juliet (2029)", screeningsSeason = Some(2026))) should not contain "Romeo and Juliet 2026"
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2029)", screeningsSeason = Some(2026))) should not contain "Romeo and Juliet 2026"
     // …but a film's title going on past the work names no relay: the musical's name is only its head
-    IdentityMeasures.searchQueries(Listing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), screenedSeason = Some(2026))) should
       not contain "Lord of the Rings 2026"
     // Flicks dates the relay by the page it links: the year it states is searched, and the season it screens in beside it
-    val carmen = IdentityMeasures.searchQueries(Listing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
+    val carmen = IdentityMeasures.searchQueries(MeasuredListing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
     carmen should contain allOf ("Carmen 2024", "Carmen 2026")
     // a relay series' banner beside the work bills the relay as a house does: UK Picture House Uckfield's "Otello (MET)"
     // [200′], Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" (recording 573) screen the Met's 2026/27
     // relays, which no search of the work's name alone reaches
-    IdentityMeasures.searchQueries(Listing("Otello (MET)", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
-    IdentityMeasures.searchQueries(Listing("MET:Otello", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
-    IdentityMeasures.searchQueries(Listing("Live from the Met: Manon", runtime = Some(240), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Otello (MET)", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("MET:Otello", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Live from the Met: Manon", runtime = Some(240), screenedSeason = Some(2026))) should
       contain ("Manon 2026")
     // a relay's title closing on a two-digit year is searched without it: UK The Beehive Honiton's "The Met: La Fanciulla
     // del West 27" (UK mirror 2026-11-15) reaches the Met's 2026/27 record, which TMDB titles with no season, only by
     // "La Fanciulla del West"; "La Fanciulla del West 27" and "La Fanciulla del West 2026" find nothing
-    IdentityMeasures.searchQueries(Listing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))) should
       contain ("La Fanciulla del West")
     // a title naming no relay keeps its two digits: "Apollo 13" is no year
-    IdentityMeasures.searchQueries(Listing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
+    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
   }
 
   // the owner, 2026-11-16 (choice b): a relay's closing year is read only as its screenings' season year or the next one
   "a relay's closing year" should "date it only as the year its screenings' season opens or the next, else stay its title's digits" in {
     // UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026" (1 December 2026), The Beehive Honiton's "The Met: La
     // Fanciulla del West 27" (26 January 2027): both the 2026/27 season's
-    RelayStage.of(Listing("RBO: THE NUTCRACKER 2026", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2025, 2026))
-    RelayStage.of(Listing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2026, 2027))
+    RelayStage.of(MeasuredListing("RBO: THE NUTCRACKER 2026", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2025, 2026))
+    RelayStage.of(MeasuredListing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2026, 2027))
     // " 99", " 58" and " 2031" are no year of its season: no 2099, 2058 nor 2031 relay; two digits stay in its search
     Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58", "The Met: La Fanciulla del West 2031").foreach { title =>
-      withClue(title) { RelayStage.of(Listing(title, screeningsSeason = Some(2026))).toSeq.flatMap(_.seasons).filter(_ > 2027) shouldBe empty }
+      withClue(title) { RelayStage.of(MeasuredListing(title, screeningsSeason = Some(2026))).toSeq.flatMap(_.seasons).filter(_ > 2027) shouldBe empty }
     }
     Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58").foreach { title =>
-      withClue(title) { IdentityMeasures.searchQueries(Listing(title, screeningsSeason = Some(2026))) should not contain "La Fanciulla del West" }
+      withClue(title) { IdentityMeasures.searchQueries(MeasuredListing(title, screeningsSeason = Some(2026))) should not contain "La Fanciulla del West" }
     }
     // no screenings' season to read it by: no closing year either
-    IdentityMeasures.searchQueries(Listing("The Met: La Fanciulla del West 27")) should not contain "La Fanciulla del West"
+    IdentityMeasures.searchQueries(MeasuredListing("The Met: La Fanciulla del West 27")) should not contain "La Fanciulla del West"
     // a title naming no relay keeps its digits, as ever
-    RelayStage.of(Listing("Apollo 13", screeningsSeason = Some(2026))) shouldBe None
-    IdentityMeasures.searchQueries(Listing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
+    RelayStage.of(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) shouldBe None
+    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
   }
 
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
   // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
   "a box office's trailing certificate" should "be no part of any title shape or search" in {
-    IdentityMeasures.searchQueries(Listing("Obsession (18)")) shouldBe Seq("Obsession")
-    Listing("Obsession (18)").shapes shouldBe Seq("Obsession")
-    IdentityMeasures.searchQueries(Listing("Romeo & Juliet (12A TBC)", rawTitle = Some("Romeo & Juliet (12A TBC)"))) shouldBe Seq("Romeo & Juliet")
+    IdentityMeasures.searchQueries(MeasuredListing("Obsession (18)")) shouldBe Seq("Obsession")
+    MeasuredListing("Obsession (18)").shapes shouldBe Seq("Obsession")
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo & Juliet (12A TBC)", rawTitle = Some("Romeo & Juliet (12A TBC)"))) shouldBe Seq("Romeo & Juliet")
     // a number that is no certificate stays the title's own
-    IdentityMeasures.searchQueries(Listing("Sweet Sixteen (16)")) should contain ("Sweet Sixteen (16)")
+    IdentityMeasures.searchQueries(MeasuredListing("Sweet Sixteen (16)")) should contain ("Sweet Sixteen (16)")
   }
 
   // PL Kino Fenix's Konwicki retrospective (review answer): "Konwicki Salto", "Konwicki Ostatni dzień lata" — the
   // director's surname heads each title, and no field credits him
   "a director's surname heading a title" should "credit the film's director whose surname it is, when the rest names the film" in {
     val salto = Film("Salto", directors = Some(Seq("Tadeusz Konwicki")))
-    def director(title: String, f: Film) = IdentityMeasures.creditedByTitle(Listing(title), f, measures(Listing(title), f))("director")
+    def director(title: String, f: Film) = IdentityMeasures.creditedByTitle(MeasuredListing(title), f, measures(MeasuredListing(title), f))("director")
     director("Konwicki Salto", salto) shouldBe Category("same_person")
     director("Konwicki: Salto", salto) shouldBe Category("same_person")
     // a surname of four letters names its director as one of five does, as a namesake's banner reads it
@@ -303,7 +304,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     director("Konwicki Salto", salto.copy(directors = Some(Seq("Jan Kowalski")))) shouldBe Missing("listing")
     director("Konwicki Salto Mortale", salto) shouldBe Missing("listing")
     director("Salto", salto) shouldBe Missing("listing")
-    val credited = Listing("Konwicki Salto", directors = Seq("Jan Kowalski"))
+    val credited = MeasuredListing("Konwicki Salto", directors = Seq("Jan Kowalski"))
     IdentityMeasures.creditedByTitle(credited, salto, measures(credited, salto))("director") should not be Category("same_person")
   }
 
@@ -312,7 +313,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a venue's own text naming a director whole" should "credit the film it names, and discredit no other" in {
     val hope     = Film("Hope", year = Some(2019), directors = Some(Seq("Maria Sødahl")))
     val namesake = Film("Hope", year = Some(2026), directors = Some(Seq("Na Hong-jin")))
-    def director(text: String, f: Film, l: Listing = Listing("Hope"), pool: Seq[Film] = Seq(hope, namesake)) = {
+    def director(text: String, f: Film, l: MeasuredListing = MeasuredListing("Hope"), pool: Seq[Film] = Seq(hope, namesake)) = {
       val names = VenueNames.of(Seq(text))
       IdentityMeasures.creditedByText(f, IdentityMeasures.textNamedDirectors(l, names.names, pool), measures(l, f))("director")
     }
@@ -324,7 +325,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     director(described, namesake) shouldBe Missing("listing")
     val rocky  = Film("Rocky", year = Some(1976), directors = Some(Seq("John G. Avildsen")))
     val sequel = Film("Rocky II", year = Some(1979), directors = Some(Seq("Sylvester Stallone")))
-    director("Sylvester Stallone stars as Rocky Balboa.", rocky, Listing("Rocky 50th Anniversary"), Seq(rocky, sequel)) shouldBe Missing("listing")
+    director("Sylvester Stallone stars as Rocky Balboa.", rocky, MeasuredListing("Rocky 50th Anniversary"), Seq(rocky, sequel)) shouldBe Missing("listing")
     // a surname alone says nothing
     director("La historia de Sødahl.", hope) shouldBe Missing("listing")
     director("La historia de Sødahl.", namesake) shouldBe Missing("listing")
@@ -332,11 +333,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // INFECTIOUS", whom IMDb credits as director of an earlier special, takes nothing from this one
     val special   = Film("Infectious", directors = Some(Seq("Jim Hare")))
     val earlier   = Film("Nurse Georgie Carroll: The Gloves Are Off", directors = Some(Seq("Georgie Carroll")))
-    val billed    = Listing("NURSE GEORGIE CARROLL: INFECTIOUS")
+    val billed    = MeasuredListing("NURSE GEORGIE CARROLL: INFECTIOUS")
     val comedian  = VenueNames.of(Seq("Award winning comedian and NHS nurse Georgie Carroll is back on tour."))
     IdentityMeasures.textNamedDirectors(billed, comedian.names, Seq(special, earlier)) shouldBe empty
     // a listing crediting a director of its own keeps its own credit
-    val credited = Listing("Hope", directors = Seq("Na Hong-jin"))
+    val credited = MeasuredListing("Hope", directors = Seq("Na Hong-jin"))
     director(described, namesake, credited) shouldBe Category("same_person")
     director(described, hope, credited) should not be Category("same_person")
   }
@@ -344,19 +345,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // DE Eulenspiegel's "King Kong" (Cineamo 244m, German premiere 1933-12-01): since f5784855d an old premiere states no
   // year, and the listing took the 2005 remake. The premiere still bounds the film: none premieres before it is made.
   "a year upper bound" should "weigh as the year it bounds against a film released after it, and only there" in {
-    val bounded = Listing("King Kong", yearUpperBound = Some(1933))
+    val bounded = MeasuredListing("King Kong", yearUpperBound = Some(1933))
     measures(bounded, Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(-72)
     measures(bounded, Film("King Kong", year = Some(2005)))("year.distance") shouldBe Number(72)
     // a film from before the bound's year is no match by it, only not ruled out: no year-equality reward
-    measures(Listing("Rope", yearUpperBound = Some(1963)), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Rope", yearUpperBound = Some(1963)), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
     measures(bounded, Film("King Kong", year = Some(1932)))("year.delta") shouldBe Missing("listing")
     // the film made the premiere's very year is read as of the stated year: DE "Der kleine Prinz" (Cineamo 334199m,
     // premiered 1972) is the 1972 film, not the 1962 or the 1974 namesake
     measures(bounded, Film("King Kong", year = Some(1933)))("year.delta") shouldBe Number(0)
-    measures(Listing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1972)))("year.distance") shouldBe Number(0)
-    measures(Listing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1962)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1972)))("year.distance") shouldBe Number(0)
+    measures(MeasuredListing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1962)))("year.delta") shouldBe Missing("listing")
     // a year past the premiere by the adjacency a festival premiere is dated by, and a release TMDB dates by it, are no contradiction
-    measures(Listing("Momo", yearUpperBound = Some(2024)), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Momo", yearUpperBound = Some(2024)), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
     measures(bounded, Film("King Kong", year = Some(2005), releases = Some("DE1933-")))("year.delta") shouldBe Missing("listing")
     // a year the listing states is its own evidence, the bound unread
     measures(bounded.copy(year = Some(2005)), Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(0)
@@ -367,29 +368,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // 104 minutes, from its own source -- was 18 years past it (year.delta -6.85, the cannot-link cut at 16.5%).
   "a year upper bound" should "state nothing against a film another venue's own facts back" in {
     val close = Film("Close", year = Some(2022))
-    def corroborated(venues: Int) = IdentityMeasures.listingFilm(Listing("Close", yearUpperBound = Some(2004)), close, None, 0, venues)
+    def corroborated(venues: Int) = IdentityMeasures.listingFilm(MeasuredListing("Close", yearUpperBound = Some(2004)), close, None, 0, venues)
     corroborated(0)("year.delta") shouldBe Number(-18)
     corroborated(1)("year.delta") shouldBe Missing("listing")
     corroborated(1)("year.distance") shouldBe Missing("listing")
     // the year a listing states is its own fact, whoever backs another film
-    IdentityMeasures.listingFilm(Listing("Close", year = Some(2004)), close, None, 0, 1)("year.delta") shouldBe Number(-18)
+    IdentityMeasures.listingFilm(MeasuredListing("Close", year = Some(2004)), close, None, 0, 1)("year.delta") shouldBe Number(-18)
   }
 
   // ES Cines Bulevar's "Drácula. 30 Aniversario" (review answer: Coppola's 1992 film), its original title "Bram Stoker's
   // Dracula 30th Anniversary": the anniversary and the possessive credit are searched without in the original title too
   "an anniversary re-release's original title" should "be searched without its anniversary" in {
-    IdentityMeasures.searchQueries(Listing("Drácula. 30 Aniversario", originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Drácula. 30 Aniversario", originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))) should
       contain ("Bram Stoker's Dracula")
   }
 
   it should "read the year it states as the anniversary's: the film's year that many years before, no other film's" in {
     val dracula = Film("Bram Stoker's Dracula", year = Some(1992))
-    val billed  = Listing("Drácula. 30 Aniversario", year = Some(2022), originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))
+    val billed  = MeasuredListing("Drácula. 30 Aniversario", year = Some(2022), originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))
     measures(billed, dracula)("year.delta") shouldBe Missing("listing")
-    measures(Listing("Dracula 30th Anniversary", year = Some(2022)), dracula)("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Dracula 30th Anniversary", year = Some(2022)), dracula)("year.delta") shouldBe Missing("listing")
     // a year that is not the anniversary's stays the listing's fact
     measures(billed, dracula.copy(year = Some(2010)))("year.delta") shouldBe Number(12)
-    measures(Listing("Dracula", year = Some(2022)), dracula)("year.delta") shouldBe Number(30)
+    measures(MeasuredListing("Dracula", year = Some(2022)), dracula)("year.delta") shouldBe Number(30)
   }
 
   // prod DE 2026-10-13 (identity take change log): Apollo Aachen's "Der mit dem Wolf tanzt (35-jähriges Jubiläum)",
@@ -399,37 +400,37 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val wolves = Film("Der mit dem Wolf tanzt", year = Some(1990), originalTitle = Some("Dances with Wolves"))
     Seq("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", "Der mit dem Wolf tanzt (35- jähriges Jubiläum)",
         "Der mit dem Wolf tanzt - 35. Jubiläum", "Danse avec les loups (35e anniversaire)", "Tańczący z wilkami - 35. rocznica").foreach { t =>
-      withClue(t) { measures(Listing(t, year = Some(2026)), wolves)("year.delta") shouldBe Missing("listing") }
+      withClue(t) { measures(MeasuredListing(t, year = Some(2026)), wolves)("year.delta") shouldBe Missing("listing") }
     }
     // a number beside no anniversary word, or a year not the anniversary's, stays the listing's fact
-    measures(Listing("Der mit dem Wolf tanzt (35 Jahre)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
-    measures(Listing("Der mit dem Wolf tanzt (20-jähriges Jubiläum)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
+    measures(MeasuredListing("Der mit dem Wolf tanzt (35 Jahre)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
+    measures(MeasuredListing("Der mit dem Wolf tanzt (20-jähriges Jubiläum)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
     // a re-release TMDB dates in the year stated is the year's own evidence: the anniversary never takes it away
-    measures(Listing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026)), wolves.copy(releases = Some("DE1991-DE2026-")))(
+    measures(MeasuredListing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026)), wolves.copy(releases = Some("DE1991-DE2026-")))(
       "year.delta") shouldBe Number(0)
   }
 
   it should "date two listings of one re-release alike, one by the screening's year and one by the film's" in {
-    val reRelease = Listing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026))
-    val original  = Listing("DER MIT DEM WOLF TANZT (35-JÄHRIGES JUBILÄUM)", year = Some(1991))
+    val reRelease = MeasuredListing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026))
+    val original  = MeasuredListing("DER MIT DEM WOLF TANZT (35-JÄHRIGES JUBILÄUM)", year = Some(1991))
     IdentityMeasures.listingListing(reRelease, original, sameVenue = false, None)("year.delta") shouldBe Missing("listing")
     IdentityMeasures.listingListing(original, reRelease, sameVenue = false, None)("year.delta") shouldBe Missing("listing")
     // without an anniversary the 35 years stand
-    IdentityMeasures.listingListing(Listing("Der mit dem Wolf tanzt", year = Some(2026)), original.copy(title = "Der mit dem Wolf tanzt"),
+    IdentityMeasures.listingListing(MeasuredListing("Der mit dem Wolf tanzt", year = Some(2026)), original.copy(title = "Der mit dem Wolf tanzt"),
       sameVenue = false, None)("year.delta") shouldBe Number(35)
   }
 
   // prod US 2026-11-15: Alamo Drafthouse ×15 "The Host: 20th Anniversary", screening in 2026 and stating no year, names
   // Bong Joon-ho's 2006 film and Niccol's 2013 one alike: it stayed BelowThreshold, the anniversary unread
   it should "date a listing stating no year by the year it screens in less the anniversary's, for its film only" in {
-    val host = Listing("The Host: 20th Anniversary", anniversaryScreeningYear = Some(2026))
+    val host = MeasuredListing("The Host: 20th Anniversary", anniversaryScreeningYear = Some(2026))
     val bong = Film("The Host", year = Some(2006))
     measures(host, bong)("year.delta") shouldBe Number(0)
     measures(host, bong)("year.distance") shouldBe Number(0)
     measures(host, bong.copy(year = Some(2007)))("year.delta") shouldBe Number(-1)
     // a re-release tours into the year after its anniversary: DE Filmpalette's "LA HAINE (30TH ANNIVERSARY)", screening
     // in 2026, is Kassovitz's 1995 film, read as dated, not as a year early (a `year.delta` of 1 weighs against a film)
-    val laHaine = Listing("LA HAINE (30TH ANNIVERSARY)", anniversaryScreeningYear = Some(2026))
+    val laHaine = MeasuredListing("LA HAINE (30TH ANNIVERSARY)", anniversaryScreeningYear = Some(2026))
     measures(laHaine, Film("La Haine", year = Some(1995)))("year.delta") shouldBe Number(0)
     measures(laHaine, Film("La Haine", year = Some(1995)))("year.distance") shouldBe Number(0)
     measures(laHaine, Film("La Haine", year = Some(1996)))("year.delta") shouldBe Number(0)
@@ -439,8 +440,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(host, Film("The Host", year = Some(2013)))("year.delta") shouldBe Missing("listing")
     // a year the listing states is its own fact, and a listing billing no anniversary is dated by nothing
     measures(host.copy(year = Some(2013)), bong)("year.delta") shouldBe Number(7)
-    measures(Listing("The Host", anniversaryScreeningYear = Some(2026)), bong)("year.delta") shouldBe Missing("listing")
-    measures(Listing("The Host: 20th Anniversary"), bong)("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("The Host", anniversaryScreeningYear = Some(2026)), bong)("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("The Host: 20th Anniversary"), bong)("year.delta") shouldBe Missing("listing")
   }
 
   "a season a broadcast names" should "be read as its own measure, in every spelling, and never as a bracketed year" in {
@@ -448,14 +449,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Seq("Samson i dalila | metropolitan opera: live in hd 2026/27", "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",
         "Met Opera 2026-27: Samson et Dalila", "Samson i Dalila (sezon 2026/27)", "Sezon 2026-2027 - Samson i Dalila").foreach { t =>
       withClue(t) {
-        val m = measures(Listing(t), film)
+        val m = measures(MeasuredListing(t), film)
         m("season.delta") shouldBe Number(-77)
         m("titleYear.delta") shouldBe Missing("listing")
       }
     }
     // Not a season: consecutive digits of one number, a year range that is not one season apart.
-    measures(Listing("Blade Runner 2049"), film)("season.delta") shouldBe Missing("listing")
-    measures(Listing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Blade Runner 2049"), film)("season.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
   }
 
   it should "be read in a box office's short spellings" in {
@@ -466,7 +467,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // nor two numbers a slash joins, never a season the title states: an age band, a date, and a banner left from the
     // season it was first billed in — DE "Berliner Philharmoniker 25/26" screens the 2026 Silvesterkonzert on 31 December
     // 2026, and read as season 2025 it held ×73 spellings of the concert apart (identity measure, recording 38363428661).
-    // A relay's "RB&O 26/27" takes its season from its screenings ([[IdentityMeasures.Listing.broadcastSeason]]).
+    // A relay's "RB&O 26/27" takes its season from its screenings ([[MeasuredListing.broadcastSeason]]).
     TitleSeason.of(Seq("Berliner Philharmoniker 25/26: Silvesterkonzert")) shouldBe None
     TitleSeason.of(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe None
     TitleSeason.of(Seq("Kids Club 12/13")) shouldBe None
@@ -478,138 +479,138 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // PL venues bill the RBO's 2026/27 season in Polish: "Dziadek do orzechów" is the record's "The Nutcracker"
     // (Wikidata Q193705, StageWorks), as "Jezioro łabędzie" is Swan Lake — not The Nutcracker
     val nutcracker = Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026))
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
     // one work, another house: PL "Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie" ×16 is the Paris Opera Ballet's
     // Swan Lake, which TMDB has no record of — not the Royal Ballet's (recording 37116030016 took it)
     val rboSwanLake = Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2026))
-    StageRelays.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
+    StageRelays.namesSeasonProduction(MeasuredListing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
     // nor by the art form both houses' names carry: DE "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal
     // Ballet's 2026/27 record by "opera" (identity measure on recording 38363428661)
-    StageRelays.namesSeasonProduction(Listing("Opera de Paris: Romeo et Juliette (2026/27)"),
+    StageRelays.namesSeasonProduction(MeasuredListing("Opera de Paris: Romeo et Juliette (2026/27)"),
       Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", originalTitle = Some("Royal Ballet & Opera 2026/27: Romeo and Juliet"),
         year = Some(2027))) shouldBe false
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
-    StageRelays.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
+    StageRelays.namesSeasonProduction(MeasuredListing("OPERA 2026/2027 - MAKBET"),
       Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe true
     // Wheeldon's Alice, under five sitelinks, from the extra; a work's name running on into a translated subtitle
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów"),
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów"),
       Film("Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", year = Some(2027))) shouldBe true
-    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
+    StageRelays.namesSeasonProduction(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte", year = Some(2027))) shouldBe true
     // and is searched for by its own name in the season, not only by the whole subtitled piece
-    IdentityMeasures.searchQueries(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie")) should
+    IdentityMeasures.searchQueries(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie")) should
       contain ("Così fan tutte 2026")
     // a venue's spelling Wikidata lacks, from the hand-kept extra: "Zaczarowany flet" is The Magic Flute
-    StageRelays.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
+    StageRelays.namesSeasonProduction(MeasuredListing("OPERA 2026/2027 - ZACZAROWANY FLET"),
       Film("The Metropolitan Opera 2026/27: The Magic Flute", year = Some(2026))) shouldBe true
   }
 
   "a film record of a broadcast's season production" should "be a segment of the listing's title, and only for a film" in {
-    val met = Listing("Met Opera 2026-27: Samson et Dalila")
+    val met = MeasuredListing("Met Opera 2026-27: Samson et Dalila")
     val record = Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026))
     StageRelays.namesSeasonProduction(met, record) shouldBe true
     IdentityMeasures.titleRelation(met, record) shouldBe Category("segment")
-    StageRelays.namesSeasonProduction(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27"),
+    StageRelays.namesSeasonProduction(MeasuredListing("Samson i dalila | metropolitan opera: live in hd 2026/27"),
       record.copy(alternativeTitles = Seq("The Metropolitan Opera 2026/27: Samson i Dalila"))) shouldBe true
     // Another season, another work of the season, or no season on one side: not its production.
     IdentityMeasures.titleRelation(met, record.copy(title = "The Metropolitan Opera 2025/26: Samson et Dalila")) shouldBe Category("overlap")
     StageRelays.namesSeasonProduction(met, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
-    StageRelays.namesSeasonProduction(Listing("Samson et Dalila"), record) shouldBe false
+    StageRelays.namesSeasonProduction(MeasuredListing("Samson et Dalila"), record) shouldBe false
     // Two listings' banners do not say which house staged the work: the Met's and the RBO's
     // "Carmen" of one season are not one production by title.
-    IdentityMeasures.listingListing(Listing("Met Opera 2026-27: Carmen"), Listing("RBO Cinema Season 2026-27: Carmen"),
+    IdentityMeasures.listingListing(MeasuredListing("Met Opera 2026-27: Carmen"), MeasuredListing("RBO Cinema Season 2026-27: Carmen"),
       sameVenue = false, sharedChainId = None)("title") shouldBe Category("overlap")
   }
 
   "a house's record of a work" should "be a segment of a listing spelling it with a bracket year instead of the season" in {
     // US venues list the Met's 2026/27 season as "The Metropolitan Opera: Manon (2027)"; TMDB files
     // it as "The Metropolitan Opera 2026/27: Manon". Neither year is part of how the house bills it.
-    IdentityMeasures.titleRelation(Listing("The Metropolitan Opera: Manon (2027)"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("The Metropolitan Opera: Manon (2027)"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
       Category("segment")
-    IdentityMeasures.titleRelation(Listing("The Metropolitan Opera: Così fan tutte (2026)"),
+    IdentityMeasures.titleRelation(MeasuredListing("The Metropolitan Opera: Così fan tutte (2026)"),
       Film("The Metropolitan Opera 2026/27: Così fan tutte")) shouldBe Category("segment")
     // Another work of the house is not.
-    IdentityMeasures.titleRelation(Listing("The Metropolitan Opera: Manon (2027)"), Film("The Metropolitan Opera 2026/27: Otello")) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("The Metropolitan Opera: Manon (2027)"), Film("The Metropolitan Opera 2026/27: Otello")) shouldBe
       Category("overlap")
   }
 
   "a season production" should "be searched by its work and its season, which is how the database finds a house it spells otherwise" in {
-    IdentityMeasures.searchQueries(Listing("RBO Cinema Season 2026-27: Manon")) should contain ("Manon 2026")
-    IdentityMeasures.searchQueries(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27")) should contain ("Samson i dalila 2026")
-    IdentityMeasures.searchQueries(Listing("NT Live: Manon")).exists(_.contains("20")) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("RBO Cinema Season 2026-27: Manon")) should contain ("Manon 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Samson i dalila | metropolitan opera: live in hd 2026/27")) should contain ("Samson i dalila 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("NT Live: Manon")).exists(_.contains("20")) shouldBe false
     // Only the title naming the season asks, and a bracketed year is no part of the work.
-    val cleaned = Listing("The Metropolitan Opera: Manon (2027)", rawTitle = Some("Met Opera 2026-27: Manon (2027)"))
+    val cleaned = MeasuredListing("The Metropolitan Opera: Manon (2027)", rawTitle = Some("Met Opera 2026-27: Manon (2027)"))
     // ("Manon" names Massenet's opera and MacMillan's ballet, whose own name is asked beside it)
     IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026", "L'histoire de Manon 2026", "Manon Lescaut 2026")
   }
   it should "be searched by its work and the year its title or banner dates it" in {
     // DE "RBO live 2027: Tosca": the relay's record reads the banner's year, so the search must ask it too, or the house's
     // 2026/27 record never reaches the pool
-    IdentityMeasures.searchQueries(Listing("RBO live 2027: Tosca")) should contain ("Tosca 2027")
-    IdentityMeasures.searchQueries(Listing("Royal Opera: Tosca (2027)")) should contain ("Tosca 2027")
+    IdentityMeasures.searchQueries(MeasuredListing("RBO live 2027: Tosca")) should contain ("Tosca 2027")
+    IdentityMeasures.searchQueries(MeasuredListing("Royal Opera: Tosca (2027)")) should contain ("Tosca 2027")
   }
 
 
   it should "be searched by every name of its work, whatever language the venue names it in" in {
     // TMDB titles the Met's record "The Metropolitan Opera 2026/27: Samson et Dalila": neither "Samson i dalila 2026"
     // nor the English "Samson and Delilah 2026" finds it
-    IdentityMeasures.searchQueries(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27")) should contain ("Samson et Dalila 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Samson i dalila | metropolitan opera: live in hd 2026/27")) should contain ("Samson et Dalila 2026")
     // the work named within a piece: after its composer (DE), before the venue's tag (PL)
-    IdentityMeasures.searchQueries(Listing("Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA")) should contain ("Samson et Dalila 2026")
-    IdentityMeasures.searchQueries(Listing("OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA")) should contain ("Samson et Dalila 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA")) should contain ("Samson et Dalila 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA")) should contain ("Samson et Dalila 2026")
   }
 
   "a stage work billed with neither its season nor a year" should "be searched by its work's names and the season it is broadcast in" in {
     // PL Kino Amok's "Samson i Dalila", Kino Powiśle's "OPERA-MAKBET - retransmisja", screening in the 2026/27 season
-    IdentityMeasures.searchQueries(Listing("Samson i Dalila", broadcastSeason = Some(2026))) should contain allOf ("Samson et Dalila 2026", "Samson and Delilah 2026")
-    IdentityMeasures.searchQueries(Listing("Opera-makbet - retransmisja", broadcastSeason = Some(2026))) should contain ("Macbeth 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Samson i Dalila", broadcastSeason = Some(2026))) should contain allOf ("Samson et Dalila 2026", "Samson and Delilah 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Opera-makbet - retransmisja", broadcastSeason = Some(2026))) should contain ("Macbeth 2026")
     // with no broadcast season, no season is searched
-    IdentityMeasures.searchQueries(Listing("Samson i Dalila")).exists(_.endsWith(" 2026")) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("Samson i Dalila")).exists(_.endsWith(" 2026")) shouldBe false
     // a work only contained mid-title, or opening a title naming no season, is no stage work billed: "Manon des sources"
-    IdentityMeasures.searchQueries(Listing("Manon des sources", broadcastSeason = Some(2026))).exists(_.endsWith(" 2026")) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("Manon des sources", broadcastSeason = Some(2026))).exists(_.endsWith(" 2026")) shouldBe false
   }
 
   "a double bill" should "search each work on its own" in {
     // PL Kinoteka's "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi": TMDB finds
     // no record by the whole bill, so the one its first work names was never a candidate, and the
     // series director's walk handed it another Basia film.
-    val bill = IdentityMeasures.searchQueries(Listing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi"))
+    val bill = IdentityMeasures.searchQueries(MeasuredListing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi"))
     bill should contain allOf ("Basia. Humor w paski mam", "Kocia Szajka. Tajemnica zniknięcia śledzi")
     // Only a spaced "+" joins works: "Romeo+Juliet" is one title.
-    IdentityMeasures.searchQueries(Listing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo+Juliet")) shouldBe Seq("Romeo+Juliet")
   }
 
   "a title dating itself in a bracket" should "also be searched by what precedes the year" in {
     // PL Kino Kosmos's "Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K": TMDB answers nothing
     // for "Człowiek z żelaza (1981)" or its "… 4K", and finds Wajda's film for the bare title — a
     // search is asked without a year, the year being measured apart.
-    IdentityMeasures.searchQueries(Listing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K")) should contain ("Człowiek z żelaza")
-    IdentityMeasures.searchQueries(Listing("Krzyżacy [1960]")) should contain ("Krzyżacy")
+    IdentityMeasures.searchQueries(MeasuredListing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K")) should contain ("Człowiek z żelaza")
+    IdentityMeasures.searchQueries(MeasuredListing("Krzyżacy [1960]")) should contain ("Krzyżacy")
     // …and that part is a whole piece of the title, naming the film as a banner segment does: the
     // "4K" after the year left Wajda's film only an overlap (−3.95), rejected at 11.7%.
-    IdentityMeasures.titleRelation(Listing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K"), Film("Człowiek z żelaza")) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K"), Film("Człowiek z żelaza")) shouldBe
       Category("segment")
     // A bracket that is not a year stays the title's: "Kura (Mała Sala)" asks nothing new.
-    IdentityMeasures.searchQueries(Listing("Kura (Mała Sala)")).exists(q => !q.contains("Kura")) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("Kura (Mała Sala)")).exists(q => !q.contains("Kura")) shouldBe false
     // Nor does a year with nothing before it name a title.
-    IdentityMeasures.searchQueries(Listing("(2026)")).exists(_.isEmpty) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("(2026)")).exists(_.isEmpty) shouldBe false
   }
 
   "a title crediting its director and dating an anniversary" should "also be searched without them" in {
     // US Showcase ×6 "Guillermo del Toro's Pan's Labyrinth 20th Anniversary": TMDB's search finds no
     // record by the whole title, and none of its pieces is one.
-    IdentityMeasures.searchQueries(Listing("Guillermo del Toro's Pan's Labyrinth 20th Anniversary")) should contain ("Pan's Labyrinth")
-    IdentityMeasures.searchQueries(Listing("Rocky 50th Anniversary")) should contain ("Rocky")
+    IdentityMeasures.searchQueries(MeasuredListing("Guillermo del Toro's Pan's Labyrinth 20th Anniversary")) should contain ("Pan's Labyrinth")
+    IdentityMeasures.searchQueries(MeasuredListing("Rocky 50th Anniversary")) should contain ("Rocky")
     // A one-word possessive is the title's own ("Schindler's List"), never a credit.
-    IdentityMeasures.searchQueries(Listing("Schindler's List")) shouldBe Seq("Schindler's List")
+    IdentityMeasures.searchQueries(MeasuredListing("Schindler's List")) shouldBe Seq("Schindler's List")
   }
 
   "a title" should "name the same work with or without a possessive" in {
     // UK Odeon's "Andre Rieu 2026 Christmas Concert: Let it Snow" ×76 was only an overlap of TMDB's
     // "Andre Rieu's 2026 Christmas Concert Let It Snow", and vetoed it for want of other facts.
-    IdentityMeasures.titleRelation(Listing("Andre Rieu 2026 Christmas Concert: Let it Snow"),
+    IdentityMeasures.titleRelation(MeasuredListing("Andre Rieu 2026 Christmas Concert: Let it Snow"),
       Film("Andre Rieu's 2026 Christmas Concert Let It Snow")) shouldBe Category("exact")
     // Only after an apostrophe, straight or curly; a word ending in "s" keeps it.
     IdentityMeasures.withoutPossessives("Andre Rieu’s Let's Go Pops") shouldBe "Andre Rieu Let Go Pops"
@@ -617,13 +618,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a title containing another" should "say which way: the listing decorates the film, or is a fragment of a longer title" in {
-    IdentityMeasures.titleRelation(Listing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
-    IdentityMeasures.titleRelation(Listing("It"), Film("It Ends with Us")) shouldBe Category("fragment")
+    IdentityMeasures.titleRelation(MeasuredListing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
+    IdentityMeasures.titleRelation(MeasuredListing("It"), Film("It Ends with Us")) shouldBe Category("fragment")
     // …also behind a programme banner: UK "Horror Season 2026 Manhunter: The Final Cut" ×81 was only an
     // overlap of "Manhunter" — the banner-free shape decorates it with an edition label — and was vetoed.
     val season = TitleDecorations(Set(Seq("horror", "season", "2026")), Set.empty)
     // Since its edition is read off as one (2026-11-01, `editionHead`), "Manhunter" is a whole piece of it: a segment.
-    IdentityMeasures.titleRelation(Listing("Horror Season 2026 Manhunter: The Final Cut", decorations = season), Film("Manhunter")) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("Horror Season 2026 Manhunter: The Final Cut", decorations = season), Film("Manhunter")) shouldBe
       Category("segment")
     // Its original title decorates the film on both sides: a director's possessive before, an edition after.
     IdentityMeasures.originalTitleRelation(Some("Michael Mann's Manhunter: The Final Cut"), Seq("Manhunter")) shouldBe Category("decorated")
@@ -650,33 +651,33 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "own agreement" should "count a bracketed year that matches, and deny only on a published year" in {
-    IdentityMeasures.ownAgreement(measures(Listing("It (1990)"), Film("It", year = Some(1990))))._1 should contain ("year")
-    IdentityMeasures.ownAgreement(measures(Listing("Toy Story (2026)"), Film("Toy Story", year = Some(1995))))._2 should not contain ("year")
-    IdentityMeasures.ownAgreement(measures(Listing("Toy Story", year = Some(2026)), Film("Toy Story", year = Some(1995))))._2 should contain ("year")
+    IdentityMeasures.ownAgreement(measures(MeasuredListing("It (1990)"), Film("It", year = Some(1990))))._1 should contain ("year")
+    IdentityMeasures.ownAgreement(measures(MeasuredListing("Toy Story (2026)"), Film("Toy Story", year = Some(1995))))._2 should not contain ("year")
+    IdentityMeasures.ownAgreement(measures(MeasuredListing("Toy Story", year = Some(2026)), Film("Toy Story", year = Some(1995))))._2 should contain ("year")
   }
 
   "a published year beside the same director" should "date a screening, not the film, when it denies the film" in {
     val devils = Film("Diabły", year = Some(1971), directors = Some(Seq("Ken Russell")))
-    val screened = measures(Listing("Diabły", year = Some(2026), directors = Seq("Ken Russell")), devils)
+    val screened = measures(MeasuredListing("Diabły", year = Some(2026), directors = Seq("Ken Russell")), devils)
     IdentityMeasures.PublishedYear.foreach(m => screened(m) shouldBe IdentityMeasures.MissingListing)
     // A title that does not name the film leaves the year a fact: it tells the director's films
     // apart (KINOMUZEUM's 2026 "Błotem w twarz" is Jaak Kilmi's 2026 film, not his 2017 "Sangarid").
-    measures(Listing("Błotem w twarz", year = Some(2026), directors = Seq("Jaak Kilmi")),
+    measures(MeasuredListing("Błotem w twarz", year = Some(2026), directors = Seq("Jaak Kilmi")),
       Film("Sangarid", year = Some(2017), directors = Some(Seq("Jaak Kilmi"))))("year.delta") shouldBe Number(9)
     // Nor does a title that only starts with the film's ("Basia. Humor w paski mam + Kocia Szajka…"
     // beside Wasilewski's 2018 "Basia"): it is not the film's title, so the year is not its screening.
-    measures(Listing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", year = Some(2026),
+    measures(MeasuredListing("Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", year = Some(2026),
       directors = Seq("Marcin Wasilewski")), Film("Basia", year = Some(2018), directors = Some(Seq("Marcin Wasilewski"))))("year.delta") shouldBe Number(8)
     // Agreeing, it stays the fact it is; beside another director, a year decades off denies.
-    measures(Listing("Diabły", year = Some(1971), directors = Seq("Ken Russell")), devils)("year.delta") shouldBe Number(0)
-    measures(Listing("Diabły", year = Some(2026), directors = Seq("Someone Else")), devils)("year.delta") shouldBe Number(55)
-    measures(Listing("Diabły", year = Some(2026)), devils)("year.delta") shouldBe Number(55)
+    measures(MeasuredListing("Diabły", year = Some(1971), directors = Seq("Ken Russell")), devils)("year.delta") shouldBe Number(0)
+    measures(MeasuredListing("Diabły", year = Some(2026), directors = Seq("Someone Else")), devils)("year.delta") shouldBe Number(55)
+    measures(MeasuredListing("Diabły", year = Some(2026)), devils)("year.delta") shouldBe Number(55)
   }
 
   "venues corroborating a film" should "count only venues whose own title names it, not every venue crediting its director" in {
     // 237 Regal venues list "Candyman (1992)" by Bernard Rose: they back his Candyman, but not
     // every other film the director walk turns up — a director alone does not pick his film.
-    val group = (1 to 5).map(i => s"Venue $i" -> Listing("Candyman (1992)", directors = Seq("Bernard Rose")))
+    val group = (1 to 5).map(i => s"Venue $i" -> MeasuredListing("Candyman (1992)", directors = Seq("Bernard Rose")))
     val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
     val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
     val backing  = new VenueBacking(Map("candyman" -> group))
@@ -688,7 +689,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // US Burns Court Sarasota and Film Streams Omaha read ONE Flicks page for "NT Live: Hamlet", its 2015 year
     // Cumberbatch's: Film Streams is no second venue dating it so
     val page   = SourceReliability.pageClaim("https://www.flicks.us/movie/nt-live-hamlet/").get
-    val hamlet = Listing("NT Live: Hamlet", year = Some(2015))
+    val hamlet = MeasuredListing("NT Live: Hamlet", year = Some(2015))
     val group  = Seq(Backer("Burns Court", page) -> hamlet, Backer("Film Streams", page) -> hamlet, Backer("Another", page) -> hamlet,
       "The Loft" -> hamlet)
     val backing = new VenueBacking(Map("ntlivehamlet" -> group))
@@ -701,11 +702,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val films = Seq(Film("Candyman", year = Some(2021), directors = Some(Seq("Nia DaCosta"))),
       Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose"))), Film("Candy", year = Some(2006)))
     val group = (1 to 12).map { i =>
-      s"Venue ${i % 5}" -> Listing(if (i % 4 == 0) "Candyman (1992)" else "Candyman", year = Option.when(i % 3 == 0)(if (i % 2 == 0) 2021 else 1992),
+      s"Venue ${i % 5}" -> MeasuredListing(if (i % 4 == 0) "Candyman (1992)" else "Candyman", year = Option.when(i % 3 == 0)(if (i % 2 == 0) 2021 else 1992),
         directors = if (i % 5 == 1) Seq("Nia DaCosta") else Nil)
     }
     val backing = new VenueBacking(Map("candyman" -> group))
-    for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
+    for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> MeasuredListing("Candyman")))
       withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe
         new VenueBacking(Map("candyman" -> group)).corroborating(Seq("candyman"), f, venue))
   }
@@ -713,7 +714,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   it should "read a group's backing of a film once, however many of its members ask, and count as the sets did" in {
     // a title billed at 300 venues, kept spellings among them: every member scored against the film asked the whole group
     val page   = SourceReliability.pageClaim("https://www.flicks.us/movie/nt-live-hamlet/").get
-    val hamlet = Listing("NT Live: Hamlet", year = Some(2015))
+    val hamlet = MeasuredListing("NT Live: Hamlet", year = Some(2015))
     val group  = (1 to 300).map(i => s"Venue $i" -> hamlet) ++ Seq(Backer("Burns Court", page) -> hamlet, Backer("Film Streams", page) -> hamlet)
     val film   = Film("National Theatre Live: Hamlet", year = Some(2015))
     val backing = new VenueBacking(Map("ntlivehamlet" -> group, "hamlet" -> Seq("Venue 7" -> hamlet, "Venue 900" -> hamlet)))
@@ -728,7 +729,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   it should "count nothing for a title group no venue lists" in {
     // PL, a decorated "Pucio ... 2D DUB" whose undecorated title no other venue lists bare: its
     // undecorated group is empty, not missing (the calibration's refit threw on it).
-    val decorated = Listing("Pucio 2D DUB", decorations = TitleDecorations(Set.empty, Set(Seq("2d", "dub"))))
+    val decorated = MeasuredListing("Pucio 2D DUB", decorations = TitleDecorations(Set.empty, Set(Seq("2d", "dub"))))
     val groups    = IdentityMeasures.titleGroups(decorated)
     groups should contain (IdentityMeasures.key("Pucio"))
     val backing = new VenueBacking(Map(IdentityMeasures.key(decorated.title) -> Seq("Kino 1" -> decorated)))
@@ -736,13 +737,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a title's billing" should "be the work two titles share and how each spells its house, and a banner's house the one most of its works name" in {
-    StageRelays.billing(Listing("RBO Cinema Season 2026-27: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
+    StageRelays.billing(MeasuredListing("RBO Cinema Season 2026-27: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
       Some(Billing(Seq("rbo", "cinema", "season"), Seq("the", "metropolitan", "opera"), "manon"))
-    StageRelays.billing(Listing("NT Live: Les Liaisons Dangereuses (2025)"), Film("National Theatre Live: Les Liaisons Dangereuses")) shouldBe
+    StageRelays.billing(MeasuredListing("NT Live: Les Liaisons Dangereuses (2025)"), Film("National Theatre Live: Les Liaisons Dangereuses")) shouldBe
       Some(Billing(Seq("nt", "live"), Seq("national", "theatre", "live"), "lesliaisonsdangereuses"))
     // The work alone on either side bills no house.
-    StageRelays.billing(Listing("Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe None
-    StageRelays.billing(Listing("Throwback: Manon"), Film("Manon")) shouldBe None
+    StageRelays.billing(MeasuredListing("Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe None
+    StageRelays.billing(MeasuredListing("Throwback: Manon"), Film("Manon")) shouldBe None
     def b(banner: String, house: String, work: String) = Billing(Seq(banner), Seq(house), work)
     val houses = Houses.learn(Seq(b("rbo", "royal", "swanlake"), b("rbo", "royal", "alice"), b("rbo", "met", "manon"), b("rbo", "royal", "swanlake"),
       b("met", "met", "manon"), b("met", "met", "otello"), b("tie", "royal", "a"), b("tie", "met", "b"), b("tie", "royal", "c"), b("tie", "met", "d"),
@@ -775,21 +776,21 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // learned as itself; Flicks' "NT Live: Hay Fever" ×131 then read its own record, "National Theatre Live: Hay Fever",
     // as an overlap, and the director's "National Theatre at Home: Samira" pooled in at 49.9%.
     val learnedAsItself = Houses(Map("ntlive" -> "ntlive"))
-    IdentityMeasures.titleRelation(Listing("NT Live: Hay Fever"), Film("National Theatre Live: Hay Fever"), learnedAsItself) should not be
+    IdentityMeasures.titleRelation(MeasuredListing("NT Live: Hay Fever"), Film("National Theatre Live: Hay Fever"), learnedAsItself) should not be
       Category("overlap")
     // an abbreviation names one house only by its initials, never by a word two houses share
-    IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), learnedAsItself) shouldBe
-      IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
-    IdentityMeasures.titleRelation(Listing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("NT Live: Samira"), Film("National Theatre at Home: Samira"), learnedAsItself) shouldBe
+      IdentityMeasures.titleRelation(MeasuredListing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
+    IdentityMeasures.titleRelation(MeasuredListing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
       Category("overlap")
     // ...nor overrules the house a banner was learned to be: "New Theatre" shares only NT's initials
-    IdentityMeasures.titleRelation(Listing("NT Live: Hay Fever"), Film("New Theatre: Hay Fever"), Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("NT Live: Hay Fever"), Film("New Theatre: Hay Fever"), Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe
       Category("overlap")
   }
 
   "a venue dropping a film's leading article" should "still list the film's exact title — a plain title of three words or more" in {
     // US Metrograph's "Brides of Dracula" {Terence Fisher} read a `fragment` of "The Brides of Dracula" and took Fisher's "Dracula".
-    def rel(l: String, f: String) = IdentityMeasures.titleRelation(Listing(l), Film(f)).value
+    def rel(l: String, f: String) = IdentityMeasures.titleRelation(MeasuredListing(l), Film(f)).value
     rel("Brides of Dracula", "The Brides of Dracula") shouldBe "exact"
     // not a short title: "Spookies" is no more "The Spookies" than any other
     rel("Spookies", "The Spookies") should not be "exact"
@@ -804,15 +805,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Schleinzer}, TMDB's "Rose" (2026) under its Polish title; searched as "Róża", the decorated listing counted
     // none of them — the old pipeline folded it by that search key.
     val rose     = Film("Rose", year = Some(2026), alternativeTitles = Seq("Róża"), directors = Some(Seq("Markus Schleinzer")))
-    val konesera = Listing("Kino Konesera: Róża", searchTitles = Seq("Róża"))
+    val konesera = MeasuredListing("Kino Konesera: Róża", searchTitles = Seq("Róża"))
     IdentityMeasures.searchGroups(konesera, rose) shouldBe Seq("roza")
-    val plain   = Seq("Rialto", "Apollo").map(venue => venue -> Listing("Róża", year = Some(2026), directors = Seq("Markus Schleinzer")))
+    val plain   = Seq("Rialto", "Apollo").map(venue => venue -> MeasuredListing("Róża", year = Some(2026), directors = Seq("Markus Schleinzer")))
     val backing = new VenueBacking(Map("roza" -> plain))
     backing.corroborating(IdentityMeasures.titleGroups(konesera), rose, "Oskard") shouldBe 0
     backing.corroborating(IdentityMeasures.titleGroups(konesera) ++ IdentityMeasures.searchGroups(konesera, rose), rose, "Oskard") shouldBe 2
     // a search form that is no title of the film names no group: "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched
     // as "André Rieu", is not "André Rieu - Love in Maastricht"
-    IdentityMeasures.searchGroups(Listing("ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searchTitles = Seq("André Rieu")),
+    IdentityMeasures.searchGroups(MeasuredListing("ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searchTitles = Seq("André Rieu")),
       Film("André Rieu - Love in Maastricht", year = Some(2019))) shouldBe Nil
   }
 
@@ -820,9 +821,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK venues list "Royal Ballet and Opera: Così fan tutte" beside TMDB's "Royal Ballet & Opera
     // 2026/27: Così fan tutte"; the Paris Opera's banner, learned as the Met, shares only "opera".
     val houses = Houses(Map("royalballetandopera" -> "royalballetopera", "operanationaldeparis" -> "themetropolitanopera"))
-    StageRelays.billsUnderItsHouse(Listing("Royal Ballet and Opera: Così fan tutte"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("Royal Ballet and Opera: Così fan tutte"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte"), houses) shouldBe true
-    StageRelays.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("Opéra National de Paris: La fanciulla del West"),
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
   }
 
@@ -831,33 +832,33 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.
     val record = Film("National Theatre Live: The Misanthrope", originalTitle = Some("National Theatre Live: The Misanthrope"),
       alternativeTitles = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope"), year = Some(2026), runtime = Some(105))
-    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
+    StageRelays.billsUnderItsHouse(MeasuredListing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
   }
 
   "a title transliterated from another script" should "name the record carrying it in that script" in {
     // Helios lists Oleksii Esakov's Ukrainian film as "Potyag Chervona ruta" (and in Cyrillic with that
     // as its original title); TMDB titles it "Потяг «Червона Рута»".
     val record = Film("Потяг «Червона Рута»", originalTitle = Some("Потяг «Червона Рута»"), year = Some(2026))
-    IdentityMeasures.titleRelation(Listing("Potyag Chervona ruta"), record) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Potyag Chervona ruta"), record) shouldBe Category("exact")
     IdentityMeasures.originalTitleRelation(Some("Potyag Chervona ruta"), Seq(record.title)) shouldBe Category("match")
     // Only the whole title: a transliteration naming another film is not one.
-    IdentityMeasures.titleRelation(Listing("Potyag"), record) should not be Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Potyag"), record) should not be Category("exact")
   }
 
   "a title writing an \"&\" or an \"ß\" the record spells out" should "name the record exactly" in {
     // DE Metropol Stuttgart ×5 billed Georgia Oakley's 2026 "Sinn & Sinnlichkeit", TMDB's "Sinn und Sinnlichkeit": an
     // `overlap`, refused below the cannot-link cut; Kulturzentrum Linse's "DER RHEIN FLIESST INS MITTELMEER" writes in
     // capitals the "ß" of "Der Rhein fließt ins Mittelmeer" (prod 2026-11-01).
-    IdentityMeasures.titleRelation(Listing("Sinn & Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) shouldBe Category("exact")
-    IdentityMeasures.titleRelation(Listing("Music & Lyrics"), Film("Music and Lyrics", year = Some(2007))) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Sinn & Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Music & Lyrics"), Film("Music and Lyrics", year = Some(2007))) shouldBe Category("exact")
     // never the other way: a billing spelling out a record's "&" is read as before (DE FFSBC's "… Agnes und Amir")
-    IdentityMeasures.titleRelation(Listing("Renoir and Love"), Film("Renoir & Love", year = Some(2027))) should not be Category("exact")
-    IdentityMeasures.titleRelation(Listing("DER RHEIN FLIESST INS MITTELMEER"), Film("Der Rhein fließt ins Mittelmeer", year = Some(2023))) shouldBe
+    IdentityMeasures.titleRelation(MeasuredListing("Renoir and Love"), Film("Renoir & Love", year = Some(2027))) should not be Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("DER RHEIN FLIESST INS MITTELMEER"), Film("Der Rhein fließt ins Mittelmeer", year = Some(2023))) shouldBe
       Category("exact")
     // Only the spelling: the "&" joins the same words, or it names another title.
-    IdentityMeasures.titleRelation(Listing("Sinn & Sinnlichkeit"), Film("Sinnlichkeit", year = Some(2026))) should not be Category("exact")
-    IdentityMeasures.titleRelation(Listing("Fast & Furious"), Film("Fast Five", year = Some(2011))) should not be Category("exact")
-    IdentityMeasures.titleRelation(Listing("Sinn Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) should not be Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Sinn & Sinnlichkeit"), Film("Sinnlichkeit", year = Some(2026))) should not be Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Fast & Furious"), Film("Fast Five", year = Some(2011))) should not be Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Sinn Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) should not be Category("exact")
   }
 
   "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
@@ -903,43 +904,43 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a stage house's relay" should "deny a record of another work, in no language its work goes by" in {
-    val macbeth = Listing("MET Opera: Macbeth 2026", originalTitle = Some("The Metropolitan Opera: Eugene Onegin"))
+    val macbeth = MeasuredListing("MET Opera: Macbeth 2026", originalTitle = Some("The Metropolitan Opera: Eugene Onegin"))
     StageRelays.namesAnotherWork(macbeth, Film("MET Opera: Eugen Onegin", Some("The Metropolitan Opera: Eugene Onegin"))) shouldBe true
     StageRelays.namesAnotherWork(macbeth, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
-    val swan = Listing("RBO Live 2026/27: Schwanensee (Royal Ballet)")
+    val swan = MeasuredListing("RBO Live 2026/27: Schwanensee (Royal Ballet)")
     StageRelays.namesAnotherWork(swan, Film("RBO 2026/27: Tosca (The Royal Opera)", Some("Royal Ballet & Opera 2026/27: Tosca"))) shouldBe true
     StageRelays.namesAnotherWork(swan, Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
     // a venue's "On Screen" is how the relay screens, as "im Kino" is, never its work: UK Lowther Pavilion's, screening on
     // 25 April 2027, is the house's 2026/27 Swan Lake, which "screen" denied, leaving it the 2024 record
-    StageRelays.namesAnotherWork(Listing("On Screen: The Royal Ballet SWAN LAKE (12A)"), Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("On Screen: The Royal Ballet SWAN LAKE (12A)"), Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
     // and "EOS" still abbreviates "Exhibition on Screen" by it
     services.titles.StageHouse.abbreviates(Seq("eos"), Seq("exhibition", "on", "screen")) shouldBe true
     // a title naming nothing but its house names no work, and a film's title naming no house is no relay's
-    StageRelays.namesAnotherWork(Listing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
-    StageRelays.namesAnotherWork(Listing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false
-    StageRelays.namesAnotherWork(Listing("Macbeth 2026"), Film("MET Opera: Eugen Onegin")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("Macbeth 2026"), Film("MET Opera: Eugen Onegin")) shouldBe false
     // a venue's composer, tag or translation beside the work's name, and a work billed whole under a programme banner
     val met = Film("The Metropolitan Opera 2026/27: Macbeth")
     Seq("The Metropolitan Opera: Macbeth ENCORE (2026)", "Met Opera 2026/27: Giuseppe Verdi MACBETH", "MET Opera: Macbeth-Verdi (2026)")
-      .foreach(title => withClue(title)(StageRelays.namesAnotherWork(Listing(title), met) shouldBe false))
-    StageRelays.namesAnotherWork(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
+      .foreach(title => withClue(title)(StageRelays.namesAnotherWork(MeasuredListing(title), met) shouldBe false))
+    StageRelays.namesAnotherWork(MeasuredListing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte")) shouldBe false
-    StageRelays.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Das Phantom der Oper")) shouldBe false
-    StageRelays.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Phantom der Oper")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Das Phantom der Oper")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Phantom der Oper")) shouldBe false
     // a fragment naming only the art form is no title a record can carry whole: UK Riverside Theatre Woodbridge's "Macbeth -
     // Opera 2026" (recording 38326582997) took Argento's 1987 "Opera" by its "Opera" alone
-    StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
-    StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    StageRelays.namesAnotherWork(MeasuredListing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
+    StageRelays.namesAnotherWork(MeasuredListing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
     // a box office's "(Cine)" says how the relay screens, no work: ES taquilla's "Ballet El Cascanueces (Cine)" ×14 and
     // "Ópera Cosi fan tutte (Cine)" ×5 (prod mirror 2026-10-21) denied their season's records as another work's
-    def cine(title: String) = Listing(title, rawTitle = Some(s"$title (Cine)"))
+    def cine(title: String) = MeasuredListing(title, rawTitle = Some(s"$title (Cine)"))
     StageRelays.namesAnotherWork(cine("Ballet El Cascanueces"), Film("Royal Ballet & Opera 2026/27: The Nutcracker")) shouldBe false
     StageRelays.namesAnotherWork(cine("Ópera Cosi fan tutte"), Film("Royal Ballet & Opera 2026/27: Così fan tutte")) shouldBe false
   }
 
   "a stage house's relay" should "deny another production of its work than the season its screenings fall in" in {
-    def relay(title: String, year: Option[Int] = None) = Listing(title, year = year, screenedSeason = Some(2026))
-    def another(listing: Listing, film: Film, country: String = "GB") = StageRelays.anotherProduction(listing, film, Some(country))
+    def relay(title: String, year: Option[Int] = None) = MeasuredListing(title, year = year, screenedSeason = Some(2026))
+    def another(listing: MeasuredListing, film: Film, country: String = "GB") = StageRelays.anotherProduction(listing, film, Some(country))
     // UK Savoy Boston's "Opéra De Paris Ballet - Notre-Dame de Paris" ×6, screening March 2027 (the Paris Opera's Dec 2025
     // recording), took La Scala's 2013 "La Scala Ballet: Notre-Dame de Paris" (790330) by the work's name alone
     val paris   = relay("Opéra De Paris Ballet - Notre-Dame de Paris")
@@ -956,8 +957,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     another(relay("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
     another(relay("Met Opera 2026-27: Tosca"), Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027))) shouldBe true
     another(relay("RBO Cinema Season 2026-27: Romeo and Juliet"), rboRomeo) shouldBe false
-    // as a billing naming its season reads it (no screened season then: [[Listing.screenedSeason]])
-    def named(title: String) = Listing(title, screeningsSeason = Some(2026))
+    // as a billing naming its season reads it (no screened season then: [[MeasuredListing.screenedSeason]])
+    def named(title: String) = MeasuredListing(title, screeningsSeason = Some(2026))
     another(named("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
     another(named("RBO Cinema Season 2026-27: Macbeth"), Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe false
     another(named("Royal Ballet and Opera Sezon Kinowy 2026-27: Romeo i Julia"), rboRomeo) shouldBe false
@@ -1012,7 +1013,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     StageRelays.billsAStageHouse(Seq("Carmen (RB+O 2026/27)")) shouldBe true
     StageRelays.billsAStageHouse(Seq("Jin-Roh - Die Wolfsbrigade")) shouldBe false
     StageRelays.billsAStageHouse(Seq("R&B Night: Soul Classics")) shouldBe false
-    StageRelays.billsItsHouse(Listing("RB&O 26/27: Carmen"), Film("Royal Ballet & Opera 2026/27: Carmen")) shouldBe true
+    StageRelays.billsItsHouse(MeasuredListing("RB&O 26/27: Carmen"), Film("Royal Ballet & Opera 2026/27: Carmen")) shouldBe true
   }
 
   it should "derive any house's initials from its names, never a list of them" in {
@@ -1035,28 +1036,28 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {
-    val enb = Listing("English National Ballet: The Sleeping Beauty")
+    val enb = MeasuredListing("English National Ballet: The Sleeping Beauty")
     StageRelays.billsItsHouse(enb, Film("English National Ballet presents The Sleeping Beauty")) shouldBe true
     StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty", alternativeTitles = Seq("The Sleeping Beauty (The Royal Ballet)"))) shouldBe true
     StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty")) shouldBe false
-    val rbo = Listing("RBO Live 2026/27: Manon (Royal Ballet)")
+    val rbo = MeasuredListing("RBO Live 2026/27: Manon (Royal Ballet)")
     StageRelays.billsItsHouse(rbo, Film("RBO 2026/27: Manon (The Royal Ballet)", Some("Royal Ballet & Opera 2026/27: Manon"))) shouldBe true
     StageRelays.billsAnotherHouse(rbo, Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
-    StageRelays.billsItsHouse(Listing("MET Opera Live im Kino: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
-    StageRelays.billsItsHouse(Listing("ROH: Tosca"), Film("Royal Opera House: Tosca")) shouldBe true
+    StageRelays.billsItsHouse(MeasuredListing("MET Opera Live im Kino: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
+    StageRelays.billsItsHouse(MeasuredListing("ROH: Tosca"), Film("Royal Opera House: Tosca")) shouldBe true
     // a work billed in the house's word names no house: PL "OPERA-MANON" is no relay of Royal Opera House's "Manon"
-    StageRelays.billsItsHouse(Listing("OPERA-MANON"), Film("BALLET LIVE. MANON. ROYAL ÓPERA HOUSE")) shouldBe false
-    StageRelays.billsItsHouse(Listing("OPERA- SILENT NIGHT"), Film("Silent Night (Opera North)")) shouldBe false
+    StageRelays.billsItsHouse(MeasuredListing("OPERA-MANON"), Film("BALLET LIVE. MANON. ROYAL ÓPERA HOUSE")) shouldBe false
+    StageRelays.billsItsHouse(MeasuredListing("OPERA- SILENT NIGHT"), Film("Silent Night (Opera North)")) shouldBe false
     // the kind of institution names no house: records the unmatched-cluster captures hold of other national companies
     StageRelays.billsItsHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe false
     StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe true
-    StageRelays.billsItsHouse(Listing("English National Ballet: Swan Lake"), Film("Swan Lake - Ballet Company of the National Opera of Ukraine")) shouldBe false
-    StageRelays.billsItsHouse(Listing("Wiener Staatsoper: Tosca"), Film("Bayerische Staatsoper: Tosca")) shouldBe false
-    StageRelays.billsItsHouse(Listing("Royal Opera House: Carmen"), Film("Sydney Opera House: Carmen")) shouldBe false
+    StageRelays.billsItsHouse(MeasuredListing("English National Ballet: Swan Lake"), Film("Swan Lake - Ballet Company of the National Opera of Ukraine")) shouldBe false
+    StageRelays.billsItsHouse(MeasuredListing("Wiener Staatsoper: Tosca"), Film("Bayerische Staatsoper: Tosca")) shouldBe false
+    StageRelays.billsItsHouse(MeasuredListing("Royal Opera House: Carmen"), Film("Sydney Opera House: Carmen")) shouldBe false
   }
 
   "a record billing the listing's work under its learned house" should "be a segment of its title, and only under that house" in {
-    val nt = Listing("NT Live: The Importance of Being Earnest")
+    val nt = MeasuredListing("NT Live: The Importance of Being Earnest")
     val record = Film("National Theatre Live: The Importance of Being Earnest")
     val houses = Houses(Map("ntlive" -> "nationaltheatrelive"))
     // a banner abbreviating the record's house names it unlearned ("NT" the initials of "National Theatre")
@@ -1071,37 +1072,37 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       // TMDB files the Paris Opera's broadcasts' works only under the Met's records, so its banner is
       // learned as the Met; League of Legends' two finals banners share every word but the number.
       "operanationaldeparis" -> "themetropolitanopera", "leagueoflegendsworlds26" -> "leagueoflegendsworlds25"))
-    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("National Theatre Live: The Misanthrope"), houses) shouldBe true
-    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("The Misanthrope"), houses) shouldBe false
+    StageRelays.billsUnderItsHouse(MeasuredListing("NT Live: The Misanthrope"), Film("National Theatre Live: The Misanthrope"), houses) shouldBe true
+    StageRelays.billsUnderItsHouse(MeasuredListing("NT Live: The Misanthrope"), Film("The Misanthrope"), houses) shouldBe false
     // A record of one SEASON's broadcast names its production by the season, which the listing does not.
-    StageRelays.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("Opéra National de Paris: La fanciulla del West"),
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
     // A listing naming a season takes its house's record naming none (seasonsApart bounds its year), but never one
     // naming a season: that is the season rule's to read.
-    StageRelays.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
       Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe true
-    StageRelays.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
       Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe false
     // A banner numbering its edition otherwise than the record's is another edition.
-    StageRelays.billsUnderItsHouse(Listing("League of Legends Worlds 26 | Finals in Cinema"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("League of Legends Worlds 26 | Finals in Cinema"),
       Film("League of Legends Worlds25 - Finals in Cinema"), houses) shouldBe false
-    StageRelays.billsUnderItsHouse(Listing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
+    StageRelays.billsUnderItsHouse(MeasuredListing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
       Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), Houses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
     // A cut or an edition is no house: DE Movietown Brandenburg's "Das Boot - Director s Cut" took TMDB's yearless "Das
     // Boot - Directors Cut" record as the house production of "Das Boot", not Petersen's film.
-    StageRelays.billsUnderItsHouse(Listing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
-    StageRelays.billsUnderItsHouse(Listing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(MeasuredListing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(MeasuredListing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
   }
 
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
     val q = IdentityMeasures.Qualifiers.learn(Seq("Chocolate - Director's Cut",
       "The Great War: Director's Cut", "The Promise (Director's Cut)", "Director's Cut", "Dark City", "Manhunter").map(Film(_)))
-    q.of(Listing("Dark City: Director's Cut")) shouldBe Set("directorscut")
+    q.of(MeasuredListing("Dark City: Director's Cut")) shouldBe Set("directorscut")
     // A bare title, and a title whose only piece is its bracketed year, have no qualifier.
-    q.of(Listing("Director's Cut")) shouldBe empty
-    q.of(Listing("Manhunter (1986)")) shouldBe empty
+    q.of(MeasuredListing("Director's Cut")) shouldBe empty
+    q.of(MeasuredListing("Manhunter (1986)")) shouldBe empty
     // A record titled only the qualifier names nothing; the work's record still names the listing.
-    val cut = Listing("Dark City: Director's Cut")
+    val cut = MeasuredListing("Dark City: Director's Cut")
     IdentityMeasures.titleRelation(cut, Film("Director's Cut")) shouldBe Category("segment")
     IdentityMeasures.titleRelation(cut, Film("Director's Cut"), Houses.Unknown, q) shouldBe Category("overlap")
     // the work's record is its title whole once the version tag is dropped (`VersionTags`)
@@ -1112,14 +1113,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   it should "tie to nothing when both pieces are billed alike" in {
     val q = IdentityMeasures.Qualifiers.learn(Seq("Heat: Director's Cut", "Heat - Extended", "Alien: Director's Cut", "Heat").map(Film(_)))
     // "directorscut" trailing two works, "heat" leading two pieces: neither is the listing's qualifier.
-    q.of(Listing("Heat: Director's Cut")) shouldBe empty
+    q.of(MeasuredListing("Heat: Director's Cut")) shouldBe empty
   }
 
   it should "leave a work its record under a banner when the records bill it on the other side" in {
     // PL "Tani wtorek: OBCY": the records bill the work BEFORE its sequels, the listing after its banner.
     val q = IdentityMeasures.Qualifiers.learn(Seq("Obcy", "Obcy: Przymierze", "Obcy: Romulus", "Obcy - 8. pasażer Nostromo").map(Film(_)))
-    q.of(Listing("Tani wtorek: Obcy")) shouldBe empty
-    IdentityMeasures.titleRelation(Listing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
+    q.of(MeasuredListing("Tani wtorek: Obcy")) shouldBe empty
+    IdentityMeasures.titleRelation(MeasuredListing("Tani wtorek: Obcy"), Film("Obcy"), Houses.Unknown, q) shouldBe Category("segment")
   }
 
   it should "not be a record's whole title when the rest of the listing's names no record's work" in {
@@ -1128,21 +1129,21 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val draculas = Seq(Film("Dracula", year = Some(1958)), Film("Dracula", year = Some(1931)), Film("Dracula: Prince of Darkness"),
       Film("Dracula: A Love Tale"), Film("Dracula: Dead and Loving It"))
     val q = IdentityMeasures.Qualifiers.learn(draculas)
-    q.of(Listing("Dracula (4K Restoration)")) shouldBe empty
-    IdentityMeasures.titleRelation(Listing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("exact")
+    q.of(MeasuredListing("Dracula (4K Restoration)")) shouldBe empty
+    IdentityMeasures.titleRelation(MeasuredListing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("exact")
     // A work records bill it before stays one: "Dracula: Prince of Darkness" is not the 1958 film.
-    IdentityMeasures.titleRelation(Listing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
+    IdentityMeasures.titleRelation(MeasuredListing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
   }
 
   it should "not be a record's whole title trailing a banner that names no work" in {
     // PL Kino Luna "KINO SENIORA | Primetime": TMDB bills "Primetime" after two works ("EliteXC: Primetime",
     // "Dateline: Primetime"), so it read as an edition label and the listing's own film only overlapped it.
     val q    = IdentityMeasures.Qualifiers.learn(Seq("Primetime", "EliteXC: Primetime", "Dateline: Primetime").map(Film(_)))
-    val luna = Listing("KINO SENIORA | Primetime", decorations = TitleDecorations(Set(Seq("kino", "seniora")), Set.empty))
+    val luna = MeasuredListing("KINO SENIORA | Primetime", decorations = TitleDecorations(Set(Seq("kino", "seniora")), Set.empty))
     q.of(luna) shouldBe empty
     IdentityMeasures.titleRelation(luna, Film("Primetime"), Houses.Unknown, q) shouldBe Category("segment")
     // Before anything not learned as a venue's, it stays an edition: "EliteXC: Primetime" is not the 2026 film.
-    q.of(Listing("EliteXC: Primetime")) shouldBe Set("primetime")
+    q.of(MeasuredListing("EliteXC: Primetime")) shouldBe Set("primetime")
   }
 
   it should "never be the piece a listing publishes as its original title" in {
@@ -1150,8 +1151,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // the work after two banners too, but the venue names it as the film.
     val q = IdentityMeasures.Qualifiers.learn(Seq("The Dark Knight", "Enter the World of Hans Zimmer: The Dark Knight",
       "GARO - Kiba: The Dark Knight").map(Film(_)))
-    q.of(Listing("Cineworld 30: The Dark Knight")) shouldBe Set("thedarkknight")
-    val cineworld = Listing("Cineworld 30: The Dark Knight", originalTitle = Some("The Dark Knight"))
+    q.of(MeasuredListing("Cineworld 30: The Dark Knight")) shouldBe Set("thedarkknight")
+    val cineworld = MeasuredListing("Cineworld 30: The Dark Knight", originalTitle = Some("The Dark Knight"))
     q.of(cineworld) shouldBe empty
     IdentityMeasures.titleRelation(cineworld, Film("The Dark Knight"), Houses.Unknown, q) shouldBe Category("segment")
   }
@@ -1171,53 +1172,53 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
     // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
     // Anniversary)", whose trailing bracket is itself a decoration.
-    Listing("Throwback: Donnie Darko (25th Anniversary)").shapes should contain ("Donnie Darko")
-    IdentityMeasures.searchQueries(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
+    MeasuredListing("Throwback: Donnie Darko (25th Anniversary)").shapes should contain ("Donnie Darko")
+    IdentityMeasures.searchQueries(MeasuredListing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
   }
 
   they should "split a spaced slash and a short code before an unspaced colon, as the banner separators" in {
     // Kinoteatr Pasja bills "MISTYCZKA /film polski/"; Kino Millenium "MS:HOT SPOT": each piece is searched.
-    Listing("MISTYCZKA /film polski/").shapes should contain ("MISTYCZKA")
-    Listing("Róża / Spotkanie Filozoficzne").shapes should contain allOf ("Róża", "Spotkanie Filozoficzne")
-    Listing("MS:HOT SPOT").shapes should contain ("HOT SPOT")
+    MeasuredListing("MISTYCZKA /film polski/").shapes should contain ("MISTYCZKA")
+    MeasuredListing("Róża / Spotkanie Filozoficzne").shapes should contain allOf ("Róża", "Spotkanie Filozoficzne")
+    MeasuredListing("MS:HOT SPOT").shapes should contain ("HOT SPOT")
     // Fregata's "Fregata dla seniorów- 500 Mil": a dash spaced on one side only separates too.
-    Listing("Fregata dla seniorów- 500 Mil").shapes should contain ("500 Mil")
-    Listing("Spider-Man").shapes shouldBe Seq("Spider-Man")
+    MeasuredListing("Fregata dla seniorów- 500 Mil").shapes should contain ("500 Mil")
+    MeasuredListing("Spider-Man").shapes shouldBe Seq("Spider-Man")
     // Jaworzyna's "Ma to sens 2026": a screening year after the title is no part of it; "2046" and
     // "Blade Runner 2049" are titles, not screening years.
-    Listing("Ma to sens 2026").shapes should contain ("Ma to sens")
-    Listing("Blade Runner 2049").shapes shouldNot contain ("Blade Runner")
-    Listing("2046").shapes shouldBe Seq("2046")
+    MeasuredListing("Ma to sens 2026").shapes should contain ("Ma to sens")
+    MeasuredListing("Blade Runner 2049").shapes shouldNot contain ("Blade Runner")
+    MeasuredListing("2046").shapes shouldBe Seq("2046")
     // A slash or colon inside a word is the title's own: "Face/Off", "AC/DC", "Star Wars:Episode".
-    Listing("Face/Off").shapes shouldBe Seq("Face/Off")
-    Listing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
+    MeasuredListing("Face/Off").shapes shouldBe Seq("Face/Off")
+    MeasuredListing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
   }
 
   they should "take a programme's head-quoted title and a square-bracketed format off" in {
     // Kino Świt: "„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe"
-    Listing("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe").shapes should contain ("Baranek Shaun i kudłata bestia")
+    MeasuredListing("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe").shapes should contain ("Baranek Shaun i kudłata bestia")
     // two quoted titles bill two works; a quote further in names what a talk or a concert is about
-    Listing("„Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”").shapes shouldNot contain ("Bestia")
-    Listing("Wojciech Cejrowski i „Prawo Dżungli”").shapes shouldNot contain ("Prawo Dżungli")
+    MeasuredListing("„Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”").shapes shouldNot contain ("Bestia")
+    MeasuredListing("Wojciech Cejrowski i „Prawo Dżungli”").shapes shouldNot contain ("Prawo Dżungli")
     // Kinematograf's lecture bills two quoted films; its cut title quotes one, its raw title both
-    Listing("Wykład: „Bestia”", rawTitle = Some("Wykład: „Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”")).shapes shouldNot
+    MeasuredListing("Wykład: „Bestia”", rawTitle = Some("Wykład: „Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”")).shapes shouldNot
       contain ("Bestia")
     // Bałtyk: "Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]"
-    Listing("Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]").shapes should contain ("Vivaldi i ja")
-    Listing("[REC]").shapes shouldBe Seq("[REC]")
+    MeasuredListing("Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]").shapes should contain ("Vivaldi i ja")
+    MeasuredListing("[REC]").shapes shouldBe Seq("[REC]")
   }
 
   they should "take the title an upper-case banner runs into with a colon and one quoted at the tail after a banner, never a sentence's head" in {
     // Kino Millenium "KINO NA NIEDZIELE:CAMINO DLA OPORNYCH": a programme's banner, no space after its colon
-    Listing("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH").shapes should contain ("CAMINO DLA OPORNYCH")
-    Listing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
+    MeasuredListing("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH").shapes should contain ("CAMINO DLA OPORNYCH")
+    MeasuredListing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
     // Kino w Ratuszu 'Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"': the one quoted title ends the billing, after its banner
-    Listing("Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"").shapes should contain ("Jak żyć żeby nie zwariować")
-    Listing("ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"").shapes shouldNot contain ("NIEOBECNI")
+    MeasuredListing("Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"").shapes should contain ("Jak żyć żeby nie zwariować")
+    MeasuredListing("ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"").shapes shouldNot contain ("NIEOBECNI")
     // a sentence's head is a franchise's first film as often as the title: the sequel "Szkoła magicznych zwierząt.
     // Tajemnica szkolnego podwórka" is not "Szkoła magicznych zwierząt"
-    Listing("SZKOŁA MAGICZNYCH ZWIERZĄT. TAJEMNICA SZKOLNEGO PODWÓRKA").shapes shouldNot contain ("SZKOŁA MAGICZNYCH ZWIERZĄT")
-    Listing("Vincent. Legenda oceanu").shapes shouldNot contain ("Vincent")
+    MeasuredListing("SZKOŁA MAGICZNYCH ZWIERZĄT. TAJEMNICA SZKOLNEGO PODWÓRKA").shapes shouldNot contain ("SZKOŁA MAGICZNYCH ZWIERZĄT")
+    MeasuredListing("Vincent. Legenda oceanu").shapes shouldNot contain ("Vincent")
   }
 
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
@@ -1225,19 +1226,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       "director", "runtime.delta", "country")
     val film = Film("The Last Whale Singer", year = Some(2025), directors = Some(Seq("Reza Memari")))
     // A title and nothing else: no fact to compare, whatever the titles' relation.
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent. Legenda oceanu"), film)) shouldBe false
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Donnie Darko 25th Anniversary"), Film("Donnie Darko"))) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Vincent. Legenda oceanu"), film)) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Donnie Darko 25th Anniversary"), Film("Donnie Darko"))) shouldBe false
     // A published fact the film cannot be compared on (no year in its record) is not a comparison.
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent (1975)"), film)) shouldBe true
-    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Vincent", year = Some(1975)), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Vincent (1975)"), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(MeasuredListing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
   }
 
-  private def pair(a: Listing, b: Listing) = IdentityMeasures.listingListing(a, b, sameVenue = false, sharedChainId = None)
+  private def pair(a: MeasuredListing, b: MeasuredListing) = IdentityMeasures.listingListing(a, b, sameVenue = false, sharedChainId = None)
 
   "two listings' title relation" should "read one title as a whole delimited piece of the other's in either order" in {
-    def title(a: String, b: String) = pair(Listing(a), Listing(b))("title")
+    def title(a: String, b: String) = pair(MeasuredListing(a), MeasuredListing(b))("title")
     title("Astra Seniora - Lalka", "Lalka") shouldBe Category("segment")
     title("Lalka", "Astra Seniora - Lalka") shouldBe Category("segment")
     title("Tony", "Kino bez barier: Tony (AD + CC)") shouldBe Category("segment")
@@ -1252,11 +1253,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       "director", "runtime.delta", "chainId")
     // A fact one side publishes and the other does not — a year in one's bracket, the other's field —
     // is no comparison.
-    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka (2026)"),
-      Listing("Filmowy Klub Seniora: LALKA", year = Some(2026), directors = Seq("Maciej Kawalski")))) shouldBe false
-    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka", year = Some(2026)), Listing("Lalka | PREMIERA", year = Some(2026)))) shouldBe true
-    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka", directors = Seq("Maciej Kawalski")),
-      Listing("Lalka", directors = Seq("Wojciech Has")))) shouldBe true
+    IdentityMeasures.comparesAFact(ListingListing, pair(MeasuredListing("Lalka (2026)"),
+      MeasuredListing("Filmowy Klub Seniora: LALKA", year = Some(2026), directors = Seq("Maciej Kawalski")))) shouldBe false
+    IdentityMeasures.comparesAFact(ListingListing, pair(MeasuredListing("Lalka", year = Some(2026)), MeasuredListing("Lalka | PREMIERA", year = Some(2026)))) shouldBe true
+    IdentityMeasures.comparesAFact(ListingListing, pair(MeasuredListing("Lalka", directors = Seq("Maciej Kawalski")),
+      MeasuredListing("Lalka", directors = Seq("Wojciech Has")))) shouldBe true
   }
 
   "an edition's runtime" should "be neutral when longer than every runtime TMDB states, and still count when shorter" in {
@@ -1264,19 +1265,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // 122, states the 201-minute theatrical cut in en, pl and de, while the extended cut runs 263.
     val film = Film("The Lord of the Rings: The Return of the King", year = Some(2003), runtime = Some(201))
     val extended = "The Lord of the Rings: The Return of the King (Extended Edition)"
-    val longer = measures(Listing(extended, runtime = Some(263)), film)
+    val longer = measures(MeasuredListing(extended, runtime = Some(263)), film)
     longer("runtime.delta") shouldBe Missing("listing")
     IdentityMeasures.runtimeContradicts(longer) shouldBe false
     // An edition never makes a film shorter.
-    val shorter = measures(Listing(extended, runtime = Some(120)), film)
+    val shorter = measures(MeasuredListing(extended, runtime = Some(120)), film)
     shorter("runtime.delta") shouldBe Number(-81)
     IdentityMeasures.runtimeContradicts(shorter) shouldBe true
     // No edition billed: 62 minutes longer is another film's runtime.
-    val plain = measures(Listing("The Lord of the Rings: The Return of the King", runtime = Some(263)), film)
+    val plain = measures(MeasuredListing("The Lord of the Rings: The Return of the King", runtime = Some(263)), film)
     plain("runtime.delta") shouldBe Number(62)
     IdentityMeasures.runtimeContradicts(plain) shouldBe true
     // Nor is a word the film's own title carries an edition: "The Final Cut" is the film, not a cut of it.
-    measures(Listing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
+    measures(MeasuredListing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
   }
 
   "a relay billed as the record's own" should "be neutral when it runs longer than the season's record, and still count when shorter" in {
@@ -1285,7 +1286,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // record of the relay (1791571, 2027). The 40 minutes weighed -4.26 and left the one node of their shared boxoffice id
     // at 37.1%, under the cut.
     val record = Film("National Theatre Live: Hay Fever", year = Some(2027), runtime = Some(120), directors = Some(Seq("Emily Burns")))
-    def relay(title: String, runtime: Int) = Listing(title, runtime = Some(runtime), screeningsSeason = Some(2026))
+    def relay(title: String, runtime: Int) = MeasuredListing(title, runtime = Some(runtime), screeningsSeason = Some(2026))
     val billed = measures(relay("National Theatre Live: Hay Fever", 160), record)
     billed("runtime.delta") shouldBe Missing("listing")
     IdentityMeasures.runtimeContradicts(billed) shouldBe false
@@ -1300,7 +1301,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // [170′] screening in 2026/27 beside the 2018 recording's 128 minutes); and so with no screenings to date it by
     measures(relay("Royal Ballet: La Bayadère", 170), Film("The Royal Ballet: La Bayadère", year = Some(2018), runtime = Some(128)))("runtime.delta") shouldBe
       Number(42)
-    measures(Listing("National Theatre Live: Hay Fever", runtime = Some(160)), record)("runtime.delta") shouldBe Number(40)
+    measures(MeasuredListing("National Theatre Live: Hay Fever", runtime = Some(160)), record)("runtime.delta") shouldBe Number(40)
     // a record of no relay, another house's, or another work of the house's: its minutes count as ever
     measures(relay("National Theatre Live: Hay Fever", 160), Film("Hay Fever", year = Some(2027), runtime = Some(120)))("runtime.delta") shouldBe Number(40)
     measures(relay("Royal Ballet: Hay Fever", 160), record)("runtime.delta") shouldBe Number(40)
@@ -1312,38 +1313,38 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK Forum Hexham's "It's Nice Up North + Q&A" runs 120 minutes: the 80-minute film and its Q&A. The slot's length
     // is no fact against the film (its learned runtime denial withdrew three siblings' credited match as they arrived).
     val film = Film("John Shuttleworth: It's Nice Up North", year = Some(2006), runtime = Some(80))
-    val withQa = measures(Listing("It's Nice Up North + Q&A", runtime = Some(120)), film)
+    val withQa = measures(MeasuredListing("It's Nice Up North + Q&A", runtime = Some(120)), film)
     withQa("runtime.delta") shouldBe Missing("listing")
     IdentityMeasures.runtimeContradicts(withQa) shouldBe false
     // An event never makes a film shorter; and a slot within the band of the film still agrees with it (ICA's 92-minute
     // "Doc'n'Roll FF: You Fuckers Figure It Out: A Jason Molina Story + Q&A" is the 91-minute film).
-    measures(Listing("It's Nice Up North + Q&A", runtime = Some(40)), film)("runtime.delta") shouldBe Number(-40)
-    measures(Listing("It's Nice Up North + Q&A", runtime = Some(81)), film)("runtime.delta") shouldBe Number(1)
+    measures(MeasuredListing("It's Nice Up North + Q&A", runtime = Some(40)), film)("runtime.delta") shouldBe Number(-40)
+    measures(MeasuredListing("It's Nice Up North + Q&A", runtime = Some(81)), film)("runtime.delta") shouldBe Number(1)
     // No event joined: 40 minutes longer is another film's runtime; nor is a second feature ("1+2") an event.
-    measures(Listing("It's Nice Up North", runtime = Some(120)), film)("runtime.delta") shouldBe Number(40)
-    measures(Listing("Panem-Mockingjay 1+2", runtime = Some(260)), Film("Die Tribute von Panem - Mockingjay Teil 1", runtime = Some(123)))("runtime.delta") shouldBe Number(137)
+    measures(MeasuredListing("It's Nice Up North", runtime = Some(120)), film)("runtime.delta") shouldBe Number(40)
+    measures(MeasuredListing("Panem-Mockingjay 1+2", runtime = Some(260)), Film("Die Tribute von Panem - Mockingjay Teil 1", runtime = Some(123)))("runtime.delta") shouldBe Number(137)
     // Between two listings, the one billing the event running longer says nothing either (DCA's "These Violent
     // Delights + Recorded Q&A", 20 minutes past Kendal's ballet), and the shorter one still does.
-    IdentityMeasures.listingListing(Listing("These Violent Delights + Recorded Q&A", runtime = Some(110)), Listing("These Violent Delights", runtime = Some(90)),
+    IdentityMeasures.listingListing(MeasuredListing("These Violent Delights + Recorded Q&A", runtime = Some(110)), MeasuredListing("These Violent Delights", runtime = Some(90)),
       sameVenue = false, None)("runtime.delta") shouldBe Missing("listing")
-    IdentityMeasures.listingListing(Listing("These Violent Delights", runtime = Some(90)), Listing("These Violent Delights + Recorded Q&A", runtime = Some(110)),
+    IdentityMeasures.listingListing(MeasuredListing("These Violent Delights", runtime = Some(90)), MeasuredListing("These Violent Delights + Recorded Q&A", runtime = Some(110)),
       sameVenue = false, None)("runtime.delta") shouldBe Missing("listing")
-    IdentityMeasures.listingListing(Listing("These Violent Delights + Recorded Q&A", runtime = Some(60)), Listing("These Violent Delights", runtime = Some(90)),
+    IdentityMeasures.listingListing(MeasuredListing("These Violent Delights + Recorded Q&A", runtime = Some(60)), MeasuredListing("These Violent Delights", runtime = Some(90)),
       sameVenue = false, None)("runtime.delta") shouldBe Number(30)
   }
 
   "the listing-film runtime.delta" should "be signed: the venue's minutes less the closest of the film's" in {
     val film = Film("Anora", year = Some(2024), runtime = Some(139), alternativeRuntimes = Seq(132))
     // a venue billing fewer minutes than every runtime TMDB states reads below 0, one billing more above it
-    measures(Listing("Anora", runtime = Some(120)), film)("runtime.delta") shouldBe Number(-12)
-    measures(Listing("Anora", runtime = Some(150)), film)("runtime.delta") shouldBe Number(11)
+    measures(MeasuredListing("Anora", runtime = Some(120)), film)("runtime.delta") shouldBe Number(-12)
+    measures(MeasuredListing("Anora", runtime = Some(150)), film)("runtime.delta") shouldBe Number(11)
     // closest by size: 135 is 3 above the 132-minute cut, not 4 below the 139
-    measures(Listing("Anora", runtime = Some(135)), film)("runtime.delta") shouldBe Number(3)
+    measures(MeasuredListing("Anora", runtime = Some(135)), film)("runtime.delta") shouldBe Number(3)
     // the hand-written rules read its size either way
-    IdentityMeasures.runtimeGap(measures(Listing("Anora", runtime = Some(100)), film)) shouldBe Some(32.0)
-    IdentityMeasures.runtimeContradicts(measures(Listing("Anora", runtime = Some(100)), film)) shouldBe true
+    IdentityMeasures.runtimeGap(measures(MeasuredListing("Anora", runtime = Some(100)), film)) shouldBe Some(32.0)
+    IdentityMeasures.runtimeContradicts(measures(MeasuredListing("Anora", runtime = Some(100)), film)) shouldBe true
     // between two listings it stays a distance
-    IdentityMeasures.listingListing(Listing("Anora", runtime = Some(120)), Listing("Anora", runtime = Some(139)),
+    IdentityMeasures.listingListing(MeasuredListing("Anora", runtime = Some(120)), MeasuredListing("Anora", runtime = Some(139)),
       sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(19)
   }
 
@@ -1351,15 +1352,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // KinoPort prints the running time into the title: "DZIADKU WIEJEMY (97’)".
     val film = Film("Dziadku, wiejemy!", year = Some(2025), runtime = Some(97))
     Seq("DZIADKU WIEJEMY (97’)", "Dziadku wiejemy (97')", "Dziadku wiejemy (97′)", "Dziadku wiejemy [97 min]").foreach { t =>
-      withClue(t)(measures(Listing(t), film)("runtime.delta") shouldBe Number(0))
+      withClue(t)(measures(MeasuredListing(t), film)("runtime.delta") shouldBe Number(0))
     }
     // A published runtime wins; a year, a sequel number or a bare number is not a runtime.
-    measures(Listing("Dziadku wiejemy (97’)", runtime = Some(99)), film)("runtime.delta") shouldBe Number(2)
+    measures(MeasuredListing("Dziadku wiejemy (97’)", runtime = Some(99)), film)("runtime.delta") shouldBe Number(2)
     Seq("Dziadku wiejemy (2025)", "Ocean's 11", "Kino 60 Krzeseł", "Dziadku wiejemy (97)").foreach { t =>
-      withClue(t)(measures(Listing(t), film)("runtime.delta") shouldBe Missing("listing"))
+      withClue(t)(measures(MeasuredListing(t), film)("runtime.delta") shouldBe Missing("listing"))
     }
     // Between two listings too: the bracketed runtime is the listing's runtime.
-    IdentityMeasures.listingListing(Listing("DZIADKU WIEJEMY (97’)"), Listing("Dziadku wiejemy", runtime = Some(97)),
+    IdentityMeasures.listingListing(MeasuredListing("DZIADKU WIEJEMY (97’)"), MeasuredListing("Dziadku wiejemy", runtime = Some(97)),
       sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(0)
   }
 
@@ -1388,7 +1389,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // TMDB codes Chytilová's 1966 "Daisies" XC (Czechoslovakia); MAC Birmingham bills it "Czechia", Rio Dalston
     // "Czechoslovakia", which the JDK names no code for. Neither is another country than the film's.
     val daisies = Film("Sedmikrásky", year = Some(1966), countries = Some(Seq("XC")))
-    def country(countries: String*) = IdentityMeasures.listingFilm(Listing("Daisies", countries = countries), daisies, None, 0, 0)("country")
+    def country(countries: String*) = IdentityMeasures.listingFilm(MeasuredListing("Daisies", countries = countries), daisies, None, 0, 0)("country")
     country("Czechia") shouldBe Category("match")
     country("Czechoslovakia") shouldBe Category("match")
     country("Słowacja") shouldBe Category("match")
@@ -1470,13 +1471,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK venues' "Met Opera 2026-27: Così fan tutte" ×97 credit "The Metropolitan Opera", which TMDB's record names
     // in its title, not as its director (Phelim McDermott): read as a different person, it vetoed the film.
     val met = Film("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Some(Seq("Phelim McDermott")))
-    measures(Listing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera")), met)("director") shouldBe IdentityMeasures.MissingListing
+    measures(MeasuredListing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera")), met)("director") shouldBe IdentityMeasures.MissingListing
     // beside a person the venue credits too, the person is compared
-    measures(Listing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera", "Phelim McDermott")), met)("director") shouldBe
+    measures(MeasuredListing("Met Opera 2026-27: Così fan tutte", directors = Seq("The Metropolitan Opera", "Phelim McDermott")), met)("director") shouldBe
       Category("same_person")
     // a director the title names who directed it stays a person: "Guillermo del Toro's Pinocchio"
     val pinocchio = Film("Guillermo del Toro's Pinocchio", year = Some(2022), directors = Some(Seq("Guillermo del Toro", "Mark Gustafson")))
-    measures(Listing("Pinocchio", directors = Seq("Guillermo del Toro")), pinocchio)("director") shouldBe Category("same_person")
+    measures(MeasuredListing("Pinocchio", directors = Seq("Guillermo del Toro")), pinocchio)("director") shouldBe Category("same_person")
   }
 
   "a director's name" should "be the same person whatever its order, case and splitting" in {
@@ -1496,7 +1497,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.originalTitleRelation(Some("It"), Seq("It Ends with Us")) shouldBe Category("fragment")
     IdentityMeasures.originalTitleRelation(Some("Stalker"), Seq("Solaris")) shouldBe Category("disjoint")
     // The listing-film measure reads it the same way.
-    measures(Listing("Twoje imię", originalTitle = Some("Your Name (Dolby Night)")),
+    measures(MeasuredListing("Twoje imię", originalTitle = Some("Your Name (Dolby Night)")),
       Film("Twoje imię", Some("君の名は。"), alternativeTitles = Seq("Your Name.")))("originalTitle") shouldBe Category("segment")
   }
 
@@ -1505,67 +1506,67 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Extended": `originalTitle=segment` (-2.52) put Jackson's film under the learned listing-film cut, and its `denies-film`
     // edges vetoed every other venue's Extended billing (recording 528).
     val returnOfTheKing = Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), year = Some(2003))
-    measures(Listing("Herr der Ringe - Rückkehr des Königs (ext.)", originalTitle = Some("The Lord of the Rings: The Return of the King – Extended")),
+    measures(MeasuredListing("Herr der Ringe - Rückkehr des Königs (ext.)", originalTitle = Some("The Lord of the Rings: The Return of the King – Extended")),
       returnOfTheKing)("originalTitle") shouldBe Category("match")
     IdentityMeasures.originalTitleRelation(Some("Your Name (re-release)"), Seq("Your Name.")) shouldBe Category("match")
     // DE Capitol's and Kinorama's billings name its German title whole once the tag is dropped
-    measures(Listing("DER HERR DER RINGE - DIE RÜCKKEHR DES KÖNIGS - EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
-    measures(Listing("Der Herr der Ringe: Die Rückkehr des Königs EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
+    measures(MeasuredListing("DER HERR DER RINGE - DIE RÜCKKEHR DES KÖNIGS - EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
+    measures(MeasuredListing("Der Herr der Ringe: Die Rückkehr des Königs EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
     // a tag is no other title: "Pink Floyd: The Final Cut" is not "Pink Floyd"
-    measures(Listing("Pink Floyd: The Final Cut"), Film("Pink Floyd"))("title") should not be Category("exact")
+    measures(MeasuredListing("Pink Floyd: The Final Cut"), Film("Pink Floyd"))("title") should not be Category("exact")
   }
 
   "an original title carrying the showing's language version" should "be measured without it" in {
     // DE Moviemento bills "Die Blutgräfin - The Blood Countess", its original-title field "… (OmeU)": the tag is the
     // screening's English-subtitled version, not a word of the film's title. Read with it, the original was a `segment`
     // of Ottinger's "Die Blutgräfin" (-2.52) and the cannot-link cut denied the film every other venue takes.
-    def billed(original: String) = Listing("Die Blutgräfin - The Blood Countess", originalTitle = Some(original))
+    def billed(original: String) = MeasuredListing("Die Blutgräfin - The Blood Countess", originalTitle = Some(original))
     val countess = Film("Die Blutgräfin", Some("Die Blutgräfin"), year = Some(2026))
     measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") shouldBe
       measures(billed("Die Blutgräfin - The Blood Countess"), countess)("originalTitle")
     measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") should not be Category("segment")
     measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") shouldBe Missing("listing")
-    measures(Listing("Rocky", originalTitle = Some("OmU: Rocky")), Film("Rocky", year = Some(1976)))("originalTitle") shouldBe Missing("listing")
+    measures(MeasuredListing("Rocky", originalTitle = Some("OmU: Rocky")), Film("Rocky", year = Some(1976)))("originalTitle") shouldBe Missing("listing")
     // beside a film the title does not name, the copy stays what it measures (it kept SpongeBob's stage record off
     // Metropolis Bochum's Starlight Express relay, and so the segment link to Cineplex Baden-Baden's bare spelling)
-    measures(Listing("Andrew Lloyd Webbers Starlight Express - Live on Stage", originalTitle = Some("Andrew Lloyd Webbers Starlight Express - Live on Stage (OmeU)")),
+    measures(MeasuredListing("Andrew Lloyd Webbers Starlight Express - Live on Stage", originalTitle = Some("Andrew Lloyd Webbers Starlight Express - Live on Stage (OmeU)")),
       Film("The SpongeBob Musical: Live on Stage!", year = Some(2019)))("originalTitle") should not be Missing("listing")
     // a note that is no showing's badge stays the field's text: Viktoria's re-release mark
-    measures(Listing("DAS BOOT (DIRECTOR'S CUT)", originalTitle = Some("DAS BOOT (DIRECTOR'S CUT)(WA:2023)")),
+    measures(MeasuredListing("DAS BOOT (DIRECTOR'S CUT)", originalTitle = Some("DAS BOOT (DIRECTOR'S CUT)(WA:2023)")),
       Film("Das Boot: Director's Cut", year = Some(1997)))("originalTitle") should not be Missing("listing")
     // nor is the copy an agreement: ZOO PALAST's "In Memoriam" ("In Memoriam – Gegen ihren Willen", its original-title
     // field "OmU: In Memoriam") is no 1977 "In memoriam" by its tag-stripped copy matching that film's original
-    measures(Listing("In Memoriam", originalTitle = Some("OmU: In Memoriam")), Film("Erinnerungen an Paulina", Some("In memoriam"),
+    measures(MeasuredListing("In Memoriam", originalTitle = Some("OmU: In Memoriam")), Film("Erinnerungen an Paulina", Some("In memoriam"),
       year = Some(1977)))("originalTitle") shouldBe Missing("listing")
     // two listings' originals compare as the films' titles they are
-    IdentityMeasures.listingListing(Listing("Rocky", originalTitle = Some("Rocky (OmU)")), Listing("Rocky", originalTitle = Some("Rocky")),
-      sameVenue = false, None)("originalTitle") shouldBe IdentityMeasures.listingListing(Listing("Rocky", originalTitle = Some("Rocky")),
-      Listing("Rocky", originalTitle = Some("Rocky")), sameVenue = false, None)("originalTitle")
+    IdentityMeasures.listingListing(MeasuredListing("Rocky", originalTitle = Some("Rocky (OmU)")), MeasuredListing("Rocky", originalTitle = Some("Rocky")),
+      sameVenue = false, None)("originalTitle") shouldBe IdentityMeasures.listingListing(MeasuredListing("Rocky", originalTitle = Some("Rocky")),
+      MeasuredListing("Rocky", originalTitle = Some("Rocky")), sameVenue = false, None)("originalTitle")
   }
 
   "an original title copying the listing's own title" should "repeat it whether whole or a truncation" in {
     // UK BTS relays: the venue's original-title field is its own title cut short ("…: Live").
     val bts = "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING"
-    IdentityMeasures.repeatsItsTitle(Listing(bts, originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))) shouldBe true
-    IdentityMeasures.repeatsItsTitle(Listing(bts, originalTitle = Some(bts))) shouldBe true
-    IdentityMeasures.repeatsItsTitle(Listing("Diabły | Splat!FilmFest", originalTitle = Some("Diabły"))) shouldBe true
+    IdentityMeasures.repeatsItsTitle(MeasuredListing(bts, originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))) shouldBe true
+    IdentityMeasures.repeatsItsTitle(MeasuredListing(bts, originalTitle = Some(bts))) shouldBe true
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("Diabły | Splat!FilmFest", originalTitle = Some("Diabły"))) shouldBe true
     // Anything the title does not already carry is a second fact: another language's title, a
     // shared word, or a LONGER title the venue shortened for display.
-    IdentityMeasures.repeatsItsTitle(Listing("Diabły | Splat!FilmFest", originalTitle = Some("The Devils"))) shouldBe false
-    IdentityMeasures.repeatsItsTitle(Listing("De Gaulle: Part 2 - Liberte", originalTitle = Some("La Bataille de Gaulle - Partie 2 : J’écris ton nom"))) shouldBe false
-    IdentityMeasures.repeatsItsTitle(Listing("Alien", originalTitle = Some("Alien: Romulus"))) shouldBe false
-    IdentityMeasures.repeatsItsTitle(Listing("Alien")) shouldBe false
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("Diabły | Splat!FilmFest", originalTitle = Some("The Devils"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("De Gaulle: Part 2 - Liberte", originalTitle = Some("La Bataille de Gaulle - Partie 2 : J’écris ton nom"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("Alien", originalTitle = Some("Alien: Romulus"))) shouldBe false
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("Alien")) shouldBe false
     // UK Everyman: an original title that holds the title as one piece of more is not a copy. Read as
     // one, it stopped counting against Zeffirelli's 1968 film and the Royal Ballet's staging took it.
-    IdentityMeasures.repeatsItsTitle(Listing("Royal Ballet and Opera: Romeo and Juliet",
+    IdentityMeasures.repeatsItsTitle(MeasuredListing("Royal Ballet and Opera: Romeo and Juliet",
       originalTitle = Some("Royal Ballet and Opera: Romeo and Juliet (INACTIVE)"))) shouldBe false
   }
 
   it should "be absent against a film the title names, and stay what it measures against one it does not" in {
-    val bts = Listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))
+    val bts = MeasuredListing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))
     measures(bts, Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing"))("originalTitle") shouldBe IdentityMeasures.MissingListing
     // UK Everyman: the repeat against The Mummy, which its title does not name, is still a disjoint title.
-    val dracula = Listing("Dracula (4K Restoration)", originalTitle = Some("Dracula 4k Restoration"))
+    val dracula = MeasuredListing("Dracula (4K Restoration)", originalTitle = Some("Dracula 4k Restoration"))
     measures(dracula, Film("The Mummy"))("originalTitle") shouldBe Category("disjoint")
   }
 
@@ -1575,23 +1576,23 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     record.billedWorksBesideLabels shouldBe record.billedWorks.filterNot(StageRelays.broadcastLabel)
     record.billedWorksBesideLabels should not be empty
     // what a billing reads is the works both bill, the label aside, as it was before the filter moved to the record
-    val bts = Listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
+    val bts = MeasuredListing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
     StageRelays.billings(bts, record).map(_.work).toSet.intersect(Set("liveviewing", "live viewing")) shouldBe empty
   }
 
   "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {
-    val listing = Listing("Godzilla vs. Megalon")
+    val listing = MeasuredListing("Godzilla vs. Megalon")
     val megalon = Film("Godzilla vs. Megalon", year = Some(1973))
     val remake  = Film("Godzilla vs. Megalon", year = Some(2031))
     val other   = Film("Godzilla vs. Mothra", year = Some(1964))
     IdentityMeasures.exactTopHits(listing, Seq((1, megalon, Some(1)), (2, remake, Some(2)), (3, other, Some(1)))) shouldBe Seq(1)
     // First only under a banner segment's search, or not first at all: no exact top hit.
-    IdentityMeasures.exactTopHits(Listing("Kino Nocne: Godzilla vs. Megalon"), Seq((1, megalon, Some(1)))) shouldBe Nil
+    IdentityMeasures.exactTopHits(MeasuredListing("Kino Nocne: Godzilla vs. Megalon"), Seq((1, megalon, Some(1)))) shouldBe Nil
     IdentityMeasures.exactTopHits(listing, Seq((1, megalon, Some(2)), (3, other, Some(1)), (4, megalon, None))) shouldBe Nil
   }
 
   "a sequel numeral" should "be compared by the NUMBER each title carries, however it is written" in {
-    def numeral(listing: String, film: Film) = IdentityMeasures.numeralRelation(Listing(listing), film)
+    def numeral(listing: String, film: Film) = IdentityMeasures.numeralRelation(MeasuredListing(listing), film)
     // US, the recorded "The Texas Chainsaw Massacre 2" ×4 (labelled 16337): TMDB's 1974 original
     // (30497, alternative title "The Texas Chainsaw Massacre") is the series without the number.
     val original = Film("The Texas Chain Saw Massacre", alternativeTitles = Seq("Leatherface", "The Texas Chainsaw Massacre"))
@@ -1611,9 +1612,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     numeral("League of Legends Worlds 26 - Finals in Cinema", worlds25) shouldBe Category("different")
     // DE UFA Palast, recorded 2026-10-15: the feed copied the 2025 record's title as the original, number and all — it
     // never numbers the billing the record's way; an original title of its own still does.
-    IdentityMeasures.numeralRelation(Listing("League of Legends Worlds 26 - Finals in Cinema",
+    IdentityMeasures.numeralRelation(MeasuredListing("League of Legends Worlds 26 - Finals in Cinema",
       originalTitle = Some("League of Legends Worlds25 - Finals in Cinema")), worlds25) shouldBe Category("different")
-    IdentityMeasures.numeralRelation(Listing("Szybcy i wściekli 7", originalTitle = Some("Furious 7")), Film("Furious 7")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(MeasuredListing("Szybcy i wściekli 7", originalTitle = Some("Furious 7")), Film("Furious 7")) shouldBe Category("same")
     numeral("League of Legends Worlds 25 - Finals in Cinema", worlds25) shouldBe Category("same")
     numeral("Rambo3", Film("Rambo III")) shouldBe Category("same")
   }
@@ -1622,24 +1623,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // PL Kino ODEON, prod 2026-11-13: "DIUNA: CZĘŚĆ 3 - 2D DUB" ×15 beside TMDB's "Diuna: Część trzecia" -- numbered
     // `listing_only` (the record's "trzecia" no number) and measured an `overlap`, it was denied as another instalment.
     val partThree = Film("Diuna: Część trzecia", originalTitle = Some("Dune: Part Three"))
-    IdentityMeasures.numeralRelation(Listing("Diuna: część 3"), partThree) shouldBe Category("same")
-    IdentityMeasures.titleRelation(Listing("Diuna: część 3"), partThree) shouldBe Category("exact")
-    IdentityMeasures.titleRelation(Listing("Dune: Part 3"), partThree) shouldBe Category("original")
-    IdentityMeasures.numeralRelation(Listing("Dune: Part Two"), Film("Dune: Part 2")) shouldBe Category("same")
-    IdentityMeasures.numeralRelation(Listing("Dune: Parte tres"), Film("Dune: Parte 3")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(MeasuredListing("Diuna: część 3"), partThree) shouldBe Category("same")
+    IdentityMeasures.titleRelation(MeasuredListing("Diuna: część 3"), partThree) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Dune: Part 3"), partThree) shouldBe Category("original")
+    IdentityMeasures.numeralRelation(MeasuredListing("Dune: Part Two"), Film("Dune: Part 2")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(MeasuredListing("Dune: Parte tres"), Film("Dune: Parte 3")) shouldBe Category("same")
     // another instalment still is: the number differs, or the series alone is the film's
-    IdentityMeasures.numeralRelation(Listing("Diuna: część 2"), partThree) shouldBe Category("different")
-    IdentityMeasures.titleRelation(Listing("Diuna: część 2"), partThree) should not be Category("exact")
-    IdentityMeasures.numeralRelation(Listing("Diuna: część 3"), Film("Diuna")) shouldBe Category("listing_only")
+    IdentityMeasures.numeralRelation(MeasuredListing("Diuna: część 2"), partThree) shouldBe Category("different")
+    IdentityMeasures.titleRelation(MeasuredListing("Diuna: część 2"), partThree) should not be Category("exact")
+    IdentityMeasures.numeralRelation(MeasuredListing("Diuna: część 3"), Film("Diuna")) shouldBe Category("listing_only")
     // a print's gauge numbers no instalment: DE Schauburg Karlsruhe's "Dune: Part Two 70 mm" is Part Two (what-if 2026-11-13)
-    IdentityMeasures.numeralRelation(Listing("Dune: Part Two 70 mm"), Film("Dune: Part Two")) shouldBe Category("same")
-    IdentityMeasures.numeralRelation(Listing("Dune 2 (35 mm)"), Film("Dune: Part Two")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(MeasuredListing("Dune: Part Two 70 mm"), Film("Dune: Part Two")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(MeasuredListing("Dune 2 (35 mm)"), Film("Dune: Part Two")) shouldBe Category("same")
     // a spelled number is a number only after a part word: "The Three Musketeers" names no instalment
-    IdentityMeasures.numeralRelation(Listing("The Three Musketeers"), Film("The Three Musketeers")) shouldBe Missing("none")
+    IdentityMeasures.numeralRelation(MeasuredListing("The Three Musketeers"), Film("The Three Musketeers")) shouldBe Missing("none")
   }
 
   it should "have nothing to compare in a remake, a title whose number is its name, or a decoration's number" in {
-    def numeral(listing: String, film: String) = IdentityMeasures.numeralRelation(Listing(listing), Film(film))
+    def numeral(listing: String, film: String) = IdentityMeasures.numeralRelation(MeasuredListing(listing), Film(film))
     numeral("Suspiria", "Suspiria") shouldBe Missing("none")
     numeral("2001: A Space Odyssey", "2001: A Space Odyssey") shouldBe Missing("none")
     numeral("1917", "1917") shouldBe Missing("none")
@@ -1663,66 +1664,66 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   it should "keep a title that numbers another instalment from NAMING the film its words decorate" in {
     val original = Film("The Texas Chain Saw Massacre", alternativeTitles = Seq("The Texas Chainsaw Massacre"))
-    val listing  = Listing("The Texas Chainsaw Massacre 2")
+    val listing  = MeasuredListing("The Texas Chainsaw Massacre 2")
     IdentityMeasures.titleRelation(listing, original) shouldBe Category("decorated")
     IdentityMeasures.namesFilm(listing, original) shouldBe false
-    IdentityMeasures.namesFilm(Listing("Throwback: The Texas Chainsaw Massacre"), original) shouldBe true
-    IdentityMeasures.namesFilm(Listing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
+    IdentityMeasures.namesFilm(MeasuredListing("Throwback: The Texas Chainsaw Massacre"), original) shouldBe true
+    IdentityMeasures.namesFilm(MeasuredListing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
     // So no venue's own facts back the original on a sequel's title.
     val group = Seq("a", "b").map(_ -> listing.copy(directors = Seq("Tobe Hooper")))
     new VenueBacking(Map("sequel" -> group)).corroborating(Seq("sequel"), original.copy(directors = Some(Seq("Tobe Hooper"))), "") shouldBe 0
   }
 
   "a listing that publishes nothing but its title" should "be told from one that publishes a fact" in {
-    Listing("Sense and Sensibility").publishesAFact shouldBe false
-    Listing("Relaxed Screening: Sense and Sensibility").publishesAFact shouldBe false
-    Listing("Sense and Sensibility", originalTitle = Some("Sense and Sensibility")).publishesAFact shouldBe false
-    Listing("Sense and Sensibility (2026)").publishesAFact shouldBe true
-    Listing("Sense and Sensibility", directors = Seq("Georgia Oakley")).publishesAFact shouldBe true
-    Listing("Sense and Sensibility", runtime = Some(132)).publishesAFact shouldBe true
+    MeasuredListing("Sense and Sensibility").publishesAFact shouldBe false
+    MeasuredListing("Relaxed Screening: Sense and Sensibility").publishesAFact shouldBe false
+    MeasuredListing("Sense and Sensibility", originalTitle = Some("Sense and Sensibility")).publishesAFact shouldBe false
+    MeasuredListing("Sense and Sensibility (2026)").publishesAFact shouldBe true
+    MeasuredListing("Sense and Sensibility", directors = Seq("Georgia Oakley")).publishesAFact shouldBe true
+    MeasuredListing("Sense and Sensibility", runtime = Some(132)).publishesAFact shouldBe true
   }
 
   "a title naming two films" should "name them apart when their pieces sit at spans of it that do not overlap" in {
     val gruffalo = Film("The Gruffalo"); val child = Film("The Gruffalo's Child")
     // A double bill: the two titles share words, but each has its own place in the title.
-    IdentityMeasures.namedApart(Listing("The Gruffalo + The Gruffalo's Child"), gruffalo, child) shouldBe true
+    IdentityMeasures.namedApart(MeasuredListing("The Gruffalo + The Gruffalo's Child"), gruffalo, child) shouldBe true
     // Disjoint words, as before.
-    IdentityMeasures.namedApart(Listing("Lalka (Dolly)"), Film("Lalka"), Film("Dolly")) shouldBe true
+    IdentityMeasures.namedApart(MeasuredListing("Lalka (Dolly)"), Film("Lalka"), Film("Dolly")) shouldBe true
     // Nested: one film's title is part of the other's, which the whole title names.
-    IdentityMeasures.namedApart(Listing("Joker: Folie à deux"), Film("Joker"), Film("Joker: Folie à deux")) shouldBe false
-    IdentityMeasures.namedApart(Listing("The Gruffalo's Child"), gruffalo, child) shouldBe false
+    IdentityMeasures.namedApart(MeasuredListing("Joker: Folie à deux"), Film("Joker"), Film("Joker: Folie à deux")) shouldBe false
+    IdentityMeasures.namedApart(MeasuredListing("The Gruffalo's Child"), gruffalo, child) shouldBe false
     // A film named by both of its titles leaves no place of its own for a third title's word.
-    IdentityMeasures.namedApart(Listing("Tokyo Story (Tôkyô monogatari)"), Film("Tokyo Story", Some("Tôkyô monogatari")), Film("Tokyo")) shouldBe false
+    IdentityMeasures.namedApart(MeasuredListing("Tokyo Story (Tôkyô monogatari)"), Film("Tokyo Story", Some("Tôkyô monogatari")), Film("Tokyo")) shouldBe false
     // A film whose own title joins two others' is named by the whole title, which overlaps both.
-    IdentityMeasures.namedApart(Listing("Romeo + Juliet"), Film("Romeo + Juliet"), Film("Romeo")) shouldBe false
-    IdentityMeasures.namedApart(Listing("Fast & Furious"), Film("Fast & Furious"), Film("Furious")) shouldBe false
+    IdentityMeasures.namedApart(MeasuredListing("Romeo + Juliet"), Film("Romeo + Juliet"), Film("Romeo")) shouldBe false
+    IdentityMeasures.namedApart(MeasuredListing("Fast & Furious"), Film("Fast & Furious"), Film("Furious")) shouldBe false
   }
 
   "the titles venues publish for a record" should "be a title published beside one of its titles as the original, when unanimous" in {
     val concert = Film("André Rieu's 2026 Summer Concert: Viva Maastricht!")
     val listings = Seq(
-      Listing("Andre Rieu. Niech żyje Maastricht!", originalTitle = Some("Andre Rieu's 2026 Summer Concert: Viva Maastricht!")),
-      Listing("André Rieu. Niech żyje Maastricht!"),
+      MeasuredListing("Andre Rieu. Niech żyje Maastricht!", originalTitle = Some("Andre Rieu's 2026 Summer Concert: Viva Maastricht!")),
+      MeasuredListing("André Rieu. Niech żyje Maastricht!"),
       // An original title repeating the listing's own title translates nothing.
-      Listing("Nosferatu", originalTitle = Some("Nosferatu")))
+      MeasuredListing("Nosferatu", originalTitle = Some("Nosferatu")))
     IdentityMeasures.venueTitles(listings, Seq(1 -> concert, 2 -> Film("Nosferatu"))) shouldBe
       Map(1 -> Seq("Andre Rieu. Niech żyje Maastricht!"))
-    IdentityMeasures.titleRelation(Listing("André Rieu. Niech żyje Maastricht!"),
+    IdentityMeasures.titleRelation(MeasuredListing("André Rieu. Niech żyje Maastricht!"),
       IdentityMeasures.withVenueTitles(concert, Seq("Andre Rieu. Niech żyje Maastricht!"))) shouldBe Category("alternative")
     // Two venues giving one title two originals name two films by it: it translates neither.
-    val invitation = Seq(Listing("La invitación", originalTitle = Some("The Invitation")), Listing("La invitación", originalTitle = Some("The Invite")))
+    val invitation = Seq(MeasuredListing("La invitación", originalTitle = Some("The Invitation")), MeasuredListing("La invitación", originalTitle = Some("The Invite")))
     IdentityMeasures.venueTitles(invitation, Seq(1 -> Film("The Invitation"), 2 -> Film("The Invite"))) shouldBe Map.empty
     // A record already titled so gains nothing, nor one the title names already.
-    IdentityMeasures.venueTitles(Seq(Listing("Diuna", originalTitle = Some("Dune"))), Seq(1 -> Film("Diuna", Some("Dune")))) shouldBe Map.empty
-    IdentityMeasures.venueTitles(Seq(Listing("Coraline (2009)", originalTitle = Some("Coraline"))), Seq(1 -> Film("Coraline"))) shouldBe Map.empty
+    IdentityMeasures.venueTitles(Seq(MeasuredListing("Diuna", originalTitle = Some("Dune"))), Seq(1 -> Film("Diuna", Some("Dune")))) shouldBe Map.empty
+    IdentityMeasures.venueTitles(Seq(MeasuredListing("Coraline (2009)", originalTitle = Some("Coraline"))), Seq(1 -> Film("Coraline"))) shouldBe Map.empty
     // An original naming several records names none of them: the facts pick among namesakes.
-    IdentityMeasures.venueTitles(Seq(Listing("Niebo nad Normandią", originalTitle = Some("Pressure"))),
+    IdentityMeasures.venueTitles(Seq(MeasuredListing("Niebo nad Normandią", originalTitle = Some("Pressure"))),
       Seq(1 -> Film("Pressure"), 2 -> Film("Pressure"))) shouldBe Map.empty
-    IdentityMeasures.venueTitles(Seq(Listing("Diabły", originalTitle = Some("The Devils"))),
+    IdentityMeasures.venueTitles(Seq(MeasuredListing("Diabły", originalTitle = Some("The Devils"))),
       Seq(31767 -> Film("Diabły", Some("The Devils")), 1491681 -> Film("The Devils"))) shouldBe Map.empty
     // DE UFA Palast, recorded 2026-10-15: an original title copied from last year's record numbers another instalment
     // than the billing — no translation of it.
-    IdentityMeasures.venueTitles(Seq(Listing("League of Legends Worlds 26 - Finals in Cinema",
+    IdentityMeasures.venueTitles(Seq(MeasuredListing("League of Legends Worlds 26 - Finals in Cinema",
       originalTitle = Some("League of Legends Worlds25 - Finals in Cinema"))),
       Seq(1552059 -> Film("League of Legends Worlds25 - Finals in Cinema"))) shouldBe Map.empty
   }
@@ -1730,29 +1731,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // PL "Vincent. Legenda oceanu" [2025] {Reza Memari}: TMDB titles it "The Last Whale Singer" only, so its
     // bare spellings at other venues only overlapped the record the facts had already named.
     val whale = Film("The Last Whale Singer", year = Some(2026), directors = Some(Seq("Reza Memari")))
-    val vincent = Seq(Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari")),
+    val vincent = Seq(MeasuredListing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari")),
       // credits singling out two records here say nothing; credits singling out none say nothing either
-      Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari", "Steven Majaury")),
-      Listing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Someone Else")))
+      MeasuredListing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Reza Memari", "Steven Majaury")),
+      MeasuredListing("Vincent. Legenda oceanu", year = Some(2025), directors = Seq("Someone Else")))
     IdentityMeasures.titlesByFacts(vincent, Seq(677558 -> whale, 9 -> Film("Other", year = Some(2025), directors = Some(Seq("Steven Majaury"))))) shouldBe
       Seq(677558 -> "Vincent. Legenda oceanu")
     // A title some record carries whole stays that record's: a 2026 "Obcy" by Ozon is not his "La Catastrophe".
-    val ozon = Seq(Listing("Obcy", year = Some(2026), directors = Seq("François Ozon")))
+    val ozon = Seq(MeasuredListing("Obcy", year = Some(2026), directors = Seq("François Ozon")))
     IdentityMeasures.titlesByFacts(ozon, Seq(1 -> Film("Obcy", year = Some(2025), directors = Some(Seq("François Ozon"))),
       2 -> Film("La Catastrophe", year = Some(2027), directors = Some(Seq("François Ozon"))))) shouldBe empty
     // A title pointing at another record its years do not rule out names that one, whoever its credit picks.
-    IdentityMeasures.titlesByFacts(Seq(Listing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), directors = Seq("Jungjae Ha"))),
+    IdentityMeasures.titlesByFacts(Seq(MeasuredListing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), directors = Seq("Jungjae Ha"))),
       Seq(1 -> Film("BTS World Tour 'Arirang' In São Paulo: Live Viewing", year = Some(2026), directors = Some(Seq("Ha Jung-jae"))),
         2 -> Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", year = Some(2026)))) shouldBe empty
     // A piece of the record's own title names the work it belongs to, never the record.
-    IdentityMeasures.titlesByFacts(Seq(Listing("BTS World Tour 'ARIRANG'", year = Some(2026), directors = Seq("Jungjae Ha"))),
+    IdentityMeasures.titlesByFacts(Seq(MeasuredListing("BTS World Tour 'ARIRANG'", year = Some(2026), directors = Seq("Jungjae Ha"))),
       Seq(1 -> Film("BTS World Tour 'Arirang' In São Paulo: Live Viewing", year = Some(2026), directors = Some(Seq("Ha Jung-jae"))))) shouldBe empty
     // A double bill's facts may single out one of its films; its title is neither's.
-    IdentityMeasures.titlesByFacts(Seq(Listing("Słonik w lesie + Tańczący przyjaciel", year = Some(2025), directors = Seq("Jane Doe"))),
+    IdentityMeasures.titlesByFacts(Seq(MeasuredListing("Słonik w lesie + Tańczący przyjaciel", year = Some(2025), directors = Seq("Jane Doe"))),
       Seq(1 -> Film("Olifantje in het bos", year = Some(2025), directors = Some(Seq("Jane Doe"))))) shouldBe empty
     // Two listings of one title singling out two different records: the title names neither.
-    IdentityMeasures.titlesByFacts(Seq(Listing("Nowy film", year = Some(2025), directors = Seq("Anna Nowak")),
-      Listing("Nowy film", year = Some(2024), directors = Seq("Jan Kowalski"))),
+    IdentityMeasures.titlesByFacts(Seq(MeasuredListing("Nowy film", year = Some(2025), directors = Seq("Anna Nowak")),
+      MeasuredListing("Nowy film", year = Some(2024), directors = Seq("Jan Kowalski"))),
       Seq(1 -> Film("A", year = Some(2025), directors = Some(Seq("Anna Nowak"))), 2 -> Film("B", year = Some(2024), directors = Some(Seq("Jan Kowalski"))))) shouldBe empty
   }
 
@@ -1760,56 +1761,56 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a venue's one-letter typo in a long word" should "still name the film's title exactly" in {
     // US: "Shaun the Sheep: The Beast of Mossy Botton" (×6) and "Pradhama Drishtiya Kuttakkar" (×16)
     // found the film but measured the title as unrelated; the pipeline's fuzzy TMDB search took them.
-    IdentityMeasures.titleRelation(Listing("Shaun the Sheep: The Beast of Mossy Botton"), Film("Shaun the Sheep: The Beast of Mossy Bottom")) shouldBe IdentityMeasures.Category("exact")
-    IdentityMeasures.titleRelation(Listing("Pradhama Drishtiya Kuttakkar"), Film("Pradhama Drishtya Kuttakkar")) shouldBe IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Shaun the Sheep: The Beast of Mossy Botton"), Film("Shaun the Sheep: The Beast of Mossy Bottom")) shouldBe Measure.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Pradhama Drishtiya Kuttakkar"), Film("Pradhama Drishtya Kuttakkar")) shouldBe Measure.Category("exact")
   }
 
   it should "not reach a sequel's number, a short word, or two words" in {
-    IdentityMeasures.titleRelation(Listing("Scary Movie 3"), Film("Scary Movie 4")) should not be IdentityMeasures.Category("exact")
-    IdentityMeasures.titleRelation(Listing("Mission: Impossible II"), Film("Mission: Impossible III")) should not be IdentityMeasures.Category("exact")
-    IdentityMeasures.titleRelation(Listing("The Hunt"), Film("The Hurt")) should not be IdentityMeasures.Category("exact")
-    IdentityMeasures.titleRelation(Listing("The Beast of Mossy Botton"), Film("The Feast of Mossy Bottom")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Scary Movie 3"), Film("Scary Movie 4")) should not be Measure.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("Mission: Impossible II"), Film("Mission: Impossible III")) should not be Measure.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("The Hunt"), Film("The Hurt")) should not be Measure.Category("exact")
+    IdentityMeasures.titleRelation(MeasuredListing("The Beast of Mossy Botton"), Film("The Feast of Mossy Bottom")) should not be Measure.Category("exact")
   }
 
   it should "also name the film from a shape of the title, and from the original title" in {
     // UK, Vue's "Pradhama Drishtiya Kuttakkar (Malayalam)" (×13), originally "Pradhama Drishtiya
     // Kuttakkar": the language tag is a shape away, and the original title carries the same typo.
-    IdentityMeasures.titleRelation(Listing("Pradhama Drishtiya Kuttakkar (Malayalam)"), Film("Pradhama Drishtya Kuttakkar")).value should
+    IdentityMeasures.titleRelation(MeasuredListing("Pradhama Drishtiya Kuttakkar (Malayalam)"), Film("Pradhama Drishtya Kuttakkar")).value should
       (be("exact") or be("segment"))
-    IdentityMeasures.originalTitleRelation(Some("Pradhama Drishtiya Kuttakkar"), Seq("Pradhama Drishtya Kuttakkar")) shouldBe IdentityMeasures.Category("match")
-    IdentityMeasures.originalTitleRelation(Some("Scary Movie 3"), Seq("Scary Movie 4")) should not be IdentityMeasures.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Pradhama Drishtiya Kuttakkar"), Seq("Pradhama Drishtya Kuttakkar")) shouldBe Measure.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Scary Movie 3"), Seq("Scary Movie 4")) should not be Measure.Category("match")
   }
 
   it should "not reach a one-word title: a letter apart there is another film" in {
     // UK, 64 "Lalka" / "Lalka (The Doll)" listings, originally "Lalka", were taken for "Lalkar" (1972).
-    IdentityMeasures.originalTitleRelation(Some("Lalka"), Seq("Lalkar")) should not be IdentityMeasures.Category("match")
-    IdentityMeasures.titleRelation(Listing("Lalka"), Film("Lalkar")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.originalTitleRelation(Some("Lalka"), Seq("Lalkar")) should not be Measure.Category("match")
+    IdentityMeasures.titleRelation(MeasuredListing("Lalka"), Film("Lalkar")) should not be Measure.Category("exact")
   }
 
   "an original title" should "match a film's title that differs only by a year or a season" in {
     // DE, 153 "MET Opera Live im Kino: Così Fan Tutte" listings, originally "The Metropolitan Opera: Così
     // fan tutte (2026)", against the record "The Metropolitan Opera 2026/27: Così fan tutte".
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
-      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
-    IdentityMeasures.originalTitleRelation(Some("Dune (2021)"), Seq("Dune"), filmYear = Some(2021)) shouldBe IdentityMeasures.Category("match")
+      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe Measure.Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Dune (2021)"), Seq("Dune"), filmYear = Some(2021)) shouldBe Measure.Category("match")
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Carmen (2026)"),
-      Seq("Royal Ballet & Opera 2026/27: Carmen")) should not be IdentityMeasures.Category("match")
+      Seq("Royal Ballet & Opera 2026/27: Carmen")) should not be Measure.Category("match")
   }
 
   it should "not match when the year it drops disagrees with the film's" in {
     // UK, Cineworld's "The Royal Ballet: The Nutcracker", originally "... (2024)", went to the 2015 recording
     // "The Royal Ballet: The Nutcracker" instead of the 2024/25 production.
     IdentityMeasures.originalTitleRelation(Some("The Royal Ballet: The Nutcracker (2024)"), Seq("The Royal Ballet: The Nutcracker"),
-      filmYear = Some(2015)) should not be IdentityMeasures.Category("match")
+      filmYear = Some(2015)) should not be Measure.Category("match")
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
-      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
+      Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe Measure.Category("match")
   }
 
   // The scorer asks the shapes of a listing's billed title again for every candidate it weighs
   // (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`): ~6% of a US replay's CPU (run 37517196329). Kept on the
   // listing, split once each — never in a process-wide cache.
   "a listing's own titles' shapes" should "be split once per listing, the same as split afresh" in {
-    val listing = IdentityMeasures.Listing("Mistyczka", rawTitle = Some("MISTYCZKA /film polski/ [2D LEKTOR] | DKF"))
+    val listing = MeasuredListing("Mistyczka", rawTitle = Some("MISTYCZKA /film polski/ [2D LEKTOR] | DKF"))
     val billed  = listing.rawTitle.get
     val first   = listing.shapesOfOwn(billed)
     IdentityMeasures.capitalisedTags(listing)
@@ -1820,38 +1821,38 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a work a slash joins to another" should "deny the film it is not, but not for a banner the title rules peel off its head" in {
     val fish = Film("The Fish with One Sleeve", year = Some(2025))
-    IdentityMeasures.joinsAnotherWork(Listing("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", searchTitles = Seq("SHINJUKUY BOYS")), fish) shouldBe true
+    IdentityMeasures.joinsAnotherWork(MeasuredListing("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", searchTitles = Seq("SHINJUKUY BOYS")), fish) shouldBe true
     // Kino Sokolnia Kępno: the retrospective banner before the slash is searched off (xtra-pp-wajda-rewizje-slash)
     val wajda = Film("Bez znieczulenia", year = Some(1978), directors = Some(Seq("Andrzej Wajda")))
-    val banner = Listing("„WAJDA: re-wizje” 2026 / \"BEZ ZNIECZULENIA\" (1985)", searchTitles = Seq("\"BEZ ZNIECZULENIA\" (1985)"))
+    val banner = MeasuredListing("„WAJDA: re-wizje” 2026 / \"BEZ ZNIECZULENIA\" (1985)", searchTitles = Seq("\"BEZ ZNIECZULENIA\" (1985)"))
     IdentityMeasures.joinsAnotherWork(banner, wajda) shouldBe false
     IdentityMeasures.joinsAnotherWork(banner.copy(searchTitles = Nil), wajda) shouldBe true
   }
 
   "a part a title numbers and subtitles" should "be another film's part only when the subtitle holds no word of the film's titles" in {
     val lang = Film("Das indische Grabmal", year = Some(1959), directors = Some(Seq("Fritz Lang")))
-    IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)"), lang) shouldBe true
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)"), lang) shouldBe true
     // a bare number among the film's titles names no part: TMDB's "2 - Das indische Grabmal", Danish "… gravmæle II"
     val langTitled = lang.copy(alternativeTitles = Seq("2 - Das indische Grabmal", "Det indiske gravmæle II"))
-    IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 2, DER TIGER VON ESCHNAPUR)"), langTitled) shouldBe true
-    IdentityMeasures.titlesAnotherPart(Listing("SHOAH (TEIL I)"), Film("Shoah", year = Some(1985))) shouldBe false
-    IdentityMeasures.titlesAnotherPart(Listing("De Gaulle Part Two: Liberté"), Film("De Gaulle: Liberté", year = Some(2026))) shouldBe false
-    IdentityMeasures.titlesAnotherPart(Listing("Ramayana: Rise Of A Legend - Part 1 Hindi"), Film("Ramayana: Rise of a Legend", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("DAS INDISCHE GRABMAL (TEIL 2, DER TIGER VON ESCHNAPUR)"), langTitled) shouldBe true
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("SHOAH (TEIL I)"), Film("Shoah", year = Some(1985))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("De Gaulle Part Two: Liberté"), Film("De Gaulle: Liberté", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Ramayana: Rise Of A Legend - Part 1 Hindi"), Film("Ramayana: Rise of a Legend", year = Some(2026))) shouldBe false
     // a film numbered as the part is that part, whatever note follows it
-    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
     // however the number is spelled
-    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - The IMAX Experience"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
-    IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 2 - Restaurierte Fassung"),
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Dune: Part 3 - The IMAX Experience"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Der Pate Teil 2 - Restaurierte Fassung"),
       Film("The Godfather Part II", year = Some(1974), alternativeTitles = Seq("Der Pate – Teil II"))) shouldBe false
     // in every spelling of the shared vocabulary (NumberedTitles.SpelledInstalments), accents folded: TMDB's Polish
     // "Diuna: Część trzecia" names part 3, and "Teil vier" is part 4
-    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - ERLY FAN PREVIEW"), Film("Diuna: Część trzecia", year = Some(2026))) shouldBe false
-    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Diuna: Część czwarta", year = Some(2026))) shouldBe true
-    IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 4 - Restaurierte Fassung"), Film("Der Pate Teil vier", year = Some(2030))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Dune: Part 3 - ERLY FAN PREVIEW"), Film("Diuna: Część trzecia", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Diuna: Część czwarta", year = Some(2026))) shouldBe true
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Der Pate Teil 4 - Restaurierte Fassung"), Film("Der Pate Teil vier", year = Some(2030))) shouldBe false
     services.titles.billing.BillingParse("Das Boot (Teil vier, Die Rückkehr)").titledParts shouldBe Seq((Some("4"), Seq("ruckkehr")))
     // an episode, named whether or not it is numbered
-    IdentityMeasures.titlesAnotherPart(Listing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
-    IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
+    IdentityMeasures.titlesAnotherPart(MeasuredListing("Star Wars: Episode VII - The Force Awakens"),
       Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
   }
 
@@ -1859,29 +1860,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK Film Theatre Leiston's "Disney Jr Cinema Club 2026" and Regal Stowmarket's "Disney Jr. Cinema Club" [2026] beside
     // TMDB's record of the 2025 club (drift slice film-theatre-leiston-disney-jr-cinema-club-2026)
     val club2025 = Film("Disney Jr. Cinema Club 2025", year = Some(2025))
-    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr Cinema Club 2026"), club2025) shouldBe true
-    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club", year = Some(2026)), club2025) shouldBe true
-    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club 2025"), club2025) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Disney Jr Cinema Club 2026"), club2025) shouldBe true
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Disney Jr. Cinema Club", year = Some(2026)), club2025) shouldBe true
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Disney Jr. Cinema Club 2025"), club2025) shouldBe false
     // a stated year earlier than the record's edition is a feed's guess, not an earlier edition: US Lark Theater's
     // "Women's Adventure Film Tour" [2025] screens TMDB's 2026 tour
-    IdentityMeasures.datesAnotherEdition(Listing("Women's Adventure Film Tour", year = Some(2025)),
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Women's Adventure Film Tour", year = Some(2025)),
       Film("Women's Adventure Film Tour 2026", year = Some(2026))) shouldBe false
     // undated: no edition billed
-    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club"), club2025) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Disney Jr. Cinema Club"), club2025) shouldBe false
     // a title its film names whole with its year, and a series the film names otherwise
-    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner 2049"), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
-    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner", year = Some(1982)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Blade Runner 2049"), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Blade Runner", year = Some(1982)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
     // a year the film's title closes on far off its release is no edition's: "Wonder Woman" [2020] may be the 2020
     // "Wonder Woman 1984", and "Blade Runner" [2017] the 2017 "Blade Runner 2049"
-    IdentityMeasures.datesAnotherEdition(Listing("Wonder Woman", year = Some(2020)), Film("Wonder Woman 1984", year = Some(2020))) shouldBe false
-    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner", year = Some(2017)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Wonder Woman", year = Some(2020)), Film("Wonder Woman 1984", year = Some(2020))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Blade Runner", year = Some(2017)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
     // an edition TMDB dates a year after its title's is still that edition
-    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club", year = Some(2027)), club2025.copy(year = Some(2026))) shouldBe true
+    IdentityMeasures.datesAnotherEdition(MeasuredListing("Disney Jr. Cinema Club", year = Some(2027)), club2025.copy(year = Some(2026))) shouldBe true
   }
 
   "a numbered title whose original title gives a subtitle" should "be another instalment only when none of the film's titles holds it" in {
     // DE Kinopolis' "Der Herr der Ringe 2 (Extended Version)" (Forgejo recording 528) took Bakshi's 1978 film by its bare top hit
-    val lotr2    = Listing("Der Herr der Ringe 2 (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended"))
+    val lotr2    = MeasuredListing("Der Herr der Ringe 2 (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended"))
     val bakshi   = Film("Der Herr der Ringe", originalTitle = Some("The Lord of the Rings"), year = Some(1978))
     val twoTowers = Film("Der Herr der Ringe - Die zwei Türme", originalTitle = Some("The Lord of the Rings: The Two Towers"), year = Some(2002))
     IdentityMeasures.numbersAnotherSubtitle(lotr2, bakshi) shouldBe true
@@ -1893,39 +1894,39 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.numbersAnotherSubtitle(lotr2, Film("Der Herr der Ringe - Die zwei Türme", originalTitle = Some("Il Signore degli Anelli - Le due torri"),
       alternativeTitles = Seq("The Lord of the Rings: The Two Towers"), year = Some(2002))) shouldBe false
     // a subtitle that is but a version tag names no instalment
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe 2", originalTitle = Some("The Lord of the Rings - Extended Edition")), bakshi) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Alien 2", originalTitle = Some("Aliens: Director's Cut – Remastered 4K")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Der Herr der Ringe 2", originalTitle = Some("The Lord of the Rings - Extended Edition")), bakshi) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Alien 2", originalTitle = Some("Aliens: Director's Cut – Remastered 4K")),
       Film("Aliens - Die Rückkehr", originalTitle = Some("Aliens"), year = Some(1986))) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Terminator 2 (4K)", originalTitle = Some("Terminator 2: Judgment Day – Remastered")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Terminator 2 (4K)", originalTitle = Some("Terminator 2: Judgment Day – Remastered")),
       Film("Terminator", originalTitle = Some("The Terminator"), year = Some(1984))) shouldBe true
     // a number that is no part's: a year, a name, a spelled-out series number
-    IdentityMeasures.numbersAnotherSubtitle(Listing("2001: Odyssee im Weltraum", originalTitle = Some("2001: A Space Odyssey")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("2001: Odyssee im Weltraum", originalTitle = Some("2001: A Space Odyssey")),
       Film("2001: Odyssee im Weltraum", originalTitle = Some("2001: A Space Odyssey"), year = Some(1968))) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Ocean's 11", originalTitle = Some("Ocean's Eleven: Remastered")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Ocean's 11", originalTitle = Some("Ocean's Eleven: Remastered")),
       Film("Ocean's Eleven", year = Some(2001))) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Fantastic 4", originalTitle = Some("The Fantastic Four: First Steps")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Fantastic 4", originalTitle = Some("The Fantastic Four: First Steps")),
       Film("Fantastic Four", year = Some(2005))) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("9½ Wochen", originalTitle = Some("9½ Weeks: Uncut")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("9½ Wochen", originalTitle = Some("9½ Weeks: Uncut")),
       Film("9½ Wochen", originalTitle = Some("Nine 1/2 Weeks"), year = Some(1986))) shouldBe false
     // a number mid-title, in an original title that only repeats the billing: PL Kinoteka's Wajda retrospective
     val wajda = "BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin"
-    IdentityMeasures.numbersAnotherSubtitle(Listing(wajda, originalTitle = Some(wajda)), Film("Brzezina", year = Some(1970))) shouldBe false
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe Teil Zwei", originalTitle = Some("The Lord of the Rings: The Two Towers")), bakshi) shouldBe true
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing(wajda, originalTitle = Some(wajda)), Film("Brzezina", year = Some(1970))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Der Herr der Ringe Teil Zwei", originalTitle = Some("The Lord of the Rings: The Two Towers")), bakshi) shouldBe true
     // a series' slot number, not the film's: the subtitle is the film
-    IdentityMeasures.numbersAnotherSubtitle(Listing("KinoKult 3 - Metropolis"), Film("Metropolis", year = Some(1927))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("KinoKult 3 - Metropolis"), Film("Metropolis", year = Some(1927))) shouldBe false
     // the billing's own subtitle is the venue's language, which a record in another need not hold (DE Neues Regina)
-    IdentityMeasures.numbersAnotherSubtitle(Listing("HOBBIT 2: SMAUGS EINÖDE (EXTENDED)"),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("HOBBIT 2: SMAUGS EINÖDE (EXTENDED)"),
       Film("The Hobbit: The Desolation of Smaug", year = Some(2013))) shouldBe false
     // a year with its century elided numbers no instalment (PL Kino Światowid)
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Halloween '26: Inni (re- release)", originalTitle = Some("Halloween: The Others")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Halloween '26: Inni (re- release)", originalTitle = Some("Halloween: The Others")),
       Film("Halloween", year = Some(1978))) shouldBe false
     // a part the original title numbers, not subtitles
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Harry Potter 7", originalTitle = Some("Harry Potter and the Deathly Hallows: Part 1")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Harry Potter 7", originalTitle = Some("Harry Potter and the Deathly Hallows: Part 1")),
       Film("Harry Potter und die Heiligtümer des Todes - Teil 1", originalTitle = Some("Harry Potter and the Deathly Hallows: Part 1"), year = Some(2010))) shouldBe false
     // a film numbered as the billing's instalment is that instalment, whatever its titles say
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Shrek 2", originalTitle = Some("Shrek 2: The Sing-Along")), Film("Shrek 2", year = Some(2004))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Shrek 2", originalTitle = Some("Shrek 2: The Sing-Along")), Film("Shrek 2", year = Some(2004))) shouldBe false
     // no number, nothing to compare
-    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended")),
+    IdentityMeasures.numbersAnotherSubtitle(MeasuredListing("Der Herr der Ringe (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended")),
       bakshi) shouldBe false
   }
 }

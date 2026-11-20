@@ -48,8 +48,8 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}"
   }
   /** No year the listing publishes contradicts the relay's record — but a page kept from a season too far back dates
-   *  its staging, not the relay it airs on its day ([[IdentityMeasures.Listing.airDays]]). */
-  private[identity] def airsTheYearItStates(listing: IdentityMeasures.Listing, record: Scored): Boolean =
+   *  its staging, not the relay it airs on its day ([[MeasuredListing.airDays]]). */
+  private[identity] def airsTheYearItStates(listing: MeasuredListing, record: Scored): Boolean =
     !record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) ||
       listing.billsAStaleSeason && listing.relayBilled.exists(_.airedOn(record.candidate.film))
   /** The relay's record credits no other director than the listing — or the listing's credit is another work's
@@ -103,12 +103,12 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
    *  Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the record of the
    *  season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere (Aldeburgh's,
    *  screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day). */
-  private[identity] def inItsSeason(listing: IdentityMeasures.Listing, record: Scored): Boolean =
+  private[identity] def inItsSeason(listing: MeasuredListing, record: Scored): Boolean =
     listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
       StageRelays.screenedSeasonRecord(listing, record.candidate.film)
 
   /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
-   *  ([[IdentityMeasures.Listing.screenedSeason]]) when exactly that season's records are among them; all of them
+   *  ([[MeasuredListing.screenedSeason]]) when exactly that season's records are among them; all of them
    *  otherwise. A relay airs on its house's published dates: UK "Royal Ballet & Opera: Swan Lake" (recording
    *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
    *  house's 2024/25 one. */

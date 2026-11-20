@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.Film
 
 /**
  * The identity model's venue detail and nothing else: a listing's page as venue_pages holds it
@@ -10,7 +11,7 @@ final class VenueDetailLookups(details: VenueDetails) extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = Answer.Unknown
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
+  def film(tmdbId: Int): Answer[Option[Film]] = Answer.Unknown
 }
 
 /**
@@ -29,7 +30,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
     extends ForwardingIdentityLookups(stored) {
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
     storedFirst(Question.Candidate(query), stored.candidates(query), live.candidates(query))
-  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+  override def film(tmdbId: Int): Answer[Option[Film]] =
     storedFirst(Question.FilmRecord(tmdbId), stored.film(tmdbId), live.film(tmdbId))
   /** The store's day of a record it holds — `Unknown` for one it holds dated by its year alone, which the agreement
    *  stage asks TMDB to read again (`agreement.AgreementStage.wanted`, its `Question.Record`s) — else the day of the record asked live. */

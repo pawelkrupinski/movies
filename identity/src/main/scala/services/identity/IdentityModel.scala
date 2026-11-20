@@ -18,7 +18,7 @@ import scala.annotation.unused
 /** One listing exactly as its venue published it, keyed by [[ListingKey]].
  *
  *  `title` is the title the venue's client published — what the calibrated measures read
- *  (`IdentityMeasures.Listing`), exactly as the calibration read it. `cleanTitle` is that title
+ *  (`MeasuredListing`), exactly as the calibration read it. `cleanTitle` is that title
  *  after the venue's own title rules (`ScrapeListing.cleanTitle`): only the FAMILY keys and the
  *  title must-links read it, so a "2D PL" suffix does not keep a spelling out of its film's family. */
 final case class Listing(
@@ -509,8 +509,8 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
-  lazy val measured: IdentityMeasures.Listing =
-    IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
+  lazy val measured: MeasuredListing =
+    MeasuredListing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
       screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate, yearUpperBound = yearUpperBound,
       performanceYear = performanceYear, anniversaryScreeningYear = anniversaryScreeningYear)
@@ -519,7 +519,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
-  lazy val published: IdentityMeasures.Listing =
+  lazy val published: MeasuredListing =
     measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, broadcastSeason = None, screenedSeason = None)
 
   /** The year this listing states: its own field, else the one its title brackets. */
@@ -559,7 +559,7 @@ object Evidence {
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
- *  carries — the film's own record is an `IdentityMeasures.Film`. */
+ *  carries — the film's own record is an `Film`. */
 final case class Hit(tmdbId: Int, title: String, originalTitle: Option[String], year: Option[Int], popularity: Double)
 
 object Hit {
@@ -571,7 +571,7 @@ object Hit {
  *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. `awaitingRecord`: its
  *  record is not answered yet (a record given up on is not awaited: decided on its hits), so the hits alone carry it and nothing its record states (a running time, credits, where it
  *  was released) can deny it — a family takes a film only where its pool with and without it agree ([[FamilyScope]]). */
-final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRecord: Boolean = false) {
+final case class Candidate(tmdbId: Int, film: Film, awaitingRecord: Boolean = false) {
   /** Is it a fallback source's film ([[FallbackIds]]), which only a no-match's fallback scores, never TMDB's? */
   def isFallback: Boolean = FallbackIds.isFallback(tmdbId)
   /** A fallback source's film as that source names it: the source's label and the IMDb id it stands for. */
@@ -581,13 +581,13 @@ final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRec
 
 object Candidate {
 
-  def of(tmdbId: Int, hits: Seq[Hit], record: Answer[Option[IdentityMeasures.Film]]): Candidate = {
+  def of(tmdbId: Int, hits: Seq[Hit], record: Answer[Option[Film]]): Candidate = {
     val popularity = hits.map(_.popularity).maxOption
     val best = Hit.best(hits)
     // A record that carries its popularity is the candidate's film itself: a copy restating it was a second Film per
     // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
     Candidate(tmdbId, record.answered.flatten.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
-      IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
+      Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
         popularity = popularity)), awaitingRecord = record.isAwaited)
   }
 }
@@ -729,7 +729,7 @@ trait IdentityLookups {
   /** Every film a query names. */
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]
   /** A film's own record (`TmdbFilmRecord`). */
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]
+  def film(tmdbId: Int): Answer[Option[Film]]
   /** Does this source number its films by their TMDB ids — the number a TMDB-keyed feed's link names ([[FeedLink]])? A
    *  film-database family's answers number theirs as one resolve meets them (`agreement.FamilyLookups`): there a link's
    *  TMDB id names none of them, and read as a film number it denied the very film the link meant. */

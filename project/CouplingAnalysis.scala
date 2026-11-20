@@ -52,7 +52,7 @@ object CouplingAnalysis {
         a.relations.externalClassDep.all.toSeq.map { case (from, to) => from -> sourceNameOf.getOrElse(to, to) }
     }.filter { case (from, to) => topOf.contains(from) && topOf.contains(to) && topOf(from) != topOf(to) }
     val zinc = raw.map { case (from, to) => topOf(from) -> topOf(to) }.toSet
-    // the named types (a nested one too: `IdentityMeasures.Film`) each edge's target side is, as Zinc records them
+    // the named types (a nested one too: `StageRelays.Relay`) each edge's target side is, as Zinc records them
     val zincUses: Map[(String, String), Set[String]] =
       raw.groupBy { case (from, to) => (topOf(from), topOf(to)) }.map { case (k, v) => k -> v.map(e => Coupling.normalize(e._2)).toSet }
     val sources = shared.result()

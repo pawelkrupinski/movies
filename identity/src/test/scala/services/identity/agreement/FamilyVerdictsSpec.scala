@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, VoterFamily}
+import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, Question,
+  VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +16,7 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
   import FilmTable.listing
 
   private val normalizer = SingleCountryNormalizer.titleNormalizer
-  private val klondike   = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
+  private val klondike   = Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
   private val held       = new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt16315948" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))))
   private val bare       = Seq(listing(KinoMuza, "Klondike", year = Some(2022)))
 

@@ -2,7 +2,7 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures
+import services.identity.Film
 import services.identity.agreement.SuspectTakes.Signal
 import scripts.SuspectTakesMeasure.Graded
 import tools.UnmatchedClusters.Label
@@ -10,8 +10,8 @@ import tools.UnmatchedClusters.Label
 /** How the suspect-take audit reads a label's film, and what it reports of the graded pairs. */
 class SuspectTakesMeasureSpec extends AnyFlatSpec with Matchers {
 
-  private val lalka  = IdentityMeasures.Film("Lalka", year = Some(2025), imdbNumber = 64570)
-  private val films  = Map(913760 -> lalka, 7 -> IdentityMeasures.Film("Michael"))
+  private val lalka  = Film("Lalka", year = Some(2025), imdbNumber = 64570)
+  private val films  = Map(913760 -> lalka, 7 -> Film("Michael"))
 
   private def graded(right: Boolean, signals: Set[Signal], note: String = "judged take: page", title: String = "Lalka") =
     Graded("pl", Label("pl", "*", title, "tmdb:913760", right, note), signals, signals.toSeq.map(_.label), today = true)

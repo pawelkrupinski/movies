@@ -2,7 +2,7 @@ package scripts
 
 import tools.SpecPool
 import models.Country
-import services.identity.{Answer, IdentityLookups, IdentityMeasures}
+import services.identity.{Answer, Film, IdentityLookups}
 import services.identity.agreement.SuspectTakes
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
@@ -98,7 +98,7 @@ object IdentityJudgeCards {
     // The records the capture never read, asked live on a small pool (TMDB allows ~40/s; 6 at once stays well inside).
     val tmdbOf   = (take: Take) => take.tmdb.orElse(take.imdb.flatMap(capture.finds.get).flatten)
     val missing  = groups.flatMap(g => tmdbOf(g._2.head)).distinct.filterNot(id => capture.films.get(id).flatten.isDefined)
-    val fetched  = live.fold(Map.empty[Int, IdentityMeasures.Film])(lookups => fetchAll(missing, lookups))
+    val fetched  = live.fold(Map.empty[Int, Film])(lookups => fetchAll(missing, lookups))
     val suspect  = suspicionsOf(capture, outcome, today.getYear)
     groups.map { case ((raw, film), group) =>
       val listings = group.flatMap(take => byVenue.getOrElse((take.venue, take.rawTitle), Nil)).distinct
@@ -130,7 +130,7 @@ object IdentityJudgeCards {
     }.toMap
   }
 
-  private def fetchAll(ids: Seq[Int], lookups: IdentityLookups): Map[Int, IdentityMeasures.Film] = {
+  private def fetchAll(ids: Seq[Int], lookups: IdentityLookups): Map[Int, Film] = {
     SpecPool.usingContext(6) { context =>
       implicit val ec: ExecutionContext = context
       val started = tools.Stopwatch.start()

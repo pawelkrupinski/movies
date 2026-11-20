@@ -1,9 +1,9 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLookups, IdentityMeasures, Listing}
 import services.titles.TitleContainment
 
 import scala.collection.mutable
+import services.identity.{Answer, CandidateQuery, DetailFacts, Film, Hit, IdentityLookups, Listing}
 
 /** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
  *  are numbered as this resolve meets them (it asks its questions in one sorted order), so the resolve is a function of
@@ -53,8 +53,8 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
     })
   }
 
-  override def film(number: Int): Answer[Option[IdentityMeasures.Film]] =
-    named.get(number).filter(fetched(number, _)).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
+  override def film(number: Int): Answer[Option[Film]] =
+    named.get(number).filter(fetched(number, _)).fold[Answer[Option[Film]]](Answer.Known(None)) { hit =>
       val answer = answers.record(hit.id)
       answer.answered.flatten.foreach(record => read(hit.id) = record)
       answer.map(_.map(_.film))

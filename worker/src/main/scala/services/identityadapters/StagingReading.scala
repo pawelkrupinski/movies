@@ -3,12 +3,13 @@ package services.identityadapters
 import services.identity.*
 import services.identity.staging.{StagedFact, StagedListing, StagedTake}
 import models.ListingKey
+import services.identity.Film
 
 /** What one publish reads its takes against: the films of the model's resolution, else of the TMDB store
  *  (`storedFilm`), and each listing's facts (`factsOf`, none when it is not known). */
-final class StagingReading(resolution: Resolution, storedFilm: Int => Option[IdentityMeasures.Film],
+final class StagingReading(resolution: Resolution, storedFilm: Int => Option[Film],
                             factsOf: ListingKey => Seq[StagedFact]) {
-  def film(id: Int): Option[IdentityMeasures.Film] = resolution.films.get(id).orElse(storedFilm(id))
+  def film(id: Int): Option[Film] = resolution.films.get(id).orElse(storedFilm(id))
   def title(id: Int): Option[String]                = film(id).map(_.title)
   def filmFacts(id: Option[Int]): Seq[StagedFact]   = id.flatMap(i => film(i).map(StagedEvidence.film(i, _))).getOrElse(Nil)
 

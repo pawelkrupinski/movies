@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, Evidence, IdentityMeasures, Listing, ListingShape, PosterEvidence,
-  PosterHash, PosterQuestion, Question, ResolverDecision, VoterFamily}
+import services.identity.{Answer, Dependency, Evidence, Film, Listing, ListingShape, PosterEvidence, PosterHash,
+  PosterQuestion, Question, ResolverDecision, VoterFamily}
 import models.ListingKey
 
 import scala.collection.mutable
@@ -169,11 +169,11 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
   }
 
   /** TMDB's record of `id`, as the venues' lookups or TMDB's hold it. */
-  private def recordOf(id: Int): Option[IdentityMeasures.Film] =
+  private def recordOf(id: Int): Option[Film] =
     venuesLooked.film(id).answered.flatten.orElse(looked.flatMap(_.film(id).answered.flatten))
 
   /** TMDB's record of `id` ([[recordOf]]) — one not answered yet counted among the [[blindReads]]. */
-  private def namedRecord(id: Int): Option[IdentityMeasures.Film] = {
+  private def namedRecord(id: Int): Option[Film] = {
     val found = recordOf(id)
     if (found.isEmpty && looked.fold(venuesLooked.film(id))(_.film(id)) == Answer.Unknown) candidates.blindReads += 1
     found
@@ -184,14 +184,14 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
 
   /** A relay screening years after its record's broadcast, months after a newer record of its title: no production the
    *  take `model` (its record `film`) can be, whatever else is read. */
-  private def superseded(listings: Seq[Listing], model: Int, film: IdentityMeasures.Film): Option[Correction.Outcome] =
+  private def superseded(listings: Seq[Listing], model: Int, film: Film): Option[Correction.Outcome] =
     Broadcast.superseded(listings, listing => Evidence.of(listing, None).measured, film, titledFilms(listings).filter(_ != model).flatMap(id => namedRecord(id).map(id -> _)))
       .map(why => Correction.Outcome(None, s"withdrawn ${titleOf(model)} — relay: $why"))
 
   /** A listing billing a stage work on the day one record of it was broadcast is that record ([[Broadcast.take]]): a
    *  model take of a screen adaptation yields to it, as an agreed one does (PL Kino Amok's bare "Manon" on the Met's
    *  day) — a house's production taken is the model's reading of the relay, never corrected here. */
-  private def relayed(digested: AgreementEvidence.Cluster, model: Int, film: IdentityMeasures.Film,
+  private def relayed(digested: AgreementEvidence.Cluster, model: Int, film: Film,
                       asked: mutable.Set[Question]): Option[Correction.Outcome] = {
     val listings = digested.listings
     Option.when(listings.exists(ListingShape.stagesAWork) && !Broadcast.billsAProduction(film.title)) {
@@ -206,7 +206,7 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
   /** What the evidence against the take `model` (its record `film`) decides ([[Correction.decide]]): (a) a venue poster
    *  matching another candidate, (e) the venues' programmes on `listedOn`'s site and (b) the families — the last two
    *  asked only of a take a poster questions. */
-  private def againstTake(digested: AgreementEvidence.Cluster, model: Int, film: IdentityMeasures.Film, reading: AgreementPass.Read,
+  private def againstTake(digested: AgreementEvidence.Cluster, model: Int, film: Film, reading: AgreementPass.Read,
                           reads: mutable.Map[Dependency, Long], asked: mutable.Set[Question]): Option[Correction.Outcome] = {
     val listings    = digested.listings
     val modelRecord = SourceRecord.ofTmdb(model, film)

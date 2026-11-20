@@ -15,6 +15,7 @@ import tools.{HttpStatusException, MutableClock, TestWiring}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
+import services.identity.Film
 
 /** TMDB's answers normalized as they are fetched: read back exactly as the client parses them, with
  *  one film, one person and one question each, and moved — announced — only when a value the
@@ -266,7 +267,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
         Answer.Known(Seq(Hit(2, "Lalka", Some("Lalka"), Some(2025), popularity), Hit(1, "Lalka", Some("Lalka"), Some(1968), 3.5)))
       case _ => Answer.Known(Nil)
     }
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = { fetched(); w.lookups.film(tmdbId) }
+    def film(tmdbId: Int): Answer[Option[Film]] = { fetched(); w.lookups.film(tmdbId) }
   }
 
   /** DE Caligari's "ES (ULRICH SCHAMONI)": IMDb's suggestions for the title (recording 38713274617, the same URL) name
@@ -328,7 +329,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       def hasDetail(listing: Listing): Boolean = false
       def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = { asked.incrementAndGet(); schamoni(w); w.lookups.candidates(q) }
-      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+      def film(tmdbId: Int): Answer[Option[Film]] = Answer.Known(None)
     }
     val lookups = new StoredFirstLookups(w.lookups, live)
     lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
@@ -635,7 +636,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.store.filmPartial(banden, TmdbStore.Partial.Local, minimalOf(recorded("movie-627671-de.json")))
     w.store.filmPartial(banden, TmdbStore.Partial.English, minimalOf(recorded("movie-627671-en.json")))
     w.lookups.film(banden).answered.flatten.map(_.taglineKey) shouldBe
-      Some(IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))
+      Some(Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))
   }
 
   // The release veto asks one question of a film's release dates: does TMDB date a release of it in the venue's country?

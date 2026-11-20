@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.{StagedFact, StagedNode}
+import services.identity.{Film, Measure}
 
 /**
  * What the staging screen lists of what a take was decided on (docs/design/identity-questions.md, "The staging
@@ -32,7 +33,7 @@ object StagedEvidence {
     "page"             -> l.page,
     "poster"           -> l.poster)
 
-  def film(id: Int, f: IdentityMeasures.Film): Seq[StagedFact] = facts(
+  def film(id: Int, f: Film): Seq[StagedFact] = facts(
     "tmdb"               -> Some(id.toString),
     "imdb"               -> Option.when(f.imdbNumber > 0)(f"tt${f.imdbNumber}%07d"),
     "title"              -> Some(f.title),
@@ -47,7 +48,7 @@ object StagedEvidence {
     "countries"          -> f.countries.flatMap(list),
     "release countries"  -> f.releaseCountries.filter(_.nonEmpty).map(_.grouped(2).mkString(" ")),
     "certificates"       -> f.certificates,
-    "genres"             -> list(f.genreIds.toSeq.map(id => IdentityMeasures.Film.GenreNames.getOrElse(id, id.toString)).sorted),
+    "genres"             -> list(f.genreIds.toSeq.map(id => Film.GenreNames.getOrElse(id, id.toString)).sorted),
     "cast billed"        -> f.cast.map(c => s"${c.pairs.size} names"),
     "popularity"         -> f.popularity.map(p => f"$p%.1f"))
 
@@ -72,10 +73,10 @@ object StagedEvidence {
       n.measures.toSeq.sortBy(_._1).map { case (name, m) => StagedFact(s"measure $name", measure(m)) })
   }
 
-  private def measure(m: IdentityMeasures.Measure): String = m match {
-    case IdentityMeasures.Category(value) => value
-    case IdentityMeasures.Number(value)   => if (value == math.rint(value)) value.toLong.toString else f"$value%.3f"
-    case IdentityMeasures.Missing(side)   => s"missing on the $side"
+  private def measure(m: Measure): String = m match {
+    case Measure.Category(value) => value
+    case Measure.Number(value)   => if (value == math.rint(value)) value.toLong.toString else f"$value%.3f"
+    case Measure.Missing(side)   => s"missing on the $side"
   }
 
   private def list(values: Seq[String]): Option[String] = Option.when(values.nonEmpty)(values.mkString(", "))

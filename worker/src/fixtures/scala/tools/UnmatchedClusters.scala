@@ -5,10 +5,9 @@ import services.identityadapters.{CatalogueAnswerStore, FamilyAnswerStore, InMem
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.bson.json.{JsonMode, JsonWriterSettings}
-import services.identity._
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts}
-import services.identity.VoterFamily
+import services.identity.{Film, VoterFamily, _}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -42,7 +41,7 @@ object UnmatchedClusters {
    *  clusters alone: alone, a cluster loses the neighbours that hold it apart from a namesake (a Met relay alone took
    *  the Royal Opera's record of the same opera). */
   final case class Capture(country: Country, listings: Seq[Listing], decisions: Seq[ResolverDecision], queries: Map[CandidateQuery, Seq[Hit]],
-                           films: Map[Int, Option[IdentityMeasures.Film]], details: Map[String, Option[DetailFacts]],
+                           films: Map[Int, Option[Film]], details: Map[String, Option[DetailFacts]],
                            withDetail: Set[String], families: Map[String, BsonDocument], finds: Map[String, Option[Int]],
                            /** Each candidate's top-billed cast the fill read ([[IdentityLookups.cast]]): none in a capture
                             *  recorded before the cast evidence, whose replay knows no cast. */
@@ -68,7 +67,7 @@ object UnmatchedClusters {
    *  answered off the tree, as the store's re-read record would be. What the tree states none of stays none; neither
    *  changes a model decision the capture holds. */
   def withRecorded(capture: Capture, asked: Iterable[Int], castOf: Int => Option[Seq[String]],
-                   recordOf: Int => Option[IdentityMeasures.Film]): Capture = {
+                   recordOf: Int => Option[Film]): Capture = {
     val casts = (capture.casts.keys ++ asked).toSeq.distinct.filter(id => capture.casts.get(id).flatten.isEmpty)
       .flatMap(id => castOf(id).map(cast => id -> Option(cast)))
     val films = capture.films.collect { case (id, Some(film)) if film.originalLanguage.isEmpty || film.genreBits == 0 =>
@@ -315,7 +314,7 @@ object UnmatchedClusters {
                          *  [[MemoLookups]], which, dropped into refs older than the overview, passes none through. */
                         described: Option[IdentityLookups] = None) extends IdentityLookups {
     val queries    = new ConcurrentHashMap[CandidateQuery, Seq[Hit]]()
-    val films      = new ConcurrentHashMap[Int, Option[IdentityMeasures.Film]]()
+    val films      = new ConcurrentHashMap[Int, Option[Film]]()
     val details    = new ConcurrentHashMap[String, Option[DetailFacts]]()
     val withDetail = ConcurrentHashMap.newKeySet[String]()
     val casts      = new ConcurrentHashMap[Int, Option[Seq[String]]]()
@@ -329,7 +328,7 @@ object UnmatchedClusters {
     override def prefetchAnswered(): Unit = inner.prefetchAnswered()
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(details, ListingKey.serialised(listing.key))(inner.detail(listing))
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(queries, query)(inner.candidates(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(films, tmdbId)(inner.film(tmdbId))
+    override def film(tmdbId: Int): Answer[Option[Film]] = noted(films, tmdbId)(inner.film(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(casts, tmdbId)(inner.cast(tmdbId))
     override def overview(tmdbId: Int): Answer[Option[ProseWords]] = noted(overviews, tmdbId)(described.getOrElse(inner).overview(tmdbId))
     private def noted[K, A](held: ConcurrentHashMap[K, A], key: K)(ask: => Answer[A]): Answer[A] =
@@ -350,7 +349,7 @@ object UnmatchedClusters {
     override def hasDetail(listing: Listing): Boolean = capture.withDetail(ListingKey.serialised(listing.key))
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))(())
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = known(capture.queries.get(query))(queries.add(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
+    override def film(tmdbId: Int): Answer[Option[Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
     // a cast the capture did not record is not known — what the cast evidence reads as nothing to go on, never a gap —
     // noted for a fill to answer
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =

@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.{StagedCluster, StagedQuestion, StagingBeat, StagingEvent}
+import services.identity.Film
 
 /**
  * One staging-screen snapshot ([[IdentityStagingPublisher]]), worked out from the takes the projection last wrote, the
@@ -15,7 +16,7 @@ final class StagingSnapshots(waitingOn: ResolverDecision => WaitingOn,
                              /** A TMDB film's record where the resolution holds none: a film only a later stage took
                               *  (an agreement), or the one a moved listing held, read from the TMDB store, on the
                               *  publisher's thread. */
-                             storedFilm: Int => Option[IdentityMeasures.Film] = _ => None,
+                             storedFilm: Int => Option[Film] = _ => None,
                              /** The listings the projection last read, for their facts: walked on the publisher's
                               *  thread ([[IdentityProjection.Projected.read]]). */
                              read: () => Iterator[Listing] = () => Iterator.empty,

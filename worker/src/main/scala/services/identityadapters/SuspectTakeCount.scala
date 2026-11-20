@@ -6,6 +6,7 @@ import play.api.Logging
 
 import java.time.{Clock, LocalDate, ZoneId}
 import java.util.concurrent.Executor
+import services.identity.Film
 
 /**
  * The live resolve's SUSPECT TAKES ([[SuspectTakes]]), counted per signal over each WRITTEN projection of the whole corpus:
@@ -27,7 +28,7 @@ import java.util.concurrent.Executor
  * submitted while another waits replaces it. A count over the decisions and listings last counted is not made again, and
  * none is made while `pressed` (the heap held near its limit after its last collection): the next submission counts.
  */
-final class SuspectTakeCount(venues: IdentityLookups, records: Seq[Int] => Map[Int, IdentityMeasures.Film], clock: Clock, zone: ZoneId,
+final class SuspectTakeCount(venues: IdentityLookups, records: Seq[Int] => Map[Int, Film], clock: Clock, zone: ZoneId,
                              report: Map[SuspectTakes.Signal, Int] => Unit, runner: Executor, pressed: () => Boolean,
                              judgements: TakeJudgements.Index = TakeJudgements.Index.Empty, reportWrong: Int => Unit = _ => ()) extends Logging {
 
@@ -45,7 +46,7 @@ final class SuspectTakeCount(venues: IdentityLookups, records: Seq[Int] => Map[I
   /** Count `resolution`'s suspect takes among `listings` (every listing it decided) and report them, on this thread. */
   def apply(resolution: Resolution, listings: Seq[Listing]): Unit = {
     val agreed = resolution.decisions.iterator.flatMap(_.film).filterNot(resolution.films.contains).distinct.toSeq
-    val held   = if (agreed.isEmpty) Map.empty[Int, IdentityMeasures.Film] else records(agreed)
+    val held   = if (agreed.isEmpty) Map.empty[Int, Film] else records(agreed)
     val corpus = SuspectTakes.corpus(resolution, listings, venues, held.get)
     val year   = LocalDate.ofInstant(clock.instant(), zone).getYear
     val judged = corpus.takes.map(take => take -> judgements.verdict(take.listing.venue, take.listing.rawTitle, SuspectTakeCount.idsOf(take)))

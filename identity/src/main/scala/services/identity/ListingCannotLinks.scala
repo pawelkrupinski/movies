@@ -31,7 +31,7 @@ private[identity] final class ListingCannotLinks(scoring: CandidateScoring, fami
     // A double bill shares its first film's form and is neither film ("The Gruffalo + The Gruffalo's Child").
     val sameForm = sharedSearchForm(first, second)
       .filterNot(_ => MultiFilmBill.billsTwoWorks(first.evidence.published) || MultiFilmBill.billsTwoWorks(second.evidence.published))
-    def titled(l: IdentityMeasures.Listing) = sameForm.fold(l)(form => l.copy(title = form, rawTitle = None))
+    def titled(l: MeasuredListing) = sameForm.fold(l)(form => l.copy(title = form, rawTitle = None))
     // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
     val (firstListing, secondListing) = (titled(families.evidenceOf(first).published), titled(families.evidenceOf(second).published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
@@ -63,10 +63,10 @@ private[identity] final class ListingCannotLinks(scoring: CandidateScoring, fami
       yield a.filmless && a.distributed && b.filmless && b.distributed && !a.apartFrom(b)).contains(true)
 
   /** Do two billings of one relay disagree on a fact — two directors, years further apart than one season's two? */
-  private def relayFactsApart(measures: Map[String, IdentityMeasures.Measure]): Boolean =
-    measures.get("director").contains(IdentityMeasures.Category("different")) ||
+  private def relayFactsApart(measures: Map[String, Measure]): Boolean =
+    measures.get("director").contains(Measure.Category("different")) ||
       Seq("year.delta", "titleYear.delta", "season.delta").exists(fact => measures.get(fact).exists {
-        case IdentityMeasures.Number(delta) => delta > 1 || (fact == "season.delta" && delta > 0)
+        case Measure.Number(delta) => delta > 1 || (fact == "season.delta" && delta > 0)
         case _                              => false
       })
 }

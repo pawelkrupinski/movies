@@ -3,6 +3,7 @@ package services.identity
 import services.titles.TitleContainment
 
 import IdentityMeasures.*
+import Measure.{Category, Missing}
 
 /** How a listing's numerals (Roman or Arabic, glued or apart) and a film's number one instalment of a series.
  *  Part of [[IdentityMeasures]], which exports it. */
@@ -68,10 +69,10 @@ private[identity] object NumeralMeasures {
    *  weighs that). A remake, or a title whose number IS its name ("1917", "Se7en", "Ocean's
    *  Eleven"), has nothing to compare; nor has a house's SEASON record, whose relay a venue numbers by its season
    *  (`season`: "RBO: Tosca 27" is "Royal Ballet & Opera 2026/27: Tosca"). An original title that is but a spelling of
-   *  the billing ([[Listing.originalStandsApart]]) never numbers it the film's way where the billing numbers itself
+   *  the billing ([[MeasuredListing.originalStandsApart]]) never numbers it the film's way where the billing numbers itself
    *  otherwise: a feed copies a search hit's title, number and all — DE UFA Palast's "League of Legends Worlds 26 -
    *  Finals in Cinema" carried "League of Legends Worlds25 - Finals in Cinema", the 2025 final's record. */
-  def numeralRelation(l: Listing, f: Film): Measure = {
+  def numeralRelation(l: MeasuredListing, f: Film): Measure = {
     val relation = numeralRelation(l.numberedShapes, f)
     if (relation == Category("same") && (l.numberedBilledShapes ne l.numberedShapes)) {
       val billed = numeralRelation(l.numberedBilledShapes, f)
@@ -101,12 +102,12 @@ private[identity] object NumeralMeasures {
   /** Does the listing's title NAME the film: a naming title relation ([[NamingRelations]]), and not
    *  another instalment of its series ([[numeralRelation]]) — "The Texas Chainsaw Massacre 2"
    *  carries the whole of "The Texas Chainsaw Massacre" and names its sequel. */
-  def namesFilm(l: Listing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown): Boolean =
+  def namesFilm(l: MeasuredListing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown): Boolean =
     names(titleRelation(l, f, houses).value, l, f)
   /** [[namesFilm]] on a title relation already measured. */
-  def names(relation: String, l: Listing, f: Film): Boolean =
+  def names(relation: String, l: MeasuredListing, f: Film): Boolean =
     NamingRelations(relation) && !numbersAnotherInstalment(l, f)
-  def numbersAnotherInstalment(l: Listing, f: Film): Boolean = numeralRelation(l, f) match {
+  def numbersAnotherInstalment(l: MeasuredListing, f: Film): Boolean = numeralRelation(l, f) match {
     case Category(c) => OtherInstalment(c)
     case _           => false
   }

@@ -11,7 +11,7 @@ import services.titles.{TitleContainment, TitleWords}
  *
  * `raw`: the billing, its certificate note off; `venues` and `bannerSlot` as [[ListingShape.billedBeside]] takes them.
  */
-private[identity] final class BilledBeside(raw: String, listing: Listing, films: Seq[IdentityMeasures.Film],
+private[identity] final class BilledBeside(raw: String, listing: Listing, films: Seq[Film],
                                            venues: Seq[String] => Boolean, bannerSlot: Boolean) {
   import BilledBeside.*
 
@@ -46,7 +46,7 @@ private[identity] final class BilledBeside(raw: String, listing: Listing, films:
   private def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)
   private def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(DecorationWords.billedAround) || DecorationWords.namesAnEvent(piece)
   // the film's own tagline, its subtitle ("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora")
-  private def tagline(piece: Seq[String]) = piece.nonEmpty && films.exists(_.taglineKey == IdentityMeasures.Film.taglineKeyOf(piece.mkString(" ")))
+  private def tagline(piece: Seq[String]) = piece.nonEmpty && films.exists(_.taglineKey == Film.taglineKeyOf(piece.mkString(" ")))
 
   // a film of the silent era under a screening programme: the billing is the programme's, its accompanist's (DE
   // "Film+Musikfest: Greta Garbo: The Temptress", 1926), as one billing it silent is

@@ -211,7 +211,7 @@ object PopulationMonotonicity {
   object Without {
     /** The corpus's nodes, indexed for [[Without]]: each title key's entries by listing, and each listing's node. */
     final class Index(nodes: Seq[EvidenceNode]) {
-      private[PopulationMonotonicity] val groups: Map[String, Seq[(ListingKey, (String, IdentityMeasures.Listing))]] =
+      private[PopulationMonotonicity] val groups: Map[String, Seq[(ListingKey, (String, MeasuredListing))]] =
         nodes.flatMap(node => node.listings.map(l => CorpusContext.titleOf(node) -> (l.key, Backer.of(l) -> node.evidence.measured))).groupMap(_._1)(_._2)
       private[PopulationMonotonicity] val nodeOf: Map[ListingKey, EvidenceNode] = nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
       def apply(context: CorpusContext, absent: Set[ListingKey]): CorpusContext =
@@ -228,7 +228,7 @@ object PopulationMonotonicity {
     def candidate(id: Int): Option[Candidate] = context.candidate(id)
     def houses: StageRelays.Houses = context.houses
     def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = context.houseRanking
-    def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
+    def titleGroup(key: String): Seq[(String, MeasuredListing)] =
       if (!titles(key)) context.titleGroup(key) else index.groups.getOrElse(key, Nil).collect { case (k, entry) if !absent(k) => entry }
     def wholeTitle(sanitised: String): Boolean = context.wholeTitle(sanitised)
     def segmentSpread(sanitised: String): Int = context.segmentSpread(sanitised)

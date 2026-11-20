@@ -26,7 +26,7 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
     weighing.ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
       IdentityMeasures.standsForTheWhole(weighing.listing, scored.candidate.film)))
   /** The candidate read as the bare title its piece is: the banner beside it is no evidence against the film. */
-  private[identity] def asItsBareTitle(scored: Scored): Scored = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
+  private[identity] def asItsBareTitle(scored: Scored): Scored = scored.copy(measures = scored.measures + ("title" -> Measure.Category("exact")))
 
   /** Is `scored` one IMDb's suggestions take, on the old pipeline's rungs: IMDb's FIRST suggestion with the year the
    *  listing states; the ONE suggested film the listing's credited director directed; or the ONLY film IMDb suggests,
@@ -95,7 +95,7 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
    *  ("Part II", "2"), at most one letter edit apart per four letters (one in a short word: "of" for "on", "Enface" for
    *  "Enfance", "Caspar" for "Casper")? A slip a typist makes, not another film's title: "A Boy and His Dog" is no slip
    *  of "A Boy and Her Dog" (two edits in a three-letter word), "Part One" none of "Part Two". */
-  private[identity] def slippedTitle(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+  private[identity] def slippedTitle(listing: MeasuredListing, film: Film): Boolean = {
     def letters(word: String) = word.forall(_.isLetter) && !IdentityMeasures.numbersAnInstalment(word)
     def slip(a: String, b: String) = letters(a) && letters(b) &&
       tools.EditDistance.within(a, b, math.max(1, math.min(a.length, b.length) / 4))
@@ -201,11 +201,11 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
   private[identity] def namesItsOnlyResult(sole: Scored): Boolean = sole.titleNamesIt || wordsOfIts(sole)
   /** The sole result's facts as its title's exact top hit's, its year and running time aside: a search's only film is
    *  taken unless a fact CONTRADICTS it, which the rule asked already. */
-  private[identity] def itsTitlesFactsBeside(sole: Scored): Map[String, IdentityMeasures.Measure] =
+  private[identity] def itsTitlesFactsBeside(sole: Scored): Map[String, Measure] =
     asItsTitlesTopHit(sole).measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" }
   private[identity] def creditsAnotherDirector(sole: Scored): Boolean =
     sole.category("director").contains("different") && !sole.category("title").exists(IdentityMeasures.Rivalling)
-  private[identity] def standsForItsTitle(listing: IdentityMeasures.Listing, sole: Scored): Boolean =
+  private[identity] def standsForItsTitle(listing: MeasuredListing, sole: Scored): Boolean =
     sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) || IdentityMeasures.standsForTheWhole(listing, sole.candidate.film)
   private[identity] def namesBeside(sole: Scored, other: Scored): Boolean =
     (other ne sole) && other.titleNamesIt && !(wordsOfIts(sole) && !wordsOfIts(other))

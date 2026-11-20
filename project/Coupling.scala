@@ -296,8 +296,8 @@ object Coupling {
 
     /**
      * The edges that couple: `from` -> `to` (top-level types) counts when what `from` uses of `to` is a collaborator --
-     * judged per TYPE used, a nested type by itself (`IdentityMeasures.Film`, a case class, is data even though
-     * `IdentityMeasures`' own functions make it a collaborator; a call of those functions counts it). What `from` uses
+     * judged per TYPE used, a nested type by itself (`StageRelays.Relay`, a case class, is data even though
+     * `StageRelays`' own functions make it a collaborator; a call of those functions counts it). What `from` uses
      * of `to`: the types of `to` (`unitsOf(to)`) its class files name (`classFileUses(from)`: the types they name,
      * folded to their nearest named type), else -- a use the class files do not show (an inline method, a type alias)
      * -- the ones Zinc records (`zincUses((from, to))`: source names, each its class and its object), else `to` itself,

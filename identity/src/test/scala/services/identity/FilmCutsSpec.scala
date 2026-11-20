@@ -2,13 +2,13 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures.{Film, Listing, Number}
+import Measure.Number
 
 /** TMDB keeps one record per film at its theatrical runtime; cinemas bill a cut — the extended "Return of the King",
  *  "Apocalypse Now" Final Cut or Redux — at the cut's own runtime. A cut the table names ([[FilmCuts]]) is the film. */
 class FilmCutsSpec extends AnyFlatSpec with Matchers {
 
-  private def delta(stated: Int, f: Film) = IdentityMeasures.listingFilm(Listing(f.title, runtime = Some(stated)), f, None, 0, 0)("runtime.delta")
+  private def delta(stated: Int, f: Film) = IdentityMeasures.listingFilm(MeasuredListing(f.title, runtime = Some(stated)), f, None, 0, 0)("runtime.delta")
 
   private val returnOfTheKing = Film("The Lord of the Rings: The Return of the King", year = Some(2003), runtime = Some(201), imdbNumber = 167260)
   private val apocalypseNow   = Film("Apocalypse Now", year = Some(1979), runtime = Some(147), imdbNumber = 78788)

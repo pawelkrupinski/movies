@@ -1,6 +1,7 @@
 package tools
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ModelRead, ObservationReads, ResolveInputs, TrackedLookups}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Film, Hit, IdentityCalibration, IdentityLookups,
+  IdentityResolver, Listing, ModelRead, ObservationReads, ResolveInputs, TrackedLookups}
 import services.identityadapters.TmdbIdentityLookups
 import services.titles.TitleNormalizer
 
@@ -77,7 +78,7 @@ object IdentityLookupSweep {
       details += 1; named(Named.detail(l))(inner.detail(l))
     }
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = named(Named.query(q))(inner.candidates(q))
-    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = named(Named.film(id))(inner.film(id))
+    override def film(id: Int): Answer[Option[Film]] = named(Named.film(id))(inner.film(id))
   }
 
   /** Each lookup's name, one per line of the marker. */

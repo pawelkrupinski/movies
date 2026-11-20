@@ -56,7 +56,7 @@ private[identity] object FeedLink {
   val TitledRival = 0
 
   /** Did the feed copy an original title the venue bills no title of — a title the link added, not the venue's? */
-  def copiesAnotherTitle(listing: IdentityMeasures.Listing): Boolean =
+  def copiesAnotherTitle(listing: MeasuredListing): Boolean =
     listing.originalTitle.exists(copied => !(listing.rawTitle.toSeq :+ listing.title).map(IdentityMeasures.key).contains(IdentityMeasures.key(copied)))
 
   /** The one TMDB film the TMDB-keyed feeds link `listings` to, with the id that links it — the one definition every

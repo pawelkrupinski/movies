@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityMeasures, ScreeningDays, VoterFamily}
+import services.identity.{Answer, Film, FilmTable, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,7 +14,7 @@ class VenueListingsSpec extends AnyFlatSpec with Matchers {
   private def days(ds: String*) = ScreeningDays.of(ds.map(LocalDate.parse))
   private def screening(venue: models.Cinema, title: String, on: String*) = FilmTable.listing(venue, title).copy(screenings = days(on*))
   private def film(title: String, original: Option[String], year: Int, director: String) =
-    SourceRecord(IdentityMeasures.Film(title, original, Nil, Some(year), None, Some(Seq(director))), Map("filmweb" -> "_"))
+    SourceRecord(Film(title, original, Nil, Some(year), None, Some(Seq(director))), Map("filmweb" -> "_"))
 
   private val brokenVoices = film("Dyrygent", Some("Sbormistr"), 2025, "Ondřej Provazník")
   private val lalka        = film("Lalka", None, 2026, "Maciej Kawalski")

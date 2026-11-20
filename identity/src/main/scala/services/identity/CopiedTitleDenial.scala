@@ -13,7 +13,7 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
    *  "Kin", which took Baker's 2018 "Kin"; "Karavan" took the 1946 "Caravan", "Akten des Missbrauchs" Zobel's "The Hunt".
    *  Measured on convergence run 38529260149's DE model takes: 7 listings took a film only the copied title of another
    *  linked film named, all 7 wrong. A page feed names no film, its copy no less one when it shares nothing with the
-   *  billing ([[IdentityMeasures.Listing.originalSharesNothingBilled]]): DE Cinecitta's "Über Unterbiberger - Vom Woid in
+   *  billing ([[MeasuredListing.originalSharesNothingBilled]]): DE Cinecitta's "Über Unterbiberger - Vom Woid in
    *  die Welt" links kinoheld's page of another event, which copied Eisenstein's "Октябрь", his credit and its 142
    *  minutes, and took "Oktober 1917" at 61.9% while thirteen venues billed Ditscherlein's 2025 documentary. */
   def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[Denial] =
@@ -32,7 +32,7 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
         links.evidenceOf(node).measured.originalSharesNothingBilled && !links.evidenceOf(node).measured.originalTranslatesBilled)(
         SourceReliability.claimOf(node.listings.head) -> None))
 
-  private def copiedTitleDenial(listing: IdentityMeasures.Listing, candidate: Candidate, feed: String, linked: Option[Int]): Option[Denial] =
+  private def copiedTitleDenial(listing: MeasuredListing, candidate: Candidate, feed: String, linked: Option[Int]): Option[Denial] =
     // a SHORT ([[ShortFilms.isShort]]) beside a TMDB-keyed feed's link to another film is the copy's pull whatever the
     // billed title names, and whatever year: the feed's pick is a programme's film, the year and an English title a short
     // carries too the pick's restated (DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary, copying its English
@@ -50,12 +50,12 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
    *  them, which a mere spelling keeps from naming it, is the billing's ("Madoka Magica - The Movie: Rebellion" is
    *  "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion"); one word is a namesake's chance
    *  ("Über Unterbiberger - Vom Woid in die Welt" and "Oktober 1917 – Zehn Tage, die die Welt erschütterten"). */
-  private def billsItsWords(listing: IdentityMeasures.Listing, candidate: Candidate, linked: Option[Int]): Boolean =
+  private def billsItsWords(listing: MeasuredListing, candidate: Candidate, linked: Option[Int]): Boolean =
     linked.isEmpty && (Seq(candidate.film.title) ++ candidate.film.originalTitle).exists(title => listing.wordsBilledOf(title) >= 2)
 
   /** A year the listing states that the film shares — the linked film's, copied — makes the two one film under two
    *  records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030. */
-  private def sameYear(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean =
+  private def sameYear(listing: MeasuredListing, candidate: Candidate): Boolean =
     listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
 
   /** Whether the billed titles — without the copied original, nor a search title that is only it again — name the record
@@ -63,7 +63,7 @@ private[identity] final class CopiedTitleDenial(pool: FamilyPool, links: FeedLin
    *  ([[IdentityMeasures.venueTitles]]) are the copy's pull again. Nor by one word a first name runs into, no delimited
    *  piece of the billing: DE Centraltheater Brake's "RAY WILSON", a singer's concert Cineamo links to the 1944 "Wilson"
    *  and copies that title from, named "Wilson - Der Weltverbesserer" (2017) only by the surname (prod 2026-10-14). */
-  private def namedByItsBilling(listing: IdentityMeasures.Listing, candidate: Candidate): Boolean = {
+  private def namedByItsBilling(listing: MeasuredListing, candidate: Candidate): Boolean = {
     val copied = listing.originalTitle.map(IdentityMeasures.key)
     val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
     val record = recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)

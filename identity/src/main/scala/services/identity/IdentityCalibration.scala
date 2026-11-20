@@ -1,8 +1,8 @@
 package services.identity
 
 import play.api.libs.json.{Json, OFormat}
+import Measure.{Category, Missing, Number}
 
-import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
 
 /**
  * The identity resolver's calibrated evidence model, as DATA: `identity-weights.json`, produced

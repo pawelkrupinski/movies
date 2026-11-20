@@ -1,6 +1,6 @@
 package scripts
 
-import services.identity.{IdentityMeasures, ResolverDecision}
+import services.identity.{Film, ResolverDecision}
 import services.identity.agreement.SuspectTakes
 import services.identity.agreement.SuspectTakes.{Signal, Take}
 import tools.{CommandLine, IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}
@@ -37,7 +37,7 @@ object SuspectTakesMeasure {
 
   /** The film record a label's film (`tmdb:<id>`, or `imdb:tt…` by the IMDb number a record carries) names, under its
    *  TMDB key: none when the dump holds no such record. */
-  def recordOf(film: String, films: Map[Int, IdentityMeasures.Film]): Option[(String, Option[Int], IdentityMeasures.Film)] = film.split(":", 2) match {
+  def recordOf(film: String, films: Map[Int, Film]): Option[(String, Option[Int], Film)] = film.split(":", 2) match {
     case Array("tmdb", id) => id.toIntOption.flatMap(i => films.get(i).map(f => (s"tmdb:$i", Some(i), f)))
     case Array("imdb", id) => films.find { case (_, f) => f.imdbNumber > 0 && f"tt${f.imdbNumber}%07d" == id }.map { case (i, f) => (s"tmdb:$i", Some(i), f) }
     case _                 => None

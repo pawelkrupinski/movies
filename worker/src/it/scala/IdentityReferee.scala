@@ -1,6 +1,6 @@
 package integration
 
-import services.identity.{Evidence, IdentityMeasures}
+import services.identity.{Evidence, Film, IdentityMeasures, Measure}
 
 /**
  * The benchmark's ABSOLUTE referee: one listing's film, old or new, judged ALONE from the
@@ -43,10 +43,10 @@ object IdentityReferee {
     java.text.Normalizer.normalize(s.toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "")
   private def housesOf(s: String): Set[String] = Houses.collect { case (h, p) if p.findFirstIn(fold(s)).isDefined => h }.toSet
 
-  def judge(e: Evidence, f: IdentityMeasures.Film): (Verdict, Seq[String]) = {
+  def judge(e: Evidence, f: Film): (Verdict, Seq[String]) = {
     val m = IdentityMeasures.listingFilm(e.measured, f, None, 0, 0)
     val (agree, deny) = IdentityMeasures.ownAgreement(m)
-    val yearFar = m.get("year.distance").exists { case IdentityMeasures.Number(d) => d > 2; case _ => false }
+    val yearFar = m.get("year.distance").exists { case Measure.Number(d) => d > 2; case _ => false }
     val runtimeFar = e.runtime.zip(f.runtime.filter(_ > 0)).exists { case (a, b) => math.abs(a - b) >= 30 }
     val seasonAfter = e.measured.seasonYear.zip(f.year).exists { case (s, y) => s - y > 1 }
     // A year the ORIGINAL title writes ("The Royal Ballet: The Nutcracker (2024)") is a published year too.

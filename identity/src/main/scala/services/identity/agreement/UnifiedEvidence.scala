@@ -1,8 +1,8 @@
 package services.identity.agreement
 
 import services.identity.{Answer, BilledPiece, CastEvidence, Certificates, ClasspathResource, FactRelations,
-  FallbackIds, FeedLink, IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, ResolverDecision,
-  SourceReliability, VenueNames, VoterFamily}
+  FallbackIds, FeedLink, Film, IdentityMeasures, IdentityResolver, Listing, ListingShape, Measure, MeasuredListing,
+  PosterEvidence, ResolverDecision, SourceReliability, VenueNames, VoterFamily}
 import play.api.libs.json.{Json, OFormat}
 
 /**
@@ -127,9 +127,9 @@ object UnifiedEvidence {
    *  ([[Broadcast.take]]), the film databases' house productions and which records still wait on their day. */
   final case class ClusterEvidence(listings: Seq[Listing], decision: ResolverDecision, nodes: Seq[IdentityResolver.NodeEvidence],
                                    verdicts: Seq[FamilyVerdict], posters: Seq[Map[Int, Option[Int]]], tmdbOf: String => Option[Int],
-                                   thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => IdentityMeasures.Listing] = None,
+                                   thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => MeasuredListing] = None,
                                    venueNames: VenueNames = VenueNames.None, cast: Int => Option[Seq[String]] = _ => None,
-                                   productions: () => Answer[Seq[IdentityMeasures.Film]] = () => Answer.Known(Nil),
+                                   productions: () => Answer[Seq[Film]] = () => Answer.Known(Nil),
                                    undated: Int => Boolean = _ => false)
 
   /** One film the evidence reaches: `tmdb:<id>` or, a film only other databases hold, `imdb:<tt>`; its title, each family
@@ -215,7 +215,7 @@ object UnifiedEvidence {
     // over an older namesake (DE Gröben-Lichtspiele's "Camouflage OmU": Cineamo and Filmweb on the 2026 Ukrainian film).
     private val copiedYearDenied = if (c.listings.isEmpty || c.listings.exists(SourceReliability.decides(_, SourceReliability.Fact.Year))) Map.empty[Int, Int]
       else c.nodes.flatMap(_.candidates).filter(first => first.rank.contains(1) && first.denied && first.titleNamesIt &&
-        first.film.year.exists(_ >= c.thisYear - 1) && first.measures.get("year.delta").exists(!_.isInstanceOf[IdentityMeasures.Missing]))
+        first.film.year.exists(_ >= c.thisYear - 1) && first.measures.get("year.delta").exists(!_.isInstanceOf[Measure.Missing]))
         .map(first => first.tmdbId -> first.film.year.get).toMap
     // the listings whose venue credits a director ([[PinnedSignals]]' family.director): a feed's credit is its entry's
     private val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
@@ -229,7 +229,7 @@ object UnifiedEvidence {
     private val castTake =
       if (c.venueNames.isEmpty || c.listings.exists(_.directors.nonEmpty) || c.listings.exists(ListingShape.billsSeveral)) None
       else {
-        def billed(films: Seq[IdentityMeasures.Film]) = c.listings.forall(Agreement.namesIt(_, films))
+        def billed(films: Seq[Film]) = c.listings.forall(Agreement.namesIt(_, films))
         val denied = scored.toSeq.filterNot { case (id, _) => eligible.exists(_._1 == id) }.sortBy(_._1)
           .collect { case (id, candidates) if billed(Seq(candidates.head.film)) => Option.empty[Building] -> c.cast(id) }
         val sameTitled = built.toSeq.filter(b => billed(b.records.toSeq.map(_.film))).map(b => Option(b) -> b.tmdb.flatMap(c.cast))

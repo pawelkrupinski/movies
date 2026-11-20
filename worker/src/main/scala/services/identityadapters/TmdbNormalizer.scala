@@ -155,7 +155,7 @@ object TmdbNormalizer {
     // and the certificates it records where a rating scale is read (`Certificates.below`): the least restrictive per country
     val certificates = (body \ "release_dates").toOption.flatMap(Certificates.ofReleaseDates).map(TmdbFilmRecord.CertificatesField -> Json.toJson(_))
     // its genres' ids, never their names: what `TmdbFilmRecord.genreBits` reads. Budget: ~3 genres of ~10 B a stored
-    // document; the record the model keeps holds them as one Int (`IdentityMeasures.Film.genreBits`)
+    // document; the record the model keeps holds them as one Int (`Film.genreBits`)
     val genres = (body \ "genres").asOpt[Seq[JsValue]].map(gs => "genres" -> JsArray(gs.flatMap(g => (g \ "id").asOpt[Int]).map(id => Json.obj("id" -> id))))
     // the words its overview capitalises, never the text: all the synopsis evidence reads of it (`TmdbFilmRecord.overview`)
     val overview = (body \ "overview").asOpt[String].map(text =>

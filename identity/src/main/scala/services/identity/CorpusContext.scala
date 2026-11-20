@@ -27,7 +27,7 @@ private[identity] trait CorpusContext {
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
   def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]]
   /** Every listing carrying title key `key`, with its venue and whose claim its facts are ([[Backer]]), in node order. */
-  def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)]
+  def titleGroup(key: String): Seq[(String, MeasuredListing)]
   /** Is `sanitised` some node's whole title? */
   def wholeTitle(sanitised: String): Boolean
   /** How many distinct whole titles carry `sanitised` as one of their pieces ([[bannerSegment]]). */
@@ -84,7 +84,7 @@ private[identity] final class WholeCorpusContext(
   answers:        CandidateQuery => Option[Seq[Int]],
   candidates:     Map[Int, Candidate],
   houseEvidence:  Seq[StageRelays.Billing],
-  titleGroups:    Map[String, Seq[(String, IdentityMeasures.Listing)]],
+  titleGroups:    Map[String, Seq[(String, MeasuredListing)]],
   wholeTitles:    Set[String],
   reachedByTitle: Map[String, Seq[(String, Set[Int])]],
   segmentSpreads: Map[String, Int]
@@ -93,7 +93,7 @@ private[identity] final class WholeCorpusContext(
   def candidate(id: Int): Option[Candidate] = candidates.get(id)
   lazy val houses: StageRelays.Houses = StageRelays.Houses.learn(houseEvidence)
   lazy val houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = StageRelays.Houses.ranking(houseEvidence)
-  def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] = titleGroups.getOrElse(key, Nil)
+  def titleGroup(key: String): Seq[(String, MeasuredListing)] = titleGroups.getOrElse(key, Nil)
   def wholeTitle(sanitised: String): Boolean = wholeTitles(sanitised)
   def reachedBy(key: String): Seq[(String, Set[Int])] = reachedByTitle.getOrElse(key, Nil)
   def ranked(query: CandidateQuery): Option[Seq[Int]] = answers(query)
@@ -105,7 +105,7 @@ private[identity] object CorpusContext {
   /** The records a listing's own title searches found — TMDB's, and IMDb's FIRST suggestion for its title: IMDb
    *  matches a title's other-language spellings TMDB's search lacks ("Camino dla opornych" is Compostelle, which TMDB
    *  holds under no Polish title), and its first suggestion is the title's best match, not a filmography's film. */
-  def searchFound(listing: IdentityMeasures.Listing, answers: CandidateQuery => Option[Seq[Int]]): Seq[Int] =
+  def searchFound(listing: MeasuredListing, answers: CandidateQuery => Option[Seq[Int]]): Seq[Int] =
     IdentityMeasures.searchQueries(listing).flatMap(query => answers(CandidateQuery.Title(query)).getOrElse(Nil)) ++
       Seq(listing.title.trim).filter(_.nonEmpty).flatMap(title => answers(CandidateQuery.Imdb(title)).getOrElse(Nil).take(1))
 
@@ -115,7 +115,7 @@ private[identity] object CorpusContext {
    *  "It (1990)" {Tommy Lee Wallace} not his 1991 "And the Sea Will Tell"), while a title search finds a
    *  record by any of its translations. The same inputs whether a whole resolve asks or the live corpus
    *  re-titles the key. */
-  def titlesByFacts(listings: Seq[IdentityMeasures.Listing], found: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
+  def titlesByFacts(listings: Seq[MeasuredListing], found: Iterable[Int], records: Int => Option[Candidate]): Seq[(Int, String)] =
     IdentityMeasures.titlesByFacts(listings, found.toSeq.distinct.sorted.flatMap(id => records(id).map(id -> _.film)))
 
   /** A segment carried by this many distinct whole titles, and by none as its own whole title, is a
@@ -151,7 +151,7 @@ private[identity] object CorpusContext {
     def keys: Set[String] = (titles ++ groups).map("t:" + _) ++ segments.map("s:" + _) ++ banners.map("b:" + _) ++ films.map("f:" + _)
   }
   object Reads {
-    def of(members: Seq[EvidenceNode], pool: Seq[IdentityMeasures.Film], films: Set[Int], queries: Set[CandidateQuery],
+    def of(members: Seq[EvidenceNode], pool: Seq[Film], films: Set[Int], queries: Set[CandidateQuery],
            sanitize: String => String): Reads = Reads(
       members.map(titleOf).toSet,
       members.flatMap(node => TitleRelation.groups(node.evidence.measured)).toSet,
@@ -170,7 +170,7 @@ private[identity] object CorpusContext {
   object Changed { val None: Changed = Changed(Set.empty, Set.empty, Set.empty, Set.empty) }
 
   /** The values a family read, as [[CorpusContext.slice]] cut them. */
-  final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, IdentityMeasures.Listing)]],
+  final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, MeasuredListing)]],
                          wholeTitles: Set[String], bannerSegments: Set[String], recurringSegments: Set[String], houses: Map[String, String],
                          candidates: Map[Int, Candidate],
                          answers: Map[CandidateQuery, Option[Seq[Int]]]) {
@@ -189,14 +189,14 @@ private[identity] object CorpusContext {
   }
 
   /** Every recorded season production, by the (work, season) pairs its titles name. */
-  def seasonProductions(films: Iterable[(Int, IdentityMeasures.Film)]): Map[(String, Int), Set[Int]] =
+  def seasonProductions(films: Iterable[(Int, Film)]): Map[(String, Int), Set[Int]] =
     films.toSeq.flatMap { case (id, film) => StageRelays.seasonWorks(film).map(_ -> id) }.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
 
   /** The films a node's banner is billed against (`Houses.evidence`): the ones it reached, then —
    *  a listing naming a season — every recorded production of its work that season, whoever searched
    *  it up. PL Kino 1410's "Cosi fan tutte | metropolitan opera: live in hd 2026/27" reached only
    *  Royal Ballet & Opera's; the Met's record, another venue's hit, is what names its banner's house. */
-  def billedFilms(reached: Seq[Int], listing: IdentityMeasures.Listing, seasonFilms: ((String, Int)) => Iterable[Int]): Seq[Int] = {
+  def billedFilms(reached: Seq[Int], listing: MeasuredListing, seasonFilms: ((String, Int)) => Iterable[Int]): Seq[Int] = {
     val own = reached.toSet
     reached ++ StageRelays.seasonWorks(listing).toSeq.flatMap(seasonFilms).distinct.sorted.filterNot(own)
   }

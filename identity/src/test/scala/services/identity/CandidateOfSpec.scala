@@ -3,7 +3,6 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.identity.IdentityMeasures.Film
 
 /**
  * A recorded film's base candidate is its record. The corpus holds both — `records` and `base` — for every film,

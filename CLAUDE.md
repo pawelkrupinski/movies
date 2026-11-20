@@ -271,8 +271,8 @@ that only keeps private state (a memo of a pure function) passes nothing on to t
 counts it. Everything else is DATA: immutable, effect-free and
 holding only data -- case classes and objects, enums, hierarchies of such, value classes, record-like final classes of
 vals, objects of constants and pure functions (a string helper), pure strategy objects; a lazy val is data (computed
-once from its owner's fields, never written again). A nested type is judged by itself: using `IdentityMeasures.Film`
-(data) is no coupling, calling `IdentityMeasures`' own functions is. A data type's method may take a collaborator as a
+once from its owner's fields, never written again). A nested type is judged by itself: using `StageRelays.Relay`
+(data) is no coupling, calling `StageRelays`' own functions is. A data type's method may take a collaborator as a
 parameter: the caller holds it, and counts it. A class's own supertypes are no collaborator of it, and a collaborator
 and an interface it implements are ONE (handing a `TitleNormalizer` on as its `TitleForms` costs nothing: segregating an
 interface never raises a fan-out). Cycles, layers, module edges and a package's Ca/Ce/D still read every

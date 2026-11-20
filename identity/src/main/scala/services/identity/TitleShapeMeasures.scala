@@ -22,7 +22,7 @@ private[identity] object TitleShapeMeasures {
    *  numbered with no subtitle ("SHOAH (TEIL I)"), titled as the film is ("De Gaulle Part Two: Liberté") or numbered
    *  as the film's titles name a part ("Dune: Part Three - ERLY FAN PREVIEW") is not — a bare number among them is no
    *  part named: Lang's 1959 film also goes by "2 - Das indische Grabmal", and is no "TEIL 2, DER TIGER VON ESCHNAPUR". */
-  def titlesAnotherPart(l: Listing, f: Film): Boolean = {
+  def titlesAnotherPart(l: MeasuredListing, f: Film): Boolean = {
     val parts = titledParts(l.ownTitles)
     // a film its titles name as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
     lazy val numbered = f.titles.flatMap(NumberedTitles.namedPartNumbers).toSet
@@ -37,7 +37,7 @@ private[identity] object TitleShapeMeasures {
    *  Bakshi's 1978 "Der Herr der Ringe". A series whose name spells its number ("Ocean's Eleven", "The Fantastic Four:
    *  First Steps") is no instalment; a version tag ("– Extended", ": Director's Cut") or a part number ("…: Part 1") is
    *  no subtitle; an original title that only repeats the billing gives none of its own. */
-  def numbersAnotherSubtitle(l: Listing, f: Film): Boolean = {
+  def numbersAnotherSubtitle(l: MeasuredListing, f: Film): Boolean = {
     val numbers = l.ownTitles.flatMap(BillingParse(_).instalment).toSet
     // the ORIGINAL title's subtitle alone: a billing's own ("HOBBIT 2: SMAUGS EINÖDE (EXTENDED)") is the venue's language,
     // which a record of the film in another ("The Hobbit: The Desolation of Smaug", IMDb's) need not hold
@@ -63,7 +63,7 @@ private[identity] object TitleShapeMeasures {
    *  names otherwise ("Blade Runner 2049") is no edition of it, nor is a year its title closes on more than a year off
    *  its release: "Wonder Woman 1984", released in 2020, is no 1984 edition that a billing of "Wonder Woman" [2020]
    *  postdates. */
-  def datesAnotherEdition(l: Listing, f: Film): Boolean = {
+  def datesAnotherEdition(l: MeasuredListing, f: Film): Boolean = {
     lazy val filed = f.ownTitles.flatMap(editionOf).distinct.filter { case (_, edition) => f.year.forall(FactRelations.yearsNear(edition, _)) }
     val closed = l.ownTitles.flatMap(editionOf).distinct
     if (closed.nonEmpty) closed.forall { case (series, year) => filed.exists(_._1 == series) && !filed.contains(series -> year) }
@@ -84,18 +84,18 @@ private[identity] object TitleShapeMeasures {
       !f.directorCredits.exists(CreditRelation.onePerson(new CreditRelation.Credits(Seq(name)), _))
 
   /** Does the listing credit one of the film's directors ([[CreditRelation.onePerson]])? */
-  private[identity] def creditsItsDirector(l: Listing, f: Film): Boolean = f.directorCredits.exists(CreditRelation.onePerson(l.directorCredits, _))
+  private[identity] def creditsItsDirector(l: MeasuredListing, f: Film): Boolean = f.directorCredits.exists(CreditRelation.onePerson(l.directorCredits, _))
 
   /** The pieces of a listing's title AS BILLED ([[shapes]]) that are written in capitals where the title is not — the
    *  case change a venue's programme tag makes beside a work's own spelling ("Alim | UFF", "DKF: Lalka"). None in a title
    *  billed all in capitals ("BEZ KOŃCA 2D PL LOLO"): its case says nothing. */
-  def capitalisedTags(l: Listing): Seq[String] = {
+  def capitalisedTags(l: MeasuredListing): Seq[String] = {
     val billed = l.rawTitle.getOrElse(l.title)
     if (!billed.exists(_.isLower)) Nil
     else l.shapesOfOwn(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
   }
 
-  private[identity] def shapesOf(l: Listing): Seq[String] = {
+  private[identity] def shapesOf(l: MeasuredListing): Seq[String] = {
     shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)) ++ l.ownTitles.flatMap(creditedWork), l.decorations)
   }
@@ -104,7 +104,7 @@ private[identity] object TitleShapeMeasures {
    *  Assassin + Q&A", "Interval" of "The Odyssey + Interval". Only a joined piece: a banner's own words ("HALLOWEEN -
    *  SPECIAL - …") are its programme's. Never one of the listing's own titles. A film such a piece alone names is no
    *  rule's take ([[eventNamed]]). */
-  private[identity] def joinedEvents(l: Listing): Set[String] =
+  private[identity] def joinedEvents(l: MeasuredListing): Set[String] =
     if (!l.ownTitles.exists(_.indexOf('+') >= 0)) Set.empty
     else {
       val own = l.ownTitles.map(_.trim).toSet
@@ -116,7 +116,7 @@ private[identity] object TitleShapeMeasures {
    *  billing cannot tell apart are still left to no pooled vote: "Amazing Grace + Q&A" is Ruth Carney's, not Apted's),
    *  but no rule takes it ("Inside Gaza + Q&A" ×1, "Le Moulin + Q&A": prod 2026-11-01) nor does it stand as the runner-up
    *  a film's own facts must outweigh ("The Assassin + Q&A", "My Daughter Is a Zombie + Q&A"). */
-  private[identity] def eventNamed(l: Listing, f: Film): Boolean = {
+  private[identity] def eventNamed(l: MeasuredListing, f: Film): Boolean = {
     val joined = joinedEvents(l)
     joined.nonEmpty && {
       val pieces = namingPieces(l, f)

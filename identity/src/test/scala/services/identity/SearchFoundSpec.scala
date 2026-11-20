@@ -11,7 +11,7 @@ class SearchFoundSpec extends AnyFlatSpec with Matchers {
     // PL "Camino dla opornych" {Yann Samuell} [2026]: TMDB holds Compostelle under no Polish title, so its own title
     // search finds nothing; IMDb's first suggestion for the title is Compostelle. Without it the local title was never
     // learned and 14 listings the old pipeline had right went unmatched.
-    val camino  = IdentityMeasures.Listing("Camino dla opornych", year = Some(2026), directors = Seq("Yann Samuell"))
+    val camino  = MeasuredListing("Camino dla opornych", year = Some(2026), directors = Seq("Yann Samuell"))
     val answers = (query: CandidateQuery) => query match {
       case CandidateQuery.Imdb("Camino dla opornych") => Some(Seq(1404604, 777))
       case _                                          => Some(Nil)

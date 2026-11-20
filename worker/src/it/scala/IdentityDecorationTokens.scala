@@ -1,8 +1,8 @@
 package integration
 
-import services.identity.MultiFilmBill
 import play.api.libs.json.Json
-import services.identity.{DecorationSegments, DecorationTokens, IdentityMeasures, TitleDecorations}
+import services.identity.{DecorationSegments, DecorationTokens, MeasuredListing, MultiFilmBill,
+  TitleDecorations}
 import services.identity.ListingShape
 import models.ListingKey
 import services.titles.TitleContainment
@@ -53,7 +53,7 @@ object IdentityDecorationTokens {
         DecorationTokens.Spread(venuesOf.get(t).fold(0)(_.size), filmsOf.get(t).fold(0)(_.size), inRecords.getOrElse(t, 0)))
 
       def double(x: services.identity.Listing) =
-        ListingShape.billsSeveral(x) || MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(x.title, Some(x.rawTitle), decorations = base))
+        ListingShape.billsSeveral(x) || MultiFilmBill.billsTwoWorks(MeasuredListing(x.title, Some(x.rawTitle), decorations = base))
       def heldOut(venue: String) = Math.floorMod(scala.util.hashing.MurmurHash3.stringHash(venue), 5) == 0
 
       // the training titles: each matched listing's (venue, raw title) once, aligned with its film's titles

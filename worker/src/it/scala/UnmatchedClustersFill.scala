@@ -1,7 +1,7 @@
 package integration
 
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
-import services.identity._
+import services.identity.{Film, _}
 
 import tools._
 
@@ -86,7 +86,7 @@ object UnmatchedClustersFill {
     def recordedOf(tree: TmdbIdentityLookups, asked: Iterable[Int]): Unit = {
       val before = capture
       capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).answered.flatten, id => tree.film(id).answered.flatten)
-      def held(c: UnmatchedClusters.Capture)(has: IdentityMeasures.Film => Boolean) = c.films.count(_._2.exists(has))
+      def held(c: UnmatchedClusters.Capture)(has: Film => Boolean) = c.films.count(_._2.exists(has))
       println(s"[${country.code}] fill: ${capture.casts.count(_._2.isDefined) - before.casts.count(_._2.isDefined)} cast(s), " +
         s"${held(capture)(_.originalLanguage.isDefined) - held(before)(_.originalLanguage.isDefined)} original language(s) and " +
         s"${held(capture)(_.genreBits != 0) - held(before)(_.genreBits != 0)} record(s)' genres read from the recording")

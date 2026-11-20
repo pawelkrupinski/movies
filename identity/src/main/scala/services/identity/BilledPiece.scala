@@ -2,7 +2,6 @@ package services.identity
 
 import services.titles.billing.BillingPieces
 
-import services.identity.IdentityMeasures.Measure
 
 /** Why a film a billing's cluster took — the model's, or the one the families agree on — is none of the billing's: it
  *  names the film as ONE PIECE beside another thing ([[ListingShape.billedBeside]]) — DE "Jens Wawrczeck - Immer Ärger mit Harry" is an actor's reading, not
@@ -57,7 +56,7 @@ private[identity] object BilledPiece {
    *  frei mit Seebrücke Würzburg e.V.", the 2026 film with free entry from a charity). */
   enum Keeps { case All, Facts, FactsOrCurrent }
 
-  def of(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film, tmdbId: Option[Int],
+  def of(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: Film, tmdbId: Option[Int],
          measures: Map[String, Measure], corroborated: Double, recurs: String => Boolean,
          answered: CandidateQuery => Seq[Hit], keeps: Keeps = Keeps.All): Option[Piece] = {
     val read = new Reading(evidence, listings, country, film, tmdbId, measures, recurs, answered)
@@ -72,7 +71,7 @@ private[identity] object BilledPiece {
 
   /** One billing read against `film`, each question [[of]] asks of it a method: read only when asked, as [[of]]'s
    *  branches ask them. */
-  private final class Reading(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film,
+  private final class Reading(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: Film,
                               tmdbId: Option[Int], measures: Map[String, Measure], recurs: String => Boolean,
                               answered: CandidateQuery => Seq[Hit]) {
     import services.titles.TitleContainment.tokens
@@ -82,7 +81,7 @@ private[identity] object BilledPiece {
     // a staged show ([[ListingShape.ShowWords]]) dates itself by its season, which its work's film of the next year stays a
     // year off: only its film's exact year is a fact of the film's (UK "CBeebies Panto 2026: Treasure Island", Hyde Park
     // Picture House publishing 2026, is not Ridley Scott's 2027 "Treasure Island")
-    private def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(IdentityMeasures.Number(0)))
+    private def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(Measure.Number(0)))
     private def show      = tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
     private def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
 
@@ -168,7 +167,7 @@ private[identity] object BilledPiece {
    *  ([[Keeps.FactsOrCurrent]]). The families' best match for a billing is their best namesake of the
    *  piece it names, whichever stage takes it (UK "Song Sung Blue- The Music of Neil Diamond", a tribute concert, filled as
    *  the 2025 film from the families' leans). */
-  def ofFamilies(listings: Seq[Listing], film: IdentityMeasures.Film, tmdbId: Option[Int], keeps: Keeps = Keeps.Facts): Option[Piece] = {
+  def ofFamilies(listings: Seq[Listing], film: Film, tmdbId: Option[Int], keeps: Keeps = Keeps.Facts): Option[Piece] = {
     val read = listings.map { listing =>
       val evidence = Evidence.of(listing, None)
       val country  = EvidenceNode.countryOf(listing.cinema)
@@ -181,6 +180,6 @@ private[identity] object BilledPiece {
   }
 
   /** A billing's measures against `film` for a stage that scored no candidate (the agreement stage): its stated facts. */
-  def measuresOf(evidence: Evidence, film: IdentityMeasures.Film, country: Option[String]): Map[String, Measure] =
+  def measuresOf(evidence: Evidence, film: Film, country: Option[String]): Map[String, Measure] =
     IdentityMeasures.listingFilm(evidence.measured, film, None, 0, 0, country = country)
 }

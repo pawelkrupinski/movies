@@ -22,12 +22,12 @@ class CertificatesSpec extends AnyFlatSpec with Matchers {
   }
 
   "The weighted certificate measure" should "weigh a certificate only beside a film the billing names as a whole title" in {
-    val tiger = IdentityMeasures.Film("The Tiger Who Came to Tea", year = Some(2019), certificates = Some("GB=U"))
+    val tiger = Film("The Tiger Who Came to Tea", year = Some(2019), certificates = Some("GB=U"))
     def certificate(title: String) =
-      IdentityMeasures.listingFilm(IdentityMeasures.Listing(title, certificate = Some("U")), tiger, Some(1), 0, 0, country = Some("GB"))("certificate")
-    certificate("The Tiger Who Came to Tea") shouldBe IdentityMeasures.Category("match")
+      IdentityMeasures.listingFilm(MeasuredListing(title, certificate = Some("U")), tiger, Some(1), 0, 0, country = Some("GB"))("certificate")
+    certificate("The Tiger Who Came to Tea") shouldBe Measure.Category("match")
     // UK Hyde Park Picture House bills two shorts under one U: the certificate rates the programme, not a film it names by a piece
-    certificate("The Tiger Who Came for Tea and We're Going on a Bear Hunt") shouldBe IdentityMeasures.Missing("piece")
+    certificate("The Tiger Who Came for Tea and We're Going on a Bear Hunt") shouldBe Measure.Missing("piece")
   }
 
   it should "re-resolve a listing whose certificate moved: the model reads it" in {

@@ -67,14 +67,14 @@ object TitleRelation {
   /** Every title group a listing's backing can read, whatever the film ([[backingGroups]]): its title's and its
    *  decorated-only shapes' keys, every title its search asks for, and every shape of its title. What a family's resolve
    *  reads of the corpus's groups ([[CorpusContext.Reads]]) and what retention relates a listing by. */
-  def groups(listing: IdentityMeasures.Listing): Seq[String] =
+  def groups(listing: MeasuredListing): Seq[String] =
     (IdentityMeasures.titleGroups(listing) ++ IdentityMeasures.searchGroupsAny(listing) ++ listing.shapeKeys).filter(_.nonEmpty).distinct
 
   /** The title groups whose venues back `film` for `listing` ([[FamilyScope]]): its own title's, the searches naming the
    *  film, and a film the title carries as one of its delimited pieces is backed by the venues billing that piece alone —
    *  DE Astor's "ATMOS: Michael", which Cineamo links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to
    *  Antoine Fuqua. Every one is among [[groups]]. */
-  def backingGroups(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Seq[String] =
+  def backingGroups(listing: MeasuredListing, film: Film): Seq[String] =
     (IdentityMeasures.titleGroups(listing) ++ IdentityMeasures.searchGroups(listing, film) ++ listing.shapeKeys.filter(film.titleKeys)).distinct
 
   /** The title group a listing is filed under for backing: its title's key. */

@@ -7,7 +7,7 @@ object NoFilmLookups extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                     = false
   def detail(listing: Listing): Answer[Option[DetailFacts]]    = Answer.Known(None)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Known(Nil)
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+  def film(tmdbId: Int): Answer[Option[Film]] = Answer.Known(None)
 }
 
 /** Listings with no venue detail page whose TMDB questions are not answered yet: every search
@@ -16,7 +16,7 @@ object UnansweredTmdbLookups extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                     = false
   def detail(listing: Listing): Answer[Option[DetailFacts]]    = Answer.Known(None)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Unknown
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
+  def film(tmdbId: Int): Answer[Option[Film]] = Answer.Unknown
 }
 
 /** A source that answers nothing yet: every page, search and film read a gap — an offline replay's live leg, which
@@ -25,7 +25,7 @@ object RefusingLookups extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                     = false
   def detail(listing: Listing): Answer[Option[DetailFacts]]    = Answer.Unknown
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Unknown
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
+  def film(tmdbId: Int): Answer[Option[Film]] = Answer.Unknown
 }
 
 /** A source that knows exactly `answers`' searches, every other question a gap as [[RefusingLookups]]' are — a

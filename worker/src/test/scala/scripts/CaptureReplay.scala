@@ -1,6 +1,6 @@
 package scripts
 
-import services.identity._
+import services.identity.{Film, _}
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import services.titles.TitleNormalizer
@@ -20,7 +20,7 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
 
   val normalizer: TitleNormalizer = TitleNormalizer.forCountry(capture.country)
   private val queries = new ConcurrentHashMap[CandidateQuery, Seq[Hit]](capture.queries.asJava)
-  private val films   = new ConcurrentHashMap[Int, Option[IdentityMeasures.Film]](capture.films.asJava)
+  private val films   = new ConcurrentHashMap[Int, Option[Film]](capture.films.asJava)
 
   private def answered: UnmatchedClusters.Capture = capture.copy(queries = queries.asScala.toMap, films = films.asScala.toMap)
 

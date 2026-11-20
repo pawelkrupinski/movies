@@ -34,8 +34,8 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
   /** The candidate read as its title's exact top hit, unrivalled — how a rule taking a film by another title (an IMDb
    *  suggestion, a search's only result) has its own facts weighed, the title's evidence granted. */
   private[identity] def asItsTitlesTopHit(scored: Scored): Scored = scored.copy(measures = scored.measures ++ TopHitMeasures)
-  private[identity] val TopHitMeasures = Map("title" -> IdentityMeasures.Category("exact"), "search.rank" -> IdentityMeasures.Number(1),
-    "rivals" -> IdentityMeasures.Number(0))
+  private[identity] val TopHitMeasures = Map("title" -> Measure.Category("exact"), "search.rank" -> Measure.Number(1),
+    "rivals" -> Measure.Number(0))
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   private[identity] def contradicted(scored: Scored): Boolean =
@@ -73,7 +73,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
 
   /** Does one of the record's titles continue `name` as a programme of its: "<name>: …" or "<name> - …" ("Helmut Schleich:
    *  Kauf, du Sau", "Patrick Monahan: Live"), case and spacing aside — not a sentence after it, a film's subtitle. */
-  private[identity] def titledAsAProgramme(name: String, film: IdentityMeasures.Film): Boolean = {
+  private[identity] def titledAsAProgramme(name: String, film: Film): Boolean = {
     val words     = name.trim.split("\\s+").map(java.util.regex.Pattern.quote).mkString("\\s+")
     val programme = ("(?iu)^" + words + """\s*(?::|\s[-–—]\s)""").r
     (film.title +: (film.originalTitle.toSeq ++ film.alternativeTitles)).exists(title => programme.findPrefixOf(title.trim).isDefined)
@@ -108,7 +108,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  the director the listing credits, when no published year or runtime contradicts them: PL Kinoteka's "Podróżnik",
    *  published as Kiarostami's original, is his film ([[AcceptanceRuleTable.DirectorsTitle]]'s to pick one of).
    *
-   *  The original title names it only when it stands apart from the billing ([[IdentityMeasures.Listing.originalStandsApart]])
+   *  The original title names it only when it stands apart from the billing ([[MeasuredListing.originalStandsApart]])
    *  and the billed title names no eligible record exactly: a ticket page that copies the original title and director of
    *  the record a search for its billing hit states nothing that record does not, so the two cannot confirm it (DE
    *  kinoheld's "Tino Bomelino" as Tino {Anna Lucía Alcalá Pérez}, "Ganes" as Ganges; Fontane Klub's "Ich bin Dein",

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{FactRelations, IdentityMeasures}
+import services.identity.{FactRelations, Film}
 
 /**
  * What the agreement stage makes of the evidence against a film the MODEL took ([[AgreementStage]]'s corrections): each
@@ -63,7 +63,7 @@ object Correction {
   /** Does `record` (another database's film) contradict `model` (the model's TMDB film) by its facts — years more than
    *  one apart, or directors who are other people, sharing no name's stem ([[FactRelations.otherPeople]])? A missing fact contradicts
    *  nothing: a title alone never does. */
-  def contradicts(record: IdentityMeasures.Film, model: IdentityMeasures.Film): Boolean =
+  def contradicts(record: Film, model: Film): Boolean =
     FactRelations.yearsApart(record.year, model.year) ||
       FactRelations.otherPeople(record.directors.getOrElse(Nil), model.directors.getOrElse(Nil))
 

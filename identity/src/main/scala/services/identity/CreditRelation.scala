@@ -1,7 +1,8 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{Category, Measure, MissingFilm, MissingListing, SamePersonMeasure}
+import services.identity.IdentityMeasures.{MissingFilm, MissingListing, SamePersonMeasure}
 import services.titles.TitleContainment
+import Measure.Category
 
 /**
  * How two credit lists relate ([[IdentityMeasures.directorRelation]]): the credits parsed once ([[CreditRelation.Credits]]),

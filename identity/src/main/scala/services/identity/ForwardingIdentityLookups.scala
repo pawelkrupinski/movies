@@ -14,7 +14,7 @@ trait ForwardingIdentityLookups(inner: IdentityLookups) extends IdentityLookups 
     inner.released(queries, films, details)
   def detail(listing: Listing): Answer[Option[DetailFacts]]          = inner.detail(listing)
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]            = inner.candidates(query)
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]       = inner.film(tmdbId)
+  def film(tmdbId: Int): Answer[Option[Film]]       = inner.film(tmdbId)
   override def numbersFilmsByTmdbId: Boolean                         = inner.numbersFilmsByTmdbId
   override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = inner.releaseDay(tmdbId)
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]]        = inner.cast(tmdbId)

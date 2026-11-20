@@ -17,7 +17,7 @@ object TmdbFilmRecord {
 
   /** The film and its IMDb id, or `None` when no answer carries a title. A body a recorder
    *  wrapped as `{"text": …}` is unwrapped. */
-  def parse(answers: Seq[JsValue]): Option[(IdentityMeasures.Film, Option[String])] = {
+  def parse(answers: Seq[JsValue]): Option[(Film, Option[String])] = {
     val docs = unwrapped(answers)
     val main = docs.filter(d => (d \ "title").isDefined)
     if (main.isEmpty) None
@@ -34,7 +34,7 @@ object TmdbFilmRecord {
       val imdbId = main.flatMap(d => (d \ "imdb_id").asOpt[String]).find(_.nonEmpty)
       // the localized answer's first: the cut the deployment's market screens, then the other translations' cuts
       val runtimes = TmdbFilmRecord.runtimes(main.flatMap(d => (d \ "runtime").asOpt[Int]))
-      Some(IdentityMeasures.Film(
+      Some(Film(
         title             = title,
         originalTitle     = (localized \ "original_title").asOpt[String],
         alternativeTitles = alternatives.distinct.filterNot(_ == title),
@@ -49,7 +49,7 @@ object TmdbFilmRecord {
           .orElse((d \ ReleaseCountries).asOpt[String])).headOption,
         alternativeRuntimes = runtimes.drop(1),
         releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption,
-        taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf),
+        taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(Film.taglineKeyOf),
         certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
           .getOrElse((d \ CertificatesField).asOpt[String])).headOption,
         originalLanguage  = originalLanguage(main),
@@ -59,7 +59,7 @@ object TmdbFilmRecord {
   }
 
   /** The running times TMDB's answers about one film state, in the answers' order and each once: TMDB keeps a runtime per
-   *  translation, so its localized and English answers can state different cuts (`IdentityMeasures.Film.runtimes`). */
+   *  translation, so its localized and English answers can state different cuts (`Film.runtimes`). */
   def runtimes(stated: Seq[Int]): Seq[Int] = stated.filter(_ > 0).distinct
 
   /** The film's top-billed cast, the first [[TopBilled]] names in TMDB's billing order, from the localized response's
@@ -91,14 +91,14 @@ object TmdbFilmRecord {
   private def unwrapped(answers: Seq[JsValue]): Seq[JsValue] =
     answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
 
-  /** TMDB's `original_language` of the film, off the first answer stating one, interned ([[IdentityMeasures.Film.originalLanguage]]). */
+  /** TMDB's `original_language` of the film, off the first answer stating one, interned ([[Film.originalLanguage]]). */
   def originalLanguage(answers: Seq[JsValue]): Option[String] =
     unwrapped(answers).flatMap(d => (d \ "original_language").asOpt[String]).map(_.trim).find(_.nonEmpty).map(_.intern)
 
-  /** TMDB's `genres` of the film, off the first answer stating them, as [[IdentityMeasures.Film.genreBits]]; 0 when none does. */
+  /** TMDB's `genres` of the film, off the first answer stating them, as [[Film.genreBits]]; 0 when none does. */
   def genreBits(answers: Seq[JsValue]): Int =
     unwrapped(answers).flatMap(d => (d \ "genres").asOpt[Seq[JsValue]]).find(_.nonEmpty)
-      .fold(0)(genres => IdentityMeasures.Film.genreBitsOf(genres.flatMap(g => (g \ "id").asOpt[Int])))
+      .fold(0)(genres => Film.genreBitsOf(genres.flatMap(g => (g \ "id").asOpt[Int])))
 
   /** How many of a film's cast count as its top-billed: as many as the offline measure read (2026-10-06). */
   val TopBilled = 10
@@ -107,7 +107,7 @@ object TmdbFilmRecord {
   val ReleaseCountries = "release_countries"
 
   /** The countries a `release_dates` block dates a release in, any kind of release, their ISO-3166-1 codes in order and
-   *  run together ("ATDEPL"): all the release veto reads of the block (`IdentityMeasures.Film.releasedIn`), never the dates. */
+   *  run together ("ATDEPL"): all the release veto reads of the block (`Film.releasedIn`), never the dates. */
   def releaseCountries(block: JsValue): String =
     (block \ "results").asOpt[Seq[JsValue]].getOrElse(Nil)
       .filter(result => (result \ "release_dates").asOpt[Seq[JsValue]].exists(_.nonEmpty))

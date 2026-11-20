@@ -7,7 +7,7 @@ package services.identity
  *  runs as the film: the runtime comparison reads the film's runtime NEAREST the listing's, its theatrical one or a
  *  cut's ([[IdentityMeasures.listingFilm]]'s `runtime.delta`, and the agreement's running-time vote).
  *
- *  Keyed by the film's IMDb number ([[IdentityMeasures.Film.imdbNumber]]), which a TMDB record and an IMDb or Wikidata
+ *  Keyed by the film's IMDb number ([[Film.imdbNumber]]), which a TMDB record and an IMDb or Wikidata
  *  record of the film all carry; the table's tmdbId column is for the reader. */
 object FilmCuts {
 

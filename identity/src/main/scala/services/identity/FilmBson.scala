@@ -5,13 +5,13 @@ import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonString, Bso
 import scala.jdk.CollectionConverters._
 
 /**
- * A film record ([[IdentityMeasures.Film]]) as a stored document, EVERY fact of it: what a store keeps of a record a
+ * A film record ([[Film]]) as a stored document, EVERY fact of it: what a store keeps of a record a
  * decision reads again after a restart must be all it read the first time. The agreement's verdicts kept an agreed film
  * as its title and year alone, and the stage a deploy brought up took films its first decision had refused on the
  * record's original title (DE "… Eröffnungskonzert - Raíces", identity-slice --drift). A field left unset is left out.
  */
 object FilmBson {
-  def encode(film: IdentityMeasures.Film): BsonDocument = {
+  def encode(film: Film): BsonDocument = {
     val d = new BsonDocument("title", BsonString(film.title))
     def put(name: String, value: Option[BsonValue]): Unit = value.foreach(d.append(name, _))
     put("originalTitle", film.originalTitle.map(BsonString(_)))
@@ -37,10 +37,10 @@ object FilmBson {
   private def strings(values: Seq[String]) = new BsonArray(values.map(v => BsonString(v): BsonValue).asJava)
   private def ints(values: Seq[Int])       = new BsonArray(values.map(v => BsonInt32(v): BsonValue).asJava)
 
-  def decode(d: BsonDocument): IdentityMeasures.Film = {
+  def decode(d: BsonDocument): Film = {
     def string(name: String) = opt(d, name).map(_.asString.getValue)
     def int(name: String)    = opt(d, name).map(_.asInt32.getValue)
-    IdentityMeasures.Film(d.getString("title").getValue, string("originalTitle"), stringList(d, "alternativeTitles").getOrElse(Nil),
+    Film(d.getString("title").getValue, string("originalTitle"), stringList(d, "alternativeTitles").getOrElse(Nil),
       int("year"), int("runtime"), stringList(d, "directors"), stringList(d, "countries"), opt(d, "popularity").map(_.asNumber.doubleValue),
       int("imdbNumber").getOrElse(0), string("released").map(java.time.LocalDate.parse), string("releaseCountries"),
       opt(d, "alternativeRuntimes").map(BsonFields.intsOf).getOrElse(Nil), string("releases"), int("taglineKey").getOrElse(0),

@@ -27,7 +27,7 @@ class IdentityTraceRetentionSpec extends AnyFlatSpec with Matchers {
       case CandidateQuery.Title(text) => ids.map(id => Hit(id, s"$text $id", None, Some(1950), 1.0))
       case _                          => Nil
     })
-    def film(id: Int) = Answer.Known(Some(IdentityMeasures.Film(s"Namesake $id", None, Nil, Some(1950), Some(80),
+    def film(id: Int) = Answer.Known(Some(Film(s"Namesake $id", None, Nil, Some(1950), Some(80),
       Some(Seq("Someone Else")), None, Some(1.0))))
   }
 

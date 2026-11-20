@@ -23,7 +23,7 @@ private[identity] object RelayRecords {
   /** Is `film` a relay's record (a title billing a relay's banner, [[RelayBanner]]) crediting a director, that `listings`
    *  -- billing no relay themselves -- contradict: their own text names whole a director of one of `others` (the other
    *  records their searches reach) that is no relay's, and none of `film`'s? */
-  def contradictedByOwnText(listings: Seq[Listing], film: IdentityMeasures.Film, others: => Seq[IdentityMeasures.Film]): Boolean =
+  def contradictedByOwnText(listings: Seq[Listing], film: Film, others: => Seq[Film]): Boolean =
     RelayBanner.billed(film.titles) && listings.nonEmpty && listings.forall(l => !RelayBanner.billed(Seq(l.rawTitle, l.title))) && {
       val named = listings.map(_.names).filterNot(_.isEmpty)
       def credits(director: String) = named.exists(_.names(director))

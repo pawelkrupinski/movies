@@ -32,8 +32,7 @@ package services.identity
  *  namesake its family's corroborated nodes take more often. */
 private[identity] object Corroboration {
 
-  /** Minutes a venue's running time may stand off the film's and still corroborate it: trailers and rounding. */
-  val RuntimeBand = 10
+  import YearRuntimeMeasures.RuntimeBand
 
   /** Does the venue's running time fit `rival` as a namesake: within [[RuntimeBand]] of it, or LONGER — a slot runs the
    *  film and more (adverts, trailers, an intro), so a longer one says nothing against it ([[agreement.Agreement.runsShort]]).

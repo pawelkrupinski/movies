@@ -294,7 +294,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       def hasDetail(l: Listing): Boolean = true
       def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(credits.get(l.key).map(ds => DetailFacts(None, ds, None, None)))
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def film(id: Int): Answer[Option[Film]] = table.film(id)
     }
     val bare  = listing(Helios, "Lalka")
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
@@ -335,7 +335,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       def hasDetail(l: Listing): Boolean = false
       def detail(l: Listing): Answer[Option[DetailFacts]] = table.detail(l)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (unanswered(id)) Answer.Unknown else table.film(id)
+      def film(id: Int): Answer[Option[Film]] = if (unanswered(id)) Answer.Unknown else table.film(id)
     }
     val model = new IncrementalResolver(lookups, germany, IdentityCalibration.resolver, decorations = TitleDecorations.None)
     def filmOf(l: Listing) = model.decisions.find(_.listings(l.key)).flatMap(_.film)
@@ -372,7 +372,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       def hasDetail(l: Listing): Boolean = true
       def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(credits.get(l.key).map(ds => DetailFacts(None, ds, None, None)))
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def film(id: Int): Answer[Option[Film]] = table.film(id)
     }
     val bare  = listing(Helios, "Lalka")
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
@@ -421,7 +421,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
         case _: CandidateQuery.Director if !walked => Answer.Unknown
         case _                                     => table.candidates(q)
       }
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def film(id: Int): Answer[Option[Film]] = table.film(id)
     }
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
     val bare  = listing(Helios, "Lalka")
@@ -477,7 +477,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
         def hasDetail(l: Listing): Boolean                              = false
         def detail(l: Listing): Answer[Option[DetailFacts]]            = Answer.Known(None)
         def candidates(q: CandidateQuery): Answer[Seq[Hit]]            = searches
-        def film(id: Int): Answer[Option[IdentityMeasures.Film]]       = Answer.Known(None)
+        def film(id: Int): Answer[Option[Film]]       = Answer.Known(None)
       }
       val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
       model.batch(seen = Seq(listing(models.Multikino, "Zapomniany film")))

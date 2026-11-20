@@ -5,7 +5,7 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.{Film, VoterFamily}
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task}
 import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, MutableClock}
@@ -28,7 +28,7 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     private def answering[A](value: => A): A = { asked.incrementAndGet(); failure.fold(value)(e => throw e) }
     def titled(text: String): Seq[SourceHit]     = answering(Seq(SourceHit("x1", text, None, Some(2020))))
     def directedBy(name: String): Seq[SourceHit] = answering(Nil)
-    def record(id: String): Option[SourceRecord] = answering(Some(SourceRecord(IdentityMeasures.Film(id), Map("imdb" -> id))))
+    def record(id: String): Option[SourceRecord] = answering(Some(SourceRecord(Film(id), Map("imdb" -> id))))
   }
   private def task(family: VoterFamily, question: String) = AgreementAskers.task(Question.Family(family, question))()
   private def asker(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], filed: () => Unit = () => (),

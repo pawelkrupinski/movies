@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape, VenueNames,
-  VoterFamily}
+import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, ListingShape,
+  VenueNames, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,7 +14,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   import FilmTable.listing
 
   private def film(title: String, year: Int, director: String, runtime: Int = 100) =
-    IdentityMeasures.Film(title, None, Nil, Some(year), Some(runtime), Some(Seq(director)), None, None)
+    Film(title, None, Nil, Some(year), Some(runtime), Some(Seq(director)), None, None)
   private val klondike2022 = film("Klondike", 2022, "Maryna Er Gorbach", 100)
   private val klondike1932 = film("Klondike", 1932, "Phil Rosen", 68)
 
@@ -36,7 +36,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // UK Empire Theatre Halstead "Romeo and Juliet" (capture identity-unmatched): Wikidata takes Shakespeare's play
     // (Q83186: undated, uncredited, IMDb tt2428892), the model votes Zeffirelli's 1968 film (tt0063518) — joined by the
     // title alone, the two agreed on the 1968 film for the Royal Ballet's 170-minute relay of the ballet
-    val play = SourceRecord(IdentityMeasures.Film("Romeo and Juliet", None, Nil, None, None, None, None, None), Map("imdb" -> "tt2428892", "wikidata" -> "Q83186"))
+    val play = SourceRecord(Film("Romeo and Juliet", None, Nil, None, None, None, None, None), Map("imdb" -> "tt2428892", "wikidata" -> "Q83186"))
     val zeff = SourceRecord(film("Romeo and Juliet", 1968, "Franco Zeffirelli", 138), Map("imdb" -> "tt0063518", "tmdb" -> "6003"))
     Agreement.joins(Seq(play), zeff) shouldBe true
     Agreement.votesAnotherEntry(Seq(play), zeff) shouldBe true
@@ -44,14 +44,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe false
     // a dated taker holds the film by its facts: UK "NFTS Collective Visions of Pleasure: I.K.U" (Wikidata's 2001 film)
     val iku = SourceRecord(film("I.K.U.", 2001, "Shu Lea Cheang", 74), Map("imdb" -> "tt0255233", "tmdb" -> "37982"))
-    Agreement.votesAnotherEntry(Seq(iku), SourceRecord(IdentityMeasures.Film("IKÚ", None, Nil, None, None, None, None, None), Map("tmdb" -> "1192255"))) shouldBe false
+    Agreement.votesAnotherEntry(Seq(iku), SourceRecord(Film("IKÚ", None, Nil, None, None, None, None, None), Map("tmdb" -> "1192255"))) shouldBe false
     // and so does one beside a bare pick: UK "Thanks for coming FFFL" (Wikidata's bare tt36481185, IMDb's 2026 Cavalier)
     val cavalier = SourceRecord(film("Thanks for Coming", 2026, "Alain Cavalier", 86), Map("imdb" -> "tt41829928"))
-    val bareWiki = SourceRecord(IdentityMeasures.Film("Thanks for Coming", None, Nil, None, None, None, None, None), Map("imdb" -> "tt36481185"))
+    val bareWiki = SourceRecord(Film("Thanks for Coming", None, Nil, None, None, None, None, None), Map("imdb" -> "tt36481185"))
     Agreement.votesAnotherEntry(Seq(cavalier, bareWiki), cavalier.copy(crossIds = Map("imdb" -> "tt41829928", "tmdb" -> "1670563"))) shouldBe false
     // a site's id Wikidata spells in a space of its own is no other entry (UK "Imamura: Black Rain": RT "22294" in
     // Wikidata, "1035681-black_rain" on RT, one film)
-    val bareImamura = SourceRecord(IdentityMeasures.Film("Black Rain", None, Nil, None, None, None, None, None), Map("rt" -> "22294"))
+    val bareImamura = SourceRecord(Film("Black Rain", None, Nil, None, None, None, None, None), Map("rt" -> "22294"))
     Agreement.votesAnotherEntry(Seq(bareImamura), SourceRecord(film("Black Rain", 1989, "Shohei Imamura", 123), Map("rt" -> "1035681-black_rain"))) shouldBe false
   }
 
@@ -139,14 +139,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // the 1971 film, Metacritic leans to it; RT weighed it and leans to its own undated "Director's Cut" page — the same
     // work, no other film
     val devils   = SourceRecord(film("The Devils", 1971, "Ken Russell", 111), Map("imdb" -> "tt0066993"))
-    val cut      = SourceRecord(IdentityMeasures.Film("Ken Russell's The Devils: The Director's Cut", directors = Some(Seq("Ken Russell"))),
+    val cut      = SourceRecord(Film("Ken Russell's The Devils: The Director's Cut", directors = Some(Seq("Ken Russell"))),
       Map("rt" -> "ken_russells_the_devils"))
     val billed   = Seq(listing(KinoMuza, "Ken Russell's The Devils presented by Deeper Into Movies", director = Some("Ken Russell")))
     val agreeing = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0066993", devils)), FamilyTook(FamilyPick(VoterFamily.Wiki, "Q655996", devils)),
       FamilyVerdict(VoterFamily.Metacritic, None, Seq(devils), leaning = Some(devils)))
     Agreement.agreed(billed, agreeing :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(devils, cut), leaning = Some(cut))) should not be empty
     // a record crediting no director is no edition known to be the film's, and turns it down
-    val undirected = SourceRecord(IdentityMeasures.Film("Ken Russell's The Devils: The Director's Cut"))
+    val undirected = SourceRecord(Film("Ken Russell's The Devils: The Director's Cut"))
     Agreement.agreed(billed, agreeing :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(devils, undirected), leaning = Some(undirected))) shouldBe None
   }
 
@@ -235,7 +235,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // original title the listing bills
     val hider  = SourceRecord(film("Hider in the House", 1989, "Matthew Patrick", 108).copy(alternativeTitles = Seq("Obcy w domu")),
       Map("imdb" -> "tt0097503"))
-    val polish = SourceRecord(IdentityMeasures.Film("Obcy w domu", Some("Obcy w domu"), Nil, Some(1986), Some(72), Some(Nil), None, None),
+    val polish = SourceRecord(Film("Obcy w domu", Some("Obcy w domu"), Nil, Some(1986), Some(72), Some(Nil), None, None),
       Map("imdb" -> "tt7605088"))
     val bare   = Seq(listing(KinoMuza, "Obcy w domu"))
     val took   = (family: VoterFamily) => FamilyTook(FamilyPick(family, "1", hider))
@@ -250,7 +250,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // TMDB's "Демони" (2027, alternatively "Demony") by her, and IMDb leans to "Demons" (2026), which TMDB's record
     // names by its IMDb id though its English title is not Filmweb's
     val filmweb = SourceRecord(film("Demony", 2026, "Natalya Vorozhbit", 110), Map("filmweb" -> "10131126"))
-    val tmdb    = SourceRecord(IdentityMeasures.Film("Демони", Some("Демони"), Seq("Demony", "Demons"), Some(2027), Some(110),
+    val tmdb    = SourceRecord(Film("Демони", Some("Демони"), Seq("Demony", "Demons"), Some(2027), Some(110),
       Some(Seq("Наталія Ворожбит")), None, None), Map("tmdb" -> "1085176", "imdb" -> "tt20149536"))
     val imdb    = SourceRecord(film("Demons", 2026, "Natalya Vorozhbit", 110), Map("imdb" -> "tt20149536"))
     val bare    = Seq(listing(KinoMuza, "Demony"))
@@ -271,7 +271,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val imdb    = SourceRecord(turin, Map("imdb" -> "tt0020523"))
     val filmweb = SourceRecord(turin.copy(runtime = Some(75)), Map("filmweb" -> "398154"))
     val rt      = SourceRecord(turin.copy(year = None), Map("rt" -> "turksib"))
-    val pass    = SourceRecord(IdentityMeasures.Film("На перевале", Some("На перевале"), Seq("Турксиб", "Na perevale", "Turksib"), Some(1986), Some(73),
+    val pass    = SourceRecord(Film("На перевале", Some("На перевале"), Seq("Турксиб", "Na perevale", "Turksib"), Some(1986), Some(73),
       Some(Seq("Тұңғышбай Жаманқұлов")), None, None), Map("tmdb" -> "1400057", "imdb" -> "tt0275745"))
     val bare    = Seq(listing(KinoMuza, "Archiv Negativ: Turksib"))
     val verdicts = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0020523", imdb)), FamilyTook(FamilyPick(VoterFamily.RottenTomatoes, "turksib", rt)),
@@ -308,7 +308,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Gerard Damiano"))), two)
       .map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts))
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Jess Franco"))), two) shouldBe None
-    val lean = SourceRecord(IdentityMeasures.Film("", None, Nil, None, None, None, None, None), Map("tmdb" -> "40023", "imdb" -> "tt0073750"))
+    val lean = SourceRecord(Film("", None, Nil, None, None, None, None, None), Map("tmdb" -> "40023", "imdb" -> "tt0073750"))
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelVote = Some(lean)).map(_.corroborated) shouldBe
       Some(Set(Agreement.ModelVote))
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelVote = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
@@ -317,7 +317,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   "The listing's own year, director and running time" should "complete one taker's agreement, as two votes of the venue's own" in {
     // DE "Pettersson und Findus Mitmachkino 2" (fixture identity-unmatched): IMDb alone takes it, its record dating it
     // nowhere; the venues credit its three directors and its 59 minutes
-    val mitmachkino = SourceRecord(IdentityMeasures.Film("Pettersson und Findus Mitmachkino 2", None, Nil, None, Some(59), Some(Seq("Dirk Hampel")),
+    val mitmachkino = SourceRecord(Film("Pettersson und Findus Mitmachkino 2", None, Nil, None, Some(59), Some(Seq("Dirk Hampel")),
       None, None), Map("imdb" -> "tt41600591"))
     val imdb = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt41600591", mitmachkino)))
     def billed(year: Option[Int] = Some(2024), director: Option[String] = Some("Dirk Hampel"), runtime: Option[Int] = Some(59)) =
@@ -340,7 +340,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   "A venue's own running time" should "rule out an older film it runs well short of, never a current one nor a silent one" in {
     // DE Neue Post's "WHEN PIGS FLY" at 80 minutes: Riedmayr's 2026 documentary, not Sara Driver's 94-minute 1993 film,
     // which IMDb, Wikidata and Filmweb take
-    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+    def took(record: Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
       .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0108554")))))
     def billed(title: String, runtime: Int) = Seq(listing(KinoMuza, title, runtime = Some(runtime)))
     val pigs = film("When Pigs Fly", 1993, "Sara Driver", 94)
@@ -360,7 +360,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "say nothing of the film when the slot screens a part of it, nor when it is no running time a feature has" in {
-    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+    def took(record: Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
       .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0090015")))))
     def billed(title: String, runtime: Int) = Seq(listing(KinoMuza, title, runtime = Some(runtime)))
     val shoah = film("Shoah", 1985, "Claude Lanzmann", 566)
@@ -380,7 +380,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   "A year the title bills" should "rule out a film it dates away, but not a festival's year beside the work" in {
     // DE "Weihnachten mit den Drei Herren 2026", a band's Christmas show its feed filed as Epstein's 1927 "The Three-Sided
     // Mirror": the families searched the copied original title and took the 1927 film
-    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+    def took(record: Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
       .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0017938")))))
     val mirror = film("Weihnachten mit den Drei Herren", 1927, "Jean Epstein", 40)
     Agreement.agreed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren 2026")), took(mirror)) shouldBe None
@@ -406,7 +406,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
 
   "A listing billing a cut of the film" should "run as the record, at the cut's running time" in {
     // TMDB and IMDb date "Apocalypse Now" at its 147 theatrical minutes; venues bill the Final Cut (183) and Redux (202)
-    val apocalypse = SourceRecord(IdentityMeasures.Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),
+    val apocalypse = SourceRecord(Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),
       None, None, imdbNumber = 78788), Map("imdb" -> "tt0078788"))
     val imdb = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0078788", apocalypse)))
     def billed(runtime: Int) = Seq(listing(KinoMuza, "Apocalypse Now", Some(1979), Some("Francis Ford Coppola"), Some(runtime)))
@@ -418,7 +418,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   "The listing's own year and running time" should "credit one taker's record that names no director, as the venue's two votes" in {
     // PL "Reporterzy wolności - film i spotkanie z twórcami" (fixture identity-unmatched): Filmweb alone takes its 2025
     // record of 49 minutes, crediting nobody; the venue's page states 2025 and 49 minutes
-    val reporterzy = SourceRecord(IdentityMeasures.Film("Reporterzy wolności", None, Nil, Some(2025), Some(49), None, None, None),
+    val reporterzy = SourceRecord(Film("Reporterzy wolności", None, Nil, Some(2025), Some(49), None, None, None),
       Map("filmweb" -> "10131183"))
     val filmweb = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "10131183", reporterzy)))
     def billed(year: Option[Int] = Some(2025), director: Option[String] = Some("Krzysztof Ridan"), runtime: Option[Int] = Some(49)) =
@@ -439,7 +439,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   "Venues billing the title widely" should "complete two takers' agreement on a current film, unless a listing's facts rule it out" in {
     // UK/US "Festive Fun with Peppa Cinema Experience" (fixture identity-unmatched): IMDb and RT take the 2026 event film,
     // billed by over a hundred venues each; a one-venue "Zamki na piasku" has only its two takers
-    val peppa  = SourceRecord(IdentityMeasures.Film("Festive Fun with Peppa Cinema Experience", None, Nil, Some(2026), Some(60), Some(Nil), None, None),
+    val peppa  = SourceRecord(Film("Festive Fun with Peppa Cinema Experience", None, Nil, Some(2026), Some(60), Some(Nil), None, None),
       Map("imdb" -> "tt46666063"))
     val takers = Seq(VoterFamily.Imdb, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", peppa)))
     val venues = Seq(models.KinoMuza, models.KinoApollo, models.Rialto).map(listing(_, "Festive Fun with Peppa Cinema Experience"))
@@ -593,7 +593,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.namesIt(moulin, Seq(film("Le Moulin", 2017, "Huang Ya-li"))) shouldBe true
     // a search form dropping a second title, not an event a "+" bolts on, still lets that title name its film
     val bilingual = listing(KinoMuza, "BARWY OCHRONNE / CAMOUFLAGE").copy(searchTitle = Some("BARWY OCHRONNE"))
-    Agreement.namesIt(bilingual, Seq(IdentityMeasures.Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), None, None, None, None))) shouldBe true
+    Agreement.namesIt(bilingual, Seq(Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), None, None, None, None))) shouldBe true
     // a search form keeping the film names it still
     Agreement.namesIt(listing(KinoMuza, "Kino Konesera: Róża").copy(searchTitle = Some("Róża")), Seq(film("Róża", 2011, "Wojciech Smarzowski"))) shouldBe true
   }
@@ -605,7 +605,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val friends = film("Najlepsi przyjaciele", 2026, "X")
     val casper  = film("Kacper i Emma: Najlepsi przyjaciele", 2013, "Arne Lindtner Næss")
     // the films' spans in the billing, as the agreement reads them
-    def namedWithinAnother(listings: Seq[Listing], films: Seq[IdentityMeasures.Film], others: Seq[Seq[IdentityMeasures.Film]]) =
+    def namedWithinAnother(listings: Seq[Listing], films: Seq[Film], others: Seq[Seq[Film]]) =
       Agreement.namedWithinAnother(Agreement.billedSpans(listings, films), others.map(Agreement.billedSpans(listings, _)))
     namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(casper), Seq(friends))) shouldBe true
     namedWithinAnother(Seq(kacper), Seq(casper), Seq(Seq(casper), Seq(friends))) shouldBe false

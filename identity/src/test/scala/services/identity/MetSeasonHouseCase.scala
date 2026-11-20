@@ -27,7 +27,7 @@ private[identity] object MetSeasonHouseCase {
     new IdentityLookups {
       def hasDetail(l: Listing): Boolean = table.hasDetail(l)
       def detail(l: Listing): Answer[Option[DetailFacts]] = table.detail(l)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def film(id: Int): Answer[Option[Film]] = table.film(id)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q) match {
         case Answer.Known(hits) if !q.toString.contains("COSÌ") => Answer.Known(hits.filterNot(_.tmdbId == MetCosi))
         case other => other

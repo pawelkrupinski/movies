@@ -12,7 +12,7 @@ import scala.util.hashing.MurmurHash3
 class ContentHashSpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
 
   private def film(title: String, directors: Seq[String]) =
-    Candidate(7, IdentityMeasures.Film(title, year = Some(1968), directors = Some(directors), popularity = Some(3.5)))
+    Candidate(7, Film(title, year = Some(1968), directors = Some(directors), popularity = Some(3.5)))
   private def slice(candidates: Seq[(Int, Candidate)], answers: Seq[(CandidateQuery, Option[Seq[Int]])]) =
     CorpusContext.Slice(Map.empty, Map.empty, Set("lalka"), Set.empty, Set.empty, Map("lalka" -> "has"), candidates.toMap, answers.toMap)
 
@@ -44,7 +44,7 @@ class ContentHashSpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
   it should "not read the learned title decorations a listing carries" in {
     val some  = TitleDecorations(Set(Seq("kino", "seniora")), Set(Seq("2d")))
     val other = TitleDecorations(Set(Seq("ladies", "night")), Set.empty)
-    val listing = IdentityMeasures.Listing("Lalka", year = Some(2025))
+    val listing = MeasuredListing("Lalka", year = Some(2025))
     ContentHash.of(listing.copy(decorations = some)) shouldBe ContentHash.of(listing.copy(decorations = other))
     ContentHash.of(listing.copy(title = "Lalka 2")) should not be ContentHash.of(listing)
   }

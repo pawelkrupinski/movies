@@ -33,7 +33,7 @@ object FamilyIndex {
     /** Every banner's house at once: a reader that walked the whole map. */
     case Houses extends ContextRead[Map[String, String]]
     case HouseRanking extends ContextRead[Map[String, Seq[StageRelays.Houses.Contender]]]
-    case TitleGroup(key: String) extends ContextRead[Seq[(String, IdentityMeasures.Listing)]]
+    case TitleGroup(key: String) extends ContextRead[Seq[(String, MeasuredListing)]]
     case WholeTitle(sanitised: String) extends ContextRead[Boolean]
     case SegmentSpread(sanitised: String) extends ContextRead[Int]
     case ReachedBy(key: String) extends ContextRead[Seq[(String, Set[Int])]]
@@ -63,7 +63,7 @@ object FamilyIndex {
     def candidate(id: Int): Option[Candidate] = read(ContextRead.Record(id))
     def houses: StageRelays.Houses = StageRelays.Houses(HousesView)
     def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = read(ContextRead.HouseRanking)
-    def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] = read(ContextRead.TitleGroup(key))
+    def titleGroup(key: String): Seq[(String, MeasuredListing)] = read(ContextRead.TitleGroup(key))
     def wholeTitle(sanitised: String): Boolean = read(ContextRead.WholeTitle(sanitised))
     def segmentSpread(sanitised: String): Int = read(ContextRead.SegmentSpread(sanitised))
     def reachedBy(key: String): Seq[(String, Set[Int])] = read(ContextRead.ReachedBy(key))
@@ -131,13 +131,13 @@ object FamilyIndex {
     protected def read[A](dependency: Dependency, ask: => Answer[A]): Answer[A]
     def detail(listing: Listing): Answer[Option[DetailFacts]] = read(Lookups.detail(listing.key), detailOf(listing))
     def candidates(query: CandidateQuery): Answer[Seq[Hit]] = read(Lookups.search(query), searchOf(query))
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = read(Lookups.record(tmdbId, Dependency.Aspect.Answer), recordOf(tmdbId))
+    def film(tmdbId: Int): Answer[Option[Film]] = read(Lookups.record(tmdbId, Dependency.Aspect.Answer), recordOf(tmdbId))
     override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = read(Lookups.record(tmdbId, Dependency.Aspect.Release), releaseOf(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = read(Lookups.record(tmdbId, Dependency.Aspect.Cast), castOf(tmdbId))
     override def overview(tmdbId: Int): Answer[Option[ProseWords]] = read(Lookups.record(tmdbId, Dependency.Aspect.Overview), overviewOf(tmdbId))
     protected def detailOf(listing: Listing): Answer[Option[DetailFacts]]
     protected def searchOf(query: CandidateQuery): Answer[Seq[Hit]]
-    protected def recordOf(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]
+    protected def recordOf(tmdbId: Int): Answer[Option[Film]]
     protected def releaseOf(tmdbId: Int): Answer[Option[java.time.LocalDate]]
     protected def castOf(tmdbId: Int): Answer[Option[Seq[String]]]
     protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]]
@@ -159,7 +159,7 @@ object FamilyIndex {
     override def numbersFilmsByTmdbId: Boolean = underlying.numbersFilmsByTmdbId
     protected def detailOf(listing: Listing): Answer[Option[DetailFacts]] = underlying.detail(listing)
     protected def searchOf(query: CandidateQuery): Answer[Seq[Hit]] = underlying.candidates(query)
-    protected def recordOf(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = underlying.film(tmdbId)
+    protected def recordOf(tmdbId: Int): Answer[Option[Film]] = underlying.film(tmdbId)
     protected def releaseOf(tmdbId: Int): Answer[Option[java.time.LocalDate]] = underlying.releaseDay(tmdbId)
     protected def castOf(tmdbId: Int): Answer[Option[Seq[String]]] = underlying.cast(tmdbId)
     protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]] = underlying.overview(tmdbId)
@@ -173,7 +173,7 @@ object FamilyIndex {
     private def never = throw new IllegalStateException("a replay reads its recorded answers only")
     protected def detailOf(listing: Listing): Answer[Option[DetailFacts]] = never
     protected def searchOf(query: CandidateQuery): Answer[Seq[Hit]] = never
-    protected def recordOf(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = never
+    protected def recordOf(tmdbId: Int): Answer[Option[Film]] = never
     protected def releaseOf(tmdbId: Int): Answer[Option[java.time.LocalDate]] = never
     protected def castOf(tmdbId: Int): Answer[Option[Seq[String]]] = never
     protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]] = never

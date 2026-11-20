@@ -3,7 +3,7 @@ package tools
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity._
+import services.identity.{Film, _}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -46,9 +46,9 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
       ask(q.sortKey)
       Answer.Known(Seq(Hit(math.abs(q.sortKey.hashCode % 50), q.sortKey.drop(2), None, Some(1995), 1.0)))
     }
-    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
+    override def film(id: Int): Answer[Option[Film]] = {
       ask(s"film $id")
-      Answer.Known(Some(IdentityMeasures.Film(s"film $id", year = Some(1995))))
+      Answer.Known(Some(Film(s"film $id", year = Some(1995))))
     }
   }
 

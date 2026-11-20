@@ -6,7 +6,7 @@ import org.bson.BsonDocument
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.identity._
+import services.identity.{Film, _}
 
 import services.titles.TitleNormalizer
 import services.venuepages.CapturedVenuePages
@@ -108,7 +108,7 @@ object ProdLookupInputs {
     def hasDetail(listing: Listing): Boolean                       = false
     def detail(listing: Listing): Answer[Option[DetailFacts]]      = Answer.Unknown
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]  = Answer.Unknown
+    def film(tmdbId: Int): Answer[Option[Film]]  = Answer.Unknown
   }
 
   private object NoFetch extends HttpFetch {

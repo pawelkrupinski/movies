@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, IdentityMeasures, Listing}
+import services.identity.{Answer, Film, IdentityMeasures, Listing}
 
 /**
  * The film a cluster's VENUES list on another family's site (Filmweb's programme of each Polish venue,
@@ -59,6 +59,6 @@ object VenueListings {
       .map(IdentityMeasures.key).filter(_.nonEmpty).toSet
 
   /** A record's titles, and its title and original title together as a venue bills both ("Lalka (Dolly)"). */
-  private def recordKeys(film: IdentityMeasures.Film): Seq[String] =
+  private def recordKeys(film: Film): Seq[String] =
     (film.titles ++ film.originalTitle.filter(_ != film.title).map(original => s"${film.title} $original")).map(IdentityMeasures.key).filter(_.nonEmpty)
 }

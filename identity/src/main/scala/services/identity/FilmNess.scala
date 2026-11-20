@@ -21,7 +21,7 @@ private[identity] object FilmNess {
   def isEventWord(word: String): Boolean = !word.contains("film") && (Whole(word) || Stems.exists(word.contains))
 
   /** The billing's event words — none when it states a fact of a film, names a relay or attaches a screening. */
-  def eventWords(listing: IdentityMeasures.Listing): Seq[String] = {
+  def eventWords(listing: MeasuredListing): Seq[String] = {
     val raw = listing.rawTitle.getOrElse(listing.title)
     // V3c: no fact condition — a feed's page copies the found record's year and running time onto a gig's listing
     // (kinoheld's "Tanzwut - Live Tour 2026" carries the Number_i film's 108 minutes), so a stated fact proves nothing here
@@ -34,6 +34,6 @@ private[identity] object FilmNess {
   }
 
   /** The billing's words that are no event's: what a record of the event itself must share. */
-  def otherWords(listing: IdentityMeasures.Listing): Set[String] =
+  def otherWords(listing: MeasuredListing): Set[String] =
     IdentityMeasures.countedWords(listing.rawTitle.getOrElse(listing.title)).filterNot(w => isEventWord(w) || w.forall(_.isDigit)).toSet
 }

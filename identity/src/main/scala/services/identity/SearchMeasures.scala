@@ -4,6 +4,7 @@ import services.titles.billing.Credits
 import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*
+import Measure.Category
 
 /** The searches a listing issues (a stage relay's by its work and its season among them), the works it credits, the
  *  IMDb ids and titles it reads, and the title groups and rivals of its candidates.
@@ -13,7 +14,7 @@ private[identity] object SearchMeasures {
    *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
-  def searchQueries(l: Listing): Seq[String] = {
+  def searchQueries(l: MeasuredListing): Seq[String] = {
     val asked = l.shapes ++ l.originalTitle ++ seasonProductionQueries(l) ++ stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l) ++
       IdentityMeasures.shapes(RelayStage.shortYearCut(l))
     (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
@@ -24,7 +25,7 @@ private[identity] object SearchMeasures {
    *  the work alone ranks it below every namesake film. A relay billing its house, a credit or a running time beside it,
    *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
    *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
-   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]).
+   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[MeasuredListing.screenedSeason]]).
    *  So is a bare work beside a running time ([[StageRelays.barelyTimed]]: UK Empire Theatre Halstead's "Romeo and Juliet" [170′]).
    *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
    *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
@@ -32,7 +33,7 @@ private[identity] object SearchMeasures {
    *  the season's record only by joining its other billings' cluster; once those took it alone, the learned
    *  listing-listing cut kept Penrith apart and it takes none. Alone it takes the record (IdentityResolverCasesSpec's
    *  short-season case): the follow-up is the corpus-level join. */
-  private[identity] def stageWorkQueries(l: Listing): Seq[String] =
+  private[identity] def stageWorkQueries(l: MeasuredListing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
     // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
     // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
@@ -44,17 +45,17 @@ private[identity] object SearchMeasures {
    *  2026", never by "Romeo and Juliet 2027". UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on
    *  25 May 2027, reached the RBO relay aired that day only by joining a sibling whose search did: a take that came and
    *  went with the family's venues (structural fix 2). A function of the listing's own year and days. */
-  private def closedSeason(l: Listing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
+  private def closedSeason(l: MeasuredListing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
 
   /** The work `l` bills searched beside `year`, under each of its search names ("Manon 2026"). */
-  private[identity] def workSearches(l: Listing, year: Int): Seq[String] =
+  private[identity] def workSearches(l: MeasuredListing, year: Int): Seq[String] =
     l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year")
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
    *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,
    *  while the work alone ranks it below every namesake. Only the pieces of a title naming the
    *  season ask it, without a bracketed year. */
-  private[identity] def seasonProductionQueries(l: Listing): Seq[String] =
+  private[identity] def seasonProductionQueries(l: MeasuredListing): Seq[String] =
     l.seasonYear.toSeq.flatMap { season =>
       val seasonTitles = l.ownTitles.filter(t => TitleSeason.of(Seq(t)).isDefined)
       val works = shapes(seasonTitles).filter(t => TitleSeason.of(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
@@ -76,7 +77,7 @@ private[identity] object SearchMeasures {
   /** The title without an anniversary it dates ("… 20th Anniversary") and a director's possessive
    *  credit before it ("Guillermo del Toro's …"): the work a re-release bills under both, which no
    *  piece of the title is. A credit is a name of two words or more, so "Schindler's List" keeps its own. */
-  private def uncredited(l: Listing): Seq[String] = (Seq(l.title) ++ l.originalTitle).flatMap { title =>
+  private def uncredited(l: MeasuredListing): Seq[String] = (Seq(l.title) ++ l.originalTitle).flatMap { title =>
     // the original title too: ES "Drácula. 30 Aniversario" is "Bram Stoker's Dracula 30th Anniversary" in it
     val undated = AnniversarySuffix.replaceFirstIn(title.trim, "").trim
     Seq(undated, PossessiveCredit.replaceFirstIn(undated, "").trim).filter(q => q.nonEmpty && q != title.trim)
@@ -110,7 +111,7 @@ private[identity] object SearchMeasures {
    *  Filmhaus Kino Köln's "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" bills two shorts, and took the second. "Barwy
    *  ochronne / Camouflage" joins the film's English title, "Warsztat Świętego Mikołaja / dubbing - Nasze Kino" its
    *  format and its venue. */
-  def joinsAnotherWork(l: Listing, f: Film): Boolean = l.ownTitles.exists { title =>
+  def joinsAnotherWork(l: MeasuredListing, f: Film): Boolean = l.ownTitles.exists { title =>
     val parts = withoutPeeledBanner(l, SlashJoin.split(title).toSeq.map(_.trim).filter(_.nonEmpty))
     lazy val filmTitles = f.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
     parts.sizeIs >= 2 && parts.exists(part => MultiFilmBill.namesAWork(part) && !filmTitles.exists(TitleContainment.tokens(part).containsSlice(_)))
@@ -119,7 +120,7 @@ private[identity] object SearchMeasures {
   /** `parts` without the banner the title rules peel off their head: a piece no search title holds, before one a search
    *  title does — Kino Sokolnia Kępno's "„WAJDA: re-wizje” 2026 / "BEZ ZNIECZULENIA" (1985)", searched as the film after
    *  the slash. "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" is searched by its first piece, and bills two works. */
-  private def withoutPeeledBanner(l: Listing, parts: Seq[String]): Seq[String] = {
+  private def withoutPeeledBanner(l: MeasuredListing, parts: Seq[String]): Seq[String] = {
     val searched = l.searchTitles.map(TitleContainment.tokens).filter(_.nonEmpty)
     def held(part: String) = { val p = TitleContainment.tokens(part); p.nonEmpty && searched.exists(s => s.containsSlice(p) || p.containsSlice(s)) }
     val first = parts.indexWhere(held)
@@ -130,11 +131,11 @@ private[identity] object SearchMeasures {
    *  a one-word piece is many films' title ("Bhutan – Trails of Happiness" is not the 1928 "Bhutan") — and no
    *  Roman numeral in the rest: a numbered set ("Bolek i Lolek – zestaw IV") is an instalment, not the film;
    *  and a year the rest states agrees with the record's. */
-  def standsForTheWhole(l: Listing, f: Film): Boolean = pieceStandsForTheWhole(l, f, words = 2)
+  def standsForTheWhole(l: MeasuredListing, f: Film): Boolean = pieceStandsForTheWhole(l, f, words = 2)
 
   /** [[standsForTheWhole]] for a piece of `words` words at least: one, where a fact of the listing's own (the director
    *  it credits) tells the word's many films apart ([[AcceptanceRuleTable.DirectorsTitle]]). */
-  def pieceStandsForTheWhole(l: Listing, f: Film, words: Int): Boolean = {
+  def pieceStandsForTheWhole(l: MeasuredListing, f: Film, words: Int): Boolean = {
     val pieces = namingPieces(l, f).filter(_.sizeIs >= words)
     pieces.nonEmpty && {
       val rest  = l.ownForms.flatMap(_.words).toSet -- pieces.flatten
@@ -171,7 +172,7 @@ private[identity] object SearchMeasures {
    *  against the film's, no numbered set ("Bolek i Lolek – zestaw
    *  IV"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte" is not Tinto Brass's). Which
    *  films stand beside it is the caller's to read: the ONE IMDb lists so, and none carrying the title already. */
-  def takesImdbTitle(l: Listing, f: Film): Boolean = {
+  def takesImdbTitle(l: MeasuredListing, f: Film): Boolean = {
     def near(year: Int) = f.year.forall(FactRelations.yearsNear(_, year))
     // nor a year or director the venue publishes against it: "Afrykanska Przygoda 3D IMAX" [2007] {Ben Stassen} is not
     // the 1954 film IMDb also calls "Afrykańska przygoda"
@@ -181,14 +182,14 @@ private[identity] object SearchMeasures {
   }
 
   /** The years the listing's title writes anywhere, bracketed or bare ("Miłość 2024"). */
-  def yearsWritten(l: Listing): Set[Int] = l.ownForms.flatMap(_.words).filter(TitleYear.matches).map(_.toInt).toSet
+  def yearsWritten(l: MeasuredListing): Set[Int] = l.ownForms.flatMap(_.words).filter(TitleYear.matches).map(_.toInt).toSet
   /** Does the listing's title number a set with a Roman numeral ("Bolek i Lolek – zestaw IV")? */
-  def numbersASet(l: Listing): Boolean =
+  def numbersASet(l: MeasuredListing): Boolean =
     l.ownForms.flatMap(_.words).exists(numbersAnInstalment)
 
   /** How many films of `pool` other than `film` the listing's title names as closely as a
    *  rival does — the `rivals` measure, over whatever pool the caller searched. */
-  def rivals(l: Listing, pool: Map[Int, Film], film: Int): Int =
+  def rivals(l: MeasuredListing, pool: Map[Int, Film], film: Int): Int =
     pool.count { case (id, f) => id != film && Rivalling(titleRelation(l, f).value) }
 
   /** The films a listing's title names EXACTLY that one of its own title searches returned FIRST,
@@ -196,23 +197,23 @@ private[identity] object SearchMeasures {
    *  none returned it). A banner segment's first hit is not one: the listing's whole title must be
    *  the film's. The resolver's top-hit acceptance and the evidence class it is measured as
    *  (`scripts.IdentityEvidenceClasses`) read this one definition. */
-  def exactTopHits(l: Listing, pool: Seq[(Int, Film, Option[Int])]): Seq[Int] =
+  def exactTopHits(l: MeasuredListing, pool: Seq[(Int, Film, Option[Int])]): Seq[Int] =
     pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
 
   /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the
    *  title a learned venue decoration wraps (`TitleDecorations`) — the other venues list "Mistyczka
    *  2D PL" as "Mistyczka". */
-  def titleGroups(l: Listing): Seq[String] =
+  def titleGroups(l: MeasuredListing): Seq[String] =
     (key(l.title) +: l.decoratedOnlyShapes.map(key)).filter(_.nonEmpty).distinct
 
   /** The title groups (by [[key]]) of the titles `l`'s search asks for — banners and screening notes off
    *  (`searchTitles`) — that are `f`'s own title, original or alternative: "Kino Konesera: Róża" is the
    *  "Róża" other venues list with Schleinzer and 2026 (as the old pipeline folded rows by their search
    *  key), but "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched as "André Rieu", is no concert's title. */
-  def searchGroups(l: Listing, f: Film): Seq[String] = {
+  def searchGroups(l: MeasuredListing, f: Film): Seq[String] = {
     val titles = f.titleKeys
     l.searchKeys.filter(titles).distinct
   }
   /** Every group [[searchGroups]] can name for `l`, whatever the film — what a family's resolve may read. */
-  def searchGroupsAny(l: Listing): Seq[String] = l.searchTitles.map(key).filter(_.nonEmpty).distinct
+  def searchGroupsAny(l: MeasuredListing): Seq[String] = l.searchTitles.map(key).filter(_.nonEmpty).distinct
 }

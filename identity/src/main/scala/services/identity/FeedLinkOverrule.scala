@@ -52,12 +52,12 @@ private[identity] final class FeedLinkOverrule(pool: FamilyPool, numbersFilmsByT
   /** The PRESENT sources' say for `candidate` against a link claimed by `own`: a kept listing ([[Listing.kept]]) keeps its
    *  own film's details alive, never a link a present listing's own sources overrule (DE "Eternity": Caligari's kept
    *  Freyne listing backed Cineamo's link). */
-  private def overrulingSources(listing: IdentityMeasures.Listing, own: String, candidate: Candidate): Int =
+  private def overrulingSources(listing: MeasuredListing, own: String, candidate: Candidate): Int =
     backing.sources(backingGroups(listing, candidate), candidate.film, own, Authority.Act.Overrule)
   /** The title relations by which a rival of the linked `film` overrules the link. A rival the title names only as one
    *  of its pieces overrules no link to a film it names whole: DE Metropolis's "KIRSCHBLÜTEN - HANAMI", linked to
    *  Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes. */
-  private def overrulingRelation(listing: IdentityMeasures.Listing, film: Int): Set[String] =
+  private def overrulingRelation(listing: MeasuredListing, film: Int): Set[String] =
     if (pool.candidates.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(pool.titleRelation(listing, candidate).value)))
       IdentityMeasures.Rivalling
     else IdentityMeasures.TitlesItsOwn
@@ -83,7 +83,7 @@ private[identity] final class FeedLinkOverrule(pool: FamilyPool, numbersFilmsByT
     }
   }
   /** The title groups whose venues back `candidate` for `listing`, by the one title relation ([[TitleRelation.backingGroups]]). */
-  private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
+  private def backingGroups(listing: MeasuredListing, candidate: Candidate): Seq[String] =
     TitleRelation.backingGroups(listing, candidate.film)
   /** Is a candidate a current release where `node` screens: dated [[ScreeningDays.CurrentRelease]] or fewer years
    *  before its first screening's year? */

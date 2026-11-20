@@ -4,7 +4,7 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.VoterFamily
+import services.identity.{Film, Measure, VoterFamily}
 import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact,
   StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
 import models.ListingKey
@@ -31,7 +31,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   private def decision(keys: Seq[ListingKey], film: Option[Int] = None, basis: ResolverDecision.Basis = ResolverDecision.Basis.NoEvidence,
                        unanswered: Int = 0) = ResolverDecision(keys, film, 0.9, basis, Nil, unanswered = unanswered)()
   private def resolution(ds: ResolverDecision*) =
-    Resolution(ds, ds.size, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map(438631 -> IdentityMeasures.Film("Dune: Part One")))
+    Resolution(ds, ds.size, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map(438631 -> Film("Dune: Part One")))
 
   /** What the test's stage waits on and its memory knows, set as each case goes. */
   private var waits: Map[Set[ListingKey], WaitingOn] = Map.empty
@@ -60,7 +60,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   }
 
   private def publisher(docs: StagingDocuments, stagingCap: Int = 500, metrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
-                        storedFilm: Int => Option[IdentityMeasures.Film] = _ => None,
+                        storedFilm: Int => Option[Film] = _ => None,
                         read: () => Iterator[Listing] = () => Iterator.empty,
                         clusterKey: ResolverDecision => String = d => StoredFamily.idOf(d.members)) =
     new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => feed.drain(),
@@ -200,7 +200,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
 
   it should "say what a moved take was before and why — its film titled, basis, confidence, reason, rule and runner-up" in {
     val docs = new InMemoryStagingDocuments
-    val live = publisher(docs, storedFilm = Map(1 -> IdentityMeasures.Film("Belle (2013)"), 2 -> IdentityMeasures.Film("Belle (2021)")).get)
+    val live = publisher(docs, storedFilm = Map(1 -> Film("Belle (2013)"), 2 -> Film("Belle (2021)")).get)
     taken = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
     live.publish()
     clock.advanceSeconds(20)
@@ -222,15 +222,15 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     Listing(models.KinoMuza, key, key.rawTitle, key.rawTitle, key.rawTitle, Some(year), Seq(director), Some(111), None, None,
       poster = Some(s"https://kino.example/${key.rawTitle}.jpg"))
   private def node(film: Int, yearGap: Double) = DecisionTrace.Node(Some("title-year"), Nil, Nil,
-    Map("year.gap" -> IdentityMeasures.Number(yearGap), "director" -> IdentityMeasures.Category("same_person")),
+    Map("year.gap" -> Measure.Number(yearGap), "director" -> Measure.Category("same_person")),
     candidate = Some(film), score = Some(0.9), runnerUp = Some(DecisionTrace.Rival(3, 0.04)),
     refusals = Seq(DecisionTrace.Refusal("sole-work", "below the cut", Some(3), "p 4.0% < 40.0%")))
 
   it should "list every fact a moved take was decided on, before and after: the listing's, each film's and each trace's" in {
     val docs   = new InMemoryStagingDocuments
-    val films  = Map(1 -> IdentityMeasures.Film("Belle", year = Some(2013), directors = Some(Seq("Amma Asante")), runtime = Some(104), imdbNumber = 2404639),
-      2 -> IdentityMeasures.Film("Belle", originalTitle = Some("竜とそばかすの姫"), year = Some(2021), directors = Some(Seq("Mamoru Hosoda")),
-        runtime = Some(121), countries = Some(Seq("JP")), genreBits = IdentityMeasures.Film.genreBitsOf(Seq(16, 14))))
+    val films  = Map(1 -> Film("Belle", year = Some(2013), directors = Some(Seq("Amma Asante")), runtime = Some(104), imdbNumber = 2404639),
+      2 -> Film("Belle", originalTitle = Some("竜とそばかすの姫"), year = Some(2021), directors = Some(Seq("Mamoru Hosoda")),
+        runtime = Some(121), countries = Some(Seq("JP")), genreBits = Film.genreBitsOf(Seq(16, 14))))
     val live   = publisher(docs, storedFilm = films.get)
     taken = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
     live.publish()
@@ -344,7 +344,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   // compares films, and as "tmdb 17281": the film only the agreement took is not in the model's resolution.
   it should "list a cluster that stopped waiting and whose film moved as that move, after its wait, titled from the TMDB store" in {
     val docs = new InMemoryStagingDocuments
-    val live = publisher(docs, storedFilm = Map(17281 -> IdentityMeasures.Film("Gigi")).get)
+    val live = publisher(docs, storedFilm = Map(17281 -> Film("Gigi")).get)
     val gigi = key("ZOO PALAST Berlin", "Gigi")
     waits = Map(Set(gigi) -> WaitingOn(0, Set(search), onTmdb = false))
     taken = Some(resolution(decision(Seq(gigi), None, ResolverDecision.Basis.Vetoed)))

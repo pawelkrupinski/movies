@@ -6,6 +6,7 @@ import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, Cin
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
+import Measure.Category
 /**
  * The resolver on hand-built families shaped like historical incidents. The film database is a
  * small table; each case asserts only what the evidence decides. The cases are TEST LABELS: no
@@ -1149,7 +1150,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       def hasDetail(l: Listing): Boolean                  = table.hasDetail(l)
       def detail(l: Listing): Answer[Option[DetailFacts]] = table.detail(l)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (FallbackIds.isFallback(id)) Answer.Unknown else table.film(id)
+      def film(id: Int): Answer[Option[Film]] = if (FallbackIds.isFallback(id)) Answer.Unknown else table.film(id)
     }
     val bare = listing(KinoMuza, "Kuźma", year = Some(2025))
     val d = IdentityResolver.resolve(Seq(bare), unanswered, normalizer, ResolveInputs.Unpinned.copy(calibration = weights)).decisionOf(bare.key)
@@ -1275,7 +1276,6 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(843))
     // only a script gap the person search bridges moves: a film its search does not reach, or two Latin names
     // that differ, stay what they were
-    import IdentityMeasures.Category
     IdentityMeasures.creditedBySearch(Map("director" -> Category("different_script")), directedBySpelling = false) shouldBe
       Map("director" -> Category("different_script"))
     IdentityMeasures.creditedBySearch(Map("director" -> Category("different")), directedBySpelling = true) shouldBe
@@ -1306,15 +1306,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val d = shipped(Seq(bill), Seq(fish)).decisionOf(bill.key)
     withClue(d.render)(d.film shouldBe None)
     // Central im Bürgerbräu's and Ostpassagen's own two titles of one film (base takes on recording 528)
-    def oneFilm(title: String, film: IdentityMeasures.Film) = !MultiFilmBill.slashesAnotherWork(IdentityMeasures.Listing(title, Some(title)), film)
-    oneFilm("DIE VENUS VON PARIS // LA VÉNUS ÉLECTRIQUE", IdentityMeasures.Film("La Vénus électrique", None, Seq("Die Venus von Paris"))) shouldBe true
-    oneFilm("La Haine // Hass", IdentityMeasures.Film("Hass", Some("La Haine"))) shouldBe true
+    def oneFilm(title: String, film: Film) = !MultiFilmBill.slashesAnotherWork(MeasuredListing(title, Some(title)), film)
+    oneFilm("DIE VENUS VON PARIS // LA VÉNUS ÉLECTRIQUE", Film("La Vénus électrique", None, Seq("Die Venus von Paris"))) shouldBe true
+    oneFilm("La Haine // Hass", Film("Hass", Some("La Haine"))) shouldBe true
     // a translated piece its record files under no title of its: the other piece is its original title (recording 38713274617)
-    oneFilm("DOWN AND OUT IN PARIS // À PIED D'ŒUVRE", IdentityMeasures.Film("À pied d’œuvre", Some("À pied d’œuvre"))) shouldBe true
+    oneFilm("DOWN AND OUT IN PARIS // À PIED D'ŒUVRE", Film("À pied d’œuvre", Some("À pied d’œuvre"))) shouldBe true
     oneFilm("DE GAULLE - ZEIT DES WIDERSTANDS // LA BATAILLE DE GAULLE: L'ÂGE FER",
-      IdentityMeasures.Film("La bataille de Gaulle - partie 1 : L'âge de fer", Some("La bataille de Gaulle - partie 1 : L'âge de fer"))) shouldBe true
-    oneFilm("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", IdentityMeasures.Film("片袖の魚", Some("片袖の魚"), Seq("The Fish with One Sleeve"))) shouldBe false
-    oneFilm("Kino//Bar: Hass", IdentityMeasures.Film("Hass")) shouldBe true
+      Film("La bataille de Gaulle - partie 1 : L'âge de fer", Some("La bataille de Gaulle - partie 1 : L'âge de fer"))) shouldBe true
+    oneFilm("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", Film("片袖の魚", Some("片袖の魚"), Seq("The Fish with One Sleeve"))) shouldBe false
+    oneFilm("Kino//Bar: Hass", Film("Hass")) shouldBe true
   }
 
   "A double bill one of whose works no database holds" should "be neither film, while a film billed with a talk stays that film" in {
@@ -1335,31 +1335,31 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       talks.map(l => r.decisionOf(l.key).film) shouldBe Some(157320) +: Seq.fill(3)(Some(42199))
     }
     // a second work titled in numbers is a work too: Pałacowe's "… | Zakazane piosenki + 2 x 2 = 4"
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("Bez znieczulenia + Q&A")) shouldBe false
     // Światowid: a poster tour is an event, not a second work
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
     // the programme a bill's last work runs into is the bill's, not that work's: Helios's "Basia. Humor w paski mam +
     // Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD" bills two films (review page: matches neither)
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD")) shouldBe true
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("11. UFF - Gala otwarcia + Demony")) shouldBe false
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
-    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD")) shouldBe true
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("11. UFF - Gala otwarcia + Demony")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(MeasuredListing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
     // a Q&A named with its guest, an introduction, a party, a drink or a choir beside one film is no second work (review
     // page 10-14..18, each judged right as the one film: Electric Palace Hastings, MAC Birmingham, Riverside, BEAM)
     Seq("Dead Souls + Alex Cox Q&A", "Charlie Shaw's Revenge + Director's Q&A", "The Weight + Recorded Ethan Hawke Introduction",
       "Classroom Cinema: The Staffroom (2021) + Introduction", "Christmas 2026: The Polar Express + Pyjama Party",
       "13 Going on 30 + FREE Mocktail", "50 Years of Punk + Director's Q&A + Hastings Punk Choir")
-      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing(title)) shouldBe false))
+      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWholeWorks(MeasuredListing(title)) shouldBe false))
     // an unspaced "+" between two works of two words or more joins them too: UK Odeon's "We're Going on a Bear
     // Hunt+Tiger Who Came to..." ×81 took Bear Hunt (convergence 2026-10-14); a "+" inside one title stays its own
     // ("Love+War", "Orwell: 2+2=5"), and so does one joining a word to a talk or a format ("Q+A", "RB+O 2026/27")
-    val unspaced = IdentityMeasures.Listing("We're Going on a Bear Hunt+Tiger Who Came to...")
+    val unspaced = MeasuredListing("We're Going on a Bear Hunt+Tiger Who Came to...")
     MultiFilmBill.billsTwoWholeWorks(unspaced) shouldBe true
     MultiFilmBill.billsTwoWorks(unspaced) shouldBe true
     Seq("Love+War", "Orwell: 2+2=5", "Panem-Mockingjay 1+2", "Carmen (RB+O 2026/27)", "Film+Gespräch: Elser",
       "London, From The Margins: Brick by Brick (Grime) Screening & Q+A Panel Talk", "Rocky  (Best of Cinema+Lichtperlen)")
-      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(title)) shouldBe false))
+      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWorks(MeasuredListing(title)) shouldBe false))
   }
 
   "A listing billing several films by a word that says so" should "be none of them, while a film whose own title carries the word stays that film" in {
@@ -1780,11 +1780,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val vampire = Seq(F(41153, "I Bought a Vampire Motorcycle", 1990, "Dirk Campbell", 105, 5, countries = Seq("GB", "US")))
     val translated = listing(KinoMuza, "Kupiłem motocykl, który jest wampirem", director = Some("Dirk Campbell"), runtime = Some(105))
     shipped(Seq(translated), vampire).decisionOf(translated.key).film shouldBe Some(41153)
-    def record(title: String) = IdentityMeasures.Film(title, countries = Some(Seq("GB")))
-    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("NTLive: Hayfever"), record("National Theatre Live: Hay Fever")) shouldBe false
-    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("Social Reckoning"), record("The Trial of the Chicago 7")) shouldBe true
+    def record(title: String) = Film(title, countries = Some(Seq("GB")))
+    IdentityMeasures.sharesNoWord(MeasuredListing("NTLive: Hayfever"), record("National Theatre Live: Hay Fever")) shouldBe false
+    IdentityMeasures.sharesNoWord(MeasuredListing("Social Reckoning"), record("The Trial of the Chicago 7")) shouldBe true
     // nor does one the billing misspells by a letter (DE "Grenzrerfahrungen - Bike Expeditionen ins Unbekannte")
-    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("Grenzrerfahrungen - Bike Expeditionen ins Unbekannte"), record("Grenzerfahrungen")) shouldBe false
+    IdentityMeasures.sharesNoWord(MeasuredListing("Grenzrerfahrungen - Bike Expeditionen ins Unbekannte"), record("Grenzerfahrungen")) shouldBe false
   }
 
   "A billing naming a film beside a stage company" should "take no film, though the piece names the venue's town" in {
@@ -1833,7 +1833,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val debate = listing(KinoMuza, raw).copy(title = "AI – rewolucja czy zagrożenie", cleanTitle = "AI – rewolucja czy zagrożenie")
     val d = shipped(Seq(debate), films).decisionOf(debate.key)
     withClue(d.render)(d.film shouldBe None)
-    val spielberg = IdentityMeasures.Film("A.I. Sztuczna inteligencja", Some("A.I. Artificial Intelligence"), Seq("A.I."), Some(2001))
+    val spielberg = Film("A.I. Sztuczna inteligencja", Some("A.I. Artificial Intelligence"), Seq("A.I."), Some(2001))
     ListingShape.billedBeside(debate, Seq(spielberg)).isDefined shouldBe true
   }
 
@@ -2149,7 +2149,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val d = IdentityResolver.resolve(Seq(l), new FilmTable(Seq(ernaux, danish), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     withClue(d.render)(d.film should not be Some(1579323))
     def bills(raw: String, film: F) = IdentityMeasures.billsWorksOfTwoTitles(Evidence.of(listing(germany, raw), None).measured,
-      IdentityMeasures.Film(film.title, alternativeTitles = film.alternatives))
+      Film(film.title, alternativeTitles = film.alternatives))
     bills("Ecrire la vie - Writing Life", ernaux) shouldBe true
     // one piece the work of one title only names the film by it, as a fragment does
     bills("Ecrire la vie - Ein Abend mit Annie Ernaux", ernaux) shouldBe false
@@ -2551,8 +2551,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // The bare listing publishes neither a year nor a director: nothing to veto on.
     val alone = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withRule))
     alone.edges.filterNot(_.must) shouldBe empty
-    val bareMeasures = IdentityMeasures.listingFilm(IdentityMeasures.Listing("Samson i Dalila"),
-      IdentityMeasures.Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
+    val bareMeasures = IdentityMeasures.listingFilm(MeasuredListing("Samson i Dalila"),
+      Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
     LearnedCannotLinks.learned(withRule, "listing-film", bareMeasures, probability = 0.5) shouldBe None
   }
 
@@ -3570,7 +3570,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val lookups = new IdentityLookups {
       def hasDetail(l: Listing): Boolean = false
       def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def film(id: Int): Answer[Option[Film]] = table.film(id)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]] = q match {
         case CandidateQuery.Title(text) => Answer.Known(searched.getOrElse(text.trim, Nil).flatMap(id => films.find(_.id == id))
           .map(f => Hit(f.id, f.title, None, Some(f.year), f.popularity)))
@@ -3646,8 +3646,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val night = F(803, "Nuit et brouillard", 1956, "Alain Resnais", 32, 3)
     val afterEight = F(1576335, "After Eight: The Story of Satpal Ram", 2025, "Someone", 30, 1, alternatives = Seq("After Eight"))
     val workshop = F(67167, "Warsztat Świętego Mikołaja", 1932, "Wilfred Jackson", 7, 1)
-    val untaken = (venue: String, title: String, f: F) => ShortFilms.billedBeyond(IdentityMeasures.Listing(title),
-      IdentityMeasures.Film(f.title, f.original, f.alternatives, Some(f.year), Some(f.runtime)), venue)
+    val untaken = (venue: String, title: String, f: F) => ShortFilms.billedBeyond(MeasuredListing(title),
+      Film(f.title, f.original, f.alternatives, Some(f.year), Some(f.runtime)), venue)
     untaken("Lichtwerk", "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD", night) shouldBe false
     untaken("Phoenix Cinema and Art Centre Leicester", "After Eight - The Story of Satpal Ram + Q&A", afterEight) shouldBe false
     untaken("Nasze Kino", "Warsztat Świętego Mikołaja / dubbing - Nasze Kino", workshop) shouldBe false

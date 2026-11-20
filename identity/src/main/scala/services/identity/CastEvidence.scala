@@ -145,7 +145,7 @@ object CastEvidence {
    *  (`language`) — a dub's cast field lists its voices, a foreign film's its transliterations — and only for a film whose
    *  genres are known and say its cast is on screen ([[onScreenCast]]). Measured 2026-10-19 (recording 38713274617): ES
    *  "La maleta" ×14 cured (Objetos 2022 → Therón's 2026 film), 9 right gained, nothing else moved. */
-  def mismatch(listings: Seq[Listing], film: IdentityMeasures.Film, language: Option[String], castIsTheFilms: => Boolean): Option[String] = {
+  def mismatch(listings: Seq[Listing], film: Film, language: Option[String], castIsTheFilms: => Boolean): Option[String] = {
     val listing = listings.filter(_.listedCast.nonEmpty)
     if (listing.isEmpty || film.cast.isEmpty || language.isEmpty || film.originalLanguage != language || !onScreenCast(film) || !castIsTheFilms) None
     else {
@@ -161,7 +161,7 @@ object CastEvidence {
 
   /** Is the film's TMDB cast the people a venue's cast field would list — its genres KNOWN (a record filed before records
    *  kept them reads as unknown, and the mismatch stands down) and none of [[VoiceOrContributorGenres]]? */
-  def onScreenCast(film: IdentityMeasures.Film): Boolean = film.genreBits != 0 && !VoiceOrContributorGenres.exists(film.hasGenre)
+  def onScreenCast(film: Film): Boolean = film.genreBits != 0 && !VoiceOrContributorGenres.exists(film.hasGenre)
 
   /** Is what the listings' cast fields list the film's cast — none billing a stage work, a relay, a performance or
    *  several works ([[mismatch]])? */

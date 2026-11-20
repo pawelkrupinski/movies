@@ -3,7 +3,7 @@ package tools
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity._
+import services.identity.{Film, _}
 
 import java.nio.file.Files
 
@@ -19,10 +19,10 @@ class UnmatchedClustersRecordedSpec extends AnyFlatSpec with Matchers with Scrat
   private val unknown  = 4242
   private val castOf   = Map(kawalski -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Andrzej Seweryn"), has -> Seq("Mariusz Dmochowski", "Beata Tyszkiewicz"))
   // the recording's records of them: their original language, and the genres Has's is filed under (Drama)
-  private val recorded = Map(kawalski -> IdentityMeasures.Film("Lalka", year = Some(2026), originalLanguage = Some("pl")),
-    has -> IdentityMeasures.Film("Lalka", year = Some(1968), originalLanguage = Some("pl"), genreBits = IdentityMeasures.Film.genreBitsOf(Seq(18))))
+  private val recorded = Map(kawalski -> Film("Lalka", year = Some(2026), originalLanguage = Some("pl")),
+    has -> Film("Lalka", year = Some(1968), originalLanguage = Some("pl"), genreBits = Film.genreBitsOf(Seq(18))))
   private val taken = UnmatchedClusters.Capture(pl, Nil, Nil, Map.empty,
-    films = Map(kawalski -> Some(IdentityMeasures.Film("Lalka", year = Some(2026))), has -> Some(IdentityMeasures.Film("Lalka", year = Some(1968))),
+    films = Map(kawalski -> Some(Film("Lalka", year = Some(2026))), has -> Some(Film("Lalka", year = Some(1968))),
       unknown -> None),
     details = Map.empty, withDetail = Set.empty, families = Map.empty, finds = Map.empty,
     casts = Map(kawalski -> None, has -> None))

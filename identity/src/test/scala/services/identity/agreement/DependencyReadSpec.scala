@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, FilmTable, Hit, IdentityCalibration,
-  IdentityLookups, IdentityMeasures, Listing, ProseWords, Question, VoterFamily}
+import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, Film, FilmTable, Hit, IdentityCalibration,
+  IdentityLookups, Listing, ProseWords, Question, VoterFamily}
 import models.{KinoMuza, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -19,20 +19,20 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
 
   /** Every input a dependency reads, each one movable on its own. */
   private final class World {
-    var record   = Option(IdentityMeasures.Film("Lalka", year = Some(2025)))
+    var record   = Option(Film("Lalka", year = Some(2025)))
     var release  = Option(java.time.LocalDate.of(2025, 11, 7))
     var cast     = Option(Seq("Kamila Urzędowska"))
     var overview = Option(ProseWords.ofDescription(Seq("Warsaw, 1878.")))
     var hits     = Seq(Hit(film, "Lalka", None, Some(2025), 1.0))
     var page     = Option(DetailFacts(Some(2025), Seq("Maciej Kawulski"), Some(150), None))
-    var family   = Map("tt1" -> SourceRecord(IdentityMeasures.Film("Lalka", year = Some(2025)), Map("imdb" -> "tt1")))
+    var family   = Map("tt1" -> SourceRecord(Film("Lalka", year = Some(2025)), Map("imdb" -> "tt1")))
     var titled   = Seq(SourceHit("tt1", "Lalka", None, Some(2025)))
     var tried    = Set.empty[Question]
     val tmdb: IdentityLookups = new IdentityLookups {
       def hasDetail(l: Listing): Boolean                                       = false
       def detail(l: Listing): Answer[Option[DetailFacts]]                      = Answer.Known(None)
       def candidates(q: CandidateQuery): Answer[Seq[Hit]]                      = Answer.Known(hits)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]]                 = Answer.Known(record)
+      def film(id: Int): Answer[Option[Film]]                 = Answer.Known(record)
       override def releaseDay(id: Int): Answer[Option[java.time.LocalDate]]    = Answer.Known(release)
       override def cast(id: Int): Answer[Option[Seq[String]]]                  = Answer.Known(World.this.cast)
       override def overview(id: Int): Answer[Option[ProseWords]]               = Answer.Known(World.this.overview)
@@ -41,7 +41,7 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
       def hasDetail(l: Listing): Boolean                       = true
       def detail(l: Listing): Answer[Option[DetailFacts]]      = page.fold[Answer[Option[DetailFacts]]](Answer.Unknown)(p => Answer.Known(Some(p)))
       def candidates(q: CandidateQuery): Answer[Seq[Hit]]      = Answer.Known(Nil)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+      def film(id: Int): Answer[Option[Film]] = Answer.Known(None)
     }
     val answers: FamilyAnswers = new FamilyAnswers {
       val family: VoterFamily = VoterFamily.Imdb

@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import tools.MutableClock
 
 import java.time.{Duration, Instant}
+import services.identity.Film
 
 /** The model asks live what is new, at once; a gap it already asked and was left without waits out its backoff, the
  *  fill's to ask (docs/design/identity-questions.md, step 3). */
@@ -25,7 +26,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
       if (fail) scala.util.Try(new LiveAsks.Counted(new FailingHttpFetch((_, _) => new java.net.SocketTimeoutException("slow"))).get(failing))
       answer
     }
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+    def film(tmdbId: Int): Answer[Option[Film]] = Answer.Known(None)
   }
 
   "the model's live asks" should "ask a new question at once, then leave one left unanswered to the fill for a day" in {

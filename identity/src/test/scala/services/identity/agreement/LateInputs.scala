@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, AnswersChanged, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId,
-  CatalogueQuestion, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
+  CatalogueQuestion, DetailFacts, Film, Hit, IdentityCalibration, IdentityLookups, IdentityResolver,
   InMemoryIdentityModelStore, IncrementalResolver, Listing, Pin, PinConstraints, PosterAnswers, PosterHash,
   PosterQuestion, ProseWords, Question, Resolution, TitleDecorations, VoterFamily}
 
@@ -124,9 +124,9 @@ object LateInputs {
       def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
         gate(Input.Search(query), Seq.empty[Hit])(s.tmdb.candidates(query)).map(_.filterNot(hit => newFilmGone(hit.tmdbId)))
       // a record filed before its release day is known holds only the year it was released in
-      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+      def film(tmdbId: Int): Answer[Option[Film]] =
         if (newFilmGone(tmdbId)) Answer.Known(None)
-        else gate(Input.Record(tmdbId), Option.empty[IdentityMeasures.Film])(s.tmdb.film(tmdbId))
+        else gate(Input.Record(tmdbId), Option.empty[Film])(s.tmdb.film(tmdbId))
           .map(_.map(record => if (gated(Input.Day(tmdbId)).isDefined) record.copy(released = None) else record))
       override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] =
         if (newFilmGone(tmdbId)) Answer.Known(None)
@@ -137,7 +137,7 @@ object LateInputs {
     /** The model's lookups, noting what it asked: what an arrival announces to it, as the fill does. */
     private val modelLookups: IdentityLookups = new services.identity.ForwardingIdentityLookups(lookups) {
       override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = { askedQueries += query; super.candidates(query) }
-      override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = { askedFilms += tmdbId; super.film(tmdbId) }
+      override def film(tmdbId: Int): Answer[Option[Film]] = { askedFilms += tmdbId; super.film(tmdbId) }
       override def detail(listing: Listing): Answer[Option[DetailFacts]] = { askedPages += listing.key; super.detail(listing) }
     }
 

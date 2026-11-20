@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, Question, VoterFamily}
+import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, Film, Hit, IdentityCalibration,
+  IdentityLookups, Listing, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -80,7 +80,7 @@ private[agreement] final class AgreementEvidence(val families: Map[VoterFamily, 
     private def record[A](aspect: Dependency.Aspect, tmdbId: Int, answer: Answer[A]): Answer[A] = { tmdbReads.record(tmdbId); noted(aspect, Question.FilmRecord(tmdbId), answer) }
     override def detail(listing: Listing): Answer[Option[DetailFacts]]               = noted(Dependency.Aspect.Answer, Question.VenuePage(listing.key), inner.detail(listing))
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { tmdbReads.queried(); noted(Dependency.Aspect.Answer, Question.Candidate(query), inner.candidates(query)) }
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]            = record(Dependency.Aspect.Answer, tmdbId, inner.film(tmdbId))
+    override def film(tmdbId: Int): Answer[Option[Film]]            = record(Dependency.Aspect.Answer, tmdbId, inner.film(tmdbId))
     override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record(Dependency.Aspect.Release, tmdbId, inner.releaseDay(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record(Dependency.Aspect.Cast, tmdbId, inner.cast(tmdbId))
     override def overview(tmdbId: Int): Answer[Option[services.identity.ProseWords]] = record(Dependency.Aspect.Overview, tmdbId, inner.overview(tmdbId))
@@ -180,7 +180,7 @@ private[agreement] object AgreementEvidence {
       inner.prefetch(Nil, Nil, details)
     override def prefetchAnswered(): Unit                          = inner.prefetchAnswered()
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Unknown
+    def film(tmdbId: Int): Answer[Option[Film]]   = Answer.Unknown
   }
   object PagesOnly {
     def apply(lookups: IdentityLookups): IdentityLookups = lookups match {
@@ -203,7 +203,7 @@ private[agreement] object AgreementEvidence {
     private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) unknown = true; answer }
     override def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
+    override def film(tmdbId: Int): Answer[Option[Film]] = noted(inner.film(tmdbId))
   }
 
   /** The answer a lookup's dependency names (as [[AgreementEvidence]] notes it), read from `lookups` now: a detail

@@ -1,6 +1,5 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{Film, Listing}
 
 /** A stage house's RELAY matched as one: the HOUSE its billing names in particular ([[StageRelays.Relay.houses]]), the
  *  stage WORK ([[StageWorks]], in any language) and the SEASON the performance it screens falls in. A record of that
@@ -27,7 +26,7 @@ private[identity] object RelayStage {
                           screeningsSeason: Option[Int] = None, airDays: Seq[java.time.LocalDate] = Nil) {
     /** Does it name a house in particular — what lifts the learned vetoes off its record? */
     def particular: Boolean = houses.nonEmpty
-    /** Is `f` a record of the season its screenings fall in that airs on one of its days ([[Listing.airDays]], within
+    /** Is `f` a record of the season its screenings fall in that airs on one of its days ([[MeasuredListing.airDays]], within
      *  [[StageRelays.AirDayWindow]]): the broadcast it screens, whatever older year its title dates the staging by? */
     def airedOn(f: Film): Boolean =
       airDays.nonEmpty && screeningsSeason.exists(seasonsOf(f)) && f.released.exists(aired =>
@@ -42,8 +41,8 @@ private[identity] object RelayStage {
    *    Tosca"), unless it is before the season its screenings fall in, when it dates the staging's premiere (UK
    *    Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in 2026/27) — that season or the one before.
    *  Never an ENCORE's year, which dates the encore ("The Metropolitan Opera: Samson et Dalila ENCORE (2026)"), but the
-   *  performance its synopsis names ([[Listing.performanceYear]]), else its screenings' season or the one before. */
-  def of(listing: Listing): Option[Billed] = {
+   *  performance its synopsis names ([[MeasuredListing.performanceYear]]), else its screenings' season or the one before. */
+  def of(listing: MeasuredListing): Option[Billed] = {
     val l = camelSplit(listing)
     // a relay series' banner beside its work bills the house as a house word does ([[searchedInItsSeason]]): UK The
     // Beehive Honiton's "The Met: La Fanciulla del West 27" is the Met's relay, whose record TMDB titles with no season
@@ -84,7 +83,7 @@ private[identity] object RelayStage {
    *  film joined them, and their titles share no form, so each was a film of its own. A billing naming no house ("La
    *  Bayadère", screening in a season both the Royal Ballet and the Paris Opera relay it in) bills none; nor does
    *  "Royal Ballet: The Nutcracker (2021)", screening in 2026/27: the 2021 recording, a production of its own season. */
-  def production(l: Listing): Option[Production] = {
+  def production(l: MeasuredListing): Option[Production] = {
     val houses = particularHouses(l)
     val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
     // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
@@ -94,30 +93,30 @@ private[identity] object RelayStage {
   }
 
   /** The keys of the production `l` bills ([[Production.keys]]), none when it bills none. */
-  def relayKeys(l: Listing): Set[String] = l.production.fold(Set.empty[String])(_.keys)
+  def relayKeys(l: MeasuredListing): Set[String] = l.production.fold(Set.empty[String])(_.keys)
   /** Do `a` and `b` bill one production ([[Production]]): one house's relay of one stage work in one season, however each
    *  venue spells the house's banner beside the work ([[services.titles.StageHouse.namesOneHouse]]: "Opéra de Paris", "The Opéra
    *  National de Paris", PL "Balet z Opery Paryskiej")? Two houses' relays of one work in one season stay two (the Royal
    *  Ballet's "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
-  def oneRelay(a: Listing, b: Listing): Boolean = oneProduction(a, b, services.titles.StageHouse.namesOneHouse)
+  def oneRelay(a: MeasuredListing, b: MeasuredListing): Boolean = oneProduction(a, b, services.titles.StageHouse.namesOneHouse)
   /** Do `a` and `b` bill one production ([[oneRelay]]) under one house's name spelt alike ([[services.titles.StageHouse.nameOneHouseAlike]]:
    *  "Opéra de Paris" and "The Opéra National de Paris"; "Swan Lake The Royal Ballet" and "RBO Cinema Season 2026-27: Swan
    *  Lake") — not "The Metropolitan Opera" and "Met Opera", one word opening the other? Between such billings the learned
    *  listing-listing cut reads only a fact they disagree on ([[ConstraintEdges]]): lifted between "The Metropolitan Opera-
    *  Manon" and the Met's "Met Opera 2026-27: Manon" spellings, it moved UK Stowmarket's and Corby's takes (recording 573). */
-  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean = oneProduction(a, b, services.titles.StageHouse.nameOneHouseAlike)
-  private def oneProduction(a: Listing, b: Listing, sameHouse: (Seq[String], Seq[String]) => Boolean): Boolean =
+  def oneRelaySpeltAlike(a: MeasuredListing, b: MeasuredListing): Boolean = oneProduction(a, b, services.titles.StageHouse.nameOneHouseAlike)
+  private def oneProduction(a: MeasuredListing, b: MeasuredListing, sameHouse: (Seq[String], Seq[String]) => Boolean): Boolean =
     (a.production, b.production) match {
       case (Some(x), Some(y)) => x.season == y.season && (x.works & y.works).nonEmpty && x.houses.exists(house => y.houses.exists(sameHouse(house, _)))
       case _                  => false
     }
-  private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(services.titles.StageHouse.namesAHouseInParticular)
+  private def particularHouses(l: MeasuredListing): Seq[Seq[String]] = l.relay.houses.filter(services.titles.StageHouse.namesAHouseInParticular)
   /** Does `l` bill two houses that are not one — its houses, and each word naming one alone: a relay series' banner word
    *  ("MET": no house as a word of its own, [[searchedInItsSeason]]) or a house's initials ("RBO")? Whose relay it is the banner does not say: UK The Flavel's "RBO/MET
    *  presents MACBETH", Northallerton's "RBO: MACBETH (MET)" and Cardigan's "Met Opera in Association with RBO: Macbeth"
    *  screen the Met's 2026/27 Macbeth; keyed as the RBO's, they joined one another away from the Met's record and left
    *  the spellings beside both alone (recording 573: four right takes lost). */
-  private def namesTwoHouses(l: Listing): Boolean = {
+  private def namesTwoHouses(l: MeasuredListing): Boolean = {
     val banners = l.ownTitles.flatMap(title => services.titles.StageHouse.initialsJoined(services.titles.TitleContainment.tokens(title).toSeq))
       .filter(word => ParticularBannerWords(word) || services.titles.StageHouse.initials(word)).distinct.map(Seq(_))
     val houses  = particularHouses(l) ++ banners
@@ -126,14 +125,14 @@ private[identity] object RelayStage {
   /** The banner words naming a relay series in particular ("Met", "Metropolitan", "NT"), never a season's word. */
   private lazy val ParticularBannerWords: Set[String] = HouseBannerWords.filter(word => services.titles.StageHouse.namesAHouseInParticular(Seq(word)))
 
-  /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
+  /** Is `l` a relay searched with the season its screenings fall in ([[MeasuredListing.screenedSeason]],
    *  [[SearchMeasures.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
    *  ([[services.titles.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and
    *  the season, which no search of the work's name alone reaches: UK Picture House Uckfield's "Tosca (ROH)", "Otello
    *  (MET)", Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" screen the 2026/27 relays. "Met" names no
    *  opera house as a word of its own ("When Harry Met Sally"), but beside a stage work it is the series the work is
    *  relayed under. */
-  def searchedInItsSeason(l: Listing): Boolean =
+  def searchedInItsSeason(l: MeasuredListing): Boolean =
     l.billsAStageHouse || l.ownTitles.exists(title => services.titles.TitleContainment.tokens(title).exists(HouseBannerWords))
   private lazy val HouseBannerWords: Set[String] = services.titles.TitleWords.tokens(services.titles.TitleWords.Concept.HouseBanner)
 
@@ -141,14 +140,14 @@ private[identity] object RelayStage {
   private val CamelSeam = """(?<=\p{Ll})(?=\p{Lu})""".r
   /** The listing with its titles' camel-cased words read as their parts: US Flicks' "MetOpera" is the Met's "Met Opera",
    *  a house and its art. Read for the relay alone: the search and every other rule read the billing as billed. */
-  private def camelSplit(l: Listing): Listing = {
+  private def camelSplit(l: MeasuredListing): MeasuredListing = {
     def split(title: String) = CamelSeam.replaceAllIn(title, " ")
     if (l.ownTitles.forall(title => split(title) == title)) l else l.copy(title = split(l.title), rawTitle = l.rawTitle.map(split))
   }
 
   /** Is `f` the record of the relay `l` bills ([[of]]), naming a house in particular: what no learned veto denies, and no
    *  sibling's denial withdraws? */
-  def particularRecordOf(l: Listing, f: Film): Boolean = l.relayBilled.exists(relay => relay.particular && recordOf(relay, f))
+  def particularRecordOf(l: MeasuredListing, f: Film): Boolean = l.relayBilled.exists(relay => relay.particular && recordOf(relay, f))
   /** Is `f` the relay's record: its titles name the relay's house ([[StageRelays.bannerNamesItsHouse]]) and its work, and
    *  it is dated in one of the relay's seasons — the season its title names, else the season its air day falls in, else
    *  either season its year is in — or it airs on a day the relay screens ([[Billed.airedOn]])? */
@@ -157,7 +156,7 @@ private[identity] object RelayStage {
   /** Is `f` the broadcast the relay `l` bills airs on one of its days ([[Billed.airedOn]]): its house's record of its
    *  work from the season its screenings fall in? A season its title names apart from it is the page a venue copied, not
    *  the relay it screens: no [[services.evidence.ListingConstraints.seasonsApart]] denies it. */
-  def airsItsRelay(l: Listing, f: Film): Boolean =
+  def airsItsRelay(l: MeasuredListing, f: Film): Boolean =
     l.relayBilled.exists(relay => relay.airedOn(f) && f.stageWorkIds.exists(relay.works) && relay.itsHouse(f))
 
   /** The seasons a record can be of: the one its title names, else the one its air day falls in, else either its year is
@@ -172,7 +171,7 @@ private[identity] object RelayStage {
   private val ClosingYear = """(?:(?<![\p{N}/–—-])(20\d{2})|(?<=\s)['’]?(\d{2}))\s*$""".r
   /** The listing with the year its titles close on cut off, its work read before it: "THE NUTCRACKER 2026" bills "THE
    *  NUTCRACKER". */
-  private def unclosed(l: Listing): Listing = {
+  private def unclosed(l: MeasuredListing): MeasuredListing = {
     def cut(title: String) = ClosingYear.replaceFirstIn(title.trim, "").trim
     if (closingYear(l).isEmpty) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
   }
@@ -180,7 +179,7 @@ private[identity] object RelayStage {
    *  Honiton's "The Met: La Fanciulla del West 27" reaches the Met's 2026/27 record, which TMDB titles with no season, only
    *  by "La Fanciulla del West" — neither "La Fanciulla del West 27" nor "… 2026" finds it. A title naming no relay keeps
    *  its digits ("Apollo 13"). */
-  def shortYearCut(l: Listing): Seq[String] =
+  def shortYearCut(l: MeasuredListing): Seq[String] =
     if (l.relayBilled.isEmpty) Nil
     else l.ownTitles.flatMap(title => ShortClosingYear.findFirstMatchIn(title.trim)
       .filter(m => inItsSeason(l, 2000 + m.group(1).toInt)).map(m => title.trim.take(m.start).trim)).filter(_.exists(_.isLetter))
@@ -189,13 +188,13 @@ private[identity] object RelayStage {
   /** Is `year` one a relay's title can close on: the year its screenings' season opens or the next (the owner,
    *  2026-11-16) — "… 2026" in December 2026, "… 27" in January 2027 — never one past it ("… 99" is no 2099 relay), nor
    *  any while it has no screenings to read a season by. */
-  private def inItsSeason(l: Listing, year: Int): Boolean = l.screeningsSeason.exists(season => year == season || year == season + 1)
+  private def inItsSeason(l: MeasuredListing, year: Int): Boolean = l.screeningsSeason.exists(season => year == season || year == season + 1)
 
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
    *  (1 December 2026) dates the 2026/27 relay by it, as The Beehive Honiton's "The Met: La Fanciulla del West 27" (26
    *  January 2027) dates the Met's 2026/27 relay, whose record TMDB titles with no season. Read only as the year its
    *  screenings' season opens or the next ([[inItsSeason]]): any other is the title's own digits, kept in it. */
-  private def closingYear(l: Listing): Option[Int] =
+  private def closingYear(l: MeasuredListing): Option[Int] =
     l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(m => Option(m.group(1)).fold(2000 + m.group(2).toInt)(_.toInt))).distinct match {
       case Seq(one) if inItsSeason(l, one) => Some(one)
       case _                               => None
@@ -204,10 +203,10 @@ private[identity] object RelayStage {
   private val Encore = """(?i)(?<![\p{L}])encore(?![\p{L}])""".r
   /** The listing with the ENCORE its titles bill cut out, its work read past it: "Samson et Dalila ENCORE (2026)" bills
    *  "Samson et Dalila". */
-  private def unencored(l: Listing): Listing = {
+  private def unencored(l: MeasuredListing): MeasuredListing = {
     def cut(title: String) = Encore.replaceAllIn(title, " ").replaceAll("""\s+""", " ").trim
     if (!billsAnEncore(l)) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
   }
   /** Does the billing bill an ENCORE ("… ENCORE (2026)", "(2026 ENCORE)")? Its year is the encore's. */
-  private[identity] def billsAnEncore(l: Listing): Boolean = l.ownTitles.exists(Encore.findFirstIn(_).isDefined)
+  private[identity] def billsAnEncore(l: MeasuredListing): Boolean = l.ownTitles.exists(Encore.findFirstIn(_).isDefined)
 }

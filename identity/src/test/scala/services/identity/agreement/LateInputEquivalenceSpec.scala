@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, FilmTable,
-  ForwardingIdentityLookups, Hit, IdentityLookups, IdentityMeasures, Listing, Pin, PinClaim, PosterHash, ProseWords,
+import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, Film, FilmTable,
+  ForwardingIdentityLookups, Hit, IdentityLookups, Listing, Pin, PinClaim, PosterHash, ProseWords,
   ScreeningDays, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -106,7 +106,7 @@ object LateInputEquivalenceSpec {
 
   // ── the families agreeing on a film TMDB's search misses: Klondike (AgreementStageSpec) ────────────────────────
 
-  private val klondike = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
+  private val klondike = Film("Klondike", None, Nil, Some(2022), Some(100), Some(Seq("Maryna Er Gorbach")), None, None)
   private val klondikeRecord = SourceRecord(klondike, Map("imdb" -> "tt16315948"))
   private val klondikeFamilies = holding(VoterFamily.Imdb -> Map("tt16315948" -> klondikeRecord), VoterFamily.Wiki -> Map("Q1" -> klondikeRecord),
     VoterFamily.Filmweb -> Map("880000" -> SourceRecord(klondike)), VoterFamily.RottenTomatoes -> Map("klondike_2022" -> SourceRecord(klondike)))
@@ -174,8 +174,8 @@ object LateInputEquivalenceSpec {
   // ── the synopsis refusing an agreement: Binti (AgreementStageSpec) ─────────────────────────────────────────────
 
   val synopses: Seq[Scenario] = everyAbsence {
-    val shamte = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
-    val migom  = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
+    val shamte = Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
+    val migom  = Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
     val families = holding(VoterFamily.Imdb -> Map("tt11867140" -> SourceRecord(shamte, Map("imdb" -> "tt11867140"))),
       VoterFamily.Wiki -> Map("Q108940090" -> SourceRecord(shamte, Map("imdb" -> "tt11867140", "tmdb" -> "855156"))),
       VoterFamily.Filmweb -> Map("10016218" -> SourceRecord(shamte)))
@@ -213,7 +213,7 @@ object LateInputEquivalenceSpec {
 
   val catalogueIds: Seq[Scenario] = everyAbsence {
     val fantasy = CatalogueId("webedia", "325279")
-    val item    = SourceRecord(IdentityMeasures.Film("Fantasy", None, Nil, Some(2025), None, Some(Seq("Kukla Kesting")), None),
+    val item    = SourceRecord(Film("Fantasy", None, Nil, Some(2025), None, Some(Seq("Kukla Kesting")), None),
       Map("wikidata" -> "Q135441923", "tmdb" -> "1318829", "imdb" -> "tt36112899"))
     val hits    = Map(fantasy -> Seq(CatalogueHit(Some("Q135441923"), Some(1318829), Some("tt36112899"), "Wikidata P1265")))
     val catalogue = new CatalogueAnswers {
@@ -258,7 +258,7 @@ object LateInputEquivalenceSpec {
      *  on main: `AgreementStage.verdictOf` kept a verdict while its `reads` matched, and `reads` recorded only family
      *  answers, never finds or records. */
     private def agreedFindLate(name: String, title: String, year: Int, imdb: String, tmdb: Int, venues: Int, families: Seq[VoterFamily]): Seq[Scenario] = {
-      val film    = IdentityMeasures.Film(title, None, Nil, Some(year), Some(100), None, None, None)
+      val film    = Film(title, None, Nil, Some(year), Some(100), None, None, None)
       val record  = SourceRecord(film, Map("imdb" -> imdb))
       val table   = unsearched(new FilmTable(Seq(FilmTable.F(tmdb, title, year, "", 100)), normalizer))
       val held    = holding(families.map(family => family -> Map(s"${family.label}-$imdb" -> record))*)
@@ -282,7 +282,7 @@ object LateInputEquivalenceSpec {
      *  take that arrived after it was decided: here the venue's poster, hashed late, matching the other Ostrze, which
      *  IMDb and Wikidata take. */
     val ostrze: Seq[Scenario] = {
-      val other   = IdentityMeasures.Film("Ostrze", None, Nil, Some(2024), Some(95), Some(Seq("Jan Kowalski")), None, None)
+      val other   = Film("Ostrze", None, Nil, Some(2024), Some(95), Some(Seq("Jan Kowalski")), None, None)
       val table   = new FilmTable(Seq(FilmTable.F(42845, "Ostrze", 1995, "Tsui Hark", 105), FilmTable.F(42846, "Ostrze", 2024, "Jan Kowalski", 95)), normalizer)
       val url     = "https://ec1lodz.pl/ostrze.jpg"
       val record  = SourceRecord(other, Map("tmdb" -> "42846"))

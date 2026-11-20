@@ -38,7 +38,7 @@ object ListingShape {
    *  author's work — a play's capture or relay, its current record — not an older namesake film (DE Cineplex "Fallen
    *  Angels by Noël Coward", the 2026 capture of Coward's play, took Wong Kar-wai's 1995 "Fallen Angels"). A billing
    *  crediting a host or a score ("Blow-Up + Intro by …", "Nosferatu with Live Score by …") names no work its film is. */
-  def creditDenies(credit: AuthorCredit, film: IdentityMeasures.Film, screenedIn: Option[Int]): Boolean =
+  def creditDenies(credit: AuthorCredit, film: Film, screenedIn: Option[Int]): Boolean =
     film.year.exists(year => screenedIn.exists(_ - year >= CreditedNamesakeSeasons)) && {
       val work     = IdentityMeasures.key(credit.work)
       val credited = IdentityMeasures.key(credit.person)
@@ -78,7 +78,7 @@ object ListingShape {
    *  `venueWord` says is not the venue's own name: the show's, an event's, whatever facts the two share, no film the
    *  venue screens (UK "CBeebies Panto: Treasure Island" beside TMDB's "Cbeebies Panto: Treasure Island", 1785679; the
    *  user's review 10-21). Read by the acceptance rules and [[BilledPiece]] alike. */
-  def showsOwnRecord(billed: String, film: IdentityMeasures.Film, venueWord: String => Boolean = _ => false): Boolean =
+  def showsOwnRecord(billed: String, film: Film, venueWord: String => Boolean = _ => false): Boolean =
     film.titles.exists(title => TitleContainment.tokens(title).exists(ShowWords)) &&
       TitleContainment.tokens(billed).exists(word => ShowWords(word) && !venueWord(word))
 
@@ -128,7 +128,7 @@ object ListingShape {
     MultiFilmBill.marker(titlesOf(listing)).isDefined || billsSeveralBySigns(listing)
 
   /** [[billsSeveral]] for `film`: a programme word its own title carries ("Marathon Man") bills no other. */
-  def billsSeveralBeside(listing: Listing, film: IdentityMeasures.Film): Boolean =
+  def billsSeveralBeside(listing: Listing, film: Film): Boolean =
     MultiFilmBill.billsBeside(titlesOf(listing), film) || billsSeveralBySigns(listing)
 
   private def titlesOf(listing: Listing): Seq[String] = Seq(listing.rawTitle, listing.title).distinct
@@ -163,7 +163,7 @@ object ListingShape {
    *  beside other titles). `bannerSlot`: whether the banner's slot is the venue's whatever it says — not where it names a
    *  staged show ([[ShowWords]], [[BilledPiece]]): a pantomime heading its work is a staging of it, not a venue's banner
    *  (UK "CBeebies Panto 2026: Treasure Island"). */
-  def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film], venues: Seq[String] => Boolean = _ => false,
+  def billedBeside(listing: Listing, films: Seq[Film], venues: Seq[String] => Boolean = _ => false,
                    bannerSlot: Boolean = true): Option[String] = {
     // a box office's certificate note is the showing's, never a piece of what it bills (UK "Family Cinema: Paddington - Cert PG")
     val raw = BillingParse(listing.rawTitle).uncertified
@@ -177,13 +177,13 @@ object ListingShape {
 
   /** Is the billing two pieces a dash joins ([[BillingParse.dashedPair]]), the second a title of `film`'s, whole ("LÍDA BAAROVÁ –
    *  DOOMED BEAUTY": its subject, then the film)? */
-  def titledAfterPiece(raw: String, film: IdentityMeasures.Film): Boolean = BillingPieces.dashedPair(raw) && {
+  def titledAfterPiece(raw: String, film: Film): Boolean = BillingPieces.dashedPair(raw) && {
     val titles = film.titles.map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
     BillingPieces.SegmentBreak.split(raw).lastOption.exists(piece => titles.contains(withoutLeadingArticle(TitleContainment.tokens(piece))))
   }
   /** Any quotation mark a title may carry. */
   private[identity] val Quote = """[„”"“«»]""".r
-  private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
+  private def quotesAFilm(raw: String, films: Seq[Film]): Boolean = {
     val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
     BillingPieces.Quoted.findAllMatchIn(raw).exists(m => titles(withoutLeadingArticle(TitleContainment.tokens(m.group(1)))))
   }
@@ -200,14 +200,14 @@ object ListingShape {
    *  it by the title alone: DE Pornfilmfestival Berlin's "The more the merrier" (a shorts programme) is not Stevens' 1943
    *  comedy, its "No Mercy" (Willinger's 2026 documentary) not Pearce's 1986 thriller — beside "Cyberfuck", the 2026 film
    *  at the same 39.1% on the same bare title. */
-  def festivalsCatalogueNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
+  def festivalsCatalogueNamesake(listing: MeasuredListing, film: Film): Boolean =
     film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && festivalsBareBilling(listing, film)
 
   /** Is the listing a bare billing under a FILM FESTIVAL's banner that names none of `film`'s directors — no year,
    *  director or running time stated, the banner a colon or a pipe closes naming a film festival? Its title names the
    *  programme's entry, which no fact singles out among its namesakes ([[festivalsCatalogueNamesake]],
    *  [[festivalsOlderNamesake]]). */
-  def festivalsBareBilling(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+  def festivalsBareBilling(listing: MeasuredListing, film: Film): Boolean = {
     val raw = listing.rawTitle.getOrElse(listing.title)
     // a programme naming the film's director is the festival's homage to them: "Hommage Rosa von Praunheim 2: Stadt der
     // verlorenen Seelen" is his 1983 film
@@ -225,7 +225,7 @@ object ListingShape {
    *  50.7% beside Violet Du Feng's 2025 documentary "The Dating Game". The catalogue rule's years
    *  ([[FestivalCatalogueYears]]) deny an old namesake outright; this one only keeps the pooled vote from taking the
    *  older on its ranking. */
-  def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
+  def festivalsOlderNamesake(listing: MeasuredListing, film: Film, newer: Film): Boolean =
     festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */

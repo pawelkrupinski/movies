@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.{IdentityMeasures, VoterFamily}
+import services.identity.{Film, VoterFamily}
 import services.enrichment.FilmwebClient
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
 
@@ -15,7 +15,7 @@ final class FilmwebFamily(filmweb: FilmwebClient, programmes: String => Seq[Show
   def record(id: String): Option[SourceRecord] = id.toIntOption.flatMap { film =>
     filmweb.info(film).map { info =>
       val preview = filmweb.preview(film)
-      SourceRecord(IdentityMeasures.Film(
+      SourceRecord(Film(
         title             = info.title,
         originalTitle     = info.originalTitle.orElse(preview.flatMap(_.originalTitle)).filterNot(_ == info.title),
         year              = info.year.orElse(preview.flatMap(_.year)),

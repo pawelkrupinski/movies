@@ -8,6 +8,7 @@ import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.SuspectTakes.Signal
+import services.identity.Film
 
 /** The live resolve's suspect-take count ([[SuspectTakeCount]]): billings per signal, an agreed film's record read from
  *  the store, a listing as its venue's page states it. */
@@ -22,9 +23,9 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     val fragment = Seq(listing("Giorgia Fumo - OUT OF OFFICE"), listing("Giorgia Fumo - OUT OF OFFICE", models.Helios))
     val old      = listing("Michael")
     val current  = Seq(listing("Michael", models.Helios), listing("Michael", models.Multikino))
-    val films    = Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)), 3 -> IdentityMeasures.Film("Michael", year = Some(2026)))
+    val films    = Map(1 -> Film("Out of Office", year = Some(2022)), 3 -> Film("Michael", year = Some(2026)))
     // the 1924 "Michael" is an agreed film: the model never decided it, its record is the store's
-    val stored   = Map(2 -> IdentityMeasures.Film("Michael", year = Some(1924)))
+    val stored   = Map(2 -> Film("Michael", year = Some(1924)))
     val resolution = resolutionOf(Seq(decision(fragment, 1), decision(Seq(old), 2, ResolverDecision.Basis.Agreed), decision(current, 3)), films)
     var reported = Map.empty[Signal, Int]
     count(NoFilmLookups, ids => stored.view.filterKeys(ids.contains).toMap, counts => reported = counts)(resolution, fragment ++ (old +: current))
@@ -35,7 +36,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     val fumo   = listing("Giorgia Fumo - OUT OF OFFICE")
     val other  = listing("Lorenzo Fumo - OUT OF OFFICE")
     val lalka  = listing("Lalka")
-    val films  = Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)), 2 -> IdentityMeasures.Film("Lalka", year = Some(2026)))
+    val films  = Map(1 -> Film("Out of Office", year = Some(2022)), 2 -> Film("Lalka", year = Some(2026)))
     val judged = new TakeJudgements.Index(Seq(
       TakeJudgements.Judgement("pl", "*", "Giorgia  Fumo - OUT OF OFFICE", "tmdb:1", right = true),
       TakeJudgements.Judgement("pl", KinoMuza.displayName, "Lalka", "tmdb:2", right = false)))
@@ -54,7 +55,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
 
   "the count" should "name the billings, the most venues first, at most a bounded number" in {
     val take = (raw: String, venue: models.Cinema) =>
-      SuspectTakes.Take(listing(raw, venue), "tmdb:1", Some(1), IdentityMeasures.Film("Out of Office", year = Some(2022)),
+      SuspectTakes.Take(listing(raw, venue), "tmdb:1", Some(1), Film("Out of Office", year = Some(2022)),
         decision(Seq(listing(raw, venue)), 1))
     val found = Seq(take("A", KinoMuza) -> "fragment: x", take("B", KinoMuza) -> "era: y", take("B", models.Helios) -> "era: y")
     SuspectTakeCount.named(found) shouldBe Seq("B → tmdb:1 Out of Office (2022) [2 venue(s)]: era: y",
@@ -68,11 +69,11 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
       override def hasDetail(l: Listing): Boolean = true
       override def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(Some(DetailFacts(None, Nil, Some(263), None)))
       override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(Nil)
-      override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+      override def film(id: Int): Answer[Option[Film]] = Answer.Known(None)
     }
     var reported = Map.empty[Signal, Int]
     count(page, _ => Map.empty, counts => reported = counts)(
-      resolutionOf(Seq(decision(Seq(short), 1)), Map(1 -> IdentityMeasures.Film("Herr der Ringe", year = Some(2025), runtime = Some(14)))),
+      resolutionOf(Seq(decision(Seq(short), 1)), Map(1 -> Film("Herr der Ringe", year = Some(2025), runtime = Some(14)))),
       Seq(short))
     reported(Signal.Runtime) shouldBe 1
   }
@@ -97,9 +98,9 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
       }
       override def prefetchAnswered(): Unit = { calls += "answered"; held = Set.empty }
       // a film the prefetch did not hold is a read of its own
-      override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
+      override def film(id: Int): Answer[Option[Film]] = {
         if (!held(id)) calls += s"read $id"
-        Answer.Known(Option.when(id != 2)(IdentityMeasures.Film(s"film $id")))
+        Answer.Known(Option.when(id != 2)(Film(s"film $id")))
       }
     }
     PrefetchedRecords.of(store)(Seq(1, 2, 3)).keySet shouldBe Set(1, 3)
@@ -111,7 +112,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     val reported = scala.collection.mutable.ListBuffer.empty[Map[Signal, Int]]
     val counter  = count(NoFilmLookups, _ => Map.empty, reported += _, runner = queued.enqueue(_))
     val (a, b)   = (listing("Giorgia Fumo - OUT OF OFFICE"), listing("Lalka"))
-    val films    = Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)), 2 -> IdentityMeasures.Film("Lalka", year = Some(2026)))
+    val films    = Map(1 -> Film("Out of Office", year = Some(2022)), 2 -> Film("Lalka", year = Some(2026)))
     counter.submit(resolutionOf(Seq(decision(Seq(b), 2)), films), Seq(b))
     counter.submit(resolutionOf(Seq(decision(Seq(a), 1)), films), Seq(a))
     reported shouldBe empty
@@ -125,7 +126,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     val counter = count(NoFilmLookups, _ => Map.empty, _ => (), runner = queued.enqueue(_))
     val a       = listing("Giorgia Fumo - OUT OF OFFICE")
     tools.LogFields.within("projection_id" -> "tick-7")(
-      counter.submit(resolutionOf(Seq(decision(Seq(a), 1)), Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)))), Seq(a)))
+      counter.submit(resolutionOf(Seq(decision(Seq(a), 1)), Map(1 -> Film("Out of Office", year = Some(2022)))), Seq(a)))
     val events = tools.LogCapture.thisThread(classOf[SuspectTakeCount].getName)(queued.dequeue().run())
       .filter(_.getFormattedMessage.startsWith("identity suspect takes: counted"))
     events should have size 1
@@ -141,7 +142,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     var counted = 0
     val counter = count(NoFilmLookups, _ => Map.empty, _ => counted += 1)
     val l = listing("Lalka")
-    val resolution = resolutionOf(Seq(decision(Seq(l), 2)), Map(2 -> IdentityMeasures.Film("Lalka", year = Some(2026))))
+    val resolution = resolutionOf(Seq(decision(Seq(l), 2)), Map(2 -> Film("Lalka", year = Some(2026))))
     counter.submit(resolution, Seq(l))
     counter.submit(resolution, Seq(l))
     counted shouldBe 1
@@ -154,7 +155,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     var pressed = true
     val counter = count(NoFilmLookups, _ => Map.empty, _ => counted += 1, pressed = () => pressed)
     val l = listing("Lalka")
-    val resolution = resolutionOf(Seq(decision(Seq(l), 2)), Map(2 -> IdentityMeasures.Film("Lalka", year = Some(2026))))
+    val resolution = resolutionOf(Seq(decision(Seq(l), 2)), Map(2 -> Film("Lalka", year = Some(2026))))
     counter.submit(resolution, Seq(l))
     counted shouldBe 0
     pressed = false
@@ -162,11 +163,11 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     counted shouldBe 1
   }
 
-  private def count(venues: IdentityLookups, records: Seq[Int] => Map[Int, IdentityMeasures.Film], report: Map[Signal, Int] => Unit,
+  private def count(venues: IdentityLookups, records: Seq[Int] => Map[Int, Film], report: Map[Signal, Int] => Unit,
                     runner: java.util.concurrent.Executor = _.run(), pressed: () => Boolean = () => false,
                     judgements: TakeJudgements.Index = TakeJudgements.Index.Empty, reportWrong: Int => Unit = _ => ()) =
     new SuspectTakeCount(venues, records, tools.SpecClock.Pinned, java.time.ZoneOffset.UTC, report, runner, pressed, judgements, reportWrong)
 
-  private def resolutionOf(decisions: Seq[ResolverDecision], films: Map[Int, IdentityMeasures.Film]): Resolution =
+  private def resolutionOf(decisions: Seq[ResolverDecision], films: Map[Int, Film]): Resolution =
     Resolution(decisions, decisions.map(_.members.size).sum, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, films)
 }

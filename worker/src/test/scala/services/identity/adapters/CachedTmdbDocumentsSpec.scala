@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.{Clock, Instant, ZoneOffset}
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
+import services.identity.Film
 
 /** The cache keeps the documents' storage contract… */
 class CachedTmdbDocumentsContractSpec extends TmdbDocumentRetentionBehaviour {
@@ -82,8 +83,8 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     w.backend.drain().toSet shouldBe Set(search, TmdbStore.titleSearchId(language, "Nowa"), "2001", "3003")
   }
 
-  private def recordDoc(film: IdentityMeasures.Film) = new BsonDocument("record", IdentityAnswerBson.film(Some(film)))
-  private val lalka = IdentityMeasures.Film("Lalka", Some("Lalka"), year = Some(2025), popularity = Some(7.3))
+  private def recordDoc(film: Film) = new BsonDocument("record", IdentityAnswerBson.film(Some(film)))
+  private val lalka = Film("Lalka", Some("Lalka"), year = Some(2025), popularity = Some(7.3))
 
   // A resolve asks every film its questions name for its hit, and the hit of a recorded film is read off its record:
   // keeping the record for it held the whole film beside the record the corpus keeps decoded — 31k of worker-uk's 33k

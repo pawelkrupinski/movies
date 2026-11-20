@@ -2,7 +2,6 @@ package services.identity
 
 import services.titles.billing.BillingParse
 
-import services.identity.IdentityMeasures.Measure
 import services.evidence.ListingConstraints
 
 import scala.collection.mutable
@@ -25,7 +24,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   val houses: StageRelays.Houses = generation.context.houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
   def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = generation.context.houseRanking
-  def namesItsSeasonProduction(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
+  def namesItsSeasonProduction(listing: MeasuredListing, film: Film): Boolean =
     StageRelays.namesSeasonProduction(listing, film) && !StageRelays.billing(listing, film).exists(houses.other)
 
   /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
@@ -41,12 +40,12 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  ([[IdentityMeasures.numbersAnotherSubtitle]]), or another year's edition of the series its title dates
    *  ([[IdentityMeasures.datesAnotherEdition]]). A learned cannot-link never denies a relay its own house's record of
    *  its work and season ([[RelayStage.particularRecordOf]]). */
-  def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Boolean =
+  def evidenceDenies(listing: MeasuredListing, film: Film, measures: Map[String, Measure], country: Option[String]): Boolean =
     evidenceDenial(listing, film, measures, country).isDefined
 
   /** [[evidenceDenies]], saying which of its reasons rules the film out: the season its title names first, then the first
    *  of [[evidenceRefusals]] that holds, then a learned cannot-link. `country`: the venue's (ISO-3166-1). */
-  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Option[Denial] =
+  def evidenceDenial(listing: MeasuredListing, film: Film, measures: Map[String, Measure], country: Option[String]): Option[Denial] =
     ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year)
       .filterNot(_ => StageRelays.itsHousesRecording(listing, film) || RelayStage.airsItsRelay(listing, film))
       .map(link => Denial(link.toString))
@@ -140,7 +139,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
 private[identity] object CandidateScoring {
   /** A question [[CandidateScoring.evidenceDenial]] asks of a listing and a film, beside their measures and the venue's
    *  country. */
-  type Question = (IdentityMeasures.Listing, IdentityMeasures.Film, Map[String, Measure], Option[String]) => Boolean
+  type Question = (MeasuredListing, Film, Map[String, Measure], Option[String]) => Boolean
   /** How [[CandidateScoring.evidenceDenial]] names a season production its listing's banner is not the house of: a denial
    *  about the banner, which says nothing of another listing billing the record's own house ([[Families.deniedBySibling]]). */
   val AnotherHousesSeason = "another house's season production"

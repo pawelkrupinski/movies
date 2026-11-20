@@ -20,10 +20,10 @@ private[identity] object ShortFilms {
   val MaxMinutes = 40
 
   /** Every running time TMDB states for `film`, and those of the cuts [[FilmCuts]] names for it. */
-  def runtimesOf(film: IdentityMeasures.Film): Seq[Int] = (film.runtimes ++ FilmCuts.of(film.imdbNumber).map(_.runtime)).distinct
+  def runtimesOf(film: Film): Seq[Int] = (film.runtimes ++ FilmCuts.of(film.imdbNumber).map(_.runtime)).distinct
 
   /** Does every running time stated for `film` — at least one — make it a short? */
-  def isShort(film: IdentityMeasures.Film): Boolean = {
+  def isShort(film: Film): Boolean = {
     val runs = runtimesOf(film)
     runs.nonEmpty && runs.max <= MaxMinutes
   }
@@ -31,7 +31,7 @@ private[identity] object ShortFilms {
   private val ShortWords = TitleWords.foldedPattern(TitleWords.Concept.ShortFilm).r
 
   /** Does the listing bill a short by a word saying so in one of its titles? */
-  def billsAShort(listing: IdentityMeasures.Listing): Boolean =
+  def billsAShort(listing: MeasuredListing): Boolean =
     (listing.ownTitles ++ listing.originalTitle).exists(title => ShortWords.findFirstIn(TitleContainment.tokens(title).mkString(" ")).isDefined)
 
   /** Does a title of the billing open on one of `film`'s titles and go on past it with words of its own — none a word an
@@ -41,7 +41,7 @@ private[identity] object ShortFilms {
    *  The Story of Satpal Ram + Q&A"), a print ("Warsztat Świętego Mikołaja / dubbing"), or under a series' banner before
    *  it ("WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD"), or signed with the venue's name ("Warsztat Świętego
    *  Mikołaja / dubbing - Nasze Kino" at Nasze Kino), each still the short's. */
-  def billedBeyond(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, venue: String): Boolean = {
+  def billedBeyond(listing: MeasuredListing, film: Film, venue: String): Boolean = {
     val filmTitles = film.forms.map(_.words).filter(_.nonEmpty)
     val venueWords = TitleContainment.tokens(venue).toSet
     listing.ownForms.map(_.words).exists { billed =>
@@ -64,7 +64,7 @@ private[identity] object ShortFilms {
    *  time the venue states is its own fact, which its evidence weighs: UK ARC's "Screwball (15)" bills a 20-minute
    *  short's premiere and its Q&A in 60 minutes, DE Lichtblick's "Buddies" [81′] {Rahul Hansraj} is the 2026 film TMDB
    *  still states 5 minutes for. */
-  def untaken(listing: IdentityMeasures.Listing, tmdbId: Int, film: IdentityMeasures.Film, linked: Set[Int],
+  def untaken(listing: MeasuredListing, tmdbId: Int, film: Film, linked: Set[Int],
               namesake: Boolean): Option[String] =
     Option.when(isShort(film) && namesake && listing.statedRuntime.isEmpty && !linked(tmdbId) && !billsAShort(listing))(
       s"a ${runtimesOf(film).max}-minute short, its title naming a feature-length film too, or its billing more than the short")

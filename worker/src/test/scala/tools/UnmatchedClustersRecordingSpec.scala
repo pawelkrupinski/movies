@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity._
+import services.identity.{Film, _}
 
 /** A capture's recording gives every answer it noted again, never its live source asked anew: its rounds decide over
  *  what the file holds and the replay reads (Identity capture #2079, UK: a capture that replayed to other takes, now
@@ -18,7 +18,7 @@ class UnmatchedClustersRecordingSpec extends AnyFlatSpec with Matchers {
     override def hasDetail(listing: Listing): Boolean                    = false
     override def detail(listing: Listing): Answer[Option[DetailFacts]]   = once(listing.key, None)
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]]     = once(query, Nil)
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = once(("film", tmdbId), None)
+    override def film(tmdbId: Int): Answer[Option[Film]] = once(("film", tmdbId), None)
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]          = once(("cast", tmdbId), Some(Seq("Tom Cruise")))
     override def overview(tmdbId: Int): Answer[Option[ProseWords]]       = once(("overview", tmdbId), Some(overviewed))
   }
@@ -37,7 +37,7 @@ class UnmatchedClustersRecordingSpec extends AnyFlatSpec with Matchers {
       override def hasDetail(listing: Listing): Boolean                    = false
       override def detail(listing: Listing): Answer[Option[DetailFacts]]   = Answer.Unknown
       override def candidates(query: CandidateQuery): Answer[Seq[Hit]]     = Answer.Unknown
-      override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
+      override def film(tmdbId: Int): Answer[Option[Film]] = Answer.Unknown
       override def overview(tmdbId: Int): Answer[Option[ProseWords]]       = { asks += 1; if (asks > 1) Answer.Known(None) else Answer.Unknown }
     })
     Seq(recording.overview(7), recording.overview(7), recording.overview(7)) shouldBe Seq(Answer.Unknown, Answer.Known(None), Answer.Known(None))

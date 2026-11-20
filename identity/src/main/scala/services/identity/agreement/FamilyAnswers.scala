@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, IdentityMeasures, VoterFamily}
+import services.identity.{Answer, Film, IdentityMeasures, VoterFamily}
 
 import scala.annotation.unused
 
@@ -9,16 +9,16 @@ final case class SourceHit(id: String, title: String, originalTitle: Option[Stri
 
 /** A family's record of a film: what the identity measures read of it, and the ids other databases know it by
  *  (`"imdb" -> "tt0087843"`, `"tmdb" -> "311"`) — what links two families' films without comparing their facts. */
-final case class SourceRecord(film: IdentityMeasures.Film, crossIds: Map[String, String] = Map.empty)
+final case class SourceRecord(film: Film, crossIds: Map[String, String] = Map.empty)
 
 object SourceRecord {
   /** TMDB's record of film `tmdbId`: linked by its TMDB id, and by the IMDb id TMDB names, if any. */
-  def ofTmdb(tmdbId: Int, film: IdentityMeasures.Film): SourceRecord =
+  def ofTmdb(tmdbId: Int, film: Film): SourceRecord =
     SourceRecord(film, Map("tmdb" -> tmdbId.toString) ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _))
 
   /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
   def ofLeaning(lean: services.identity.ResolverDecision.Leaning): SourceRecord =
-    SourceRecord(IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString) ++ IdentityMeasures.imdbId(lean.imdbNumber).map("imdb" -> _))
+    SourceRecord(Film(""), Map("tmdb" -> lean.film.toString) ++ IdentityMeasures.imdbId(lean.imdbNumber).map("imdb" -> _))
 }
 
 /** One film a venue's programme on a family's site screens — the family's own id for it — and the days it does. */

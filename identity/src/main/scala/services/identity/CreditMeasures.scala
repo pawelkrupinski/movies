@@ -2,6 +2,7 @@ package services.identity
 
 import IdentityMeasures.*
 import services.titles.TitleContainment
+import Measure.Category
 
 /** How a listing's director credits relate to a film's: the director relation, and a credit read by search or by title.
  *  Part of [[IdentityMeasures]], which exports it. */
@@ -24,7 +25,7 @@ private[identity] object CreditMeasures {
 
   /** `measures`, the director read as credited when the listing credits nobody but its title bills the film under a
    *  banner naming one of its directors ([[bannerNamesItsDirector]]). */
-  def creditedByTitle(l: Listing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
+  def creditedByTitle(l: MeasuredListing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
     if (!measures.get("director").contains(MissingListing) || !bannerNamesItsDirector(l, f)) measures
     else measures + ("director" -> SamePersonMeasure)
 
@@ -48,7 +49,7 @@ private[identity] object CreditMeasures {
    *  [[creditedByText]] reads each of them against. Not a person the billing's title names: the title's subject, whom the
    *  text names as such, not as its director — UK Forum Northallerton's "NURSE GEORGIE CARROLL: INFECTIOUS" describes the
    *  comedian, whom IMDb credits as the director of an earlier special of hers, not of this one. */
-  def textNamedDirectors(l: Listing, names: String => Boolean, films: Iterable[Film]): Set[String] =
+  def textNamedDirectors(l: MeasuredListing, names: String => Boolean, films: Iterable[Film]): Set[String] =
     if (l.directors.nonEmpty) Set.empty
     else {
       val billed = (l.title +: l.rawTitle.toSeq).flatMap(TitleContainment.tokens).toSet
@@ -62,7 +63,7 @@ private[identity] object CreditMeasures {
    *  so: the peeled title is searched, the banner stays evidence. So does a credit CLOSING the title — one of its
    *  directors named whole, two words at least, after one of its titles whole: DE Caligari's "ES (ULRICH SCHAMONI)" is
    *  Schamoni's 1966 "Es", not Muschietti's 2017 "It" its German title shares. Only for a listing crediting nobody. */
-  private[identity] def bannerNamesItsDirector(l: Listing, f: Film): Boolean =
+  private[identity] def bannerNamesItsDirector(l: MeasuredListing, f: Film): Boolean =
     l.directors.isEmpty && (l.bannerCuts.exists { case (titled, banner) => f.titleKeys.contains(titled) && banner.exists(f.directorSurnames) } ||
       l.closingCuts.exists { case (titled, credit) => f.directorNameKeys.contains(credit) && f.titleKeys.contains(titled) })
 }

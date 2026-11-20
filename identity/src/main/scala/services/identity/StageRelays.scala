@@ -32,7 +32,7 @@ object StageRelays {
    *  season's production of one work, however each spells the house. Segments are the listing's
    *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
    *  the banner, never the work. */
-  def namesSeasonProduction(l: Listing, f: Film): Boolean = {
+  def namesSeasonProduction(l: MeasuredListing, f: Film): Boolean = {
     val shared = seasonWorks(l) intersect seasonWorks(f)
     shared.exists { case (work, _) => !work.startsWith("work:") } || (shared.nonEmpty && bannersMeet(l.ownTitles, f.titles))
   }
@@ -57,7 +57,7 @@ object StageRelays {
   /** The (work, season) pairs a listing's title names: each whole segment outside its season, keyed,
    *  beside the season. [[namesSeasonProduction]] is exactly two sides' pairs meeting, so a record
    *  of the listing's season production can be found by pair, whoever searched it up. */
-  def seasonWorks(l: Listing): Set[(String, Int)] =
+  def seasonWorks(l: MeasuredListing): Set[(String, Int)] =
     l.seasonYear.fold(Set.empty[(String, Int)])(season => seasonlessWorks(l.shapes).map(_ -> season))
 
   /** A film's (work, season) pairs, as [[seasonWorks]] reads a listing's. */
@@ -88,12 +88,12 @@ object StageRelays {
 
   /** How the listing and the film bill one work (the longest they share), when both titles add a
    *  banner to it. `None`: no shared work, or one title is the work alone. */
-  def billing(l: Listing, f: Film): Option[Billing] = billings(l, f).headOption
+  def billing(l: MeasuredListing, f: Film): Option[Billing] = billings(l, f).headOption
 
   /** EVERY way the listing and the film bill the longest work they share under banners, in
    *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
    *  title ("National Theatre at Home: …") bills the work under both. */
-  def billings(listing: Listing, film: Film): Seq[Billing] = {
+  def billings(listing: MeasuredListing, film: Film): Seq[Billing] = {
     val works = (listing.billedWorks intersect film.billedWorksBesideLabels).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
     works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
   }
@@ -114,7 +114,7 @@ object StageRelays {
     ).flatten
 
   /** Every way the listing bills `listingWork` and the film `filmWork` under banners, as the one work `work`. */
-  private def billedUnder(listing: Listing, listingWork: Seq[String], film: Film, filmWork: Seq[String], work: String): Seq[Billing] =
+  private def billedUnder(listing: MeasuredListing, listingWork: Seq[String], film: Film, filmWork: Seq[String], work: String): Seq[Billing] =
     (for {
       listingHouse <- listing.billedTitles.flatMap(bannerOf(_, listingWork))
       filmHouse    <- film.billedTitles.flatMap(bannerOf(_, filmWork))
@@ -126,7 +126,7 @@ object StageRelays {
    *  Metropolitan Opera 2026/27: Macbeth". What a season's banner is learned from ([[Houses.evidence]]): billed by its
    *  literal works alone, Kino 1410's Met banner met only Royal Ballet & Opera's records of "Carmen" and "Così fan
    *  tutte", and was learned as RBO's — whose season productions it then took. */
-  def stageBilling(listing: Listing, film: Film): Option[Billing] = {
+  def stageBilling(listing: MeasuredListing, film: Film): Option[Billing] = {
     def staged(works: Set[Seq[String]]) = works.toSeq.flatMap(work => StageWorks.resolver.named(key(work.mkString(" "))).map(_ -> work))
     val filmWorks = staged(film.billedWorks).groupMap(_._1)(_._2)
     staged(listing.billedWorks).sortBy { case (id, work) => (-work.length, id, work.mkString(" ")) }.iterator
@@ -145,7 +145,7 @@ object StageRelays {
    *  however TMDB ranks it, and "RB&O Live: Tosca (Oper)" not the 1976 film. A staging's record bills its house ("RBO
    *  2026/27: …", "The Metropolitan Opera: …", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE"); a bare one is no house's
    *  that the listing can tell. */
-  def screenNamesake(listing: Listing, film: Film): Boolean =
+  def screenNamesake(listing: MeasuredListing, film: Film): Boolean =
     listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
   /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone, or
    *  split by punctuation ([[splitHouseInitials]]: UK Penrith's "RB&O 26/27: Carmen", DE "Carmen (RB+O 2026/27)"): DE
@@ -212,7 +212,7 @@ object StageRelays {
    *  Royal Opera)" by pooled evidence, and Cinefactory's "MET Opera: Macbeth 2026" — its credits, running time and original title copied from last
    *  season's Onegin — "MET Opera: Eugen Onegin" by those facts. A house bills many works; the title says which. A
    *  title whose every fragment names its house says no work, and denies none. */
-  def namesAnotherWork(listing: Listing, film: Film): Boolean = listing.billsAStageHouse && {
+  def namesAnotherWork(listing: MeasuredListing, film: Film): Boolean = listing.billsAStageHouse && {
     val relay = listing.relay
     (relay.workWords.nonEmpty || relay.workIds.nonEmpty) && !relay.workWords.exists(film.titleWords) &&
       !relay.workIds.exists(film.stageWorkIds) && !relay.fragmentKeys.exists(film.wholeKeys)
@@ -220,18 +220,18 @@ object StageRelays {
   /** [[namesAnotherWork]], the relay's work a STAGE WORK the record names in none of its languages: what a venue's title
    *  is never learned as the record's own by ([[venueTitles]], [[titlesByFacts]]) — a misspelt work ("RBO Live 2026/27:
    *  Gtterdmmerung (Royal Opera)") names no stage work, and is still its record's spelling. */
-  private[identity] def namesAnotherStageWork(listing: Listing, film: Film): Boolean = listing.relay.workIds.nonEmpty && namesAnotherWork(listing, film)
+  private[identity] def namesAnotherStageWork(listing: MeasuredListing, film: Film): Boolean = listing.relay.workIds.nonEmpty && namesAnotherWork(listing, film)
 
   /** Does one of the film's titles name the house the listing's relay bills ([[Relay.houses]], [[namesOneHouse]]) — by
    *  a word of its banner other than `besides`, the words a rival's titles share with it? PL "OPERA- SILENT NIGHT" names
    *  no house by "silent" against the Met's "Silent Night", whose own title carries the word. */
-  def billsItsHouse(listing: Listing, film: Film, besides: Set[String] = Set.empty): Boolean =
+  def billsItsHouse(listing: MeasuredListing, film: Film, besides: Set[String] = Set.empty): Boolean =
     listing.relay.houses.map(_.filterNot(besides)).exists(house => film.houseNames.exists(namesOneHouse(house, _)))
   /** Do the film's titles name a house, and none the listing's relay bills: UK's "English National Ballet: The Sleeping
    *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
-  def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
+  def billsAnotherHouse(listing: MeasuredListing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
   /** Is `f` ANOTHER PRODUCTION than the stage house's relay the listing screens — a record of its work from another season
-   *  than the one its screenings fall in ([[Listing.screenedSeason]]): another house's, or any house's season record? Nothing but the work's name then
+   *  than the one its screenings fall in ([[MeasuredListing.screenedSeason]]): another house's, or any house's season record? Nothing but the work's name then
    *  ties the record to the listing.
    *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
    *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris", and PL
@@ -252,13 +252,13 @@ object StageRelays {
    *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
    *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. `country`: the venue's (ISO-3166-1), where
    *  a cinema season's banner is read ([[services.titles.StageHouse.isSeasonBanner]]). */
-  def anotherProduction(listing: Listing, film: Film, country: Option[String]): Boolean =
+  def anotherProduction(listing: MeasuredListing, film: Film, country: Option[String]): Boolean =
     listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
         if (billsAHouseInParticular(listing)) services.evidence.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
         else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))))
   /** Does the listing's banner name a house in particular ([[namesAHouseInParticular]])? */
-  private def billsAHouseInParticular(listing: Listing): Boolean = listing.relay.houses.exists(namesAHouseInParticular)
+  private def billsAHouseInParticular(listing: MeasuredListing): Boolean = listing.relay.houses.exists(namesAHouseInParticular)
   /** Is `f` ANOTHER HOUSE's record of the season the relay names or screens in, under a banner naming a real house? A
    *  house's banner is its own relay: PL Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 is the Paris
    *  Opera Ballet's, never the Royal Ballet & Opera's 2026/27 "Romeo and Juliet" its season and work alone reached. Only a
@@ -266,7 +266,7 @@ object StageRelays {
    *  Royal Ballet & Opera's UK cinema season carries the Met's, UK Flicks' "RBO Cinema Season 2026-27: Macbeth" and
    *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13) — in the countries whose venues bill it so:
    *  PL's "Royal Ballet and Opera Sezon Kinowy" and DE's "RBO Kino Saison" bill only the house's own relays. */
-  private def anotherHousesRelay(listing: Listing, film: Film, country: Option[String]): Boolean =
+  private def anotherHousesRelay(listing: MeasuredListing, film: Film, country: Option[String]): Boolean =
     listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
       !listing.relay.houses.exists(services.titles.StageHouse.isSeasonBanner(_, country)) && billsAnotherHouse(listing, film)
   /** Is `f` its own house's RECORDING of the work, dated by a year alone at most [[RecordingLag]] years before the season
@@ -275,7 +275,7 @@ object StageRelays {
    *  venue's "Paris Opera: Schwanensee", is the Paris Opera's "Opéra national de Paris 2024: Schwanensee" that Kinostar
    *  bills by its own title: the season the title names dates the screening, not the staging. Never a SEASON's record
    *  ([[Film.season]]: another season's relay) nor another house's. */
-  private[identity] def itsHousesRecording(listing: Listing, f: Film): Boolean =
+  private[identity] def itsHousesRecording(listing: MeasuredListing, f: Film): Boolean =
     f.season.isEmpty && billsAHouseInParticular(listing) && billsItsHouse(listing, f) &&
       listing.seasonYear.exists(season => f.year.exists(year => year < season && season - year <= RecordingLag))
   /** Is the record a SEASON's relay ([[Film.season]]: its title names the season, "Royal Ballet & Opera 2024/25: …") from
@@ -310,7 +310,7 @@ object StageRelays {
    *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). Nor is a CUT or an edition a
    *  house ([[DecorationWords.EditionWords]]): DE "Das Boot - Director s Cut" is Petersen's film, not TMDB's yearless
    *  "Das Boot - Directors Cut" record its "house" bills alike. */
-  def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
+  def billsUnderItsHouse(listing: MeasuredListing, film: Film, houses: Houses): Boolean =
     (listing.seasonYear.isEmpty || film.season.isEmpty) &&
       billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
         !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (film.season.isEmpty || spellsItsHouse(billed)))
@@ -390,7 +390,7 @@ object StageRelays {
     /** What a listing's candidates say about its banner: how each record of its work bills it — of
      *  its season, when the listing names one (another season's record says nothing about which
      *  house this season's broadcast is). */
-    def evidence(l: Listing, films: Iterable[Film]): Iterable[Billing] =
+    def evidence(l: MeasuredListing, films: Iterable[Film]): Iterable[Billing] =
       films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f))
         .flatMap(f => billing(l, f).orElse(Option.when(l.seasonYear.isDefined)(stageBilling(l, f)).flatten))
   }
@@ -399,7 +399,7 @@ object StageRelays {
    *  run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer? */
   def billsStageWork(titles: Seq[String], rawTitle: String): Boolean =
     stageWorksBilled(titles, TitleSeason.of(titles).isDefined).nonEmpty ||
-      titles.map(title => Listing(title, Some(rawTitle).filter(_ != title))).exists(stageWorks(_).nonEmpty)
+      titles.map(title => MeasuredListing(title, Some(rawTitle).filter(_ != title))).exists(stageWorks(_).nonEmpty)
 
   /** The stage works ([[StageWorks]]) the titles BILL: a piece naming one whole, or ending in one's name — after its
    *  composer (DE "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA") or a house's word run on ("OPERA-MAKBET") —
@@ -465,7 +465,7 @@ object StageRelays {
   }
 
   /** The stage works ([[StageWorks]]) a listing's title pieces name, in whatever language. */
-  def stageWorks(l: Listing): Set[String] = stageWorksNamed(l.ownTitles.flatMap(t => pieces(t) :+ t))
+  def stageWorks(l: MeasuredListing): Set[String] = stageWorksNamed(l.ownTitles.flatMap(t => pieces(t) :+ t))
   /** The stage works a film's own titles name, as [[stageWorks]] reads a listing's. */
   def stageWorks(f: Film): Set[String] = stageWorksNamed(f.titles.flatMap(pieces))
   /** The stage works ([[StageWorks]]) the keys of `parts` name. */
@@ -475,22 +475,22 @@ object StageRelays {
    *  evidence its node is keyed by ([[Evidence.key]]): UK Riverside's "Romeo and Juliet (2027)", screening on 25 May 2027,
    *  searches "Romeo and Juliet 2026" and a billing alike screening in October 2027 does not — one node held both, searched
    *  as whichever listing headed it. */
-  private[identity] def readsItsScreeningsSeason(l: Listing): Boolean = l.billsAStageHouse || l.billedStageWorks.nonEmpty
+  private[identity] def readsItsScreeningsSeason(l: MeasuredListing): Boolean = l.billsAStageHouse || l.billedStageWorks.nonEmpty
 
   /** Is `f` the season record of the work `l`'s whole title bills bare ([[barelyTimed]]), of the very season its
-   *  screenings fall in ([[Listing.screenedSeason]])? A house relays the work that season, and a bare billing of it then
+   *  screenings fall in ([[MeasuredListing.screenedSeason]])? A house relays the work that season, and a bare billing of it then
    *  names the relay as much as any film of the title: UK Theatr Gwaun Fishguard's "Romeo and Juliet", screening on 25 May
    *  2027 beside the "Royal Ballet & Opera 2026/27: Romeo and Juliet" its own search finds, is no proof of Zeffirelli's. */
-  def bareWorksSeasonRecord(l: Listing, f: Film): Boolean =
+  def bareWorksSeasonRecord(l: MeasuredListing, f: Film): Boolean =
     barelyTimed(l) && l.screenedSeason.exists(f.season.contains) && stageWorks(f).exists(l.billedStageWorks)
 
   /** Is the listing's whole title a stage work, stating no year and no credit — a running time at most, which
-   *  [[Listing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre
+   *  [[MeasuredListing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre
    *  Halstead's bare "Romeo and Juliet" [170′], screening on 25 May 2027, is the RBO 2026/27 relay aired that day, which
    *  no search of the work's name alone reaches — the broadcast join ([[agreement.Broadcast]]) tells it from a film by
    *  its day. A credit does name one (Jacquot's "Tosca"), and a title going on past the work is a film's ("Lord Of The
    *  Rings: The Fellowship Of The Ring", the musical's name only its head). */
-  private[identity] def barelyTimed(l: Listing): Boolean =
+  private[identity] def barelyTimed(l: MeasuredListing): Boolean =
     l.statedYear.isEmpty && l.directors.isEmpty && l.ownTitles.exists(title => StageWorks.resolver.named(key(title)).nonEmpty)
 
   private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
@@ -504,22 +504,22 @@ object StageRelays {
 
   /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
    *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[SearchMeasures.stageWorkQueries]]'). */
-  def bannerYear(l: Listing): Option[Int] = {
+  def bannerYear(l: MeasuredListing): Option[Int] = {
     val (works, banners) = l.ownTitles.flatMap(t => PieceBreak.split(withoutSeasons(t)).toSeq)
       .partition(piece => StageWorks.resolver.named(key(BannerYear.replaceAllIn(piece, ""))).nonEmpty)
     Option.when(works.nonEmpty)(banners.flatMap(BannerYear.findAllMatchIn).map(_.group(1).toInt).distinct).collect { case Seq(one) => one }
   }
 
-  /** Is `f` the house's record of the very season `l`'s screenings broadcast its work in ([[Listing.screenedSeason]]): a
+  /** Is `f` the house's record of the very season `l`'s screenings broadcast its work in ([[MeasuredListing.screenedSeason]]): a
    *  season record naming a stage work the listing bills, under the listing's house ([[bannerNamesItsHouse]])? A relay
    *  airs on its house's published dates, so a venue screening it then screens that season's broadcast. */
-  def screenedSeasonRecord(l: Listing, f: Film): Boolean =
+  def screenedSeasonRecord(l: MeasuredListing, f: Film): Boolean =
     l.screenedSeason.exists(f.season.contains) &&
       stageWorks(f).exists(l.billedStageWorks) && bannerNamesItsHouse(l, f) && airsOnItsDay(l, f)
 
-  /** Does a listing whose year is more than a season before its screened season ([[Listing.airDays]]) screen on the
+  /** Does a listing whose year is more than a season before its screened season ([[MeasuredListing.airDays]]) screen on the
    *  record's air day — its release date, give or take [[AirDayWindow]] days? A nearer year passes with no test. */
-  private def airsOnItsDay(l: Listing, f: Film): Boolean =
+  private def airsOnItsDay(l: MeasuredListing, f: Film): Boolean =
     l.airDays.isEmpty || f.released.exists(aired => l.airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= AirDayWindow))
   /** How many days from a relay's release date a screening still airs it: a venue's own date, a time zone apart. */
   val AirDayWindow = 3
@@ -530,9 +530,9 @@ object StageRelays {
    *  "PARIS OPERA: ROMEO UND JULIA" is no Royal Ballet relay, nor UK "La Fanciulla Del West - Royal Opera" the Met's,
    *  however "opera" meets. A relay's banner naming no house ("OPERA-PARSIFAL") names the record by its one stage work
    *  alone — never by a name two works share: ES "Manon de Jules Massenet - Ópera" is no Royal Ballet "Manon". */
-  def bannerNamesItsHouse(l: Listing, f: Film): Boolean = bannerNamesItsHouse(l)(f)
+  def bannerNamesItsHouse(l: MeasuredListing, f: Film): Boolean = bannerNamesItsHouse(l)(f)
   /** [[bannerNamesItsHouse]] with the listing's side read once, for a rule weighing every candidate against it. */
-  def bannerNamesItsHouse(l: Listing): Film => Boolean = {
+  def bannerNamesItsHouse(l: MeasuredListing): Film => Boolean = {
     val particular = l.ownTitles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
     if (particular.nonEmpty) f => particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
     else { val namesByItsWork = l.billsAStageHouse && ofItsArt(l, l.billedStageWorks).sizeIs == 1; _ => namesByItsWork }
@@ -541,7 +541,7 @@ object StageRelays {
   /** `works` of the one art the billing names, when it names one and a work of it: ES Ocine's "Carmen (OPERA LIVE)" is
    *  Bizet's opera, not the Carmen ballets ([[StageWorks.dance]]); "Manon (BALLET LIVE)" MacMillan's ballet, not
    *  Massenet's opera. A billing naming both arts ("Royal Ballet & Opera: Manon"), or neither, keeps them all. */
-  private[identity] def ofItsArt(l: Listing, works: Set[String]): Set[String] = {
+  private[identity] def ofItsArt(l: MeasuredListing, works: Set[String]): Set[String] = {
     val words  = l.ownTitles.flatMap(TitleContainment.tokens).toSet
     val opera  = words.exists(OperaWords)
     val ballet = words.exists(BalletWords)

@@ -48,7 +48,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val askers   = mutable.HashMap.empty[CandidateQuery, Set[NodeKey]]
   private val named    = mutable.HashMap.empty[CandidateQuery, Option[Seq[Int]]]
   private val bestHits = mutable.LongMap.empty[Map[CandidateQuery, Hit]]
-  private val records  = mutable.LongMap.empty[Answer[Option[IdentityMeasures.Film]]]
+  private val records  = mutable.LongMap.empty[Answer[Option[Film]]]
   private val base     = mutable.LongMap.empty[Candidate]
   private val reachers = mutable.LongMap.empty[Set[NodeKey]]
   // A season-naming node's banner bills every recorded production of its work that season, not only
@@ -68,7 +68,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val byBanner     = mutable.HashMap.empty[String, Map[NodeKey, Seq[StageRelays.Billing]]]
   private val houseOf      = mutable.HashMap.empty[String, String]
   private val rankingOf    = mutable.HashMap.empty[String, Seq[StageRelays.Houses.Contender]]
-  private val groups       = mutable.HashMap.empty[String, mutable.TreeMap[String, Seq[(String, IdentityMeasures.Listing)]]]
+  private val groups       = mutable.HashMap.empty[String, mutable.TreeMap[String, Seq[(String, MeasuredListing)]]]
   private val wholes       = mutable.HashMap.empty[String, Int]
   // per title piece, the whole titles carrying it, with how many nodes carry each (`segmentSpread`)
   private val spreads      = mutable.HashMap.empty[String, mutable.HashMap[String, Int]]
@@ -80,15 +80,15 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // with it, never kept on the ~30k resident records (1.6M strings on the UK corpus when they were).
   def candidate(id: Int): Option[Candidate] = candidates.get(id).map(fresh)
   /** The records of `ids` the corpus holds, each a fresh copy ([[candidate]]). */
-  def films(ids: Seq[Int]): Map[Int, IdentityMeasures.Film] = ids.flatMap(id => candidate(id).map(id -> _.film)).toMap
+  def films(ids: Seq[Int]): Map[Int, Film] = ids.flatMap(id => candidate(id).map(id -> _.film)).toMap
   // Read many times per resolve, changed per event: each view is built once after it changes. Built under the corpus's
   // lock: an update's regions may be resolved side by side (IncrementalResolver's `regionThreads`), each reading them.
   private var housesView: Option[StageRelays.Houses] = None
-  private val groupView   = mutable.HashMap.empty[String, Seq[(String, IdentityMeasures.Listing)]]
+  private val groupView   = mutable.HashMap.empty[String, Seq[(String, MeasuredListing)]]
   private val reachedView = mutable.HashMap.empty[String, Seq[(String, Set[Int])]]
   def houses: StageRelays.Houses = synchronized(housesView.getOrElse { val built = StageRelays.Houses(houseOf.toMap); housesView = Some(built); built })
   def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = rankingOf.toMap
-  def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
+  def titleGroup(key: String): Seq[(String, MeasuredListing)] =
     synchronized(groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq)))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
   def segmentSpread(sanitised: String): Int = spreads.get(sanitised).fold(0)(_.size)

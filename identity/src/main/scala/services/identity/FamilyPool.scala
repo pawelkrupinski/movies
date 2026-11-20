@@ -16,14 +16,14 @@ private[identity] final class FamilyPool(val candidates: Seq[Candidate], houses:
   // decorations — never its facts, beside the film and this pool's houses and qualifiers. Every node and
   // cluster of the family is related to the whole pool, so the nodes billing one title, and a cluster read
   // under its lead's titles, share the pool's relations instead of reading them again.
-  private val relations = mutable.HashMap.empty[(FamilyScope.TitleInputs, Int), IdentityMeasures.Category]
+  private val relations = mutable.HashMap.empty[(MeasuredListing.TitleInputs, Int), Measure.Category]
 
   /** How `listing`'s titles relate to `candidate`, once per title and candidate for this pool's life. */
-  def titleRelation(listing: IdentityMeasures.Listing, candidate: Candidate): IdentityMeasures.Category =
+  def titleRelation(listing: MeasuredListing, candidate: Candidate): Measure.Category =
     relations.getOrElseUpdate((listing.titleInputs, candidate.tmdbId), { related(); relate(listing, candidate.film) })
 
   /** How `listing`'s titles relate to `film` under this pool's houses and qualifiers, read afresh: a listing's titles
    *  alone, or a film's record otherwise, that the shared relations do not hold. */
-  def relate(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): IdentityMeasures.Category =
+  def relate(listing: MeasuredListing, film: Film): Measure.Category =
     IdentityMeasures.titleRelation(listing, film, houses, qualifiers)
 }

@@ -123,7 +123,7 @@ object ResolverDecision {
    *  "wikidata", "Q141180912" and "filmweb", "10105049"), the probability its evidence gave it, and the film's title and
    *  year as the source files them — what a link to a page keyed by both (Filmweb's) is built of. */
   final case class Fallback(source: String, id: String, probability: Double, title: Option[String] = None, year: Option[Int] = None)
-  /** The film a no-match leans to, and IMDb's title number for it ([[IdentityMeasures.Film.imdbNumber]]). */
+  /** The film a no-match leans to, and IMDb's title number for it ([[Film.imdbNumber]]). */
   final case class Leaning(film: Int, imdbNumber: Int)
 }
 
@@ -135,7 +135,7 @@ object ResolverDecision {
 final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, familyOf: Map[ListingKey, Int],
                             edges: Seq[ResolverEdge], queries: Seq[CandidateQuery], filmLookups: Int,
                             unknownQueries: Int, unknownDetails: Int, unknownFilms: Int, violations: Int,
-                            films: Map[Int, IdentityMeasures.Film],
+                            films: Map[Int, Film],
                             /** How many listings — nodes alone, clusters pooled — the families scored
                              *  against their pools: the resolve's dominant cost. 0 where no family scored. */
                             scorings: Int = 0,
@@ -154,7 +154,7 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
 object Resolution {
   /** The identity model's resolution ([[IncrementalResolver.resolution]]): its `decisions` and the `films` they took, over
    *  its `nodes`, with no families, edges or lookups -- those are a whole resolve's. */
-  def ofModel(decisions: Seq[ResolverDecision], nodes: Int, films: Map[Int, IdentityMeasures.Film]): Resolution =
+  def ofModel(decisions: Seq[ResolverDecision], nodes: Int, films: Map[Int, Film]): Resolution =
     Resolution(decisions, nodes, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, films)
 }
 
@@ -191,7 +191,7 @@ object DecisionTrace {
    *  none) — the same map its scoring holds, rendered into weights only when a trace is written. `score`: the node's own
    *  probability of that film (`candidate`); `runnerUp`: the best other candidate it weighed, and its probability. */
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
-                        measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
+                        measures: Map[String, Measure] = Map.empty, candidate: Option[Int] = None,
                         refusals: Seq[Refusal] = Nil, searched: Seq[String] = Nil, candidates: Seq[String] = Nil,
                         blocker: Option[String] = None, score: Option[Double] = None, runnerUp: Option[Rival] = None)
   /** A candidate a node weighed beside the one its trace is of: its TMDB id and the node's probability of it. */

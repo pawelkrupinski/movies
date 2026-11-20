@@ -5,7 +5,7 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
-import services.identity.VoterFamily
+import services.identity.{Film, VoterFamily}
 import tools.MutableClock
 
 import java.time.Instant
@@ -24,7 +24,7 @@ class FamilyAnswerStoreSpec extends AnyFlatSpec with Matchers {
     imdb.record("tt13920372") shouldBe Answer.Unknown
     val hits = Seq(SourceHit("tt13920372", "Snow Leopard", None, Some(2020)), SourceHit("tt21223152", "Snow Leopard", Some("Xue bao"), None))
     store.fileTitled(VoterFamily.Imdb, "Snow Leopard", hits)
-    val record = SourceRecord(IdentityMeasures.Film("Snow Leopard", None, Nil, Some(2020), Some(98), Some(Seq("Lixing Wang")), Some(Seq("CN"))),
+    val record = SourceRecord(Film("Snow Leopard", None, Nil, Some(2020), Some(98), Some(Seq("Lixing Wang")), Some(Seq("CN"))),
       Map("imdb" -> "tt13920372"))
     store.fileRecord(VoterFamily.Imdb, "tt13920372", Some(record))
     store.fileRecord(VoterFamily.Imdb, "tt0000001", None)

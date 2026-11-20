@@ -1,9 +1,8 @@
 package scripts
 
 import play.api.libs.json.{Format, Json}
-import services.identity._
+import services.identity.{Measure, MeasuredListing, _}
 import services.identity.IdentityCalibration.{Bin, SignalWeights, Threshold}
-import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
 import tools.{CommandLine, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
@@ -12,6 +11,7 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
+import services.identity.Measure.{Category, Missing, Number}
 
 /**
  * The weekly identity RULE REFIT (`.github/workflows/identity-refit.yml`): re-tunes the numbers the resolver's EXISTING
@@ -348,7 +348,7 @@ object IdentityRefit {
     val billsSeveral: ((String, String, String)) => Boolean = {
       val byListing = replays.flatMap(r => r.capture.listings.map(l => (r.capture.country.code, l.venue, l.rawTitle) -> l)).toMap
       k => byListing.get(k).exists(l => ListingShape.billsSeveral(l) ||
-        MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
+        MultiFilmBill.billsTwoWorks(MeasuredListing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
     }
     log(s"labelled units: ${units.size} (${units.count(_.same)} same film, ${units.count(u => heldOut(u.group))} held out)")
 

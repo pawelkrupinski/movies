@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{MovieRecord, SourceData, TitleSearch, Tmdb}
-import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Measure}
+import services.identity.IdentityMeasures.ListingFilm
 
 /**
  * How sure a STORED film's TMDB identity is, from the evidence the row itself keeps — the rating
@@ -38,9 +38,9 @@ object StoredIdentityConfidence {
     countries         = Some(tmdb.countries.flatMap(PinnedGateMeasures.countryCode).distinct).filter(_.nonEmpty))
 
   /** One venue slot as the measures read a listing (as `services.identity.Listing.of` does). */
-  def listing(slot: SourceData): Listing = {
+  def listing(slot: SourceData): MeasuredListing = {
     val title = slot.title.orElse(slot.rawTitle).getOrElse("")
-    Listing(
+    MeasuredListing(
       title         = title,
       rawTitle      = slot.rawTitle.filter(_ != title),
       originalTitle = slot.originalTitle.map(_.trim).filter(_.nonEmpty),
@@ -53,7 +53,7 @@ object StoredIdentityConfidence {
   /** One listing's measures against the film, with `venues` (every venue slot of the row, by
    *  venue) as its corroborating family — the venues listing the same title key — and `searches`
    *  the film's stored title searches. */
-  def measures(film: Film, venue: String, listing: Listing, venues: Seq[(String, Listing)],
+  def measures(film: Film, venue: String, listing: MeasuredListing, venues: Seq[(String, MeasuredListing)],
                searches: Seq[TitleSearch]): Map[String, Measure] = {
     val titleKey = PinnedGateMeasures.key(listing.title)
     val family   = venues.filter { case (_, l) => PinnedGateMeasures.key(l.title) == titleKey }
@@ -61,7 +61,7 @@ object StoredIdentityConfidence {
   }
 
   /** One listing's measures, its title key and its corroborating count already worked out. */
-  private def measured(film: Film, listing: Listing, titleKey: String, corroborating: Int,
+  private def measured(film: Film, listing: MeasuredListing, titleKey: String, corroborating: Int,
                        searches: Seq[TitleSearch]): Map[String, Measure] = {
     val search   = searches.find(_.titleKey == titleKey)
     val measured = PinnedGateMeasures.listingFilm(listing, film, search.flatMap(_.rank), search.fold(0)(_.rivals),
@@ -78,10 +78,10 @@ object StoredIdentityConfidence {
    *  once per listing: a film a few hundred venues list (Germany's "Shaun das Schaf" at 440) asked them per pair,
    *  ~10% of a Germany convergence row's CPU (JFR, 2026-10-27). Listings alike in all but venue that count the same
    *  corroboration are measured once. */
-  def of(film: Film, venues: Seq[(String, Listing)], searches: Seq[TitleSearch], calibration: IdentityCalibration): Option[Double] = {
+  def of(film: Film, venues: Seq[(String, MeasuredListing)], searches: Seq[TitleSearch], calibration: IdentityCalibration): Option[Double] = {
     val keyed  = venues.map { case (venue, l) => (venue, l, PinnedGateMeasures.key(l.title)) }
     val backed = keyed.groupBy(_._3).view.mapValues(family => PinnedGateMeasures.corroborating(film, family.map(v => v._1 -> v._2))).toMap
-    val scored = scala.collection.mutable.HashMap.empty[(Listing, String, Int), Double]
+    val scored = scala.collection.mutable.HashMap.empty[(MeasuredListing, String, Int), Double]
     keyed.map { case (venue, l, titleKey) =>
       val corroborating = (backed(titleKey) - venue).size
       scored.getOrElseUpdate((l, titleKey, corroborating), {

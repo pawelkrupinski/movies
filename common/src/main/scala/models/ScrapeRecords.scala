@@ -39,7 +39,7 @@ case class SuccessfulScrape(
  *  `keepsDays` keeps — the identity intake's: one billing a stage work — keeps the DAYS it screens on, one bare showtime
  *  each ([[LeanListing.leanFilm]]): what places a relay in its season and on its broadcast day
  *  (`services.identity.Listing.broadcastSeason`, `agreement.Broadcast`). Every other film keeps the SEASON it screens in
- *  ([[LeanListing.seasonOnly]]), which the identity rules read of every listing (`IdentityMeasures.Listing.screeningsSeason`). */
+ *  ([[LeanListing.seasonOnly]]), which the identity rules read of every listing (`MeasuredListing.screeningsSeason`). */
 final case class LeanListing(cinema: Cinema, at: Instant, films: Seq[(CinemaMovie, Int)])
 
 object LeanListing {

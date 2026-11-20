@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Evidence, IdentityMeasures}
+import services.identity.{Evidence, Film}
 import IdentityReferee.Verdict
 
 /** The benchmark's absolute referee on the cases 2026-09-28's comparison turned on: old-pipeline
@@ -12,7 +12,7 @@ class IdentityRefereeSpec extends AnyFlatSpec with Matchers {
   private def ev(title: String, year: Option[Int] = None, directors: Seq[String] = Nil, runtime: Option[Int] = None,
                  original: Option[String] = None) = Evidence(title, title, title, year, directors, runtime, original)
   private def film(title: String, year: Int, directors: Seq[String] = Nil, runtime: Option[Int] = None, original: Option[String] = None) =
-    IdentityMeasures.Film(title, original, Nil, Some(year), runtime, Some(directors), None, None)
+    Film(title, original, Nil, Some(year), runtime, Some(directors), None, None)
 
   "the referee" should "judge a season broadcast filed under an old film of its work wrong" in {
     IdentityReferee.judge(ev("RBO Cinema Season 2026-27: The Nutcracker", runtime = Some(140)),

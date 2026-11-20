@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import services.identity.Film
 
 /** The kinds of document the normalized TMDB store keeps, each its own collection. */
 enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
@@ -234,7 +235,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
 
   /** IMDb's record of a title (`ImdbClient.identityRecord`) — `None`, filed as null, when IMDb has no such title: what a
    *  fallback candidate is scored on ([[FallbackIds]]). */
-  private[services] def imdbRecord(id: String, record: Option[IdentityMeasures.Film]): Unit =
+  private[services] def imdbRecord(id: String, record: Option[Film]): Unit =
     update(TmdbKind.Query, id)(_ => new BsonDocument("record", IdentityAnswerBson.film(record)))
 
   /** Every title IMDb lists one of its titles under (`ImdbClient.titlesOf`). */

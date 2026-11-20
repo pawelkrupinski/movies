@@ -3,7 +3,7 @@ package tools
 import models.{Helios, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{IdentityMeasures, Listing, ResolverDecision}
+import services.identity.{Film, Listing, ResolverDecision}
 import services.identity.agreement.SuspectTakes
 import services.identity.agreement.SuspectTakes.Take
 
@@ -15,7 +15,7 @@ class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
   private def listing(title: String, venue: models.Cinema) =
     Listing(venue, models.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
   private def take(title: String, film: String, year: Int, tmdb: Int, venue: models.Cinema = KinoMuza) =
-    Take(listing(title, venue), s"tmdb:$tmdb", Some(tmdb), IdentityMeasures.Film(film, year = Some(year)),
+    Take(listing(title, venue), s"tmdb:$tmdb", Some(tmdb), Film(film, year = Some(year)),
       ResolverDecision(Seq(listing(title, venue).key), Some(tmdb), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
   private def label(title: String, film: String, right: Boolean) = UnmatchedClusters.Label("pl", "*", title, film, right, "spec")
 

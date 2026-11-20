@@ -20,7 +20,7 @@ final class FillingLookups(inner: IdentityLookups, rnd: Random) extends Identity
   private val named = mutable.HashSet.empty[Int]
   /** Every film an answer has named: every film a context could hold a candidate of. */
   def namedFilms: Set[Int] = named.toSet
-  def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (gapFilm(id)) Answer.Unknown else inner.film(id)
+  def film(id: Int): Answer[Option[Film]] = if (gapFilm(id)) Answer.Unknown else inner.film(id)
   /** Answer about half of the open questions — at least one while any is open, so that an empty answer means the fill
    *  ran dry and not that the coin chose none of the last few (which left them stale for a caller looping until empty:
    *  12 of 30 seeds of IncrementalResolverSpec's gaps case on 2026-10-03); what changed. */

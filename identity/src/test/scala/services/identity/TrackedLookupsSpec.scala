@@ -23,7 +23,7 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
       reads.read("q:" + query.sortKey)
       Answer.Known(answers.getOrElse(query, Nil))
     }
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+    def film(id: Int): Answer[Option[Film]] = Answer.Known(None)
   }
 
   private val queries = (1 to 20).map(i => CandidateQuery.Title(s"Film $i"))

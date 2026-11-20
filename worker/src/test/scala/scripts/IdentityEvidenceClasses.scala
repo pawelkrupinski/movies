@@ -5,8 +5,8 @@ import models.Country
 import play.api.libs.json.{JsValue, Json}
 import scripts.IdentityCalibrationData.TmdbAnswers
 import services.identity.IdentityCalibration.{Condition, EvidenceClass}
-import services.identity.IdentityMeasures.{Film, Listing, ListingFilm}
-import services.identity.{IdentityCalibration, IdentityMeasures}
+import services.identity.IdentityMeasures.ListingFilm
+import services.identity.{Film, IdentityCalibration, IdentityMeasures, MeasuredListing}
 
 import java.nio.file.{Files, Path}
 import java.util.zip.GZIPInputStream
@@ -87,7 +87,7 @@ object IdentityEvidenceClasses {
       ls.flatMap { l =>
         val film = (l \ "tmdbId").as[Int]
         val corroborated = (l \ "status").as[String] == "corroborated"
-        val bare = Listing((l \ "title").as[String], (l \ "rawTitle").asOpt[String])
+        val bare = MeasuredListing((l \ "title").as[String], (l \ "rawTitle").asOpt[String])
         val hits = IdentityMeasures.searchQueries(bare).flatMap(q => answers.search(q).toSeq.flatMap(_.zipWithIndex))
         val ranked = hits.groupMapReduce(_._1.id)(h => h)((a, b) => if (a._2 <= b._2) a else b)
         def filmOf(id: Int): Film = answers.details(id).map(_.film).getOrElse {

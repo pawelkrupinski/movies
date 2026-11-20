@@ -5,7 +5,7 @@ import services.identity.IdentityMeasures.ListingFilm
 /** One [[FamilyScope.score]] of `listing` against its family's pool: the pool as the listing's titles relate to it, the candidates it reaches
  *  measured, the release veto, then the denials one candidate's evidence makes of another. */
 private[identity] final class ListingScoring(pool: FamilyPool, scoring: CandidateScoring, acceptance: Acceptance,
-                                             listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int],
+                                             listing: MeasuredListing, venue: String, source: String, ranks: Map[Int, Int],
                                              walked: Set[Int], shared: Set[Int], deniedByNode: Int => Option[Denial], suggested: Set[Int],
                                              directedBy: Set[Int], imdbTitles: Map[Int, Set[String]], country: Option[String],
                                              linked: Set[Int], names: String => Boolean) {

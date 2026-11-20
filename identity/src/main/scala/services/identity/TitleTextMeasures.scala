@@ -14,7 +14,7 @@ private[identity] object TitleTextMeasures {
 
   /** The runs of `billed` -- billings read into their words -- the films' titles are, each as its words, articles aside:
    *  each billing must hold the run (`agreement.Agreement.billedSpans` reads them off a cluster's listings). */
-  def spansIn(billed: Seq[Seq[String]], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
+  def spansIn(billed: Seq[Seq[String]], films: Seq[Film]): Seq[Seq[String]] =
     if (billed.isEmpty) Nil
     else {
       val bare = billed.map(withoutArticles)
@@ -91,7 +91,7 @@ private[identity] object TitleTextMeasures {
      *  "Dracula" — nor a TRAILING one after a learned venue decoration, for the same reason: "KINO SENIORA |
      *  Primetime" is Primetime however many records bill "Primetime" after a work. Beside a work the piece stays a cut or an edition
      *  ("Dark City: Director's Cut"), whatever record carries it alone. */
-    def of(l: Listing): Set[String] = memo.getOrElseUpdate(l.titleInputs, {
+    def of(l: MeasuredListing): Set[String] = memo.getOrElseUpdate(l.titleInputs, {
       val named = l.originalTitle.map(yearlessTokens(_).mkString)
       // A trailing piece only when what leads it is a learned venue decoration ("KINO SENIORA"): a rest
       // merely missing from these records may still be a work ("Dark City" of "Dark City: Director's Cut").
@@ -105,7 +105,7 @@ private[identity] object TitleTextMeasures {
       }.toSet
     })
     // By the titles it reads, hashed once per listing: a listing's own hash walks its decorations' whole learned set.
-    private val memo = scala.collection.concurrent.TrieMap.empty[FamilyScope.TitleInputs, Set[String]]
+    private val memo = scala.collection.concurrent.TrieMap.empty[MeasuredListing.TitleInputs, Set[String]]
   }
   object Qualifiers {
     val Unknown: Qualifiers = Qualifiers(Map.empty)
@@ -140,7 +140,7 @@ private[identity] object TitleTextMeasures {
    *  also calls "The Doll"). Each title is read alone: an original title is a whole title, never
    *  a piece. */
   def editionOf(edition: Film, work: Film): Boolean = {
-    val relations = edition.ownTitles.distinct.map(t => titleRelation(Listing(t), work).value)
+    val relations = edition.ownTitles.distinct.map(t => titleRelation(MeasuredListing(t), work).value)
     edition.year.exists(y => work.year.exists(_ <= y)) &&
       relations.exists(Set("segment", "decorated")) && !relations.exists(Rivalling)
   }

@@ -36,7 +36,7 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
     override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
     override def detail(l: Listing): Answer[Option[DetailFacts]] = { calls += s"detail ${l.venue} ${l.page}"; inner.detail(l) }
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = { calls += q.sortKey; inner.candidates(q) }
-    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = { calls += s"film $id"; inner.film(id) }
+    override def film(id: Int): Answer[Option[Film]] = { calls += s"film $id"; inner.film(id) }
     def multiset: Map[String, Int] = calls.groupMapReduce(identity)(_ => 1)(_ + _)
   }
 

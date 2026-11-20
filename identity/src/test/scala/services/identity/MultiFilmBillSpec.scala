@@ -2,7 +2,6 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures.Film
 
 /** The words that bill several films as one programme, as prod's matched listings carry them ([[MultiFilmBill]]). */
 class MultiFilmBillSpec extends AnyFlatSpec with Matchers {

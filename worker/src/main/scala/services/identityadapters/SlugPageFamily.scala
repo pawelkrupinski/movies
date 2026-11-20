@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.{IdentityMeasures, VoterFamily}
+import services.identity.{Film, VoterFamily}
 import services.enrichment.{MetacriticClient, RottenTomatoesClient}
 import services.identity.agreement.{SourceHit, SourceRecord}
 
@@ -13,7 +13,7 @@ sealed abstract class SlugPageFamily(val family: VoterFamily, idKey: String) ext
   protected def page(slug: String): Option[SlugPageFamily.Page]
   final def titled(text: String): Seq[SourceHit] = found(text).take(FamilySources.SearchedFilms)
   final def directedBy(name: String): Seq[SourceHit] = Nil
-  final def record(id: String): Option[SourceRecord] = page(id).map(page => SourceRecord(IdentityMeasures.Film(
+  final def record(id: String): Option[SourceRecord] = page(id).map(page => SourceRecord(Film(
     title = page.title.getOrElse(id), year = page.year, runtime = page.runtime, directors = Some(page.directors.toSeq.sorted)), Map(idKey -> id)))
 }
 

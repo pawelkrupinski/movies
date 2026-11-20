@@ -6,6 +6,7 @@ import services.enrichment.ImdbClient
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
+import services.identity.Film
 
 /**
  * The identity model's TMDB and IMDb questions answered from [[TmdbStore]]'s normalized documents
@@ -114,7 +115,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       }).map(_.flatten.distinctBy(_.tmdbId))
     }
 
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+  def film(tmdbId: Int): Answer[Option[Film]] =
     if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)
     else { val now = holding; Option(now.held(TmdbKind.Film).get(tmdbId.toString)) match {
       // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each
@@ -129,7 +130,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       case _ => filmOf(storedDocument(TmdbKind.Film, tmdbId.toString))
     } }
 
-  private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
+  private def filmOf(doc: Option[BsonDocument]): Answer[Option[Film]] =
     doc.flatMap(d => Option(d.get("record")).map(d -> _)) match {
       case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(film => withRuntimes(withImdbNumber(film, d), d)))
       case None              => Answer.Unknown
@@ -174,22 +175,22 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   /** `film` with the IMDb number its responses name: a record filed before the record carried one holds none, while
    *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
-  private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =
+  private def withImdbNumber(film: Film, d: BsonDocument): Film =
     if (film.imdbNumber > 0) film
     else partialFields(d, "imdb_id").filter(_.isString).map(value => IdentityMeasures.imdbNumber(value.asString.getValue)).find(_ > 0)
       .fold(film)(number => film.copy(imdbNumber = number))
 
   /** The film with every runtime its partial responses state ([[TmdbFilmRecord.runtimes]]), the record's own first: a record
    *  filed before records carried the other translation's runtime has only the localized one. */
-  private def withRuntimes(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film = {
+  private def withRuntimes(film: Film, d: BsonDocument): Film = {
     val stated = partialFields(d, "runtime").filter(_.isInt32).map(_.asInt32.getValue).toSeq
     val runtimes = TmdbFilmRecord.runtimes(film.runtimes ++ stated)
     if (runtimes == film.runtimes) film else film.copy(runtime = runtimes.headOption, alternativeRuntimes = runtimes.drop(1))
   }
 
   /** A fallback source's film: IMDb's record of the title, as `ImdbClient.identityRecord` read it. */
-  private def fallbackFilm(id: Int): Answer[Option[IdentityMeasures.Film]] =
-    FallbackIds.imdbId(id).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { tt =>
+  private def fallbackFilm(id: Int): Answer[Option[Film]] =
+    FallbackIds.imdbId(id).fold[Answer[Option[Film]]](Answer.Known(None)) { tt =>
       document(TmdbKind.Query, TmdbStore.imdbRecordId(tt)).flatMap(d => Option(d.get("record")))
         .map(IdentityAnswerBson.filmOf).toAnswer
     }
@@ -243,7 +244,7 @@ object StoredTmdbLookups {
    *  made it, and let go whole when the next one, or a release, takes its place. */
   private final class Holding {
     val held  = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Held]()).toMap
-    val films = new ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
+    val films = new ConcurrentHashMap[Int, Answer[Option[Film]]]()
     val hits  = new ConcurrentHashMap[String, Option[Hit]]()
 
     def document(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)

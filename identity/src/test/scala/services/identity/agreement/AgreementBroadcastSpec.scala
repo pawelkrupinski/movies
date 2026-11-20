@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Film, FilmTable, Hit, IdentityCalibration,
+  IdentityLookups, IdentityMeasures, Listing, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -93,11 +93,11 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     def record(id: String): Answer[Option[SourceRecord]] = Answer.Known(records.get(id))
   }
   private val rtProductions = Map(
-    "the_metropolitan_opera_la_fanciulla_del_west" -> SourceRecord(IdentityMeasures.Film("The Metropolitan Opera: La Fanciulla del West",
+    "the_metropolitan_opera_la_fanciulla_del_west" -> SourceRecord(Film("The Metropolitan Opera: La Fanciulla del West",
       runtime = Some(195), directors = Some(Seq("Richard Jones")))),
-    "the_metropolitan_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("The Metropolitan Opera: Macbeth", runtime = Some(209),
+    "the_metropolitan_opera_macbeth" -> SourceRecord(Film("The Metropolitan Opera: Macbeth", runtime = Some(209),
       directors = Some(Seq("Louisa Proske")))),
-    "royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", year = Some(2018), directors = Some(Seq("Phyllida Lloyd")))))
+    "royal_opera_macbeth" -> SourceRecord(Film("Royal Opera House: Macbeth", year = Some(2018), directors = Some(Seq("Phyllida Lloyd")))))
   private def credited(listing: Listing, records: Map[String, SourceRecord] = rtProductions): ResolverDecision = creditedAll(Seq(listing), records)
   /** The stage's decision on ONE cluster of `listings`. */
   private def creditedAll(listings: Seq[Listing], records: Map[String, SourceRecord] = rtProductions): ResolverDecision = {
@@ -124,7 +124,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     credited(rbo("Macbeth", Some("Phyllida Lloyd"), "2026-10-20")).film shouldBe None
     // the credit must be the RECORD's house's production: a Royal Opera Macbeth crediting the venue's director is no Met's
     credited(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"),
-      Map("royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", directors = Some(Seq("Louisa Proske")))))).film shouldBe None
+      Map("royal_opera_macbeth" -> SourceRecord(Film("Royal Opera House: Macbeth", directors = Some(Seq("Louisa Proske")))))).film shouldBe None
     credited(FilmTable.listing(Multikino, "Opéra National de Paris: La fanciulla del West")
       .copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 23))))).film shouldBe None
   }
@@ -162,7 +162,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
       def hasDetail(listing: Listing): Boolean                  = listing.page.isDefined
       def detail(listing: Listing): Answer[Option[DetailFacts]] = if (listing.page.isDefined) Answer.Unknown else Answer.Known(None)
       def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
-      def film(id: Int): Answer[Option[IdentityMeasures.Film]]  = table.film(id)
+      def film(id: Int): Answer[Option[Film]]  = table.film(id)
     }
     val stage = AgreementStageFixture(families, unread, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(unread))
@@ -194,7 +194,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     def hasDetail(listing: Listing): Boolean                  = listing.page.isDefined
     def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Known(listing.page.map(_ => page))
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]]  = table.film(id)
+    def film(id: Int): Answer[Option[Film]]  = table.film(id)
   }
   private def decidedPaged(listing: Listing, page: DetailFacts): ResolverDecision = {
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
@@ -252,7 +252,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     def hasDetail(listing: Listing): Boolean                  = table.hasDetail(listing)
     def detail(listing: Listing): Answer[Option[DetailFacts]] = table.detail(listing)
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]]  =
+    def film(id: Int): Answer[Option[Film]]  =
       if (stale(id)) table.film(id) match { case Answer.Known(f) => Answer.Known(f.map(_.copy(released = None))); case other => other } else table.film(id)
     override def releaseDay(id: Int): Answer[Option[LocalDate]] = if (stale(id)) Answer.Unknown else super.releaseDay(id)
   }

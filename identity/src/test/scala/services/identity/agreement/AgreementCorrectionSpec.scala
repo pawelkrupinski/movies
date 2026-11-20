@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration,
-  IdentityMeasures, Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
+import services.identity.{Answer, CandidateQuery, Film, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration,
+  Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
   ScreeningDays, VoterFamily}
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
@@ -28,7 +28,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
   private def listingOf: models.ListingKey => Option[Listing] = Map(listing.key -> listing).get
 
-  private val has = SourceRecord(IdentityMeasures.Film("Lalka", None, Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
+  private val has = SourceRecord(Film("Lalka", None, Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
   private def silent = VoterFamily.values.map(family => family -> new HeldFamilyAnswers(family, Map.empty)).toMap[VoterFamily, FamilyAnswers]
   /** IMDb and Wikidata take Has's film; the rest find nothing. */
   private def takingHas = silent ++ Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(family => family -> new HeldFamilyAnswers(family, Map("x" -> has)))
@@ -81,9 +81,9 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   it should "be withdrawn when a poster questions it and its venues' Filmweb programme lists a film it contradicts, switched when both name that film" in {
     def programme(record: SourceRecord, on: java.time.LocalDate = day) = silent + (VoterFamily.Filmweb ->
       new HeldFamilyAnswers(VoterFamily.Filmweb, Map("1174" -> record), programmes = Map(listing.venue -> Seq(Showing("1174", ScreeningDays.of(Seq(on)))))))
-    val onFilmweb = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
+    val onFilmweb = SourceRecord(Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
     // the programme's 1968 "Lalka" is a film TMDB's records here are not (another director): withdrawn, nothing to switch to
-    val rybkowski = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Jan Rybkowski"))))
+    val rybkowski = SourceRecord(Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Jan Rybkowski"))))
     val withdrawn = decided(stage(programme(rybkowski), hasPoster, listedOn = Some(VoterFamily.Filmweb)))
     (withdrawn.basis, withdrawn.film) shouldBe ((ResolverDecision.Basis.Withdrawn, None))
     withdrawn.explanation.last shouldBe "withdrawn 'Lalka' (2026) — filmweb: the venues' Filmweb programmes list 'Lalka' (1968) on their days; " +
@@ -98,7 +98,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     decided(unasked).basis shouldBe ResolverDecision.Basis.OwnMatch
     unasked.wanted shouldBe empty
     // a programme listing the take itself, or the film on another day, contradicts nothing
-    val kawalski = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(2026), None, Some(Seq("Maciej Kawalski"))))
+    val kawalski = SourceRecord(Film("Lalka", None, Nil, Some(2026), None, Some(Seq("Maciej Kawalski"))))
     decided(stage(programme(kawalski), hasPoster, listedOn = Some(VoterFamily.Filmweb))).basis shouldBe ResolverDecision.Basis.OwnMatch
     // (on another day, Filmweb's own take of the title is what joins the poster)
     decided(stage(programme(onFilmweb, day.plusDays(1)), hasPoster, listedOn = Some(VoterFamily.Filmweb))).explanation.last should (
@@ -132,7 +132,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     // a gap, the correction found nothing, was kept as final and stood after the record was filed — until a deploy
     var answered = false
     val lookups = new ForwardingIdentityLookups(table()) {
-      override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (id == 1001 && !answered) Answer.Unknown else super.film(id)
+      override def film(id: Int): Answer[Option[Film]] = if (id == 1001 && !answered) Answer.Unknown else super.film(id)
     }
     val s = AgreementStageFixture(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(Set.empty), posters = hasPoster, tmdb = Some(lookups))
@@ -356,10 +356,10 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     Set(PosterQuestion.Venue(venuePoster)))
   private def listedBy(record: SourceRecord) = silent + (VoterFamily.Filmweb ->
     new HeldFamilyAnswers(VoterFamily.Filmweb, Map("1174" -> record), programmes = Map(listing.venue -> Seq(Showing("1174", ScreeningDays.of(Seq(day)))))))
-  private val hasOnFilmweb = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
+  private val hasOnFilmweb = SourceRecord(Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
 
   "a model take whose venue poster was given up on" should "be read without it: withdrawn on its venues' programme, waiting on nothing" in {
-    val rybkowski = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Jan Rybkowski"))))
+    val rybkowski = SourceRecord(Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Jan Rybkowski"))))
     val s = stage(listedBy(rybkowski), givenUp, listedOn = Some(VoterFamily.Filmweb))
     val taken = decided(s)
     (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Withdrawn, None))
@@ -471,7 +471,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count a contradiction only by the year or another director, never by a fact missing" in {
-    val kawalski = IdentityMeasures.Film("Lalka", None, Nil, Some(2026), None, Some(Seq("Maciej Kawalski")))
+    val kawalski = Film("Lalka", None, Nil, Some(2026), None, Some(Seq("Maciej Kawalski")))
     Correction.contradicts(kawalski.copy(year = Some(1968), directors = None), kawalski) shouldBe true
     Correction.contradicts(kawalski.copy(directors = Some(Seq("Wojciech Has"))), kawalski) shouldBe true
     Correction.contradicts(kawalski.copy(year = Some(2025), directors = Some(Seq("Maciej Kawalski"))), kawalski) shouldBe false

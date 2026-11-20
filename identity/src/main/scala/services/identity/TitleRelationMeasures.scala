@@ -4,6 +4,7 @@ import services.titles.billing.{BillJoins, BillingParse}
 import services.titles.TitleContainment
 
 import IdentityMeasures.*
+import Measure.Category
 
 /** How a listing's titles name a film ([[titleRelation]]), its original title's relation, the pieces naming a film, and
  *  the titles venues publish for a film.
@@ -28,14 +29,14 @@ private[identity] object TitleRelationMeasures {
    *  alone, so two listings read them too: UK "NT LIVE: Golden Boy (15)" [180′] and "National
    *  Theatre Live: Golden Boy" [150′] measured an `overlap`, which with the half hour between them
    *  kept them apart by the learned cut, and "NT Live: Golden Boy" ×5 with them. */
-  def titleRelation(l: Listing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
+  def titleRelation(l: MeasuredListing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
     titleRelation(l, f, Some(houses), qualifiers)
 
   /** Does none of the listing's own titles or its original share a word with any of the film's titles — not even one a
    *  title runs together ("NTLive: Hayfever" of "National Theatre Live: Hay Fever"), a word of [[GluedWord]] letters at
    *  least found inside the other's key, nor one misspelt by a letter ("Grenzrerfahrungen" of "Grenzerfahrungen", a word
    *  of [[SpeltWord]] letters at least)? A title relation of `none`, read without the relation's pieces. */
-  def sharesNoWord(l: Listing, f: Film): Boolean = {
+  def sharesNoWord(l: MeasuredListing, f: Film): Boolean = {
     val own = l.ownForms ++ l.originalTitle.map(TitleForm(_))
     def misspelt(a: TitleForm, b: TitleForm) =
       a.words.exists(word => word.length >= SpeltWord && b.words.exists(other => tools.EditDistance.within(word, other, 1)))
@@ -56,7 +57,7 @@ private[identity] object TitleRelationMeasures {
    *  A record title that is only one of the listing's [[Qualifiers]] names nothing: "Director's
    *  Cut" (2016) shares the words of "Dark City: Director's Cut" but is not its film, so it is
    *  measured on the record's other titles, and as an `overlap` when it has none. */
-  private[identity] def titleRelation(l: Listing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Category = {
+  private[identity] def titleRelation(l: MeasuredListing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Category = {
     val ls  = l.ownForms
     val all = f.forms
     val own = l.ownKeys
@@ -95,7 +96,7 @@ private[identity] object TitleRelationMeasures {
   /** How the listing's shapes contain the film's titles ([[containment]]) — those the listing's qualifiers leave
    *  ([[Qualifiers.of]]) — when no title names it whole: a segment also where the billing names a house's season
    *  production or bills works of two titles. None when the qualifiers leave no title. */
-  private def containedIn(l: Listing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Option[Category] = {
+  private def containedIn(l: MeasuredListing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Option[Category] = {
     val all = f.forms
     lazy val qualifying = qualifiers.of(l)
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
@@ -132,7 +133,7 @@ private[identity] object TitleRelationMeasures {
   /** The pieces of the listing's title that NAME the film, as words: a title shape equal to one of
    *  the film's titles (the whole title, a banner segment), or one of the film's titles as a run
    *  along one edge of the listing's (a decoration). Empty when no piece names it. */
-  def namingPieces(l: Listing, f: Film): Set[Seq[String]] = {
+  def namingPieces(l: MeasuredListing, f: Film): Set[Seq[String]] = {
     // The record's and the listing's forms, each normalised once per instance: this runs for every
     // node against every candidate (`namesOnlyItsVenue`), a quarter of a resolve when it re-ran the regexes.
     val filmForms = f.forms.filter(_.key.nonEmpty)
@@ -154,7 +155,7 @@ private[identity] object TitleRelationMeasures {
    *  no such tie: "Joker: Folie à deux" names its own film by the whole title and "Joker" only by
    *  a piece of it, and a film whose own title joins two others' ("Romeo + Juliet") is named by
    *  the whole title, which every piece overlaps. */
-  def namedApart(l: Listing, a: Film, b: Film): Boolean = {
+  def namedApart(l: MeasuredListing, a: Film, b: Film): Boolean = {
     val (pa, pb) = (namingPieces(l, a), namingPieces(l, b))
     pa.nonEmpty && pb.nonEmpty && (
       pa.forall(x => pb.forall(y => (x.toSet intersect y.toSet).isEmpty)) ||
@@ -192,7 +193,7 @@ private[identity] object TitleRelationMeasures {
    *    Legends Worlds 26 - Finals in Cinema", its original title copied from the 2025 final's "League of Legends
    *    Worlds25 - Finals in Cinema", is no title of that record.
    *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
-  def venueTitles(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
+  def venueTitles(listings: Iterable[MeasuredListing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
     val translated = translatedTitles(listings)
     val unanimous = translated.groupMap(_._1)(_._2).collect { case (t, os) if os.distinct.sizeIs == 1 => t -> os.head }
     val spelling  = translated.groupMapReduce(_._1)(_._3)((a, b) => if (a <= b) a else b)
@@ -200,19 +201,19 @@ private[identity] object TitleRelationMeasures {
       .groupMap(_._1)(_._2)
     val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
-        case Seq((id, f)) if gainsVenueTitle(Listing(spelling(t)), f) => Some(id -> spelling(t))
+        case Seq((id, f)) if gainsVenueTitle(MeasuredListing(spelling(t)), f) => Some(id -> spelling(t))
         case _ => None
       }
     }
     byOriginal.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
   }
   /** Each listing publishing an original title apart from its title: the title's key, the original's, and the title. */
-  private def translatedTitles(listings: Iterable[Listing]): Seq[(String, String, String)] =
+  private def translatedTitles(listings: Iterable[MeasuredListing]): Seq[(String, String, String)] =
     listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
       .filter { case (t, o, _) => t.nonEmpty && o.nonEmpty && t != o }.toSeq
   /** Does the record `f` gain the venue's title `titled` ([[venueTitles]]): a title that does not name it already, bills no
    *  other stage work and numbers no other instalment? */
-  private def gainsVenueTitle(titled: Listing, f: Film): Boolean =
+  private def gainsVenueTitle(titled: MeasuredListing, f: Film): Boolean =
     !NamingRelations(titleRelation(titled, f).value) && !StageRelays.namesAnotherStageWork(titled, f) &&
       numeralRelation(titled, f) != Category("different")
 
@@ -227,7 +228,7 @@ private[identity] object TitleRelationMeasures {
    *  or alternative title — this one or another), the title is no piece of the record's own (a tour's name is
    *  not its São Paulo film's), contains no OTHER record its years do not rule out, is no double bill's, and is no stage
    *  relay of another stage work than the record's ([[StageRelays.namesAnotherStageWork]]). */
-  def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
+  def titlesByFacts(listings: Iterable[MeasuredListing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
     singledByFacts(listings, pool).groupBy(_._1).toSeq.flatMap { case (_, ls) =>
       // A listing whose facts single out no record here, or several, says nothing; one singling out another denies.
@@ -242,7 +243,7 @@ private[identity] object TitleRelationMeasures {
   /** Each listing whose own director and year may single out a record of `pool`: its title's key, its title, the records
    *  its facts single out, and its year. A bill's title names two works: its facts may single out one, but the title is
    *  no record's own. */
-  private def singledByFacts(listings: Iterable[Listing], pool: Seq[(Int, Film)]): Seq[(String, String, Seq[Int], Option[Int])] =
+  private def singledByFacts(listings: Iterable[MeasuredListing], pool: Seq[(Int, Film)]): Seq[(String, String, Seq[Int], Option[Int])] =
     listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !BillJoins.joinsWorks(l.title)).map { l =>
       val year = l.statedYear.get
       val ids  = pool.collect { case (id, f) if f.year.exists(FactRelations.yearsNear(_, year)) &&
@@ -258,10 +259,10 @@ private[identity] object TitleRelationMeasures {
    *  Aires: Live" credits the tour's director, whom only the São Paulo record carries, while its title
    *  names the Buenos Aires one ("…: Live Viewing"). */
   private def learnedByFacts(spelling: String, years: Seq[Int], id: Int, pool: Seq[(Int, Film)]): Boolean = {
-    def relation(f: Film) = titleRelation(Listing(spelling), f).value
+    def relation(f: Film) = titleRelation(MeasuredListing(spelling), f).value
     // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
     // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
-    pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !StageRelays.namesAnotherStageWork(Listing(spelling), f) }
+    pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !StageRelays.namesAnotherStageWork(MeasuredListing(spelling), f) }
         .getOrElse(false) &&
       !pool.exists { case (_, f) => Rivalling(relation(f)) && !ruledOutByYears(f, years) } &&
       !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOutByYears(f, years) }

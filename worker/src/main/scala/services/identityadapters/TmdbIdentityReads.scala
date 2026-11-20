@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import clients.TmdbClient
+import services.identity.Film
 
 /**
  * A film as the identity measures read it, off the answers [[TmdbClient]] fetches for it: its record, its top-billed
@@ -15,7 +16,7 @@ object TmdbIdentityReads {
   extension (client: TmdbClient) {
 
     /** The film's record, from both answers [[TmdbClient.filmAnswers]] reads — so a tree recorded for either serves it. */
-    def identityRecord(tmdbId: Int): Option[IdentityMeasures.Film] =
+    def identityRecord(tmdbId: Int): Option[Film] =
       client.filmAnswers(tmdbId).flatMap(TmdbFilmRecord.parse).map(_._1)
 
     /** The film's top-billed cast off its localized record ([[TmdbClient.localizedAnswer]]): what the identity store

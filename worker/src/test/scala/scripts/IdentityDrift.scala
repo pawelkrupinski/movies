@@ -4,10 +4,9 @@ import services.identityadapters.{AgreementReadiness, FamilyAnswerStore, ModelIn
   TmdbDocuments, TmdbKind, TmdbStore}
 import models.Country
 import org.bson.BsonDocument
-import services.identity._
 
 import services.identity.agreement.AgreementStage
-import services.identity.VoterFamily
+import services.identity.{Film, VoterFamily, _}
 import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 
@@ -347,7 +346,7 @@ object IdentityDrift {
     private def held(id: String) = !open && !released.contains(id) && share.held(id)
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
       if (held(s"q:${query.sortKey}")) { queries.add(query); Answer.Unknown } else inner.candidates(query)
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+    override def film(tmdbId: Int): Answer[Option[Film]] =
       if (held(s"f:$tmdbId")) { films.add(tmdbId); Answer.Unknown } else inner.film(tmdbId)
     override def detail(listing: Listing): Answer[Option[DetailFacts]] =
       if (held(s"d:${ListingKey.serialised(listing.key)}")) { details.add(listing.key); Answer.Unknown } else inner.detail(listing)

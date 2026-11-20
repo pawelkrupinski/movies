@@ -143,7 +143,7 @@ class WikidataClient(http: HttpFetch, userAgent: WikidataUserAgent = WikidataUse
   /** The film item's record — titles first in `language`, original title (P1476), earliest publication year (P577),
    *  duration (P2047), directors (P57) by label, countries of origin (P495) by ISO code — and the ids other databases
    *  know it by, each as that database's family spells its own; `None` for no film item. */
-  def identityRecord(id: String, language: String): Option[(services.identity.IdentityMeasures.Film, Map[String, String])] =
+  def identityRecord(id: String, language: String): Option[(services.identity.Film, Map[String, String])] =
     entitiesOf(entitiesUrl(Seq(id), Seq("claims", "labels", "aliases", "sitelinks"))).get(id).filter(isFilm).flatMap { item =>
       val order = (Seq(language, "en", "mul") ++ PreferredLanguages).distinct
       def rank(lang: String) = { val at = order.indexOf(lang); if (at < 0) order.size else at }
@@ -158,7 +158,7 @@ class WikidataClient(http: HttpFetch, userAgent: WikidataUserAgent = WikidataUse
       val countries = claimIds(item, "P495").flatMap(isoOf)
       val crossIds = Map("wikidata" -> id) ++ CrossIds.flatMap { case (property, database, own) => firstClaim(item, property).map(value => database -> own(value)) }
       labelOf(item, language).map { title =>
-        (services.identity.IdentityMeasures.Film(title, original.filterNot(_ == title),
+        (services.identity.Film(title, original.filterNot(_ == title),
           (labels ++ aliases).filterNot(t => t == title || original.contains(t)).distinct.take(40), year, runtime,
           Option(directors).filter(_.nonEmpty), Option(countries).filter(_.nonEmpty)), crossIds)
       }

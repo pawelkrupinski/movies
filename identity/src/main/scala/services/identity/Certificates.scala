@@ -60,7 +60,7 @@ object Certificates {
 
   /** Why `film` is no film `listing` screens: the venue's certificate stands [[StepsBelow]] steps or more below the one
    *  TMDB records for it in the venue's country — `None` when either is missing or the country's scale reads neither. */
-  def below(listing: Listing, film: IdentityMeasures.Film): Option[String] =
+  def below(listing: Listing, film: Film): Option[String] =
     for {
       venue   <- listing.certificate
       country <- EvidenceNode.countryOf(listing.cinema)

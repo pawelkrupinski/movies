@@ -5,8 +5,8 @@ import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, AnswersChanged, CandidateQuery, ForwardingIdentityLookups, Hit, IdentityLookups,
-  IdentityMeasures, IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips, VoterFamily}
+import services.identity.{Answer, AnswersChanged, CandidateQuery, Film, ForwardingIdentityLookups, Hit, IdentityLookups,
+  IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips, VoterFamily}
 
 import tools.MutableClock
 
@@ -295,7 +295,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     var held = Set.empty[String]
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
       if (held(s"q:${query.sortKey}")) Answer.Unknown else inner.candidates(query)
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+    override def film(tmdbId: Int): Answer[Option[Film]] =
       if (held(s"f:$tmdbId")) Answer.Unknown else inner.film(tmdbId)
   }
 

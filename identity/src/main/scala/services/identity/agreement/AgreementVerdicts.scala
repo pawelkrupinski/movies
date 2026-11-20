@@ -1,6 +1,5 @@
 package services.identity.agreement
 
-import services.identity.{BsonFields, Dependency, IdentityMeasures, VoterFamily}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
@@ -9,6 +8,7 @@ import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Sing
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import services.identity.{BsonFields, Dependency, Film, VoterFamily}
 
 /** One cluster's agreement verdict as stored: the digest of its listings, its RECEIPT (`reads`: everything its decision
  *  read — every family question, the record of the film TMDB leans to, every TMDB lookup its fill made, the year — each
@@ -131,7 +131,7 @@ object AgreementVerdicts {
       receipt(d.get("reads")),
       Option(d.get("agreed")).filter(_.isDocument).map(_.asDocument).map { a =>
         val film = Option(a.get("film")).filter(_.isDocument).fold(
-          IdentityMeasures.Film(a.getString("title").getValue, None, Nil, Option(a.get("year")).map(_.asInt32.getValue), None, None, None, None))(
+          Film(a.getString("title").getValue, None, Nil, Option(a.get("year")).map(_.asInt32.getValue), None, None, None, None))(
           f => services.identity.FilmBson.decode(f.asDocument))
         AgreedFilm(a.getArray("families").getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet,
           SourceRecord(film, stringsOf(a.getDocument("crossIds"))),

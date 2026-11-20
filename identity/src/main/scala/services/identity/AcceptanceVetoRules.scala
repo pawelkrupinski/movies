@@ -57,7 +57,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
    *  or screening attached) whose record shares none of its other words: the namesake a search for the event's words
    *  found, not what the venue screens. The agreement stage already asks no family about such a billing
    *  ([[NonFilmEvents]]); this holds the model's own takes to the same reading. Asked of every accepted take,
-   *  so a billing with no event word answers from the listing's one-off [[IdentityMeasures.Listing.eventWords]] and
+   *  so a billing with no event word answers from the listing's one-off [[MeasuredListing.eventWords]] and
    *  allocates nothing ([[ResolverAllocationSpec]]'s dated-title budget). */
   private[identity] def readsAsNoFilm(scored: Scored): Boolean = {
     val listing = scored.listing
@@ -94,7 +94,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
   }
 
   /** Is `scored` named only by the listing's ORIGINAL title and the director it credits, that title a mere part of the
-   *  billing ([[IdentityMeasures.Listing.originalStandsApart]] false), with the billing saying more than any of the
+   *  billing ([[MeasuredListing.originalStandsApart]] false), with the billing saying more than any of the
    *  record's titles ([[billedBeyond]]) and stating no year of it? A billing the record's titles hold word for word
    *  ("Matrix" of "The Matrix", or a translation TMDB holds as an alternative title) is its own, and a year the listing
    *  states that the record shares makes the billing another record's spelling of it, as the copied facts' other reader

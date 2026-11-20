@@ -37,7 +37,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   /** At what the priors lend the best eligible candidate ([[AcceptanceRule.Weighing.lentToTheBest]]). */
   private[identity] lazy val atWhatThePriorsLend: AcceptanceRule.Take = (weighing, best) => Right(best -> weighing.lentToTheBest)
   /** At what its evidence CLASS measured, its evidence read as `measures` makes it ([[classAccepted]]). */
-  private[identity] def atItsClass(measures: Scored => Map[String, IdentityMeasures.Measure]): AcceptanceRule.Take =
+  private[identity] def atItsClass(measures: Scored => Map[String, Measure]): AcceptanceRule.Take =
     (_, scored) => classAccepted(scored, measures(scored))
   /** UNOPPOSED, read as `weighed` makes it (the candidate read as the rule reads its title): nothing it publishes speaks
    *  against it so read, no other of `among` fits its facts so read better, and its evidence class clears the cut
@@ -51,7 +51,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     }
   /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing —
    *  its class read with the namesakes the release veto took away counted as no rivals ([[Scored.unvetoed]]). */
-  private[identity] def classAccepted(scored: Scored, measures: Map[String, IdentityMeasures.Measure]): Verdict =
+  private[identity] def classAccepted(scored: Scored, measures: Map[String, Measure]): Verdict =
     calibration.classProbability(ListingFilm, scored.unvetoed(measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
       .flatMap { classProbability =>
         val lent = math.max(scored.probability, classProbability)

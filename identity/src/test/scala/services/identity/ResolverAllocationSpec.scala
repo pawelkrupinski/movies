@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, ListingListing}
+import services.identity.IdentityMeasures.{ListingFilm, ListingListing}
 
 /**
  * The resolver's hottest helpers answer without allocating per call what they used to: on worker-pl the identity model's
@@ -39,7 +39,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     if (sink.isNaN) fail("unreachable")
   }
 
-  private val listing = Listing("Samson i Dalila", year = Some(2026), directors = Seq("Darko Tresnjak"), runtime = Some(180))
+  private val listing = MeasuredListing("Samson i Dalila", year = Some(2026), directors = Seq("Darko Tresnjak"), runtime = Some(180))
   private val film    = Film("Samson et Dalila", year = Some(2026), directors = Some(Seq("Darko Tresnjak")), runtime = Some(178))
   private val measures = IdentityMeasures.listingFilm(listing, film, searchRank = Some(1), rivals = 2, corroboratingVenues = 3)
   private val pairMeasures = IdentityMeasures.listingListing(listing, listing.copy(title = "Samson i Dalila (MET Opera)"), sameVenue = false,
@@ -118,7 +118,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   "a listing's search groups against a film" should "key each title once, not per pair, to the same groups" in {
     val many  = film.copy(alternativeTitles = (1 to 30).map(i => s"Samson und Dalila Fassung $i") :+ "Samson i Dalila")
     val asked = listing.copy(searchTitles = Seq("Samson i Dalila", "Samson et Dalila", "Opera"))
-    def reference(l: Listing, f: Film) = {
+    def reference(l: MeasuredListing, f: Film) = {
       val titles = (f.title +: (f.originalTitle.toSeq ++ f.alternativeTitles)).map(IdentityMeasures.key).toSet
       l.searchTitles.map(IdentityMeasures.key).filter(titles).distinct
     }
@@ -129,8 +129,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   "a listing's measures against a film" should "be the map they were, held in slots, without a hash map and tuples per pair" in {
     import scala.collection.immutable.HashMap
     val pairs = Seq(listing -> film, listing.copy(year = None, directors = Nil) -> film.copy(directors = None, popularity = Some(12.0)),
-      Listing("Diuna: Część druga", year = Some(2024)) -> Film("Dune: Part Two", originalTitle = Some("Dune: Part Two"), year = Some(2024)),
-      Listing("Gone With The Wind (2026)") -> Film("Gone with the Wind", year = Some(1939), directors = Some(Seq("Victor Fleming"))))
+      MeasuredListing("Diuna: Część druga", year = Some(2024)) -> Film("Dune: Part Two", originalTitle = Some("Dune: Part Two"), year = Some(2024)),
+      MeasuredListing("Gone With The Wind (2026)") -> Film("Gone with the Wind", year = Some(1939), directors = Some(Seq("Victor Fleming"))))
     pairs.foreach { case (l, f) =>
       val m   = IdentityMeasures.listingFilm(l, f, searchRank = Some(2), rivals = 1, corroboratingVenues = 4)
       val ref = HashMap.from(m.iterator)
@@ -141,8 +141,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       ref.keysIterator.foreach(k => (m.get(k), m.getOrElse(k, null), m(k), m.contains(k)) shouldBe ((ref.get(k), ref(k), ref(k), true)))
       m.get("nothing") shouldBe None
       m.getOrElse("nothing", null) shouldBe null
-      (m + ("director" -> IdentityMeasures.Category("same_person"))) shouldBe (ref + ("director" -> IdentityMeasures.Category("same_person")))
-      (m + ("other" -> IdentityMeasures.Category("x"))) shouldBe (ref + ("other" -> IdentityMeasures.Category("x")))
+      (m + ("director" -> Measure.Category("same_person"))) shouldBe (ref + ("director" -> Measure.Category("same_person")))
+      (m + ("other" -> Measure.Category("x"))) shouldBe (ref + ("other" -> Measure.Category("x")))
       (m ++ IdentityMeasures.PublishedYear.map(_ -> IdentityMeasures.MissingListing)) shouldBe (ref ++ IdentityMeasures.PublishedYear.map(_ -> IdentityMeasures.MissingListing))
       m.removed("rivals") shouldBe ref.removed("rivals")
       m.filterNot(_._1 == "year.delta") shouldBe ref.filterNot(_._1 == "year.delta")
@@ -154,10 +154,10 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a film's director credited by its house's name" should "be read from tokens worked out once per listing and film" in {
-    val met     = Listing("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Seq("The Metropolitan Opera", "Phelim McDermott"))
+    val met     = MeasuredListing("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Seq("The Metropolitan Opera", "Phelim McDermott"))
     val opera   = Film("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Some(Seq("Phelim McDermott")))
     val alone   = met.copy(directors = Seq("The Metropolitan Opera"))
-    IdentityMeasures.listingFilm(met, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.Category("same_person")
+    IdentityMeasures.listingFilm(met, opera, Some(1), 0, 0)("director") shouldBe Measure.Category("same_person")
     IdentityMeasures.listingFilm(alone, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.MissingListing
     val title = IdentityMeasures.titleRelation(met, opera)
     allocatesUnder(6500.0)(() => IdentityMeasures.listingFilmTitled(met, opera, Some(1), 0, 0, title).size.toDouble)   // was 8,469: every name and title tokenised per pair
@@ -170,8 +170,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       val credits = new CreditRelation.Credits(Seq(name))
       credits.inLatin.names shouldBe credits.names.map(n => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII").transliterate(n))
     }
-    IdentityMeasures.listingFilm(Listing("Kaili Blues", directors = Seq("Bi Gan")), bi, Some(1), 0, 0)("director") shouldBe
-      IdentityMeasures.Category("same_person")
+    IdentityMeasures.listingFilm(MeasuredListing("Kaili Blues", directors = Seq("Bi Gan")), bi, Some(1), 0, 0)("director") shouldBe
+      Measure.Category("same_person")
     allocatesUnder(512.0)(() => new CreditRelation.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble)
   }
 
@@ -205,7 +205,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
 
   "a rival fitting a listing's facts better" should "be judged by sums in place, to the same answer" in {
     val weights = new EvidenceWeights(model)
-    val lynch   = Listing("Mulholland Drive", year = Some(2001), directors = Seq("David Lynch"), runtime = Some(147))
+    val lynch   = MeasuredListing("Mulholland Drive", year = Some(2001), directors = Seq("David Lynch"), runtime = Some(147))
     def scored(film: Film) = { val m = IdentityMeasures.listingFilm(lynch, film, Some(1), 1, 0)
       Scored(Candidate(film.hashCode, film), model.probability(ListingFilm, m), m, denial = None, lynch, Some(1)) }
     val top    = scored(Film("Mulholland Drive", year = Some(2001), directors = None, runtime = None))
@@ -225,7 +225,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
 
   "a title dated by the year its film is from" should "be read off titles tokenised once per listing and film" in {
     val acceptance = new Acceptance(model)
-    val dated  = Listing("Akademia Kina Polskiego: Drogówka (2012)")
+    val dated  = MeasuredListing("Akademia Kina Polskiego: Drogówka (2012)")
     val films  = Seq(167179 -> Film("Drogówka", year = Some(2013)), 900001 -> Film("Drogówka", year = Some(1978)))
     val ranked = films.zipWithIndex.map { case ((id, film), i) =>
       val m = IdentityMeasures.listingFilm(dated, film, Some(i + 1), 1, 0)

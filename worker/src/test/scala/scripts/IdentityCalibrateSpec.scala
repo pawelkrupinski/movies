@@ -2,20 +2,20 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures
-import services.identity.IdentityMeasures.{Category, Film, Listing}
+import services.identity.{Film, IdentityMeasures, Measure, MeasuredListing}
+import services.identity.Measure.Category
 
 /** The calibration's LABEL rule — what a listing's own evidence says about production's proposal —
  *  and how a signal's table is fitted from the labels. */
 class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
 
-  private def m(l: Listing, f: Film) = IdentityMeasures.listingFilm(l, f, None, 0, 0)
+  private def m(l: MeasuredListing, f: Film) = IdentityMeasures.listingFilm(l, f, None, 0, 0)
 
   "a proposal" should "be denied by the title when the listing names ANOTHER film of its own search more closely" in {
     // Cinesa's "Vengadores: Endgame (Reestreno)", 2026, the Russos: filed under Avengers: Doomsday
     // (2026, the Russos) — year and director agree, but the title names Endgame, which its own
     // search returned.
-    val listing  = Listing("Vengadores: Endgame (Reestreno)", year = Some(2026), directors = Seq("Anthony Russo", "Joe Russo"))
+    val listing  = MeasuredListing("Vengadores: Endgame (Reestreno)", year = Some(2026), directors = Seq("Anthony Russo", "Joe Russo"))
     val doomsday = Film("Vengadores: Doomsday", year = Some(2026), directors = Some(Seq("Anthony Russo", "Joe Russo")))
     val endgame  = Film("Vengadores: Endgame", year = Some(2019), directors = Some(Seq("Anthony Russo", "Joe Russo")))
     val (_, deny) = IdentityCalibrate.proposalAgreement(m(listing, doomsday), Seq(m(listing, endgame)))
@@ -24,7 +24,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
 
   it should "not be denied by the title when no other film of its search is named more closely" in {
     // A truncated spelling names its film only by shared words — and nothing names another film better.
-    val listing = Listing("Niesamowite przygody skarpetek 3. Ale ko", year = Some(2026))
+    val listing = MeasuredListing("Niesamowite przygody skarpetek 3. Ale ko", year = Some(2026))
     val film    = Film("Niesamowite przygody skarpetek 3. Ale kosmos!", year = Some(2026))
     val (agree, deny) = IdentityCalibrate.proposalAgreement(m(listing, film), Seq(m(listing, Film("Skarpety", year = Some(2020)))))
     deny shouldBe empty
@@ -34,8 +34,8 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
   "the fitted signals" should "be every measure a pair emits, but those kept out for a stated reason" in {
     // A measure the resolver computes but the calibration never fits weighs nothing: the bracket
     // year of "Scary Movie (1991)" and a broadcast's season would be read and ignored.
-    val lf = m(Listing("Scary Movie (1991)"), Film("Scary Movie", year = Some(1991))).keySet
-    val ll = IdentityMeasures.listingListing(Listing("A"), Listing("A"), sameVenue = false, sharedChainId = None).keySet
+    val lf = m(MeasuredListing("Scary Movie (1991)"), Film("Scary Movie", year = Some(1991))).keySet
+    val ll = IdentityMeasures.listingListing(MeasuredListing("A"), MeasuredListing("A"), sameVenue = false, sharedChainId = None).keySet
     IdentityCalibrate.LfSignals.toSet ++ IdentityCalibrate.Unweighted.keySet shouldBe lf
     IdentityCalibrate.LlSignals.toSet ++ IdentityCalibrate.Unweighted.keySet.intersect(ll) shouldBe ll
   }
@@ -77,7 +77,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
   private def numbers(signal: String, value: Double, same: Int, different: Int): Seq[IdentityCalibrate.Row] =
     (0 until same + different).map { i =>
       val u = s"$signal-$value-$i"
-      IdentityCalibrate.Row("train", u, u, "pl", Map(signal -> IdentityMeasures.Number(value)), _ => Some(i < same))
+      IdentityCalibrate.Row("train", u, u, "pl", Map(signal -> Measure.Number(value)), _ => Some(i < same))
     }
 
   "a numeric table" should "never weigh more corroborating venues below fewer" in {
@@ -90,7 +90,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     val ws = t.weights.bins.map(_.weight)
     withClue(t.weights.bins.mkString("\n")) {
       ws.sliding(2).foreach { case Seq(a, b) => b should be >= a; case _ => }
-      t.weights.weight(Some(IdentityMeasures.Number(153))) should be >= t.weights.weight(Some(IdentityMeasures.Number(108)))
+      t.weights.weight(Some(Measure.Number(153))) should be >= t.weights.weight(Some(Measure.Number(108)))
     }
   }
 
@@ -102,7 +102,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     val venues  = refit.scopes(IdentityMeasures.ListingFilm).signals("venues.corroborating")
     withClue(venues.bins.mkString("\n")) {
       venues.bins.map(_.weight).sliding(2).foreach { case Seq(a, b) => b should be >= a; case _ => }
-      venues.weight(Some(IdentityMeasures.Number(153))) should be >= venues.weight(Some(IdentityMeasures.Number(108)))
+      venues.weight(Some(Measure.Number(153))) should be >= venues.weight(Some(Measure.Number(108)))
     }
     // Every other signal, and every other scope, is the shipped one.
     refit.scopes.foreach { case (scope, model) =>
@@ -133,7 +133,7 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     val t = IdentityCalibrate.fitSignal("runtime.delta",
       numbers("runtime.delta", -40, 3, 60) ++ numbers("runtime.delta", -20, 2, 200) ++ numbers("runtime.delta", 0, 800, 40) ++
         numbers("runtime.delta", 20, 30, 120) ++ numbers("runtime.delta", 40, 2, 300), _ => Set.empty).weights
-    def w(x: Double) = t.weight(Some(IdentityMeasures.Number(x)))
+    def w(x: Double) = t.weight(Some(Measure.Number(x)))
     withClue(t.bins.mkString("\n")) {
       w(-40) should be <= w(-20)
       w(-20) should be < w(0)

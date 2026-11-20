@@ -9,7 +9,7 @@ import scala.collection.mutable
 private[identity] final class BillingDenials {
 
   /** Why `node`'s billing rules `film` out, if it does. */
-  def of(node: EvidenceNode, film: IdentityMeasures.Film): Option[String] =
+  def of(node: EvidenceNode, film: Film): Option[String] =
     Option.when(billingOf(node).festival)("its title bills a film festival by its name alone: the programme, no film")
       // a billing as a silent film dates it to the silent era, as the agreement reads it (DE "STUMMFILM MIT TOBIAS
       // RANK:CHARLIE CHAPLIN" is no 1999 "Charlie Chaplin")

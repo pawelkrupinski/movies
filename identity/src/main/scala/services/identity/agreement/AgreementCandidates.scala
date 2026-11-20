@@ -1,9 +1,9 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups, IdentityMeasures,
-  Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, PosterQuestion, Question, VoterFamily}
 
 import scala.collection.mutable
+import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups, Listing,
+  ListingShape, MeasuredListing, Memo, PosterAnswers, PosterEvidence, PosterHash, PosterQuestion, Question, VoterFamily}
 
 /** The TMDB films a cluster's own evidence reaches, as the stage's takes and corrections read them: its candidates, its
  *  titles' searches and picks, the venue posters' distances to them, and the records and productions the broadcast
@@ -21,7 +21,7 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  stage applies on one thread at a time (`apply` is synchronized). */
   private[agreement] var blindReads = 0L
   /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
-  private[agreement] def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).answered.flatten).measured
+  private[agreement] def measured(listing: Listing): MeasuredListing = Evidence.of(listing, venues.detail(listing).answered.flatten).measured
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
    *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
   private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
@@ -43,8 +43,8 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
    *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits.
    *  `receipt`, a verdict's where it reads them, notes each. */
-  private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
-                            asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
+  private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.MeasuredListing,
+                            asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.Film]] = {
     val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {

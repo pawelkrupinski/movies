@@ -2,10 +2,11 @@ package services.identity
 
 import java.util.Locale
 
-import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Missing, MissingFilm, MissingListing, Number}
+import services.identity.IdentityMeasures.{MissingFilm, MissingListing}
 import models.EmbeddedYear
 import services.titles.TitleContainment
 import services.titles.SearchTitles
+import Measure.{Category, Missing, Number}
 
 /**
  * The LIVE rating gate's measurements, frozen: [[IdentityMeasures]] as it was when the gate's
@@ -25,7 +26,7 @@ object PinnedGateMeasures {
   val RankingPriors: Set[String] = Set("search.rank", "popularity.log2", "rivals")
 
   /** The venue's own year, as the pinned gate read it: its field, else a year its title brackets. */
-  private def statedYear(l: Listing): Option[Int] = l.year.orElse(EmbeddedYear.ofAll(l.rawTitle.toSeq :+ l.title, Int.MaxValue))
+  private def statedYear(l: MeasuredListing): Option[Int] = l.year.orElse(EmbeddedYear.ofAll(l.rawTitle.toSeq :+ l.title, Int.MaxValue))
 
 
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
@@ -55,7 +56,7 @@ object PinnedGateMeasures {
 
   /** The shapes a listing's title can name a film by: the whole title, its raw form, and each
    *  programme-banner segment (`SearchTitles.candidates`: `|`, ` - `, a first `: `, …). */
-  def titleShapes(l: Listing): Seq[String] =
+  def titleShapes(l: MeasuredListing): Seq[String] =
     (Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct
 
@@ -65,7 +66,7 @@ object PinnedGateMeasures {
   /** How the listing's title names the film: its localised title exactly, its original title,
    *  an alternative title, one whole banner segment, a token run along one edge (a decoration),
    *  some shared words, or nothing. */
-  def titleRelation(l: Listing, f: Film): Category = {
+  def titleRelation(l: MeasuredListing, f: Film): Category = {
     val own    = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
     val shapes = titleShapes(l).map(key).filter(_.nonEmpty).toSet
     val primary  = key(f.title)
@@ -123,7 +124,7 @@ object PinnedGateMeasures {
    *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
-  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle).map(_.trim).filter(_.nonEmpty).distinct
+  def searchQueries(l: MeasuredListing): Seq[String] = (titleShapes(l) ++ l.originalTitle).map(_.trim).filter(_.nonEmpty).distinct
 
   /** The title relations under which another film RIVALS a listing's film: the listing's title
    *  names it as closely (`rivals`). */
@@ -131,14 +132,14 @@ object PinnedGateMeasures {
 
   /** How many films of `pool` other than `film` the listing's title names as closely as a
    *  rival does — the `rivals` measure, over whatever pool the caller searched. */
-  def rivals(l: Listing, pool: Map[Int, Film], film: Int): Int =
+  def rivals(l: MeasuredListing, pool: Map[Int, Film], film: Int): Int =
     pool.count { case (id, f) => id != film && Rivalling(titleRelation(l, f).value) }
 
   /** What a listing's own yearless title searches ([[searchQueries]]) said about `film`: where it
    *  ranked (1-based, best over the queries; `None` when no query returned it) and how many other
    *  films they returned that the listing's title names as closely. `None` when no query was
    *  answered. `search` answers ONE query with its ranked results, `None` when it could not. */
-  def titleSearch(l: Listing, film: Int, search: String => Option[Seq[Hit]]): Option[models.TitleSearch] = {
+  def titleSearch(l: MeasuredListing, film: Int, search: String => Option[Seq[Hit]]): Option[models.TitleSearch] = {
     val answers = searchQueries(l).flatMap(q => search(q).toSeq)
     Option.when(answers.nonEmpty) {
       val ranked = answers.flatMap(_.zipWithIndex).groupMapReduce(_._1.tmdbId)(h => h)((a, b) => if (a._2 <= b._2) a else b)
@@ -150,12 +151,12 @@ object PinnedGateMeasures {
   /** The venues among `group` (the listings sharing the listing's title key, with their venue)
    *  whose OWN facts back `f` — its exact year, or a credit of its director — other than
    *  `ownVenue`: the `venues.corroborating` count. */
-  def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
+  def corroboratingVenues(f: Film, group: Seq[(String, MeasuredListing)], ownVenue: String): Int =
     (corroborating(f, group) - ownVenue).size
 
   /** The venues among `group` whose own facts back `f`, its own venue among them: what [[corroboratingVenues]]
    *  counts for each of the group's listings, worked out once for all of them. */
-  def corroborating(f: Film, group: Seq[(String, Listing)]): Set[String] =
+  def corroborating(f: Film, group: Seq[(String, MeasuredListing)]): Set[String] =
     group.iterator.filter { case (_, l) =>
       statedYear(l).exists(y => f.year.contains(y)) ||
         f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person"))
@@ -172,7 +173,7 @@ object PinnedGateMeasures {
    * @param corroboratingVenues how many OTHER venues listing the same title publish this film's
    *                   exact year or credit its director — the family's pooled evidence
    */
-  def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int): Map[String, Measure] =
+  def listingFilm(l: MeasuredListing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int): Map[String, Measure] =
     Map(
       "title"          -> titleRelation(l, f),
       "originalTitle"  -> originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles),

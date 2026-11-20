@@ -7,6 +7,7 @@ import services.cinemas.common.DetailEnricher
 import services.enrichment.ImdbClient
 
 import scala.util.Try
+import services.identity.Film
 
 /**
  * [[IdentityLookups]] answered by TMDB, IMDb's title suggestions and the venues' own detail pages
@@ -77,8 +78,8 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
     answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
       .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
 
-  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
-    if (FallbackIds.isFallback(tmdbId)) FallbackIds.imdbId(tmdbId).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None))(tt => answered(imdb.identityRecord(tt)))
+  override def film(tmdbId: Int): Answer[Option[Film]] =
+    if (FallbackIds.isFallback(tmdbId)) FallbackIds.imdbId(tmdbId).fold[Answer[Option[Film]]](Answer.Known(None))(tt => answered(imdb.identityRecord(tt)))
     else answered(tmdb.identityRecord(tmdbId))
 
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =

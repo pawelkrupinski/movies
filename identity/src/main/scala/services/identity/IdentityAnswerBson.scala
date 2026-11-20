@@ -6,7 +6,7 @@ import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, Bson
 /** A film's record as native BSON — explicit, like [[ResolverDecisionBson]]: an absent field is
  *  absent (directors unknown ≠ none), "TMDB knows no such film" is `null`. */
 object IdentityAnswerBson {
-  def film(film: Option[IdentityMeasures.Film]): BsonValue = film.fold[BsonValue](BsonNull()) { f =>
+  def film(film: Option[Film]): BsonValue = film.fold[BsonValue](BsonNull()) { f =>
     val d = new BsonDocument().append("title", BsonString(f.title)).append("alternativeTitles", strings(f.alternativeTitles))
     f.originalTitle.foreach(t => d.append("originalTitle", BsonString(t)))
     f.year.foreach(y => d.append("year", BsonInt32(y)))
@@ -27,8 +27,8 @@ object IdentityAnswerBson {
     d
   }
 
-  def filmOf(value: BsonValue): Option[IdentityMeasures.Film] = Option.when(!value.isNull)(value.asDocument).map { d =>
-    IdentityMeasures.Film(d.getString("title").getValue, string(d, "originalTitle"), BsonFields.stringsOf(d.get("alternativeTitles")),
+  def filmOf(value: BsonValue): Option[Film] = Option.when(!value.isNull)(value.asDocument).map { d =>
+    Film(d.getString("title").getValue, string(d, "originalTitle"), BsonFields.stringsOf(d.get("alternativeTitles")),
       int(d, "year"), int(d, "runtime"), Option(d.get("directors")).map(BsonFields.stringsOf(_)), Option(d.get("countries")).map(BsonFields.stringsOf(_)),
       Option(d.get("popularity")).map(_.asDouble.getValue), int(d, "imdbNumber").getOrElse(0),
       string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption), string(d, "releaseCountries"),

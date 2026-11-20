@@ -1,6 +1,7 @@
 package services.identity
 
 import services.evidence.ListingConstraints.CannotLink
+import Measure.Category
 
 /** The identity resolver's LEARNED cannot-links: the rules of the calibration artefact (`identity-weights.json`) and its
  *  certified probability cuts, beside the hand-written ones of [[services.evidence.ListingConstraints]]. */
@@ -12,7 +13,7 @@ object LearnedCannotLinks {
    *  cannot-link cut. Evaluated generically: no predicate here names a film property, the
    *  artefact's rules do. */
   def learned(calibration: IdentityCalibration, scope: String,
-              measures: Map[String, IdentityMeasures.Measure], probability: Double): Option[CannotLink] =
+              measures: Map[String, Measure], probability: Double): Option[CannotLink] =
     calibration.cannotLink(scope, measures).map(r => CannotLink.Learned(r.name))
       .orElse(Option.when(calibration.forbidsLink(scope, probability))(CannotLink.Learned(s"$scope probability below the cannot-link cut")))
 
@@ -31,19 +32,19 @@ object LearnedCannotLinks {
    *  against 84) — not a fact of the film, and the learned rules certified on the runtime's size (`runtime.gap`) are what
    *  a runtime vetoes through. A learned rule still vetoes. */
   def learnedListingFilm(calibration: IdentityCalibration,
-                         measures: Map[String, IdentityMeasures.Measure],
+                         measures: Map[String, Measure],
                          probability: Double): Option[CannotLink] =
     listingFilm(calibration, measures, probability).map(_._1)
 
   /** [[learnedListingFilm]] as the denial a candidate carries: a learned rule's, or the probability cut's alone
    *  ([[Denial.Kind.ProbabilityCut]]). */
   def listingFilmDenial(calibration: IdentityCalibration,
-                        measures: Map[String, IdentityMeasures.Measure],
+                        measures: Map[String, Measure],
                         probability: Double): Option[Denial] =
     listingFilm(calibration, measures, probability).map((link, kind) => Denial(link.toString, kind))
 
   private def listingFilm(calibration: IdentityCalibration,
-                          measures: Map[String, IdentityMeasures.Measure],
+                          measures: Map[String, Measure],
                           probability: Double): Option[(CannotLink, Denial.Kind)] = {
     import IdentityMeasures.{ListingFilm, comparedFacts, comparesAFact}
     // The cut on a probability the film's own facts do not pull down is the title's, or the screening's length's, alone.
@@ -65,8 +66,8 @@ object LearnedCannotLinks {
    *  heavily one venue's two spellings weigh against it. A fact that does weigh against — Sheri
    *  Hagen's 2025 "Billie" beside James Erskine's 2020 "Billie – Legende des Jazz" — still vetoes. */
   def learnedListingListing(calibration: IdentityCalibration,
-                            measures: Map[String, IdentityMeasures.Measure]): Option[CannotLink] = {
-    import IdentityMeasures.{Category, ContainingRelations, ListingListing, comparedFacts}
+                            measures: Map[String, Measure]): Option[CannotLink] = {
+    import IdentityMeasures.{ContainingRelations, ListingListing, comparedFacts}
     val onlyNamesDiffer = measures.get("title").exists { case Category(c) => ContainingRelations(c); case _ => false } &&
       calibration.contributionSum(ListingListing, comparedFacts(ListingListing, measures)) >= 0
     if (onlyNamesDiffer) None
@@ -74,7 +75,7 @@ object LearnedCannotLinks {
   }
 
   private def learnedOnFacts(calibration: IdentityCalibration, scope: String,
-                             measures: Map[String, IdentityMeasures.Measure],
+                             measures: Map[String, Measure],
                              probability: => Double): Option[CannotLink] =
     if (!IdentityMeasures.comparesAFact(scope, measures)) None
     else learned(calibration, scope, measures, probability)

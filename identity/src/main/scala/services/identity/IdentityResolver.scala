@@ -91,9 +91,9 @@ object IdentityResolver {
    *  — the model's side of the unified evidence model's signals ([[UnifiedEvidence]]) — the measures it was scored
    *  on, which a refit of the calibration counts (`scripts.IdentityRefit`), and, a namesake the release veto took out
    *  ([[ReleaseVeto]]), the namesake it stood beside that TMDB dates a release of in the venue's country. */
-  final case class CandidateEvidence(tmdbId: Int, film: IdentityMeasures.Film, probability: Double, rank: Option[Int], denied: Boolean,
+  final case class CandidateEvidence(tmdbId: Int, film: Film, probability: Double, rank: Option[Int], denied: Boolean,
                                      titleNamesIt: Boolean, seasonProduction: Boolean, houseProduction: Boolean,
-                                     measures: Map[String, IdentityMeasures.Measure] = Map.empty, releasedBeside: Option[Int] = None)
+                                     measures: Map[String, Measure] = Map.empty, releasedBeside: Option[Int] = None)
   /** A node's listings and its candidates as its family scored them (best first). */
   final case class NodeEvidence(keys: Seq[ListingKey], candidates: Seq[CandidateEvidence])
 

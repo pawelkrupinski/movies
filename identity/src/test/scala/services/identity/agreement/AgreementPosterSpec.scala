@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash,
-  PosterQuestion, Question, Resolution, ResolverDecision, VoterFamily}
+import services.identity.{Answer, Film, FilmTable, IdentityCalibration, Listing, PosterAnswers,
+  PosterHash, PosterQuestion, Question, Resolution, ResolverDecision, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -186,7 +186,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   "a film the families agree on" should "not be taken when the venue's poster matches another candidate and not it" in {
     val listing = lalka()
     // the families take Has's 1968 film; the venue's poster is the 2026 film's
-    val has = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
+    val has = SourceRecord(Film("Lalka", None, Nil, Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
     val agreeing = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(family => family -> new HeldFamilyAnswers(family, Map("x" -> has))).toMap
     def decidedWith(films: Map[Int, Seq[PosterHash]]) =
       stage(new HeldPosters(Map(venuePoster -> Some(shown)), films), silentFamilies ++ agreeing)

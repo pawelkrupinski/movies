@@ -95,7 +95,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       .getOrElse(DecisionTrace.blockerOf(own, searched.exists(_.endsWith(": unanswered")), refusals)))
     // the best other film it weighed, by probability: what the take beat (or, taking none, its next best)
     val rival    = own.iterator.filterNot(scored => weighed.exists(_ eq scored)).maxByOption(_.probability)
-    DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, IdentityMeasures.Measure])(_.measures),
+    DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, Measure])(_.measures),
       weighed.map(_.candidate.tmdbId), refusals, searched, shown.map(DecisionTrace.renderCandidate), blocker,
       weighed.map(_.probability), rival.map(scored => DecisionTrace.Rival(scored.candidate.tmdbId, scored.probability)))
   }

@@ -177,7 +177,7 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   // source numbers its films) is forwarded untracked: no read of the model's is tracked by it.
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(prefetched.get.details.remove(listing.key)).map(served).getOrElse(single(askDetail(listing)))
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(prefetched.get.queries.remove(query)).map(served).getOrElse(single(askQuery(query)))
-  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(prefetched.get.films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
+  override def film(tmdbId: Int): Answer[Option[Film]] = Option(prefetched.get.films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
   /** Nothing to hand on: a [[prefetch]] tells `inner` its asks were answered once it has asked them itself. */
   override def prefetchAnswered(): Unit = ()
 
@@ -217,7 +217,7 @@ object TrackedLookups {
   /** What one prefetch fetched, each answer served once. */
   private final class Prefetched {
     val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
-    val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
+    val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[Film]]]()
     val details = new java.util.concurrent.ConcurrentHashMap[models.ListingKey, Answer[Option[DetailFacts]]]()
   }
   /** A question being asked, by `asker`: its answer once asked. */

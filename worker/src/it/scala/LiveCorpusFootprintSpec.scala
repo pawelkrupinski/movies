@@ -27,7 +27,7 @@ class LiveCorpusFootprintSpec extends AnyFlatSpec with Matchers {
       case CandidateQuery.Title(text) => Answer.Known(idOf(text).toSeq.map(id => Hit(id, text, None, None, 5.0)))
       case _                          => Answer.Known(Nil)
     }
-    def film(id: Int) = Answer.Known(Some(IdentityMeasures.Film(s"Film ${id - FirstId}")))
+    def film(id: Int) = Answer.Known(Some(Film(s"Film ${id - FirstId}")))
     private def idOf(text: String) = "(\\d+)".r.findFirstIn(text).map(_.toInt + FirstId)
   }
 

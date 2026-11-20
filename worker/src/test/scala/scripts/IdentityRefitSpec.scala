@@ -5,8 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityCalibration
 import services.identity.IdentityCalibration.{Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
-import services.identity.IdentityMeasures.{Category, Missing, Number}
 import tools.UnmatchedClusters.{Label, Take}
+import services.identity.Measure.{Category, Missing, Number}
 
 /** The weekly rule refit: what it may move, how far, how it refits a signal's weights, and when it keeps a change. */
 class IdentityRefitSpec extends AnyFlatSpec with Matchers with ScratchDirectories {

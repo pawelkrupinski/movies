@@ -110,18 +110,18 @@ class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
     none.keySet should contain allOf ("title", "year.distance", "director", "runtime.delta", "venues.corroborating")
     val searched = StoredIdentityConfidence.measures(film, "Kino 1410", listing, Nil,
       Seq(TitleSearch(IdentityMeasures.key(listing.title), Some(2), 1)))
-    searched.get("search.rank") shouldBe Some(IdentityMeasures.Number(2))
-    searched.get("rivals") shouldBe Some(IdentityMeasures.Number(1))
+    searched.get("search.rank") shouldBe Some(Measure.Number(2))
+    searched.get("rivals") shouldBe Some(Measure.Number(1))
     searched.keySet should not contain "popularity.log2"
   }
 
   // A film a few hundred venues list: titles in three families, some stating the film's year, some its director, some
   // nothing -- every listing measured against the venues sharing its title key.
-  private val widelyListed = IdentityMeasures.Film("Shaun das Schaf - Spuk im Kürbisfeld", year = Some(2026),
+  private val widelyListed = Film("Shaun das Schaf - Spuk im Kürbisfeld", year = Some(2026),
     directors = Some(Seq("Steve Cox")), runtime = Some(85))
-  private def venuesListing(n: Int): Seq[(String, IdentityMeasures.Listing)] = (1 to n).map { i =>
+  private def venuesListing(n: Int): Seq[(String, MeasuredListing)] = (1 to n).map { i =>
     val title = Seq("Shaun das Schaf - Spuk im Kürbisfeld", "Shaun das Schaf – Spuk im Kürbisfeld", "SHAUN DAS SCHAF: Spuk im Kürbisfeld")(i % 3)
-    s"Kino $i" -> IdentityMeasures.Listing(title, year = Option.when(i % 4 == 0)(2026), directors = if (i % 5 == 0) Seq("Steve Cox") else Nil,
+    s"Kino $i" -> MeasuredListing(title, year = Option.when(i % 4 == 0)(2026), directors = if (i % 5 == 0) Seq("Steve Cox") else Nil,
       runtime = Option.when(i % 2 == 0)(85 + i % 3))
   }
 

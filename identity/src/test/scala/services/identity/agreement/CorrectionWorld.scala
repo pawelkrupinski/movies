@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, FilmTable, IdentityMeasures, Listing, PosterAnswers, PosterHash,
-  PosterQuestion, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
+import services.identity.{Answer, CatalogueAnswers, Film, FilmTable, Listing, PosterAnswers,
+  PosterHash, PosterQuestion, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import services.movies.SingleCountryNormalizer
 
@@ -79,7 +79,7 @@ object CorrectionWorld {
   val first: Listing  = FilmTable.listing(Multikino, "Lalka").copy(poster = Some(firstPoster), screenings = ScreeningDays.of(Seq(day)))
   val joined: Listing = FilmTable.listing(KinoMuza, "Klub Konesera: Lalka").copy(poster = Some(joinedPoster), screenings = ScreeningDays.of(Seq(day.plusDays(1))))
 
-  private val has = SourceRecord(IdentityMeasures.Film("Lalka", None, Seq("The Doll", "Klub Konesera: Lalka"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None),
+  private val has = SourceRecord(Film("Lalka", None, Seq("The Doll", "Klub Konesera: Lalka"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None),
     Map("tmdb" -> Corrected.toString))
 
   /** The model's take: its own match, the 2026 film, over every listing it holds. */

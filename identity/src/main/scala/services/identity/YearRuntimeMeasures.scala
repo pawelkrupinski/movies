@@ -8,10 +8,13 @@ import models.EmbeddedYear
 import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*
+import Measure.{Category, Missing, Number}
 
 /** The facts a listing states against a film's: its countries, its year and runtime deltas, and the year its titles write.
  *  Part of [[IdentityMeasures]], which exports it. */
 private[identity] object YearRuntimeMeasures {
+  /** Minutes a venue's running time may stand off the film's and still corroborate it: trailers and rounding. */
+  val RuntimeBand = 10
   /** ISO 3166-1 alpha-2 code of a country as a venue spells it, read from the JDK's own
    *  country names in the deployment languages and its alpha-2/alpha-3 codes. No curated table:
    *  a spelling the JDK does not know is unmapped. */
@@ -73,12 +76,12 @@ private[identity] object YearRuntimeMeasures {
    *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
    *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
    *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter.
-   *  So is a slot LONGER than the film by more than [[Corroboration.RuntimeBand]] beside an event its billing joins
+   *  So is a slot LONGER than the film by more than [[RuntimeBand]] beside an event its billing joins
    *  ([[runsAnEvent]]: "It's Nice Up North + Q&A" at 120 minutes is the 80-minute film and its Q&A): the event's minutes
    *  are no fact about the film; and the record's own relay billed ([[relaysTheRecord]]): its interval's minutes are
    *  no fact about the record. Within the band it still agrees: ICA's 92-minute "… A Jason Molina Story + Q&A" is the
    *  91-minute film. */
-  private[identity] def runtimeDelta(l: Listing, f: Film, country: Option[String], title: Category = Unrelated): Measure = l.statedRuntime match {
+  private[identity] def runtimeDelta(l: MeasuredListing, f: Film, country: Option[String], title: Category = Unrelated): Measure = l.statedRuntime match {
     case None => MissingListing
     case Some(stated) =>
       // walked in place, not as a collection: every listing is measured against every candidate
@@ -101,15 +104,15 @@ private[identity] object YearRuntimeMeasures {
   private def closerRuntime(d: Int, off: Int): Boolean = math.abs(d) < math.abs(off) || (math.abs(d) == math.abs(off) && d > off)
   /** Of a listing billing longer than every runtime of the record, `off` minutes past the closest: is that no fact about
    *  the record — an edition it bills, or, past the band, an event it runs or the record's own relay? */
-  private def runsPastTheRecord(l: Listing, f: Film, country: Option[String], title: Category, off: Int): Boolean =
-    billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))
+  private def runsPastTheRecord(l: MeasuredListing, f: Film, country: Option[String], title: Category, off: Int): Boolean =
+    billsAnEdition(l, f, country) || (off > RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))
 
   /** Two listings' stated runtimes apart ([[IdentityMeasures.listingListing]]) — absent when the one billing an event beside the film runs longer, past the band:
    *  the event's minutes, no fact about the film ([[runtimeDelta]]). */
-  private[identity] def listingRuntimeDelta(a: Listing, b: Listing): Measure =
+  private[identity] def listingRuntimeDelta(a: MeasuredListing, b: MeasuredListing): Measure =
     (a.statedRuntime, b.statedRuntime) match {
-      case (Some(x), Some(y)) if (x - y > Corroboration.RuntimeBand && runsAnEvent(a)) ||
-                                 (y - x > Corroboration.RuntimeBand && runsAnEvent(b)) => MissingListing
+      case (Some(x), Some(y)) if (x - y > RuntimeBand && runsAnEvent(a)) ||
+                                 (y - x > RuntimeBand && runsAnEvent(b)) => MissingListing
       case (x, y)                                                                       => absDelta(x, y)
     }
 
@@ -126,7 +129,7 @@ private[identity] object YearRuntimeMeasures {
    *  ×134 beside the 120-minute record (1791571), whose 40 minutes kept their node under the cut and every bare spelling
    *  between it and the record's other venues apart. Only the screened season's record ([[recordsTheScreenedSeason]]); read
    *  only of a listing running longer than it. */
-  private[identity] def relaysTheRecord(l: Listing, f: Film, title: Category): Boolean =
+  private[identity] def relaysTheRecord(l: MeasuredListing, f: Film, title: Category): Boolean =
     recordsTheScreenedSeason(l, f) && (
       (l.billsAStageHouse && StageRelays.billsItsHouse(l, f) && !StageRelays.namesAnotherWork(l, f)) ||
         (NamingRelations(title.value) && services.titles.RelayBanner.billed(l.ownTitles) && services.titles.RelayBanner.billed(f.titles)))
@@ -134,17 +137,17 @@ private[identity] object YearRuntimeMeasures {
   /** Is the record dated in the performing season the listing's screenings fall in, or the year it closes in: the
    *  season's own relay, not the house's earlier recording of the work, whose shorter running time still tells it apart
    *  (UK "Royal Ballet: La Bayadère" [170′], screening in 2026/27, is no 2018 recording of 128 minutes, 555004). */
-  private def recordsTheScreenedSeason(l: Listing, f: Film): Boolean =
+  private def recordsTheScreenedSeason(l: MeasuredListing, f: Film): Boolean =
     l.screeningsSeason.exists(season => f.year.exists(year => year == season || year == season + 1))
 
   /** Does the listing's billing join an event to its film ([[joinedEvents]]: "+ Q&A", "+ Recorded Q&A", "+ Interval"),
    *  whose minutes its running time may hold beside the film's? A second feature ("Panem-Mockingjay 1+2") is no event. */
-  private[identity] def runsAnEvent(l: Listing): Boolean = joinedEvents(l).nonEmpty
+  private[identity] def runsAnEvent(l: MeasuredListing): Boolean = joinedEvents(l).nonEmpty
 
   /** Does the listing bill an edition of the film: by its title ([[DecorationWords.billsAnEdition]]), or by its year, one
    *  TMDB dates a release of the film's edition in ([[Film.editionYear]]: Prince Charles's "Apocalypse Now", 2019, is
    *  its 2019 Final Cut)? */
-  private def billsAnEdition(l: Listing, f: Film, country: Option[String]): Boolean =
+  private def billsAnEdition(l: MeasuredListing, f: Film, country: Option[String]): Boolean =
     DecorationWords.billsAnEdition(l.ownTitles, f.titles) || l.year.exists(f.editionYear(_, country))
 
   private[identity] def absDelta(a: Option[Int], b: Option[Int]): Measure = delta(a, b) match {

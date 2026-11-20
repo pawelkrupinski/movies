@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Acceptance, CatalogueId, CatalogueSources, DecisionTrace, FilmTable, IdentityCalibration,
-  IdentityMeasures, IdentityResolver, Listing, ResolverDecision, VoterFamily}
+import services.identity.{Acceptance, CatalogueId, CatalogueSources, DecisionTrace, Film, FilmTable,
+  IdentityCalibration, IdentityResolver, Listing, Measure, ResolverDecision, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,12 +12,12 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
   import UnifiedEvidence._
 
   private def film(title: String, year: Int, director: String, runtime: Int = 100, imdb: Int = 0) =
-    IdentityMeasures.Film(title, None, Nil, Some(year), Some(runtime), Some(Seq(director)), None, None, imdbNumber = imdb)
+    Film(title, None, Nil, Some(year), Some(runtime), Some(Seq(director)), None, None, imdbNumber = imdb)
   private val klondike2022 = film("Klondike", 2022, "Maryna Er Gorbach", 100, imdb = 16315948)
   private val klondike1932 = film("Klondike", 1932, "Phil Rosen", 68, imdb = 22873)
 
   private val bare = Seq(listing(KinoMuza, "Klondike", year = Some(2022), director = Some("Maryna Er Gorbach")))
-  private def candidate(id: Int, f: IdentityMeasures.Film, p: Double, denied: Boolean = false) =
+  private def candidate(id: Int, f: Film, p: Double, denied: Boolean = false) =
     IdentityResolver.CandidateEvidence(id, f, p, Some(1), denied, titleNamesIt = true, seasonProduction = false, houseProduction = false)
   private def node(candidates: IdentityResolver.CandidateEvidence*) = IdentityResolver.NodeEvidence(bare.map(_.key), candidates)
   private val noMatch = ResolverDecision(bare.map(_.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil,
@@ -62,7 +62,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // the title with both Geyrhalter's 2016 film, which IMDb, Metacritic and RT take, and Filmweb's 2025 take — one
     // contender of the three read Geyrhalter's takers as a film released last year (families.current), and filled it
     val listings = Seq(listing(KinoMuza, "Homo sapiens?"))
-    val undated  = IdentityMeasures.Film("Homo Sapiens", Some("Homo Sapiens"), directors = Some(Nil))
+    val undated  = Film("Homo Sapiens", Some("Homo Sapiens"), directors = Some(Nil))
     val geyrhalter = film("Homo Sapiens", 2016, "Nikolaus Geyrhalter", 94)
     val verdicts = Seq(took(VoterFamily.Imdb, SourceRecord(geyrhalter, Map("imdb" -> "tt5450084"))),
       took(VoterFamily.Metacritic, SourceRecord(geyrhalter, Map("metacritic" -> "homo-sapiens"))),
@@ -117,14 +117,14 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
 
   "the guards" should "veto a film the title does not name, and another edition than the title numbers" in {
     // PL "Baczne oczka" filled with "Pucio kocha zwierzaki"; PL/UK "League of Legends Worlds 26" with the Worlds25 record
-    def only(title: String, record: IdentityMeasures.Film) = {
+    def only(title: String, record: Film) = {
       val listings = Seq(listing(KinoMuza, title))
       contenders(ClusterEvidence(listings, ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)(),
         Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(1, record, 0.1)))), Nil, Nil, _ => None, 2026)).head
     }
-    val pucio  = only("Baczne oczka", IdentityMeasures.Film("Pucio kocha zwierzaki", year = Some(2026)))
+    val pucio  = only("Baczne oczka", Film("Pucio kocha zwierzaki", year = Some(2026)))
     vetoes(pucio.signals.getOrElse(_, 0.0)) shouldBe Seq("title.namesNone")
-    val worlds = only("League of Legends Worlds 26 | Finals in Cinema", IdentityMeasures.Film("League of Legends Worlds25 - Finals in Cinema", year = Some(2025)))
+    val worlds = only("League of Legends Worlds 26 | Finals in Cinema", Film("League of Legends Worlds25 - Finals in Cinema", year = Some(2025)))
     vetoes(worlds.signals.getOrElse(_, 0.0)) should contain("edition.apart")
   }
 
@@ -135,7 +135,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // (PL Kino CK Lublin) on the same two
     val listings = Seq(listing(KinoMuza, "Człowiek znikąd | uroczysty pokaz odrestaurowanego filmu"))
     def filled(year: Int) = {
-      val korean  = IdentityMeasures.Film("Człowiek Znikąd", Some("아저씨"), Nil, Some(year), Some(119), Some(Seq("이정범")), None, None, imdbNumber = 1527788)
+      val korean  = Film("Człowiek Znikąd", Some("아저씨"), Nil, Some(year), Some(119), Some(Seq("이정범")), None, None, imdbNumber = 1527788)
       val record  = SourceRecord(korean.copy(title = "The Man from Nowhere", originalTitle = Some("Ajeossi"), directors = Some(Seq("Lee Jeong-beom")),
         imdbNumber = 0), Map("imdb" -> "tt1527788"))
       val verdicts = Seq(took(VoterFamily.Imdb, record), FamilyVerdict(VoterFamily.Filmweb, None, Seq(record), leaning = Some(record)),
@@ -152,7 +152,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
 
   /** The film a lone candidate's fill takes and the rule it takes it by, if any: the cluster's listings, the model's one
    *  candidate (its lean where `lean`), the families' verdicts. */
-  private def filledBy(listings: Seq[Listing], tmdb: Int, f: IdentityMeasures.Film, verdicts: Seq[FamilyVerdict],
+  private def filledBy(listings: Seq[Listing], tmdb: Int, f: Film, verdicts: Seq[FamilyVerdict],
                        lean: Boolean = false): Option[(String, String)] = {
     val leaning  = Option.when(lean)(ResolverDecision.Leaning(tmdb, f.imdbNumber))
     val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil, leaning = leaning, candidate = leaning)()
@@ -160,7 +160,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
       Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(tmdb, f, 0.03)))), verdicts, Nil, _ => None, thisYear = 2026)))
       .map { case (contender, rule) => contender.film -> rule }
   }
-  private def recordOf(f: IdentityMeasures.Film) = SourceRecord(f.copy(imdbNumber = 0), Map("imdb" -> f"tt${f.imdbNumber}%07d"))
+  private def recordOf(f: Film) = SourceRecord(f.copy(imdbNumber = 0), Map("imdb" -> f"tt${f.imdbNumber}%07d"))
   private def linked(title: String, cineamo: String) = listing(KinoMuza, title).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, cineamo)))
 
   "one film database's take of a bare title" should "fill no namesake on its own, the model scoring it" in {
@@ -197,7 +197,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     val dreyer = film("Michael", 1924, "Carl Theodor Dreyer", 93, imdb = 15136)
     val biopic = film("Michael", 2026, "Antoine Fuqua", 127, imdb = 11378946)
     val listings = Seq(listing(KinoMuza, "ATMOS: Michael", year = Some(1924)).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "55587m"))))
-    def fill(firstDeniedBy: Map[String, IdentityMeasures.Measure]) = {
+    def fill(firstDeniedBy: Map[String, Measure]) = {
       val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.Vetoed, Nil)()
       val first    = candidate(936075, biopic, 0.06, denied = true).copy(measures = firstDeniedBy)
       val linkedTo = candidate(55587, dreyer, 0.06).copy(rank = Some(10))
@@ -205,7 +205,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
         Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(first, linkedTo))), Seq(took(VoterFamily.Filmweb, recordOf(dreyer))), Nil,
         _ => None, thisYear = 2026))).map { case (contender, rule) => contender.film -> rule }
     }
-    fill(Map("year.delta" -> IdentityMeasures.Number(-102))) shouldBe None
+    fill(Map("year.delta" -> Measure.Number(-102))) shouldBe None
     // the first hit denied by no year: the link and the family's take stand as two sources
     fill(Map.empty) shouldBe Some("tmdb:55587" -> "family.feedLink&!family.dissent")
     // the feed linking the CURRENT film over an older first hit its copied year denied (DE Gröben-Lichtspiele's "Camouflage
@@ -214,7 +214,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     val older     = film("Camouflage", 2016, "Imge Özbilge", 80, imdb = 6000001)
     val camouflage = Seq(listing(KinoMuza, "Camouflage OmU", year = Some(2026)).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "1735950m"))))
     UnifiedRules.resolver.filled(contenders(ClusterEvidence(camouflage, ResolverDecision(camouflage.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)(),
-      Seq(IdentityResolver.NodeEvidence(camouflage.map(_.key), Seq(candidate(1177883, older, 0.05, denied = true).copy(measures = Map("year.delta" -> IdentityMeasures.Number(10))),
+      Seq(IdentityResolver.NodeEvidence(camouflage.map(_.key), Seq(candidate(1177883, older, 0.05, denied = true).copy(measures = Map("year.delta" -> Measure.Number(10))),
         candidate(1735950, ukrainian, 0.6).copy(rank = Some(2))))), Seq(took(VoterFamily.Filmweb, recordOf(ukrainian))), Nil, _ => None, thisYear = 2026)))
       .map { case (contender, rule) => contender.film -> rule } shouldBe Some("tmdb:1735950" -> "family.feedLink&!family.dissent")
   }
@@ -272,8 +272,8 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     val billed = Seq("Acud Kino" -> "BARWY OCHRONNE / CAMOUFLAGE", "Harsefelder Lichtspiele" -> "CAMOUFLAGE", "IL KINO" -> "Camouflage",
       "Kino A" -> "Camouflage", "Kino B" -> "Camouflage").map { case (venue, title) =>
       listing(KinoMuza, title).copy(key = models.ListingKey.Published(venue, title, None, Nil)) }
-    val gibalenko = IdentityMeasures.Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), Some(102), Some(Seq("Mykyta Gibalenko")))
-    val zanussi   = IdentityMeasures.Film("Barwy ochronne", Some("Barwy ochronne"), Seq("Camouflage"), Some(1977), Some(96), Some(Seq("Krzysztof Zanussi")))
+    val gibalenko = Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), Some(102), Some(Seq("Mykyta Gibalenko")))
+    val zanussi   = Film("Barwy ochronne", Some("Barwy ochronne"), Seq("Camouflage"), Some(1977), Some(96), Some(Seq("Krzysztof Zanussi")))
     def found(listings: Seq[Listing]) = {
       val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()
       contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key),
@@ -290,7 +290,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     // programmkino-lichtblick-e-v-buddies-69181215): Cineamo's 81 minutes at Pollux and Lichtwerk deny the current
     // 5-minute short kinoheld's copy at Lichtblick names. Three venues filled it there, two nothing; a venue denying the
     // film is no venue of its release.
-    val short = IdentityMeasures.Film("Buddies", Some("Buddies"), Nil, Some(2026), Some(5), Some(Seq("Rahul Hansraj")))
+    val short = Film("Buddies", Some("Buddies"), Nil, Some(2026), Some(5), Some(Seq("Rahul Hansraj")))
     def billing(venue: String) = listing(KinoMuza, "Buddies").copy(key = models.ListingKey.Published(venue, "Buddies", None, Nil))
     def found(billings: Seq[(Listing, Boolean)]) = {
       val listings = billings.map(_._1)
@@ -313,8 +313,8 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     val title    = "Herr der Ringe - Rückkehr des Königs (ext.)"
     val listings = Seq("CineStar Augsburg", "CineStar Berlin", "CineStar Kiel", "CineStar Erfurt").map(venue =>
       listing(KinoMuza, title).copy(key = models.ListingKey.Published(venue, title, None, Nil)))
-    val short    = IdentityMeasures.Film("Herr der Ringe", Some("Herr der Ringe"), Nil, Some(2025), Some(14))
-    val king     = IdentityMeasures.Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), Nil,
+    val short    = Film("Herr der Ringe", Some("Herr der Ringe"), Nil, Some(2025), Some(14))
+    val king     = Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), Nil,
       Some(2003), Some(201), Some(Seq("Peter Jackson")), imdbNumber = 167260)
     val decision = ResolverDecision(listings.map(_.key), None, 0.17, ResolverDecision.Basis.BelowThreshold, Nil)()
     def found(ranked: IdentityResolver.CandidateEvidence*) =

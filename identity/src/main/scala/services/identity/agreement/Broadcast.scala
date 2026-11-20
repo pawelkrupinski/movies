@@ -1,9 +1,8 @@
 package services.identity.agreement
 
 import services.titles.billing.{BillingPieces, DecorationWords}
-import services.identity.StageRelays
-import services.identity.{Answer, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
-import services.identity.IdentityMeasures.Film
+import services.identity.{Answer, FactRelations, Film, IdentityMeasures, Listing, ListingShape, MeasuredListing,
+  ScreeningDays, StageRelays}
 
 
 /**
@@ -40,7 +39,7 @@ object Broadcast {
    *
    *  The ONE broadcast join: the stage's take, a correction's switch and the unified fill's `broadcast.take` signal all
    *  read it; a reader that cannot wait reads a `Left` as no take. */
-  def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)],
+  def take(listings: Seq[Listing], measured: Listing => MeasuredListing, records: Seq[(Int, Film)],
            productions: () => Answer[Seq[Film]] = () => Answer.Known(Nil))(
       undated: Int => Boolean = _ => false): Either[Seq[Int], Option[Taken]] =
     if (listings.exists(_.screenings.isUnknown)) Left(Nil)
@@ -77,7 +76,7 @@ object Broadcast {
    *  keeps "Stage Fright" (Camelot Theatres' Hitchcock retrospective) and "Phantom of the Opera (1943)". `measured`:
    *  the listing as the model reads it; `others`: the other records the cluster's titles find, read only once the rest
    *  holds. */
-  def superseded(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, taken: Film,
+  def superseded(listings: Seq[Listing], measured: Listing => MeasuredListing, taken: Film,
                  others: => Seq[(Int, Film)]): Option[String] = {
     val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
     val run  = (day: java.time.LocalDate) => day.minusDays(RelayRunDays.toLong)
@@ -135,7 +134,7 @@ object Broadcast {
 
   /** The days the cluster screens on and what each of its listings bills — `None` when it screens on none, or a listing
    *  bills no stage work. */
-  private def billed(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing): Option[(ScreeningDays, Seq[Billing])] = {
+  private def billed(listings: Seq[Listing], measured: Listing => MeasuredListing): Option[(ScreeningDays, Seq[Billing])] = {
     val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
     if (days.isEmpty || listings.isEmpty) None
     else {
@@ -149,8 +148,8 @@ object Broadcast {
 
   /** What one listing bills: the stage works its title names, its season, and its BANNER — the words of its pieces naming
    *  no work, four letters or more, no number or event word ("live", "retransmisja") among them. */
-  private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: IdentityMeasures.Listing,
-                                    stated: IdentityMeasures.Listing, credited: Seq[String]) {
+  private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: MeasuredListing,
+                                    stated: MeasuredListing, credited: Seq[String]) {
     /** Does the listing name the production of a record: a record of one of its works, its season, a year and a director
      *  its facts do not deny, and a house its banner spells — or, its banner spelling another, a production of the
      *  record's house that one of `productions` (film databases' records) credits with the director the listing credits
@@ -193,7 +192,7 @@ object Broadcast {
     /** `measured`'s facts are what a record's year and director are read against — but a listings site's catalogue entry
      *  linked as the listing's page ([[ListingShape.venueStated]]: Flicks links an encore to an old season's page) states
      *  the catalogue's claim, not the venue's: then only the listing's own facts are. */
-    def of(listing: Listing, measured: IdentityMeasures.Listing): Billing = {
+    def of(listing: Listing, measured: MeasuredListing): Billing = {
       val titles = Seq(listing.title, listing.rawTitle).distinct.map(tagApart)
       val named  = measured.seasonYear.isDefined
       val stated = if (ListingShape.venueStated(listing)) measured else services.identity.Evidence.of(listing, None).measured

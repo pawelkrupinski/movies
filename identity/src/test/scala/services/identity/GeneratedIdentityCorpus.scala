@@ -105,9 +105,9 @@ object GeneratedIdentityCorpus {
       }
     // the films' order and which records never answer are the films' own -- by their index, never their TMDB id -- so a
     // corpus relabelled ([[generate]]'s `tmdbIdOf`) is the same data under other ids; filed under 1000 + index, as before
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+    override def film(tmdbId: Int): Answer[Option[services.identity.Film]] =
       if (known.find(_.tmdbId.contains(tmdbId)).fold(tmdbId)(f => 1000 + f.id) % 7 == 0) Answer.Unknown
       else Answer.Known(known.find(_.tmdbId.contains(tmdbId)).map(f =>
-        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
+        services.identity.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
   }
 }

@@ -3,8 +3,7 @@ package scripts
 import clients.tools.RecordingHttpFetch
 import models.{Cinema, CinemaMovie, Country, ListingKey}
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.identity.{IdentityMeasures, TitleDecorations, TmdbFilmRecord}
-import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Number}
+import services.identity.{Film, IdentityMeasures, Measure, MeasuredListing, TitleDecorations, TmdbFilmRecord}
 import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
 import tools.CorpusFixture
@@ -16,6 +15,7 @@ import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Using}
+import services.identity.Measure.{Category, Number}
 
 /**
  * The calibration's INPUT: every recorded listing, the TMDB answers the recorded trees hold for
@@ -24,7 +24,7 @@ import scala.util.{Try, Using}
 object IdentityCalibrationData {
 
   /** One listing as its venue published it. `prodFilm` is the production film it is filed under. */
-  final case class Obs(idx: Int, country: String, venue: String, listingKey: String, listing: Listing,
+  final case class Obs(idx: Int, country: String, venue: String, listingKey: String, listing: MeasuredListing,
                        filmUrl: Option[String], chainIds: Map[String, String], source: String,
                        prodFilm: Option[String])
 
@@ -150,8 +150,8 @@ object IdentityCalibrationData {
 
   private val Separator = "␟"
 
-  private def listingOf(cm: CinemaMovie, decorations: TitleDecorations): Listing =
-    Listing(cm.movie.title, cm.movie.rawTitle, cm.movie.originalTitle.filter(_.trim.nonEmpty), cm.movie.releaseYear,
+  private def listingOf(cm: CinemaMovie, decorations: TitleDecorations): MeasuredListing =
+    MeasuredListing(cm.movie.title, cm.movie.rawTitle, cm.movie.originalTitle.filter(_.trim.nonEmpty), cm.movie.releaseYear,
       cm.movie.runtimeMinutes.filter(_ > 0), cm.director.map(_.trim).filter(_.nonEmpty).distinct, cm.movie.countries,
       decorations = decorations)
 
@@ -202,7 +202,7 @@ object IdentityCalibrationData {
           u => ListingKey.Native(venue, u, raw.getOrElse(title))).toString
         if (title.nonEmpty && seen.add(lk)) {
           out += Obs(idx, country.code, venue, lk,
-            Listing(title, raw, (slot \ "originalTitle").asOpt[String].filter(_.trim.nonEmpty), year,
+            MeasuredListing(title, raw, (slot \ "originalTitle").asOpt[String].filter(_.trim.nonEmpty), year,
               (slot \ "runtimeMinutes").asOpt[Int].filter(_ > 0), dirs, (slot \ "countries").asOpt[Seq[String]].getOrElse(Nil),
               decorations = decorations),
             url, Map.empty, "prod", Some(film))
@@ -214,7 +214,7 @@ object IdentityCalibrationData {
   }
 
   /** The queries a listing's own title issues (`IdentityMeasures.searchQueries`). */
-  def queries(l: Listing): Seq[String] = IdentityMeasures.searchQueries(l)
+  def queries(l: MeasuredListing): Seq[String] = IdentityMeasures.searchQueries(l)
 
   /** Do the two listings' chains publish an id in a common namespace, and is it the same? */
   def sharedChainId(a: Obs, b: Obs): Option[Boolean] = {

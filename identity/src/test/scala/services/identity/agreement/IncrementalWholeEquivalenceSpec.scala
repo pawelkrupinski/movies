@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, AnswersChanged, CandidateQuery, DetailFacts, FilmTable, GeneratedIdentityCorpus, Hit,
-  IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, InMemoryIdentityModelStore,
+import services.identity.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Film, FilmTable, GeneratedIdentityCorpus,
+  Hit, IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore,
   IncrementalResolver, Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
   ScreeningDays, TakeFlips, TitleDecorations, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
@@ -229,7 +229,7 @@ object IncrementalWholeEquivalenceSpec {
         family -> corpus.films.filter(_ => rnd.nextInt(10) < 7).map { film =>
           val ids = (if (family == VoterFamily.Filmweb) Map.empty else Map("imdb" -> imdbOf(film))) ++ film.tmdbId.map("tmdb" -> _.toString)
           // IMDb's records are filed under their IMDb id, as production's are; the rest under their own
-          (if (family == VoterFamily.Imdb) imdbOf(film) else s"${family.label}-${film.id}") -> SourceRecord(IdentityMeasures.Film(film.title, None, Nil, Some(film.year), Some(film.runtime),
+          (if (family == VoterFamily.Imdb) imdbOf(film) else s"${family.label}-${film.id}") -> SourceRecord(Film(film.title, None, Nil, Some(film.year), Some(film.runtime),
             Some(Seq(film.director)), None, None), ids)
         }.toMap
       }.toMap
@@ -250,7 +250,7 @@ object IncrementalWholeEquivalenceSpec {
     /** US "SEVENTEEN World Tour 'NEW_'" ×391: IMDb alone holds the tour film, billed widely as a current release — filled
      *  by `venues.current` while the film is this year's or last; a new year that makes it older takes it no more. */
     val fill: Case = {
-      val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2025), None, None, None, None)
+      val tour     = Film("Seventeen World Tour (New_)", None, Nil, Some(2025), None, None, None, None)
       val listings = Seq(KinoMuza, Multikino, KinoPalacowe).map(venue => FilmTable.listing(venue, "SEVENTEEN World Tour 'NEW_'"))
       Case(listings, new FilmTable(Nil, normalizer), Map(VoterFamily.Imdb -> Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626")))) ++
         Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(_ -> Map.empty[String, SourceRecord]),
@@ -264,7 +264,7 @@ object IncrementalWholeEquivalenceSpec {
         FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159, popularity = 2.0)), normalizer)
       val url     = "https://kino.example/lalka.jpg"
       val shown   = PosterHash(0x5a5a5a5a5a5aL)
-      val has     = SourceRecord(IdentityMeasures.Film("Lalka", None, Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
+      val has     = SourceRecord(Film("Lalka", None, Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
       val listing = FilmTable.listing(Multikino, "Lalka", runtime = Some(162)).copy(poster = Some(url), screenings = ScreeningDays.of(Seq(day)))
       Case(Seq(listing), table, VoterFamily.values.map(family => family -> Map.empty[String, SourceRecord]).toMap ++
         Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(_ -> Map("x" -> has)),
@@ -318,7 +318,7 @@ object IncrementalWholeEquivalenceSpec {
       def detail(listing: Listing): Answer[Option[DetailFacts]] = of.tmdb.detail(listing)
       def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
         if (filed(s"tmdb|${query.sortKey}")) of.tmdb.candidates(query) else Answer.Unknown
-      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+      def film(tmdbId: Int): Answer[Option[Film]] =
         if (filed(s"tmdb|film|$tmdbId")) of.tmdb.film(tmdbId) else Answer.Unknown
     }
     /** What this round filed of TMDB's questions among those asked: the model is told of exactly these. */
@@ -394,7 +394,7 @@ object IncrementalWholeEquivalenceSpec {
     /** The model's lookups, noting what it asked: what a round's filing announces to it. */
     private val noted: IdentityLookups = new services.identity.ForwardingIdentityLookups(world.lookups) {
       override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = { asked += query; super.candidates(query) }
-      override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = { recorded += tmdbId; super.film(tmdbId) }
+      override def film(tmdbId: Int): Answer[Option[Film]] = { recorded += tmdbId; super.film(tmdbId) }
     }
     private def newModel() = new IncrementalResolver(noted, normalizer, calibration, decorations = TitleDecorations.None, store = modelStore, rules = "r")
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys, perApply: Int) =

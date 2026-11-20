@@ -199,7 +199,7 @@ object PosterEvidence {
    *  titles number nothing, a year the listing bills dates it instead: a film released more than a year from every
    *  year billed is another edition ("Disney Junior Cinema Club 2026" against TMDB's 2024 one) or another film of the
    *  name ("Siostry (1972)" against the 2005 "Siostry"). */
-  def editionsApart(listing: Listing, film: IdentityMeasures.Film): Boolean = billsAnEpisode(listing, film) || {
+  def editionsApart(listing: Listing, film: Film): Boolean = billsAnEpisode(listing, film) || {
     val filed = film.titles.flatMap(numbersOf).toSet
     if (filed.nonEmpty) {
       val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
@@ -220,7 +220,7 @@ object PosterEvidence {
    *  year it is screened, as "Casablanca (2026) | Klassiker" does. Nor does the year an anniversary the title bills
    *  falls in ("Jaws 50th Anniversary 2025", the 1975 film's fiftieth) date it away. The agreement's guard
    *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. That year, if one does. */
-  def datingApart(listing: Listing, film: IdentityMeasures.Film): Option[Int] = film.year.flatMap { released =>
+  def datingApart(listing: Listing, film: Film): Option[Int] = film.year.flatMap { released =>
     val named = film.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
     lazy val anniversary = IdentityMeasures.anniversaryOf(Seq(listing.rawTitle, listing.title) ++ listing.originalTitle)
     val billed = Seq(listing.rawTitle, listing.title).distinct.flatMap { title =>
@@ -234,7 +234,7 @@ object PosterEvidence {
   /** Does a title piece of the listing number the very title the film's own titles number none of — "Begegnungen der
    *  Seele 2" against "Begegnungen der Seele", its first part? A sequel TMDB titles otherwise ("Avatar 2", "Avatar: The
    *  Way of Water") is none of it. */
-  private def numbersAnInstalment(listing: Listing, film: IdentityMeasures.Film): Boolean = {
+  private def numbersAnInstalment(listing: Listing, film: Film): Boolean = {
     val filmKeys = film.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     Seq(listing.rawTitle, listing.title).distinct.flatMap(title => BillingPieces.pieces(title) :+ title).exists {
       case Instalment(base, _) => filmKeys(IdentityMeasures.key(base))
@@ -244,7 +244,7 @@ object PosterEvidence {
 
   /** Does a title piece of the listing bill a series' named episode ("LOVE ISLAND - EPISODE NATURE") the film's titles
    *  bill none of? An episode numbered ("Star Wars: Episode IV") is a film's own. */
-  private def billsAnEpisode(listing: Listing, film: IdentityMeasures.Film): Boolean =
+  private def billsAnEpisode(listing: Listing, film: Film): Boolean =
     !film.titles.exists(title => EpisodeWord.findFirstIn(title).isDefined) &&
       Seq(listing.rawTitle, listing.title).distinct.flatMap(BillingPieces.pieces).exists {
         case NamedEpisode(name) => !Numeral.matches(name.trim.takeWhile(!_.isWhitespace))

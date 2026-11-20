@@ -1,7 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Dependency, FilmTable, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, TakeOutcome, VoterFamily}
+import services.identity.{Answer, Dependency, Film, FilmTable, IdentityCalibration, IdentityLookups, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, TakeOutcome, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -99,7 +98,7 @@ object SearchRefreshHoldReplaySpec {
       def venue(url: String) = Answer.Known(Option.when(url == venuePoster)(shown))
       def film(id: Int)      = films.get(id).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
     }
-    private val record   = IdentityMeasures.Film("Game", None, Nil, Some(2026), Some(100), Some(Seq("Jane Doe")), None, None)
+    private val record   = Film("Game", None, Nil, Some(2026), Some(100), Some(Seq("Jane Doe")), None, None)
     private val families = Map[VoterFamily, FamilyAnswers](
       VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt39000001" -> SourceRecord(record, Map("imdb" -> "tt39000001"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))

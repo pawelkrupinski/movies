@@ -135,9 +135,9 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
 
   private def lalkaAt(cast: Seq[String], director: Option[String] = None, title: String = "Lalka") =
     FilmTable.listing(models.Multikino, title, director = director).copy(listedCast = ListedCast.of(cast))
-  private val Drama = IdentityMeasures.Film.genreBitsOf(Seq(18))
+  private val Drama = Film.genreBitsOf(Seq(18))
   private def film(cast: Seq[String], year: Int, director: String, language: String = "pl", genres: Int = Drama) =
-    IdentityMeasures.Film("Lalka", year = Some(year), directors = Some(Seq(director)), originalLanguage = Some(language), genreBits = genres,
+    Film("Lalka", year = Some(year), directors = Some(Seq(director)), originalLanguage = Some(language), genreBits = genres,
       cast = FilmCast.of(cast))
   // Helios' cast field of its "Lalka", as recorded 2026-10-15 (recording 38713274617)
   private val helios = Seq("Andrzej Seweryn, Krystyna Janda, Maria Dębska, Mateusz Damięcki, Marcin Dorociński, Kamila Urzędowska")
@@ -155,7 +155,7 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read no film of another language than the venue's: a dub's field lists its voices (UK 'Arrietty': Saoirse Ronan, Tom Holland)" in {
-    val arrietty = IdentityMeasures.Film("Arrietty", year = Some(2010), originalLanguage = Some("ja"),
+    val arrietty = Film("Arrietty", year = Some(2010), originalLanguage = Some("ja"),
       cast = FilmCast.of(Seq("Mirai Shida", "Ryunosuke Kamiki", "Tomokazu Miura")))
     CastEvidence.mismatch(Seq(lalkaAt(Seq("Saoirse Ronan, Tom Holland, Olivia Colman"), title = "Arrietty")), arrietty, Some("en"), castIsTheFilms = true) shouldBe None
   }
@@ -192,7 +192,7 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
 
   "the mismatch" should "stand down for an animated film or a documentary (TMDB genres 16, 99): a dub's voices, a documentary's contributors" in {
     for (genre <- CastEvidence.VoiceOrContributorGenres)
-      CastEvidence.mismatch(Seq(lalkaAt(helios)), film(doll1968, 1968, "Wojciech Has", genres = Drama | IdentityMeasures.Film.genreBitsOf(Seq(genre))),
+      CastEvidence.mismatch(Seq(lalkaAt(helios)), film(doll1968, 1968, "Wojciech Has", genres = Drama | Film.genreBitsOf(Seq(genre))),
         Some("pl"), castIsTheFilms = true) shouldBe None
   }
 

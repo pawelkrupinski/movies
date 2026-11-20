@@ -1,8 +1,8 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion,
-  DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Question, Resolution,
-  ResolverDecision, VoterFamily}
+  DetailFacts, Film, FilmTable, Hit, IdentityCalibration, IdentityLookups, Listing, Question,
+  Resolution, ResolverDecision, VoterFamily}
 import models.{Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,7 +22,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
 
   private val fantasy = CatalogueId("webedia", "325279")
   /** Wikidata's record of the 2025 "Fantasy", by its item. */
-  private val fantasyItem = SourceRecord(IdentityMeasures.Film("Fantasy", None, Nil, Some(2025), None, Some(Seq("Kukla Kesting")), None),
+  private val fantasyItem = SourceRecord(Film("Fantasy", None, Nil, Some(2025), None, Some(Seq("Kukla Kesting")), None),
     Map("wikidata" -> "Q135441923", "tmdb" -> "1318829", "imdb" -> "tt36112899"))
   private val fantasyHit = CatalogueHit(Some("Q135441923"), Some(1318829), Some("tt36112899"), "Wikidata P1265")
 
@@ -54,7 +54,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     def hasDetail(l: Listing): Boolean                           = l.page.exists(pages.contains)
     def detail(l: Listing): Answer[Option[DetailFacts]]          = Answer.Known(l.page.flatMap(pages.get))
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Known(Nil)
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+    def film(tmdbId: Int): Answer[Option[Film]] = Answer.Known(None)
   }
 
   private def stage(catalogue: CatalogueAnswers, fams: Map[VoterFamily, FamilyAnswers] = families(), tmdbOf: String => Answer[Option[Int]] = finds,
@@ -85,7 +85,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     // and 8 minutes onto the listing; the venue's own page bills Noxon's 2017 feature, which TMDB's search of the title
     // picks. The copied facts agree with the short's record — they were copied from it — and confirm nothing.
     val bone  = CatalogueId("webedia", "227420")
-    val short = SourceRecord(IdentityMeasures.Film("To the Bone", None, Nil, Some(2014), Some(8), Some(Seq("Erin Li")), None),
+    val short = SourceRecord(Film("To the Bone", None, Nil, Some(2014), Some(8), Some(Seq("Erin Li")), None),
       Map("wikidata" -> "Q1", "tmdb" -> "900665", "imdb" -> "tt3249100"))
     val held  = new HeldCatalogue(Map.empty, Map(bone -> Seq(CatalogueHit(Some("Q1"), Some(900665), Some("tt3249100"), "Wikidata P8531"))))
     val l     = FilmTable.listing(Multikino, "To The Bone", Some(2014), Some("Erin Li"), Some(8)).copy(catalogueIds = Seq(bone))
@@ -126,7 +126,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   it should "take the film TMDB's find names for the item's IMDb id, not a TMDB id Wikidata keeps for a record since deleted" in {
     // DE "Dann passiert das Leben": Wikidata's P4947 is 1517080, which TMDB no longer has; TMDB finds tt37150957 as 1445025
     val id   = CatalogueId("webedia", "1000007718")
-    val item = SourceRecord(IdentityMeasures.Film("Dann passiert das Leben", None, Nil, Some(2025), None, Some(Seq("Neele Vollmar")), None),
+    val item = SourceRecord(Film("Dann passiert das Leben", None, Nil, Some(2025), None, Some(Seq("Neele Vollmar")), None),
       Map("wikidata" -> "Q135779106"))
     val l = FilmTable.listing(Multikino, "Dann passiert das Leben", Some(2025)).copy(catalogueIds = Seq(id))
     decided(stage(new HeldCatalogue(Map.empty, Map(id -> Seq(CatalogueHit(Some("Q135779106"), Some(1517080), Some("tt37150957"), "Wikidata P8531")))),
@@ -137,7 +137,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     // PL Kinoteka "Czarne zombie": its page credits Bedward's 2026 "Black Zombie" and links Corman's 1963 "X" on IMDb
     val page = "https://kinoteka.pl/film/czarne-zombie-splatfilmfest/"
     val tt   = CatalogueId("imdb", "tt0057693")
-    val x    = SourceRecord(IdentityMeasures.Film("X: The Man with the X-Ray Eyes", None, Nil, Some(1963), None, Some(Seq("Roger Corman")), None))
+    val x    = SourceRecord(Film("X: The Man with the X-Ray Eyes", None, Nil, Some(1963), None, Some(Seq("Roger Corman")), None))
     val l    = FilmTable.listing(Kinoteka, "Czarne zombie | Splat!FilmFest").copy(page = Some(page))
     val held = new HeldCatalogue(Map(page -> Seq(tt)), Map.empty)
     val fams = families(imdb = Map("tt0057693" -> x))
@@ -151,7 +151,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     decided(stage(held), listing().copy(title = "Fantasy + Wicked", rawTitle = "Fantasy + Wicked", cleanTitle = "Fantasy + Wicked")).film shouldBe None
     // DE "Die Nibelungen - Teil 1: Siegfried": Lang's 1924 film by its Filmstarts id, though a search reads Wagner's opera
     val siegfried = CatalogueId("webedia", "49986")
-    val lang = SourceRecord(IdentityMeasures.Film("Die Nibelungen: Siegfried", None, Nil, Some(1924), None, Some(Seq("Fritz Lang")), None),
+    val lang = SourceRecord(Film("Die Nibelungen: Siegfried", None, Nil, Some(1924), None, Some(Seq("Fritz Lang")), None),
       Map("wikidata" -> "Q18341272"))
     val l = FilmTable.listing(Multikino, "Die Nibelungen - Teil 1: Siegfried", Some(1924), Some("Fritz Lang")).copy(catalogueIds = Seq(siegfried))
     decided(stage(new HeldCatalogue(Map.empty, Map(siegfried -> Seq(CatalogueHit(Some("Q18341272"), Some(31506), Some("tt0015175"), "Wikidata P1265")))),
@@ -170,7 +170,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     val page = "https://kinoteka.pl/film/the-taxidermist/"
     val tt   = CatalogueId("imdb", "tt40381362")
     val l    = FilmTable.listing(Kinoteka, "The Taxidermist | Splat!FilmFest").copy(page = Some(page))
-    val taxidermist = SourceRecord(IdentityMeasures.Film("The Taxidermist", None, Nil, Some(2025), None, Some(Seq("Paulo Nascimento")), None),
+    val taxidermist = SourceRecord(Film("The Taxidermist", None, Nil, Some(2025), None, Some(Seq("Paulo Nascimento")), None),
       Map("imdb" -> "tt40381362"))
     val waiting = stage(new HeldCatalogue(Map.empty, Map.empty))
     decided(waiting, l).film shouldBe None
@@ -184,7 +184,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   "a catalogue film TMDB holds no record of" should "stand on its Wikidata item — a feed's only where a venue's own facts credit it" in {
     val linked = CatalogueId("letterboxd", "mein-neues-altes-ich")
     val fed    = CatalogueId("webedia", "1000032825")
-    val item   = SourceRecord(IdentityMeasures.Film("Mein neues altes Ich", None, Nil, Some(2025), None, None, None), Map("wikidata" -> "Q138644118"))
+    val item   = SourceRecord(Film("Mein neues altes Ich", None, Nil, Some(2025), None, None, None), Map("wikidata" -> "Q138644118"))
     val hit    = Seq(CatalogueHit(Some("Q138644118"), None, None, "Wikidata P8531"))
     def taken(id: CatalogueId) = decided(stage(new HeldCatalogue(Map.empty, Map(id -> hit)), families(wiki = Map("Q138644118" -> item))),
       FilmTable.listing(Multikino, "Mein neues altes Ich", Some(2025)).copy(catalogueIds = Seq(id)))

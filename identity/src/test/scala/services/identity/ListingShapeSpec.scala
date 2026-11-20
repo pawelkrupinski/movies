@@ -78,9 +78,9 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // DE Pornfilmfestival Berlin (recording 38713274617): "The more the merrier", a shorts programme, took Stevens' 1943
     // comedy at 39.1% on its bare title — as "Cyberfuck" took the 2026 film
     def billed(raw: String, year: Option[Int] = None, runtime: Option[Int] = None) =
-      IdentityMeasures.Listing(raw.split(": ").last, Some(raw), year = year, runtime = runtime, screeningsSeason = Some(2026))
-    val merrier = IdentityMeasures.Film("The More the Merrier", year = Some(1943))
-    val cyber   = IdentityMeasures.Film("Cyberfuck", year = Some(2026))
+      MeasuredListing(raw.split(": ").last, Some(raw), year = year, runtime = runtime, screeningsSeason = Some(2026))
+    val merrier = Film("The More the Merrier", year = Some(1943))
+    val cyber   = Film("Cyberfuck", year = Some(2026))
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: The more the merrier"), merrier) shouldBe true
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Cyberfuck"), cyber) shouldBe false
     // a fact the venue states, a banner naming no film festival, or a festival named after the film: the film stands
@@ -90,7 +90,7 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.festivalsCatalogueNamesake(billed("The more the merrier - Purbeck Film Festival"), merrier) shouldBe false
     ListingShape.festivalsCatalogueNamesake(billed("Hackney Children's Film Fest: The more the merrier"), merrier) shouldBe true
     // a homage naming the film's director bills that film
-    val praunheim = IdentityMeasures.Film("Stadt der verlorenen Seelen", year = Some(1983), directors = Some(Seq("Rosa von Praunheim")))
+    val praunheim = Film("Stadt der verlorenen Seelen", year = Some(1983), directors = Some(Seq("Rosa von Praunheim")))
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Hommage Rosa von Praunheim 2: Stadt der verlorenen Seelen"), praunheim) shouldBe false
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Stadt der verlorenen Seelen"), praunheim) shouldBe true
   }
@@ -99,9 +99,9 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // DE Pornfilmfestival Berlin (recording 573): "The Dating Game" took Netflix's 2024 "Woman of the Hour" (TMDB's German
     // alternative title "The Dating Game") at 50.7% beside Violet Du Feng's 2025 documentary of that title
     def billed(raw: String, year: Option[Int] = None) =
-      IdentityMeasures.Listing(raw.split(": ").last, Some(raw), year = year, screeningsSeason = Some(2026))
-    val hour   = IdentityMeasures.Film("Woman of the Hour", year = Some(2024), directors = Some(Seq("Anna Kendrick")))
-    val dating = IdentityMeasures.Film("The Dating Game", year = Some(2025), directors = Some(Seq("Violet Du Feng")))
+      MeasuredListing(raw.split(": ").last, Some(raw), year = year, screeningsSeason = Some(2026))
+    val hour   = Film("Woman of the Hour", year = Some(2024), directors = Some(Seq("Anna Kendrick")))
+    val dating = Film("The Dating Game", year = Some(2025), directors = Some(Seq("Violet Du Feng")))
     ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), hour, dating) shouldBe true
     ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), dating, hour) shouldBe false
     // an undated namesake is no newer film; a stated year, or a banner naming no film festival, decides by the facts
@@ -112,8 +112,8 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
 
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
-      IdentityMeasures.Film(title, original, directors = Some(directors))
-    def beside(raw: String, films: IdentityMeasures.Film*) = ListingShape.billedBeside(listing(KinoMuza, raw), films)
+      Film(title, original, directors = Some(directors))
+    def beside(raw: String, films: Film*) = ListingShape.billedBeside(listing(KinoMuza, raw), films)
     // the identity-unmatched capture's agreed wrong takes (2026-10-13): a documentary's subtitle, a dance show, a comedian,
     // a programme's piece before the film, an event named like a film, a concert line-up
     beside("Femme - Frauen heilen die Welt", film("Femme")) shouldBe defined
@@ -177,7 +177,7 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     val banden = film("Frauen bildet Banden")
     beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora", banden) shouldBe defined
     beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora",
-      banden.copy(taglineKey = IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))) shouldBe None
+      banden.copy(taglineKey = Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))) shouldBe None
     BillingParse("LÍDA BAAROVÁ – DOOMED BEAUTY").dashedPair shouldBe true
     BillingParse("DONNERSTAGSKNEIPE + X").dashedPair shouldBe false
     BillingParse("Dio - Alive - eine Hommage an Ronnie James Dio").dashedPair shouldBe false

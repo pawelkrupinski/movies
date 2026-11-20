@@ -32,10 +32,10 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer, tmdb
       films.filter(f => f.imdbOnly && titledIn(f, t)).flatMap(f => FallbackIds.of(FallbackIds.Source.Imdb, f.id).map(id => hit(f).copy(tmdbId = id, popularity = 0.0)))
   })
   // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
-  override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
+  override def film(id: Int): Answer[Option[Film]] = {
     val found = FallbackIds.unapply(id).fold(inTmdb.find(_.id == id)) { case (_, number) => films.find(f => f.imdbOnly && f.id == number) }
     Answer.Known(found.map(f =>
-      IdentityMeasures.Film(f.title, f.original, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
+      Film(f.title, f.original, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
         Some(Seq(f.director).filter(_.nonEmpty)), Some(f.countries).filter(_.nonEmpty), if (f.imdbOnly) None else Some(f.popularity),
         imdbNumber = f.id, released = f.released, releaseCountries = f.releaseCountries, releases = f.releases)))
   }
@@ -48,7 +48,7 @@ object FilmTable {
  *  under besides its own (its AKAs), which IMDb's suggestions match a query against. `imdbOnly`: a film TMDB holds no
  *  record of — only the IMDb-titled question answers it, under its fallback id ([[FallbackIds]]). `released`: the day TMDB
  *  dates its release, a broadcast's air date. `releaseCountries`: the countries TMDB dates a release in, codes run
- *  together ([[IdentityMeasures.Film.releaseCountries]]). `original`: its original title, when TMDB's localised one is
+ *  together ([[Film.releaseCountries]]). `original`: its original title, when TMDB's localised one is
  *  another ("RBO 2026/27: Schwanensee (The Royal Ballet)" of "Royal Ballet & Opera 2026/27: Swan Lake"). `unindexed`: the
  *  alternatives among its titles TMDB's search does not match a query against (Kiselyov's "Mira", 864101, which a search
  *  for "Mira" does not return, only one for "Last Signal"). `suggested`: IMDb's suggestions for a title it carries list it —

@@ -42,7 +42,7 @@ private[identity] object AcceptanceRule {
     /** The undenied candidates IMDb suggested, by a place in its answer or by a title it lists them under. */
     lazy val suggested: Seq[Scored] = undenied.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
     /** The listing the first candidate scores: read only by a rule requiring a candidate. */
-    def listing: IdentityMeasures.Listing = ranked.head.listing
+    def listing: MeasuredListing = ranked.head.listing
     /** The best eligible candidate's probability, the ranking priors lending and never withdrawing ([[EvidenceWeights.priorsLent]]). */
     lazy val lentToTheBest: Double = weights.priorsLent(eligible.head, eligible)
   }

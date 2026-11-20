@@ -1,6 +1,5 @@
 package services.identity
 
-import services.identity.IdentityMeasures.Measure
 
 /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
  *  1-based). `seasonProduction`: the film's record names the listing's season production
@@ -8,7 +7,7 @@ import services.identity.IdentityMeasures.Measure
  *  listing's work under the listing's own house (`StageRelays.billsUnderItsHouse`).
  *  `deniedByPin`: a pin, not the listing's evidence, is (part of) why it is `denied`. */
 private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[Denial],
-                                          listing: IdentityMeasures.Listing, rank: Option[Int],
+                                          listing: MeasuredListing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
                                           suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
@@ -19,7 +18,7 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
    *  ranked against the film. */
   def unvetoed(measures: Map[String, Measure]): Map[String, Measure] =
     if (vetoedRivals == 0) measures
-    else measures.get("rivals").collect { case IdentityMeasures.Number(rivals) => measures.updated("rivals", IdentityMeasures.Number(math.max(0.0, rivals - vetoedRivals))) }
+    else measures.get("rivals").collect { case Measure.Number(rivals) => measures.updated("rivals", Measure.Number(math.max(0.0, rivals - vetoedRivals))) }
       .getOrElse(measures)
 
   /** Is the film ruled out for this listing — `denial` says why. */
@@ -31,8 +30,8 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   /** Denied by the probability cut alone — no learned rule, no pin: the weakest denial, the listing's title and few facts
    *  reading low, which another listing's own match outweighs (`Families.deniedBySibling`, `Acceptance.soleResult`). */
   def deniedByCutOnly: Boolean = !deniedByPin && denial.exists(_.kind == Denial.Kind.ProbabilityCut)
-  def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }
-  def number(measure: String): Option[Double]   = measures.get(measure).collect { case IdentityMeasures.Number(value) => value }
+  def category(measure: String): Option[String] = measures.get(measure).collect { case Measure.Category(value) => value }
+  def number(measure: String): Option[Double]   = measures.get(measure).collect { case Measure.Number(value) => value }
   /** Does the listing ITSELF credit the film's director — its director field, or a banner its title bills the film under
    *  ([[IdentityMeasures.bannerNamesItsDirector]])? Not a credit its venue's text alone gives
    *  ([[IdentityMeasures.creditedByText]]): that weighs in the score, but a rule taking a film by its director at any

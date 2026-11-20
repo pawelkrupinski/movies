@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.PosterQuestion
+import services.identity.{Film, PosterQuestion}
 
 import services.identityadapters.*
 import tools.SpecTimeouts
@@ -38,9 +38,9 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
         case _                          => Answer.Known(Nil)
       }
     }
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
+    def film(id: Int): Answer[Option[Film]] = {
       reads.read(s"f:$id")
-      Answer.Known(titles.values.flatten.find(_.tmdbId == id).map(hit => IdentityMeasures.Film(hit.title, None, Nil, hit.year)))
+      Answer.Known(titles.values.flatten.find(_.tmdbId == id).map(hit => Film(hit.title, None, Nil, hit.year)))
     }
   }
 
