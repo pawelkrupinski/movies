@@ -72,7 +72,9 @@ check "...and when no commit moves it, the corpus did: the bad code at --since t
 mkdir -p "$work/bin"
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-echo "sbt-start $(basename "$PWD")" >> "$STUB/calls"; sleep 1
+echo $$ >> "$STUB/sbt-pids"
+echo "sbt-start $(basename "$PWD")" >> "$STUB/calls"
+if [ "$(basename "$PWD")" = "${STUB_SLOW_SBT:-}" ]; then sleep 15; else sleep 1; fi
 echo "$PWD/worker/target/scala-3.x/test-classes:/lib/a.jar"
 echo "sbt-end $(basename "$PWD")" >> "$STUB/calls"
 STUB
@@ -162,13 +164,17 @@ check "a mirror whose re-seed is due: exit 2, mirror not ready" "yes" "$(harness
 # a re-seed finishing while the base resolves: the head would read another corpus than the base did
 verdicts() { cat "$(cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" bash -c '. scripts/identity-tools.sh; what_if_verdicts_file "$1" "$2"' _ "$c4" "$c0")" 2>/dev/null | wc -l | tr -d ' '; }
 verdicts_before=$(verdicts)
-printf '100.1\n200.1\n' > "$work/generations"
-out=$(what_if "$c0" "$c4" 2026-11-06T14:00:00Z --no-serve); rc=$?
+printf '100.1\n200.1\n' > "$work/generations"; rm -f "$work/sbt-pids"
+# (the head's compile, started beside the base, outlasting the base's resolve)
+out=$(STUB_SLOW_SBT=$c4 what_if "$c0" "$c4" 2026-11-06T14:00:00Z --no-serve); rc=$?
 check "a re-seed between the base and the head: exit 2, naming both generations" "yes" \
   "$(harness_error 'HARNESS ERROR.*re-seeded during the run.*100.1.*200.1' "$rc" "$out")"
 check "...and the base side it resolved on the old generation is not kept" "no" \
   "$(ls -d "$work/cache/what-if/uk/$c0-$hash-live-mirror100.1/2026-11-06T14:00:00Z" >/dev/null 2>&1 && echo yes || echo no)"
 check "...and no verdict is recorded for identity-measure's gate" "$verdicts_before" "$(verdicts)"
+# an exit leaves no compile of the head behind it: an orphan wrote into the head's tree while the next run laid it out
+# again, and that run failed with no word (Order independence #90, the case below)
+check "...and the head's compile it started beside the base is no longer running" "0" "$(spec_still_running "$work/sbt-pids")"
 # a seed starting while the head resolves: caught by the check after the head
 printf '100.1\n100.1\nseeding\n' > "$work/generations"; rm -f "$work/freshness-calls"
 out=$(what_if "$c0" "$c4" 2026-11-06T15:00:00Z --no-serve); rc=$?

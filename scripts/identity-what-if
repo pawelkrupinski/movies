@@ -412,13 +412,17 @@ judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.
 reach=$(python3 -I "$repo/scripts/identity_what_if.py" reaches --repo "$repo" --base "$base_sha" --head "$head_sha") || exit 2
 head_resolves=1; [ "$reach" != none ] || [ "$all" = 1 ] || [ "$verify" = 1 ] || head_resolves=0
 # The head's compile, started beside the base's resolve when the base side is not kept (it takes its own JVM slot);
-# waited for before the head resolves
+# waited for before the head resolves -- and on every exit before that (a harness error after the base): left running,
+# it outlived the tool, holding its JVM slot, and wrote into the head's tree while the next run of that ref laid it out
+# again, which then failed with no word (Order independence #90)
 head_compile=""
 compile_head_beside() {
   [ "$head_resolves" = 1 ] && [ -z "$head_compile" ] && ! identity_classpath_fresh "$head_tree" || return 0
   identity_log "compiling the head beside the base's resolve"
   identity_classpath "$head_tree" > /dev/null & head_compile=$!
 }
+head_compile_done() { [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }; }
+trap head_compile_done EXIT
 status=0
 for cc in "${ccs[@]}"; do
   mirror_gen=$(mirror_ready "$cc") || exit 2
@@ -452,7 +456,7 @@ for cc in "${ccs[@]}"; do
     [ "$final" = 0 ] || printf 'key\tfinal\tbasis\n' > "$head_dir/final.tsv"
     echo > "$head_dir/answers.txt"
   else
-    [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }
+    head_compile_done
     resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
       --base-takes "$base_dir/takes.tsv" --threads "$threads" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
       ${more[@]+"${more[@]}"} --mirror-generation "$mirror_gen" || exit 2
