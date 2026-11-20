@@ -85,7 +85,7 @@ private[identity] object SearchMeasures {
   def standsForTheWhole(l: Listing, f: Film): Boolean = pieceStandsForTheWhole(l, f, words = 2)
 
   /** [[standsForTheWhole]] for a piece of `words` words at least: one, where a fact of the listing's own (the director
-   *  it credits) tells the word's many films apart ([[AcceptanceFactRules.directorsTitleWhy]]). */
+   *  it credits) tells the word's many films apart ([[AcceptanceRuleTable.DirectorsTitle]]). */
   def pieceStandsForTheWhole(l: Listing, f: Film, words: Int): Boolean = {
     val pieces = namingPieces(l, f).filter(_.sizeIs >= words)
     pieces.nonEmpty && {

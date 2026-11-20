@@ -73,10 +73,9 @@ object AcceptanceEquivalenceSpec {
     def pooledNamed(ranked: Seq[Scored]) = a.pooledNamed(ranked)
     def refusals(ranked: Seq[Scored])    = a.refusals(ranked)
     def ruleNames                        = (a.aloneRules ++ a.pooledRules).map(_.name).distinct
-    def verdict(rule: String, ranked: Seq[Scored]) =
-      rendered((a.aloneRules ++ a.pooledRules).find(_.name == rule).get.accepts(ranked).left.map(r => (r.why, r.film, r.detail)))
+    def verdict(rule: String, ranked: Seq[Scored]) = rendered(a.ruleVerdict(rule)(ranked).left.map(r => (r.why, r.film, r.detail)))
     def topHit(ranked: Seq[Scored])      = a.topHit(ranked)
-    def calibrated(ranked: Seq[Scored])  = rendered(a.calibratedWhy(ranked).left.map(r => (r.why, r.film, r.detail)))
+    def calibrated(ranked: Seq[Scored])  = rendered(a.calibrated(ranked).left.map(r => (r.why, r.film, r.detail)))
     def seasonProduction(ranked: Seq[Scored]) = a.seasonProduction(ranked)
     def fallback(ranked: Seq[Scored])    = a.fallback(ranked)
     def leaning(ranked: Seq[Scored])     = a.leaning(ranked)

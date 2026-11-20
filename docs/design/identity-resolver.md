@@ -470,7 +470,7 @@ Tobe Hooper (who directed both) then backed the original in `venues.corroboratin
 vote filed the sequel there, as the old pipeline did. A title names a film only when the numbers
 the two titles carry (`numeralRelation`) do not say another instalment; the same relation is a
 title measure (`numeral`) the calibration weighs. And no acceptance rule, alone or pooled, takes a
-film whose title numbers the series otherwise than the listing's (`Acceptance.Rule`, 2026-10-13; a
+film whose title numbers the series otherwise than the listing's (`AcceptanceRuleTable.NumbersItsOwnInstalment`, the first veto, 2026-10-13; a
 number only one side carries stays each rule's to weigh — TMDB files a two-part film's halves by
 their subtitles, "De Gaulle: Liberté" for "… Part 2"): PL Cinema City's and
 UK Odeon's "League of Legends Worlds 26 | Finals in Cinema" took TMDB's "League of Legends Worlds25 -
@@ -2528,7 +2528,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | venues.corroborating | venues of the family billing it | `IdentityMeasures` | LLR per bin (monotone rising) | yes | `model.logit` |
 | isotonic map; showRatings cut 0.375; cannotLink cut 0.033 | log-odds → probability; accept / veto cuts | `IdentityCalibration` | learned | yes | `model.logit`, `model.deniedBySome` |
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
-| acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house-production, season-record, relay-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
+| acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house-production, season-record, relay-record | `AcceptanceRuleTable` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
 | double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsSeveralWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
@@ -3351,7 +3351,7 @@ same concept. The consolidation kept every DECISION (proof below) and gave each 
 ### 21.2 The rule registries, in order
 
 Each stage tries its rules in a fixed order, and the order is behaviour: the first to take decides. The orders live in
-code as registries (`Acceptance`'s alone rules, in the order `Acceptance.refusals` names them, and its `pooledOrder`;
+code as registries (`AcceptanceRuleTable`'s rows: its `aloneRules`, in the order `Acceptance.refusals` names them, and its `pooledOrder`;
 `AgreementTakes.FallThrough`); `IdentityRulesDocSpec` fails when this table and the code disagree.
 
 | stage | # | rule | takes when |

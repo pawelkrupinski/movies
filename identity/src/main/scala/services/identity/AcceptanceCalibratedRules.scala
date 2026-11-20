@@ -1,39 +1,21 @@
 package services.identity
 
-/** The acceptance rules that take a film by its calibrated probability: calibrated, favoured and unrivalled, and the
- *  candidate the evidence leans to.
+import services.identity.AcceptanceRule.Weighing
+
+/** What the acceptance rules that take a film by its calibrated probability ask — favoured and unrivalled
+ *  ([[AcceptanceRuleTable]]) — and the candidate the evidence leans to.
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
-  import weights.{factsAnswered, favours, facts, priorsLent}
-  import Acceptance.Refused
+  import weights.{factsAnswered, favours, facts}
 
-  /** The best eligible candidate, when its probability — the priors lending, never withdrawing
-   *  ([[EvidenceWeights.priorsLent]]) — clears the calibration's cut. */
-  private[identity] def calibratedWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    eligible.headOption.toRight(Refused("no eligible candidate", None, ranked.headOption.flatMap(_.denial).fold("")(denial => s"best denied: $denial")))
-      .map(best => best -> priorsLent(best, eligible))
-      .flatMap { case accepted @ (best, probability) =>
-        Either.cond(calibration.showsRatings(probability), accepted, Refused("below the rating cut", Some(best.candidate.tmdbId), cut(probability))) }
-  }
-
-  /** [[calibratedWhy]], when the listing's own facts also favour it over the runner-up. */
-  private[identity] def favouredCalibratedWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      taken <- calibratedWhy(ranked)
-      // the runner-up a film's own facts must outweigh is another film the billing could name, never one it names only by
-      // the event it joins (UK "The Assassin + Q&A" beside Q & A, 1990: [[IdentityMeasures.eventNamed]]), nor one only a
-      // sibling's search brought into the family's pool ([[Scored.ownReach]]): that runner-up comes and goes with the
-      // sibling, and the take with it (DE Cineplex Neustadt's bare "Es" [72'], the 2017 film its own search ranks first,
-      // refused whenever Caligari's "ES (ULRICH SCHAMONI)" pulled in the 1966 "Es" its title names too -- a flip back and
-      // forth as the family's venues arrived, structural fix 2)
-      _     <- noneOf(eligible.filterNot(r => (r eq taken._1) || !r.ownReach || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
-                 .filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
-      // the closer record, likewise, one the listing's own evidence reached: a sibling's search alone brings it and takes it away
-      _     <- noneOf(closerThan(taken._1, eligible.filter(r => (r eq taken._1) || r.ownReach)), "its title sits inside a closer record", taken._1)
-    } yield taken
-  }
+  /** The runner-up `best`'s own facts must outweigh and do not ([[AcceptanceRuleTable.FavouredCalibrated]]): another
+   *  film the billing could name, one the listing's own evidence reached. */
+  private[identity] def runnerUpItsFactsDoNotBeat(weighing: Weighing, best: Scored): Option[Scored] =
+    weighing.eligible.filterNot(r => (r eq best) || !r.ownReach || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
+      .filterNot(favours(best, _))
+  /** `best` and the eligible records the listing's own evidence reached: a sibling's search alone brings a record and
+   *  takes it away. */
+  private[identity] def ownReached(weighing: Weighing, best: Scored): Seq[Scored] = weighing.eligible.filter(r => (r eq best) || r.ownReach)
 
   /** Another eligible film of `best`'s credited director that the title names, or that the listing's year dates as
    *  closely, when the title names nothing of `best` (`title=none`): walking a director's credit reaches his films, and a
@@ -87,31 +69,17 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
     containing(closer) && !containing(other) && !other.titleNamesIt && !(words(closer) subsetOf words(other))
   }
 
-  /** [[calibratedWhy]] — unless the title names another candidate by the very same pieces and the
-   *  pooled FACTS ([[EvidenceWeights.facts]]) fit that one better: four "Camino dla opornych" whose
-   *  original title "Santiago" names two films, and whose 113 minutes fit the fourth the search
-   *  returned, do not take the 93-minute first. A candidate the title names less specifically
-   *  ("Mad Max" inside "Mad Max 2: The Road Warrior") or not at all is no such rival, and
-   *  namesakes the facts fit alike stay the calibration's to tell apart — its ranking priors and
-   *  the family's venue count are measured evidence there (a bare "Resident Evil" at 148 venues).
-   *  Two films the title names by disjoint pieces ([[IdentityMeasures.namedApart]]) are not
-   *  namesakes: only the facts may pick one of "Lalka (Dolly)"'s two. */
-  private[identity] def unrivalledCalibratedWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      taken <- calibratedWhy(ranked)
-      best   = taken._1
-      _     <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
-      _     <- noneOf(eligible.find(rival => (rival ne best) && {
-                 val apart = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
-                 (namedAlike(best, rival) && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
-               }), "a film the title names alike fits its facts better", best)
-      _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
-                 ListingShape.festivalsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film)),
-                 "a festival's bare billing names a newer film alike", best)
-      _     <- noneOf(Option.when(namedWithinAnother(best, eligible))(best), "the title names it only within another candidate's longer title", best)
-    } yield taken
-  }
+  /** A rival the title names by the very pieces it names `best` by whose pooled FACTS ([[EvidenceWeights.facts]]) fit
+   *  better — or, named apart by disjoint pieces ([[IdentityMeasures.namedApart]]), at least as well. */
+  private[identity] def namedAlikeAndFittingBetter(weighing: Weighing, best: Scored): Option[Scored] =
+    weighing.eligible.find(rival => (rival ne best) && {
+      val apart = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
+      (namedAlike(best, rival) && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
+    })
+  /** A newer film named alike that a festival's bare billing names rather than `best` ([[ListingShape.festivalsOlderNamesake]]). */
+  private[identity] def newerNamedAlikeByAFestival(weighing: Weighing, best: Scored): Option[Scored] =
+    weighing.eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
+      ListingShape.festivalsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film))
 
   /** Does the billing name `rival` by the very pieces it names `best` by ([[IdentityMeasures.namingPieces]])? */
   private def namedAlike(best: Scored, rival: Scored): Boolean = {

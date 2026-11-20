@@ -1,9 +1,10 @@
 package services.identity
 
 import services.titles.YearWindow
+import services.identity.AcceptanceRule.Weighing
 
-/** The acceptance rules that take a film by the listing's facts: a sole work, a director's work or title, a dated title —
- *  and the fallback a no-match may fall back to, unless its facts contradict it.
+/** What the acceptance rules that take a film by the listing's facts ask — a sole work, a director's work or title, a
+ *  dated title ([[AcceptanceRuleTable]]) — and the fallback a no-match may fall back to, unless its facts contradict it.
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceFactRules { this: Acceptance =>
   import weights.favours
@@ -40,24 +41,14 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
   private[identity] def contradicted(scored: Scored): Boolean =
     scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || IdentityMeasures.runtimeContradicts(scored.measures)
 
-  /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
-   *  candidate, and no other candidate is one the title names — the rest only a director's
-   *  filmography reached. US venues' "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES" (×1,915 with São
-   *  Paulo) is "…: Live Viewing", not the 2022 Seoul concert film its director also made; neither
-   *  pipeline matched them. A work of one word is too many films' title ("It" of "It: Chapter Two").
-   *  The listing may bill that work under a shorter subtitle of its own, the whole title running along
-   *  the record's (DE ×140 and ES ×82 "…In Buenos Aires: Live"), when no other candidate bills the
-   *  work: a banner leading the title is no work ("The Metropolitan Opera: La Fanciulla del West
-   *  Encore" is not its 2018 staging). */
-  private[identity] def soleWorkWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      work <- one(eligible.filter(scored => scored.rank.contains(1) && (titledItsWork(scored) || billsItsWork(scored)) && !contradicted(scored)),
-                "no first hit is the title's work", "two first hits are the title's work", firstHit(ranked))
-      _    <- noneOf(eligible.find(other => (other ne work) && (other.titleNamesIt || (!titledItsWork(work) && sharesItsWork(other)))),
-                "the title names another film", work)
-    } yield atOwn(work)
-  }
+  /** The eligible first hits whose WORK the listing's whole title is, or bills under a shorter subtitle of its own, that
+   *  nothing published contradicts: [[AcceptanceRuleTable.SoleWork]]'s to pick one of. */
+  private[identity] def firstHitsTitlingTheirWork(weighing: Weighing): Seq[Scored] =
+    weighing.eligible.filter(scored => scored.rank.contains(1) && (titledItsWork(scored) || billsItsWork(scored)) && !contradicted(scored))
+  /** Another candidate the title names beside `work` — or, when the listing only bills `work` under a subtitle, another
+   *  billing that work. */
+  private[identity] def anotherNamedBesideItsWork(weighing: Weighing, work: Scored): Option[Scored] =
+    weighing.eligible.find(other => (other ne work) && (other.titleNamesIt || (!titledItsWork(work) && sharesItsWork(other))))
   private def titledItsWork(scored: Scored) = IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
   private def sharesItsWork(scored: Scored) = IdentityMeasures.billsWorkOf(scored.listing, scored.candidate.film).exists(_ >= 2)
   private def billsItsWork(scored: Scored) = scored.category("title").contains("fragment") && sharesItsWork(scored)
@@ -90,38 +81,32 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
 
   /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */
   private[identity] val BilledRuntime = 15
-  /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
-   *  the director it credits, that no published year or runtime contradicts
-   *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`, or the original title the venue publishes, `originalTitleIsWorkOf`:
-   *  DE "Ein Hund namens Quill", published as "Quill" by Yōichi Sai, 2004, is his "Quill - Ein Freund für´s Leben"; three venues' "Leonas" is Cotelo's "Leonas, el
-   *  instinto más salvaje", fifth in TMDB's search for the word): Multikino's "Cirque du Soleil:
-   *  Kurios - Gabinet osobliwości" by Michel Laprise is his "…: KURIOS - Cabinet des curiosités".
-   *  The pipeline took such hits by their director on 3,247 listings with no wrong match; two
-   *  candidates fitting alike (a director's sequels of one work) are no answer. A one-word work
-   *  also needs the published year, a word being many films' title. */
-  private[identity] def directorsWorkWhy(ranked: Seq[Scored]): Verdict = {
-    // Both titles bill the work under a banner ("Royal Shakespeare Company: Macbeth", "RSC Live: Macbeth") and the
-    // running times agree: a staging the credited director made, not one of the word's many films — when it is the
-    // only record billing that work, whatever its running time: two seasons of one staging (Oliver Mears's Tosca,
-    // 2025/26 and 2026/27, the later with no credits or running time yet) are the season's to tell apart, not this rule's
-    // — counting every record billing it that credits no OTHER director: a season's record often credits nobody yet.
-    lazy val billedAlike = eligibleOf(ranked).count(scored => billsAStaging(scored) && !scored.category("director").contains("different"))
+  /** The candidates whose WORK the listing bills under another subtitle, or publishes alone, by the director it credits,
+   *  that no published year or runtime contradicts (`IdentityMeasures.sharesWork`, `titleIsWorkOf`, or the original title
+   *  the venue publishes, `originalTitleIsWorkOf`: DE "Ein Hund namens Quill", published as "Quill" by Yōichi Sai, 2004,
+   *  is his "Quill - Ein Freund für´s Leben"; three venues' "Leonas" is Cotelo's "Leonas, el instinto más salvaje", fifth
+   *  in TMDB's search for the word): [[AcceptanceRuleTable.DirectorsWork]]'s to pick one of.
+   *
+   *  Both titles bill the work under a banner ("Royal Shakespeare Company: Macbeth", "RSC Live: Macbeth") and the running
+   *  times agree: a staging the credited director made, not one of the word's many films — when it is the only record
+   *  billing that work, whatever its running time: two seasons of one staging (Oliver Mears's Tosca, 2025/26 and
+   *  2026/27, the later with no credits or running time yet) are the season's to tell apart, not this rule's — counting
+   *  every record billing it that credits no OTHER director: a season's record often credits nobody yet. */
+  private[identity] def directorsWorks(weighing: Weighing): Seq[Scored] = {
+    lazy val billedAlike = weighing.eligible.count(scored => billsAStaging(scored) && !scored.category("director").contains("different"))
     def billedWork(scored: Scored) = scored.ownCredit && billsAStaging(scored) && billedAlike == 1 &&
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime)
-    val found = eligibleOf(ranked).filter(scored => scored.ownCredit &&
+    weighing.eligible.filter(scored => scored.ownCredit &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored))
-    one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(atOwn)
   }
   private def bareWork(scored: Scored) =
     (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
       .exists(words => words >= 2 || scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency))
   private def billsAStaging(scored: Scored) = StageRelays.billings(scored.listing, scored.candidate.film).nonEmpty
 
-  /** The one eligible candidate the listing's title — or the original title its venue publishes — names EXACTLY that
-   *  credits the director the listing credits, when no published year or runtime contradicts it: a title and its director
-   *  name one film together, however the database's search ranks it or however few venues list it
-   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"; PL Kinoteka's "Podróżnik", published
-   *  as Kiarostami's original). Two such records are no answer.
+  /** The eligible candidates the listing's title — or the original title its venue publishes — names EXACTLY that credit
+   *  the director the listing credits, when no published year or runtime contradicts them: PL Kinoteka's "Podróżnik",
+   *  published as Kiarostami's original, is his film ([[AcceptanceRuleTable.DirectorsTitle]]'s to pick one of).
    *
    *  The original title names it only when it stands apart from the billing ([[IdentityMeasures.Listing.originalStandsApart]])
    *  and the billed title names no eligible record exactly: a ticket page that copies the original title and director of
@@ -132,15 +117,13 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  A whole delimited piece of the billing names it as its bare title does, the rest a banner, as `segment-top-hit` reads
    *  it ([[byPiece]]) — one word too, the credited director telling the word's films apart: UK Keswick Alhambra's "KFC
    *  Presents: Hen" {György Pálfi} is his 2026 "Hen", not the Afrikaans 2025 one TMDB ranks first. */
-  private[identity] def directorsTitleWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
+  private[identity] def directorsTitles(weighing: Weighing): Seq[Scored] = {
+    val eligible = weighing.eligible
     lazy val titled = eligible.exists(_.category("title").contains("exact"))
     def byOriginal(candidate: Scored) =
       candidate.category("originalTitle").contains("match") && candidate.listing.originalStandsApart && !titled
-    one(withoutHollow(eligible.filter(candidate =>
-      (candidate.category("title").contains("exact") || byOriginal(candidate) || byPiece(candidate)) &&
-      candidate.ownCredit && !contradicted(candidate))),
-      "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(atOwn)
+    eligible.filter(candidate => (candidate.category("title").contains("exact") || byOriginal(candidate) || byPiece(candidate)) &&
+      candidate.ownCredit && !contradicted(candidate))
   }
 
   /** Does a whole delimited piece of the listing's OWN billing (a banner's rest, after its colon, dash or pipe:
@@ -161,21 +144,18 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
     candidate.candidate.film.ownTitles.exists(title => pieces(IdentityMeasures.key(title)))
   }
 
-  /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
-   *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts
-   *  it — a credited director included: US "Troll (1986)" is the 1986 film, though TMDB ranks "Troll 2"
-   *  and a 2022 "Troll" above it ([[namedButForItsYear]]: decorated, as "… Encore (2027)", too). Two
-   *  such records are no answer. */
-  private[identity] def datedTitleWhy(ranked: Seq[Scored]): Verdict =
-    one(eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
-      candidate.number("titleYear.delta").exists(FactRelations.nearDelta) && !contradicted(candidate) &&
-      !candidate.category("director").contains("different")),
-      "no film of its title from the year its title dates", "two films of its title from that year",
-      if (ranked.exists(_.number("titleYear.delta").isDefined)) "" else "the title dates no year").map(atOwn)
+  /** The eligible candidates the listing's title names, years aside, from the year its title dates it, that nothing
+   *  published contradicts nor a credited director denies: [[AcceptanceRuleTable.DatedTitle]]'s to pick one of. */
+  private[identity] def datedTitles(weighing: Weighing): Seq[Scored] =
+    weighing.eligible.filter(candidate => namedButForItsYear(candidate) && candidate.number("titleYear.delta").exists(FactRelations.nearDelta) &&
+      !contradicted(candidate) && !candidate.category("director").contains("different"))
+  /** Why no candidate is dated by the title: none, or the title dates no year. */
+  private[identity] def undated(weighing: Weighing): String =
+    if (weighing.ranked.exists(_.number("titleYear.delta").isDefined)) "" else "the title dates no year"
 
   /** Is the listing's title, years aside, the candidate's own title or original title — or that
    *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
-   *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitleWhy]]). */
+   *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitles]]). */
   private[identity] def namedButForItsYear(candidate: Scored): Boolean = {
     // Each title's tokens as the listing and the film hold them, worked out once (`ownYearlessTitles`, `billedTitles`,
     // `billedWorks`), not per candidate weighed: ~40 MB of a PL hard-cluster run's resolves (JFR 2026-10-06).

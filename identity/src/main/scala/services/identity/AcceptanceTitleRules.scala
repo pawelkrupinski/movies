@@ -1,150 +1,94 @@
 package services.identity
 
-import services.identity.Scored.Accepted
+import services.identity.AcceptanceRule.Weighing
 
-/** The acceptance rules that take a film by how its title is searched and billed: the exact and segment top hits,
- *  IMDb's suggestion, and the sole result.
+/** What the acceptance rules that take a film by how its title is searched and billed ask: the exact and segment top
+ *  hits, IMDb's suggestion, and the sole result ([[AcceptanceRuleTable]]).
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceTitleRules { this: Acceptance =>
   import Acceptance.Refused
 
-  /** The listing's EXACT TOP HIT, accepted on what the calibration measured for its evidence as a
-   *  CLASS (`IdentityCalibration.classProbability`): the one film its whole title names exactly
-   *  that its own title search returned first, in TMDB's order ([[IdentityMeasures.exactTopHits]]),
-   *  when the listing's own evidence rules it out on nothing, published nothing against it, and
-   *  gives no rival a better fit ([[EvidenceWeights.fitsBetter]]). A bare title credits it with the
-   *  naive-Bayes sum of missing facts, a low popularity and its same-titled rivals, which undersells
-   *  what the class measured on the labels; here the search standing LENDS confidence and never
-   *  withdraws it. */
-  private[identity] def topHit(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(topHitWhy(ranked)).toOption
-  private[identity] def topHitWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      any  <- firstCandidate(ranked)
-      id   <- IdentityMeasures.exactTopHits(any.listing, ranked.map(scored => (scored.candidate.tmdbId, scored.candidate.film, scored.rank))) match {
-                case Seq(only) => Right(only)
-                case Seq()     => Left(Refused("no film its whole title names is its search's first hit"))
-                case ids       => Left(Refused("two exact top hits", None, ids.mkString("; ")))
-              }
-      best <- eligible.find(_.candidate.tmdbId == id).toRight(Refused("its exact top hit is denied", Some(id),
-                ranked.find(_.candidate.tmdbId == id).flatMap(_.denial).fold("")(_.why)))
-      taken <- unopposed(best, best, eligible)
-    } yield taken
+  /** The one film the listing's whole title names exactly that its own title search returned first, in TMDB's order
+   *  ([[IdentityMeasures.exactTopHits]]): [[AcceptanceRuleTable.ExactTopHit]]'s pick, refused when it is denied. */
+  private[identity] def theExactTopHit(weighing: Weighing): Either[Refused, Scored] = {
+    val ranked = weighing.ranked
+    (IdentityMeasures.exactTopHits(weighing.listing, ranked.map(scored => (scored.candidate.tmdbId, scored.candidate.film, scored.rank))) match {
+      case Seq(only) => Right(only)
+      case Seq()     => Left(Refused("no film its whole title names is its search's first hit"))
+      case ids       => Left(Refused("two exact top hits", None, ids.mkString("; ")))
+    }).flatMap(id => weighing.eligible.find(_.candidate.tmdbId == id).toRight(Refused("its exact top hit is denied", Some(id),
+      ranked.find(_.candidate.tmdbId == id).flatMap(_.denial).fold("")(_.why))))
   }
 
-  /** A programme listing's EXACT TOP HIT once its banner is off: the one candidate whose title is a whole
-   *  delimited piece of the listing's (`segment`) and which the listing's own search returned FIRST, when
-   *  the title names no other candidate at all (the rest is a banner, not a second film), it bills no two
-   *  works, and nothing it publishes speaks against it or fits a rival better. The piece IS a bare title,
-   *  so it is credited with what the exact-top-hit class measured for bare titles. PL's "DZIEŃ KINA POLSKIEGO:
-   *  Przepraszam, czy tu biją" and ~30 programme listings like it sat at 28.9% with no rule to take them. */
-  private[identity] def segmentTopHitWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      any    <- firstCandidate(ranked)
-      // a one-word piece names no film here, rival or taken: "Inna Mamusia - maraton" is no "Maraton"
-      scored <- one(ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
-                  IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film))), "the title names no film", "the title names two films")
-      _      <- needOf(!scored.denied, "the film it names is denied", scored, scored.denial.fold("")(_.why))
-      _      <- needOf(scored.rank.contains(1), "not its search's first hit", scored, scored.rank.fold("not ranked")(rank => s"ranked $rank"))
-      _      <- needOf(scored.category("title").contains("segment"), "not named by a piece of the title", scored,
-                  s"title=${scored.category("title").getOrElse("absent")}")
-      _      <- notADoubleBill(any.listing)
-      _      <- needOf(IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film), "its piece cannot stand for the whole title", scored)
-      _      <- notJoinedToAnotherWork(any.listing, scored)
-      // a year the title states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
-      _      <- needOf(scored.number("titleYear.delta").forall(FactRelations.nearDelta), "the title dates another year",
-                  scored, scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f"))
-      // Read as the bare title its piece is: the banner beside it is no evidence against the film.
-      bare    = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
-      taken  <- unopposed(scored, bare, eligible)
-    } yield taken
+  /** The candidates the title names that may stand for it, [[AcceptanceRuleTable.SegmentTopHit]]'s to pick one of — a
+   *  one-word piece names no film here, rival or taken: "Inna Mamusia - maraton" is no "Maraton". */
+  private[identity] def filmsTheTitleNames(weighing: Weighing): Seq[Scored] =
+    weighing.ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
+      IdentityMeasures.standsForTheWhole(weighing.listing, scored.candidate.film)))
+  /** The candidate read as the bare title its piece is: the banner beside it is no evidence against the film. */
+  private[identity] def asItsBareTitle(scored: Scored): Scored = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
+
+  /** Is `scored` one IMDb's suggestions take, on the old pipeline's rungs: IMDb's FIRST suggestion with the year the
+   *  listing states; the ONE suggested film the listing's credited director directed; or the ONLY film IMDb suggests,
+   *  when the title names it and TMDB ranks no other film of that very title above it ("Ziemia obiecana" is Wajda's, not
+   *  the 1927 film IMDb alone spells so); or the ONE film IMDb lists under one of the listing's search titles in some
+   *  language — an AKA TMDB does not carry ("Camino dla opornych" is IMDb's Polish title of "Compostelle"). */
+  private[identity] def imdbRung(weighing: Weighing, scored: Scored): Boolean =
+    titledRung(weighing, scored) || scored.imdb.exists(place => datedOrCredited(weighing, scored, place) || onlySuggestion(weighing, scored, place))
+
+  /** The film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière"). */
+  private def exactly(scored: Scored) = scored.category("title").exists(Set("exact", "original"))
+  private def outranked(weighing: Weighing, scored: Scored) = weighing.undenied.exists(rival => (rival ne scored) &&
+    rival.category("title").contains("exact") && rival.rank.exists(r => scored.rank.forall(r < _)))
+
+  /** IMDb's FIRST suggestion with the year the listing states, or the ONE suggested film the listing's credited
+   *  director directed. */
+  private def datedOrCredited(weighing: Weighing, scored: Scored, place: Scored.ImdbPlace): Boolean =
+    (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
+      (scored.ownCredit && weighing.suggested.count(_.ownCredit) == 1)
+
+  private def onlySuggestion(weighing: Weighing, scored: Scored, place: Scored.ImdbPlace): Boolean =
+    (place.of == 1 && scored.titleNamesIt && !outranked(weighing, scored)) ||
+      // the only film IMDb suggests, its title the billing's but for a venue's slip of letters in a word or two (UK
+      // "The Hunger Games Sunrise of the Reaping" ×25, DE "LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES"): TMDB's
+      // search finds nothing under the slip, and only IMDb's forgiving one reaches the film
+      (place.of == 1 && slippedTitle(scored.listing, scored.candidate.film) && !outranked(weighing, scored)) ||
+      // the old pipeline's yearless rung: IMDb's FIRST suggestion, and the only suggested film the title is ("Kroll")
+      (place.place == 1 && exactly(scored) && weighing.suggested.count(exactly) == 1 && !outranked(weighing, scored))
+
+  // the ONE suggestion IMDb lists under the listing's own title in some language (an AKA TMDB does not carry):
+  // "Camino dla opornych" is IMDb's Polish title of TMDB's French "Compostelle". Only while nothing else the
+  // listing names stands beside it: no other record carrying its title, though denied (Renoir 2025 beside the 2012
+  // film IMDb also lists as "Renoir"; the 1951 "Streetcar" beside the 1989 TV film), no year the title dates against
+  // it ("Miłość 2024" is not Haneke's 2012 film), no numbered set ("Bolek i Lolek – zestaw IV"), a title of words,
+  // not a number ("2026"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte").
+  private def titledRung(weighing: Weighing, scored: Scored): Boolean = {
+    val ranked = weighing.ranked
+    IdentityMeasures.soleImdbTitled(ranked.filter(_.imdbTitled.nonEmpty).map(s => s.candidate.tmdbId -> s.imdbTitled).toMap)
+      .exists(_._1 == scored.candidate.tmdbId) &&
+      !ranked.exists(other => (other ne scored) && other.category("title").exists(IdentityMeasures.TitlesItsOwn)) &&
+      IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film) && titledByMoreThanAWord(scored)
   }
 
-  /** The film IMDb's suggestions for the listing's own title name, on the old pipeline's three rungs — the route
-   *  that reaches a film whose local title TMDB lacks, since IMDb matches a query against a film's
-   *  other-language titles ("Superfutrzak i złośliwa wiewiórka" suggests only the Finnish "Supermarsu ja suuri
-   *  huijaus"): IMDb's FIRST suggestion with the year the listing states; the ONE suggested film the listing's
-   *  credited director directed; or the ONLY film IMDb suggests, when the title names it and TMDB ranks no
-   *  other film of that very title above it ("Ziemia obiecana" is Wajda's, not the 1927 film IMDb alone spells
-   *  so); or the ONE film IMDb lists under one of the listing's search titles in some language — an AKA TMDB does
-   *  not carry ("Camino dla opornych" is IMDb's Polish title of "Compostelle"). Read as a title the film answers to,
-   *  nothing the listing publishes may speak against it, no rival may fit better, and a double bill is neither film. */
-  private[identity] def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = firstCandidate(ranked).flatMap { any =>
-    val rungs = new ImdbRungs(ranked)
-    import rungs.{eligible, suggested}
-    for {
-      _      <- need(suggested.nonEmpty, "IMDb suggests none of its candidates")
-      _      <- notADoubleBill(any.listing)
-      scored <- one(suggested.filter(rungs.rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
-      _      <- notJoinedToAnotherWork(any.listing, scored)
-      _      <- needOf(!alternativeAgainstTmdbsSearch(scored, ranked), "a bare billing names the film only by an alternative title, " +
-                  "and TMDB's search of it finds other films, not this one", scored, s"title=${scored.category("title").getOrElse("absent")}")
-      _      <- noneOf(eligible.find(rungs.searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
-      // a billing that is the film's own title but for a slip numbers what that title numbers (a slip is never a
-      // numeral): the series' numbered alias it shares words with is no other instalment (UK "The Hunger Games Sunrise of
-      // the Reaping" beside TMDB's numbered alias of "… Sunrise on the Reaping")
-      _      <- if (slippedTitle(scored.listing, scored.candidate.film)) Right(()) else notAnotherInstalment(scored)
-      taken  <- unopposed(scored, asItsTitlesTopHit(scored), eligible)
-    } yield taken
+  // the billing's whole title, a piece of two words at least, the word the billing opens with, or a DATED record: a
+  // one-word piece after another names an undated record only as many films' title does — DE "Friday the 13th:
+  // Legacy", a fan film, is not David Slade's undated "Legacy" IMDb lists under its last word, while "Spooked: Ringu"
+  // is the 1998 "Ring" and "Gina (Kurzfilm)" is "Gina"
+  private def titledByMoreThanAWord(scored: Scored): Boolean = scored.candidate.film.year.isDefined || scored.imdbTitled.exists { title =>
+    val words = IdentityMeasures.words(title)
+    scored.listing.ownKeys(IdentityMeasures.key(title)) || words.sizeIs >= 2 ||
+      scored.listing.ownForms.exists(_.words.startsWith(words))
   }
 
-  /** The rungs on which [[imdbSuggestedWhy]] takes an IMDb suggestion among `ranked`. */
-  private final class ImdbRungs(ranked: Seq[Scored]) {
-    val eligible  = ranked.filterNot(_.denied)
-    val suggested = eligible.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
-
-    /** The film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière"). */
-    private def exact(scored: Scored) = scored.category("title").exists(Set("exact", "original"))
-    private def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
-      rival.rank.exists(r => scored.rank.forall(r < _)))
-
-    def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists(place => datedOrCredited(scored, place) || onlySuggestion(scored, place))
-
-    /** IMDb's FIRST suggestion with the year the listing states, or the ONE suggested film the listing's credited
-     *  director directed. */
-    private def datedOrCredited(scored: Scored, place: Scored.ImdbPlace): Boolean =
-      (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
-        (scored.ownCredit && suggested.count(_.ownCredit) == 1)
-
-    private def onlySuggestion(scored: Scored, place: Scored.ImdbPlace): Boolean =
-      (place.of == 1 && scored.titleNamesIt && !outranked(scored)) ||
-        // the only film IMDb suggests, its title the billing's but for a venue's slip of letters in a word or two (UK
-        // "The Hunger Games Sunrise of the Reaping" ×25, DE "LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES"): TMDB's
-        // search finds nothing under the slip, and only IMDb's forgiving one reaches the film
-        (place.of == 1 && slippedTitle(scored.listing, scored.candidate.film) && !outranked(scored)) ||
-        // the old pipeline's yearless rung: IMDb's FIRST suggestion, and the only suggested film the title is ("Kroll")
-        (place.place == 1 && exact(scored) && suggested.count(exact) == 1 && !outranked(scored))
-
-    // the ONE suggestion IMDb lists under the listing's own title in some language (an AKA TMDB does not carry):
-    // "Camino dla opornych" is IMDb's Polish title of TMDB's French "Compostelle". Only while nothing else the
-    // listing names stands beside it: no other record carrying its title, though denied (Renoir 2025 beside the 2012
-    // film IMDb also lists as "Renoir"; the 1951 "Streetcar" beside the 1989 TV film), no year the title dates against
-    // it ("Miłość 2024" is not Haneke's 2012 film), no numbered set ("Bolek i Lolek – zestaw IV"), a title of words,
-    // not a number ("2026"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte").
-    private def titledRung(scored: Scored): Boolean =
-      IdentityMeasures.soleImdbTitled(ranked.filter(_.imdbTitled.nonEmpty).map(s => s.candidate.tmdbId -> s.imdbTitled).toMap)
-        .exists(_._1 == scored.candidate.tmdbId) &&
-        !ranked.exists(other => (other ne scored) && other.category("title").exists(IdentityMeasures.TitlesItsOwn)) &&
-        IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film) && titledByMoreThanAWord(scored)
-
-    // the billing's whole title, a piece of two words at least, the word the billing opens with, or a DATED record: a
-    // one-word piece after another names an undated record only as many films' title does — DE "Friday the 13th:
-    // Legacy", a fan film, is not David Slade's undated "Legacy" IMDb lists under its last word, while "Spooked: Ringu"
-    // is the 1998 "Ring" and "Gina (Kurzfilm)" is "Gina"
-    private def titledByMoreThanAWord(scored: Scored): Boolean = scored.candidate.film.year.isDefined || scored.imdbTitled.exists { title =>
-      val words = IdentityMeasures.words(title)
-      scored.listing.ownKeys(IdentityMeasures.key(title)) || words.sizeIs >= 2 ||
-        scored.listing.ownForms.exists(_.words.startsWith(words))
-    }
-
-    // A fallback, as the old pipeline's was: IMDb answers only when TMDB's own search ranks no OTHER film the title
-    // names above it ("BTS 'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan;
-    // "Kroll" is TMDB's first, the 1991 film IMDb suggests, above 1972's "Krõll"), and
-    // never for an instalment the title numbers otherwise ("Recepta na szczęście 2" is not the first film).
-    def searchNamesAnother(scored: Scored, rival: Scored): Boolean = (rival ne scored) && rival.titleNamesIt &&
-      rival.rank.exists(r => scored.rank.forall(r < _))
-  }
+  /** Does TMDB's own search rank `rival`, another film the title names, above the IMDb-suggested `scored` ("BTS
+   *  'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan; "Kroll" is TMDB's
+   *  first, the 1991 film IMDb suggests, above 1972's "Krõll")? */
+  private[identity] def searchNamesAnother(scored: Scored, rival: Scored): Boolean = (rival ne scored) && rival.titleNamesIt &&
+    rival.rank.exists(r => scored.rank.forall(r < _))
+  /** Does the title number the film's own instalment — or is it the film's own title but for a slip ([[slippedTitle]]),
+   *  which never numbers another? */
+  private[identity] def itsOwnInstalmentOrASlip(scored: Scored): Boolean =
+    slippedTitle(scored.listing, scored.candidate.film) || !otherInstalment(scored)
 
   /** Is one of the listing's titles the film's own or original title, word for word, but for a SLIP in at most two
    *  words — never more than half of them, of four words or more: each slipped pair words of letters, no numeral
@@ -249,40 +193,20 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
   private[identity] val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
   /** What parts a title: a spaced dash, a colon, a full stop, an ellipsis or a middle dot before a space. */
   private[identity] val TitlePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.…]\s""")
-  /** The ONLY film one of the listing's own title searches returned — the old pipeline's `searchUnique`, which
-   *  took it unless a fact CONTRADICTED it: "Loving Karma" [78′] is TMDB's 85-minute record, the one "Loving
-   *  Karma" finds, though seven minutes weigh against it in the probability. The title must name it — a piece
-   *  standing for the whole ([[IdentityMeasures.standsForTheWhole]]: not "Bhutan" of "Bhutan – Trails of
-   *  Happiness") — no other candidate the title names may stand beside it, and a double bill is neither film. */
-  private[identity] def soleResultWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      any   <- firstCandidate(ranked)
-      sole  <- one(ranked.filter(scored => scored.soleResult && (isEligible(scored) || cutOnly(scored))),
-                 "no search of its returned a single film", "its searches returned different single films",
-                 s"${ranked.count(_.rank.isDefined)} film(s) found by its searches")
-      _     <- needOf(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film", sole,
-                 s"title=${sole.category("title").getOrElse("absent")}")
-      _     <- needOf(!contradicted(sole), "a published fact contradicts it", sole, contradiction(sole))
-      // a director the venue credits is the listing's own fact: a search's only film directed by another, that the title
-      // names only in part, is no answer (PL "Carmen" [2026] {Richard Eyre} and "Carmen: Salzburger Festspiele 2026") —
-      // a film carrying the very title still is (Kino Parczew's "Tedi i magiczna lampa" credits its co-directors)
-      _     <- needOf(!creditsAnotherDirector(sole), "it credits another director", sole)
-      _     <- notADoubleBill(any.listing)
-      _     <- notJoinedToAnotherWork(any.listing, sole)
-      _     <- needOf(standsForItsTitle(any.listing, sole), "its piece cannot stand for the whole title", sole)
-      // a film the title names by fewer of its words is no rival to one carrying them all ("Manon" beside "BALLET LIVE.
-      // MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)")
-      _     <- noneOf(eligible.find(namesBeside(sole, _)), "the title names another film", sole)
-      _     <- notAnotherInstalment(sole)
-      titled = asItsTitlesTopHit(sole)
-      taken <- classAccepted(sole, titled.measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" })
-    } yield taken
-  }
-  private def creditsAnotherDirector(sole: Scored): Boolean =
+  /** The only film one of the listing's own title searches returned, eligible — or denied by the cut alone
+   *  ([[cutOnly]]): [[AcceptanceRuleTable.SoleResult]]'s to pick one of. */
+  private[identity] def soleResults(weighing: Weighing): Seq[Scored] =
+    weighing.ranked.filter(scored => scored.soleResult && (isEligible(scored) || cutOnly(scored)))
+  private[identity] def resultsFound(weighing: Weighing): String = s"${weighing.ranked.count(_.rank.isDefined)} film(s) found by its searches"
+  private[identity] def namesItsOnlyResult(sole: Scored): Boolean = sole.titleNamesIt || wordsOfIts(sole)
+  /** The sole result's facts as its title's exact top hit's, its year and running time aside: a search's only film is
+   *  taken unless a fact CONTRADICTS it, which the rule asked already. */
+  private[identity] def itsTitlesFactsBeside(sole: Scored): Map[String, IdentityMeasures.Measure] =
+    asItsTitlesTopHit(sole).measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" }
+  private[identity] def creditsAnotherDirector(sole: Scored): Boolean =
     sole.category("director").contains("different") && !sole.category("title").exists(IdentityMeasures.Rivalling)
-  private def standsForItsTitle(listing: IdentityMeasures.Listing, sole: Scored): Boolean =
+  private[identity] def standsForItsTitle(listing: IdentityMeasures.Listing, sole: Scored): Boolean =
     sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) || IdentityMeasures.standsForTheWhole(listing, sole.candidate.film)
-  private def namesBeside(sole: Scored, other: Scored): Boolean =
+  private[identity] def namesBeside(sole: Scored, other: Scored): Boolean =
     (other ne sole) && other.titleNamesIt && !(wordsOfIts(sole) && !wordsOfIts(other))
 }

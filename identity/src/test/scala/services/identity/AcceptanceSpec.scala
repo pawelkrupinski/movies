@@ -44,9 +44,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val scored  = ranked(listing,
       (1, Film("Patagonia", year = Some(2023), runtime = Some(120), directors = Some(Seq("Ana Ruiz"))), Some(1)),
       (2, Film("Wild Patagonia Express", year = Some(2023)), None))
-    acceptance.favouredCalibratedWhy(scored).left.map(_.why) shouldBe Left("its title sits inside a closer record")
+    acceptance.FavouredCalibrated.verdict(acceptance.weighing(scored)).left.map(_.why) shouldBe Left("its title sits inside a closer record")
     val siblingOnly = scored.map(s => if (s.candidate.tmdbId == 2) s.copy(ownReach = false) else s)
-    acceptance.favouredCalibratedWhy(siblingOnly).map(_._1.candidate.tmdbId) shouldBe Right(1)
+    acceptance.FavouredCalibrated.verdict(acceptance.weighing(siblingOnly)).map(_._1.candidate.tmdbId) shouldBe Right(1)
   }
 
   "directors-title" should "not count TMDB's hollow duplicate of a film as its director's second film" in {

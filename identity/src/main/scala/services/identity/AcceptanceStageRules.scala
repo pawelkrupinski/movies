@@ -1,70 +1,63 @@
 package services.identity
 
+import services.identity.AcceptanceRule.Weighing
 import services.identity.Scored.Accepted
 import services.titles.YearWindow
 
-/** The acceptance rules of a stage relay: the house's production, the relay's record ([[RelayStage]]), and the record of
- *  the season it is broadcast in.
+/** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the
+ *  record of the season it is broadcast in ([[AcceptanceRuleTable]]).
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceStageRules { this: Acceptance =>
   import weights.own
-  import Acceptance.Refused
 
-  /** The one eligible record billing the listing's work under the listing's OWN house
-   *  ([[Scored.houseProduction]]) that no published year or runtime contradicts: Flicks' "NT Live:
-   *  The Misanthrope" is the National Theatre's 2026 broadcast, "National Theatre Live: The
-   *  Misanthrope", though TMDB's search ranks three bare records of Molière's play above it — a
-   *  house's banner names its production as a season names one ([[seasonProduction]]). Two such
-   *  records (a broadcast and its encore) are no answer — nor are two records carrying one title,
-   *  however each reads as billed (US "NT Live: Hamlet": the National Theatre's 2010 and 2015
-   *  broadcasts) — and neither is one that another candidate
-   *  the title names fits at least as well on the listing's own facts: a banner is learned, not
-   *  known, and Everyman's "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day",
-   *  publishing nothing but its title, is Cameron's film, not TMDB's making-of documentary. */
-  private[identity] def houseProductionWhy(ranked: Seq[Scored]): Verdict = {
-    val eligible = eligibleOf(ranked)
-    for {
-      // nor one from another year than the title dates the production: US "MetOpera: Carmen (2009)" ×513 is Eyre's
-      // 2009 staging, not the Met's 2024 record its house bills
-      house <- { val billed = eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate))
-                 one(billed.filter(_.number("titleYear.delta").forall(FactRelations.nearDelta)),
-                   if (billed.isEmpty) "no record bills its work under its house" else "its house's record is from another year than its title dates",
-                   "two records bill its work under its house", billed.map(Acceptance.named).mkString("; ")) }
-      _     <- noneOf(eligible.find(other => (other ne house) &&
-                 (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
-                   (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
-    } yield atOwn(house)
+  /** The eligible records billing the listing's work under the listing's OWN house ([[Scored.houseProduction]]) that no
+   *  published year or runtime contradicts. */
+  private[identity] def houseRecords(weighing: Weighing): Seq[Scored] =
+    weighing.eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate))
+  /** [[houseRecords]] from the year the title dates the production, if it dates one: [[AcceptanceRuleTable.HouseProduction]]'s
+   *  to pick one of. */
+  private[identity] def houseRecordsOfItsYear(weighing: Weighing): Seq[Scored] =
+    houseRecords(weighing).filter(_.number("titleYear.delta").forall(FactRelations.nearDelta))
+  /** Another record carrying the house record's title, or one the title names that fits at least as well on the
+   *  listing's own facts. */
+  private[identity] def anotherRecordOfItsTitle(weighing: Weighing, house: Scored): Option[Scored] =
+    weighing.eligible.find(other => (other ne house) &&
+      (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
+        (other.titleNamesIt && own(other) >= own(house))))
+
+  /** The eligible records of the listing's RELAY ([[RelayStage]]): its house's records of its work from the season its title
+   *  dates — DE "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27:
+   *  Manon" (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is;
+   *  DE "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests — [[AcceptanceRuleTable.RelayRecord]]'s
+   *  to pick one of. A record of its screenings' season airing on a day it screens is the broadcast it screens, whatever
+   *  older year its title dates the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening 1
+   *  December 2026, is the 2026/27 relay aired 29 November, which 112 Flicks venues bill "RBO Cinema Season 2026-27: The
+   *  Nutcracker (2025)". Of a year's two seasons each holding a record of it, the one dated that very year (UK
+   *  Gorleston's "RBO: THE NUTCRACKER 2026" is the 2026/27 record, not the 2025/26 one). */
+  private[identity] def relayRecords(weighing: Weighing): Seq[Scored] = {
+    val relay   = relayOf(weighing)
+    val records = weighing.eligible.filter(scored => RelayStage.recordOf(relay, scored.candidate.film))
+    val aired   = records.filter(scored => relay.airedOn(scored.candidate.film))
+    if (aired.nonEmpty) aired
+    else Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records)
   }
-
-  /** The one eligible record of the listing's RELAY ([[RelayStage]]): its house's record of its work from the season its
-   *  title dates, whatever running time it files, that no year it publishes contradicts and no director it credits
-   *  denies. US "MetOpera: Carmen (2009)" [240′] ×514 is the Met's 2009/10 broadcast, TMDB's "Bizet: Carmen" (aired 15
-   *  January 2010, 166′), not the Met's 2019 or 2024 Carmen; DE "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth
-   *  MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon" (October 2026), not the Met's 2026/27 Manon (April 2027), which
-   *  "MET Opera Live im Kino: Manon" [2027] ×4 is; DE "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's
-   *  2011 one IMDb suggests. It pre-empts every rule, as [[seasonProduction]] does. */
-  private[identity] def relayRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(relayRecordWhy(ranked)).toOption
-  private[identity] def relayRecordWhy(ranked: Seq[Scored]): Verdict =
-    for {
-      any    <- firstCandidate(ranked)
-      relay  <- any.listing.relayBilled.toRight(Refused("it bills no house's relay of a work in a season"))
-      // a year's two seasons each holding a record of it: the one dated that very year (UK Gorleston's "RBO: THE NUTCRACKER
-      // 2026" is the 2026/27 record, not the 2025/26 one)
-      records = eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film))
-      // a record of its screenings' season airing on a day it screens is the broadcast it screens, whatever older year its
-      // title dates the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening 1 December 2026, is the
-      // 2026/27 relay aired 29 November, which 112 Flicks venues bill "RBO Cinema Season 2026-27: The Nutcracker (2025)"
-      aired   = records.filter(scored => relay.airedOn(scored.candidate.film))
-      record <- one(if (aired.nonEmpty) aired
-                    else Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records),
-                  "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
-                  s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
-      // a page kept from a season too far back dates its staging, not the relay it airs on its day ([[Listing.airDays]])
-      _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || any.listing.billsAStaleSeason && relay.airedOn(record.candidate.film),
-                  "a published year contradicts it", record, contradiction(record))
-      _      <- needOf(!record.category("director").exists(Set("different", "different_script")) || creditsAnotherWorksRecord(ranked, relay),
-                  "it credits another director", record)
-    } yield atOwn(record)
+  /** The relay the listing bills: asked only by the rule requiring one. */
+  private def relayOf(weighing: Weighing): RelayStage.Billed = weighing.listing.relayBilled.get
+  private[identity] def relaySeasons(weighing: Weighing): String = {
+    val relay = relayOf(weighing)
+    s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}"
+  }
+  /** No year the listing publishes contradicts the relay's record — but a page kept from a season too far back dates
+   *  its staging, not the relay it airs on its day ([[IdentityMeasures.Listing.airDays]]). */
+  private[identity] def airsTheYearItStates(listing: IdentityMeasures.Listing, record: Scored): Boolean =
+    !record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) ||
+      listing.billsAStaleSeason && listing.relayBilled.exists(_.airedOn(record.candidate.film))
+  /** The relay's record credits no other director than the listing — or the listing's credit is another work's
+   *  ([[creditsAnotherWorksRecord]]). */
+  private[identity] def creditsItsDirector(weighing: Weighing, record: Scored): Boolean =
+    !record.category("director").exists(AnotherDirector) || creditsAnotherWorksRecord(weighing.ranked, relayOf(weighing))
+  /** A director relation that says the record is another director's, in either script. */
+  private[identity] val AnotherDirector = Set("different", "different_script")
 
   /** Does the relay credit the director of its house's record of ANOTHER work — a credit the venue copied from another
    *  relay's page, which says nothing of which production of its own work it screens? US Showcase's "The Metropolitan
@@ -76,48 +69,43 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     scored.category("director").contains("same_person") && film.stageWorkIds.nonEmpty && !film.stageWorkIds.exists(relay.works) && relay.itsHouse(film)
   }
 
-  /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
-   *  the listing names no season: UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening
-   *  May–June 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet" — the cut alone denied it, the season marker
-   *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are told
-   *  apart by the season the listing's screenings broadcast it in ([[ofItsBroadcastSeason]]), and are no answer without
-   *  one; a fact contradicting it, or another director, refuses it.
-   *
-   *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
-   *  house ([[StageRelays.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
-   *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
-  private[identity] def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(seasonRecordWhy(ranked)).toOption
+  /** The relay's record ([[AcceptanceRuleTable.RelayRecord]]), asked only whether the title numbers another instalment. */
+  private[identity] def relayRecord(weighing: Weighing): Option[Accepted] = RelayRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
+  /** The season record ([[AcceptanceRuleTable.SeasonRecord]]), asked only whether the title numbers another instalment. */
+  private[identity] def seasonRecord(weighing: Weighing): Option[Accepted] = SeasonRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
   /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
    *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
    *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
-  private[identity] def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
+  private[identity] def broadcastSeasonRecord(weighing: Weighing): Option[Accepted] = seasonRecord(weighing).filter { case (record, _) =>
     record.listing.screenedSeason.exists(record.candidate.film.season.contains)
   }
   /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
    *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
-  private[identity] def relayOrBroadcastSeasonRecord(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    relayRecord(ranked).map(_ -> "relay-record").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
-  private[identity] def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
+  private[identity] def relayOrBroadcastSeasonRecord(weighing: Weighing): Option[(Accepted, String)] =
+    relayRecord(weighing).map(_ -> "relay-record").orElse(broadcastSeasonRecord(weighing).map(_ -> "season-record"))
+
+  /** The SEASON records whose title is the listing's own once its season is taken out ("&" and "and" alike): UK "Royal
+   *  Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening May–June 2027, is "Royal Ballet & Opera
+   *  2026/27: Romeo and Juliet" — the cut alone denied it, the season marker reading as a title the listing does not
+   *  carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are told apart by the season the listing's
+   *  screenings broadcast it in ([[ofItsBroadcastSeason]]), and are no answer without one. So is the record of the very
+   *  season the listing's screenings broadcast it in that names its stage work under its house
+   *  ([[StageRelays.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET: Macbeth" (17
+   *  October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
+  private[identity] def seasonRecords(weighing: Weighing): Seq[Scored] = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
-    for {
-      any    <- firstCandidate(ranked)
-      listing = any.listing
-      _      <- need(listing.seasonYear.isEmpty, "the title names its season")
-      own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
-      record <- one(ofItsBroadcastSeason(ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) &&
-                  scored.candidate.film.season.isDefined &&
-                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageRelays.screenedSeasonRecord(listing, scored.candidate.film)))),
-                  "no season record carries its title or its work under its house", "two seasons' records carry its title")
-      _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
-      // a season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's
-      // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the
-      // record of the season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere
-      // (Aldeburgh's, screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day)
-      _      <- needOf(listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
-                  StageRelays.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
-      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
-    } yield atOwn(record)
+    val listing = weighing.listing
+    val own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
+    ofItsBroadcastSeason(weighing.ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) && scored.candidate.film.season.isDefined &&
+      (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageRelays.screenedSeasonRecord(listing, scored.candidate.film))))
   }
+  /** A season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's "The
+   *  Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the record of the
+   *  season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere (Aldeburgh's,
+   *  screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day). */
+  private[identity] def inItsSeason(listing: IdentityMeasures.Listing, record: Scored): Boolean =
+    listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
+      StageRelays.screenedSeasonRecord(listing, record.candidate.film)
 
   /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
    *  ([[IdentityMeasures.Listing.screenedSeason]]) when exactly that season's records are among them; all of them

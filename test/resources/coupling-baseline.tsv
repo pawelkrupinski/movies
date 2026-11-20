@@ -106,7 +106,7 @@ fanout	services.movies.MoviesChangeCursor	12
 fanout	services.movies.SideCollectionWatch	10
 fanout	services.readmodel.MongoReadModelRepository	10
 fanout	services.readmodel.ReadModelProjector	19
-distance	services.identity	43
+distance	services.identity	42
 distance-cap	services.identity	44
 distance	services.metrics	38
 distance-cap	services.metrics	40
