@@ -289,6 +289,26 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.contractsOf("services.sharecards.ShareCardService") shouldBe empty
   }
 
+  "the agreement sources contract" should "be one dependency of the stage's builder and the pipeline it fills, and its members one by one for a stage" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    val members = Seq("services.identity.agreement.FamilyAnswers", "services.identity.IdentityLookups",
+      "services.identity.agreement.AgreementVerdicts", "services.identity.agreement.AnswerChanges",
+      "services.identity.vocabulary.PosterAnswers", "services.identity.vocabulary.CatalogueAnswers", "services.titles.TitleNormalizer",
+      "services.identity.agreement.AgreementKeys")
+    table.contracts.find(_._1 == "agreement-sources").map(_._3.toSet) shouldBe Some(members.toSet)
+    val composition = "services.identity.agreement.AgreementStageComposition"
+    val pipeline    = "services.identity.agreement.AgreementPipeline"
+    val evidence    = "services.identity.agreement.AgreementEvidence" // a stage reading some of the same types
+    val takes       = "services.identity.agreement.AgreementTakes"
+    val graph = Graph((composition +: pipeline +: evidence +: takes +: members).map(t(_)),
+      (members.map(composition -> _) ++ members.map(pipeline -> _) ++ members.take(2).map(evidence -> _) :+ (pipeline -> takes)).toSet)
+    val held = Coupling.heldFanOut(graph, table)
+    held(composition) shouldBe 1 // the contract
+    held(pipeline) shouldBe 2    // the contract, the takes
+    held(evidence) shouldBe 2    // no discount: two members
+    table.contractsOf(evidence) shouldBe empty
+  }
+
   "the edge rows" should "give every class reference with its package edge, a package's own included" in {
     Coupling.edgeRows(graph) shouldBe Seq(
       "models->models\tmodels.Film->models.Codec",
