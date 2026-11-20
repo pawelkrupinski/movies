@@ -11,7 +11,6 @@ file-lines	common/src/main/scala/models/Cinema.scala	1067
 file-lines	common/src/main/scala/models/City.scala	615
 file-lines	common/src/main/scala/services/movies/MovieCodecs.scala	538
 file-lines	http/src/main/scala/tools/HostPolicies.scala	539
-file-lines	identity/src/main/scala/services/identity/Acceptance.scala	518
 file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	719
 file-lines	identity/src/main/scala/services/identity/IdentityModel.scala	750
 file-lines	identity/src/main/scala/services/identity/LiveProjectionIndex.scala	539
