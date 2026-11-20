@@ -31,7 +31,10 @@ is that the local toolchain is missing (e.g. no full Xcode for
   fakes + the real cache/repository. Locally run it as
   **`scripts/it-local.sh`** (any sbt command as the argument, default
   `itAll`): it starts a mongod of the run's own on a free port and
-  removes it afterwards. On the shared `:28017` server other agents'
+  removes it afterwards. Its sbt never builds while the worktree's
+  kept sbt-warm server does (`sbt-warm --exclusive`): it waits for the
+  server's running command, and server calls wait for it — "waits for it
+  to end" in either log is that, not a hang. On the shared `:28017` server other agents'
   heavy runs (identity shadows, convergence legs) saturate its write
   tickets and journal, and light suites fail on 10 s Mongo round trips —
   seven did on 2026-10-12, all green on a private server under the same

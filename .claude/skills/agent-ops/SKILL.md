@@ -140,7 +140,10 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - Run sbt through `scripts/sbt-warm "<command>"`: one kept server per worktree (extras stopped on the next call;
   stopped by its keeper after 10 idle minutes, `KINOWO_SBT_WARM_IDLE_MINUTES`, never under a running command), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
   run becomes ~50 s). Don't mix with a plain `sbt` (or a bare `sbt --client`) in the same checkout while the server
-  lives: only a call through the script counts as in use. Details: `test-layers`.
+  lives: only a call through the script counts as in use. A tool that needs an sbt of its own there (`it-local.sh`:
+  the it/ suites read `MONGODB_URI` from the sbt JVM's own environment) runs it as `scripts/sbt-warm --exclusive <who>
+  sbt <command>`: it waits for the server's running command and holds the server's next ones until it ends, so the two
+  never compile one `target/` at once. Details: `test-layers`.
 - **A server gone missing?** `~/.cache/kinowo-sbt-warm/stops.log` has a line for every server and keeper sbt-warm
   stopped (when, why, which process asked) and a `vanished` line for one that ended otherwise, naming the JVM reaper's
   kill (`agentctl reap`'s `~/.cache/agentctl/reap.log`) or a crash file when one exists; each keeper's own log is `<key>.log` beside it.

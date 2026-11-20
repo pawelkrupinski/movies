@@ -11,6 +11,9 @@
 #   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server) in this
 #                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
 #   (an it/ run -- itAll, IntegrationTest/test* -- is refused without MONGODB_URI: scripts/it-local.sh runs it)
+#   scripts/sbt-warm --exclusive <who> <command>...  run <command> (an sbt of its own over this checkout's target/:
+#                                        it-local.sh's) once no command runs in this checkout's server, and hold every
+#                                        later call's command until it ends: ONE BUILDER PER target/ (below)
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --publish           put this checkout's build into the shared build cache (when it is a clean build
 #                                        of a main commit, and no command runs in its server)
@@ -106,8 +109,15 @@
 #     again, it fails: exit 75, `sbt-warm STALLED: <command> ...` (scripts/stall-watch.sh: THE STALL SIGNAL). A call
 #     making progress touches $KINOWO_PROGRESS_FILE when set. A --serve call is never bounded: it serves, idle.
 #
-# A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
-# one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
+# ONE BUILDER PER target/: a plain `sbt -batch` in the same checkout while the server lives would compile into the same
+# target/ — two Zincs over one classes dir delete each other's classes, and a run fails on the other's half-written
+# build (the pre-push hook steps around a live one). Use this script, or --stop, or --exclusive: it holds $key.busy --
+# the lock every call holds SHARED while its command runs -- EXCLUSIVELY for its command's life (the command inherits
+# the lock, so a killed wrapper frees nothing under a running sbt). It waits for the server's running commands to end
+# (up to KINOWO_SBT_WARM_LOCK_SECONDS, 1800), and a call arriving meanwhile waits for it, saying who holds the build
+# ($key.exclusive). scripts/it-local.sh runs its sbt so (2026-11-20: an itAll failed only because worker/Test was
+# compiling in the server); the it/ suites run in the sbt JVM itself and read the MONGODB_URI of its environment, which
+# a kept server, started before, cannot take.
 set -uo pipefail
 
 State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
@@ -451,6 +461,18 @@ case "${1:-}" in
     if python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then publish
     else log "a command runs in the server of $root: nothing published"; fi
     exit 0 ;;
+  --exclusive)
+    [ $# -ge 3 ] || { log "--exclusive needs who runs it and the command"; exit 2; }
+    who=$2; shift 2
+    exec 9>> "$State/$key.busy"
+    waited=0
+    until python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; do
+      [ "$waited" -eq 0 ] && log "a command runs in the server of $root: $who waits for it to end before its own sbt builds there"
+      [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up after ${waited}s waiting for the server of $root to go idle"; exit 75; }
+      sleep 1; waited=$((waited + 1))
+    done
+    echo "$$ $who" > "$State/$key.exclusive"
+    exec "$@" ;;
   --stop)
     if [ "${2:-}" != --root ] && [ "$(git rev-parse --path-format=absolute --git-dir 2>/dev/null)" = "$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" ]; then
       log "refusing --stop in the root checkout ($root): cd into your own worktree first, or --stop --root to stop the root's server"
@@ -532,7 +554,12 @@ KeepFile="$State/$key.keep.flock"
 # IN USE: this call holds $key.busy shared until it ends (descriptor 9), so the keeper never stops the server under it
 exec 9>> "$State/$key.busy"
 if ! python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH | fcntl.LOCK_NB)' 2> /dev/null; then
-  log "the keeper of $root is stopping its idle server: waiting for it"
+  read -r holder_pid holder_who < "$State/$key.exclusive" 2> /dev/null || holder_pid=""
+  if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2> /dev/null; then
+    log "another sbt holds the build of $root exclusively ($holder_who, pid $holder_pid): waiting for it to end"
+  else
+    log "the keeper of $root is stopping its idle server: waiting for it"
+  fi
   python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
 fi
 lock_start() {

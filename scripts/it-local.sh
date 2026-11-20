@@ -18,6 +18,9 @@ cd "$(dirname "$0")/.."
 trap own_mongod_stop EXIT INT TERM
 own_mongod_start it || exit 1
 
+# ONE BUILDER PER target/ (scripts/sbt-warm, --exclusive): this sbt and the checkout's kept server would compile the same
+# classes at once, so it waits for the server's running command and holds the server's next ones until it ends. Not IN
+# the server: the it/ suites run in the sbt JVM and read MONGODB_URI from its environment, which a kept server lacks.
 status=0
-MONGODB_URI="$OWN_MONGOD_URI" MONGODB_DB="kinowo_it" sbt "${@:-itAll}" || status=$?
+MONGODB_URI="$OWN_MONGOD_URI" MONGODB_DB="kinowo_it" scripts/sbt-warm --exclusive scripts/it-local.sh sbt "${@:-itAll}" || status=$?
 exit "$status"

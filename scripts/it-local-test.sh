@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Assertions for scripts/it-local.sh: the it/ layer runs against a mongod of its OWN, a primary, and nothing is left
-# behind. mongod, mongosh and sbt are fakes on PATH; no real server starts.
+# behind -- and its sbt never builds while the checkout's kept sbt-warm server does. mongod, mongosh and sbt are fakes
+# on PATH; no real server starts.
 #
 #   scripts/it-local-test.sh
 set -uo pipefail
@@ -11,6 +12,8 @@ SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-it-local.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 FAKE="$SCRATCH/bin"; mkdir -p "$FAKE"
 export STUB_LOG="$SCRATCH/log"
+# sbt-warm's state (it-local.sh takes the checkout's build lock through it): the spec's own, never this Mac's servers'
+export KINOWO_SBT_WARM_STATE="$SCRATCH/warm"
 # mongod: records its --dbpath and pid, then runs until killed
 cat > "$FAKE/mongod" <<'STUB'
 #!/usr/bin/env bash
@@ -57,5 +60,52 @@ check "...said" "1" "$(grep -c 'another server holds the port' "$SCRATCH/out")"
 run STUB_NEVER_PRIMARY=1; code=$?
 check "a server that never becomes PRIMARY: refused, no suite run" "1 no" "$code $([ -f "$STUB_LOG.sbt" ] && echo yes || echo no)"
 check "...said, and its server stopped" "1 stopped" "$(grep -c 'did not become PRIMARY' "$SCRATCH/out") $(mongod_state)"
+
+# ONE BUILDER PER target/ (2026-11-20): it-local.sh's own sbt and the checkout's kept sbt-warm server compiled the same
+# classes at once, and an itAll failed only because worker/Test was compiling in the other. In a scratch checkout of the
+# scripts, the stub sbt "builds" for a while -- as the server's client (`--client`) or as it-local's own sbt -- and
+# says so: a build starting while another is under way is an OVERLAP.
+. "$REPO_ROOT/scripts/scratch-git.sh"
+tree="$SCRATCH/tree"; scratch_repo "$tree"
+mkdir -p "$tree/scripts" "$tree/worker/target/scala-3.x" "$tree/project/target"
+for f in it-local.sh own-mongod.sh sbt-warm jvm-gate.sh tool-conventions.sh stall-watch.sh zinc_orphans.py; do
+  cp "$REPO_ROOT/scripts/$f" "$tree/scripts/$f"
+done
+export KINOWO_IDENTITY_CACHE="$SCRATCH/identity" KINOWO_SBT_CACHE="$SCRATCH/cache" \
+  KINOWO_SBT_CACHE_PUBLISH=0 KINOWO_SBT_WARM_SEED="$SCRATCH/no-seed" KINOWO_SBT_WARM_GITOPS=0 \
+  KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=1
+unset KINOWO_STALL_FILE KINOWO_PROGRESS_FILE
+BUILDS="$SCRATCH/builds"
+cat > "$FAKE/sbt" <<STUB
+#!/usr/bin/env bash
+who=it-local; [ "\${1:-}" = --client ] && who=server
+mkdir "$BUILDS.building" 2>/dev/null || echo "OVERLAP \$who" >> "$BUILDS"
+echo "start \$who" >> "$BUILDS"
+touch "$BUILDS.\$who-started"
+sleep "\${STUB_BUILD_SECONDS:-3}"
+echo "end \$who" >> "$BUILDS"
+rmdir "$BUILDS.building" 2>/dev/null
+exit 0
+STUB
+chmod +x "$FAKE/sbt"
+warm_compile() { ( cd "$tree" && env PATH="$FAKE:$PATH" scripts/sbt-warm "worker/Test/compile" ) > "$SCRATCH/warm.out" 2>&1; }
+it_local() { ( cd "$tree" && env PATH="$FAKE:$PATH" IT_LOCAL_START_SECONDS=2 scripts/it-local.sh 'worker/IntegrationTest/test' ) > "$SCRATCH/it.out" 2>&1; }
+builds() { tr '\n' ' ' < "$BUILDS" | sed 's/ $//'; }
+
+rm -f "$BUILDS"*
+warm_compile & warm=$!
+wait_until "the server's build started" '[ -f "$BUILDS.server-started" ]'
+it_local; it_code=$?; wait "$warm"; warm_code=$?
+check "it-local.sh while the kept server compiles: its own sbt waits for that build to end, then builds" \
+  "0 0 start server end server start it-local end it-local" "$it_code $warm_code $(builds)"
+check "...said" "1" "$(grep -c 'waits for it to end' "$SCRATCH/it.out")"
+
+rm -f "$BUILDS"*
+it_local & itl=$!
+wait_until "it-local's build started" '[ -f "$BUILDS.it-local-started" ]'
+warm_compile; warm_code=$?; wait "$itl"; it_code=$?
+check "a server call while it-local.sh's sbt builds: it waits for that build to end, then builds" \
+  "0 0 start it-local end it-local start server end server" "$it_code $warm_code $(builds)"
+check "...said, naming it" "1" "$(grep -c 'exclusively (scripts/it-local.sh' "$SCRATCH/warm.out")"
 
 spec_summary
