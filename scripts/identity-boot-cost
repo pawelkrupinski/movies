@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# THE IDENTITY BOOT-COST CHECK: what the identity model allocates and spends a family -- a cold resolve, the worker's
+# take-up re-resolving every family after a rules change, and a take-up with nothing moved -- over the pinned identity
+# slices (scripts.IdentityBootCost, worker's test tree), held to test/resources/identity-boot-cost-baseline.tsv
+# (scripts/identity_boot_cost.py). Run it on any change to the resolver's hot paths or the boot re-resolve, BEFORE
+# landing: on 2026-11-20 ~17-20 MB a family of boot allocation was found only after deploy, in production's GC.
+#
+#   scripts/identity-boot-cost [--update] [--runs N] [--out DIR]
+#
+# The measure runs in a JVM of its own on worker's test classpath (from this checkout's kept sbt server), without
+# escape analysis (`-XX:-DoEscapeAnalysis`: the bytes are the code's, not the JIT's state's) and with the worker's
+# boxed-integer cache (`-XX:AutoBoxCacheMax=16384`, infra/jvm/worker.options), under one governor ticket
+# (scripts/gov-run --job identity-boot-cost). Not part of testUnit or the pre-push hook: ~2-4 minutes, on demand.
+#
+#   --update    record the measure as the baseline (its tolerance row kept): after a deliberate change, with the
+#               figures in the commit message
+#   --runs N    measured passes a phase, the median kept (default 3)
+#   --out DIR   keep rows.tsv, the sbt and JVM logs in DIR (default: a temporary directory)
+#
+# Exit 0 within the baseline (or updated); 1 a phase's bytes a family rose past the tolerance; 2 the measure failed.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+DIE_STATUS=2
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+update="" runs=3 out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage_from_header; exit 0 ;;
+    --update) update=1 ;;
+    --runs) flag_value "$@"; runs=$2; shift ;;
+    --out) flag_value "$@"; out=$2; shift ;;
+    *) usage_error "unknown argument $1" ;;
+  esac
+  shift
+done
+case "$runs" in ''|*[!0-9]*|0) usage_error "--runs wants a whole number above 0, not '$runs'" ;; esac
+if [ -z "$out" ]; then out=$(mktemp -d); trap 'rm -rf "$out"' EXIT; fi
+mkdir -p "$out"
+out=$(cd "$out" && pwd)
+cd "$root"
+
+"${KINOWO_BOOT_COST_SBT:-$root/scripts/sbt-warm}" "worker/Test/compile" "export worker/Test/fullClasspath" > "$out/sbt.log" 2>&1 \
+  || { tail -30 "$out/sbt.log" >&2; die "sbt worker/Test/compile failed (log: $out/sbt.log)"; }
+classpath=$(grep -E '^/' "$out/sbt.log" | tail -1)
+[ -n "$classpath" ] || die "no classpath in sbt's export (log: $out/sbt.log)"
+
+"$root/scripts/gov-run" --job identity-boot-cost --cores 1 --mem 3 -- \
+  "${KINOWO_BOOT_COST_JAVA:-java}" -XX:-DoEscapeAnalysis -XX:AutoBoxCacheMax=16384 -Xmx2g -Djava.awt.headless=true \
+  -Duser.language=en -Duser.country=US -cp "$classpath" scripts.IdentityBootCost "$out/rows.tsv" "$runs" > "$out/jvm.log" 2>&1 \
+  || { tail -30 "$out/jvm.log" >&2; die "the measure failed (log: $out/jvm.log)"; }
+tail -1 "$out/jvm.log"
+verb=check
+[ -z "$update" ] || verb=update
+python3 -I "$root/scripts/identity_boot_cost.py" "$verb" --current "$out/rows.tsv" \
+  --baseline "${KINOWO_BOOT_COST_BASELINE:-$root/test/resources/identity-boot-cost-baseline.tsv}"

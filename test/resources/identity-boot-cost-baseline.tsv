@@ -1,0 +1,12 @@
+# THE IDENTITY BOOT-COST BASELINE (scripts/identity-boot-cost --update writes it; scripts/identity_boot_cost.py holds a
+# run to it). What the identity model allocates a family over the pinned identity slices (scripts.IdentityBootCost: a
+# cold resolve, a take-up re-resolving every family under changed rules, and one with nothing moved), measured in a JVM
+# without escape analysis, the median of three runs:
+#   tolerance  the rise in bytes a family, in percent, past which a phase fails. Measured 2026-11-20, three fresh JVMs
+#              on one tree: bytes moved by under 2 KB in 18 GB (1e-7), time by 24%; so 2% -- a megabyte a family at
+#              boot -- is far above the measure's own noise and holds a real regression
+#   phase      <phase> <families> <bytes a family> <nanoseconds a family> (time recorded, never held)
+tolerance	2
+phase	resolve	325	55454104	31361136
+phase	boot	331	54432658	31028343
+phase	boot-steady	325	18271264	8441684
