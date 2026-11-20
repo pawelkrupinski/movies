@@ -34,8 +34,7 @@ import services.identity.vocabulary.PosterAnswers
  * what [[InlineFamilyAsks]] asks a new cluster's family questions through.
  */
 final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], find: String => Unit, reread: Int => Unit,
-                           posters: PosterAnswerStore, hashing: PosterHashing, catalogue: CatalogueAnswerStore, mapping: CatalogueMapping,
-                           pages: CatalogueLinkReader, filed: () => Unit, memory: QuestionMemory,
+                           posters: AgreementPosterQuestions, catalogue: AgreementCatalogueQuestions, filed: () => Unit, memory: QuestionMemory,
                            metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler with Logging {
   import AgreementQuestionMetrics.{Fresh, Answered, Waiting}
 
@@ -77,7 +76,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
       answered(question, AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film", filed)(reread(film))
     case Question.Poster(poster) =>
       if (!posters.wanted(poster)) fresh(AgreementQuestionMetrics.Poster)
-      else answered(question, AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster, hashing.of(poster, posters.filed(poster))))
+      else answered(question, AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster))
     case Question.Catalogue(asked) => askCatalogue(Seq(asked), filed)
     case Question.Candidate(_) | Question.FilmRecord(_) | Question.Person(_) | Question.VenuePage(_) => Skipped
   }
@@ -104,7 +103,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     else {
       val asked = questions.map(Question.Catalogue(_))
       asking(asked, AgreementQuestionMetrics.Catalogue, s"catalogue ${asked.flatMap(_.id).mkString(" ")}", filed) {
-        AgreementCatalogueQuestions.file(catalogue, mapping, pages, questions); Answered
+        catalogue.file(questions); Answered
       }
     }
 

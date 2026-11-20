@@ -140,7 +140,8 @@ trait AgreementWiring { self: WorkerWiring =>
     new services.identityadapters.AgreementAsker(familyAnswerStore, familySources,
       // what they file reaches the stage through the TMDB store's own filings ([[familyAnswerStore]]'s `awaitedBy`)
       find = imdbId => { tmdbClient.findByImdbId(imdbId); () }, reread = film => { tmdbClient.readRecordAgain(film); () },
-      posterAnswerStore, posterHashing, catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
+      new services.identityadapters.AgreementPosterQuestions(posterAnswerStore, posterHashing),
+      new services.identityadapters.AgreementCatalogueQuestions(catalogueAnswerStore, catalogueMapping, catalogueLinkReader),
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)
         identityProjectionTrigger.request(services.identity.vocabulary.EventTrigger.Answer)

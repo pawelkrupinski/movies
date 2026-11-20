@@ -3,6 +3,16 @@ package services.identityadapters
 import services.identity.*
 import services.identity.vocabulary.CatalogueQuestion
 
+/** The agreement's catalogue questions, asked of their sources and filed in `store`: the ids mapped in one batch
+ *  (`mapping`), each page's catalogue links read (`pages`). */
+final class AgreementCatalogueQuestions(store: CatalogueAnswerStore, mapping: CatalogueMapping, pages: CatalogueLinkReader) {
+  /** Is `question` still wanted: no fresh answer to it filed? */
+  def wanted(question: CatalogueQuestion): Boolean = store.wanted(question)
+
+  /** Asks and files `questions` — those still wanted ([[AgreementCatalogueQuestions.file]]). */
+  def file(questions: Seq[CatalogueQuestion]): Int = AgreementCatalogueQuestions.file(store, mapping, pages, questions)
+}
+
 object AgreementCatalogueQuestions {
   /** How many ids of one source one task maps: one SPARQL query ([[AgreementQuestions.enqueue]]). */
   val Batch = 50

@@ -95,6 +95,17 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock, released
   private def document(id: String): Option[BsonDocument] = answers.document(id)
 }
 
+/** The agreement's poster questions: each hashed (`hashing`, reusing what `store` filed of it) and filed in `store`, or
+ *  given up on. */
+final class AgreementPosterQuestions(store: PosterAnswerStore, hashing: PosterHashing) {
+  /** Is `question` still wanted: no fresh hashes of it filed? */
+  def wanted(question: PosterQuestion): Boolean = store.wanted(question)
+  /** `question`'s posters hashed and filed. */
+  def file(question: PosterQuestion): Unit = store.file(question, hashing.of(question, store.filed(question)))
+  /** `question` given up on: filed as unread. */
+  def giveUp(question: PosterQuestion): Unit = store.giveUp(question)
+}
+
 object PosterAnswerStore {
   private val Unread = "unread"
 
