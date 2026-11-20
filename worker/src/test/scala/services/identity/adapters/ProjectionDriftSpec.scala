@@ -13,7 +13,7 @@ class ProjectionDriftSpec extends AnyFlatSpec with Matchers {
   private val loggerName = "test.projection-drift"
 
   private def film(id: String, title: String, record: MovieRecord, members: Seq[ListingKey] = Nil) =
-    ProjectedFilm(FilmId(id), 1L, title, Some(2020), s"${title.toLowerCase}|2020", record, members)
+    ProjectedFilm(FilmId(id), 1L, title, Some(2020), s"${title.toLowerCase(java.util.Locale.ROOT)}|2020", record, members)
 
   private final class Counted extends IdentityProjectionMetrics {
     val drifts = scala.collection.mutable.ListBuffer.empty[Int]
