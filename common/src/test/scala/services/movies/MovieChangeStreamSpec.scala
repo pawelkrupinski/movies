@@ -139,10 +139,10 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     clock               = clock,
     liveness            = new ChangeStreamLiveness(clock, Some(new tools.MonotonicStampSequence(clock))),
     rereadRetryMillis   = rereadRetryMillis,
-    decodeFailures      = decodeFailures,
+    postImages          = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures, new _root_.tools.Stopwatch(() => 0L)),
     debounce            = debounce,
     readVenues          = readVenues,
-    debounceScheduler   = debounceScheduler.fold(() => tools.DaemonExecutors.scheduler("movie-change-debounce"))(timer => () => timer), stopwatch = new _root_.tools.Stopwatch(() => 0L))
+    debounceScheduler   = debounceScheduler.fold(() => tools.DaemonExecutors.scheduler("movie-change-debounce"))(timer => () => timer))
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource

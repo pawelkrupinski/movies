@@ -73,13 +73,12 @@ final class MovieChangeStream(
    *  `updatedAt` from, so a catch-up floor and a row's stamp are strictly ordered
    *  ([[ChangeStreamLiveness.now]]). */
   val liveness:        ChangeStreamLiveness,
-  // The repository's monotonic clock: the post-image decoder's log throttle times on it.
-  stopwatch:           tools.Stopwatch,
+  // How each `movies` post-image is decoded — built by the store over its collection's codecs, counting a
+  // document the codec refuses (see [[ChangeEventDecoder]]).
+  postImages:          ChangeEventDecoder[StoredMovieDto],
   // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
   rereadRetryMillis:   Long = MovieChangeApply.RereadRetryMillis,
-  // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
-  decodeFailures:      services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop,
   // How long a film's re-read waits for the rest of its burst — see [[MovieChangeStream.Debounce]].
   // None queues each film's re-read at once, as every repository but the worker's does.
   debounce:            Option[MovieChangeStream.Debounce] = None,
@@ -135,7 +134,7 @@ final class MovieChangeStream(
     (() => { openDeferred.set(false); if (!movieChanges.isEmpty) ensureWatching() }): @unchecked)
 
   private val moviesCursor = new MoviesChangeCursor((resumeFrom, observer) => source.open(resumeFrom, observer), resumeToken,
-    changeReopen, changeApply, movieChanges, liveness, changeStreamMetrics, changeDemandWindow, decodeFailures, stopwatch)
+    changeReopen, changeApply, movieChanges, liveness, changeStreamMetrics, changeDemandWindow, postImages)
 
   /** Attach a consumer, starting the shared cursor if it isn't running; the returned
    *  handle detaches just that consumer and stops the cursor once none remain. */

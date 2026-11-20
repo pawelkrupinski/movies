@@ -1,6 +1,6 @@
 package services.movies
 
-import tools.{AppliedPrefix, ChangeStreamLiveness}
+import tools.ChangeStreamLiveness
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
@@ -24,26 +24,19 @@ final class MoviesChangeCursor(
   liveness:            ChangeStreamLiveness,
   changeStreamMetrics: ChangeStreamMetrics,
   changeDemandWindow:  Int,
-  // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
-  decodeFailures:      DecodeFailureMetrics,
-  // The repository's monotonic clock: the post-image decoder's log throttle times on it.
-  stopwatch:           tools.Stopwatch
+  // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
+  // refuses is one skipped event rather than the end of the cursor — see [[ChangeEventDecoder]].
+  postImages:          ChangeEventDecoder[StoredMovieDto]
 ) extends Logging {
 
-  // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
-  // refuses is one skipped event rather than the end of the cursor.
-  private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures, stopwatch)
   private val changeSub    = new AtomicReference[Subscription]()
   // The demand window of this cursor (each side cursor has its own, since each is a separate
   // subscription). All drain into the apply thread, so its queue is capped at the sum of the windows.
   private val moviesDemand = new ChangeStreamDemand(changeDemandWindow)
 
-  private def advanceMovies(token: BsonDocument, generation: Long): Unit = {
-    resumeToken.advance(token, generation)
-    resumeToken.save(force = false) // time-throttled, fire-and-forget
-  }
-  // The movies cursor's delivered events: its position moves only past a contiguous run of applied ones.
-  private val moviesPrefix = new AppliedPrefix(advanceMovies)
+  // The movies cursor's delivered events: its position moves only past a contiguous run of applied ones,
+  // saved time-throttled and fire-and-forget ([[ChangeStreamResumeToken.acknowledgements]]).
+  private val acknowledge = resumeToken.acknowledgements()
 
   /** Open the cursor after `resumeFrom` (at "now" when `None`). Called under the stream's `changeLock`. */
   def open(resumeFrom: Option[BsonDocument]): Unit = {
@@ -77,7 +70,7 @@ final class MoviesChangeCursor(
     // position past every delivered-but-queued event (up to a demand window of them), so a
     // restart resumed after events that were never applied. The generation guards against
     // a `clear()` (invalid token) landing while this event is still queued.
-    val ack = moviesPrefix.deliver(change.getResumeToken, resumeToken.generation)
+    val ack = acknowledge(change.getResumeToken)
     postImages.postImage(change) match {
       case ChangeEventDecoder.PostImage.Present(dto) => applyMoviesUpsert(dto._id, ack)
       case ChangeEventDecoder.PostImage.Absent       => applyMoviesDelete(ChangeEventDecoder.documentIdOf(change), ack)
@@ -86,7 +79,7 @@ final class MoviesChangeCursor(
       // resuming from a persisted token met it again on every reopen, dead for good. Its
       // demand is released, and it is acknowledged as applied — there is nothing to apply,
       // and left unacknowledged it would hold the cursor's position before it for good
-      // ([[AppliedPrefix]] moves only past a contiguous run of acknowledged events).
+      // ([[tools.AppliedPrefix]] moves only past a contiguous run of acknowledged events).
       case ChangeEventDecoder.PostImage.Undecodable  => ack(); moviesDemand.applied()
     }
   }

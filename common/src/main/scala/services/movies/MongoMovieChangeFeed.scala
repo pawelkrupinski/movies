@@ -70,8 +70,8 @@ trait MongoMovieChangeFeed(
       clock               = clock,
       // On the store's stamp sequence: a catch-up floor and a row's `updatedAt` are strictly ordered.
       liveness            = new ChangeStreamLiveness(clock, Some(stamps)),
-      stopwatch           = stopwatch,
-      decodeFailures      = decodeFailures,
+      // Decoded with the collection's own codecs; a document they refuse is counted and skipped.
+      postImages          = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, c.codecRegistry, decodeFailures, stopwatch),
       debounce            = changeDebounce,
       // Only where both side collections are split out is a venue readable alone.
       readVenues          = Option.when(screeningsStore.isDefined && slotsStore.isDefined)(readVenues))
