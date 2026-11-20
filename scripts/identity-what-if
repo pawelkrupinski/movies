@@ -16,7 +16,11 @@
 #   --head REF|.   the change: a commit, or `.` (default) for this checkout's code with its uncommitted edits
 #   --at ISO       the mirror moment both sides resolve (default: the newest snapshot the base already resolved within
 #                  --max-age hours, 6 by default, else now)
-#   --all          re-resolve every family at the head, whatever the change reaches
+#   --all          re-resolve every family at the head, whatever the change reaches: the DEFAULT for a change reaching a
+#                  take (2026-11-20, the stamp carry: only a whole verdict carries a stamp -- scripts/identity-stamp-carry --
+#                  and the head costs about what the base side does; most resolver changes select ALL anyway)
+#   --selection    re-resolve only the families the change can reach (the default before 2026-11-20): faster on a narrow
+#                  change, but its verdict carries no stamp
 #   --verify       also resolve every family at the head and FAIL (exit 1) if any take differs from the what-if's: the
 #                  proof that the selection missed nothing
 #   --threads N    head families resolved at once (default 6)
@@ -125,7 +129,7 @@ if [ "${1:-}" = --keep-served ]; then
   exit 0
 fi
 
-base=origin/main head=. at="" max_age=6 all=0 verify=0 threads=6 out="" json=0 judgements="" ccs=()
+base=origin/main head=. at="" max_age=6 all=auto verify=0 threads=6 out="" json=0 judgements="" ccs=()
 answers=live answers_dir="" final=1 serve=${KINOWO_IDENTITY_WHAT_IF_SERVE:-1}
 bisect_good="" bisect_bad="" bisect_listing="" bisect_since="" recording=""
 original_args=("$@")
@@ -136,6 +140,7 @@ while [ "$#" -gt 0 ]; do
     --at) flag_value "$@"; at=$2; shift 2 ;;
     --max-age) flag_value "$@"; max_age=$2; shift 2 ;;
     --all) all=1; shift ;;
+    --selection) all=0; shift ;;
     --verify) verify=1; shift ;;
     --threads) flag_value "$@"; threads=$2; shift 2 ;;
     --out) flag_value "$@"; out=$2; shift 2 ;;
@@ -519,7 +524,7 @@ record_verdict() { # <cc> <diff exit>
   # a diff it did not write counts as unknown, never as none moved
   for f in "${files[@]}"; do [ -f "$f" ] || files=(); done
   [ "${#files[@]}" = 0 ] || moved=$(cat "${files[@]}" | grep -cv '^country' || true)
-  mode="$([ "$all" = 1 ] || [ "$verify" = 1 ] && echo whole || echo selected),$([ "$final" = 1 ] && echo final || echo model-only)"
+  mode="$([ "$whole" = 1 ] && echo whole || echo selected),$([ "$final" = 1 ] && echo final || echo model-only)"
   what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv" \
     "$moved" "$mode"
 }
@@ -537,6 +542,8 @@ judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.
 # beside the base -- and an empty selection (below) starts no head JVM at all.
 reach=$(python3 -I "$repo/scripts/identity_what_if.py" reaches --repo "$repo" --base "$base_sha" --head "$head_sha") ||
   step_failed "identity_what_if.py reaches (whether the head's change reaches a take)" $?
+# --all by default for a change reaching a take, the selection with --verify (which checks it) or one reaching none
+[ "$all" != auto ] || { all=0; [ "$reach" = none ] || [ "$verify" = 1 ] || all=1; }
 head_resolves=1; [ "$reach" != none ] || [ "$all" = 1 ] || [ "$verify" = 1 ] || head_resolves=0
 # The head's compile, started beside the base's resolve when the base side is not kept (it takes its own JVM slot);
 # waited for before the head resolves -- and on every exit before that (a harness error after the base): left running,
@@ -574,6 +581,10 @@ for cc in "${ccs[@]}"; do
       --takes "$base_dir/takes.tsv" --out "$head_dir/select.txt") || exit 2
   fi
   identity_log "$cc: $selected"
+  # a selection of every family is a whole resolve too: what the verdict record says, and the stamp carry reads
+  whole=0; [ "$all" = 1 ] || [ "$verify" = 1 ] ||
+    { cmp -s <(sort -u "$head_dir/select.txt") <(tail -n +2 "$base_dir/takes.tsv" | cut -f1 | sort -u) && whole=1; } || true
+  [ "$all" = 0 ] && [ "$verify" = 0 ] || whole=1
   head_started=$(seconds)
   more=(); [ "$verify" = 0 ] || more+=(--whole)
   if [ ! -s "$head_dir/select.txt" ] && [ "$verify" = 0 ]; then

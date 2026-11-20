@@ -411,9 +411,11 @@ subagent brief.**
 **A proven-equivalent identity change keeps its stamps** (the owner, 2026-11-20): the identity stamps (`identity-rules`,
 `agreement-rules`, `venue-slot`; `build.sbt`) are the digests of their code, and a moved stamp re-decides every stored
 family, verdict or slot on the next worker boot -- unless a row of `test/resources/identity-stamp-carry.tsv`
-(`project/StampCarry.scala`) carries the new digest to the deployed one's stamp. After a pure move or a refactor that a
-`scripts/identity-what-if --all` of all five countries moved no take of, run `scripts/identity-stamp-carry propose
-<base>..<head>` and commit the rows it writes on their own (never by hand). The pre-push `stampcarry` check proves every
+(`project/StampCarry.scala`) carries the new digest to the deployed one's stamp. `agentctl land` writes the rows by
+itself after its rebase (`scripts/land-before-queue` -> `scripts/identity-stamp-carry auto`, a commit of their own in the
+same push): each pure-move commit carried by itself, or the whole change by the lane's recorded what-if of its very diff
+(whole-corpus by default since 2026-11-20; run it over all five countries). `propose <base>..<head>` writes them by hand
+(never edit the table). The pre-push `stampcarry` check proves every
 added or changed row again for exactly its base and head (pure-move-check re-run, or the recorded what-if verdict
 re-read; both digests rebuilt) and refuses any it cannot. Never carried: a range saying `Identity-Design:`, the drift
 harness, and -- for a what-if, which sees today's corpus only -- the title rules, a module's resources or a store or

@@ -34,9 +34,10 @@ Landing is the cost, so land fewer, bigger, cleaner changes and keep working whi
 4. **Identity code changed beyond a move:** `scripts/identity-what-if` (it skips a pure move by itself; its base side
    is kept per mirror moment, so a second run is the head side only). 0 takes moved in every country -> land. Any take
    moved -> it is a behaviour change, not a refactor: stop and judge it (`identity-investigation` skill).
-   **Keep the stamps** either way (step 3 or 4): `scripts/identity-stamp-carry propose <base>..<head>` (a what-if proof
-   needs `--all` over all five countries) writes the carry rows; commit them on their own after the change. The deploy
-   then re-resolves no stored family on boot; the hook's `stampcarry` check proves each row again.
+   **The stamps are kept by themselves** either way (step 3 or 4): `agentctl land` runs `scripts/land-before-queue`
+   after its rebase, whose `scripts/identity-stamp-carry auto` commits the carry rows into the same push (each pure
+   move, or the change by its whole five-country what-if). The deploy then re-resolves no stored family on boot; the
+   hook's `stampcarry` check proves each row again.
 5. **Local layers, narrowed:** `scripts/sbt-warm "<module>/testOnly <the specs you touched or that read it>"`, the
    module's `testUnit` only when you changed shared code, `scripts/run-script-tests --changed origin/main` for any
    script. The landing check runs the rest on ci-runner -- don't run it twice on the laptop.

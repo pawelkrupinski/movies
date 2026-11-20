@@ -131,6 +131,11 @@ Run it before `identity-what-if`; what-if runs it too and exits 0 on a pure move
 
 ## identity-stamp-carry
 
+AUTOMATIC: `agentctl land` runs `scripts/identity-stamp-carry auto <origin/main>..<head>` after its rebase
+(`scripts/land-before-queue`): each pure-move commit is carried by itself, or the whole change by a recorded what-if of
+its very diff (found across the rebase by the diff, its row naming the what-if's own base and head); one commit that may
+move a stamp and proves nothing writes nothing (the head deploys, and its stamp bumps whatever the rest prove). So: run
+the what-if over all five countries before landing, and the carry follows. By hand:
 `scripts/identity-stamp-carry propose <base>..<head> [--proof pure-move|what-if]` (the owner, 2026-11-20): keeps the
 identity stamps across a PROVEN-equivalent change, so the deploy re-resolves no stored family on boot. Run it after
 `pure-move-check` calls the range PURE (carries all three stamps), or after `scripts/identity-what-if --all --base <base>
@@ -147,11 +152,14 @@ carried again keeps the first stamp. Code: `scripts/identity_stamp_carry.py`; bu
 
 ## identity-what-if
 
-`scripts/identity-what-if [--base REF (origin/main)] [--head REF|. (this checkout, uncommitted edits too)] [--verify] [--all]
+`scripts/identity-what-if [--base REF (origin/main)] [--head REF|. (this checkout, uncommitted edits too)] [--verify] [--all | --selection]
 [--at ISO] [--max-age H] [--threads N] [--offline] [--model-only] [--no-serve] [--json] cc...` — a resolver change's MODEL
 and FINAL takes over prod's current corpus. Also `--bisect GOOD BAD [--listing 'venue|raw title'] cc` (which commit moved a
 take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's own tools) and `--stop-served`.
 
+- **Whole by default (2026-11-20).** A change reaching a take re-resolves EVERY family at the head (`--all`): only a whole
+  verdict carries a stamp, and it costs about the base side again (ES 18 s; most resolver changes select ALL anyway).
+  `--selection` keeps the narrow resolve (its verdict carries nothing); `--verify` still checks a selection.
 - **Required before a CI measure (2026-11-06).** Each country what-if finishes is recorded under (head, base)
   (`identity-tools.sh`'s `what_if_record_verdict`; a `.` head counts as its commit only with no uncommitted edits), and
   `scripts/identity-measure` -- `identity-landing-check` through it -- refuses to push or dispatch without that record

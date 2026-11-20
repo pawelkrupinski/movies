@@ -5,6 +5,7 @@
 #
 #   scripts/identity-stamp-carry propose <base>..<head> [--proof pure-move|what-if]
 #   scripts/identity-stamp-carry verify <old>..<new>
+#   scripts/identity-stamp-carry auto <base>..<head> [--no-commit]
 #   scripts/identity-stamp-carry stamps <ref>
 #
 #   propose  proves <base>..<head> (scripts/pure-move-check, else a recorded `scripts/identity-what-if --all` verdict of
@@ -14,6 +15,11 @@
 #   verify   the pre-push hook's `stampcarry` check: every row the table at <new> holds and <old>'s does not, proven again
 #            -- its proof re-run or re-read for exactly its base and head, its digests made again by the build. Any row
 #            it cannot prove refuses the push.
+#   auto     what `agentctl land` runs after its rebase (scripts/land-before-queue), so no lane has to remember: the
+#            pushed range carried by a recorded whole what-if of its very diff (taken before the rebase), else commit by
+#            commit by pure-move-check; the rows committed on their own in the same push. A commit that may move a stamp
+#            and proves nothing bumps the head's stamps (the head is what deploys), so then nothing is built or written.
+#            Builds stamps only when a proof holds: seconds a cached tree, about a minute one not
 #   stamps   each stamp's RAW digest at <ref> (`<stamp> TAB <digest>`), made by the build over the ref's identity tree
 #            (identity-tools.sh's identity_tree, the what-if's own: one compile serves both), cached until a source moves
 #

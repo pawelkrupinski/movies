@@ -5,6 +5,7 @@ row holds only for the very head and base its verdict was recorded under, every 
 never carries a venue slot; a range saying Identity-Design or a what-if over the model's data carries nothing."""
 
 import hashlib
+import json
 import os
 import stat
 import subprocess
@@ -21,17 +22,19 @@ TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
 COUNTRIES = ("pl", "de", "uk", "es", "us")
 
-# The build's stamps, stood in for: a digest a stamp of the commit (the real maker compiles the commit's tree; what a row
-# must match is the same -- a digest the tool makes itself from the commit, never one a row names).
+# The build's stamps, stood in for: each stamp a digest of the commit's CODE (the tree of common/src/main, as the real build
+# digests the code it versions), read from a map the test writes of every commit -- what a row must match is the same, a
+# digest the tool makes itself from the commit, never one a row names.
 FAKE_STAMPS = """#!/usr/bin/env python3
-import hashlib, sys
-for stamp in ("identity-rules", "venue-slot", "agreement-rules"):
-    print(stamp + "\\t" + hashlib.sha256((stamp + sys.argv[2]).encode()).hexdigest())
+import json, os, sys
+for stamp, digest in json.load(open(os.environ["KINOWO_FAKE_STAMPS_MAP"]))[sys.argv[2]].items():
+    print(stamp + "\\t" + digest)
 """
 
 
-def fake_stamp(_repo: Repo, sha: str, stamp: str) -> str:
-    return hashlib.sha256((stamp + sha).encode()).hexdigest()
+def fake_stamp(repo: Repo, sha: str, stamp: str) -> str:
+    code = repo.git("rev-parse", f"{sha}:common/src/main").strip()
+    return hashlib.sha256((stamp + code).encode()).hexdigest()
 
 
 class StampCarryTest(unittest.TestCase):
@@ -42,6 +45,7 @@ class StampCarryTest(unittest.TestCase):
         self.repo = Repo(root)
         self.cache = os.path.join(self.tmp.name, "cache")
         self.maker = os.path.join(self.tmp.name, "stamps")
+        self.stamps_map = os.path.join(self.tmp.name, "stamps.json")
         with open(self.maker, "w") as f:
             f.write(FAKE_STAMPS)
         os.chmod(self.maker, os.stat(self.maker).st_mode | stat.S_IEXEC)
@@ -56,7 +60,14 @@ class StampCarryTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def run_tool(self, *args: str) -> tuple[int, str]:
-        env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=self.cache)
+        shas = set(self.repo.git("rev-list", "--all", "--reflog").split())
+        with open(self.stamps_map, "w") as f:
+            json.dump({sha: {stamp: fake_stamp(self.repo, sha, stamp) for stamp in STAMPS} for sha in shas}, f)
+        env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=self.cache,
+                   KINOWO_FAKE_STAMPS_MAP=self.stamps_map,
+                   # `auto` commits its rows: an identity of its own, as a container with no git config has none
+                   GIT_AUTHOR_NAME="Spec", GIT_AUTHOR_EMAIL="spec@example.com",
+                   GIT_COMMITTER_NAME="Spec", GIT_COMMITTER_EMAIL="spec@example.com")
         done = subprocess.run([sys.executable, "-I", TOOL, *args], cwd=self.repo.root, capture_output=True, text=True, env=env)
         return done.returncode, done.stdout + done.stderr
 
@@ -229,6 +240,59 @@ class StampCarryTest(unittest.TestCase):
         code, out = self.run_tool("propose", f"{start}..{head}", "--proof", "what-if")
         self.assertEqual(1, code, out)
         self.assertIn("drift harness", out)
+
+    # ── auto: what agentctl land runs after its rebase ───────────────────────────────────────────────────────────────
+
+    def test_auto_carries_a_stack_of_pure_moves_commit_by_commit_and_commits_the_rows(self):
+        first = self.move_foo()
+        self.repo.move("common/src/main/scala/services/old/Sibling.scala", "common/src/main/scala/services/old/Kin.scala")
+        second = self.repo.commit("rename the sibling's file")
+        code, out = self.run_tool("auto", f"{self.base}..{second}")
+        self.assertEqual(0, code, out)
+        rows = self.table_rows()
+        self.assertEqual({(self.base, first), (first, second)}, {(r[4], r[5]) for r in rows}, out)
+        self.assertEqual(6, len(rows), out)                          # each stamp, carried a commit at a time
+        self.assertIn("Carry the identity stamps", self.repo.git("log", "-1", "--format=%s"))
+        committed = self.repo.git("rev-parse", "HEAD").strip()
+        self.assertEqual(0, self.run_tool("verify", f"{second}..{committed}")[0])
+
+    def test_auto_writes_nothing_when_one_commit_proves_nothing(self):
+        self.move_foo()
+        head = self.change_foo_moved()
+        code, out = self.run_tool("auto", f"{self.base}..{head}")
+        self.assertEqual(0, code, out)
+        self.assertIn("proves nothing", out)
+        self.assertEqual([], self.table_rows())
+        self.assertEqual(head, self.repo.git("rev-parse", "HEAD").strip())
+
+    def change_foo_moved(self) -> str:
+        self.repo.write(NEW_FOO_PATH, self.repo.read(NEW_FOO_PATH).replace("value * 2", "value * 3"))
+        return self.repo.commit("change Foo")
+
+    def test_auto_carries_a_rebased_change_by_the_what_if_taken_before_the_rebase(self):
+        self.repo.git("checkout", "-q", "-b", "lane")
+        before_rebase = self.change_foo()
+        self.record_what_if(before_rebase, self.base)                  # the lane's what-if, on its own base
+        self.repo.git("checkout", "-q", "-")
+        self.repo.write("docs/notes.md", "main moved, outside the code\n")
+        main = self.repo.commit("main moves on")
+        self.repo.git("cherry-pick", before_rebase)              # agentctl land's rebase
+        head = self.repo.git("rev-parse", "HEAD").strip()
+        code, out = self.run_tool("auto", f"{main}..{head}")
+        self.assertEqual(0, code, out)
+        rows = self.table_rows()
+        self.assertEqual(["agreement-rules", "identity-rules"], sorted(r[0] for r in rows), out)
+        self.assertEqual({("what-if", self.base, before_rebase)}, {(r[3], r[4], r[5]) for r in rows})
+        self.assertEqual(fake_stamp(self.repo, head, "identity-rules"), next(r[1] for r in rows if r[0] == "identity-rules"))
+        committed = self.repo.git("rev-parse", "HEAD").strip()
+        self.assertEqual(0, self.run_tool("verify", f"{head}..{committed}")[0])
+
+    def test_auto_leaves_a_change_with_no_code_alone(self):
+        self.repo.write("docs/notes.md", "words\n")
+        head = self.repo.commit("docs")
+        code, out = self.run_tool("auto", f"{self.base}..{head}")
+        self.assertEqual(0, code, out)
+        self.assertIn("no commit", out)
 
 
 if __name__ == "__main__":

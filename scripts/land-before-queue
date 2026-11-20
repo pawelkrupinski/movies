@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# WHAT `agentctl land` RUNS AFTER ITS REBASE, before it queues the change (~/bin/lib/agentctl/queue.py enqueue): steps that
+# add a commit of their own to the push, so no lane has to remember them. It may commit; it never fails a land -- a step
+# that cannot finish says why and leaves the push as it was.
+#
+#   scripts/land-before-queue <base> <head>
+#
+#   1. THE STAMP CARRY: scripts/identity-stamp-carry auto <base>..<head> -- a proven-equivalent identity change keeps its
+#      stamps, so its deploy re-resolves no stored family (the hook's stampcarry check proves the rows again).
+#      Bounded by $KINOWO_LAND_STAMP_CARRY_SECONDS (default 900).
+set -uo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+case "${1:-}" in -h|--help|"") usage_from_header; exit 0 ;; esac
+[ -n "${2:-}" ] || { echo "land-before-queue <base> <head>" >&2; exit 0; }
+started=$SECONDS
+rc=0; bounded "${KINOWO_LAND_STAMP_CARRY_SECONDS:-900}" "$(dirname "$0")/identity-stamp-carry" auto "$1..$2" || rc=$?
+[ "$rc" = 0 ] || echo "land-before-queue: the stamp carry did not finish (exit $rc): the push goes as it was, its stamps bump" >&2
+echo "land-before-queue: $((SECONDS - started)) s"
+exit 0

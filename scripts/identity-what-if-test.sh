@@ -139,6 +139,14 @@ check "a change the head resolves: its compile starts before the base's resolve 
   "$(head_compiled_beside_base)"
 check "...and the head resolves once both are done" "java-start head|java-end head" \
   "$(calls | tr '|' '\n' | grep 'java-.* head' | paste -sd'|' -)"
+# THE STAMP CARRY reads the verdict's moved takes and mode (scripts/identity-stamp-carry): a change reaching a take
+# re-resolves every family by default, so its verdict is whole; --selection keeps the narrow resolve, recorded as such
+verdict_cols() { tail -1 "$(cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" bash -c '. scripts/identity-tools.sh; what_if_verdicts_file "$1" "$2"' _ "$c4" "$c0")" | cut -f2,5,6; }
+check "...re-resolving every family by default, its verdict recorded whole, the takes it moved counted" "1|done	0	whole,final" \
+  "$(grep -c 'selected: ALL (--all)' "$work/err")|$(verdict_cols)"
+what_if "$c0" "$c4" 2026-11-06T11:30:00Z --no-serve --selection > /dev/null
+check "...with --selection, the narrow selection -- whole still, as it selects every family here" "0|whole" \
+  "$(grep -c 'selected: ALL (--all)' "$work/err")|$(verdict_cols | cut -f3 | cut -d, -f1)"
 
 # A PURE MOVE (scripts/pure-move-check) measures nothing: no compile, no JVM, a `pure-move` verdict a country recorded for
 # identity-measure's what-if gate

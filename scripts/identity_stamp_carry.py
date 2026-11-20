@@ -22,16 +22,19 @@ stamp, as an unproven change does.
 usage:
   identity_stamp_carry.py propose <base>..<head> [--proof pure-move|what-if] [--table FILE]
   identity_stamp_carry.py verify <old>..<new>
+  identity_stamp_carry.py auto <base>..<head> [--no-commit]   (agentctl land's, after its rebase: see `auto`)
 Exit 0 written / every new row proven; 1 refused (each reason named); 2 usage, or a range git cannot read.
 Tested by scripts/identity_stamp_carry_test.py.
 """
 
 from __future__ import annotations
 
+import glob
 import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -185,23 +188,121 @@ def propose(rng: str, proof: str | None, table: str) -> int:
             print(f"  {w}", file=sys.stderr)
         return 1
     before, after = stamps_of(base), stamps_of(head)
+    new = carry_rows(proof, base, head, carried, before, after, table)
+    write_rows(table, new)
+    return 0
+
+
+def carry_rows(proof: str, base: str, head: str, carried: set[str], before: dict[str, str], after: dict[str, str],
+               table: str) -> list[Row]:
+    """The rows a proven base..head adds to `table`: one a stamp the range moves and the proof carries, not held yet."""
     with open(table) as f:
-        held = {(r.stamp, r.digest): r for r in rows(f.read())}
+        held = {(r.stamp, r.digest) for r in rows(f.read())}
     new = []
     for stamp in STAMPS:
         if before[stamp] == after[stamp]:
-            print(f"{stamp}: unchanged by the range, nothing to carry")
+            print(f"{stamp}: unchanged by {base[:12]}..{head[:12]}, nothing to carry")
         elif stamp not in carried:
             print(f"{stamp}: a {proof} proof does not carry it: it bumps")
         elif (stamp, after[stamp]) in held:
             print(f"{stamp}: {after[stamp][:12]} is carried already")
         else:
             new.append(Row(stamp, after[stamp], before[stamp], proof, base, head))
-            print(f"{stamp}: {after[stamp][:12]} carries {before[stamp][:12]}'s stamp ({proof})")
+            print(f"{stamp}: {after[stamp][:12]} carries {before[stamp][:12]}'s stamp ({proof} {base[:12]}..{head[:12]})")
+    return new
+
+
+def write_rows(table: str, new: list[Row]):
     if new:
         with open(table, "a") as f:
             f.writelines(r.line() + "\n" for r in new)
         print(f"{len(new)} row(s) added to {table}: commit it (the hook's stampcarry check proves each again)")
+
+
+# What may move a stamp: a module's main code or resources, or the build. A line of code changed (not only a comment or
+# whitespace) in one: read from the diff alone, so it errs toward yes -- a yes is proven or left to bump, never carried.
+MAY_MOVE = re.compile(r"^([a-z]+/src/main/|build\.sbt$|project/)")
+COMMENT_ONLY = re.compile(r"^[+-]\s*(//|\*|/\*|\*/|$)")
+
+
+def may_move(sha: str) -> bool:
+    changes = [line.split("\t") for line in git("diff-tree", "--no-commit-id", "--name-status", "-M", "-r", "--root", sha).splitlines()]
+    changes = [c for c in changes if any(MAY_MOVE.match(p) for p in c[1:])]
+    if any(c[0] != "M" for c in changes):
+        return True  # a file added, removed or moved: the digest keys each file by its path
+    paths = [c[1] for c in changes]
+    if not paths:
+        return False
+    diff = git("diff", "-w", f"{sha}^", sha, "--", *paths)
+    return any(line[:1] in "+-" and not line.startswith(("+++", "---")) and not COMMENT_ONLY.match(line)
+               for line in diff.splitlines())
+
+
+def range_verdict(base: str, head: str) -> tuple[str, str] | None:
+    """A recorded what-if (head0, base0) of the very change base..head -- the same diff, byte for byte -- taken before a
+    rebase moved its shas (agentctl land rebases after the lane ran it). Its proof is of base0..head0's code; a row of it
+    is live at `head` only while head's digest is head0's, which `auto` checks."""
+    cache = os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
+    wanted = git("diff", "--binary", base, head)
+    found = []
+    for path in glob.glob(os.path.join(cache, "what-if-verdicts", "*-*.tsv")):
+        head0, _, base0 = os.path.basename(path)[:-4].partition("-")
+        if not (re.fullmatch(r"[0-9a-f]{40}", head0) and re.fullmatch(r"[0-9a-f]{40}", base0)):
+            continue
+        if subprocess.run(["git", "cat-file", "-e", f"{head0}^{{commit}}"], capture_output=True).returncode or \
+                subprocess.run(["git", "cat-file", "-e", f"{base0}^{{commit}}"], capture_output=True).returncode:
+            continue
+        if git("diff", "--binary", base0, head0) == wanted:
+            found.append((os.path.getmtime(path), base0, head0))
+    return max(found)[1:] if found else None
+
+
+def auto(rng: str, table: str, commit: bool) -> int:
+    """agentctl land's step after its rebase (scripts/land-before-queue): carry what the pushed range proves, by itself.
+    The whole range by a recorded whole what-if of its very diff, else commit by commit by pure-move-check. One commit
+    that may move a stamp and proves nothing bumps the head's stamps whatever the rest prove -- the head is what deploys,
+    and its stamp is its chain's end -- so then nothing is built and no row written."""
+    base, head = (sha_of(r) for r in rng.split("..", 1))
+    commits = git("rev-list", "--reverse", "--first-parent", f"{base}..{head}").split()
+    moving = [c for c in commits if may_move(c)]
+    if not moving:
+        print(f"stamp carry: no commit of {base[:12]}..{head[:12]} may move an identity stamp")
+        return 0
+    steps: list[tuple[str, str, str, set[str]]] = []
+    found = range_verdict(base, head)
+    if found:
+        carried, why = covered("what-if", *found)
+        if carried:
+            steps = [("what-if", found[0], found[1], carried)]
+        else:
+            print(f"stamp carry: the recorded what-if {found[0][:12]}..{found[1][:12]} of this change proves nothing: {'; '.join(why)}")
+    if not steps:
+        for c in moving:
+            parent = git("rev-parse", f"{c}^").strip()
+            carried, why = covered("pure-move", parent, c)
+            if not carried:
+                print(f"stamp carry: {c[:12]} {git('log', '-1', '--format=%s', c).strip()[:70]!r} may move a stamp and proves "
+                      "nothing (no pure move, no whole what-if of the range): the push bumps its stamps")
+                return 0
+            steps.append(("pure-move", parent, c, carried))
+    needed = sorted({sha for _, b, h, _ in steps for sha in (b, h)} | ({head} if steps[0][0] == "what-if" else set()))
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        stamps = dict(zip(needed, pool.map(stamps_of, needed)))
+    new: list[Row] = []
+    for proof, b, h, carried in steps:
+        if proof == "what-if":
+            stale = {s for s in carried if stamps[head][s] != stamps[h][s]}
+            for s in sorted(stale):
+                print(f"{s}: the head's code is not the what-if's ({stamps[head][s][:12]}, not {stamps[h][s][:12]}): it bumps")
+            carried = carried - stale
+        new += carry_rows(proof, b, h, carried, stamps[b], stamps[h], table)
+    write_rows(table, new)
+    if new and commit:
+        git("add", table)
+        git("-c", "commit.gpgsign=false", "commit", "-q", "-m", f"Carry the identity stamps over {base[:10]}..{head[:10]}: {len(new)} proven row(s)\n\n"
+            f"Written by scripts/identity-stamp-carry auto ({', '.join(sorted({p for p, *_ in steps}))}); the pre-push "
+            "stampcarry check proves each row again.")
+        print(f"stamp carry: committed {git('rev-parse', 'HEAD').strip()[:12]}")
     return 0
 
 
@@ -253,12 +354,14 @@ def verify(rng: str) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) < 2 or argv[0] not in ("propose", "verify") or ".." not in argv[1]:
+    if len(argv) < 2 or argv[0] not in ("propose", "verify", "auto") or ".." not in argv[1]:
         print(__doc__, file=sys.stderr)
         return 2
     try:
         if argv[0] == "verify":
             return verify(argv[1])
+        if argv[0] == "auto":
+            return auto(argv[1], TABLE, commit="--no-commit" not in argv[2:])
         proof, table, rest = None, TABLE, argv[2:]
         while rest:
             if rest[0] == "--proof" and len(rest) > 1:
