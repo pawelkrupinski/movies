@@ -90,8 +90,7 @@ object UptimeBarPayload {
   }
 
   private def writeSlots(out: StringBuilder, slots: Seq[BarData]): Unit =
-    slots.iterator.zipWithIndex.foreach { case (b, i) =>
-      if (i > 0) out += ','
+    commaSeparated(out, slots.iterator) { b =>
       out += '[' ++= b.bucketTimestamp.toString += ','
       quote(out, b.timeFrom) += ','; quote(out, b.timeTo) += ','; quote(out, b.dateLabel) += ']'
     }
@@ -99,18 +98,13 @@ object UptimeBarPayload {
   private def writeData(out: StringBuilder, allRows: Seq[ServiceRow], slotIndex: Map[Long, Int],
                         statuses: Interned, errors: Interned): Unit = {
     // A service rendered in two sections (triage AND its city) is written once.
-    val written = scala.collection.mutable.HashSet.empty[String]
-    allRows.foreach { row =>
-      val active = row.bars.filter(_.status != "empty")
-      if (active.nonEmpty && written.add(row.name)) {
-        if (written.size > 1) out += ','
-        quote(out, row.name) ++= ":["
-        active.iterator.zipWithIndex.foreach { case (b, i) =>
-          if (i > 0) out += ','
-          writeBucket(out, b, slotIndex, statuses, errors)
-        }
-        out += ']'
-      }
+    val written  = scala.collection.mutable.HashSet.empty[String]
+    val services = allRows.iterator.map(row => row.name -> row.bars.filter(_.status != "empty"))
+      .filter { case (name, active) => active.nonEmpty && written.add(name) }
+    commaSeparated(out, services) { case (name, active) =>
+      quote(out, name) ++= ":["
+      commaSeparated(out, active.iterator)(writeBucket(out, _, slotIndex, statuses, errors))
+      out += ']'
     }
   }
 
@@ -134,9 +128,16 @@ object UptimeBarPayload {
 
   private def quoteAll(out: StringBuilder, values: Iterable[String]): Unit = {
     out += '['
-    values.iterator.zipWithIndex.foreach { case (v, i) => if (i > 0) out += ','; quote(out, v) }
+    commaSeparated(out, values.iterator)(quote(out, _))
     out += ']'
   }
+
+  /** Each of `items` written by `write`, a comma between two. */
+  private def commaSeparated[A](out: StringBuilder, items: Iterator[A])(write: A => Unit): Unit =
+    items.zipWithIndex.foreach { case (item, i) =>
+      if (i > 0) out += ','
+      write(item)
+    }
 }
 
 /** A venue every source dropped, as the closure sweep found it (`verdict`), and the evidence line it was raised on. */

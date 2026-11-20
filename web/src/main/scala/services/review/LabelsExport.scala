@@ -86,10 +86,13 @@ object LabelsExport {
                            alreadyUsed: Int = 0, withdrawn: Int = 0, confirmed: Int = 0) {
     def render: String =
       ((s"identity-judgements.tsv: $added added, $flipped flipped, $unchanged already there" +
-        (if (confirmed > 0) s"; $confirmed agent judgement${if (confirmed == 1) "" else "s"} confirmed" else "") +
-        (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "") +
-        (if (withdrawn > 0) s"; $withdrawn row${if (withdrawn == 1) "" else "s"} of withdrawn answers taken back" else "")) +:
+        counted(confirmed, "agent judgement", "confirmed") + counted(alreadyUsed, "answer", "already used, skipped") +
+        counted(withdrawn, "row", "of withdrawn answers taken back")) +:
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
+
+    /** `; <n> <noun>(s) <what>` — nothing for none. */
+    private def counted(n: Int, noun: String, what: String): String =
+      if (n > 0) s"; $n $noun${if (n == 1) "" else "s"} $what" else ""
   }
 
   def rowsOf(answer: ReviewAnswer, identity: FilmIdentity = FilmIdentity.Unlinked): Seq[LabelRow] = {

@@ -226,4 +226,11 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers with ScratchDirectories
       Seq(answer(ReviewVerdict.Right, members = Seq(spaced))))
     (rows.size, summary.unchanged) shouldBe ((1, 1))
   }
+
+  "A summary" should "count only what happened, each count in the singular for one" in {
+    LabelsExport.Summary(added = 1, flipped = 0, unchanged = 2, unexportable = Nil, warnings = Nil, alreadyUsed = 2, confirmed = 1)
+      .render shouldBe "identity-judgements.tsv: 1 added, 0 flipped, 2 already there; 1 agent judgement confirmed; 2 answers already used, skipped"
+    LabelsExport.Summary(0, 0, 0, Seq("pl X"), Seq("pl Y"), withdrawn = 3).render shouldBe
+      "identity-judgements.tsv: 0 added, 0 flipped, 0 already there; 3 rows of withdrawn answers taken back\nnot exported: pl X\nWARNING: pl Y"
+  }
 }

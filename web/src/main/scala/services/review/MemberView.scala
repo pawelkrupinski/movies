@@ -9,6 +9,8 @@ import models.ListingKey
 final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Option[VenueFacts], feed: Option[ListingFeed]) {
   def venue: String = key.venue
   def pageUrl: Option[String] = key match { case ListingKey.Native(_, page, _) => Some(page); case _ => None }
+  /** What the listing row states, then the venue's own film page. */
+  def facts: Seq[VenueFacts] = slot.map(_.facts).toSeq ++ page.toSeq
   lazy val factsFromCatalogue: Boolean =
     services.identity.SourceReliability.feedStated(feed.toSeq.flatMap(_.catalogueIds), pageUrl)
   /** The year and directors the VENUE stated — its key's, else its listing row's, else its own page's — and none
@@ -17,9 +19,8 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
     val base = ReviewMember.of(key)
     if (factsFromCatalogue) base.copy(year = None, directors = Nil)
     else {
-      val own = slot.map(_.facts).toSeq ++ page.toSeq
-      base.copy(year = base.year.orElse(own.flatMap(_.year).headOption),
-        directors = if (base.directors.nonEmpty) base.directors else own.map(_.directors).find(_.nonEmpty).getOrElse(Nil))
+      base.copy(year = base.year.orElse(facts.flatMap(_.year).headOption),
+        directors = if (base.directors.nonEmpty) base.directors else facts.map(_.directors).find(_.nonEmpty).getOrElse(Nil))
     }
   }
   /** The venue's poster: its listing row's, else its last scrape's listing (`identity_listings`), else its own film page's —

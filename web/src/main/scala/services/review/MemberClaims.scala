@@ -12,9 +12,8 @@ final case class MemberClaims(members: Seq[MemberView]) {
   /** What the venues themselves say, merged across members — the first stated value per fact wins — with a
    *  feed catalogue's copied claims left to [[catalogueSays]]. Screenings are every member's: no catalogue claims those. */
   lazy val venueSays: Seq[(String, String)] = {
-    val own    = members.filterNot(_.factsFromCatalogue)
     val stated = own.map(_.member)
-    val facts  = own.flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq)
+    val facts  = own.flatMap(_.facts)
     def list(f: VenueFacts => Seq[String]) = facts.map(f).find(_.nonEmpty)
     val feeds  = members.flatMap(_.feed)
     rows(
@@ -35,16 +34,13 @@ final case class MemberClaims(members: Seq[MemberView]) {
   }
 
   /** The cast the venues themselves list — the first member's that lists one; the page cuts it short ([[ReviewCards.CastShown]]). */
-  lazy val venueCast: Seq[String] =
-    members.filterNot(_.factsFromCatalogue).flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq).map(_.cast).find(_.nonEmpty).getOrElse(Nil)
+  lazy val venueCast: Seq[String] = firstCast(own)
   /** The cast an aggregator's catalogue entry lists, copied onto its listings by the feed. */
-  lazy val catalogueCast: Seq[String] =
-    members.filter(_.factsFromCatalogue).flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq).map(_.cast).find(_.nonEmpty).getOrElse(Nil)
+  lazy val catalogueCast: Seq[String] = firstCast(fed)
 
   /** What an aggregator's catalogue entry claims, copied onto its listings by the feed — never the venue's word. */
   lazy val catalogueSays: Seq[(String, String)] = {
-    val fed   = members.filter(_.factsFromCatalogue)
-    val facts = fed.flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq)
+    val facts = fed.flatMap(_.facts)
     rows(
       "Year"          -> facts.flatMap(_.year).headOption.map(_.toString),
       "Director"      -> facts.map(_.directors).find(_.nonEmpty).map(_.mkString(", ")),
@@ -52,6 +48,11 @@ final case class MemberClaims(members: Seq[MemberView]) {
       "Runtime"       -> facts.flatMap(_.runtime).headOption.map(r => s"$r min"),
       "Catalogue ids" -> Some(fed.map(m => m.feed.map(_.catalogue).filter(_.nonEmpty).orElse(m.pageUrl).getOrElse("")).distinct.mkString(", ")))
   }
+
+  /** The members stating their venue's own facts, and those whose facts are a feed catalogue's copy. */
+  private lazy val (own, fed) = members.partition(!_.factsFromCatalogue)
+
+  private def firstCast(of: Seq[MemberView]): Seq[String] = of.flatMap(_.facts).map(_.cast).find(_.nonEmpty).getOrElse(Nil)
 
   private def rows(stated: (String, Option[String])*): Seq[(String, String)] =
     stated.collect { case (name, Some(value)) if value.nonEmpty => name -> value }

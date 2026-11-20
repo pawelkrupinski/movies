@@ -1,7 +1,7 @@
 package modules
 
 import controllers.{PageMeta, ServedCity}
-import models.Country
+import models.{BareSlugTarget, Country}
 import services.metrics.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
 import play.api.i18n.Messages
@@ -49,20 +49,18 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, fr
     Option.when(country.servesApex(PageMeta.host(request))) {
       request.path.stripPrefix("/").split('/').toList match {
         case slug :: Nil if slug.nonEmpty =>
-          Country.bareSlugTarget(slug).map { target =>
-            if (target.country == country) notHere(slug)
-            else {
-              legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
-                            request)
-              val path = s"${target.country.pathPrefix}/${target.city.slug}/"
-              Future.successful(
-                Results.MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"))
-            }
-          }
+          Country.bareSlugTarget(slug).map(target => if (target.country == country) notHere(slug) else moved(target, request))
         case place :: _ if country.resolve(place).isDefined => Some(notHere(place))
         case _ => None
       }
     }.flatten
+
+  /** A bare slug another country's city answers to: counted as a legacy address, and moved there with its query. */
+  private def moved(target: BareSlugTarget, request: RequestHeader): Future[Result] = {
+    legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew, request)
+    val path = s"${target.country.pathPrefix}/${target.city.slug}/"
+    Future.successful(Results.MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"))
+  }
 
   /** A place of the root country, which lives on its own domain only. */
   private def notHere(place: String): Future[Result] = Future.successful(ServedCity.unknown(place)(using frontDoorMessages))
