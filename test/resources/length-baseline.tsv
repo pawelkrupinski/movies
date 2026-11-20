@@ -10,4 +10,3 @@ limit	file-lines	500
 file-lines	common/src/main/scala/models/Cinema.scala	1067
 file-lines	identity/src/main/scala/services/identity/LiveProjectionIndex.scala	538
 file-lines	identity/src/main/scala/services/identity/StageRelays.scala	554
-file-lines	worker/src/main/scala/services/enrichment/ImdbClient.scala	520

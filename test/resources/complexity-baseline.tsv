@@ -29,10 +29,3 @@ cognitive	identity/src/main/scala/services/identity/vocabulary/FamilyClosure.sca
 cognitive	identity/src/main/scala/services/identity/vocabulary/ProseWords.scala:ProseWords.collectStems	14
 cognitive	identity/src/main/scala/services/identity/vocabulary/SortedLongMap.scala:SortedLongMap.compact	14
 cognitive	identity/src/main/scala/services/identity/vocabulary/StableNames.scala:StableNames.assignWith	11
-cognitive	worker/src/main/scala/services/identityadapters/AgreementAsker.scala:AgreementAsker.asking	13
-cognitive	worker/src/main/scala/services/identityadapters/LookupFill.scala:LookupFillLiveFetch.around	11
-cognitive	worker/src/main/scala/services/identityadapters/ModelInputGate.scala:ModelInputGate.promote	15
-cognitive	worker/src/main/scala/services/identityadapters/ProjectionDrift.scala:ProjectionDrift.apply	13
-cognitive	worker/src/main/scala/services/identityadapters/StagingSort.scala:StagingSort.apply	15
-cognitive	worker/src/main/scala/services/identityadapters/TmdbStore.scala:TmdbStore.updateAll	11
-cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	11
