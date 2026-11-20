@@ -39,8 +39,8 @@ object ClassReferences {
 
   /** One method: its name and descriptor, whether it is private, the classes its signature and body name (binary names,
    *  dotted) and the calls its body makes (`owner#name`, as [[Shape]]'s). A lambda's body is a method of its own
-   *  (`run$$anonfun$1`). */
-  final case class Method(name: String, descriptor: String, isPrivate: Boolean, uses: Set[String], calls: Set[String])
+   *  (`run$$anonfun$1`). `flags`: its access flags (what project/DeadCode.scala reads a public, non-synthetic method by). */
+  final case class Method(name: String, descriptor: String, isPrivate: Boolean, uses: Set[String], calls: Set[String], flags: Int = 0)
   object Shape {
     val empty: Shape = Shape("java.lang.Object", Nil, isInterface = false, isAbstract = false, Nil, Set.empty, Set.empty)
   }
@@ -169,7 +169,8 @@ object ClassReferences {
       muted = isMirrorOrdinal(name, utf8(descriptor))
       signature(descriptor); attributes(code = false)
       muted = false
-      val method = Method(name, utf8(descriptor), (flags & 0x0002) != 0, methodUses.toSet.map((u: String) => u.replace('/', '.')), methodCalls.toSet)
+      val method = Method(name, utf8(descriptor), (flags & 0x0002) != 0, methodUses.toSet.map((u: String) => u.replace('/', '.')), methodCalls.toSet,
+        flags)
       methodUses = null; methodCalls = null
       method
     }

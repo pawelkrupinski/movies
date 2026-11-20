@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# THE DEAD-CODE FINDER (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing
+# calls, ranked -- from Zinc's dependency record and used names and the class files (`sbt deadCode`,
+# project/DeadCode.scala), through this checkout's kept sbt server (scripts/sbt-warm); a report, never a gate.
+#
+#   scripts/dead-code [--out DIR]
+#
+# Two verdicts, ranked by scripts/dead_code.py (the surest and largest first):
+#   unreferenced  nothing calls it: no class depends on the class, no class uses the method's name. Delete it -- in a
+#                 cleanup commit of its own, with the test layers green (a candidate nothing can see is called by name
+#                 from outside the build: a JS fetch, a string-built reflective load -- look before deleting).
+#   test-only     only specs call it: an in-memory store the writing-fakes skill keeps beside its Mongo twin, a test
+#                 seam -- or production code whose last production caller went, which the displaced-code audit deletes.
+# Never candidates: a class with a `main`; a class `routes`, `application.conf`, `META-INF/services`, the AOT class
+# list or the launchers' JVM options name (kept as a class: its methods are still read); a method overriding a
+# library's (Play calls `invokeBlock`); an anonymous class's; the compiler's synthetics; a field's accessor (play-json's
+# macros read case-class fields where Zinc cannot see it); a `@targetName`'d method.
+#
+#   --out DIR   keep rows.tsv (`deadCode`'s), report.md and the sbt log in DIR (default: a temporary directory)
+#
+# Exit 0 with the report; 1 when the sbt step failed.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage_from_header; exit 0 ;;
+    --out) flag_value "$@"; out=$2; shift ;;
+    *) usage_error "unknown argument $1" ;;
+  esac
+  shift
+done
+if [ -z "$out" ]; then out=$(mktemp -d); trap 'rm -rf "$out"' EXIT; fi
+mkdir -p "$out"
+out=$(cd "$out" && pwd)
+cd "$root"
+"${KINOWO_DEAD_CODE_SBT:-$root/scripts/sbt-warm}" "deadCode $out/rows.tsv" > "$out/sbt.log" 2>&1 \
+  || { tail -30 "$out/sbt.log" >&2; die "sbt deadCode failed (log: $out/sbt.log)"; }
+python3 -I "$root/scripts/dead_code.py" "$out/rows.tsv" --root "$root" | tee "$out/report.md"
