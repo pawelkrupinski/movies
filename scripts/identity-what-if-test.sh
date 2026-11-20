@@ -213,6 +213,8 @@ check "...and the exit leaves it lingering, so a rerun reads the same copy" "lin
 rm -rf "$work/fence" "$work/fences-seen"; mkdir -p "$work/fence/kinowo_uk"
 sleep 600 & other=$!   # another agent's what-if, mid-run (HUNG STUBS: it must stay alive until the case ends it)
 echo "$(( $(date +%s) + 3600 )) run" > "$work/fence/kinowo_uk/what-if-$other"
+# the stub dates the tail 60 s before ITS clock's second; the run reads the lag off its own, a second boundary later or
+# not: 59-61 s, as the drain under a loaded laptop read it (59s, 2026-11-20)
 printf '1800\n1800\n60\n' > "$work/behind"
 ( KINOWO_WHAT_IF_DRAIN_POLL_SECONDS=0.2 what_if "$c0" "$c4" 2026-11-06T15:50:00Z --no-serve > "$work/drain-out"; echo $? > "$work/drain-rc" ) &
 wait_until "the run waits for the other run holding the tail" grep -q 'waiting for the runs holding the tail to end: what-if-'"$other" "$work/err"
@@ -220,7 +222,7 @@ check "...and has not fenced meanwhile" "run" "$(awk '{ print $2 }' "$work"/fenc
 kill "$other"; wait "$other" 2>/dev/null
 wait_until "the run goes on once the other ended" test -s "$work/drain-rc"
 check "...drains, then fences and resolves: CLEAN" "0 yes yes" \
-  "$(cat "$work/drain-rc") $(grep -q 'drained (60s behind)' "$work/err" && echo yes || echo "no: $(cat "$work/err")") $(grep -q CLEAN "$work/drain-out" && echo yes || echo no)"
+  "$(cat "$work/drain-rc") $(grep -qE 'drained \((59|60|61)s behind\)' "$work/err" && echo yes || echo "no: $(cat "$work/err")") $(grep -q CLEAN "$work/drain-out" && echo yes || echo no)"
 check "...and while it drains, its drain fence lifts the lingers" "yes" \
   "$(grep -q ' drain$' "$work/fences-seen" && echo yes || echo "no: $(cat "$work/fences-seen")")"
 check "...the generation pinned only after the drain: every read of it sees the run's own fence" "run run run" \
