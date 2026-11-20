@@ -135,8 +135,8 @@ object DetailReaper {
  *  The enrichers are one instance PER VENUE (Cineworld alone is 87; 185 across the
  *  catalogue), while a row carries a handful of cinema slots — 0.34 on average
  *  across the live UK corpus. Asking every enricher about every row was therefore
- *  ~296k questions per tick to answer ~540 real ones, and since `nativeDetailRef`
- *  rebuilds `cinemaData` per call it paid a sort + Map build for each. That loop
+ *  ~296k questions per tick to answer ~540 real ones, and since asking each with a fresh
+ *  `cinemaData` rebuilt it per call it paid a sort + Map build for each. That loop
  *  was 7.93cc of the UK worker's 12.46cc — 64% of its CPU — to produce 0.3
  *  EnrichDetails/min.
  *

@@ -3,8 +3,7 @@ package services.resolution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/** `strictNearest` chooses BETWEEN candidate films; `plausible` vetoes a single
- *  one. Prod, 2026-09-05: two rows were resolved to a film a fraction of the
+/** `plausible` vetoes a single candidate film. Prod, 2026-09-05: two rows were resolved to a film a fraction of the
  *  length every cinema advertised —
  *
  *    vivaldiija|2023  → an 18-minute "STABAT MATER RV621 … Jakub Józef Orliński"

@@ -34,7 +34,7 @@ import scala.util.control.NonFatal
  *      else ReadOutcome.Answered(parse(o))
  *    }.toOptionOrThrow   // the bridge for an Option-returning client: Failed throws
  *    }}}
- *  - a body some other transport already fetched: `checkJsonObject` / `checkJsonArray`;
+ *  - a body some other transport already fetched: `checkJsonObject`;
  *  - a venue detail page: `DetailFetchOutcome.page`, not this.
  *
  * Do NOT wrap a read or its parse in `Try(…).toOption` / `.getOrElse(Nil)`: `NoSwallowedFailureSpec`
@@ -117,9 +117,6 @@ object HttpRead {
    *  transport is not a plain `HttpFetch.get` (a POST, a cached detail fetch). */
   def checkJsonObject[A](url: String, body: String)(parse: JsObject => ReadOutcome[A]): ReadOutcome[A] =
     guarded(url, body)(asJson[JsObject, A](url, _, "an object") { case o: JsObject => o } (parse))
-
-  def checkJsonArray[A](url: String, body: String)(parse: JsArray => ReadOutcome[A]): ReadOutcome[A] =
-    guarded(url, body)(asJson[JsArray, A](url, _, "an array") { case a: JsArray => a } (parse))
 
   private def json[R <: JsValue, A](fetch: HttpFetch, url: String, headers: Map[String, String], rootName: String)
                                    (root: PartialFunction[JsValue, R])(parse: R => ReadOutcome[A]): ReadOutcome[A] =

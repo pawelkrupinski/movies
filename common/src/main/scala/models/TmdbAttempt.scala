@@ -43,8 +43,4 @@ object TmdbAttempt {
    *  covers none — the row's next resolve searches again, whatever its inputs. */
   def unanswered(at: Instant): TmdbAttempt = TmdbAttempt(Unanswered, at)
   private val Unanswered = "unanswered"
-
-  /** Was this "no-match" concluded without TMDB ever answering? Such a row is not a verdict
-   *  about the film, only a refusal to keep it off the site. */
-  def isUnanswered(attempt: TmdbAttempt): Boolean = attempt.evidence == Unanswered
 }

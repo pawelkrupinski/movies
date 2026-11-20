@@ -1,9 +1,7 @@
 package services.cinemas.common
 
-import services.evidence.LatestTitleYear
-
 import services.movies.ScreeningTokens
-import models.{Cinema, MovieRecord, Showtime, Source, SourceData}
+import models.{Cinema, Showtime, Source, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -190,26 +188,19 @@ trait DetailEnricher {
   final def fetchDetail(ref: String): DetailFetchOutcome =
     DetailFetchOutcome.of(scala.util.Try(fetchFilmDetail(ref)))
 
-  /** The per-film detail URL this enricher can actually fetch for `record` — the
-   *  cinema's own event-page reference from its source slot — or None when there
-   *  is nothing native to fetch: no slot/`filmUrl`, OR a Filmweb-FALLBACK row
-   *  whose `filmUrl` points at filmweb.pl (the cinema is passing Filmweb data
-   *  through, which only TMDB enrichment, not this cinema's parser, can read).
-   *  Pointing `fetchFilmDetail` at a fallback URL fails on every pass, so every
-   *  detail-driving site (scrape classify, the reaper, staging) gates on this
-   *  rather than the raw `filmUrl`. */
-  final def nativeDetailRef(record: MovieRecord)(using LatestTitleYear): Option[String] =
-    nativeDetailRefIn(record.cinemaData)
-
-  /** [[nativeDetailRef]] against an ALREADY-COMPUTED `cinemaData`, for callers that
-   *  ask several enrichers about the SAME row.
+  /** The per-film detail URL this enricher can actually fetch for a row -- the cinema's own event-page reference from
+   *  its source slot -- read from the row's ALREADY-COMPUTED `cinemaData`, or None when there is nothing native to
+   *  fetch: no slot/`filmUrl`, OR a Filmweb-FALLBACK row whose `filmUrl` points at filmweb.pl (the cinema is passing
+   *  Filmweb data through, which only TMDB enrichment, not this cinema's parser, can read). Pointing
+   *  `fetchFilmDetail` at a fallback URL fails on every pass, so every detail-driving site (scrape classify, the
+   *  reaper, staging) gates on this rather than the raw `filmUrl`.
    *
    *  `cinemaData` (not `data.get(cinema)`): per-(cinema,title) slots are keyed by
    *  `CinemaShowing`, so a bare-cinema lookup misses them — `cinemaData` collapses a
    *  venue's slots to one representative, whose `filmUrl` is what detail fetches. But
    *  it is a `def` that SORTS the row's slots and rebuilds a Map on every call, and
-   *  enrichers are one instance PER VENUE (Cineworld alone is 87), so asking each of
-   *  them via `nativeDetailRef` recomputes the same map once per venue per row.
+   *  enrichers are one instance PER VENUE (Cineworld alone is 87), so the caller computes it once per row and asks
+   *  each enricher against it.
    *
    *  Measured against the live UK corpus 2026-07-29: 1,599 records x 185 enricher
    *  instances cost 54.6ms a pass recomputing, versus 3.6ms hoisting it — 15x. That
@@ -221,7 +212,7 @@ trait DetailEnricher {
 
 object DetailEnricher {
   /** The detail page ONE slot points at, if it is one a cinema's own parser can read
-   *  (not a Filmweb-fallback url). The per-slot rule behind [[DetailEnricher.nativeDetailRef]],
+   *  (not a Filmweb-fallback url). The per-slot rule behind [[DetailEnricher.nativeDetailRefIn]],
    *  and what tells a detail's writer which slots a fetched page belongs to: a venue that
    *  lists a film as several editions, each with its own page, owns one page per slot. */
   def nativeRefOf(slot: SourceData): Option[String] =

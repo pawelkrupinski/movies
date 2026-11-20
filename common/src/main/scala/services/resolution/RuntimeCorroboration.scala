@@ -1,34 +1,18 @@
 package services.resolution
 
 /**
- * Which of several candidate films the CINEMAS' own published runtimes point at.
+ * Whether a candidate film is the one the CINEMAS' own published runtimes describe.
  *
- * Two places have to choose between candidate films that a title cannot separate,
- * and both have the same evidence to hand — what the venues printed:
- *
- *   - the since-deleted `ScrapeLanding.chooseConcluded`, which decided which of two
- *     same-titled concluded rows a listing belonged on;
- *   - the since-deleted `FilmCanonicalizer.canonical`, which decided which tmdbId a cluster
- *     folded on a shared imdbId should keep.
- *
- * Runtime is the right evidence for both, and the same evidence
- * [[services.evidence.MixedFilmDetector]] already trusts to tell two films apart: it survives
- * translation, and two prints of one film agree on it while two different films do
- * not. Crucially it is published by the CINEMAS, so an answer drawn from it is not
- * derived from the resolution being questioned (see
+ * Runtime is the evidence [[services.evidence.MixedFilmDetector]] already trusts to tell two films apart: it survives
+ * translation, and two prints of one film agree on it while two different films do not. Crucially it is published by
+ * the CINEMAS, so an answer drawn from it is not derived from the resolution being questioned (see
  * `MovieRecord.evidence.runtimes`).
- *
- * NEAREST, not "agrees within a tolerance", because cinemas round and pad: for
- * "Tylko jedna noc" TMDB says 102 minutes while Multikino publishes 105 and Cinema
- * City 102, so a ±2 agreement test answers "neither film" for Multikino. Against a
- * same-titled 1961 picture running 121, the distances (3 against 16) are not a close
- * call.
  */
 object RuntimeCorroboration {
 
   /** Could a film of `candidate` minutes be the one the cinemas are advertising
-   *  at `published` minutes? A VETO, not a choice: [[strictNearest]] picks between
-   *  rival films, this one rejects a lone candidate the runtimes rule out.
+   *  at `published` minutes? A VETO, not a choice: it rejects a lone candidate the
+   *  runtimes rule out.
    *
    *  Deliberately a wide band rather than a tolerance, because cinemas publish
    *  runtimes loosely — padded with ads, rounded, or shaved (Multikino advertises
@@ -46,25 +30,6 @@ object RuntimeCorroboration {
     (minutes.minOption, minutes.maxOption, candidate.filter(_ > 0)) match {
       case (Some(shortest), Some(longest), Some(own)) => own * 2 >= shortest && own <= longest * 2
       case _                                          => true
-    }
-  }
-
-  /** The candidate the published runtimes sit STRICTLY nearest.
-   *
-   *  `None` when nothing was published, when no candidate carries a runtime of its
-   *  own, or when two candidates are equally far away — an equidistant pair says
-   *  nothing about which film this is, and a caller must fall back to other evidence
-   *  rather than break the tie arbitrarily. */
-  def strictNearest[A](published: Iterable[Int], candidates: Seq[(A, Option[Int])]): Option[A] = {
-    val distances = for {
-      (candidate, ownRuntime) <- candidates
-      minutes                 <- ownRuntime
-      nearest                 <- published.map(p => math.abs(p - minutes)).minOption
-    } yield candidate -> nearest
-    distances.minByOption(_._2).map(_._2) match {
-      case Some(best) if distances.count(_._2 == best) == 1 =>
-        distances.collectFirst { case (candidate, distance) if distance == best => candidate }
-      case _ => None
     }
   }
 }
