@@ -110,6 +110,28 @@ object LookupFillLiveFetch {
   }
 }
 
+/** A fill round's lookups, built over its `budget` ([[over]]): every request through `liveFetch` (the pipeline's shared
+ *  lookup chain) within that budget ([[LookupFillLiveFetch]]), its answer normalized into the model's TMDB store
+ *  (`normalizer`, [[NormalizingHttpFetch]]), asked by TMDB (`tmdb` over that fetch) and IMDb
+ *  ([[TmdbIdentityLookups.live]]), each request the store could not answer counted in the round's gaps. */
+final class LookupFillChain(tmdb: HttpFetch => TmdbClient, liveFetch: HttpFetch, normalizer: TmdbNormalizer) {
+  /** One round's TMDB client and lookups over `budget`, and its gaps. */
+  def over(budget: LookupFillBudget): LookupFillChain.Round = {
+    val gaps   = new LookupGaps
+    val fetch  = new NormalizingHttpFetch(new LookupFillLiveFetch(liveFetch, budget), normalizer)
+    val client = tmdb(fetch)
+    LookupFillChain.Round(client, TmdbIdentityLookups.live(client, fetch, gaps), gaps)
+  }
+
+  /** TMDB film `id`'s record filed absent, as a 404 is: one whose reads keep failing while its host answers others. */
+  def recordAbsent(id: Int): Unit = normalizer.recordAbsent(id)
+}
+
+object LookupFillChain {
+  /** One round's TMDB client (what its renewals read again), its lookups and its gaps. */
+  final case class Round(tmdb: TmdbClient, lookups: TmdbIdentityLookups, gaps: LookupGaps)
+}
+
 /** One fill round's outcome. */
 final case class LookupFillRound(asked: Int, answered: Int, failed: Int, deferred: Int, gaps: Long, backedOff: Boolean,
                                    rate: IdentityLookupFillRate)
@@ -131,7 +153,7 @@ object LookupFillMetrics {
  * answer, and the records it lacks) — so the questions are exactly the resolver's own
  * (`CandidateQueries`), with no second list — and asks each unanswered TMDB or IMDb suggestion
  * question live, at most `rate` per minute over the round's `window` (the fill's interval, so a
- * round's allowance is what fits before the next), through `liveFetch` (the shared lookup chain:
+ * round's allowance is what fits before the next), through `chain` (the shared lookup chain:
  * its 429 gate, breaker and pace), filed ONLY into the store, which the model then reads.
  *
  * Venue details are NOT asked: the pipeline's own detail enrichment reads every listing's page into
@@ -143,9 +165,7 @@ object LookupFillMetrics {
  */
 final class LookupFill(
   questions:   () => AnswersChanged,
-  tmdb:        HttpFetch => TmdbClient,
-  liveFetch:   HttpFetch,
-  normalizer:  TmdbNormalizer,
+  chain:       LookupFillChain,
   rate:        => IdentityLookupFillRate,
   window:      => settings.IdentityLookupFillInterval,
   metrics:     LookupFillMetrics,
@@ -178,10 +198,7 @@ final class LookupFill(
     val budget = new LookupFillBudget(at.allowanceOver(span), at.pace, sleep)
     // Live within the budget, every answer normalized into the model's TMDB store — where the model's
     // gaps are, by definition, not yet.
-    val gaps    = new LookupGaps
-    val fetch   = new NormalizingHttpFetch(new LookupFillLiveFetch(liveFetch, budget), normalizer)
-    val client  = tmdb(fetch)
-    val lookups = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil, gaps, oneReadPerTitle = true)
+    val LookupFillChain.Round(client, lookups, gaps) = chain.over(budget)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
@@ -236,7 +253,7 @@ final class LookupFill(
       case (Question.FilmRecord(id), host, times)
           if times >= QuestionPolicies.RecordGiveUpFailures && answering(host.getOrElse(QuestionMemory.TmdbHost)) =>
         logger.warn(s"identity lookup fill: film $id's record failed $times reads in a row; filed absent")
-        normalizer.recordAbsent(id)
+        chain.recordAbsent(id)
       case _ => ()
     }
   }

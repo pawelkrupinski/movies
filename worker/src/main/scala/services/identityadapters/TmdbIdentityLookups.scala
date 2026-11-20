@@ -109,6 +109,11 @@ object TmdbIdentityLookups {
       Hit(id, named.flatMap(_.title).getOrElse(tt), None, named.flatMap(_.year), 0.0)
     })
 
+  /** TMDB's (`tmdb`, reading through `fetch`) and IMDb's live lookups over one `fetch`, no venue pages, each title's
+   *  IMDb suggestions read once for all the lookups ask: a fill round's and a refresh's. */
+  def live(tmdb: TmdbClient, fetch: tools.HttpFetch, gaps: Gaps = NoGaps): TmdbIdentityLookups =
+    new TmdbIdentityLookups(tmdb, new ImdbClient(fetch), Nil, gaps, oneReadPerTitle = true)
+
   /** A TMDB film row as the model's candidate — from a live answer here, or a normalized one. */
   def hitOf(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)
 

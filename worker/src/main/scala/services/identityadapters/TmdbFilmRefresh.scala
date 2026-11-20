@@ -57,7 +57,7 @@ object TmdbFilmRefresh {
   /** The lookups a production refresh asks through: TMDB (by `tmdb`, over the refresh's fetch) and IMDb live, no venue
    *  detail pages, each title read once per refresh. */
   def liveLookups(tmdb: HttpFetch => clients.TmdbClient): HttpFetch => IdentityLookups =
-    fetch => new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch), Nil, oneReadPerTitle = true)
+    fetch => TmdbIdentityLookups.live(tmdb(fetch), fetch)
 
   /** One family as a refresh reads it: its questions, the films its decisions take, lean to or name as candidate, and
    *  its listings' titles, raw and as the model reads them. */

@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, QuestionMemory, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
+import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, LookupFillChain, QuestionMemory, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
 import services.tasktypes.TaskType
 
 import clients.tools.ConstantHttpFetch
@@ -54,7 +54,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
 
   private def lookupFill(wire: Wire, gaps: AnswersChanged = AnswersChanged.Empty, refreshes: Seq[CandidateQuery] = Nil) = {
     val store = new TmdbStore(new InMemoryTmdbDocuments, clock)
-    new LookupFill(() => gaps, wire.tmdbOver, wire.fetch, new TmdbNormalizer(store), IdentityLookupFillRate(600),
+    new LookupFill(() => gaps, new LookupFillChain(wire.tmdbOver, wire.fetch, new TmdbNormalizer(store)), IdentityLookupFillRate(600),
       IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (),
       () => refreshes.map(services.identity.vocabulary.Question.Candidate(_)), new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock,
       tools.TickRecorder.Unrecorded)

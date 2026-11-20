@@ -219,9 +219,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   lazy val lookupFill: services.identityadapters.LookupFill =
     new services.identityadapters.LookupFill(
       questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.vocabulary.AnswersChanged.Empty)(_.gaps),
-      tmdb        = tmdbClientOver,
-      liveFetch   = enrichmentFetch,
-      normalizer  = identityTmdbNormalizer,
+      chain       = new services.identityadapters.LookupFillChain(tmdbClientOver, enrichmentFetch, identityTmdbNormalizer),
       memory      = identityQuestionMemory,
       renewals    = () => identityRenewals.due(),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),
