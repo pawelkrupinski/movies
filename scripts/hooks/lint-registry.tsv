@@ -20,6 +20,7 @@
 # for what no literal names (a resource through a constant), by hand. scripts/land-precheck runs the same selection.
 common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
 common:models.UkPagesSpec	@repo data/uk/* geodata/src/main/resources/generated/uk-*
+common:models.CinemaDeclarationsSpec	test/resources/fixtures/models/cinema-declarations.tsv common/src/main/scala/models/* data/*	pins every hand-declared venue; a venue or roster change re-pins it
 common:services.PersistedCodecsLintSpec	@repo *.scala
 common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala

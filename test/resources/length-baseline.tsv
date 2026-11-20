@@ -7,4 +7,3 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	500
-file-lines	common/src/main/scala/models/Cinema.scala	1067
