@@ -447,25 +447,23 @@ object HostPolicies {
    *  live value, given the compiled-in default (`ProcessConfiguration.hostPace`, passed by
    *  `PacedHttpFetch.configuredInterval`). */
   def requestIntervalFor(url: String, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
-    policyFor(url).flatMap(tunedInterval(_, pace))
-
-  /** A policy's live pace: its knob's current value if it names one, else the
-   *  compiled-in default. The resolver ignores a non-positive or
-   *  unparseable override, so a fat-fingered `0` falls back to the default
-   *  rather than silently unpacing a host we know we out-run. */
-  private def tunedInterval(policy: HostPolicy, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
-    policy.paceKnob match {
-      case None       => policy.minRequestInterval
-      case Some(knob) => Some(pace(knob, HostPace(policy.minRequestInterval.getOrElse(Duration.ZERO))).value)
-    }
+    policyFor(url).flatMap(policy => tuned(policy.minRequestInterval, policy.paceKnob, pace))
 
   /** The fleet-wide minimum gap between two requests to `url`'s host, if the fleet shares a pace for it
    *  ([[PacedHttpFetch]]); its knob's live value when it names one. */
   def fleetIntervalFor(url: String, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
-    policyFor(url).flatMap(policy => policy.fleetPaceKnob match {
-      case None       => policy.fleetMinInterval
-      case Some(knob) => Some(pace(knob, HostPace(policy.fleetMinInterval.getOrElse(Duration.ZERO))).value)
-    })
+    policyFor(url).flatMap(policy => tuned(policy.fleetMinInterval, policy.fleetPaceKnob, pace))
+
+  /** A row's live pace: its knob's current value if it names one, else the
+   *  compiled-in `interval`. The resolver ignores a non-positive or
+   *  unparseable override, so a fat-fingered `0` falls back to the default
+   *  rather than silently unpacing a host we know we out-run. */
+  private def tuned(interval: Option[Duration], knob: Option[PaceKnob],
+                    pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
+    knob match {
+      case None        => interval
+      case Some(named) => Some(pace(named, HostPace(interval.getOrElse(Duration.ZERO))).value)
+    }
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,
    *  else the tight default. */
