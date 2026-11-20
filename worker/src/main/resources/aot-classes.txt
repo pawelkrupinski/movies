@@ -8802,6 +8802,7 @@ services.cinemas.common.PreScrapedCinemaScraper$
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous$
 services.cinemas.common.RangesReader
+services.cinemas.common.RangesReader$
 services.cinemas.common.ReReleaseBilling
 services.cinemas.common.ReReleaseBilling$
 services.cinemas.common.RetryingCinemaScraper
@@ -8823,6 +8824,8 @@ services.cinemas.common.ScraperParse
 services.cinemas.common.ScraperParse$
 services.cinemas.common.SecondFeedFacts
 services.cinemas.common.SecondFeedFacts$
+services.cinemas.common.SingleSiteScraper
+services.cinemas.common.SlimmedPage
 services.cinemas.common.SlotsToMovies
 services.cinemas.common.SlotsToMovies$
 services.cinemas.common.SlotsToMovies$MovieOrder
@@ -8846,6 +8849,8 @@ services.cinemas.common.SourceUrlResolution
 services.cinemas.common.SourceUrlResolution$
 services.cinemas.common.SourceUrlResolution$$anon$1
 services.cinemas.common.SourceUrlResolving
+services.cinemas.common.SynopsisProse
+services.cinemas.common.SynopsisProse$
 services.cinemas.common.UptimeRecordingScraper
 services.cinemas.common.UptimeRecordingScraper$
 services.cinemas.common.VenueCategory
@@ -9133,6 +9138,7 @@ services.cinemas.pl.KinoApolloClient$DetailMeta
 services.cinemas.pl.KinoApolloClient$DetailMeta$
 services.cinemas.pl.KinoApolloClient$LinkOccurrence
 services.cinemas.pl.KinoApolloClient$LinkOccurrence$
+services.cinemas.pl.KinoApolloClient$PageMarks
 services.cinemas.pl.KinoApolloClient$ScreeningRow
 services.cinemas.pl.KinoApolloClient$ScreeningRow$
 services.cinemas.pl.KinoAurumClient

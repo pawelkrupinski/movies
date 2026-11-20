@@ -95,9 +95,8 @@ object KinoPatriaClient {
 
   /** A film as its item shows it: the title and showtimes its section gives, and the credits and running time every
    *  item carries — `amy-movie-field-amy_director`/`_actor` (one link a name) and `amy-movie-field-duration`
-   *  ("01 godzin 46 minut"). The item's synopsis is cut short ("…"), so it is left to the enrichment. */
-  /** A film item's film — its title, the poster `posterSelector` picks, its page, runtime and credits — screening
-   *  at `showtimes`; none without a title or a showtime. */
+   *  ("01 godzin 46 minut"), its poster the one `posterSelector` picks; none without a title or a showtime. The
+   *  item's synopsis is cut short ("…"), so it is left to the enrichment. */
   private def filmOf(item: org.jsoup.nodes.Element, posterSelector: String, cinema: Cinema,
                      showtimes: Seq[Showtime]): Option[CinemaMovie] = {
     def names(field: String) = item.select(s"div.amy-movie-field-$field div.amy-movie-custom-field-content a").asScala.toSeq

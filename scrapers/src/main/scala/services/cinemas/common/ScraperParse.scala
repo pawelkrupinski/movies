@@ -361,13 +361,13 @@ private[cinemas] object ScraperParse {
   private val RuntimeHours   = """(?i)(\d+)\s*(?:godz|h\b)""".r
   private val RuntimeMinutes = """(?i)(\d+)\s*m(?:in|\b)""".r
 
-  /** A runtime spelled in hours and minutes — "1 godz. 53 min", "3 godz 03 min",
-   *  "95 min", "ok. 85 MIN", "1h 50m" — in minutes; `None` when neither part is present. */
   /** A runtime's minutes from the hour and minute counts a pattern captured, either group possibly unmatched (`null`):
    *  "PT1H30M"'s `1` and `30` → 90, "95min"'s `null` and `95` → 95. */
   def minutesOf(hours: String, minutes: String): Int =
     Option(hours).map(_.toInt * 60).getOrElse(0) + Option(minutes).map(_.toInt).getOrElse(0)
 
+  /** A runtime spelled in hours and minutes — "1 godz. 53 min", "3 godz 03 min",
+   *  "95 min", "ok. 85 MIN", "1h 50m" — in minutes; `None` when neither part is present. */
   def hoursMinutesRuntime(s: String): Option[Int] = {
     val hours   = RuntimeHours.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
     val minutes = RuntimeMinutes.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
