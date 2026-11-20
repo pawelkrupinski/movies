@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, Listing, PosterAnswers, PosterEvidence,
-  Question, Resolution, ResolverDecision}
+import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, Listing, NonFilmEvents,
+  PosterAnswers, PosterEvidence, Question, Resolution, ResolverDecision, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 
@@ -20,7 +20,7 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
                                                  normalizer: TitleNormalizer, calibration: IdentityCalibration,
                                                  tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                                                  changes: AnswerChanges, tmdb: Option[IdentityLookups],
-                                                 identities: Seq[VoterFamily], rules: services.identity.UnifiedRules,
+                                                 identities: Seq[VoterFamily], rules: services.identity.agreement.UnifiedRules,
                                                  catalogue: CatalogueAnswers, listedOn: Option[VoterFamily],
                                                  askNow: AgreementStage.AskNow, attempted: Question => Boolean,
                                                  private[agreement] val posters: PosterAnswers,

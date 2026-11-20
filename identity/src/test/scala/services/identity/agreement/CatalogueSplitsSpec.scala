@@ -1,9 +1,10 @@
-package services.identity
+package services.identity.agreement
 
+import services.identity.{CatalogueId, CatalogueSources, FilmTable, IdentityMeasures, ResolverDecision}
 import models.{Cinema, Helios, KinoMuza, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.SuspectTakes.Take
+import services.identity.agreement.SuspectTakes.Take
 
 /** One catalogue id whose listings were taken as two films ([[CatalogueSplits]]). */
 class CatalogueSplitsSpec extends AnyFlatSpec with Matchers {

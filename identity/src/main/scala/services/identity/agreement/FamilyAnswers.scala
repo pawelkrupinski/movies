@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, IdentityMeasures}
+import services.identity.{Answer, IdentityMeasures, VoterFamily}
 
 import scala.annotation.unused
 

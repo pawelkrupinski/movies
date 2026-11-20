@@ -1,9 +1,8 @@
-package services.identity.agreement
+package services.identity
 
 import services.titles.billing.BillingPieces
 
 import services.titles.NonMovieEventClassifier
-import services.identity.{Listing, ListingShape}
 import services.titles.{TitleContainment, TitleWords}
 
 import java.util.Locale
@@ -197,7 +196,7 @@ object NonFilmEvents {
    *  found a film titled so, whole ("Skid Row Marathon", the 2017 documentary), and the words beside the marathon name
    *  no franchise: no two other films found are titled by them ("Twilight Saga Marathon" beside "Twilight Saga: New
    *  Moon" and "Twilight Saga: Eclipse" stays the night of the saga, whatever record bears its whole billing). */
-  private[agreement] def namesItsOwnFilm(raw: String, hits: Seq[services.identity.Hit]): Boolean = {
+  private[identity] def namesItsOwnFilm(raw: String, hits: Seq[services.identity.Hit]): Boolean = {
     val whole = words(raw)
     val named = whole.filterNot(MarathonWord)
     def titles(hit: services.identity.Hit) = (hit.title +: hit.originalTitle.toSeq).map(words)

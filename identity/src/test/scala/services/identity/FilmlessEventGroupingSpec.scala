@@ -10,7 +10,7 @@ import services.titles.TitleNormalizer
 import FilmTable.{F, listing}
 
 /**
- * Billings of one film-less event ([[agreement.NonFilmEvents.facts]]) are one web film whatever running time each venue
+ * Billings of one film-less event ([[NonFilmEvents.facts]]) are one web film whatever running time each venue
  * books it for: the 2026-11-13 corpus audit found UK "League of Legends Worlds 26 | Finals in Cinema" as three films
  * (Odeon's and Vue's 420 minutes, Cineworld's and Showcase's 300) and "The CBeebies Panto 2026: Treasure Island" (75 min)
  * apart from the 313 venues' "CBeebies Panto 2026: Treasure Island", each kept apart by the learned listing-listing cut

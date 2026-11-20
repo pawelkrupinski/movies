@@ -1,7 +1,8 @@
 package scripts
 
-import services.identity.{IdentityMeasures, ResolverDecision, SuspectTakes}
-import services.identity.SuspectTakes.{Signal, Take}
+import services.identity.{IdentityMeasures, ResolverDecision}
+import services.identity.agreement.SuspectTakes
+import services.identity.agreement.SuspectTakes.{Signal, Take}
 import tools.{CommandLine, IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets

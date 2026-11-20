@@ -1,9 +1,11 @@
 package services.identity.agreement
 
+import services.identity.{Answer, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration,
+  IdentityMeasures, Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
+  ScreeningDays, VoterFamily}
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 /** The model's own takes on their way to the projection, read against the evidence that can contradict them

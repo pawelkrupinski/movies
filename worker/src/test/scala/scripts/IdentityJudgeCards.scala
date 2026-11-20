@@ -2,7 +2,8 @@ package scripts
 
 import tools.SpecPool
 import models.Country
-import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes}
+import services.identity.{Answer, IdentityLookups, IdentityMeasures}
+import services.identity.agreement.SuspectTakes
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import tools.{IdentityJudgements, UnmatchedClusters}

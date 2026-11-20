@@ -1,9 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterQuestion, Question,
+  Resolution, ResolverDecision, VoterFamily}
 import models.{KinoMuza, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 /** The model's no-matches, on their way to the projection: one ≥3 families agree on takes that film — TMDB's when its
  *  IMDb id finds one there — and one a family has not answered for yet stays as the model left it, its question named. */
@@ -31,14 +32,14 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
     val imdb    = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    def decided(title: String, venues: Seq[models.Cinema], rules: services.identity.UnifiedRules) = {
+    def decided(title: String, venues: Seq[models.Cinema], rules: services.identity.agreement.UnifiedRules) = {
       val listings = venues.map(venue => listing(venue, title))
       val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
         listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
       AgreementStageFixture(imdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules).apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
     }
-    val selected = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current"))
+    val selected = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current"))
     val wide     = Seq(KinoMuza, models.Multikino, models.KinoPalacowe)
     val taken    = decided("SEVENTEEN World Tour 'NEW_'", wide, selected)
     (taken.basis, taken.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
@@ -70,7 +71,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(families: Map[VoterFamily, FamilyAnswers]) =
       AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
-        rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+        rules = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current")))
         .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
     // IMDb's take and the review sites' agree: the stage takes the agreement
     decided(reviews).basis shouldBe ResolverDecision.Basis.Agreed
@@ -98,7 +99,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val stored = new InMemoryAgreementVerdicts
     val stage  = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), stored,
-      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), rules = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current")))
     val byKey = listings.map(l => l.key -> l).toMap
     val blind = stage.apply(model, byKey.get, version = 1).decisions.head
     blind.basis shouldBe ResolverDecision.Basis.BelowThreshold
@@ -127,7 +128,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def instant(): java.time.Instant = now
     }
     def stageOn(stored: AgreementVerdicts) = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
-      stored, clock = clock, tmdb = Some(NoVenueDetails), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+      stored, clock = clock, tmdb = Some(NoVenueDetails), rules = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current")))
     val byKey  = listings.map(l => l.key -> l).toMap
     val stored = new InMemoryAgreementVerdicts
     val stage  = stageOn(stored)
@@ -149,11 +150,11 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val one   = listing(KinoMuza, "TAJNY AGENT")
     val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
       Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    def decided(year: Int, rules: services.identity.UnifiedRules) =
+    def decided(year: Int, rules: services.identity.agreement.UnifiedRules) =
       AgreementStageFixture(families(year), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(1220564)),
         new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules)
         .apply(model, Map(one.key -> one).get, version = 1).decisions.head
-    val shipped = services.identity.UnifiedRules.resolver
+    val shipped = services.identity.agreement.UnifiedRules.resolver
     val taken   = decided(2025, shipped)
     (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Filled, Some(1220564)))
     taken.explanation.last should startWith ("filled by families.current: 'Tajny agent (2025)'")
@@ -169,7 +170,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val families = Map(
       VoterFamily.Wiki -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q1" -> SourceRecord(film, Map("tmdb" -> "1483101")))),
       VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
-    def decided(one: services.identity.Listing, rules: services.identity.UnifiedRules) = {
+    def decided(one: services.identity.Listing, rules: services.identity.agreement.UnifiedRules) = {
       val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.14, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
       AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
@@ -177,7 +178,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
         .apply(model, Map(one.key -> one).get, version = 1).decisions.head
     }
     val credited = listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026), director = Some("Konstantin Konovalov"))
-    val shipped  = services.identity.UnifiedRules.resolver
+    val shipped  = services.identity.agreement.UnifiedRules.resolver
     val taken    = decided(credited, shipped)
     (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Filled, Some(1483101)))
     taken.explanation.last should startWith ("filled by family.facts: 'Dowżenko. Pierwsze spojrzenie (2026)'")
@@ -215,7 +216,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       override def cast(tmdbId: Int) = Answer.Known(castOf(tmdbId))
     }
     val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(family => family -> new HeldFamilyAnswers(family, Map.empty)).toMap
-    def decided(one: Listing, lookups: IdentityLookups, rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver) = {
+    def decided(one: Listing, lookups: IdentityLookups, rules: services.identity.agreement.UnifiedRules = services.identity.agreement.UnifiedRules.resolver) = {
       val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.3, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
       AgreementStageFixture(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
@@ -236,7 +237,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided(stated, tmdb(None, id => casts.get(id).filter(_ => id == 1321666))).basis shouldBe ResolverDecision.Basis.BelowThreshold
     decided(stated.copy(catalogueIds = Seq(services.identity.CatalogueId("webedia", "1"))), tmdb(Some(ckLublin), casts.get)).basis shouldBe
       ResolverDecision.Basis.BelowThreshold
-    val shipped = services.identity.UnifiedRules.resolver
+    val shipped = services.identity.agreement.UnifiedRules.resolver
     decided(stated, known, shipped.copy(pinned = shipped.pinned.filterNot(_ == "cast.venue"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
     // a tie-break, never a take: a lone candidate the text names is no tie (UK Electric Palace Hastings' "Straight Talk: A
     // Tribute to Dolly Parton" named the 1992 film's cast and was taken as it), nor is a listing billing a director one —

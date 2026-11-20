@@ -1,9 +1,9 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question}
 import services.movies.SingleCountryNormalizer
 
 import scala.collection.mutable

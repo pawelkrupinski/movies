@@ -2,7 +2,7 @@ package scripts
 
 import testsupport.SourceTrees
 import tools.CommandLine
-import services.identity.UnifiedEvidence
+import services.identity.agreement.UnifiedEvidence
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
@@ -264,7 +264,7 @@ object IdentityUnifiedStrategies {
     }.toMap
   }
 
-  val RulesArtefact: Path = SourceTrees("identity/src/main/resources").file(services.identity.UnifiedRules.ResourcePath)
+  val RulesArtefact: Path = SourceTrees("identity/src/main/resources").file(services.identity.agreement.UnifiedRules.ResourcePath)
 
   val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
 
@@ -329,11 +329,11 @@ object IdentityUnifiedStrategies {
     writeReview(arguments.requiredPath("review"), greedyReview)
   }
 
-  /** The stable steps as the pinned artefact, with what they measured — the hand-pinned rules ([[services.identity.UnifiedRules.pinned]])
+  /** The stable steps as the pinned artefact, with what they measured — the hand-pinned rules ([[services.identity.agreement.UnifiedRules.pinned]])
    *  and their measures carried over from the shipped artefact, which no selection makes. */
-  def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.UnifiedRules = {
-    val shipped = services.identity.UnifiedRules.fromResource()
-    services.identity.UnifiedRules(version, UnifiedEvidence.Guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
+  def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.agreement.UnifiedRules = {
+    val shipped = services.identity.agreement.UnifiedRules.fromResource()
+    services.identity.agreement.UnifiedRules(version, UnifiedEvidence.Guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
       (inSample.toSeq.flatMap(r => Seq("right" -> r.right, "wrong" -> r.wrong, "gained" -> r.gained, "lost" -> r.lost, "switched" -> r.switched)) ++
         heldOut.toSeq.flatMap(r => Seq("heldOutRight" -> r.right, "heldOutWrong" -> r.wrong))).map { case (k, v) => k -> v.toDouble }.toMap ++
         shipped.toSeq.flatMap(_.measured.filter(_._1.startsWith("pinned."))),

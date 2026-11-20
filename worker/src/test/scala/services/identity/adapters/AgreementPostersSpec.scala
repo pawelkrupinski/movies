@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.agreement.PosterQuestion
+import services.identity.PosterQuestion
 
 import services.identityadapters.*
 import tools.ScratchDirectories

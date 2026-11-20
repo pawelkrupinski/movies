@@ -1,7 +1,5 @@
 package services.identity
 
-import services.identity.agreement.PosterQuestion
-
 import services.titles.billing.BillingPieces
 
 import java.awt.image.BufferedImage

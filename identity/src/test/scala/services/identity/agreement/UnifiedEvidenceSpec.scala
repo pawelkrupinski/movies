@@ -1,9 +1,10 @@
-package services.identity
+package services.identity.agreement
 
+import services.identity.{Acceptance, CatalogueId, CatalogueSources, DecisionTrace, FilmTable, IdentityCalibration,
+  IdentityMeasures, IdentityResolver, Listing, ResolverDecision, VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{FamilyPick, FamilyTook, FamilyVerdict, SourceRecord, VoterFamily}
 
 /** Every signal of the model and the agreement stage, read off one cluster as the unified model's features. */
 class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {

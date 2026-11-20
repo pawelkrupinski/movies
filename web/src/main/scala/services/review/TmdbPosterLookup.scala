@@ -45,7 +45,7 @@ object TmdbPosterLookup {
 
   /** The ids of these films' poster documents (`poster|film|<tmdbId>`) among the family answers, each to its film. */
   def answerIds(tmdbIds: Seq[Int]): Map[String, Int] =
-    tmdbIds.map(id => PosterAnswers.idOf(services.identity.agreement.PosterQuestion.Film(id)) -> id).toMap
+    tmdbIds.map(id => PosterAnswers.idOf(services.identity.PosterQuestion.Film(id)) -> id).toMap
 
   /** The fields of a poster document that file its paths. */
   val AnswerPaths: String = PosterAnswers.Paths

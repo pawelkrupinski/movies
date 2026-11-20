@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.agreement.PosterQuestion
+import services.identity.PosterQuestion
 
 import services.identityadapters.*
 import tools.SpecTimeouts
@@ -59,7 +59,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     /** The questions an answer led to, by title: a title's search names films whose records the listing then waits on. */
     var ledTo      = Map.empty[String, Set[Question]]
     val asked      = scala.collection.mutable.ArrayBuffer.empty[Question]
-    private def question(listing: Listing) = Question.Family(agreement.VoterFamily.Imdb, s"title|${listing.title}")
+    private def question(listing: Listing) = Question.Family(VoterFamily.Imdb, s"title|${listing.title}")
     /** The venue posters not hashed yet: a listing showing one waits on it, as the stage's `questionsOf` has it. */
     var unhashed   = Set.empty[String]
     def awaiting(listing: Listing): Set[Question] =
@@ -779,7 +779,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))    // its facts moved, its questions open
     service.drain()
     multikino.loneElement.year shouldBe Some(2025)                                    // the ready version stands
-    world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))
+    world.families.asked.toSet shouldBe Set(Question.Family(VoterFamily.Imdb, "title|Lalka"))
     world.families.unanswered = Set.empty                                             // the answer filed
     service.drain()
     multikino.loneElement.year shouldBe Some(1968)
@@ -949,10 +949,10 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.families.unanswered = Set("Lalka")
     world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
     service.drain()
-    val record = Question.Family(agreement.VoterFamily.Imdb, "record|tt0063215")
+    val record = Question.Family(VoterFamily.Imdb, "record|tt0063215")
     world.families.unanswered = Set.empty; world.families.ledTo = Map("Lalka" -> Set(record))  // the search filed, a record named
     service.drain()
-    world.families.asked.toSeq shouldBe Seq(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"), record)
+    world.families.asked.toSeq shouldBe Seq(Question.Family(VoterFamily.Imdb, "title|Lalka"), record)
     service.drain()
     world.families.asked.count(_ == record) shouldBe 1                                            // asked once, not each drain
   }
@@ -994,7 +994,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     again.takeUp()
     def multikino = again.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName)
     multikino.loneElement.year shouldBe Some(2025)
-    world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))   // asked again
+    world.families.asked.toSet shouldBe Set(Question.Family(VoterFamily.Imdb, "title|Lalka"))   // asked again
     world.families.unanswered = Set.empty
     again.drain()
     multikino.loneElement.year shouldBe Some(1968)

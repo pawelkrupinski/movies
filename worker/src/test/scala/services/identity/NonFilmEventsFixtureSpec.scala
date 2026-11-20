@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{FamilyAnswers, NonFilmEvents, SourceHit, SourceRecord}
+import services.identity.agreement.{FamilyAnswers, SourceHit, SourceRecord}
 import tools.UnmatchedClusters
 
 import java.nio.charset.StandardCharsets

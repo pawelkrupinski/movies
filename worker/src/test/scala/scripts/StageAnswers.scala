@@ -3,7 +3,8 @@ package scripts
 import models.Country
 import services.identity._
 
-import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
+import services.identity.agreement.{AgreementStage, AgreementStageComposition}
+import services.identity.VoterFamily
 import tools.CatalogueFill
 
 import java.util.concurrent.ConcurrentHashMap

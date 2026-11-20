@@ -1,9 +1,8 @@
-package services.identity.agreement
+package services.identity
 
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{FilmTable, Hit, Listing}
 
 /** [[NonFilmEvents]] on the titles that decided its rules: the events the unmatched clusters bill, and the films and
  *  relays whose titles read like one. */

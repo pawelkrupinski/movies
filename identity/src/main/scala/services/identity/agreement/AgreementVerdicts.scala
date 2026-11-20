@@ -1,10 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{BsonFields, Dependency, IdentityMeasures, VoterFamily}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.identity.{BsonFields, Dependency, IdentityMeasures}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
  *  read — every family question, the record of the film TMDB leans to, every TMDB lookup its fill made, the year — each
  *  [[Dependency]] with the digest of the answer it got, none yet too; a model take's correction's, every question it
  *  asked too), the film the families agreed on, if any, and else the
- *  film a selected FILL rule takes ([[services.identity.UnifiedRules]]). A cache of a function of its inputs: it stands
+ *  film a selected FILL rule takes ([[services.identity.agreement.UnifiedRules]]). A cache of a function of its inputs: it stands
  *  exactly while its listings and receipt do, and a filing of anything it read decides it again (docs/design/identity-no-drift.md). */
 final case class StoredVerdict(id: String, listings: Long, reads: Map[Dependency, Long], agreed: Option[AgreedFilm], rules: String = "",
                                filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None,

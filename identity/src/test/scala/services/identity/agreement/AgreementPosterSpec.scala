@@ -1,9 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash,
+  PosterQuestion, Question, Resolution, ResolverDecision, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** The venue posters on the agreement's way to the projection: a cluster nothing took takes the one candidate its poster

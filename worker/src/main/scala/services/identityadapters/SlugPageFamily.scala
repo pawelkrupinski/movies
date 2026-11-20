@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import services.identity.IdentityMeasures
+import services.identity.{IdentityMeasures, VoterFamily}
 import services.enrichment.{MetacriticClient, RottenTomatoesClient}
-import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{SourceHit, SourceRecord}
 
 /** A review site's search and its film pages, each film by its slug — its own id, linked as `idKey`: name, year,
  *  running time and directors; no person search. */

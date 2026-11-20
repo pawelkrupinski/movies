@@ -355,7 +355,7 @@ object NonMovieEventClassifier {
   /** [[isLiveEvent]] by what is PERFORMED alone — a concert, a stage play, a gala, a magic show, a voucher — without the
    *  talks and workshops, which a venue bills as a film's companion under the film's own title as often as on their own
    *  ("SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem" is the film, its guest beside it). What the identity
-   *  model's non-film events read ([[services.identity.agreement.NonFilmEvents]]), where skipping a film costs its take. */
+   *  model's non-film events read ([[services.identity.NonFilmEvents]]), where skipping a film costs its take. */
   def isPerformance(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
     !isScreenedBroadcast(t) && (

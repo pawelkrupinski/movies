@@ -1,9 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape, VenueNames,
+  VoterFamily}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape, VenueNames}
 import services.movies.SingleCountryNormalizer
 
 /** A cluster TMDB matched to nothing is identified by the film ≥3 film-database families each identify on their own —

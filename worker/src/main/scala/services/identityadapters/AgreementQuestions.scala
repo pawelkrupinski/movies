@@ -1,7 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
-import services.identity.agreement.VoterFamily
+import services.identity.VoterFamily
 import services.tasks.{Enqueued, Task, TaskQueue}
 import services.tasktypes.TaskType
 import tools.{CircuitOpenException, HttpStatusException, UnexpectedBodyException}

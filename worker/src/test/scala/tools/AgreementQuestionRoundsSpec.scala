@@ -4,7 +4,8 @@ import services.identityadapters.{FamilyAnswerStore, FamilySource, InMemoryTmdbD
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{SourceHit, SourceRecord}
+import services.identity.VoterFamily
 
 import java.nio.file.Files
 import java.util.concurrent.{CountDownLatch, TimeUnit}

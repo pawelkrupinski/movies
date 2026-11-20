@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLookups, IdentityMeasures, Listing, PosterAnswers, PosterHash}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLookups, IdentityMeasures, Listing,
+  PosterAnswers, PosterHash, PosterQuestion, VoterFamily}
 
 /** A family answering from what it holds: every title search (by any of a record's titles) and record known, no person
  *  search, and the venues' `programmes` (a venue it holds none of not answered yet) — or, `unanswered`, nothing known yet. */

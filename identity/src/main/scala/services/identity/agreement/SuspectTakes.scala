@@ -1,7 +1,8 @@
-package services.identity
+package services.identity.agreement
 
+import services.identity.{Evidence, FactRelations, IdentityLookups, IdentityMeasures, Listing, ListingShape, Resolution,
+  ResolverDecision, ShortFilms, SourceReliability, TitleDecorations, TmdbFilmRecord}
 import services.titles.billing.DecorationWords
-import services.identity.agreement.Agreement
 import models.ListingKey
 import services.titles.{TitleContainment, TitleWords}
 

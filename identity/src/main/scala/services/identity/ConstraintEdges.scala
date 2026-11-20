@@ -137,7 +137,7 @@ private[identity] object ConstraintEdges {
   val SameSearchForm   = "same-search-form"
   val TitleSegment     = "title-segment"
   val OriginalTitle    = "original-title"
-  /** The must-link of two billings of one film-less event, its name spelt alike ([[agreement.NonFilmEvents.Facts]]). */
+  /** The must-link of two billings of one film-less event, its name spelt alike ([[NonFilmEvents.Facts]]). */
   val SameEvent        = "same-event"
   /** The must-link of two billings of one house's relay of one stage work in one season ([[RelayStage.oneRelay]]). */
   val SameRelay        = "same-relay"

@@ -1,7 +1,7 @@
 package tools
 
-import services.identity.SuspectTakes
-import services.identity.SuspectTakes.{Suspicion, Take}
+import services.identity.agreement.SuspectTakes
+import services.identity.agreement.SuspectTakes.{Suspicion, Take}
 
 /**
  * The suspect-take RATCHET over a whole corpus's takes ([[SuspectTakes]]): every take a signal suspects is judged in

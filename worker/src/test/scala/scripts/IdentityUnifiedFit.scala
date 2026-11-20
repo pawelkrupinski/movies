@@ -3,7 +3,8 @@ package scripts
 import testsupport.SourceTrees
 import tools.CommandLine
 import play.api.libs.json.Json
-import services.identity.{LogisticFit, UnifiedEvidence, UnifiedWeights}
+import services.identity.{LogisticFit, UnifiedWeights}
+import services.identity.agreement.UnifiedEvidence
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}

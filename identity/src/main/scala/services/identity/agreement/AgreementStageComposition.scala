@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, PosterAnswers, Question}
+import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, PosterAnswers, Question,
+  VoterFamily}
 import services.titles.TitleNormalizer
 
 /**
@@ -50,7 +51,7 @@ object AgreementStageComposition {
   def apply(sources: Sources, effects: Effects = Effects(), overrides: Set[Override] = Set.empty): AgreementStage = {
     val unbudgeted = overrides(Override.Unbudgeted)
     val pipeline   = new AgreementPipeline(sources.families, sources.venuePages, sources.normalizer, sources.calibration,
-      sources.tmdbOf, sources.stored, sources.changes, tmdb = Some(sources.tmdb), sources.identities, services.identity.UnifiedRules.resolver,
+      sources.tmdbOf, sources.stored, sources.changes, tmdb = Some(sources.tmdb), sources.identities, services.identity.agreement.UnifiedRules.resolver,
       sources.catalogue, sources.listedOn, effects.askNow, sources.attempted, sources.posters, sources.clock)
     new AgreementStage(pipeline, ask = effects.ask, metrics = effects.metrics,
       correctionPostersAtOnce = if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionPostersAtOnce,

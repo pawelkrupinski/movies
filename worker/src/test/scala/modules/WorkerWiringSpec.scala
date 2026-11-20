@@ -523,7 +523,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // The agreement's fill resolves a cluster alone, asking TMDB what the model's whole-corpus resolve never did: read from
   // the store alone, those were gaps nothing asked, and the fill never took (PL "Lalka (Dolly)" ×5, right → unmatched).
   "the agreement stage's fill" should "read TMDB as the model does: what the store lacks asked live" in {
-    import services.identity.agreement.VoterFamily
+    import services.identity.VoterFamily
     val requests = new java.util.concurrent.atomic.AtomicInteger()
     val counting: HttpFetch = new AnyMethodByUrlHttpFetch(_ => { requests.incrementAndGet(); """{"results":[]}""" })
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("TMDB_API_KEY" -> "test-key")) {
@@ -657,7 +657,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // the enrichment chain's breakers tell the identity side, which releases the host's failures in the question memory.
   "the enrichment chain's host breakers" should "release the identity questions that failed against a host once it answers again" in {
     import services.identity.Question
-    import services.identity.agreement.VoterFamily
+    import services.identity.VoterFamily
     val host    = "films.example.org"
     @volatile var down = true
     val leaf: HttpFetch = new AnyMethodByUrlHttpFetch(_ =>

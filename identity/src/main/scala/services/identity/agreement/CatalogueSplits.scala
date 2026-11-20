@@ -1,6 +1,7 @@
-package services.identity
+package services.identity.agreement
 
-import services.identity.SuspectTakes.Take
+import services.identity.CatalogueId
+import services.identity.agreement.SuspectTakes.Take
 
 /**
  * CATALOGUE SPLITS: one catalogue id whose listings were taken as two films. A catalogue names one film by one id

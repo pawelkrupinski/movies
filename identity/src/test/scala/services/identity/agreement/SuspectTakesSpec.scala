@@ -1,9 +1,10 @@
-package services.identity
+package services.identity.agreement
 
+import services.identity.{CatalogueId, CatalogueSources, FilmTable, IdentityMeasures, Listing, ResolverDecision}
 import models.{Cinema, Helios, KinoApollo, KinoMuza, Multikino, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.SuspectTakes.{Billings, Signal, Take}
+import services.identity.agreement.SuspectTakes.{Billings, Signal, Take}
 
 /** The suspect-take signals ([[SuspectTakes]]) on the wrong takes a capture surfaced on 2026-10-12, and on the right
  *  takes beside them that bill the same shapes. */

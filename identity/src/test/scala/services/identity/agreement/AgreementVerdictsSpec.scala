@@ -1,8 +1,8 @@
 package services.identity.agreement
 
+import services.identity.{Dependency, IdentityMeasures, PosterQuestion, Question, VoterFamily}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Dependency, IdentityMeasures, Question}
 
 /** A stored agreement verdict reads back as it was kept — the answers it read and the film agreed on, or none. */
 class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
@@ -50,7 +50,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val stored = new InMemoryAgreementVerdicts
     AgreementStageFixture(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.Answer.Known(None),
       stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
-      rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+      rules = services.identity.agreement.UnifiedRules("t", services.identity.agreement.UnifiedEvidence.Guards, Seq("venues.current")))
       .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1)
     val verdict = stored.all().loneElement
     verdict.reads.keys.exists { case Dependency.Lookup(Dependency.Via.Tmdb, _, Question.Candidate(_)) => true; case _ => false } shouldBe true

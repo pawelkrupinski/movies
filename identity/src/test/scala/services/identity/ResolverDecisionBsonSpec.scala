@@ -23,7 +23,7 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
 
   it should "read back with what it awaits, each kind of question: no film yet stays Pending across a restart" in {
     val awaits = Set[Question](Question.Candidate(CandidateQuery.Title("Snow Leopard")), Question.FilmRecord(-181874839),
-      Question.VenuePage(snowLeopard), Question.Family(agreement.VoterFamily.values.head, "title|Snow Leopard"))
+      Question.VenuePage(snowLeopard), Question.Family(VoterFamily.values.head, "title|Snow Leopard"))
     val waiting = ResolverDecision(Seq(snowLeopard), None, 0.5, ResolverDecision.Basis.BelowThreshold, Nil, awaits = awaits)()
     waiting.outcome shouldBe TakeOutcome.Pending(awaits)
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(waiting)) shouldBe waiting

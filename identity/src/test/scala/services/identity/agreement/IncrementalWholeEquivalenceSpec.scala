@@ -1,11 +1,12 @@
 package services.identity.agreement
 
+import services.identity.{Answer, AnswersChanged, CandidateQuery, DetailFacts, FilmTable, GeneratedIdentityCorpus, Hit,
+  IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, InMemoryIdentityModelStore,
+  IncrementalResolver, Listing, PosterAnswers, PosterHash, PosterQuestion, Question, Resolution, ResolverDecision,
+  ScreeningDays, TakeFlips, TitleDecorations, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{AnswersChanged, Answer, CandidateQuery, DetailFacts, FilmTable, GeneratedIdentityCorpus, Hit, IdentityCalibration,
-  IdentityLookups, IdentityMeasures, IdentityResolver, IncrementalResolver, InMemoryIdentityModelStore, Listing, PosterAnswers, PosterHash, Question,
-  Resolution, ResolverDecision, ScreeningDays, TakeFlips, TitleDecorations, UnifiedEvidence, UnifiedRules}
 import services.movies.SingleCountryNormalizer
 import tools.IndependentCases
 

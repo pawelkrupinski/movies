@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, PosterAnswers, Question}
+import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups, PosterAnswers, Question,
+  VoterFamily}
 import services.titles.TitleNormalizer
 
 /**
@@ -18,7 +19,7 @@ object AgreementStageFixture {
             ask: Set[Question] => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
             clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
             tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil,
-            rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver,
+            rules: services.identity.agreement.UnifiedRules = services.identity.agreement.UnifiedRules.resolver,
             catalogue: CatalogueAnswers = CatalogueAnswers.Silent, listedOn: Option[VoterFamily] = None,
             correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce,
             correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,

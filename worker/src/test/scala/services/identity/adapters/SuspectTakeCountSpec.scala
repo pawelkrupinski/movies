@@ -1,11 +1,13 @@
 package services.identity
 package adapters
 
+import services.identity.agreement.SuspectTakes
+
 import services.identityadapters.*
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.SuspectTakes.Signal
+import services.identity.agreement.SuspectTakes.Signal
 
 /** The live resolve's suspect-take count ([[SuspectTakeCount]]): billings per signal, an agreed film's record read from
  *  the store, a listing as its venue's page states it. */

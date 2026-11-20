@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, BilledPiece, DetailFacts, ProseWords, Question,
-  Listing, PosterEvidence, ResolverDecision}
+import services.identity.{Answer, BilledPiece, DetailFacts, Listing, PosterEvidence, ProseWords, Question,
+  ResolverDecision, VoterFamily}
 
 import scala.collection.mutable
 
@@ -10,7 +10,7 @@ import scala.collection.mutable
  *  names another's description, or its billing names the film as one piece beside another thing. Each reads through
  *  `evidence` ([[AgreementEvidence]]) and the cluster's `candidates`, by the selected `rules`; a film TMDB holds no record of stands
  *  on the first of `identities` that names it, and the listings' catalogue ids are read from `catalogue`. */
-private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candidates: AgreementCandidates, rules: services.identity.UnifiedRules,
+private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candidates: AgreementCandidates, rules: services.identity.agreement.UnifiedRules,
                                              identities: Seq[VoterFamily], catalogue: services.identity.CatalogueAnswers,
                                              tmdbOf: String => Answer[Option[Int]]) extends ClusterFill {
   import evidence.{looked, venues}
@@ -85,7 +85,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
 
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
-   *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own
+   *  ([[services.identity.agreement.UnifiedRules.filled]] over [[services.identity.agreement.UnifiedEvidence.contenders]]: the cluster's own
    *  TMDB candidates, none denied, and the films the families took or lean to) — `Unknown` while a TMDB answer the
    *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). Everything it
    *  reads is noted in `receipt`, the verdict's. */
@@ -97,14 +97,14 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
       if (noting.unknown) Answer.Unknown
       else {
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
-        val cluster = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
+        val cluster = services.identity.agreement.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).answered.flatten,
           productions = () => productionsOf(listings, measured, asked, Some(receipt)), undated = { film =>
             val attempt = services.identity.Dependency.Attempted(Question.Record(film))
             evidence.readNow(attempt).foreach(receipt(attempt) = _)
             undatedOf(lookups)(film)
           })
-        Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(cluster)).map { case (film, rule) =>
+        Answer.Known(rules.filled(services.identity.agreement.UnifiedEvidence.contenders(cluster)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
       }
     }
@@ -286,7 +286,7 @@ private[identity] object AgreementTakes {
    *  first to take a film decides, and none after it is read (nor asks a question). The order is behaviour:
    *  - [[PosterVoteTake]]: the one candidate a venue poster matches within [[PosterEvidence.VoteBits]], none vetoing it;
    *  - [[BroadcastTake]]: the one record of the billed stage work broadcast on a screening day ([[agreement.Broadcast]]);
-   *  - [[FillTake]]: the first selected unified fill rule's film ([[services.identity.UnifiedRules.filled]]), unless a venue
+   *  - [[FillTake]]: the first selected unified fill rule's film ([[services.identity.agreement.UnifiedRules.filled]]), unless a venue
    *    poster vetoes it;
    *  - [[CatalogueTake]]: the film the listings' own catalogue ids name ([[agreement.Catalogue]]). Last though an exact id:
    *    where it names another film than a take above, the projection keeps that take, for the measure to list.

@@ -1,10 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, Dependency, FilmTable, IdentityCalibration, IdentityLookups, IdentityMeasures,
+  Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, TakeOutcome, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Dependency, FilmTable, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, PosterAnswers,
-  PosterHash, Resolution, ResolverDecision, TakeOutcome, UnifiedEvidence, UnifiedRules}
 import services.movies.SingleCountryNormalizer
 
 import scala.collection.mutable

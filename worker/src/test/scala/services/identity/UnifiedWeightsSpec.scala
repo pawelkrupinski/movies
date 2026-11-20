@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.agreement.UnifiedEvidence
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

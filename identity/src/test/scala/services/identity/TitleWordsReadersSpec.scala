@@ -5,7 +5,6 @@ import models.{Country, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titles.NonMovieEventClassifier
-import services.identity.agreement.NonFilmEvents
 import services.titles.TitleNormalizer
 
 /** Each reader of the one word table ([[services.titles.TitleWords]]) reads a concept in every language a country bills

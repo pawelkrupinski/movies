@@ -3,7 +3,7 @@ package scripts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityMeasures
-import services.identity.SuspectTakes.Signal
+import services.identity.agreement.SuspectTakes.Signal
 import scripts.SuspectTakesMeasure.Graded
 import tools.UnmatchedClusters.Label
 

@@ -8,7 +8,7 @@ import services.titles.{TitleContainment, TitleSeason, TitleWords}
 /**
  * The ONE place a listing's SHAPE is read off its billing — what kind of screening it bills, before any film is in
  * hand: a house's relay of a stage work, a bill of several works, an event no film database holds
- * ([[agreement.NonFilmEvents]], which reads the relay test below), and whose facts it carries (its venue's, or a
+ * ([[NonFilmEvents]], which reads the relay test below), and whose facts it carries (its venue's, or a
  * catalogue's). Every rule that asks one of these questions asks it here: the agreement's guards, the poster evidence,
  * the catalogue take, the broadcast join's withdrawal, the unified fill's guards.
  *

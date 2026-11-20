@@ -90,7 +90,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
 
   "a candidate's TMDB record" should "carry the poster the poster corroboration hashed it from, the first of its paths" in {
     import services.identity.PosterAnswers
-    import services.identity.agreement.PosterQuestion
+    import services.identity.PosterQuestion
     insert(DebugMirrorCollections.TmdbFilms,
       new BsonDocument("_id", BsonString("1599768")).append("record", new BsonDocument("title", BsonString("Ghost School")).append("year", BsonInt32(2026))),
       new BsonDocument("_id", BsonString("603")).append("hit", new BsonDocument("title", BsonString("The Matrix"))))

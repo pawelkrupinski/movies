@@ -16,7 +16,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
    *  named after the film's title, and whatever record the venue's system attached to it is the namesake its search
    *  found. UK Electric Palace Hastings' "Straight Talk: A Tribute to Dolly Parton" [1992] {Barnet Kellman} is a tribute
    *  show named after her song, not the 1992 film she starred in. Only the event the billing bills is read
-   *  ([[agreement.NonFilmEvents.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
+   *  ([[NonFilmEvents.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
    *  Film + Awards") keeps its film, and a performance "joined with" the film is its companion ("DYRYGENT - POŁĄCZONY Z
    *  KONCERTEM MUZYKI NA ŻYWO", Wajda's film). A record titled by the performance itself ("Kabaret", "Die Tribute von
    *  Panem") is the film its event words name. A film of the silent era is screened to a performance — live music is
@@ -56,7 +56,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
   /** A billing that reads as no film at all ([[FilmNess]]: event words — a gig, a tour, a festival, a show — and no relay
    *  or screening attached) whose record shares none of its other words: the namesake a search for the event's words
    *  found, not what the venue screens. The agreement stage already asks no family about such a billing
-   *  ([[agreement.NonFilmEvents]]); this holds the model's own takes to the same reading. Asked of every accepted take,
+   *  ([[NonFilmEvents]]); this holds the model's own takes to the same reading. Asked of every accepted take,
    *  so a billing with no event word answers from the listing's one-off [[IdentityMeasures.Listing.eventWords]] and
    *  allocates nothing ([[ResolverAllocationSpec]]'s dated-title budget). */
   private[identity] def readsAsNoFilm(scored: Scored): Boolean = {

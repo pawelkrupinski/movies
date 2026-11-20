@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Dependency, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  Listing, Question}
+import services.identity.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
+  IdentityMeasures, Listing, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 

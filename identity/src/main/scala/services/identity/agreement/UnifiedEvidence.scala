@@ -1,7 +1,9 @@
-package services.identity
+package services.identity.agreement
 
+import services.identity.{Answer, BilledPiece, CastEvidence, Certificates, ClasspathResource, FactRelations,
+  FallbackIds, FeedLink, IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, ResolverDecision,
+  SourceReliability, VenueNames, VoterFamily}
 import play.api.libs.json.{Json, OFormat}
-import services.identity.agreement.{Agreement, Broadcast, FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
 
 /**
  * The UNIFIED evidence model's signals: every signal the resolver's model and the agreement stage after it read about

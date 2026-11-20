@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.identity.agreement.SuspectTakes
 import services.identity.*
 import play.api.Logging
 

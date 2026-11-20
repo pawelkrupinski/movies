@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, Listing, Question, Resolution, ResolverDecision}
+import services.identity.{IdentityCalibration, Listing, Question, Resolution, ResolverDecision, VoterFamily}
 import models.ListingKey
 
 import scala.collection.mutable
@@ -411,8 +411,8 @@ object AgreementStage {
 
   /** [[PosterQuestion]] by the name it had here: the tool files compiled into older refs
    *  (`WhatIfAnswers`, `OlderRefs`) name it so, which both a ref before its move and one after compile. */
-  type PosterQuestion = _root_.services.identity.agreement.PosterQuestion
-  val PosterQuestion: _root_.services.identity.agreement.PosterQuestion.type = _root_.services.identity.agreement.PosterQuestion
+  type PosterQuestion = _root_.services.identity.PosterQuestion
+  val PosterQuestion: _root_.services.identity.PosterQuestion.type = _root_.services.identity.PosterQuestion
 
 
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last

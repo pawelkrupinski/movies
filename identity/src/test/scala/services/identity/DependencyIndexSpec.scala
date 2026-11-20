@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{VerdictIndex, VoterFamily}
+import services.identity.agreement.VerdictIndex
 
 import scala.collection.mutable
 import scala.util.Random

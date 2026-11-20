@@ -2509,7 +2509,7 @@ The schedule now (`tmdb-changes-sweep`, a claimed task ticking once a minute, no
 ## 20. The unified evidence model (phase 1, 2026-10-05: inventory, dataset, fit, measure)
 
 Goal: every signal the resolver's model and the agreement stage after it read becomes a FEATURE of one learned model,
-weighed by data, not by hand-set constants (`services.identity.UnifiedEvidence`, `UnifiedWeights`). Phase 1 changes no
+weighed by data, not by hand-set constants (`services.identity.agreement.UnifiedEvidence`, `UnifiedWeights`). Phase 1 changes no
 production decision; it measures.
 
 ### 20.1 Inventory

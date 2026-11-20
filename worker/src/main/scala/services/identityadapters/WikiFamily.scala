@@ -1,7 +1,8 @@
 package services.identityadapters
 
 import services.enrichment.WikidataClient
-import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{SourceHit, SourceRecord}
+import services.identity.VoterFamily
 
 /** Wikidata's film items: its entity search in the country's language and English, the items crediting a director, and
  *  an item's record, linked to other families by the ids it states. */

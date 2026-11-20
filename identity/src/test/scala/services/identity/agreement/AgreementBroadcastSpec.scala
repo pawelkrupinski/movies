@@ -1,10 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups,
+  IdentityMeasures, Listing, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Resolution,
-  ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDate

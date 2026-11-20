@@ -18,7 +18,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, read.film, read.confidence, read.basis,
       explanation(read, edges, ids, apart), contradictions = apart, fallback = read.fallback, leaning = read.leaning,
       unanswered = read.unknown, candidate = read.candidate, awaits = read.awaits,
-      filmTitled = cluster.flatMap(node => node.listings.filter(agreement.NonFilmEvents.filmTitled(_, scoring.generation.hitsOf(node.id))).map(_.key)).toSet)(
+      filmTitled = cluster.flatMap(node => node.listings.filter(NonFilmEvents.filmTitled(_, scoring.generation.hitsOf(node.id))).map(_.key)).toSet)(
       traceOf(cluster, scope, read.scored, read.film, read.basis, edges, ids))
   }
 

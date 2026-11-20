@@ -4,8 +4,9 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.VoterFamily
-import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact, StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
+import services.identity.VoterFamily
+import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact,
+  StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
 import models.ListingKey
 import tools.MutableClock
 

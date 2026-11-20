@@ -3,9 +3,8 @@ package services.identity.agreement
 import services.titles.billing.BillingPieces
 
 import services.identity.{Acceptance, Answer, FactRelations, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing, ListingShape, PosterEvidence, Question}
+  IdentityResolver, Listing, ListingShape, PosterEvidence, Question, SourceReliability}
 import services.identity.toAnswer
-import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
 import services.titles.{TitleContainment, TitleNormalizer}
 
@@ -288,13 +287,13 @@ object Agreement {
    *  ([[models.FilmRuntime.plausible]], [[SuspectTakes.FeatureMinutes]]), and only the whole film's: a part the
    *  title bills and the record's titles do not ("Shoah – Teil 1", 273 of 566 minutes), or a slot of half the film or less
    *  (a half before an intermission), screens a part of it. The agreement's guard, and the fill's `listing.runsShort`
-   *  ([[services.identity.UnifiedEvidence]]); no lean's dissent reads it. */
+   *  ([[services.identity.agreement.UnifiedEvidence]]); no lean's dissent reads it. */
   private[identity] def runsShort(listings: Seq[Listing], record: SourceRecord, thisYear: Option[Int]): Option[(Int, Int)] =
     if (!record.film.year.exists(released => released > ListingShape.SilentEraEnd && thisYear.forall(released < _))) None
     else {
       val runs = recordRuntimes(record)
       listings.iterator.filter(listing => SourceReliability.factsOf(listing).trust(Fact.Runtime) == Trust.Decide && !billsAPart(listing, record))
-        .flatMap(_.runtime.filter(stated => models.FilmRuntime.plausible(stated) && stated >= services.identity.SuspectTakes.FeatureMinutes))
+        .flatMap(_.runtime.filter(stated => models.FilmRuntime.plausible(stated) && stated >= services.identity.agreement.SuspectTakes.FeatureMinutes))
         .find(stated => runs.nonEmpty && runs.forall(stated < _ - RuntimeShort) && stated * 2 > runs.max)
         .map(_ -> runs.max)
     }

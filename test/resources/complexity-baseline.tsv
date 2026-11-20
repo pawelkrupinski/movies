@@ -27,7 +27,7 @@ cognitive	http/src/main/scala/tools/HostCircuitBreakerHttpFetch.scala:HostCircui
 cognitive	http/src/main/scala/tools/HostCircuitBreakerHttpFetch.scala:HostCircuitBreakerHttpFetch.getAsync	14
 cognitive	identity/src/main/scala/services/identity/Acceptance.scala:Acceptance.editionNamed	11
 cognitive	identity/src/main/scala/services/identity/CastEvidence.scala:ListedCast.Field.entries	11
-cognitive	identity/src/main/scala/services/identity/CatalogueSplits.scala:CatalogueSplits.of	14
+cognitive	identity/src/main/scala/services/identity/agreement/CatalogueSplits.scala:CatalogueSplits.of	14
 cognitive	identity/src/main/scala/services/identity/FamilyClosure.scala:FamilyClosure.families	11
 cognitive	identity/src/main/scala/services/identity/IdentityCalibration.scala:IdentityCalibration.withPriorSpread	13
 cognitive	identity/src/main/scala/services/identity/IdentityMeasures.scala:IdentityMeasures.certificateRelation	13

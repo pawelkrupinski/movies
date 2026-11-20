@@ -115,7 +115,7 @@ final case class IdentityCalibration(version: String,
   /** This calibration with the search priors' spread — [[PriorSignals]] in the listing-film scope — scaled by `scale`
    *  about each one's positives-weighted mean weight: ×1.5 trusts where a source's search ranks the film more, ×0.5
    *  less, while the score's scale stays put. Another film database's search is not TMDB's, and the signal-combination
-   *  experiment (2026-10-04, REPORT §10) chose each source's scale by cross-validation ([[agreement.VoterFamily]]). */
+   *  experiment (2026-10-04, REPORT §10) chose each source's scale by cross-validation ([[VoterFamily]]). */
   def withPriorSpread(scale: Double): IdentityCalibration = if (scale == 1.0) this else {
     val listingFilm = model(IdentityMeasures.ListingFilm)
     val spread = listingFilm.signals.map { case (name, weights) =>

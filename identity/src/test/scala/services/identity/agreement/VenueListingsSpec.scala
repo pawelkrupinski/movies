@@ -1,9 +1,9 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityMeasures, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityMeasures, ScreeningDays}
 
 import java.time.LocalDate
 

@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import play.api.Logging
-import services.identity.agreement.VoterFamily
+import services.identity.VoterFamily
 import services.tasks.HandlerOutcome.{Done, Skipped}
 import services.tasks.{HandlerOutcome, Task, TaskHandler}
 import services.tasktypes.TaskType

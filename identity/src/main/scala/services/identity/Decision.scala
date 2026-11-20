@@ -29,7 +29,7 @@ import models.ListingKey
  *  - `awaits`, for no film, the questions it is still waiting on -- its searches unanswered, the records its family's
  *    pools await, its listings' venue pages not read, the agreement's own questions: no film YET ([[outcome]]).
  *  - `filmTitled`, the members billed as a franchise's marathon whose node's own TMDB searches found a film of that very
- *    title ([[agreement.NonFilmEvents.filmTitled]]: "Skid Row Marathon", 2017): films, not the night their title reads
+ *    title ([[NonFilmEvents.filmTitled]]: "Skid Row Marathon", 2017): films, not the night their title reads
  *    as -- what the agreement stage reads of them, the model's own answers, never a search of its own.
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
@@ -109,7 +109,7 @@ object ResolverDecision {
      *  (`agreement.Correction`): the cluster takes that one instead. Only on the way to the projection. */
     case Corrected
     /** Unmatched, and not a film at all: every listing of the cluster bills an event no film database holds — a concert,
-     *  a class, a marathon, a secret screening, a series' episodes, a gaming session, a panto ([[agreement.NonFilmEvents]]) — so the agreement stage asked none of
+     *  a class, a marathon, a secret screening, a series' episodes, a gaming session, a panto ([[NonFilmEvents]]) — so the agreement stage asked none of
      *  them about it. Like [[Agreed]], only on the way to the projection; its card is shown as any no-match's is. */
     case Event
 

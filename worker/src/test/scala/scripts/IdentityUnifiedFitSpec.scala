@@ -2,7 +2,8 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{UnifiedEvidence, UnifiedWeights}
+import services.identity.UnifiedWeights
+import services.identity.agreement.UnifiedEvidence
 
 /** The unified evidence model's weights are DATA a refit regenerates: what [[IdentityUnifiedFit]] fits from the
  *  checked-in rows, every weight held to its signal's direction. */
@@ -30,7 +31,7 @@ class IdentityUnifiedFitSpec extends AnyFlatSpec with Matchers {
   }
 
   "the shipped identity rules" should "be the rules every fold selects from the checked-in rows" in {
-    val shipped  = services.identity.UnifiedRules.fromResource().getOrElse(fail("no identity-unified-rules.json"))
+    val shipped  = services.identity.agreement.UnifiedRules.fromResource().getOrElse(fail("no identity-unified-rules.json"))
     val clusters = read(Training).groupBy(_.cluster).toSeq.sortBy(_._1).map { case (id, rs) => IdentityUnifiedStrategies.Cluster(id, rs.sortBy(_.film)) }
     val stable   = IdentityUnifiedStrategies.stableSteps(clusters)
     (shipped.fill, shipped.correct, shipped.guards) shouldBe

@@ -1,7 +1,8 @@
 package scripts
 
 import tools.CommandLine
-import services.identity.{LogisticFit, UnifiedEvidence}
+import services.identity.LogisticFit
+import services.identity.agreement.UnifiedEvidence
 
 import java.nio.file.Files
 

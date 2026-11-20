@@ -3,7 +3,7 @@ package services.identityadapters
 import services.identity.*
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonNull}
 import org.mongodb.scala.bson.BsonArray
-import services.identity.agreement.PosterQuestion
+import services.identity.PosterQuestion
 import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
 
 import java.nio.file.Files

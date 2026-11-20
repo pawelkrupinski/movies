@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
  *  (checked at a version, nothing it read filed since) agreeing with full validation, and a disagreement counted. */
 class MemoSpec extends AnyFlatSpec with Matchers {
 
-  private val title  = Dependency.Answer(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))
+  private val title  = Dependency.Answer(Question.Family(VoterFamily.Imdb, "title|Lalka"))
   private val record = Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.FilmRecord(913760))
   private final case class Cached(film: Int, reads: Map[Dependency, Long])
 
@@ -25,7 +25,7 @@ class MemoSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.memo.put("k", Cached(1, Map(title -> 1L, record -> 2L))); w.memo.check("k", stamp = 7L, version = w.version)
     w.memo.clean("k", 7L, w.version, w.filedSince) shouldBe true
-    w.file(Dependency.Answer(Question.Family(agreement.VoterFamily.Wiki, "title|Other")), 9L)   // read by no entry
+    w.file(Dependency.Answer(Question.Family(VoterFamily.Wiki, "title|Other")), 9L)   // read by no entry
     w.memo.newPass()
     w.memo.clean("k", 7L, w.version, w.filedSince) shouldBe true
     w.file(record, 3L)

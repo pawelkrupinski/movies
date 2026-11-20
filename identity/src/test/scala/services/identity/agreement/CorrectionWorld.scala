@@ -1,8 +1,8 @@
 package services.identity.agreement
 
+import services.identity.{Answer, CatalogueAnswers, FilmTable, IdentityMeasures, Listing, PosterAnswers, PosterHash,
+  PosterQuestion, Question, Resolution, ResolverDecision, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
-import services.identity.{Answer, CatalogueAnswers, FilmTable, IdentityMeasures, Listing, PosterAnswers, PosterHash, Question,
-  Resolution, ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 import scala.collection.mutable

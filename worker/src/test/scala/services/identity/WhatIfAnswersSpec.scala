@@ -1,7 +1,5 @@
 package services.identity
 
-import services.identity.agreement.PosterQuestion
-
 import services.identityadapters.{InMemoryTmdbDocuments, TmdbKind}
 import tools.SpecPool
 import clients.tools.FixtureFile

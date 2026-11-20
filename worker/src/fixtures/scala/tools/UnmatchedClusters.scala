@@ -1,12 +1,14 @@
 package tools
 
-import services.identityadapters.{CatalogueAnswerStore, FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
+import services.identityadapters.{CatalogueAnswerStore, FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore,
+  TmdbKind}
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import services.identity._
 
-import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts, VoterFamily}
+import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts}
+import services.identity.VoterFamily
 import models.ListingKey
 import services.titles.TitleNormalizer
 

@@ -1,9 +1,11 @@
 package integration
 
-import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
+import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups,
+  TmdbKind}
 import services.identity._
 
-import services.identity.agreement.{FamilyAnswers, VoterFamily}
+import services.identity.agreement.FamilyAnswers
+import services.identity.VoterFamily
 import tools._
 
 import java.nio.file.{Files, Path}

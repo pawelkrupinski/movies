@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.agreement.UnifiedEvidence
 import play.api.libs.json.{Json, OFormat}
 
 /**

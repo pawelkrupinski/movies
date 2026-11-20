@@ -1,13 +1,12 @@
 package services.identity
 package adapters
 
-import services.identity.agreement.PosterQuestion
+import services.identity.{PosterQuestion, VoterFamily}
 
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identityadapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
-import services.identity.agreement.VoterFamily
 import models.ListingKey
 import services.tasktypes.TaskType
 import tools.HttpPath

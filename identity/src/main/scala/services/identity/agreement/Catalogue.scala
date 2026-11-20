@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Listing, ListingShape, Question, SourceReliability}
+import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources,
+  Listing, ListingShape, Question, SourceReliability, VoterFamily}
 import services.identity.SourceReliability.Trust
 
 import scala.collection.mutable

@@ -47,17 +47,17 @@ private[identity] final class ListingCannotLinks(scoring: CandidateScoring, fami
       .map(_.toString)
   }
 
-  /** The event each node's listings bill ([[agreement.NonFilmEvents.facts]]), read beside what the node's own searches
+  /** The event each node's listings bill ([[NonFilmEvents.facts]]), read beside what the node's own searches
    *  found ([[CandidateGeneration.hitsOf]]: a film titled as the marathon it seems to bill), once a node. */
-  private val eventOfNode = scala.collection.mutable.HashMap.empty[String, Option[agreement.NonFilmEvents.Facts]]
+  private val eventOfNode = scala.collection.mutable.HashMap.empty[String, Option[NonFilmEvents.Facts]]
   private def eventOf(node: EvidenceNode) =
-    eventOfNode.getOrElseUpdate(node.id, agreement.NonFilmEvents.facts(node.listings, agreement.NonFilmEvents.titledBy(scoring.generation.hitsOf(node.id))))
-  /** Do both nodes name their event alike ([[agreement.NonFilmEvents.Facts.name]])? */
+    eventOfNode.getOrElseUpdate(node.id, NonFilmEvents.facts(node.listings, NonFilmEvents.titledBy(scoring.generation.hitsOf(node.id))))
+  /** Do both nodes name their event alike ([[NonFilmEvents.Facts.name]])? */
   def sameEventName(first: EvidenceNode, second: EvidenceNode): Boolean =
     eventOf(first).exists(a => a.name.nonEmpty && eventOf(second).exists(_.name == a.name))
-  /** Do both nodes bill one film-less event ([[agreement.NonFilmEvents.Facts.filmless]]: of a kind no film record is, one
-   *  production billed alike at many venues, [[agreement.NonFilmEvents.Facts.distributed]]), their own facts agreeing on
-   *  it ([[agreement.NonFilmEvents.Facts.apartFrom]])? */
+  /** Do both nodes bill one film-less event ([[NonFilmEvents.Facts.filmless]]: of a kind no film record is, one
+   *  production billed alike at many venues, [[NonFilmEvents.Facts.distributed]]), their own facts agreeing on
+   *  it ([[NonFilmEvents.Facts.apartFrom]])? */
   def oneEvent(first: EvidenceNode, second: EvidenceNode): Boolean =
     (for (a <- eventOf(first); b <- eventOf(second))
       yield a.filmless && a.distributed && b.filmless && b.distributed && !a.apartFrom(b)).contains(true)

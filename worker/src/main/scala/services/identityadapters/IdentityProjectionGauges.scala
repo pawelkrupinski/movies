@@ -2,7 +2,8 @@ package services.identityadapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{Regroupings, ResolverDecision, SuspectTakes}
+import services.identity.{Regroupings, ResolverDecision}
+import services.identity.agreement.SuspectTakes
 
 /**
  * Each country's identity projection (`IdentityProjection`, docs/design/identity-resolver.md §8 phase 5), each series
@@ -56,7 +57,7 @@ import services.identity.{Regroupings, ResolverDecision, SuspectTakes}
  *    per-billing oscillation alert reads. Bounded: the [[services.identity.BillingReversals.Capacity]] billings that
  *    reversed most recently keep a series, the least recent past it is dropped;
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
- *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
+ *    evidence (`services.identity.agreement.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
  *    last projection of the whole corpus, but for the billings a hand judgement judges (`identity-judgements.tsv`, bundled:
  *    [[services.identity.TakeJudgements]]). A rise between recordings is a wrong take the convergence legs will name;
  *  - `kinowo_worker_identity_suspect_takes_wrong` — the billings taken as a film a hand judgement calls wrong, on the same

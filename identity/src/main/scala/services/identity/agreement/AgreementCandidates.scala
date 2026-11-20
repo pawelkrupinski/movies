@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups,
-  IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question}
+import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups, IdentityMeasures,
+  Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, PosterQuestion, Question, VoterFamily}
 
 import scala.collection.mutable
 

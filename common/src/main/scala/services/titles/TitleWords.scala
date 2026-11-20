@@ -44,7 +44,7 @@ object TitleWords {
     case OldFilm         extends Concept("old-film")
     /** `NonMovieEventClassifier.isMysteryScreening` — the scrape filter: a listing billing one is dropped. */
     case Sneak           extends Concept("sneak")
-    /** `agreement.NonFilmEvents` — kept as a listing, never a film. */
+    /** `NonFilmEvents` — kept as a listing, never a film. */
     case SecretScreening extends Concept("secret-screening")
     /** `services.titles.billing.BillJoins`' markers. */
     case DoubleBill      extends Concept("double-bill")

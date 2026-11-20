@@ -3,7 +3,8 @@ package services.identityadapters
 import services.identity.*
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonString}
 import org.mongodb.scala.bson.BsonArray
-import services.identity.agreement.{AnswerFeed, FamilyAnswers, Showing, SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{AnswerFeed, FamilyAnswers, Showing, SourceHit, SourceRecord}
+import services.identity.VoterFamily
 
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration

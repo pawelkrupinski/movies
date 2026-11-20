@@ -1,11 +1,13 @@
 package scripts
 
-import services.identityadapters.{AgreementReadiness, FamilyAnswerStore, ModelInputGate, PendingListingStore, TmdbDocuments, TmdbKind, TmdbStore}
+import services.identityadapters.{AgreementReadiness, FamilyAnswerStore, ModelInputGate, PendingListingStore,
+  TmdbDocuments, TmdbKind, TmdbStore}
 import models.Country
 import org.bson.BsonDocument
 import services.identity._
 
-import services.identity.agreement.{AgreementStage, VoterFamily}
+import services.identity.agreement.AgreementStage
+import services.identity.VoterFamily
 import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 

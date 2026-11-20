@@ -5,7 +5,8 @@ import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
 import services.identity._
-import services.identity.agreement.{InMemoryAgreementVerdicts, VoterFamily}
+import services.identity.agreement.InMemoryAgreementVerdicts
+import services.identity.VoterFamily
 import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}

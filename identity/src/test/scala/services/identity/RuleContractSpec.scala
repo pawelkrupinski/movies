@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{Correction, VoterFamily}
+import services.identity.agreement.Correction
 import models.ListingKey
 
 /** Every rule a closed list names declares its kind in [[RuleContract]]: a new rule with none fails here (the population

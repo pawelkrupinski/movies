@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, PosterAnswers, PosterHash, Question, ResolverDecision}
+import services.identity.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, ResolverDecision, VoterFamily}
 
 import scala.collection.mutable
 

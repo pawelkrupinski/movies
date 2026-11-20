@@ -3,8 +3,9 @@ package tools
 import models.{Helios, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{IdentityMeasures, Listing, ResolverDecision, SuspectTakes}
-import services.identity.SuspectTakes.Take
+import services.identity.{IdentityMeasures, Listing, ResolverDecision}
+import services.identity.agreement.SuspectTakes
+import services.identity.agreement.SuspectTakes.Take
 
 /** The suspect-take ratchet ([[SuspectTakesAudit]]) a convergence leg runs over its whole corpus: a NEW suspect fails it, a
  *  judged or tolerated one does not, a take a label calls wrong fails it unless tolerated, and a tolerance no take stands

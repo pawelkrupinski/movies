@@ -3,7 +3,6 @@ package services.identity
 import models.Country
 import org.bson.{BsonDocument, RawBsonDocument}
 
-import services.identity.agreement.VoterFamily
 import services.titles.TitleNormalizer
 
 import java.io.{DataInputStream, DataOutputStream, EOFException, FileInputStream}

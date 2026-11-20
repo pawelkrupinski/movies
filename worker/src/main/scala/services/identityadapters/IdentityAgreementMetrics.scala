@@ -2,7 +2,8 @@ package services.identityadapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.agreement.{AgreementStage, VoterFamily}
+import services.identity.agreement.AgreementStage
+import services.identity.VoterFamily
 
 /**
  * The identity agreement's series (`agreement.AgreementStage`, `AgreementQuestions`) — the no-matches ≥3 other film
@@ -11,7 +12,7 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *    answer, `verdicts` kept, those `agreed` on a film, and those whose agreed film a venue poster vetoed
  *    (`poster-vetoed`, `PosterEvidence.veto`); and the model's own takes read against the evidence that can correct them
  *    (`correcting`, `agreement.Correction`); and those no family is asked about: an `event`, not a film
- *    (`ResolverDecision.Basis.Event`, `agreement.NonFilmEvents`);
+ *    (`ResolverDecision.Basis.Event`, `NonFilmEvents`);
  *  - `kinowo_worker_identity_agreement_taken{as}` — the decisions the last pass took, as a `tmdb` film or an IMDb
  *    `fallback` the families agreed on, a `poster` vote (`ResolverDecision.Basis.Poster`), a `broadcast` the screening days
  *    named (`ResolverDecision.Basis.Broadcast`), a `filled` rule's film, or the `catalogue` film a listing's own catalogue id

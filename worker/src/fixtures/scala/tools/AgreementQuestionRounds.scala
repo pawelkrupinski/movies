@@ -2,7 +2,7 @@ package tools
 
 import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, FamilySource}
 
-import services.identity.agreement.VoterFamily
+import services.identity.VoterFamily
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._

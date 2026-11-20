@@ -1,10 +1,11 @@
 package services.identity.agreement
 
+import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, FilmTable,
+  ForwardingIdentityLookups, Hit, IdentityLookups, IdentityMeasures, Listing, Pin, PinClaim, PosterHash, ProseWords,
+  ScreeningDays, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, FilmTable, ForwardingIdentityLookups, Hit, IdentityLookups,
-  IdentityMeasures, Listing, Pin, PinClaim, PosterHash, ProseWords, ScreeningDays, UnifiedRules}
 import tools.IndependentCases
 
 import java.time.LocalDate

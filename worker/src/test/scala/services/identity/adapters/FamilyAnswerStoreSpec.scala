@@ -4,7 +4,8 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{Showing, SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{Showing, SourceHit, SourceRecord}
+import services.identity.VoterFamily
 import tools.MutableClock
 
 import java.time.Instant

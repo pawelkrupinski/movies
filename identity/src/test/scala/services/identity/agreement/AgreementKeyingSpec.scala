@@ -1,9 +1,10 @@
 package services.identity.agreement
 
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, Resolution,
+  ResolverDecision, StoredFamily, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Question, Resolution, ResolverDecision, StoredFamily}
 import services.identity.staging.StagingEvent
 import services.movies.SingleCountryNormalizer
 /** A cluster's key NAMES it (docs/design/identity-cluster-identity.md, docs/design/identity-no-drift.md): a listing

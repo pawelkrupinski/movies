@@ -5,10 +5,9 @@ import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, AnswersChanged, CandidateQuery, ForwardingIdentityLookups, Hit, IdentityLookups, IdentityMeasures,
-  IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
+import services.identity.{Answer, AnswersChanged, CandidateQuery, ForwardingIdentityLookups, Hit, IdentityLookups,
+  IdentityMeasures, IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips, VoterFamily}
 
-import services.identity.agreement.VoterFamily
 import tools.MutableClock
 
 import java.nio.file.Path
@@ -216,7 +215,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // finds at birth is listed TEMPORARY, with an owner and when it goes, so the check lands green -- and the list only shrinks.
   it should "move with what its stage verdict read: an answer filed at a scrape moves it, the same receipt does not" in {
     import services.identity.{Dependency, Question}
-    import services.identity.agreement.VoterFamily
+    import services.identity.VoterFamily
     val asked    = Dependency.Answer(Question.Family(VoterFamily.Imdb, "title|Titans"))
     val unread   = services.identity.agreement.StoredVerdict("c1", 42L, Map(asked -> Dependency.Unanswered), None)
     val filed    = unread.copy(reads = Map(asked -> 7L))

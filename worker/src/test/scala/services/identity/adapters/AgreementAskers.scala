@@ -2,7 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
-import services.identity.agreement.VoterFamily
+import services.identity.VoterFamily
 import services.sharecards.{PosterDownload, VipsPosterShrinker}
 import services.tasks.Task
 import services.tasktypes.TaskType

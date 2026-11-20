@@ -14,8 +14,8 @@ trait AgreementWiring { self: WorkerWiring =>
   lazy val familyAnswerStore: services.identityadapters.FamilyAnswerStore = identityTmdbLayer.familyAnswers
   /** The families asked in this country: Filmweb only where it indexes the country's titles (measured 2026-10-04: it helps
    *  in PL, DE and ES, adds nothing in the UK, and its dissent blocks a right US agreement). */
-  def agreementFamilies: Seq[services.identity.agreement.VoterFamily] = {
-    import services.identity.agreement.VoterFamily
+  def agreementFamilies: Seq[services.identity.VoterFamily] = {
+    import services.identity.VoterFamily
     Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(AgreementWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
   }
@@ -120,7 +120,7 @@ trait AgreementWiring { self: WorkerWiring =>
     mongoConnection.database.fold[services.identity.agreement.AgreementKeys](new services.identity.agreement.InMemoryAgreementKeys)(
       new services.identity.agreement.MongoAgreementKeys(_))
   /** The families' live sources the agreement fill asks. */
-  lazy val familySources: Map[services.identity.agreement.VoterFamily, services.identityadapters.FamilySource] = {
+  lazy val familySources: Map[services.identity.VoterFamily, services.identityadapters.FamilySource] = {
     val all: Seq[services.identityadapters.FamilySource] = Seq(new services.identityadapters.ImdbFamily(imdbClient),
       new services.identityadapters.WikiFamily(wikidataClient, country.language.getLanguage),
       new services.identityadapters.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
@@ -175,10 +175,10 @@ object AgreementWiring {
    *  everywhere, Filmweb's in Poland alone — a Polish database, its records of other countries' releases no identity.
    *  Replayed on the unmatched clusters (2026-10-05): DE "Jeder Acker, jede Fabrik" and "Chasing Hope – Der andere Blick"
    *  (Wikidata), PL "Płazy. Pionierzy życia na lądzie" (Filmweb), none wrong. */
-  def identities(country: String): Seq[services.identity.agreement.VoterFamily] =
-    Seq(services.identity.agreement.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.agreement.VoterFamily.Filmweb)
+  def identities(country: String): Seq[services.identity.VoterFamily] =
+    Seq(services.identity.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.VoterFamily.Filmweb)
   /** The family whose site lists each venue's programme, that the agreement joins the venues' listings to: Filmweb, in
    *  Poland alone (it lists no other country's cinemas). */
-  def listedOn(country: String): Option[services.identity.agreement.VoterFamily] =
-    Option.when(country == "pl")(services.identity.agreement.VoterFamily.Filmweb)
+  def listedOn(country: String): Option[services.identity.VoterFamily] =
+    Option.when(country == "pl")(services.identity.VoterFamily.Filmweb)
 }

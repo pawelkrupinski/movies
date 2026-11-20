@@ -1,10 +1,11 @@
 package services.identity.agreement
 
+import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion,
+  DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Question, Resolution,
+  ResolverDecision, VoterFamily}
 import models.{Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, FilmTable, Hit, IdentityCalibration,
-  IdentityLookups, IdentityMeasures, Listing, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** A listing's own catalogue id — the venue's exact naming of its film in another film database — on the agreement's way

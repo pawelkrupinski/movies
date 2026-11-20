@@ -1,5 +1,7 @@
 package services.identity.agreement
 
+import services.identity.VoterFamily
+
 /** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 

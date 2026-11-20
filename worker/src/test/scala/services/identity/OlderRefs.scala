@@ -24,15 +24,15 @@ object OlderRefs {
   /** An agreement stage's open questions, as the families' (family, question) pairs, the posters to hash and the catalogue
    *  questions: off its one `wanted` set of `Question`s (2026-10-24), else the separate `wanted` (the pairs),
    *  `wantedPosters` and `wantedCatalogue` an older ref keeps. A `Question` is matched by its case's name, not its type. */
-  def stageWanted(stage: AnyRef): (Set[(agreement.VoterFamily, String)], Set[agreement.AgreementStage.PosterQuestion], Set[CatalogueQuestion]) = {
+  def stageWanted(stage: AnyRef): (Set[(VoterFamily, String)], Set[agreement.AgreementStage.PosterQuestion], Set[CatalogueQuestion]) = {
     val wanted = call(stage, "wanted").get.asInstanceOf[Set[Any]]
     call(stage, "wantedPosters") match {
       case Some(posters) =>
-        (wanted.asInstanceOf[Set[(agreement.VoterFamily, String)]], posters.asInstanceOf[Set[agreement.AgreementStage.PosterQuestion]],
+        (wanted.asInstanceOf[Set[(VoterFamily, String)]], posters.asInstanceOf[Set[agreement.AgreementStage.PosterQuestion]],
           call(stage, "wantedCatalogue").get.asInstanceOf[Set[CatalogueQuestion]])
       case None =>
         def of(kind: String): Set[Product] = wanted.collect { case q: Product if q.productPrefix == kind => q }
-        (of("Family").map(q => (q.productElement(0).asInstanceOf[agreement.VoterFamily], q.productElement(1).asInstanceOf[String])),
+        (of("Family").map(q => (q.productElement(0).asInstanceOf[VoterFamily], q.productElement(1).asInstanceOf[String])),
           of("Poster").map(_.productElement(0).asInstanceOf[agreement.AgreementStage.PosterQuestion]),
           of("Catalogue").map(_.productElement(0).asInstanceOf[CatalogueQuestion]))
     }

@@ -1475,7 +1475,7 @@ abstract class CountryConvergenceBehaviour(
    *    are how a film silently loses its board. */
   /**
    * The SUSPECT-TAKE ratchet ([[tools.SuspectTakesAudit]]) over every take of the settled corpus — the whole corpus, not
-   * only the unmatched clusters `UnmatchedClustersRatchetSpec` replays: a take a signal suspects ([[services.identity.SuspectTakes]]:
+   * only the unmatched clusters `UnmatchedClustersRatchetSpec` replays: a take a signal suspects ([[services.identity.agreement.SuspectTakes]]:
    * a title covering a fragment of the billing, a film far older than its screening, a runtime or instalment the listing
    * contradicts, a feed's own TMDB id against it, a fill rule alone) is judged in `identity-judgements.tsv` or tolerated
    * there in scope `served` (an undecided suspect standing since the ratchet was armed, which only shrinks, or a known-wrong
@@ -1498,7 +1498,7 @@ abstract class CountryConvergenceBehaviour(
     val decided  = tick.resolution.getOrElse(fail(s"the projection after the settle was refused: ${tick.refused.getOrElse("")}"))
     val model    = w.identityModel.current(5.minutes).getOrElse(fail("the identity model could not be read"))
     val lookups  = w.storedLookups()
-    val (corpus, reading) = tools.ThreadAllocation.of(services.identity.SuspectTakes.corpus(decided, model.listings, lookups,
+    val (corpus, reading) = tools.ThreadAllocation.of(services.identity.agreement.SuspectTakes.corpus(decided, model.listings, lookups,
       id => lookups.film(id).answered.flatten))
     val year     = java.time.LocalDate.ofInstant(clock.instant(), CorpusCoverage.zoneOf(country)).getYear
     val judged   = tools.IdentityJudgements.read()
@@ -1526,7 +1526,7 @@ abstract class CountryConvergenceBehaviour(
         verdict.wrong.map(t => Seq("wrong", t.listing.venue, t.listing.rawTitle, t.film,
           s"${t.record.title} (${t.record.year.fold("?")(_.toString)})", tools.SuspectTakesAudit.WrongReason)) ++
         // one catalogue id whose listings were taken as two films: a row per side and billing, the report's to judge
-        services.identity.CatalogueSplits.of(corpus.takes).flatMap(split => split.takes.groupBy(_.listing.rawTitle).toSeq.sortBy(_._1).map {
+        services.identity.agreement.CatalogueSplits.of(corpus.takes).flatMap(split => split.takes.groupBy(_.listing.rawTitle).toSeq.sortBy(_._1).map {
           case (raw, ts) => Seq("catalogue", ts.map(_.listing.venue).distinct.sorted.mkString(", "), raw, split.film, split.title, split.why)
         })
     ConvergenceDiagnostics.write(s"$corpusKey-suspect-unjudged", unjudgedLines.map(_.map(tools.UnmatchedClusters.singleSpaced).mkString("\t")))
