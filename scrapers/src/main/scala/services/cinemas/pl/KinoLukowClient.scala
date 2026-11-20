@@ -6,7 +6,7 @@ import services.titles.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies, SynopsisProse}
 import tools.HttpFetch
 
 import java.time.LocalDateTime
@@ -53,7 +53,6 @@ object KinoLukowClient {
 
   private val SlotAt    = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
   private val Minutes   = """(\d{2,3})\s*minut""".r
-  private val Truncated = """(?:\.\.\.|…)\s*$""".r
 
   private case class Slot(film: Element, title: String, showtime: Showtime)
 
@@ -75,7 +74,7 @@ object KinoLukowClient {
         cinema    = cinema,
         posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Option(film.selectFirst("h3.kino-film-title a")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        synopsis  = text("p.kino-film-desc").filter(Truncated.findFirstIn(_).isEmpty),
+        synopsis  = text("p.kino-film-desc").filterNot(SynopsisProse.isCutShort),
         showtimes = showtimes,
         ageRating = AgeRating.normalizeDroppingNoRestriction(text("span.kino-film-age"))
       )

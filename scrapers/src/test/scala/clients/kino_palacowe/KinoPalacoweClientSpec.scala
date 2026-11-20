@@ -134,20 +134,80 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Synopses ──────────────────────────────────────────────────────────────
 
-  it should "extract a non-empty synopsis for every movie" in {
+  // The listing JSON's `lead` is a teaser the site always cuts at ~120 characters with "..." (every lead in every
+  // captured calendar page): matching-only, like MSI's cut Description, never the synopsis shown.
+  it should "keep the listing's cut lead as a matching-only excerpt, never as the synopsis" in {
     results.foreach { cm =>
       withClue(s"${cm.movie.title}: ") {
-        // KinoPałacowe exposes the lead text in the listing JSON (synopsis field
-        // on the bare CinemaMovie), so synopsis is available without a detail fetch.
-        cm.synopsis should not be empty
+        cm.synopsis shouldBe None
+        cm.synopsisExcerpt should not be empty
       }
+    }
+    byTitle("Poranek dla dzieci: Chłopiec na krańcach świata").synopsisExcerpt shouldBe Some(
+      "Czy odważyłbyś się wyruszyć tam, gdzie kończy się świat, by uratować kogoś bliskiego? Omul rozumie mowę zwierząt, ale"
+    )
+  }
+
+  it should "read a non-empty synopsis from every movie's film page" in {
+    results.foreach { cm =>
+      withClue(s"${cm.movie.title}: ")(detailFor(cm.movie.title).synopsis should not be empty)
     }
   }
 
-  it should "extract correct synopsis for Chłopiec na krańcach świata" in {
-    byTitle("Poranek dla dzieci: Chłopiec na krańcach świata").synopsis shouldBe Some(
-      "Czy odważyłbyś się wyruszyć tam, gdzie kończy się świat, by uratować kogoś bliskiego? Omul rozumie mowę zwierząt, ale..."
+  it should "read the whole synopsis from the film page, up to its credits line" in {
+    detailFor("Poranek dla dzieci: Chłopiec na krańcach świata").synopsis shouldBe Some(
+      "Czy odważyłbyś się wyruszyć tam, gdzie kończy się świat, by uratować kogoś bliskiego? Omul rozumie mowę zwierząt, " +
+        "ale nie potrafi dogadać się z własnym bratem. Los zmusi ich jednak do współpracy, gdy mityczna istota odbierze duszę " +
+        "ich siostrze.\n" +
+        "Omul jest jedenastoletnim chłopcem, żyjącym z rodzicami, bratem Mikro i siostrą Kimi w wiosce nad morzem. Nie jest " +
+        "jednak zwyczajnym jedenastolatkiem. Gdy morska bestia, mityczna Sadumea, wykrada duszę jego młodszej siostry, Omul " +
+        "wie, że jedynym ratunkiem jest wyprawa na mroźny koniec świata. Dzięki niezwykłemu amuletowi zdobędzie dar " +
+        "rozmawiania ze zwierzętami. Razem z psem Telą i starszym bratem Omul przemierzy Archipelag Ognia, pokona zdradliwe " +
+        "bagna i zmierzy się z zaklętymi potworami.To nie będzie jednak tylko walka z czasem i magią, ale przede wszystkim " +
+        "próba braterskiej więzi. Czy bracia zdołają wybaczyć sobie błędy z przeszłości i odzyskać siostrę, zanim będzie za " +
+        "późno?\n" +
+        "**„Chłopiec na krańcach świata”** to zapierająca dech w piersiach polska animacja o odwadze, która drzemie w każdym " +
+        "z nas, i empatii, która potrafi kruszyć lody."
     )
+  }
+
+  // Live captures, 2026-11-20 (https://kinopalacowe.pl/filmy/<slug>/).
+  private def pageSynopsis(slug: String): String =
+    client.fetchFilmDetail(s"https://kinopalacowe.pl/filmy/$slug/").flatMap(_.synopsis)
+      .getOrElse(fail(s"no synopsis for $slug"))
+
+  // The owner's report: the page opened "Seans w sobotę o g. 18 WYPRZEDANY. Bilety dostępne na seanse w piątek o
+  // g. 15.15 oraz niedzielę o g. 18.15. NOWE KINO..." -- a box-office notice and a festival strand, cut by the lead.
+  it should "leave a festival page's box-office notice, strand heading and trigger-warning link out of its synopsis" in {
+    pageSynopsis("15295-festiwal-piec-smakow-memorizu") shouldBe
+      "Yuta opuszcza Tokio i jedzie do niewielkiego miasta na Kyushu, by pomóc teściowi, fotografowi prowadzącemu " +
+        "tradycyjne studio, który dochodzi do siebie po wypadku. Zostaje tam na dłużej, z dala od żony i córki, " +
+        "dopasowując się do rytmu lokalnego życia, które płynie inaczej – wolniej, w otoczeniu ciszy przerywanej " +
+        "przypadkowymi spotkaniami i niezobowiązującymi rozmowami. Po jakimś czasie odnajduje w nim własne miejsce. Z " +
+        "rodziną Yuta kontaktuje się poprzez zdjęcia i krótkie nagrania przesyłane smartfonem, tworzące osobliwą mozaikę " +
+        "codzienności i tęsknoty."
+  }
+
+  it should "leave an accessible screening's fact lines out of its synopsis" in {
+    val synopsis = pageSynopsis("15102-kino-bez-barier-lalka-ad-cc-pjm")
+    synopsis should include("Warszawa, koniec dziewiętnastego wieku. Bogaty kupiec Stanisław Wokulski wraca do Polski.")
+    Seq("Czas trwania", "Film dla osób", "Kraj produkcji", "Treści wrażliwe", "Język", "reż.", "bilety", "[")
+      .foreach(fact => withClue(s"$fact in: $synopsis")(synopsis should not include fact))
+  }
+
+  // Captured 2026-06-08: an accessible screening's page that states only facts ("Film "Pieśni lasu" Vincenta Muniera.",
+  // "Gatunek: dokumentalny.") -- no synopsis, so TMDB's stands rather than a 63-character header.
+  it should "read no synopsis from a page that states only an accessible screening's facts" in {
+    client.fetchFilmDetail("https://kinopalacowe.pl/filmy/14486-kino-bez-barier-piesni-lasu-ad-cc-pjm/").map(_.synopsis) shouldBe
+      Some(None)
+  }
+
+  it should "end the synopsis at the credits line, before the event notes that follow it" in {
+    val tierraViva = pageSynopsis("15362-tierra-viva-premiera-i-spotkanie-z-tworcami")
+    tierraViva should startWith("Marta, niegdyś sławna polska piosenkarka, przyjeżdża do Gwatemali")
+    Seq("reż.", "Język", "Pokaz premierowy", "Bilety").foreach(note => withClue(tierraViva)(tierraViva should not include note))
+    // a credits line with no year, the page's "--" rule glued onto it
+    pageSynopsis("10593-opetanie-pokazy-specjalne-w-4k") should not include "reż."
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────

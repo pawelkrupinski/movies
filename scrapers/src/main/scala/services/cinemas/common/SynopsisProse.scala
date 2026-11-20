@@ -11,6 +11,14 @@ import scala.jdk.CollectionConverters._
  */
 object SynopsisProse {
   private val BareUrl = """(?i)\b(?:https?://|www\.)\S+""".r
+  private val CutShort = """(?:\.\.\.|…)\s*$""".r
+
+  /** Whether a venue cut this text short with a trailing ellipsis ("..." / "…"): a listing's teaser of the
+   *  synopsis, never the whole of it, so never what a page shows over a complete one. */
+  def isCutShort(text: String): Boolean = CutShort.findFirstIn(text).isDefined
+
+  /** The text without the trailing ellipsis a venue cut it short with. */
+  def withoutCut(text: String): String = CutShort.replaceFirstIn(text, "").trim
 
   /** Drop bare URL tokens that leaked into prose (a plain-text link, an
    *  Instagram/Facebook handle, a "Więcej: www…" footer) and collapse the
@@ -131,7 +139,7 @@ object SynopsisProse {
   /** Tidy block-text after URL stripping: drop spaces hugging a newline and
    *  cap blank-line runs at one, so an empty (URL-only) paragraph collapses
    *  instead of leaving a gap. */
-  private def normalizeBlocks(s: String): String =
+  def normalizeBlocks(s: String): String =
     s.replaceAll("[ \\t]*\n[ \\t]*", "\n")
       .replaceAll("\n{3,}", "\n\n")
       .trim

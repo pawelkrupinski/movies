@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{SlotsToMovies, SynopsisProse}
 
 import java.time.{LocalDateTime, YearMonth}
 import scala.jdk.CollectionConverters._
@@ -91,7 +91,6 @@ private[cinemas] object MsiScraper {
   private val ImageRoutePat = """src="([^"?]*/ImageData\.ashx)\?""".r
 
   // The month page cuts a long Description at ~300 characters and appends "...".
-  private val TruncatedPat      = """(?:\.\.\.|…)\s*$""".r
   private val ParagraphBreakPat = """(?i)(?:\s*<br\s*/?>\s*){2,}""".r
   // Director line of a Description, anchored at the start of a `<br>`-delimited
   // segment so a mid-sentence mention can't match. Accepts the label variants
@@ -195,14 +194,14 @@ private[cinemas] object MsiScraper {
    *  would otherwise outrank a complete TMDB one on display (Kino Łuków's cut
    *  blurbs are dropped for the same reason). */
   private[cinemas] def descriptionSynopsis(description: String): Option[String] =
-    descriptionText(description).filter(TruncatedPat.findFirstIn(_).isEmpty)
+    descriptionText(description).filterNot(SynopsisProse.isCutShort)
 
   /** A Description the portal cut short, as the listing's matching-only excerpt (`CinemaMovie.synopsisExcerpt`):
    *  never displayed, but the people its first ~300 characters name are still identity evidence. The cut's
    *  ellipsis is dropped; None for a whole Description, which is the synopsis instead. */
   private[cinemas] def descriptionExcerpt(description: String): Option[String] =
-    descriptionText(description).filter(TruncatedPat.findFirstIn(_).isDefined)
-      .map(TruncatedPat.replaceFirstIn(_, "").trim).filter(_.nonEmpty)
+    descriptionText(description).filter(SynopsisProse.isCutShort)
+      .map(SynopsisProse.withoutCut).filter(_.nonEmpty)
 
   /** Each `<br><br>`-separated block as a paragraph (joined by a blank line, the convention the detail view
    *  renders), markup and entities flattened; None when that leaves nothing. */

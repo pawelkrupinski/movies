@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.SlotsToMovies
 
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScraperParse, SynopsisProse}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
@@ -10,6 +10,7 @@ import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 import models.CountryNames
 import services.titles.TitleNormalizer
@@ -61,6 +62,44 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
       val mins  = Option(m.group(2)).flatMap(s => Try(s.toInt).toOption).getOrElse(0)
       Some(hours * 60 + mins).filter(n => n >= 30 && n <= 300)
     }
+
+  // The film page's description (`div.photoAndText__text[data-text]`) runs: the film's prose, its credits line
+  // ("NIKT NIE WIE, reż. Hirokazu Koreeda, Japonia 2004, 141'", or with no year and the rule glued on: "OPĘTANIE,
+  // reż. Andrzej Żuławski, Francja, RFN, 127'--"), a "--" rule, then the hall, tickets and audience and the poster's
+  // alt text. What follows the credits line is event notes (a premiere's guests, the hall), never the synopsis.
+  private val CreditsLine = """,\s*reż\.\s""".r.unanchored
+  // The lines around the prose that state no synopsis: the language and the facts an accessible screening lists
+  // (its header "Film „Lalka”", "Czas trwania: …", "Kraj produkcji: …", "Gatunek: …", "Film dla osób powyżej 12 roku
+  // życia.", "Treści wrażliwe: brak."), a box-office notice ("Seans w sobotę o g. 18 WYPRZEDANY. Bilety dostępne …").
+  private val NoteLine =
+    ("""(?i)^(?:język|wersja językowa|kategoria wiekowa|czas trwania|kraje? produkcji|gatunek|film dla osób|""" +
+      """treści wrażliwe|bilety)\b|^Film [„"].{0,80}$|wyprzedan""").r.unanchored
+
+  /** The film page's synopsis: its description's prose up to the credits line, the notes around it left out --
+   *  as are the lines set in capitals, a festival strand ("NOWE KINO AZJI", "RETROSPEKTYWA: TSUI HARK") or the
+   *  trigger-warning link ("TREŚCI WRAŻLIWE/TRIGGER WARNINGS"), and a bracketed alt text. None when nothing is left.
+   *  The whole text: the listing's `lead` is a teaser of it the site always cuts at ~120 characters. */
+  def pageSynopsis(html: String): Option[String] =
+    Option(Jsoup.parse(html).selectFirst("div.photoAndText__text[data-text]")).map { description =>
+      val lines = description.clone()
+      // a <div> is a line of its own here (the credits line, the "--" rule), as a <p> or <br> is to blockText
+      lines.select("div").asScala.foreach(_.after("<br>"))
+      SynopsisProse.blockText(lines).replace('\u00a0', ' ').split("\n", -1).toSeq
+        .takeWhile(line => !endsProse(plain(line)))
+        .filterNot(line => isNote(plain(line)))
+        .map(_.trim)
+        .mkString("\n")
+    }.map(text => SynopsisProse.normalizeBlocks(SynopsisProse.stripUrls(text))).filter(_.nonEmpty)
+
+  /** A line's words, without blockText's emphasis markers. */
+  private def plain(line: String): String = line.replace("*", "").trim
+
+  private def endsProse(line: String): Boolean = line.startsWith("--") || CreditsLine.findFirstIn(line).isDefined
+
+  private def isNote(line: String): Boolean =
+    NoteLine.findFirstIn(line).isDefined ||
+      (line.startsWith("[") && line.endsWith("]")) ||
+      (line.exists(_.isLetter) && !line.exists(_.isLower))
 
   private case class FilmMeta(
     director:    Seq[String],
@@ -136,7 +175,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
-          synopsis   = first.synopsis,
+          synopsisExcerpt = first.leadExcerpt,
           showtimes  = showtimes,
           trailerUrl = None
         )
@@ -159,21 +198,18 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.page(http, ref).map { html =>
-      // A page with no parseable meta block still LOADED, so it is an empty
-      // detail rather than a failure — see the note above.
-      parseFilmMeta(html).fold(FilmDetail()) { meta =>
-        FilmDetail(
-          synopsis       = None,
-          cast           = Seq.empty,
-          director       = meta.director,
-          runtimeMinutes = meta.runtime,
-          releaseYear    = meta.releaseYear,
-          countries      = meta.countries,
-          genres         = meta.genres,
-          posterUrl      = None,
-          trailerUrl     = meta.trailerUrl
-        )
-      }
+      // A page with no parseable meta block still LOADED, so it is a detail of
+      // whatever else it states rather than a failure — see the note above.
+      val meta = parseFilmMeta(html).getOrElse(EmptyMeta)
+      FilmDetail(
+        synopsis       = pageSynopsis(html),
+        director       = meta.director,
+        runtimeMinutes = meta.runtime,
+        releaseYear    = meta.releaseYear,
+        countries      = meta.countries,
+        genres         = meta.genres,
+        trailerUrl     = meta.trailerUrl
+      )
     }
 
   private def fetchAllEntries(): Seq[ScreeningEntry] = {
@@ -201,7 +237,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
     bookingUrl:     Option[String],
     room:           Option[String] = None,
     runtimeMinutes: Option[Int]    = None,
-    synopsis:       Option[String] = None
+    leadExcerpt:    Option[String] = None
   )
 
   private def parseJson(json: String): (Seq[ScreeningEntry], Boolean) = {
@@ -254,7 +290,8 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
           bookingUrl     = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty),
           room           = room,
           runtimeMinutes = runtime,
-          synopsis       = lead
+          // the site's teaser, always cut short: matching-only, the film page's synopsis is the whole text
+          leadExcerpt    = lead.map(SynopsisProse.withoutCut).filter(_.nonEmpty)
         )
       }
     }
