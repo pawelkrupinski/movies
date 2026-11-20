@@ -50,7 +50,7 @@ module-edge	web->identity	41
 module-edge	worker->base	81
 module-edge	worker->common	1642
 module-edge	worker->http	175
-module-edge	worker->identity	533
+module-edge	worker->identity	534
 module-edge	worker->scrapers	150
 ce	clients	3
 ce	controllers	21
@@ -93,7 +93,5 @@ ce	settings	2
 ce	tools	0
 distance	services.identity	42
 distance-cap	services.identity	44
-distance	services.metrics	38
-distance-cap	services.metrics	40
 distance	services.movies	27
 distance-cap	services.movies	29

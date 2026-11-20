@@ -47,6 +47,7 @@ foundation	models	exempt	coupling	the domain data every layer reads: stable (I n
 foundation	tools	exempt	coupling	generic utilities and the HTTP and Mongo layers, below everything: stable and concrete
 foundation	settings	exempt	coupling	typed configuration values, read by every layer: stable and concrete
 foundation	services.titles	exempt	identity	the title text as a pure function library (TitleNormalizer, FormatTags): stable and concrete, nothing to abstract
+package	services.metrics	exempt	coupling	metric bundles: concrete series at the system edge, common's shared plumbing (exposition, cache gauges, JVM and tick series) under each tier's own (services.metrics.web, services.metrics.worker), each registering its own Prometheus families; no caller swaps a bundle, so a trait per bundle would be the single-implementation trait CLAUDE.md forbids	2026-11-20
 contract	services.cinemas.*	scrape	scrapers	a scraper's side of the scrape contract (CLAUDE.md: a new cinema is a new CinemaXClient on it): the twelve types every scraper is written against are one dependency, not twelve
 member	services.cinemas.common.CinemaScraper	scrape	scrapers	the contract's entry point: what a scraper is
 member	services.cinemas.common.ScraperParse	scrape	scrapers	the shared parse helpers every scraper reads its page with
