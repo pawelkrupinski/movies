@@ -102,7 +102,7 @@ object ModelTakeCorrectionCost {
         val stages = cold(correcting)
         // a warm apply: the same decisions, one answer filed elsewhere since (under an agreement id no verdict reads)
         val warms = (1 to 5).map { n => measured(inputs.indices.foreach { i =>
-          inputs(i)._2.noteFiled(FamilyAnswerStore.questionId(agreement.VoterFamily.values.head, s"cost|$n")); stages(i).apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version) }) }
+          inputs(i)._2.noteFiled(FamilyAnswerStore.questionId(services.identity.agreement.VoterFamily.values.head, s"cost|$n")); stages(i).apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version) }) }
         val before = used()
         val held   = cold(correcting)
         val after  = used()
