@@ -6,11 +6,10 @@ import services.identity.vocabulary.Denial
 /** One [[FamilyScope.score]] of `listing` against its family's pool: the pool as the listing's titles relate to it, the candidates it reaches
  *  measured, the release veto, then the denials one candidate's evidence makes of another. */
 private[identity] final class ListingScoring(pool: FamilyPool, scoring: CandidateScoring, acceptance: Acceptance,
-                                             listing: MeasuredListing, venue: String, source: String, ranks: Map[Int, Int],
-                                             walked: Set[Int], shared: Set[Int], deniedByNode: Int => Option[Denial], suggested: Set[Int],
-                                             directedBy: Set[Int], imdbTitles: Map[Int, Set[String]], country: Option[String],
-                                             linked: Set[Int], names: String => Boolean) {
+                                             subject: ListingScoring.Subject, deniedByNode: Int => Option[Denial],
+                                             names: String => Boolean) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction}
+  import subject.{country, directedBy, imdbTitles, linked, listing, ranks, shared, source, suggested, venue, walked}
 
   private val related    = pool.candidates.map(candidate => candidate.tmdbId -> pool.titleRelation(listing, candidate)).toMap
   // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
@@ -172,4 +171,16 @@ private[identity] final class ListingScoring(pool: FamilyPool, scoring: Candidat
   def scored: Seq[Scored] =
     candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = eventUntaken(scored).orElse(shortUntaken(scored))))(denial => scored.copy(denial = Some(denial))))
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
+}
+
+private[identity] object ListingScoring {
+  /** One listing as its family's scope scores it ([[FamilyScope.score]]): its evidence, its venue, whose claim its facts
+   *  are (`source`, [[SourceReliability.claimOf]]) and the venue's country; and what its queries reached -- each film's
+   *  search rank (`ranks`), the films its walks reached (`walked`), those a title it shares reached (`shared`), those
+   *  only IMDb suggested (`suggested`), those its directors' credits reached (`directedBy`), the titles IMDb lists each
+   *  film under (`imdbTitles`), and the films a feed links it to (`linked`). */
+  final case class Subject(listing: MeasuredListing, venue: String, source: String, country: Option[String],
+                           ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int], suggested: Set[Int] = Set.empty,
+                           directedBy: Set[Int] = Set.empty, imdbTitles: Map[Int, Set[String]] = Map.empty,
+                           linked: Set[Int] = Set.empty)
 }

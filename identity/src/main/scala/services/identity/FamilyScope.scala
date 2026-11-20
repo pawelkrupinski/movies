@@ -31,16 +31,13 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** The qualifiers the pool's records bill ([[FamilyPool.qualifiers]]). */
   def qualifiers: IdentityMeasures.Qualifiers = family.qualifiers
 
-  /** Every candidate `l` has an evidence path to, scored ([[ListingScoring]]); a `denial` marks, with its reason, the ones
-   *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
-   *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
-  def score(listing: MeasuredListing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByNode: Int => Option[Denial], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
-            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty,
-            names: String => Boolean = _ => false): Seq[Scored] = {
+  /** Every candidate `subject`'s listing has an evidence path to, scored ([[ListingScoring]]); a `denial` marks, with its
+   *  reason, the ones its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence
+   *  rules out (`CandidateScoring.evidenceDenial`), which are never eligible. `names`: whether its venue's own text names
+   *  a name whole ([[textNames]]). */
+  def score(subject: ListingScoring.Subject, deniedByNode: Int => Option[Denial], names: String => Boolean): Seq[Scored] = {
     counted()
-    new ListingScoring(family, scoring, acceptance, listing, venue, source, ranks, walked, shared, deniedByNode, suggested,
-      directedBy, imdbTitles, country, linked, names).scored
+    new ListingScoring(family, scoring, acceptance, subject, deniedByNode, names).scored
   }
 
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLinkOverrule.linked]]). */
@@ -81,9 +78,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def scoreOf(node: EvidenceNode): Seq[Scored] = {
     val reached = reach(node)
     val soles   = soleResultsOf(evidenceOf(node).measured, reached)
-    score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
-      id => denials.of(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
-      textNames(Seq(node))).map(placedByImdb(Seq(node)))
+    val subject = ListingScoring.Subject(evidenceOf(node).measured, node.venue, sourceOf(node), node.country,
+      ranks = reached.search, walked = reached.walk, shared = sharedOf(node), suggested = reached.imdbOnly,
+      directedBy = reached.directed, imdbTitles = reached.imdbTitled, linked = feedLinked(node).map(_._2).toSet)
+    score(subject, id => denials.of(node, id), textNames(Seq(node))).map(placedByImdb(Seq(node)))
       .map(scored => if (soles(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
       .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles)))
   }
@@ -130,10 +128,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val reached = cluster.map(reach)
     val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
-    score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denials.of(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
-      reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked, textNames(cluster))
+    val subject = ListingScoring.Subject(listing, lead.venue, sourceOf(lead), lead.country,
+      ranks = ranks, walked = reached.flatMap(_.walk).toSet, shared = cluster.flatMap(sharedOf).toSet,
+      suggested = reached.flatMap(_.imdbOnly).toSet -- ranks.keySet, directedBy = reached.flatMap(_.directed).toSet,
+      imdbTitles = reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), linked = linked)
+    score(subject, id => cluster.iterator.flatMap(denials.of(_, id)).nextOption(), textNames(cluster))
       .map(deniedByAMember(cluster))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
