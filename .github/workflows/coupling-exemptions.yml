@@ -11,6 +11,10 @@ name: Coupling exemptions
 # The same report lists the week's FIX-REPLAY EXEMPTIONS (the owner, 2026-11-20: a gate red's fix lands only with
 # `Fix-Replay: <command>`, which agentctl runs, or `Fix-Replay: none — <why>`, "listed in the owner's weekly report like
 # exemptions"): `scripts/ci/fix_replay_exemptions.py --since 7d`, each `none` with its commit, reds and reason.
+# And it lists the STALE EXEMPTIONS (the owner, 2026-11-20): the `slack` job builds the production code and runs `sbt
+# couplingExemptionSlack` (scripts/coupling-report --exemption-slack), which reads every `class` row's class files for
+# the collaborators it could give up -- a pass-through, a builder, a co-used group, one reached through another -- and
+# names each class whose suggested cut would bring it within the fan-out limit. Any such class raises the same issue.
 on:
     schedule:
         # Mondays 10:47 UTC, a slot no other scheduled job uses
@@ -55,11 +59,29 @@ jobs:
                       echo "found=$rows new coupling exemption row(s) and $nones Fix-Replay: none exemption(s) this week: their reasons and commits are in the run's summary (scripts/coupling-report --new-exemptions --since 7d, scripts/ci/fix_replay_exemptions.py --since 7d); strike any you do not accept" >> "$GITHUB_OUTPUT"
                   fi
 
-    # New rows open (or refresh) one issue assigned to the owner, closed by the next week with none. A failed run opens
-    # the same issue: .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    slack:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 45
+        outputs:
+            stale: ${{ steps.slack.outputs.stale }}
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup-sbt-build
+            - name: Read every class exemption's slack
+              id: slack
+              run: |
+                  sbt "couplingExemptionSlack $RUNNER_TEMP/slack.md"
+                  { echo; cat "$RUNNER_TEMP/slack.md"; } >> "$GITHUB_STEP_SUMMARY"
+                  stale="$(grep -c '(within the limit: the exemption may be stale)$' "$RUNNER_TEMP/slack.md" || true)"
+                  if [ "$stale" -gt 0 ]; then
+                      echo "stale=$stale class exemption(s) whose suggested cut would bring the class within the fan-out limit: each with its collaborators and the cut in the run's summary (scripts/coupling-report --exemption-slack); cut it, or keep the row and say why" >> "$GITHUB_OUTPUT"
+                  fi
+
+    # New rows, or a stale exemption, open (or refresh) one issue assigned to the owner, closed by the next week with
+    # none. A failed run opens the same issue: .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [exemptions]
+        needs: [exemptions, slack]
         if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
@@ -71,5 +93,5 @@ jobs:
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
-                  alert: ${{ needs.exemptions.outputs.found != '' }}
-                  found: ${{ needs.exemptions.outputs.found }}
+                  alert: ${{ needs.exemptions.outputs.found != '' || needs.slack.outputs.stale != '' }}
+                  found: ${{ needs.exemptions.outputs.found }} ${{ needs.slack.outputs.stale }}

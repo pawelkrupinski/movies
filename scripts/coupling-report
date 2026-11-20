@@ -23,6 +23,21 @@
 #                                       headroom left under it), and the `Coupling: split of`
 #                                       trailer to use: scripts/ci/coupling_ratchet.py split-check, the ratchet's own
 #                                       code. Exit 0 accepted, 1 refused.
+#   scripts/coupling-report --simulate <moves.tsv>
+#                                       what moving classes would do, with no code changed (project/CouplingSimulation.scala):
+#                                       the graph with each `<class or pattern><TAB><package>` row's classes moved, each
+#                                       `<class><TAB>into <class>` row's folded into that class (its fan-out the union of
+#                                       both), each `layer`/`rank`/`allow` row added to the layer table (a `rank` row
+#                                       replacing its package's) -- each changed package's types, A, Ca, Ce, I and D,
+#                                       the baseline rows that change (cycle edges, layer and rank violations, Ce,
+#                                       distance, fan-out), the package cycles after, every affected class's fan-out
+#   scripts/coupling-report --exemption-slack
+#                                       every `class` exemption row's collaborators, read from its class files' methods
+#                                       (project/ExemptionSlack.scala): each pass-through (only forwarded into a
+#                                       constructor), builder (used only while built), co-used group (the same methods
+#                                       use them all), reached-through one (used only beside another that hands it
+#                                       out), and the suggested cut with the fan-out it leaves; a class within the limit
+#                                       after it is a stale exemption (coupling-exemptions.yml reports them weekly)
 #   scripts/coupling-report --new-exemptions [--since 7d]
 #                                       the exemption rows added on origin/main since then (default 7 days), each with
 #                                       its date, commit, reason and `Coupling: exempt` trailer, and whether it is still
@@ -31,7 +46,7 @@
 # The pre-push hook's `coupling` check runs the same task and scripts/ci/coupling_ratchet.py over the pushed range.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-update="" out="" split="" base="" new_exemptions="" since="7d"
+update="" out="" split="" base="" new_exemptions="" since="7d" simulate="" slack=""
 pieces=()
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -39,6 +54,10 @@ while [ $# -gt 0 ]; do
         --out) out="$2"; shift ;;
         --base) base="$2"; shift ;;
         --new-exemptions) new_exemptions=1 ;;
+        --simulate)
+            [ $# -ge 2 ] && [ -f "$2" ] || { echo "coupling-report: --simulate <moves.tsv> (an existing file)" >&2; exit 2; }
+            simulate="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift ;;
+        --exemption-slack) slack=1 ;;
         --since) since="$2"; shift ;;
         --check-split)
             [ $# -ge 3 ] || { echo "coupling-report: --check-split <X> <piece>..." >&2; exit 2; }
@@ -46,7 +65,7 @@ while [ $# -gt 0 ]; do
             while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do pieces+=("$1"); shift; done
             [ ${#pieces[@]} -gt 0 ] || { echo "coupling-report: --check-split <X> needs at least one piece" >&2; exit 2; }
             continue ;;
-        -h|--help) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "coupling-report: unknown argument $1" >&2; exit 2 ;;
     esac
     shift
@@ -58,6 +77,15 @@ fi
 if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
 mkdir -p "$out"
 cd "$root"
+# a simulation or the exemption slack: its own task over the same graph, its markdown to stdout
+if [ -n "$simulate" ] || [ -n "$slack" ]; then
+    if [ -n "$simulate" ]; then task="couplingSimulate $simulate $out/simulation.md" md="$out/simulation.md"
+    else task="couplingExemptionSlack $out/slack.md" md="$out/slack.md"; fi
+    "$root/scripts/sbt-warm" "$task" > "$out/sbt.log" 2>&1 && [ -s "$md" ] \
+        || { tail -30 "$out/sbt.log" >&2; echo "coupling-report: sbt ${task%% *} failed (log: $out/sbt.log)" >&2; exit 2; }
+    cat "$md"
+    exit 0
+fi
 "$root/scripts/sbt-warm" "couplingReport $out/rows.tsv $out/report.md $out/edges.tsv $out/fanouts.tsv $out/collaborators.tsv" > "$out/sbt.log" 2>&1 \
     || { tail -30 "$out/sbt.log" >&2; echo "coupling-report: sbt couplingReport failed (log: $out/sbt.log)" >&2; exit 2; }
 if [ -n "$split" ]; then

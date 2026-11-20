@@ -12,10 +12,39 @@ import scala.sys.process.Process
  *  (report-scheduled-run's `alert`). A week with none raises no alert, so the next clean run closes that issue. The
  *  same report lists the week's `Fix-Replay: none` exemptions (the owner, 2026-11-20: a gate red's fix that agentctl
  *  ran no replay of, "listed in the owner's weekly report like exemptions"). The list step's script runs here with
- *  `scripts/coupling-report` and `scripts/ci/fix_replay_exemptions.py` stubbed to print what the real ones print. */
+ *  `scripts/coupling-report` and `scripts/ci/fix_replay_exemptions.py` stubbed to print what the real ones print. And
+ *  it names the STALE exemptions (the owner, 2026-11-20): the slack step's `sbt couplingExemptionSlack`, stubbed here,
+ *  lists every `class` row whose suggested cut would bring its class within the fan-out limit, and any raises the issue. */
 class CouplingExemptionsWorkflowSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/coupling-exemptions.yml")
   private lazy val list     = RepoFile.stepScript(workflow, "List the week's new exemptions")
+  private lazy val slack    = RepoFile.stepScript(workflow, "Read every class exemption's slack")
+
+  private val Slack =
+    """# Exemption slack
+      |
+      |Every `class` exemption row: 1 of 2 would come within the limit (9): `Asker` 12 -> 9.
+      |
+      |## `services.identityadapters.Asker`: 12 -> 9 (within the limit: the exemption may be stale)
+      |
+      |## `services.movies.Repository`: 20 -> 18
+      |""".stripMargin
+
+  /** The slack step run against a stub sbt writing `report` to the task's out path: (its exit, the summary, the outputs). */
+  private def runSlack(report: String): (Int, String, String) = {
+    val dir  = Files.createTempDirectory("coupling-slack")
+    val bin  = Files.createDirectories(dir.resolve("bin"))
+    Files.writeString(dir.resolve("slack-report.md"), report)
+    val sbt  = bin.resolve("sbt")
+    Files.writeString(sbt, "#!/usr/bin/env bash\nset -- $1\n[ \"$1\" = couplingExemptionSlack ] || exit 9\ncp \"$(dirname \"$0\")/../slack-report.md\" \"$2\"\n")
+    sbt.toFile.setExecutable(true)
+    val (summary, output) = (dir.resolve("summary.md"), dir.resolve("output"))
+    Seq(summary, output).foreach(Files.writeString(_, ""))
+    // the stub first on the step's PATH, set by the shell itself
+    val exit = Process(Seq("bash", "-e", "-o", "pipefail", "-c", s"PATH=\"$bin:$$PATH\"\n$slack"), dir.toFile,
+      "RUNNER_TEMP" -> dir.toString, "GITHUB_STEP_SUMMARY" -> summary.toString, "GITHUB_OUTPUT" -> output.toString).!
+    (exit, Files.readString(summary), Files.readString(output))
+  }
 
   private val Listed =
     """# Coupling exemptions added since 7d (on origin/main, test/resources/coupling-exemptions.tsv)
@@ -90,10 +119,24 @@ class CouplingExemptionsWorkflowSpec extends AnyFlatSpec with Matchers {
     output shouldBe ""
   }
 
-  "the report job" should "raise the owner's issue exactly when the list found rows" in {
+  "the slack step" should "put every class exemption's slack in the summary and count the stale ones for the issue" in {
+    val (exit, summary, output) = runSlack(Slack)
+    exit shouldBe 0
+    summary should include("## `services.movies.Repository`: 20 -> 18")
+    output should startWith("stale=1 class exemption(s) whose suggested cut would bring the class within the fan-out limit")
+  }
+
+  it should "find nothing stale when no class would come within the limit, and still pass" in {
+    val (exit, _, output) = runSlack(Slack.linesIterator.filterNot(_.contains("may be stale")).mkString("\n"))
+    exit shouldBe 0
+    output shouldBe ""
+  }
+
+  "the report job" should "raise the owner's issue exactly when the list found rows or the slack a stale exemption" in {
     val report = RepoFile.jobs(RepoFile.withoutComments(workflow))("report")
-    report should include("alert: ${{ needs.exemptions.outputs.found != '' }}")
-    report should include("found: ${{ needs.exemptions.outputs.found }}")
+    report should include("needs: [exemptions, slack]")
+    report should include("alert: ${{ needs.exemptions.outputs.found != '' || needs.slack.outputs.stale != '' }}")
+    report should include("found: ${{ needs.exemptions.outputs.found }} ${{ needs.slack.outputs.stale }}")
     report should include("uses: ./.github/actions/report-scheduled-run")
   }
 }

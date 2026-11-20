@@ -310,6 +310,21 @@ split (a leaf value type down to `models` / `tools`, as 84a5db6d1 did for `servi
 the old row; no trailer. A rise, one name gone to two, or another class taking over the old one's code is no rename --
 a split goes through the split rule.
 
+**Tools for a split or a cut** (the owner, 2026-11-20; each reads the coupling report's own graph, no code changed):
+`scripts/class-cycles <package> [--order 'a<b<c' | --order FILE]` -- the strongly connected components of the classes
+inside a package (and its sub-packages), and every class edge pointing up a proposed order of groups of them (`a<b<c`,
+each a comma list of names or `*` patterns, or a `<class><TAB><group>` table): what a split must cut first.
+`scripts/coupling-report --simulate <moves.tsv>` -- `<class or pattern><TAB><package>` moves, `<class><TAB>into <class>`
+folds (the union rule) and added `layer`/`rank`/`allow` rows, measured as the report would after them: each changed
+package's A, I, D and Ce, the baseline rows that change (cycles, layer and rank violations, Ce, distance, fan-out) and
+every affected class's fan-out (it reproduced 8b559c495's `services.movies` 0.27 -> 0.18 exactly). `scripts/coupling-report
+--exemption-slack` -- every `class` exemption row's collaborators read from its class files' methods: pass-through
+(only forwarded into a constructor), builder (used only while built), co-used (the same methods use them all), reached
+through another that hands it out, each with the suggested cut and its fan-out after; a class within the limit after it
+is a stale exemption, raised weekly by `coupling-exemptions.yml`. A refactor's equivalence phase uses testkit's
+`tools.Equivalence.assertEquivalent` (frozen copy vs rewrite over recorded inputs, byte-identical lines, a deliberately
+broken reading must be caught first; `test-layers` skill).
+
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala
 change): every method's cognitive complexity (Sonar's) ≤ 10, cyclomatic ≤ 10, inner defs ≤ 2

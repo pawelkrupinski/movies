@@ -31,9 +31,16 @@ object ClassReferences {
    *  or abstract, its fields, the methods its bodies call (`owner#name`, the owner's binary name dotted; one taking no
    *  argument also as `owner#name()`: `Instant.now()`, not `Instant.now(clock)`) and the objects
    *  they read (the owners of every `MODULE$` read: a Scala object's module class), and its own fields a method other
-   *  than a constructor or static initialiser writes (`rewritten`: a `var`'s, or a hand-rolled cache's). */
+   *  than a constructor or static initialiser writes (`rewritten`: a `var`'s, or a hand-rolled cache's), and each of
+   *  its methods' own uses (`methods`: what ExemptionSlack reads to tell which collaborators each method touches). */
   final case class Shape(superName: String, interfaces: Seq[String], isInterface: Boolean, isAbstract: Boolean,
-                         fields: Seq[Field], calls: Set[String], modules: Set[String], rewritten: Set[String] = Set.empty)
+                         fields: Seq[Field], calls: Set[String], modules: Set[String], rewritten: Set[String] = Set.empty,
+                         methods: Seq[Method] = Nil)
+
+  /** One method: its name and descriptor, whether it is private, the classes its signature and body name (binary names,
+   *  dotted) and the calls its body makes (`owner#name`, as [[Shape]]'s). A lambda's body is a method of its own
+   *  (`run$$anonfun$1`). */
+  final case class Method(name: String, descriptor: String, isPrivate: Boolean, uses: Set[String], calls: Set[String])
   object Shape {
     val empty: Shape = Shape("java.lang.Object", Nil, isInterface = false, isAbstract = false, Nil, Set.empty, Set.empty)
   }
@@ -72,16 +79,21 @@ object ClassReferences {
     var muted = false
     var inConstructor = false
     val rewritten = Set.newBuilder[(String, String)]
+    // the method being read: its uses and calls (null outside a method)
+    var methodUses: scala.collection.mutable.Set[String] = null
+    var methodCalls: scala.collection.mutable.Set[String] = null
+    def use(name: String): Unit = { uses += name; if (methodUses != null) methodUses += name }
+    def call(name: String): Unit = { calls += name; if (methodCalls != null) methodCalls += name }
     // a field write (putfield, putstatic) outside a constructor: the field's owner and name
     def written(index: Int): Unit = if (!inConstructor && index > 0 && index < count && tags(index) == 9)
       rewritten += ((className(first(index)), memberName(index)))
     def className(index: Int): String = utf8(first(index)).replace('/', '.')
     def memberName(index: Int): String = utf8(first(second(index)))
     def signature(index: Int): Unit =
-      if (!muted && index > 0 && utf8(index) != null) Signatures.types(utf8(index)).foreach(uses += _)
+      if (!muted && index > 0 && utf8(index) != null) Signatures.types(utf8(index)).foreach(use)
     def classEntry(index: Int): Unit = if (!muted && index > 0 && tags(index) == 7) {
       val name: String = utf8(first(index))
-      if (name.startsWith("[")) signature(first(index)) else uses += name
+      if (name.startsWith("[")) signature(first(index)) else use(name)
     }
     // a constant an instruction names: a class, a member (its owner and its type), a method type, an invokedynamic
     def constant(index: Int): Unit = if (index > 0 && index < count) tags(index) match {
@@ -89,9 +101,9 @@ object ClassReferences {
       case 9 | 10 | 11 =>
         if (tags(index) == 9) { if (memberName(index) == "MODULE$") modules += className(first(index)) }
         else {
-          val call: String = className(first(index)) + "#" + memberName(index)
-          calls += call
-          if (utf8(second(second(index))).startsWith("()")) calls += call + "()" // a call taking no argument, told apart
+          val named: String = className(first(index)) + "#" + memberName(index)
+          call(named)
+          if (utf8(second(second(index))).startsWith("()")) call(named + "()") // a call taking no argument, told apart
         }
         classEntry(first(index)); constant(second(index))
       case 12 => signature(second(index))
@@ -146,20 +158,25 @@ object ClassReferences {
       val types: Seq[String] = (Signatures.types(utf8(descriptor)) ++ generic).map(_.replace('/', '.')).distinct
       Field(fieldName, (flags & 0x0008) != 0, (flags & 0x0010) != 0, types)
     }
-    (0 until in.readUnsignedShort()).foreach { _ =>
-      in.readUnsignedShort()
+    val methods: Seq[Method] = (0 until in.readUnsignedShort()).map { _ =>
+      val flags: Int = in.readUnsignedShort()
       val name: String = utf8(in.readUnsignedShort())
       inConstructor = name == "<init>" || name == "<clinit>"
       val descriptor: Int = in.readUnsignedShort()
+      methodUses = scala.collection.mutable.Set.empty[String]
+      methodCalls = scala.collection.mutable.Set.empty[String]
       // the mirror's signature and body are the compiler's, not the source's: read past them
       muted = isMirrorOrdinal(name, utf8(descriptor))
       signature(descriptor); attributes(code = false)
       muted = false
+      val method = Method(name, utf8(descriptor), (flags & 0x0002) != 0, methodUses.toSet.map((u: String) => u.replace('/', '.')), methodCalls.toSet)
+      methodUses = null; methodCalls = null
+      method
     }
     attributes(code = false)
     val name: String = className(self)
     val shape = Shape(if (superIndex > 0) className(superIndex) else "", interfaces, (access & 0x0200) != 0, (access & 0x0400) != 0,
-      fields, calls.result(), modules.result() - name, rewritten.result().collect { case (owner, field) if owner == name => field })
+      fields, calls.result(), modules.result() - name, rewritten.result().collect { case (owner, field) if owner == name => field }, methods)
     Compiled(name, uses.result().map(_.replace('/', '.')) - name, shape)
   }
 

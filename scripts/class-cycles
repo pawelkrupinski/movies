@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# THE CLASS CYCLES OF ONE PACKAGE (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`): which of
+# a package's classes cannot be pulled apart before it is split -- from the coupling report's own graph (Zinc's record and
+# the class files), through this checkout's kept sbt server (scripts/sbt-warm).
+#
+#   scripts/class-cycles <package>                  the strongly connected components of 2+ classes among the classes of
+#                                                   the package and its sub-packages, largest first
+#   scripts/class-cycles <package> --order a<b<c    and, for that order of groups bottom up (each a comma-separated list of
+#                                                   class names, full or relative to the package, `*` any run of
+#                                                   characters: `Listing,Evidence<*Measures<*`), every class edge
+#                                                   pointing up it, by group pair
+#   scripts/class-cycles <package> --order FILE     the order as a `<class><TAB><group>` table (groups bottom up by their
+#                                                   number when all are numbers, else by their first row)
+#   --out FILE                                      also keep the markdown in FILE
+#
+# Quote an inline order: `<` is the shell's redirection. Exit 0 with the report on stdout, 2 on a usage or sbt error.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+usage() { echo "usage: scripts/class-cycles <package> [--order 'a<b<c' | --order FILE] [--out FILE]" >&2; exit 2; }
+pkg="" order="" out=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --order) [ $# -ge 2 ] || usage; order="$2"; shift ;;
+        --out) [ $# -ge 2 ] || usage; out="$2"; case "$out" in /*) ;; *) out="$PWD/$out" ;; esac; shift ;;
+        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -*) echo "class-cycles: unknown argument $1" >&2; usage ;;
+        *) [ -z "$pkg" ] || usage; pkg="$1" ;;
+    esac
+    shift
+done
+[ -n "$pkg" ] || usage
+case "$order" in *" "*) echo "class-cycles: an order has no spaces (groups split by <, classes by ,)" >&2; exit 2 ;; esac
+# a table's path is handed on absolute: the sbt server runs in the checkout's root
+if [ -n "$order" ] && [ -f "$order" ]; then order="$(cd "$(dirname "$order")" && pwd)/$(basename "$order")"; fi
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+cd "$root"
+"$root/scripts/sbt-warm" "couplingClassCycles $pkg $tmp/cycles.md${order:+ $order}" > "$tmp/sbt.log" 2>&1 \
+    || { tail -30 "$tmp/sbt.log" >&2; echo "class-cycles: sbt couplingClassCycles failed" >&2; exit 2; }
+[ -s "$tmp/cycles.md" ] || { tail -30 "$tmp/sbt.log" >&2; echo "class-cycles: sbt couplingClassCycles wrote no report" >&2; exit 2; }
+[ -z "$out" ] || cp "$tmp/cycles.md" "$out"
+cat "$tmp/cycles.md"

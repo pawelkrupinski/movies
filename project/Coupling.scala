@@ -705,7 +705,8 @@ object Coupling {
 
   // ── the human report ──
 
-  private def f2(d: Double): String = { val r = math.round(d * 100); s"${r / 100}.${"%02d".format(r % 100)}" }
+  /** `d` to two decimal places, as the report prints D, I and A. */
+  def f2(d: Double): String = { val r = math.round(d * 100); s"${r / 100}.${"%02d".format(r % 100)}" }
   private def table(header: Seq[String], rows: Seq[Seq[String]]): Seq[String] =
     Seq(header.mkString("| ", " | ", " |"), header.map(_ => "---").mkString("|", "|", "|")) ++ rows.map(_.mkString("| ", " | ", " |"))
 
