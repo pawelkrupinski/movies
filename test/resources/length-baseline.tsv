@@ -13,6 +13,6 @@ file-lines	http/src/main/scala/tools/HostPolicies.scala	539
 file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	719
 file-lines	identity/src/main/scala/services/identity/IdentityModel.scala	750
 file-lines	identity/src/main/scala/services/identity/LiveProjectionIndex.scala	539
-file-lines	identity/src/main/scala/services/identity/StageRelays.scala	666
+file-lines	identity/src/main/scala/services/identity/StageRelays.scala	554
 file-lines	identity/src/main/scala/services/identity/agreement/Agreement.scala	516
 file-lines	worker/src/main/scala/services/enrichment/ImdbClient.scala	536
