@@ -16,7 +16,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  structure of one `article.cwb-movie-item`.
  *
  *  The cinema parameter is passed explicitly (as `KinoCharlie` standing in for
- *  the real `KinematografLodz` object that will be added to Cinema.scala on
+ *  the real `KinematografLodz` object that will be added to models' venues on
  *  integration). The `cinema` field tests propagation, not the specific object.
  *
  *  Four recorded captures back the rest, all replayed through `FakeHttpFetch`:

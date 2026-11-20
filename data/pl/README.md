@@ -42,7 +42,8 @@ rm -rf data/pl/geonames
 
 ## Venue towns
 
-Each venue's town comes from the annotation beside it in `Cinema.scala`. A
+Each venue's town comes from the annotation beside it in its
+`common/src/main/scala/models/*Cinemas.scala` file. A
 cluster page names its towns from them (the heading reads "Repertuar kin w
 Turku i okolicach – Turek, Koło").
 

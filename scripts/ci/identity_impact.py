@@ -14,8 +14,8 @@ Two halves, each sound on its own:
   THE COUNTRIES (`countries`): what each changed path can reach, by country --
     - title-rules.tsv: per country, the rows its process loads (TitleRuleSet.forCountry: `countries` blank or naming
       it), a venue row (`cinema`) only where a venue of that country keys to it (TitleRuleKey: a chain's prefix or the
-      display name's slug, matched against data/<country>/ and models/Cinema.scala's sections). A country whose loaded
-      rows read alike, in the same order, is not reached. A venue key no roster holds reaches every country;
+      display name's slug, matched against data/<country>/ and models/' hand-written Polish venues). A country whose
+      loaded rows read alike, in the same order, is not reached. A venue key no roster holds reaches every country;
     - title-words.tsv: EVERY country (TitleWords.tokens folds every language's words into one set: DecorationWords,
       StageHouse, BillingPieces read a German word in a Polish title too), unless only comments changed;
     - a fixture of one country: identity-unmatched/<cc>.*, identity-slices/<cc>-*/, corpus/*-<cc>[-sample].*;
@@ -59,7 +59,7 @@ ROW_FILES = {
 }
 TITLE_RULES = "common/src/main/resources/title-rules.tsv"
 TITLE_WORDS = "common/src/main/resources/title-words.tsv"
-CINEMA_SCALA = "common/src/main/scala/models/Cinema.scala"
+MODELS_SCALA = "common/src/main/scala/models"
 CHAIN_PREFIXES = {"cinema-city": "Cinema City", "helios": "Helios", "multikino": "Multikino"}
 CC = "(pl|uk|de|us|es)"
 
@@ -98,7 +98,7 @@ def skeletons(text):
 
 def roster_names(tree):
     """(country, name) for every venue name the rosters hold: every string of data/<country>/**.json, and the
-    Cinema(...) names and case objects of models/Cinema.scala, each by the country section it sits in."""
+    Cinema(...) names and case objects of models/*.scala (Poland's `*Cinemas.scala`, the networks')."""
     out = []
     for d, cc in DATA_DIRS.items():
         base = os.path.join(tree, "data", d)
@@ -120,18 +120,15 @@ def roster_names(tree):
                         stack.extend(v)
                     elif isinstance(v, str) and len(v) < 120:
                         out.append((cc, v))
-    path = os.path.join(tree, CINEMA_SCALA)
-    if os.path.exists(path):
-        cc = "pl"  # the hand-written Polish sections come first; each data-driven country's section names it
-        with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                if line.startswith("// ──"):
-                    for marker, code in (("United Kingdom", "uk"), ("Germany", "de"), ("United States", "us"), ("Spain", "es")):
-                        if marker in line:
-                            cc = code
+    models = os.path.join(tree, MODELS_SCALA)
+    for f in sorted(os.listdir(models)) if os.path.isdir(models) else []:
+        if not f.endswith(".scala"):
+            continue
+        with open(os.path.join(models, f), encoding="utf-8") as fh:
+            for line in fh:  # every hand-written venue is Poland's or a chain network's; the rest are data-driven
                 for name, display in re.findall(r"case object (\w+) extends Cinema\(\"([^\"]*)\"", line):
-                    out.append((cc, display))
-                    out.append((cc, re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)))
+                    out.append(("pl", display))
+                    out.append(("pl", re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)))
     return out
 
 

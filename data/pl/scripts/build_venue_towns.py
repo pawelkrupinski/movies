@@ -48,7 +48,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 GEONAMES = ROOT / "data" / "pl" / "geonames" / "PL.txt"
 PAGES = ROOT / "data/pl/pages.json"
-CINEMA = ROOT / "common/src/main/scala/models/Cinema.scala"
+MODELS = ROOT / "common/src/main/scala/models"  # its `*Cinemas.scala` files declare the venues
 CITY = ROOT / "common/src/main/scala/models/MajorPolishCities.scala"
 OUT = ROOT / "data" / "pl" / "venues.json"
 
@@ -125,7 +125,7 @@ def polish_venues() -> list[tuple[str, str]]:
 
 def annotations() -> tuple[dict, dict]:
     """case object -> (displayName, trailing same-line comment or "")."""
-    text = CINEMA.read_text()
+    text = "\n".join(path.read_text() for path in sorted(MODELS.glob("*.scala")))
     names = dict(re.findall(
         r'case object ([A-Za-z0-9_]+)\s+extends \w*Cinema\("((?:[^"\\]|\\.)*)"', text))
     comments = dict(re.findall(

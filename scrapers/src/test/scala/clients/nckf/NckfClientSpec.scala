@@ -17,7 +17,7 @@ import java.time.{LocalDate, LocalDateTime}
  *  `ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/` on 07-06-2026.
  *
  *  The cinema parameter is passed explicitly (as `KinoBajka` standing in for the
- *  real `Nckf` object that will be added to Cinema.scala on integration). The
+ *  real `Nckf` object that will be added to models' venues on integration). The
  *  `cinema` field tests propagation, not the specific object.
  *
  *  Recorder line (for a full fixture-based test later):

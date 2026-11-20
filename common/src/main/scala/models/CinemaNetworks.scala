@@ -1,5 +1,33 @@
 package models
 
+// ── Network-level detail sources ──────────────────────────────────────────────
+// Not a physical venue: a synthetic source that holds the per-film detail
+// (synopsis/cast/director/genres/countries/trailer) a chain fetches ONCE per
+// network and shares across all its locations, instead of each venue enriching
+// its own slot. The venue slots keep their showtimes + filmUrl; the chain slot
+// supplies the detail, picked up by `MovieRecord`'s film-level merged accessors.
+// It extends `Cinema` so the genre fallback (`cinemaData`, a type-match) sees it,
+// and is registered in `Source.all` (for `Source.priority` + Mongo-key lookup) —
+// but deliberately NOT in `Cinema.all` / `byCity`, so the per-city/venue
+// invariants hold and it never renders as a venue row. See `CinemaCityScraper` /
+// `EnrichDetailsHandler`.
+case object CinemaCityChain extends Cinema("Cinema City", "Cinema City")
+// Network-level detail source for Cineworld UK, mirroring CinemaCityChain: the
+// chain's 87 venues share one `detailGroup` ("cineworld"), so their deferred
+// detail (synopsis/cast/director/certificate, fetched from the site's
+// `movies?ids=` endpoint since the 2026-09-17 relaunch — see
+// `services.cinemas.uk.CineworldClient`) lands in this ONE synthetic slot
+// instead of an arbitrary venue's. Not in `Cinema.all`, so no scraper/coverage
+// obligation; added to `Source.all` for priority + slot-key resolution.
+case object CineworldChain extends Cinema("Cineworld", "Cineworld")
+// Network-level detail source for Regal US, mirroring CineworldChain: the chain's
+// ~400 venues share one `detailGroup` ("regal"), so the per-film detail their
+// listing does NOT carry (runtime/rating/synopsis/cast/director, fetched from
+// `/api/Movies?hoCode=`) lands in this ONE synthetic slot instead of ~400 copies.
+// Not in `Cinema.all`, so no scraper/coverage obligation; added to `Source.all`
+// for priority + slot-key resolution.
+case object RegalChain extends Cinema("Regal", "Regal")
+
 /** The chains' NETWORK pseudo-cinemas ([[CinemaCityChain]], [[CineworldChain]], [[RegalChain]]) and
  *  which venues each one stands for. A chain's venues publish their listings under their own cinema,
  *  and its detail enricher lands every film page on the one shared network slot (`detailTarget`).

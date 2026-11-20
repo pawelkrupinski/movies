@@ -5,7 +5,7 @@
 #
 # The roster reaches the apps through a chain of generators, each checked in as its output:
 #
-#   Cinema.scala's venue annotations ("// Biecz — filmweb 2315")
+#   the Polish venues' annotations in models/*Cinemas.scala ("// Biecz — filmweb 2315")
 #     → data/pl/scripts/build_venue_towns.py  → data/pl/venues.json
 #     → data/pl/scripts/build_pages.py        → data/pl/pages.json
 #     → data/pl/scripts/generate_polish_pages.py → generated/pl-pages/*.tsv + the apps' City lists

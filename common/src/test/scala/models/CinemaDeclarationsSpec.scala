@@ -11,8 +11,9 @@ import org.scalatest.matchers.should.Matchers
  * Pins every hand-declared venue (`case object`) exactly as `Source.all` sees it -- its name, class, display and pill
  * names, slug, opening and hash -- and the order of `Source.all` and `Cinema.byCity`, against a checked-in table
  * (`test/resources/fixtures/models/cinema-declarations.tsv`): a change that only moves the declarations between files
- * (2026-11-20: `Cinema.scala` split by region) must leave it alike. The table as it reads today is written to `common/target/cinema-declarations.actual.tsv` on every run; a
- * change that MEANS to alter a venue copies it over the checked-in one.
+ * (2026-11-20: `Cinema.scala` split by region) must leave it alike. The table as it reads today is written to
+ * `common/target/cinema-declarations.actual.tsv` on every run; a change that MEANS to alter a venue copies it over the
+ * checked-in one.
  */
 class CinemaDeclarationsSpec extends AnyFlatSpec with Matchers {
   private def digest(lines: Seq[String]): String =

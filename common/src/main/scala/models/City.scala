@@ -164,7 +164,7 @@ final class PolishPage private[models] (row: PolishPages.Row)
  *  county, so `/west-yorkshire/` listed Leeds, Bradford and Ilkley, and the
  *  Highlands and Islands reached 285 km to Lerwick.
  *
- *  The venues stay the hand-written `case object`s of `Cinema.scala`; which page
+ *  The venues are `UkCinema`s built from a generated table (`UkRoster`); which page
  *  lists each is generated into [[UkPages]], and instances are built ONCE (in
  *  `City.ukPages`), so identity equality holds just like the hand-authored
  *  `case object` cities. Every page except [[London]], which keeps its compass

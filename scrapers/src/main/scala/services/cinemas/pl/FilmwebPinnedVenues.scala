@@ -17,7 +17,7 @@ object FilmwebPinnedVenues {
    *   - Multikino Rumia    ← Filmweb lists a bare "Multikino" (no city/district
    *     suffix) for Gdynia/Trójmiasto that fuzzy-matches "Multikino Rumia" at
    *     exactly the 0.5 threshold, discarding the "rumia" token and resolving to
-   *     the wrong Multikino. Pin the verified id (1464, see `Cinema.scala`).
+   *     the wrong Multikino. Pin the verified id (1464, see `FilmwebCatchmentCinemas.scala`).
    *   - Kino Apollo: SUPPRESSED — Filmweb lists "Kino Teatr Apollo" (3025) but
    *     its seances API returns empty across the whole window (verified
    *     2026-06), so the old 3025 produced only noise. No usable Filmweb data.

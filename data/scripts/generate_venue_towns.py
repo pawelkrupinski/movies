@@ -4,7 +4,7 @@ in a HAND-WRITTEN roster sits in.
 
 Germany, Spain and the US generate their rosters, so each venue's town rides
 along in the generated tuple. The UK's ~840 venues and Poland's ~300 are
-hand-written `case object`s in Cinema.scala with a display name and nothing
+hand-written `case object`s in models/*Cinemas.scala with a display name and nothing
 else, and there is nowhere in them for a town to live. This is that place: one
 table, keyed on the display name every other part of the codebase identifies a
 venue by, read by `TownRanking.ofVenues` (behind `City.extraPlaces`) for both countries.
@@ -44,7 +44,7 @@ def rows_from(country: str, path: pathlib.Path, floor: int) -> list[tuple[str, s
     unnamed = [v.get("cinemaObject") for v in venues if not v["displayName"]]
     if unnamed:
         print(f"ERROR: {len(unnamed)} {country} venues have no displayName — the case object "
-              f"could not be read out of Cinema.scala: {unnamed[:10]}", file=sys.stderr)
+              f"could not be read out of models/*Cinemas.scala: {unnamed[:10]}", file=sys.stderr)
         sys.exit(1)
 
     if len(named) < floor:

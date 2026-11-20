@@ -130,7 +130,7 @@ those is expensive to change once a `Country` is switchable.
      `UkRoster`, keyed on the `case object` name each venue had: `UkRoster("ActOneActon")`).
      This needs a `case class` data subtype of the sealed
      `City`/`Cinema` fed into `Cinema.byCity`.
-3. **Cinemas** (`Cinema.scala`) — each venue is a `Cinema(displayName, pillName)`
+3. **Cinemas** (`Cinema.scala`, Poland's hand-written venues in `models/*Cinemas.scala`) — each venue is a `Cinema(displayName, pillName)`
    **and a `Source`** (merge/priority). `Cinema.all` = `byCity.flatMap(_._2)`, and
    `Source.all`/`priority`/`byDisplayName` derive from it — so just add the country
    to `byCity` and it flows through. **Display names must be globally unique** (the

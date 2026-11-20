@@ -15,7 +15,7 @@ those is a judgement on evidence, so each carries it.
 
 The generators write the matches as each roster's `seasonal.tsv` table; `models.*Roster`
 gives those venues `Opening.Seasonal`. Poland's hand-declared venues are marked in
-`Cinema.scala` instead, and the UK's by a `"seasonal": true` on their data/uk/roster.json row.
+their `models/*Cinemas.scala` file instead, and the UK's by a `"seasonal": true` on their data/uk/roster.json row.
 """
 import re
 

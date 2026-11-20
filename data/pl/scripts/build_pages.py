@@ -22,7 +22,7 @@ it; a page that existed before and is not a page any more is listed under
 town centres — 25 km is roughly a half-hour drive on Polish county roads.
 
 What is Polish here is the edges: a venue's town is its annotation in
-`Cinema.scala` (`venues.json`), the majors are the hand-declined `case object`s
+`models/*Cinemas.scala` (`venues.json`), the majors are the hand-declined `case object`s
 in MajorPolishCities.scala, each anchor needs its locative, and a page is grouped under its
 voivodeship.
 
