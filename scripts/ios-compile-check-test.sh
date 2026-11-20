@@ -38,9 +38,9 @@ check "...and no build output is left behind" "0" "$(left)"
 # the sources come in on the container's stdin, never a mount: Rancher's VM keeps a host descriptor for every file and
 # directory a container saw through the shared home, the worktree deleted or not (run-script-tests' linux_tree_slot)
 (cd "$REPO_ROOT" && STUB_RECORD="$work/docker" compile --linux-only)
-check "the Linux build: the sources on its stdin, no host directory mounted" "1 0 yes" \
+check "the Linux build: the sources on its stdin, no host directory mounted" "1 0 1" \
   "$(grep -c -- '^run --rm -i ' "$work/docker.args") $(grep -c -- '-v [^ ]*/ios:' "$work/docker.args") \
-$(tar -tf "$work/docker.stdin" | grep -qx 'ios/Package.swift' && echo yes || echo no)"
+$(tar -tf "$work/docker.stdin" | grep -cx 'ios/Package.swift')" # -c, not -q: grep reads all of tar's list (no SIGPIPE)
 check "...unpacked at /src before the build" "1" "$(grep -c -- 'tar -xf - -C /src --strip-components=1 .*--package-path /src' "$work/docker.args")"
 
 STUB_FAIL=docker compile; code=$?
