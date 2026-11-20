@@ -8,4 +8,3 @@
 limit	method-lines	50
 limit	file-lines	800
 file-lines	common/src/main/scala/models/Cinema.scala	1067
-file-lines	identity/src/main/scala/services/identity/agreement/AgreementStage.scala	1240
