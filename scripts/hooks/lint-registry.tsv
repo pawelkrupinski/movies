@@ -117,6 +117,7 @@ repochecks:deploy.KickConvergenceWiringSpec	@repo
 repochecks:deploy.LandingCheckSplitSpec	@repo
 repochecks:deploy.LegVerdictWiringSpec	@repo
 repochecks:deploy.MainAfterRedCiSpec	@repo
+repochecks:deploy.MetricsPackagesSpec	*/src/main/scala/services/metrics/*
 repochecks:deploy.MongoGrantsListSpec	@repo infra/nix/*
 repochecks:deploy.MongoServerVersionParitySpec	@repo infra/nix/modules/roles/mongodb.nix
 repochecks:deploy.NoExitStatusReadUnderErrexitSpec	@repo
