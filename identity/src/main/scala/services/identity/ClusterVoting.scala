@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.IdentityMeasures
 import services.identity.Scored.Accepted
 import services.identity.vocabulary.{Denial, RateBounds, ResolverEdge}
 

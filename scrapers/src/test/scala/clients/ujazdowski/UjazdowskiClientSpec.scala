@@ -148,7 +148,7 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
     val Seq(block) = new UjazdowskiClient(programmeHttp, programmeDay).fetch()
     block.movie.title shouldBe "Obcy w domu"
     block.movie.rawTitle shouldBe Some("Obcy w domu | Blok filmów krótkometrażowych")
-    services.identity.MultiFilmBill.marker(block.movie.rawTitle.toSeq) shouldBe defined
+    services.identity.measures.MultiFilmBill.marker(block.movie.rawTitle.toSeq) shouldBe defined
     // no film's facts are read off the subtitle
     block.movie.releaseYear shouldBe None
     block.director shouldBe empty

@@ -12,6 +12,7 @@ import OlderRefTypes.TmdbFilm
 @nowarn("msg=unused import")
 final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[TmdbFilm]]]()

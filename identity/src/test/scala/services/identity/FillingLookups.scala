@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.Film
 import scala.collection.mutable
 import scala.util.Random
 import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit}

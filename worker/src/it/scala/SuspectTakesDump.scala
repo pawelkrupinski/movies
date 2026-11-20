@@ -1,6 +1,7 @@
 package integration
 
 import services.identity._
+import services.identity.measures._
 import models.ListingKey
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 

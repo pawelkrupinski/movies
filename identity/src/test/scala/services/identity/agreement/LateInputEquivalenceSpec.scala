@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, FilmTable, ForwardingIdentityLookups, IdentityLookups, Listing}
+import services.identity.{FilmTable, ForwardingIdentityLookups, IdentityLookups, Listing}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, Hit, Pin, PinClaim, PosterHash, ProseWords, ScreeningDays, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec

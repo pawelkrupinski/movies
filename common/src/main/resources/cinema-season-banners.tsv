@@ -2,7 +2,7 @@
 # banner a line, `banner<TAB>where<TAB>why`, `where` the codes of the countries whose venues bill it so (`uk us`; a
 # banner is a season nowhere else, and a row naming none fails the load). Read by `services.titles.StageHouse`
 # (`seasonBanners`) for the identity model: a relay billed under one of these may take another house's record of the season its screenings fall in; a relay whose
-# banner names any other house never does (`services.identity.StageRelays.anotherProduction`, the owner 2026-11-13).
+# banner names any other house never does (`services.identity.measures.StageRelays.anotherProduction`, the owner 2026-11-13).
 # Matched as a run of the banner's words, a season's numbers, "the", "and" and a house's split initials ("RB&O") aside.
 # Found on the local prod mirror's five corpora (2026-11-13): PL "Royal Ballet and Opera Sezon Kinowy", DE "RBO Kino
 # Saison" and UK "Opéra de Paris Ballet Season" bill only their own house's relays; the Royal Ballet & Opera's UK cinema

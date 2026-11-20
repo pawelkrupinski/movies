@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, MeasuredListing, MultiFilmBill}
 import services.titles.billing.BillingPieces
 import services.identity.Scored.Accepted
 

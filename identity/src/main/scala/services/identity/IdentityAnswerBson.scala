@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.Film
 import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import services.identity.vocabulary.{BsonFields, FilmCast}

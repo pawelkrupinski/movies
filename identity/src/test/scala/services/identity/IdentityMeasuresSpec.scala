@@ -1,13 +1,14 @@
 package services.identity
 
+import services.identity.measures.{BannerHouses, FactRelations, Film, IdentityMeasures, Measure, MeasuredListing, PinnedGateMeasures, RelayStage, StageRelays}
 import services.identity.vocabulary.ListingDating
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
 import services.titles.TitleSeason
-import services.identity.IdentityMeasures.ListingListing
-import services.identity.StageRelays.Billing
+import services.identity.measures.IdentityMeasures.ListingListing
+import services.identity.measures.StageRelays.Billing
 import Measure.{Category, Missing, Number}
 import services.identity.vocabulary.{TitleDecorations, VenueNames}
 

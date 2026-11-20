@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing}
 import tools.SpecClock.given
 
 import models._

@@ -2,6 +2,7 @@ package scripts
 
 import play.api.libs.json.{Format, Json}
 import services.identity._
+import services.identity.measures._
 import services.identity.IdentityCalibration.{Bin, SignalWeights, Threshold}
 import tools.{CommandLine, UnmatchedClusters}
 
@@ -11,7 +12,7 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
-import services.identity.Measure.{Category, Missing, Number}
+import services.identity.measures.Measure.{Category, Missing, Number}
 import services.identity.vocabulary.TitleDecorations
 
 /**

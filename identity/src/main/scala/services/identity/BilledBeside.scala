@@ -1,7 +1,8 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures}
 import services.titles.billing.{BillingPieces, DecorationWords}
-import services.identity.IdentityMeasures.withoutLeadingArticle
+import services.identity.measures.IdentityMeasures.withoutLeadingArticle
 import services.titles.{TitleContainment, TitleWords}
 
 /**

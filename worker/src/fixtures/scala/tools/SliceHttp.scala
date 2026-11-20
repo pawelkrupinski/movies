@@ -21,6 +21,7 @@ import scala.jdk.CollectionConverters._
 @nowarn("msg=unused import")
 object SliceHttp {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
 
   enum Outcome {
     case Body(text: String)

@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, FilmTable, Listing, ResolverDecision}
+import services.identity.{FilmTable, Listing, ResolverDecision}
+import services.identity.measures.Film
 import services.identity.vocabulary.{CatalogueId, CatalogueSources}
 import models.{Cinema, Helios, KinoApollo, KinoMuza, Multikino, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec

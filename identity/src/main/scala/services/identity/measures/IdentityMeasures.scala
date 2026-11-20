@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 import services.titles.{TitleWords, YearWindow}
 import services.identity.vocabulary.PopularityBucket

@@ -17,13 +17,13 @@ trap 'rm -rf "$SCRATCH"' EXIT
 # CI's check tree with its restored target/) that `rm` fails and the script exits before sbt (precommit-check run
 # 43345620431).
 DEV="$SCRATCH/repo"
-mkdir -p "$DEV/scripts/ci" "$DEV/identity/src/main/scala/services/identity" || exit 1
+mkdir -p "$DEV/scripts/ci" "$DEV/identity/src/main/scala/services/identity/measures" || exit 1
 cp "$REPO_ROOT/scripts/dev-server.sh" "$REPO_ROOT/scripts/vault-env.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$DEV/scripts/" &&
   cp "$REPO_ROOT/scripts/ci/sbt-invalidate-exporters.sh" "$DEV/scripts/ci/" &&
-  cp "$REPO_ROOT/identity/src/main/scala/services/identity/IdentityMeasures.scala" \
-    "$DEV/identity/src/main/scala/services/identity/" || exit 1
+  cp "$REPO_ROOT/identity/src/main/scala/services/identity/measures/IdentityMeasures.scala" \
+    "$DEV/identity/src/main/scala/services/identity/measures/" || exit 1
 # A compiled exporter (IdentityMeasures, `export CreditMeasures.*`), as a warm build leaves it.
-STALE_DIR="$DEV/identity/target/scala-3/classes/services/identity"
+STALE_DIR="$DEV/identity/target/scala-3/classes/services/identity/measures"
 FAKE="$SCRATCH/bin"; mkdir -p "$FAKE" || exit 1
 cat > "$FAKE/sbt" <<'SBT'
 #!/usr/bin/env bash

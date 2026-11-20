@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.{StagedFact, StagedNode}
-import services.identity.{Film, Measure}
+import services.identity.measures.{Film, Measure}
 
 /**
  * What the staging screen lists of what a take was decided on (docs/design/identity-questions.md, "The staging

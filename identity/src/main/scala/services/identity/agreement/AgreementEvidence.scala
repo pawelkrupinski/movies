@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, IdentityCalibration, IdentityLookups, Listing}
+import services.identity.{IdentityCalibration, IdentityLookups, Listing}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer

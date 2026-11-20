@@ -12,10 +12,13 @@ import scala.annotation.nowarn
 @nowarn("msg=unused import")
 object OlderRefTypes {
   import services.identity.*
-  import services.identity.IdentityMeasures.*
+  import services.identity.measures.*
   import services.identity.vocabulary.*
+  // IdentityMeasures, in whichever package the ref keeps it: services.identity before 2026-11-20, services.identity.measures since
+  import IdentityMeasures.*
 
-  /** TMDB's record of a candidate film: `IdentityMeasures.Film` before 2026-11-20, `services.identity.Film` since. */
+  /** TMDB's record of a candidate film: `IdentityMeasures.Film` before 2026-11-20, then `services.identity.Film`, and
+   *  `services.identity.measures.Film` since the measures' package (2026-11-20, lane P6). */
   type TmdbFilm = Film
 
   /** The record of a film known by its title alone. */

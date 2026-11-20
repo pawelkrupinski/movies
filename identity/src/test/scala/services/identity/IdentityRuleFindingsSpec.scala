@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing}
 import services.identity.agreement.{UnifiedEvidence, UnifiedRules}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

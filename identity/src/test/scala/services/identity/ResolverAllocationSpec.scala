@@ -1,9 +1,10 @@
 package services.identity
 
+import services.identity.measures.{CreditRelation, Film, IdentityMeasures, Measure, MeasuredListing}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.identity.IdentityMeasures.{ListingFilm, ListingListing}
+import services.identity.measures.IdentityMeasures.{ListingFilm, ListingListing}
 
 /**
  * The resolver's hottest helpers answer without allocating per call what they used to: on worker-pl the identity model's

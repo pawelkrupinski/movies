@@ -1,6 +1,7 @@
 package services.identity
 
-import services.identity.IdentityMeasures.ListingFilm
+import services.identity.measures.Measure
+import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.vocabulary.ResolverEdge
 
 /** Each final cluster as a [[ResolverDecision]]: its film, confidence, basis and explanation. */

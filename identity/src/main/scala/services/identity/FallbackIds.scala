@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.IdentityMeasures
 /**
  * Candidate ids of films no TMDB record holds, found in a FALLBACK SOURCE — a film database the resolver turns to only
  * once TMDB's candidates gave it no film (an [[CandidateQuery.ImdbTitled]] answer carries them). The resolver keys every candidate by an Int, a

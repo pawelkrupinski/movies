@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{BannerHouses, MeasuredListing}
 import models.ListingKey
 
 import services.titles.TitleForms

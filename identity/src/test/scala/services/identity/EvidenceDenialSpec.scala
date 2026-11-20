@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, MeasuredListing}
 import services.identity.vocabulary.ListingDating
 
 import org.scalatest.flatspec.AnyFlatSpec

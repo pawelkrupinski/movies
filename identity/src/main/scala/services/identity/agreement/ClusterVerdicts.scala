@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityLookups, IdentityMeasures, Listing, ResolverDecision}
+import services.identity.{IdentityLookups, Listing, ResolverDecision}
+import services.identity.measures.IdentityMeasures
 import services.identity.vocabulary.{Answer, Dependency, Question}
 
 import scala.collection.concurrent.TrieMap

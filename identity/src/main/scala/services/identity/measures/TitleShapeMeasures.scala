@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 import services.titles.billing.{BillingParse, DecorationWords, NumberedTitles}
 import services.titles.TitleContainment

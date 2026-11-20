@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{FactRelations, Film, IdentityMeasures}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures}
 import services.titles.TitleContainment
 
 /** Whether two film databases' records are ONE film: by a cross-id they share, else by their facts (year, directors,

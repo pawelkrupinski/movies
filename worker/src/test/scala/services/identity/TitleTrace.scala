@@ -26,6 +26,7 @@ import tools.OlderRefTypes
 @nowarn("msg=unused import")
 object TitleTrace {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   // NonMovieEventClassifier, in either package a ref keeps it: services.cinemas.pl before 2026-11-18, services.titles
   // since (the title text it reads; a ref from before services.titles gets the package from identity-tools.sh).
   import services.cinemas.pl.*, services.titles.*

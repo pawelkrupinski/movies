@@ -1,8 +1,9 @@
 package services.identity
 
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, MultiFilmBill, StageRelays}
 import services.titles.billing.{BillingParse, BillingPieces, Credits}
 import services.titles.NonMovieEventClassifier
-import services.identity.IdentityMeasures.withoutLeadingArticle
+import services.identity.measures.IdentityMeasures.withoutLeadingArticle
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
 /**

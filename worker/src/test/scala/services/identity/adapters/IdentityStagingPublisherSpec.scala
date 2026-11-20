@@ -4,7 +4,7 @@ package adapters
 import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, Measure}
+import services.identity.measures.{Film, Measure}
 import services.identity.vocabulary.VoterFamily
 import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact,
   StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}

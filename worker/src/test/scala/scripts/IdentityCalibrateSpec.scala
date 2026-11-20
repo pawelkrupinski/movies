@@ -2,8 +2,8 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, IdentityMeasures, Measure, MeasuredListing}
-import services.identity.Measure.Category
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing}
+import services.identity.measures.Measure.Category
 
 /** The calibration's LABEL rule — what a listing's own evidence says about production's proposal —
  *  and how a signal's table is fitted from the labels. */

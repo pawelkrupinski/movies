@@ -6,7 +6,7 @@ import play.api.Logging
 
 import java.time.{Clock, LocalDate, ZoneId}
 import java.util.concurrent.Executor
-import services.identity.Film
+import services.identity.measures.Film
 
 /**
  * The live resolve's SUSPECT TAKES ([[SuspectTakes]]), counted per signal over each WRITTEN projection of the whole corpus:

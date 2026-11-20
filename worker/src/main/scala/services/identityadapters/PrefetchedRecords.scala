@@ -1,6 +1,7 @@
 package services.identityadapters
 
-import services.identity.{Film, IdentityLookups}
+import services.identity.IdentityLookups
+import services.identity.measures.Film
 
 /** TMDB's records of a set of films as a caller's own lookups hold them: what [[SuspectTakeCount]] reads its takes'
  *  films by. */

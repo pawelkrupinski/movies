@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 /** What dates a listing's film beside the year it states: when and as what it screens, read off its screenings and
  *  its billing, never a fact it states. Evidence and the measured listing hold it alike
- *  (`services.identity.Evidence`, `services.identity.MeasuredListing`); every field is the listing's reading of the
+ *  (`services.identity.Evidence`, `services.identity.measures.MeasuredListing`); every field is the listing's reading of the
  *  same name (`services.identity.Listing`). */
 final case class ListingDating(
   /** The season a stage relay billing neither its season nor a year screens in: searched with its work, never

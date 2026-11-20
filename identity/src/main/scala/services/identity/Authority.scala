@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, RelayStage, StageRelays}
 import services.identity.vocabulary.Denial
 
 /**

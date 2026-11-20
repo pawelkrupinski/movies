@@ -5,7 +5,7 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.VoterFamily
 import tools.MutableClock
 

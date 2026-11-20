@@ -23,6 +23,7 @@ import services.titles.TitleNormalizer
 @nowarn("msg=unused import")
 object IdentitySlicing {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
 
   /** What a CHANGED projection ([[IdentityProjection.tickChanged]]) hands its agreement stage after scrapes of the
    *  `rescraped` venues: EVERY listing the intake holds — its changed read re-reads only those venues and keeps every

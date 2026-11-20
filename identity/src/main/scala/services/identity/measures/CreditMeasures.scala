@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 import IdentityMeasures.*
 import services.titles.TitleContainment

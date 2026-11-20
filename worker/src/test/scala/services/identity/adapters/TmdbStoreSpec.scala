@@ -15,7 +15,7 @@ import tools.{HttpStatusException, MutableClock, TestWiring}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
-import services.identity.Film
+import services.identity.measures.{Film, TmdbFilmRecord}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads, PopularityBucket}
 import services.identity.vocabulary.{ProseWords, Question}
 

@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.VoterFamily
 import services.enrichment.FilmwebClient
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}

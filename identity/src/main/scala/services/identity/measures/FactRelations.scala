@@ -1,6 +1,6 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.IdentityMeasures.{SamePersonMeasure, directorRelation}
+import services.identity.measures.IdentityMeasures.{SamePersonMeasure, directorRelation}
 import services.titles.YearWindow
 import Measure.Category
 

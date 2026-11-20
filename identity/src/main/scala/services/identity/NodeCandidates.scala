@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, StageRelays}
 import services.titles.TitleForms
 import services.identity.vocabulary.{PinConstraints, TitleDecorations}
 

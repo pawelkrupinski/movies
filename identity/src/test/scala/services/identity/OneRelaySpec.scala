@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{RelayStage, StageRelays, StageWorks}
 import java.time.LocalDate
 
 import models.{Helios, KinoApollo, KinoMuza, KinoPalacowe, Kinoteka, Multikino}

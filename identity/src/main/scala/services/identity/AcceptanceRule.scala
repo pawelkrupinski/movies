@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.MeasuredListing
 import scala.annotation.tailrec
 
 import services.identity.Acceptance.Refused

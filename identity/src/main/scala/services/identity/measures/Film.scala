@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 import services.titles.{SearchTitles, TitleContainment, TitleSeason}
 import services.identity.vocabulary.FilmCast

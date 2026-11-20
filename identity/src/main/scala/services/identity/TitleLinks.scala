@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.MultiFilmBill
 import services.titles.TitleForms
 
 import scala.collection.mutable

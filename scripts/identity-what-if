@@ -184,7 +184,7 @@ if [ -n "$recording" ]; then
 fi
 
 TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/test/scala/services/identity/WhatIfResolve.scala worker/src/test/scala/services/identity/WhatIfAnswers.scala
-  worker/src/test/scala/scripts/StageAnswers.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/OlderRefTypes.scala worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala
+  worker/src/test/scala/scripts/StageAnswers.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/OlderRefTypes.scala worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
   worker/src/fixtures/scala/tools/KeptJvm.scala worker/src/test/scala/services/identity/MirrorWorld.scala
   worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala)
 answers_dir=${answers_dir:-$IDENTITY_CACHE/what-if-answers}

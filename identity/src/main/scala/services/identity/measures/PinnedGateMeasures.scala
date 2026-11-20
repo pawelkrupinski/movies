@@ -1,8 +1,8 @@
-package services.identity
+package services.identity.measures
 
 import java.util.Locale
 
-import services.identity.IdentityMeasures.{MissingFilm, MissingListing}
+import services.identity.measures.IdentityMeasures.{MissingFilm, MissingListing}
 import models.EmbeddedYear
 import services.titles.TitleContainment
 import services.titles.SearchTitles

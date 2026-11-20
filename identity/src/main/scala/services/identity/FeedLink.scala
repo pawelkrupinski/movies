@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, MeasuredListing}
 import services.identity.vocabulary.CatalogueId
 
 /** A TMDB-keyed feed's link of a node to one film ([[SourceReliability.tmdbLinked]]: Cineamo's [[SourceReliability.Fact.Link]]) that the title's other sources OVERRULE.

@@ -194,7 +194,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}IdentityTraceStore.scala#pending"   -> Store("write-behind: the trace rows to write"),
     s"${I}IdentityModelStore.scala#kept"      -> Store("InMemoryIdentityModelStore's rows, each carrying its digest"),
     s"${I}staging/IdentityStaging.scala#held" -> Store("InMemoryStagingDocuments' rows"),
-    s"${I}ListingFilmMeasures.scala#Slots"    -> Content("a constant table, never written"),
+    s"${I}measures/ListingFilmMeasures.scala#Slots"    -> Content("a constant table, never written"),
     s"${I}ProjectionScope.scala#seen"       -> Pass("one close's worklist of what it reached, dropped when the close returns"),
     s"${W}IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
     s"${W}IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),

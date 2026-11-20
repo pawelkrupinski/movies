@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.vocabulary.TitleDecorations

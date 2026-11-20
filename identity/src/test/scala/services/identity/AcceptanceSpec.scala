@@ -1,10 +1,11 @@
 package services.identity
 
+import services.identity.measures.{BannerHouses, Film, IdentityMeasures, Measure, MeasuredListing, StageRelays}
 import services.identity.vocabulary.ListingDating
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures.{ListingFilm, Qualifiers}
+import services.identity.measures.IdentityMeasures.{ListingFilm, Qualifiers}
 import services.identity.vocabulary.Denial
 
 /** The acceptance rules read one listing's RANKED candidates ([[Scored]]) — no resolve needed. */

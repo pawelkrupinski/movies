@@ -1,7 +1,8 @@
 package services.identity.agreement
 
 import scala.collection.mutable
-import services.identity.{Evidence, FallbackIds, IdentityLookups, Listing, ListingShape, MeasuredListing, PosterEvidence}
+import services.identity.{Evidence, FallbackIds, IdentityLookups, Listing, ListingShape, PosterEvidence}
+import services.identity.measures.MeasuredListing
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, Memo, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
 /** The TMDB films a cluster's own evidence reaches, as the stage's takes and corrections read them: its candidates, its
@@ -42,9 +43,9 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
    *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits.
    *  `receipt`, a verdict's where it reads them, notes each. */
-  private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.MeasuredListing,
-                            asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.Film]] = {
-    val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
+  private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.measures.MeasuredListing,
+                            asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.measures.Film]] = {
+    val queries = listings.flatMap(listing => services.identity.measures.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
       // a verdict's fill reads them: in its receipt, answered or not
@@ -156,14 +157,14 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
     now.films
   }
 
-  /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
+  /** The TMDB films the listings' own title searches find ([[services.identity.measures.IdentityMeasures.searchQueries]], of TMDB
    *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model
    *  already holds without scoring them again: a resolver pass per take cost a cold projection 10 GB of allocation over
    *  the five corpora (2026-10-06). Read, never kept; none while one of the searches has no answer — or, `answeredOnly`,
    *  the films the answered ones find (the synopsis evidence's namesakes, [[synopsisAgainst]]). */
   private[agreement] def titledFilms(listings: Seq[Listing], answeredOnly: Boolean = false): Seq[Int] =
     looked.fold(Seq.empty[Int]) { lookups =>
-      val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
+      val queries = listings.flatMap(listing => services.identity.measures.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
         .flatMap(text => Seq(CandidateQuery.Title(text), CandidateQuery.ImdbTitled(text)))
       val found = queries.map(lookups.candidates)
       if (found.contains(Answer.Unknown)) blindReads += 1

@@ -2,8 +2,8 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{IdentityMeasures, Measure}
-import services.identity.Measure.Category
+import services.identity.measures.{IdentityMeasures, Measure}
+import services.identity.measures.Measure.Category
 
 /** The joint (logistic) candidate: it recovers the likelihood the data implies, keeps a
  *  corroborator's naive-Bayes table as a fixed offset, and keeps an evidence order. */

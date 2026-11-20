@@ -1,6 +1,6 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.IdentityMeasures.*
+import services.identity.measures.IdentityMeasures.*
 import services.titles.YearWindow
 import Measure.{Category, Number}
 

@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{FactRelations, IdentityMeasures, MeasuredListing, RelayStage, StageRelays}
 import services.identity.AcceptanceRule.Weighing
 import services.identity.Scored.Accepted
 import services.titles.YearWindow

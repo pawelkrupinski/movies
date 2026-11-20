@@ -7,7 +7,7 @@ import services.titles.{TitleContainment, TitleWords}
  * [[BillingParse.slashPieces]], [[BillingParse.marker]], [[BillingParse.billedOne]]): a bill's "+", a spaced "//", a word
  * billing several films (a double or triple feature, a trilogy, a marathon, a block of shorts, parts numbered together),
  * a programme word annotating one title. Whether a film is one of the works, or named by the word, is
- * `services.identity.MultiFilmBill`'s question.
+ * `services.identity.measures.MultiFilmBill`'s question.
  *
  * Read on the title's folded words ([[TitleContainment.tokens]]), the same lexicon in every country, as a venue bills
  * its programme in whatever language. A marker counts only beside other words: a title that is nothing but the marker

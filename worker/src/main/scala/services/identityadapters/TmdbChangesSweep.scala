@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.*
 import clients.TmdbClient
 import services.identityadapters.TmdbIdentityReads.*
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}

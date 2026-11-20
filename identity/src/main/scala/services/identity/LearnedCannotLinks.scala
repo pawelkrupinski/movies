@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, Measure}
 import services.evidence.ListingConstraints.CannotLink
 import Measure.Category
 import services.identity.vocabulary.Denial

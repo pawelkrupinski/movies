@@ -62,7 +62,7 @@ ce	models	1
 ce	modules	12
 ce	modules.timing	2
 ce	modules.webwiring	22
-ce	modules.wiring	36
+ce	modules.wiring	37
 ce	services	3
 ce	services.alerts	6
 ce	services.attempts	3
@@ -71,7 +71,7 @@ ce	services.cadence	2
 ce	services.cinemas	12
 ce	services.closure	5
 ce	services.config	2
-ce	services.corpus	15
+ce	services.corpus	16
 ce	services.enrichment	14
 ce	services.events	1
 ce	services.evidence	3
@@ -79,16 +79,17 @@ ce	services.facebook	2
 ce	services.fallback	1
 ce	services.freshness	2
 ce	services.identity	10
-ce	services.identity.agreement	6
+ce	services.identity.agreement	7
+ce	services.identity.measures	6
 ce	services.identity.staging	3
 ce	services.identity.vocabulary	5
-ce	services.identityadapters	19
+ce	services.identityadapters	20
 ce	services.metrics	6
 ce	services.movies	6
 ce	services.readmodel	7
 ce	services.refresh	7
 ce	services.resolution	4
-ce	services.review	9
+ce	services.review	10
 ce	services.schedule	1
 ce	services.scrapes	5
 ce	services.sharecards	8
@@ -99,5 +100,5 @@ ce	services.users	4
 ce	services.venuepages	12
 ce	settings	2
 ce	tools	0
-distance	services.identity	35
-distance-cap	services.identity	37
+distance	services.identity	30
+distance-cap	services.identity	32

@@ -5,7 +5,8 @@ import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, ForwardingIdentityLookups, IdentityLookups, IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
+import services.identity.{ForwardingIdentityLookups, IdentityLookups, IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, Hit, VoterFamily}
 
 import tools.MutableClock

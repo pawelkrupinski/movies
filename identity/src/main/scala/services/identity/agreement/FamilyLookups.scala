@@ -3,7 +3,8 @@ package services.identity.agreement
 import services.titles.TitleContainment
 
 import scala.collection.mutable
-import services.identity.{Film, IdentityLookups, Listing}
+import services.identity.{IdentityLookups, Listing}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids

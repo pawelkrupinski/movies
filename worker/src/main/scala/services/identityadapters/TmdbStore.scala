@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.*
 import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue, RawBsonDocument}
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteOneModel, Filters, ReplaceOneModel, ReplaceOptions}
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.{BsonFields, CandidateQuery, Hit, PopularityBucket, StripedLocks}
 
 /** The kinds of document the normalized TMDB store keeps, each its own collection. */

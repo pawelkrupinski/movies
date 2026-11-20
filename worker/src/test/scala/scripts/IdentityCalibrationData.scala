@@ -3,7 +3,7 @@ package scripts
 import clients.tools.RecordingHttpFetch
 import models.{Cinema, CinemaMovie, Country, ListingKey}
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.identity.{Film, IdentityMeasures, Measure, MeasuredListing, TmdbFilmRecord}
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, TmdbFilmRecord}
 import services.identity.vocabulary.TitleDecorations
 import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
@@ -16,7 +16,7 @@ import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.{Try, Using}
-import services.identity.Measure.{Category, Number}
+import services.identity.measures.Measure.{Category, Number}
 
 /**
  * The calibration's INPUT: every recorded listing, the TMDB answers the recorded trees hold for

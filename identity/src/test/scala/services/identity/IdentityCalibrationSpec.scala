@@ -1,9 +1,10 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, PinnedGateMeasures}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import services.identity.IdentityMeasures.{ListingFilm, ListingListing}
+import services.identity.measures.IdentityMeasures.{ListingFilm, ListingListing}
 import Measure.{Category, Missing, Number}
 import services.identity.vocabulary.Hit
 

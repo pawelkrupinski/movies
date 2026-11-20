@@ -3,7 +3,8 @@ package tools
 import models.{Helios, KinoMuza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, Listing, ResolverDecision}
+import services.identity.{Listing, ResolverDecision}
+import services.identity.measures.Film
 import services.identity.agreement.SuspectTakes
 import services.identity.agreement.SuspectTakes.Take
 

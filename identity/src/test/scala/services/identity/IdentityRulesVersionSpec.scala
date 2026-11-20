@@ -19,7 +19,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
   "the rules version" should "digest the resolver, what it reaches and the data it reads" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityModelStore.scala",
-      "identity/src/main/scala/services/identity/IdentityMeasures.scala", "common/src/main/scala/services/titles/TitleNormalizer.scala", "common/src/main/scala/models/MovieRecord.scala",
+      "identity/src/main/scala/services/identity/measures/IdentityMeasures.scala", "common/src/main/scala/services/titles/TitleNormalizer.scala", "common/src/main/scala/models/MovieRecord.scala",
       "identity/src/main/resources/identity-weights.json", "identity/src/main/resources/identity-decorations.json", "identity/src/main/resources/identity-stage-works.tsv")
   }
 
@@ -79,7 +79,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   // Every move re-resolves every family of every worker on its next boot (US: ~2,330 families, ~45–60 s), and on
   // 2026-10-03/04 comment-only edits moved it several times a day.
   it should "not move on a comment-only edit to a file it digests, and move on a code edit" in {
-    val measures = "identity/src/main/scala/services/identity/IdentityMeasures.scala"
+    val measures = "identity/src/main/scala/services/identity/measures/IdentityMeasures.scala"
     val commented = SourceDigest.of(digested, read(measures -> (text => text.replaceFirst("\n", "\n// a note, and /* another */   \n\n"))))
     commented shouldBe resource(IdentityRules.Resource)
     val edited = SourceDigest.of(digested, read(measures -> (text => text + "\nprivate object SourceDigestProbe { val x = 1 }\n")))

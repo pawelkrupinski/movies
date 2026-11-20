@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, IdentityMeasures, Listing}
+import services.identity.Listing
+import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.Answer
 
 /**

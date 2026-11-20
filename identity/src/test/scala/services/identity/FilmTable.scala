@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures}
 import models.Cinema
 import models.ListingKey
 import services.titles.TitleNormalizer

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.{Dependency, PosterQuestion, Question, VoterFamily}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Evidence, Film, Listing, ListingShape, PosterEvidence, ResolverDecision}
+import services.identity.{Evidence, Listing, ListingShape, PosterEvidence, ResolverDecision}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, Dependency, PosterHash, PosterQuestion, Question, VoterFamily}
 import models.ListingKey
 

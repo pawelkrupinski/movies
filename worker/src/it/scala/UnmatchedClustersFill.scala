@@ -3,6 +3,7 @@ package integration
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
 import services.identity._
 
+import services.identity.measures._
 import tools._
 
 import scala.jdk.CollectionConverters._

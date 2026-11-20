@@ -7,6 +7,7 @@ import org.bson.BsonDocument
 
 import services.identity.agreement.AgreementStage
 import services.identity._
+import services.identity.measures._
 import services.identity.vocabulary.VoterFamily
 import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}

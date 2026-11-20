@@ -163,10 +163,10 @@ object UjazdowskiClient {
 
   /** The card's whole heading — its name and the subtitle under it — when the subtitle bills a programme of films
    *  rather than a film's credits ("Obcy w domu | Blok filmów krótkometrażowych"): the listing's raw title, where the
-   *  identity's multi-film bill guard ([[services.identity.MultiFilmBill]]) reads it. `None` for a film's card. */
+   *  identity's multi-film bill guard ([[services.identity.measures.MultiFilmBill]]) reads it. `None` for a film's card. */
   def programmeHeading(title: String, meta: Option[String]): Option[String] =
     meta.filter(line => MetaPat.findFirstIn(line).isEmpty).map(line => s"$title | $line")
-      .filter(heading => services.identity.MultiFilmBill.marker(Seq(heading)).isDefined)
+      .filter(heading => services.identity.measures.MultiFilmBill.marker(Seq(heading)).isDefined)
 
   def parseMeta(s: String): Meta =
     MetaPat.findFirstMatchIn(s) match {

@@ -5,8 +5,9 @@ import models.Country
 import play.api.libs.json.{JsValue, Json}
 import scripts.IdentityCalibrationData.TmdbAnswers
 import services.identity.IdentityCalibration.{Condition, EvidenceClass}
-import services.identity.IdentityMeasures.ListingFilm
-import services.identity.{Film, IdentityCalibration, IdentityMeasures, MeasuredListing}
+import services.identity.measures.IdentityMeasures.ListingFilm
+import services.identity.IdentityCalibration
+import services.identity.measures.{Film, IdentityMeasures, MeasuredListing}
 
 import java.nio.file.{Files, Path}
 import java.util.zip.GZIPInputStream

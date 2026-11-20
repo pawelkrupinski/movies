@@ -8,7 +8,7 @@ import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Sing
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.{BsonFields, Dependency, VoterFamily}
 
 /** One cluster's agreement verdict as stored: the digest of its listings, its RECEIPT (`reads`: everything its decision

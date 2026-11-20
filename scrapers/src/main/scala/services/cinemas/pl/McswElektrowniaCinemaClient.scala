@@ -132,7 +132,7 @@ object McswElektrowniaCinemaClient {
     val t = raw.trim
     val country = models.CountryNames.canonical(t)
     if (t.isEmpty) Some(Nil)
-    else if (services.identity.IdentityMeasures.countryCode(country).isDefined) Some(Seq(Piece.Country(country)))
+    else if (services.identity.measures.IdentityMeasures.countryCode(country).isDefined) Some(Seq(Piece.Country(country)))
     else Age.findFirstMatchIn(t).map(m => Seq(Piece.AgeOf(m.group(1))))
       .orElse(VersionWords.get(t.toLowerCase(Locale.ROOT)).map(v => Seq(Piece.Version(v))))
       .orElse(Option.when(t.toLowerCase(Locale.ROOT).split("\\s+").forall(Genres))(t.toLowerCase(Locale.ROOT).split("\\s+").toSeq.map(Piece.Genre(_))))

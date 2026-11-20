@@ -9,5 +9,5 @@
 limit	cognitive	10
 limit	cyclomatic	10
 limit	inner-defs	2
-cognitive	identity/src/main/scala/services/identity/YearRuntimeMeasures.scala:YearRuntimeMeasures.runtimeDelta	15
+cognitive	identity/src/main/scala/services/identity/measures/YearRuntimeMeasures.scala:YearRuntimeMeasures.runtimeDelta	15
 cognitive	identity/src/main/scala/services/identity/vocabulary/SortedLongMap.scala:SortedLongMap.compact	14

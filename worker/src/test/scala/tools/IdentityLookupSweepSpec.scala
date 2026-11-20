@@ -4,6 +4,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.identity.measures._
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 

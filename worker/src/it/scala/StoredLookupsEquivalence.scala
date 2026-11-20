@@ -3,6 +3,7 @@ package integration
 import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, StoredTmdbLookups, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
 import services.identity._
 
+import services.identity.measures._
 import tools.HttpFetch
 import services.identity.vocabulary.{Answer, CandidateQuery, Hit, ObservationReads, PopularityBucket}
 

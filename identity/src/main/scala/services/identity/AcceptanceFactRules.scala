@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, Measure, MultiFilmBill, SearchMeasures, StageRelays}
 import services.titles.YearWindow
 import services.identity.AcceptanceRule.Weighing
 

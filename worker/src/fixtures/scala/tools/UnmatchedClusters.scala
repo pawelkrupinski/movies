@@ -8,6 +8,7 @@ import org.bson.json.{JsonMode, JsonWriterSettings}
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts}
 import services.identity._
+import services.identity.measures._
 import services.identity.vocabulary.VoterFamily
 import models.ListingKey
 import services.titles.TitleNormalizer

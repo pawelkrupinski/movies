@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 /** One measurement: a category, a number, or missing (with which side is missing). */
 sealed trait Measure

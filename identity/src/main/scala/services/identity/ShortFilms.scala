@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, FilmCuts, IdentityMeasures, MeasuredListing}
 import services.titles.{TitleContainment, TitleWords}
 
 /** A SHORT film — one TMDB states runs [[MaxMinutes]] or less in every language and cut it holds ([[FilmCuts]]), the

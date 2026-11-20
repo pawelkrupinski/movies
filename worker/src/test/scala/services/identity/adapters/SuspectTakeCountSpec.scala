@@ -8,7 +8,7 @@ import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.SuspectTakes.Signal
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /** The live resolve's suspect-take count ([[SuspectTakeCount]]): billings per signal, an agreed film's record read from

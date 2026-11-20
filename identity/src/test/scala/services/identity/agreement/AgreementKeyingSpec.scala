@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision, StoredFamily}
+import services.identity.{FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision, StoredFamily}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, Question, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
 import org.scalatest.flatspec.AnyFlatSpec

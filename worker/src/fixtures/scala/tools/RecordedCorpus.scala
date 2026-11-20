@@ -15,6 +15,7 @@ import java.nio.file.Path
 @nowarn("msg=unused import")
 object RecordedCorpus {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
 
   /** An archived scrape, in either package a ref keeps it: `models` since 2026-11-18, `services.scrapes` before (this file
    *  is compiled into old refs by scripts/identity-slice; services.identity.OlderRefs). */

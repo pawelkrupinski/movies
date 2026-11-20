@@ -11,7 +11,8 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import services.tasks.{RatingTasks, TaskWorker}
 
 import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
-import services.identity.{PinnedGateMeasures, StoredIdentityConfidence}
+import services.identity.StoredIdentityConfidence
+import services.identity.measures.PinnedGateMeasures
 import services.identity.vocabulary.Hit
 import scala.util.{Failure, Try}
 
@@ -275,7 +276,7 @@ object MovieService {
    *  they come in. Two venues billing "Der Fremde" under different original titles ("The Stranger", "L'Etranger")
    *  search differently, and the tie, left to the slots' map order, measured whichever one the JVM's identity-hash
    *  order put first: Germany's order passes in two JVMs disagreed on 6 films' TMDB title searches. */
-  private[corpus] def titleSearchListings(slots: Seq[SourceData]): Seq[services.identity.MeasuredListing] =
+  private[corpus] def titleSearchListings(slots: Seq[SourceData]): Seq[services.identity.measures.MeasuredListing] =
     slots.map(StoredIdentityConfidence.listing).filter(_.title.trim.nonEmpty)
       .sortBy(l => (l.title, l.rawTitle.getOrElse(""), l.originalTitle.getOrElse(""), l.year.getOrElse(0), l.runtime.getOrElse(0),
                     l.directors.mkString("\u0000"), l.countries.mkString("\u0000")))

@@ -169,7 +169,7 @@ class ImdbClient(http: HttpFetch) {
 
   /** IMDb's record of `imdbId` as the identity measures read it ([[identityRecordIn]]); `None` when IMDb has no such
    *  title; a failed read throws. */
-  def identityRecord(imdbId: String): Option[services.identity.Film] =
+  def identityRecord(imdbId: String): Option[services.identity.measures.Film] =
     graphQl(ImdbClient.identityRecordBody(imdbId)).flatMap(ImdbClient.identityRecordIn)
 
   /** The suggestion endpoint's answer for `title`: an object carrying its `d` array
@@ -317,7 +317,7 @@ object ImdbClient {
   def identityRecordId(body: String): Option[String] = idAsked(IdentityRecordQuery, body)
   /** An [[IdentityRecordQuery]] answer as the identity measures read a film; `None` when IMDb has no such title. Its
    *  directors and countries are unknown, not "none", when the answer carries no credits or countries at all. */
-  def identityRecordIn(js: JsValue): Option[services.identity.Film] = {
+  def identityRecordIn(js: JsValue): Option[services.identity.measures.Film] = {
     val title    = js \ "data" \ "title"
     val titles   = titlesIn(js)
     val own      = (title \ "titleText" \ "text").asOpt[String].filter(_.trim.nonEmpty).orElse(titles.headOption)
@@ -326,7 +326,7 @@ object ImdbClient {
     val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[Seq[JsValue]].map(_.flatMap(c => (c \ "id").asOpt[String]).filter(_.nonEmpty))
     own.map { name =>
       val original = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.trim.nonEmpty)
-      services.identity.Film(
+      services.identity.measures.Film(
         title             = name,
         originalTitle     = original,
         alternativeTitles = titles.filterNot(t => t == name || original.contains(t)),
@@ -349,12 +349,12 @@ object ImdbClient {
    *  resolver keys titles (`IdentityMeasures.key`: case, accents and punctuation aside, so "Kuźma" is "Kuzma").
    *  `None` while a suggestion's titles are unknown. ONE reading for the live lookups and the store's. */
   def titled(title: String, movies: Seq[Suggestion], titlesOf: String => Option[Seq[String]]): Option[Seq[String]] = {
-    val wanted = services.identity.IdentityMeasures.key(title)
+    val wanted = services.identity.measures.IdentityMeasures.key(title)
     val first  = movies.distinctBy(_.id).take(SuggestedMovies)
     val named  = first.map { s =>
       if (wanted.isEmpty) Some(false)
-      else if (s.title.exists(services.identity.IdentityMeasures.key(_) == wanted)) Some(true)
-      else titlesOf(s.id).map(_.exists(services.identity.IdentityMeasures.key(_) == wanted))
+      else if (s.title.exists(services.identity.measures.IdentityMeasures.key(_) == wanted)) Some(true)
+      else titlesOf(s.id).map(_.exists(services.identity.measures.IdentityMeasures.key(_) == wanted))
     }
     Option.when(named.forall(_.isDefined))(first.zip(named.flatten).collect { case (s, true) => s.id })
   }

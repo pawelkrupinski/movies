@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Film, IdentityMeasures}
+import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, VoterFamily}
 
 import scala.annotation.unused

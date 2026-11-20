@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, IdentityLookups, IdentityMeasures, Listing}
+import services.identity.{IdentityLookups, Listing}
+import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, PosterAnswers, PosterHash, PosterQuestion, VoterFamily}
 
 /** A family answering from what it holds: every title search (by any of a record's titles) and record known, no person

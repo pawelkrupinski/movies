@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, TmdbFilmRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json

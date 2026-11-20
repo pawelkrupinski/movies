@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{FactRelations, Film}
+import services.identity.measures.{FactRelations, Film}
 
 /**
  * What the agreement stage makes of the evidence against a film the MODEL took ([[AgreementStage]]'s corrections): each

@@ -7,7 +7,7 @@ import services.cinemas.common.DetailEnricher
 import services.enrichment.ImdbClient
 
 import scala.util.Try
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
 
 /**

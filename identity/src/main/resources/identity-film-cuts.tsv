@@ -1,4 +1,4 @@
-# The cuts of a film cinemas bill at their own running time — read by services.identity.FilmCuts. Hand-kept.
+# The cuts of a film cinemas bill at their own running time — read by services.identity.measures.FilmCuts. Hand-kept.
 # TMDB keeps ONE record per film at its theatrical runtime and names no cut's runtime; a listing billing a cut row
 # below at its minutes runs as the film. Columns, tab-separated:
 #   tmdbId	imdbId	cut label	minutes	source URL (where the cut's runtime is stated)

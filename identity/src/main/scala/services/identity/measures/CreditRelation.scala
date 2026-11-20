@@ -1,6 +1,6 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.IdentityMeasures.{MissingFilm, MissingListing, SamePersonMeasure}
+import services.identity.measures.IdentityMeasures.{MissingFilm, MissingListing, SamePersonMeasure}
 import services.titles.TitleContainment
 import Measure.Category
 

@@ -22,7 +22,7 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
 
   it should "leave out the resolver, its learned data and the stores, which build no slot" in {
     digested should contain noneOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityCalibration.scala",
-      "identity/src/main/scala/services/identity/IdentityMeasures.scala", "identity/src/main/scala/services/identity/TitleDecorations.scala",
+      "identity/src/main/scala/services/identity/measures/IdentityMeasures.scala", "identity/src/main/scala/services/identity/TitleDecorations.scala",
       "common/src/main/scala/services/movies/MovieRepository.scala", "identity/src/main/resources/identity-decorations.json", "identity/src/main/resources/identity-weights.json")
   }
 

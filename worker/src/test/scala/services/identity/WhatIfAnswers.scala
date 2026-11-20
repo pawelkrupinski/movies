@@ -36,6 +36,7 @@ import scala.jdk.CollectionConverters._
 @nowarn("msg=unused import")
 object WhatIfAnswers {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*

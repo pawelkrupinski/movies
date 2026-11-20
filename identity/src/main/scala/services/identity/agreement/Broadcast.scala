@@ -1,7 +1,8 @@
 package services.identity.agreement
 
 import services.titles.billing.{BillingPieces, DecorationWords}
-import services.identity.{FactRelations, Film, IdentityMeasures, Listing, ListingShape, MeasuredListing, StageRelays}
+import services.identity.{Listing, ListingShape}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, StageRelays}
 import services.identity.vocabulary.{Answer, ScreeningDays}
 
 /**
@@ -212,7 +213,7 @@ object Broadcast {
      *  run together in camel case read as its parts: UK Flicks' "MetOpera" is the Met's "Opera". */
     def bannerOf(titles: Seq[String], billsWork: String => Boolean): Set[String] =
       titles.flatMap(BillingPieces.pieces)
-        .filterNot(piece => billsWork(piece) || services.identity.StageWorks.resolver.named(IdentityMeasures.key(piece)).nonEmpty)
+        .filterNot(piece => billsWork(piece) || services.identity.measures.StageWorks.resolver.named(IdentityMeasures.key(piece)).nonEmpty)
         .flatMap(piece => services.titles.TitleContainment.tokens(CamelCase.replaceAllIn(piece, " ")))
         .filter(word => word.length >= 4 && !word.forall(_.isDigit) && !DecorationWords.EventWords(word)).toSet
 

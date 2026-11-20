@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, MeasuredListing}
 import scala.collection.mutable
 import services.identity.vocabulary.{CatalogueId, ScreeningDays}
 

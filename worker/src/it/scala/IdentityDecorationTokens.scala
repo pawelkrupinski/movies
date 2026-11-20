@@ -1,7 +1,8 @@
 package integration
 
 import play.api.libs.json.Json
-import services.identity.{DecorationSegments, DecorationTokens, MeasuredListing, MultiFilmBill}
+import services.identity.{DecorationSegments, DecorationTokens}
+import services.identity.measures.{MeasuredListing, MultiFilmBill}
 import services.identity.vocabulary.TitleDecorations
 import services.identity.ListingShape
 import models.ListingKey

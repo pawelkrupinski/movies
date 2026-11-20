@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing}
 import services.identity.AcceptanceRule.Weighing
 
 /** What the acceptance rules that take a film by how its title is searched and billed ask: the exact and segment top

@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.Film
 import integration.Reachable
 import models.{CinemaMovie, Helios, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec

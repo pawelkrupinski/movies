@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, MultiFilmBill}
 import services.identity.vocabulary.{CandidateQuery, Hit}
 
 /** The members of a family's cluster decided apart from the film the cluster took, as no film ([[ResolverRun]]): a

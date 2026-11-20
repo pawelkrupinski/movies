@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.IdentityMeasures
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -2,7 +2,8 @@ package services.identity.agreement
 
 import services.titles.billing.BillingPieces
 
-import services.identity.{Acceptance, FactRelations, Film, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterEvidence, SourceReliability}
+import services.identity.{Acceptance, IdentityCalibration, IdentityLookups, IdentityResolver, Listing, ListingShape, PosterEvidence, SourceReliability}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, Question}
 import services.identity.vocabulary.toAnswer
 import services.identity.SourceReliability.{Fact, Trust}
@@ -246,7 +247,7 @@ object Agreement {
   /** Every running time a record states — one per translation fetched ([[Film.runtimes]]) — and its billed
    *  cuts' ([[FilmCuts]]): the film's IMDb number is its own, else its IMDb cross-id. */
   private def recordRuntimes(record: SourceRecord): Seq[Int] =
-    record.film.runtimes.toSeq ++ services.identity.FilmCuts.of(
+    record.film.runtimes.toSeq ++ services.identity.measures.FilmCuts.of(
       if (record.film.imdbNumber != 0) record.film.imdbNumber else record.crossIds.get("imdb").fold(0)(IdentityMeasures.imdbNumber)).map(_.runtime)
 
   /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of one of a record's ([[recordRuntimes]])
@@ -434,7 +435,7 @@ object Agreement {
   }
   /** The runs of every listing's billing the films' titles are (each as its words, articles aside). */
   def billedSpans(listings: Seq[Listing], films: Seq[Film]): Seq[Seq[String]] =
-    services.identity.TitleTextMeasures.spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
+    services.identity.measures.TitleTextMeasures.spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
 
   /** Does another candidate's titles name MORE of the billing than the film's — every word the film's titles name of it,
    *  and a word beside them — where the billing bills one film under two names? DE Acud Kino's "BARWY OCHRONNE /
@@ -447,9 +448,9 @@ object Agreement {
   }
 
   /** Is the film named only WITHIN another candidate's title the listings bill whole
-   *  ([[services.identity.TitleTextMeasures.namedWithinAnother]], the agreement's readers' name for it)? Over spans
+   *  ([[services.identity.measures.TitleTextMeasures.namedWithinAnother]], the agreement's readers' name for it)? Over spans
    *  [[billedSpans]] found: `own` the film's, `others` every candidate's, this one's among them. */
-  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean = services.identity.TitleTextMeasures.namedWithinAnother(own, others)
+  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean = services.identity.measures.TitleTextMeasures.namedWithinAnother(own, others)
 
   /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a
    *  house or a season ([[ListingShape.billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's

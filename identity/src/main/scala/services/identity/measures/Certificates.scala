@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 import play.api.libs.json.JsValue
 import services.titles.BbfcCertificate

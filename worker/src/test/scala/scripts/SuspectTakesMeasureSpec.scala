@@ -2,7 +2,7 @@ package scripts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.agreement.SuspectTakes.Signal
 import scripts.SuspectTakesMeasure.Graded
 import tools.UnmatchedClusters.Label

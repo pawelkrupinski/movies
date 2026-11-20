@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{BannerHouses, Film, IdentityMeasures, Measure, MeasuredListing}
 import scala.collection.mutable
 
 /** A family's pool ([[FamilyScope]]) as its listings' titles relate to it: the candidates, the qualifiers their records

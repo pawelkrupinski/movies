@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.*
 import clients.{TmdbJson, TmdbResponses}
 import play.api.Logging
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}

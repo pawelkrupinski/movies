@@ -2,7 +2,8 @@ package scripts
 
 import tools.SpecPool
 import models.Country
-import services.identity.{Film, IdentityLookups}
+import services.identity.IdentityLookups
+import services.identity.measures.Film
 import services.identity.vocabulary.Answer
 import services.identity.agreement.SuspectTakes
 import services.identityadapters.TmdbIdentityLookups

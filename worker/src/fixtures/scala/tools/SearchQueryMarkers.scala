@@ -1,7 +1,6 @@
 package tools
 
 import models.Country
-import services.identity.MultiFilmBill
 import services.titles.FormatTags
 
 import java.util.regex.Pattern
@@ -9,7 +8,11 @@ import scala.util.matching.Regex
 
 /** The screening markers a listing's title search must not carry, per country, and where the strip each escaped belongs:
  *  what `SearchQueryMarkersSpec` holds every corpus to, and what `scripts/title-trace` says one raw title would raise. */
+@scala.annotation.nowarn("msg=unused import")
 object SearchQueryMarkers {
+  // MultiFilmBill, in whichever package the ref keeps it: services.identity before 2026-11-20, services.identity.measures since
+  import services.identity.*
+  import services.identity.measures.*
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

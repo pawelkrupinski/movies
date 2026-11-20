@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBill}
 import services.identity.AcceptanceRule.{First, Need, NeedOf, NoneOf, One, PickedBy, Veto}
 
 /** EVERY ACCEPTANCE RULE, one row each, in the order they are tried: what a node takes ALONE ([[aloneRules]]), what a

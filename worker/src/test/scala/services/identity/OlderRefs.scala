@@ -11,6 +11,7 @@ package services.identity
 @scala.annotation.nowarn("msg=unused import")
 object OlderRefs {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
   import agreement.*
 

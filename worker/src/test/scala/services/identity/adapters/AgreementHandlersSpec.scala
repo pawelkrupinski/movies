@@ -5,7 +5,7 @@ import services.identityadapters.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.VoterFamily
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task}
 import services.tasktypes.TaskType

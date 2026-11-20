@@ -1,6 +1,7 @@
 package scripts
 
-import services.identity.{Film, ResolverDecision}
+import services.identity.ResolverDecision
+import services.identity.measures.Film
 import services.identity.agreement.SuspectTakes
 import services.identity.agreement.SuspectTakes.{Signal, Take}
 import tools.{CommandLine, IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}

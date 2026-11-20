@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.IdentityMeasures
 import services.identity.vocabulary.Question
 
 /** What one cluster's decision reads: its film, its pooled scoring, the confidence and basis they make, and what it

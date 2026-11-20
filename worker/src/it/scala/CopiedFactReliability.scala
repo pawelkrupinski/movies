@@ -3,6 +3,7 @@ package integration
 import models.Country
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 import services.identity._
+import services.identity.measures._
 import services.identityadapters.TmdbIdentityLookups
 import tools._
 

@@ -3,8 +3,8 @@ package tools
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity._
 
+import services.identity.measures._
 import java.nio.file.Files
 import services.identity.vocabulary.Answer
 

@@ -51,6 +51,7 @@ repo=$IDENTITY_REPO
 # the tool and the recording reader it opens a recording with, dropped into each ref (as identity-slice does)
 TOOL_FILES=(worker/src/test/scala/scripts/VenueReplay.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
+  worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
   worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala)
 
 cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]') venue=$2; shift 2

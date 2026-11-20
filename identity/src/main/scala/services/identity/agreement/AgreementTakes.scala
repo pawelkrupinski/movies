@@ -225,7 +225,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
     lookups.overview(film).answered.flatten.filter(_.nonEmpty)
 
   /** TMDB's record of `film` as `lookups` read it, if known. */
-  private def recordIn(lookups: services.identity.IdentityLookups, film: Int): Option[services.identity.Film] =
+  private def recordIn(lookups: services.identity.IdentityLookups, film: Int): Option[services.identity.measures.Film] =
     lookups.film(film).answered.flatten
 
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it

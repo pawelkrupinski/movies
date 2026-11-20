@@ -1,4 +1,4 @@
-# A dissolved state and the states that succeeded it — read by services.identity.CountryLineage. Hand-kept.
+# A dissolved state and the states that succeeded it — read by services.identity.measures.CountryLineage. Hand-kept.
 # TMDB codes a film made before a dissolution by the state it was made in (Chytilová's 1966 "Daisies" is XC,
 # Czechoslovakia); a venue writes the country it knows today ("Czechia"), or the old state under a name the JDK has no
 # entry for ("Czechoslovakia", "ZSRR", "DDR"). A listing's country and a film's match when one is the other's

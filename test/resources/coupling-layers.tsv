@@ -43,23 +43,24 @@ rank	2	services.readmodel	the served projection of the corpus
 rank	2	services.resolution	a listing's film resolution over the corpus
 rank	2	services.scrapes	the venues' scrape records and archives
 rank	2	services.users	the accounts and their state
-rank	3	services.auth	the sign-in flows over the accounts
-rank	3	services.closure	the venue closure checks and retirements over the scrape records
+rank	4	services.auth	the sign-in flows over the accounts
+rank	4	services.closure	the venue closure checks and retirements over the scrape records
 rank	2	services.identity.vocabulary	the identity model's vocabulary: answers, questions, pins, hashes, decorations and the other values every stage reads
-rank	3	services.identity	the identity model: the resolver, its measures and rules, the readings scrapers and clients build
-rank	3	services.identity.agreement	the identity model's agreement stage: the film databases' votes over the model's takes, above the model
-rank	3	services.identity.staging	the identity model's staged inputs: the change feed and staging events the resolver reads
-rank	3	services.metrics	the metrics plumbing and the series of the packages below it
-rank	4	services.cinemas	the cinema scrapers and their contract, building the identity model's readings
-rank	4	services.review	the takes' review: fact checks and explanations over the identity model
-rank	5	services.alerts	the scrape and fallback alerts and their notifiers, over the cinemas
-rank	5	services.tasks	the task queue and worker, the scrape handlers and the pipeline's series
-rank	6	services.corpus	the worker's film-row orchestration over the tasks and the identity model
-rank	6	services.enrichment	the ratings and ids, run as tasks
-rank	6	services.sharecards	the share cards, rendered as tasks
-rank	6	services.venuepages	the venue pages a detail fetch keeps, fetched as tasks
-rank	7	services.identityadapters	the identity model's worker adapters: its stores, asks, projection and fill over everything below
-rank	7	services.refresh	the rating refresh sources, run as tasks over the enrichment
+rank	3	services.identity.measures	the identity model's measures: IdentityMeasures, the *Measures objects, MeasuredListing, Film and Measure, what every rule and score reads of a listing and a film, above its vocabulary
+rank	4	services.identity	the identity model: the resolver, its rules, scoring and projection over the measures, the readings scrapers and clients build
+rank	4	services.identity.agreement	the identity model's agreement stage: the film databases' votes over the model's takes, above the model
+rank	4	services.identity.staging	the identity model's staged inputs: the change feed and staging events the resolver reads
+rank	4	services.metrics	the metrics plumbing and the series of the packages below it
+rank	5	services.cinemas	the cinema scrapers and their contract, building the identity model's readings
+rank	5	services.review	the takes' review: fact checks and explanations over the identity model
+rank	6	services.alerts	the scrape and fallback alerts and their notifiers, over the cinemas
+rank	6	services.tasks	the task queue and worker, the scrape handlers and the pipeline's series
+rank	7	services.corpus	the worker's film-row orchestration over the tasks and the identity model
+rank	7	services.enrichment	the ratings and ids, run as tasks
+rank	7	services.sharecards	the share cards, rendered as tasks
+rank	7	services.venuepages	the venue pages a detail fetch keeps, fetched as tasks
+rank	8	services.identityadapters	the identity model's worker adapters: its stores, asks, projection and fill over everything below
+rank	8	services.refresh	the rating refresh sources, run as tasks over the enrichment
 #
 # The composition roots' order (layer 5), bottom up.
 rank	0	diagnostics	command-line programs, each its own root

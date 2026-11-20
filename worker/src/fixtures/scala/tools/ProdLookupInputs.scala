@@ -8,6 +8,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity._
 
+import services.identity.measures._
 import services.titles.TitleNormalizer
 import services.venuepages.CapturedVenuePages
 

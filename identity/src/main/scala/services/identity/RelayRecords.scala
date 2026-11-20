@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.Film
 import services.titles.RelayBanner
 
 /**

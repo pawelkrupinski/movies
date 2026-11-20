@@ -3,7 +3,7 @@ package services.identityadapters
 import services.identity.*
 import services.identity.staging.{StagedFact, StagedListing, StagedTake}
 import models.ListingKey
-import services.identity.Film
+import services.identity.measures.Film
 
 /** What one publish reads its takes against: the films of the model's resolution, else of the TMDB store
  *  (`storedFilm`), and each listing's facts (`factsOf`, none when it is not known). */

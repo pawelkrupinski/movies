@@ -1,6 +1,6 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.StageRelays.{Billing, billing, stageBilling, namesSeasonProduction}
+import services.identity.measures.StageRelays.{Billing, billing, stageBilling, namesSeasonProduction}
 import services.titles.StageHouse.{abbreviates, namesOneHouse, particularWords}
 
 /** Which house each listing banner is, LEARNED from how the film records of its works bill them

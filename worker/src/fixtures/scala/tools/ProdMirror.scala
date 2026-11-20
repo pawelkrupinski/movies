@@ -20,6 +20,7 @@ import scala.jdk.CollectionConverters._
 final case class ProdSide(listing: ListingKey, model: Option[ProdSide.Model], trace: Option[ListingTrace], verdict: Option[StoredVerdict],
                           correction: Option[StoredVerdict], titles: Map[Int, String]) {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   /** The film prod's stored state takes for the listing (`tmdb:N`, `imdb:tt…`, `none`, or `missing` when prod holds no
    *  record of it) and the basis: a correction over the model's take, else the model's film, else the families' agreed
    *  film, else the fill's — as the agreement stage applies its verdicts. */
@@ -71,6 +72,7 @@ object ProdState {
 @nowarn("msg=unused import")
 final class ProdMirror(client: MongoClient, val country: Country) extends AutoCloseable {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
@@ -148,6 +150,7 @@ final class ProdMirror(client: MongoClient, val country: Country) extends AutoCl
 @nowarn("msg=unused import")
 object ProdMirror {
   import services.identity.vocabulary.*
+  import services.identity.measures.*
   /** The agreement stage's cluster keys' collection (`AgreementKeys.Collection`), named here: a ref from before it has
    *  no such object. */
   val Keys = "identity_agreement_keys"

@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.FactRelations
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

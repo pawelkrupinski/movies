@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Film, FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.{FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec

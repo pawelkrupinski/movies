@@ -1,6 +1,7 @@
 package integration
 
-import services.identity.{Evidence, Film, IdentityMeasures, Measure}
+import services.identity.Evidence
+import services.identity.measures.{Film, IdentityMeasures, Measure}
 
 /**
  * The benchmark's ABSOLUTE referee: one listing's film, old or new, judged ALONE from the

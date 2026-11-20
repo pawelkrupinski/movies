@@ -2,7 +2,8 @@ package integration
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Evidence, Film}
+import services.identity.Evidence
+import services.identity.measures.Film
 import IdentityReferee.Verdict
 
 /** The benchmark's absolute referee on the cases 2026-09-28's comparison turned on: old-pipeline

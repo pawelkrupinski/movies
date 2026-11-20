@@ -2,7 +2,7 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.staging.{StagedCluster, StagedQuestion, StagingBeat, StagingEvent}
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.Question
 
 /**

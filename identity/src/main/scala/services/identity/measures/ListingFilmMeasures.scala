@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 /**
  * A listing's measures against a film ([[IdentityMeasures.listingFilmTitled]]) as a map of its fixed keys, each value in a

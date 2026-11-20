@@ -1,7 +1,8 @@
 package services.identity
 
+import services.identity.measures.{IdentityMeasures, Measure}
 import services.identity.AcceptanceRule.Weighing
-import services.identity.IdentityMeasures.ListingFilm
+import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
 
 /** Which of a listing's scored candidates — ranked best first, the denied ones among them — it TAKES, and at what

@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.*
 import clients.TmdbClient
-import services.identity.Film
+import services.identity.measures.Film
 import services.identity.vocabulary.ProseWords
 
 /**

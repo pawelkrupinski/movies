@@ -1,7 +1,7 @@
-package services.identity
+package services.identity.measures
 
 import services.titles.billing.DecorationWords
-import services.identity.IdentityMeasures.*
+import services.identity.measures.IdentityMeasures.*
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 import services.titles.SearchTitles
 import services.titles.StageHouse.{HouseCommonWords, namesAHouseInParticular, namesOneHouse, particularWords}

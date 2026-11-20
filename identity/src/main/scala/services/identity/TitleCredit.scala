@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.IdentityMeasures
 import services.titles.billing.Credits
 
 /**

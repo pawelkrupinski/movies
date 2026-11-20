@@ -1,7 +1,8 @@
 package services.identity
 
+import services.identity.measures.{Film, Measure, MeasuredListing, PinnedGateMeasures}
 import models.{MovieRecord, SourceData, TitleSearch, Tmdb}
-import services.identity.IdentityMeasures.ListingFilm
+import services.identity.measures.IdentityMeasures.ListingFilm
 
 /**
  * How sure a STORED film's TMDB identity is, from the evidence the row itself keeps — the rating

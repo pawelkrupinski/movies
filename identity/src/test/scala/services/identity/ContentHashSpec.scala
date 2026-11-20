@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{Film, MeasuredListing}
 import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

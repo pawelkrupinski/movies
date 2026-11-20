@@ -1,6 +1,7 @@
 package scripts
 
 import services.identity._
+import services.identity.measures._
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import services.titles.TitleNormalizer

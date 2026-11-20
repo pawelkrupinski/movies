@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.measures.{RelayStage, StageRelays}
 import services.identity.vocabulary.{CatalogueId, ResolverEdge}
 
 /** The constraint edges between nodes sharing a block key ([[of]]): must-links by tier (0 pinned,

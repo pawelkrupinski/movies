@@ -3,7 +3,8 @@ package scripts
 import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.identity.{BannerHouses, Backer, Film, IdentityCalibration, IdentityMeasures, Measure, SourceReliability, VenueBacking}
+import services.identity.{Backer, IdentityCalibration, SourceReliability, VenueBacking}
+import services.identity.measures.{BannerHouses, Film, IdentityMeasures, Measure}
 import services.identity.vocabulary.TitleDecorations
 import services.identity.agreement.Agreement
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
@@ -17,7 +18,7 @@ import java.util.zip.GZIPOutputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.hashing.MurmurHash3
-import services.identity.Measure.{Category, Missing, Number}
+import services.identity.measures.Measure.{Category, Missing, Number}
 
 /**
  * Derives the identity resolver's weights, calibration, thresholds and cannot-link rules from
