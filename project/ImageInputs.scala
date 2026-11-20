@@ -27,7 +27,8 @@ object ImageInputs {
    * starts building the image leaves this list.
    */
   val buildOnly: Seq[String] = Seq(
-    "ClassReferences.scala", "Coupling.scala", "CouplingAnalysis.scala", "ForkedTests.scala",
+    "ClassCycles.scala", "ClassReferences.scala", "Coupling.scala", "CouplingAnalysis.scala", "CouplingSimulation.scala",
+    "ExemptionSlack.scala", "ForkedTests.scala",
     "HeadlessSafeInteractionMode.scala", "ImageInputs.scala", "ReaderNames.scala", "StaleTastyRetry.scala",
     "TestImpact.scala", "UnitClasspathGuard.scala", "Warmup.scala", "WriteFailureTripwire.scala",
   ).map("project/" + _)
