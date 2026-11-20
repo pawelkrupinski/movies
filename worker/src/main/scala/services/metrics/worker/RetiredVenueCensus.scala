@@ -1,0 +1,95 @@
+package services.metrics.worker
+
+import tools.ThreadPools
+
+import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.Country
+import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotsRepository}
+
+import scala.concurrent.duration._
+
+/**
+ * Counts the side-collection rows (`screenings`, `movie_slots`) filed under a venue this
+ * country's roster no longer lists, and the FUTURE showtimes among them.
+ *
+ * Dropping a cinema from the roster stops its scrape, and the read path ignores its rows, but
+ * until [[RetiredVenueRows]] (2026-09-23) nothing removed them: after "Kino Etiuda OBK" left the
+ * PL roster, 3 films and 8 future showtimes stayed under it for days, counted by every census
+ * that reads the side collections raw, and nothing said so. This is the watchdog for that sweep:
+ * it runs daily and spares rows written in the last 24h, so a count above zero for over two days
+ * means it refused, failed or stopped.
+ *
+ * Reads only row ids (never documents) from both collections, then the showtimes of the few
+ * films with retired rows. A read that fails publishes nothing for that store — "could not
+ * read" is not "none" — and an EMPTY roster publishes nothing at all: that is a roster that
+ * failed to load, and every row would read as retired. Venue and roster come from
+ * [[VenueRoster.venuesOf]] and [[RetiredVenueRows.venueOf]], the definitions its cleanup sweep uses.
+ */
+class RetiredVenueCensus(
+  screenings:      ScreeningsRepository,
+  slots:           SlotsRepository,
+  roster:          Set[String],
+  rows:            Gauge,
+  futureShowtimes: Gauge,
+  // Counts the upcoming showtimes on the rows filed under a retired venue.
+  upcoming:        RetiredVenueShowtimes,
+  country:         Country,
+  override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval,
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded,
+  override protected val threadPools: tools.ThreadPools
+) extends SampledCensus {
+
+  override protected def firstSampleSlot: Int = SampledCensus.Slots.RetiredVenues
+  import RetiredVenueCensus._
+
+  private val countryCode = country.code
+
+  Collections.foreach(coll => rows.labelValues(countryCode, coll).set(0.0))
+  futureShowtimes.labelValues(countryCode).set(0.0)
+
+  def sample(): Unit =
+    if (roster.isEmpty) logger.warn(s"$censusName: the $countryCode roster is EMPTY — not counting any venue as retired.")
+    else {
+      slots.rowIdsChecked().answered.foreach(slotIds =>
+        rows.labelValues(countryCode, SlotsRepository.Collection).set(retiredOf(slotIds).size.toDouble))
+      screenings.rowIdsChecked().answered.foreach { screeningIds =>
+        val retiredRows = retiredOf(screeningIds)
+        rows.labelValues(countryCode, ScreeningsRepository.Collection).set(retiredRows.size.toDouble)
+        upcoming.on(retiredRows).foreach(n => futureShowtimes.labelValues(countryCode).set(n.toDouble))
+      }
+    }
+
+  private def retiredOf(ids: Set[String]): Set[String] = ids.filterNot(id => roster(RetiredVenueRows.venueOf(id)))
+
+  override protected val censusName: String = "retired-venue-census"
+}
+
+object RetiredVenueCensus {
+  val RowsName            = "kinowo_worker_retired_venue_side_rows"
+  val FutureShowtimesName = "kinowo_worker_retired_venue_future_showtimes"
+
+  /** The side collections whose retired-venue rows it counts: the `collection` label's values. */
+  val Collections: Seq[String] = Seq(ScreeningsRepository.Collection, SlotsRepository.Collection)
+
+  /** Daily. The rows change only when the roster does — a deploy, whose boot takes the first reading —
+   *  or when the cleanup (`StrandedSideRowsCleanup`) sweeps them, and it takes a reading right after it
+   *  does. Between those nothing moves but the upcoming count's clock. Hourly, this read every row id of
+   *  both side collections 24 times a day to learn nothing new. */
+  val DefaultSampleInterval: FiniteDuration = 1.day
+
+  /** The two shared gauges every country's census writes into, registered once. */
+  def gauges(registry: PrometheusRegistry): (Gauge, Gauge) = {
+    val rows = Gauge.builder()
+      .name(RowsName)
+      .help("Side-collection rows (collection=screenings|movie_slots) filed under a venue this country's roster no longer lists, by country. Nothing serves them, and only the daily retired-venue sweep (RetiredVenueRows) deletes them: before it, Kino Etiuda OBK's rows stayed for days after it left the PL roster, invisible. Zero is healthy; above zero for over two days (the cleanup's 24h grace plus its daily tick) means a removed venue's rows outlived it. Read at boot, after each cleanup and daily, id-only; a failed read keeps the last value. Alerted by RetiredVenueRowsLingering.")
+      .labelNames("country", "collection")
+      .register(registry)
+    val future = Gauge.builder()
+      .name(FutureShowtimesName)
+      .help("Upcoming showtimes on screenings rows filed under a venue this country's roster no longer lists, by country — how much of kinowo_worker_retired_venue_side_rows every census reading the side collections raw still counts as live. Zero is healthy.")
+      .labelNames("country")
+      .register(registry)
+    (rows, future)
+  }
+}

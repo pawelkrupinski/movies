@@ -12,7 +12,7 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.worker.{WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{MongoMovieChangeFeed, BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}

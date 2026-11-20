@@ -16,7 +16,7 @@ import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
 import services.identity.{AnswersChanged, CandidateQuery, Question, UnansweredTmdbLookups}
 import services.identity.adapters.AgreementAskers
-import services.metrics.WorkerHttpMetrics
+import services.metrics.worker.WorkerHttpMetrics
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.corpus.MovieService
 import services.movies.SingleCountryNormalizer.titleNormalizer

@@ -4,7 +4,7 @@ import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfigu
 
 import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, TelegramAlertKind, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
-import services.metrics.EnvGatedFeature
+import services.metrics.worker.EnvGatedFeature
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration

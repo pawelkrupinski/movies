@@ -6,8 +6,8 @@ import services.tasks.CinemaContentCensus
 import services.tasks.CinemaScrapeCensus
 import services.tasks.RatingRunCensus
 import services.tasks.TaskPipelineBinder
-import services.metrics.{CorpusSeriesBinder, ReadModelSeriesBinder}
-import services.metrics.RetiredVenueCensus
+import services.metrics.worker.{CorpusSeriesBinder, ReadModelSeriesBinder}
+import services.metrics.worker.RetiredVenueCensus
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country metric binders, the cache-occupancy gauges, and the
@@ -79,5 +79,5 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val retiredVenueCensus: RetiredVenueCensus = managedResources.stopping(
     new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
       workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge,
-      new services.metrics.RetiredVenueShowtimes(screeningsRepository, country, clock), country, ticks = ticks, threadPools = threadPools))
+      new services.metrics.worker.RetiredVenueShowtimes(screeningsRepository, country, clock), country, ticks = ticks, threadPools = threadPools))
 }

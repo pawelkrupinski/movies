@@ -5,7 +5,8 @@ import services.corpus.CorpusCensusMetrics
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{PrometheusExposition, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.PrometheusExposition
+import services.metrics.worker.{WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
 import modules.wiring.WorkerMetrics
 
 /**
@@ -57,7 +58,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
    *  the naming this spec is checking. */
   private lazy val exposed: String = {
     val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1), threadPools = tools.ThreadPools.Unmanaged)
-    new CorpusCensus(services.metrics.CorpusMetricsFixtures.cacheOver(services.metrics.CorpusMetricsFixtures.repositoryOf()),
+    new CorpusCensus(services.metrics.worker.CorpusMetricsFixtures.cacheOver(services.metrics.worker.CorpusMetricsFixtures.repositoryOf()),
       metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, metrics.cityOffSeasonGauge, Country.Poland.code,
       Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusCensusMetrics.prometheus(metrics.corpusCensusIncomplete, Country.Poland.code), threadPools = tools.ThreadPools.Unmanaged)
     PrometheusExposition.render(metrics.registry)

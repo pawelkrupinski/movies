@@ -11,7 +11,8 @@ import play.api.libs.streams.Accumulator
 import play.api.mvc.{EssentialAction, Headers, RequestHeader, Result, Results}
 import play.api.routing.{HandlerDef, Router}
 import play.api.test.FakeRequest
-import services.metrics.{PrometheusExposition, WebHttpMetrics, WebRouteUsageMetrics}
+import services.metrics.PrometheusExposition
+import services.metrics.web.{WebHttpMetrics, WebRouteUsageMetrics}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 

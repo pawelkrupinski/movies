@@ -13,6 +13,7 @@ import services.tasks.ParkedScrapeMetrics
 import services.tasks.RatingRunCensus
 import services.tasks.WorkerTaskMetrics
 import services.metrics.*
+import services.metrics.worker.{EnvGatedFeatureMetrics, HttpBreakerMetrics, JvmVitalsSampler, PaidEgressMetrics, RetiredVenueCensus, StringPoolMetrics, TtlIndexMetrics, WorkerCacheMetrics, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerHttpMetrics, WorkerResolutionMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 
 import services.alerts.TelegramNotificationMetrics
 

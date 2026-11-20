@@ -1,0 +1,79 @@
+package services.metrics.worker
+
+import services.metrics.CacheGauge
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
+
+/**
+ * `kinowo_worker_cache_*` — what each in-process cache holds, against what it is
+ * allowed to hold.
+ *
+ * WHY THIS EXISTS. On 2026-09-05 worker-pl paged `JvmOldGenNearCap` at 99.69% of
+ * a 313 MiB old generation, and answering "which cache, and how full" needed a
+ * heap dump taken by hand-rolling the JVM attach protocol against a JRE image
+ * with no `jcmd`. The number that would have said it in a glance — bytes held
+ * beside the maximum — existed inside Caffeine the whole time and was never
+ * exported. The tier's own copy of the same bug (`OgCardCache`, 2026-09-04) was
+ * equally invisible for equally long.
+ *
+ * ONE family with a `cache` label rather than a family per cache, so a new cache
+ * is a registration rather than a new metric name and a new panel: the "held
+ * against maximum" panel charts whatever is registered. Mirrors the shape
+ * [[WorkerCorpusMetrics]] uses for its `subset` label.
+ *
+ * A cache that cannot honestly answer a question publishes NO SERIES for it (see
+ * [[CacheOccupancy]]): an unbounded cache has no maximum, a count-bounded one no
+ * byte weight, a byte-bounded one no entry maximum. That is deliberate — a zero
+ * maximum renders as "100% full" on the ratio panel, which is the wrong alarm to
+ * invent for a cache that simply has no ceiling.
+ *
+ * BYTES are published for the byte-bounded caches: today the TMDB document
+ * caches (`tmdb_answers`, `tmdb_film_hits` — `CachedTmdbDocuments`, 32 + 16 MiB
+ * per country). The byte families were dropped once, when deleting the venue
+ * detail cache (@8041c1fbf) left nothing here weighed in bytes; the TMDB cache
+ * then grew a byte bound with no series — the 2026-09-05 blindness again, until
+ * they were restored. The web tier's byte-bounded caches are measured on their
+ * own `kinowo_web_cache_*` family — [[WebCacheMetrics]] over there, sharing
+ * [[CacheGauge]] and [[CacheOccupancy]] with this.
+ *
+ * Read at scrape time through callback gauges: Caffeine keeps these counters
+ * itself, so a sample is a few field reads and there is no staleness window and
+ * no sampler thread — the same call [[StringPoolMetrics]] makes.
+ */
+object WorkerCacheMetrics {
+
+  /** The registration shape, re-exported so callers keep naming it through this
+   *  object rather than reaching for the shared one. */
+  type Registration = CacheGauge.Registration
+  val Registration: CacheGauge.Registration.type = CacheGauge.Registration
+
+  def register(registry: PrometheusRegistry, registrations: () => Seq[Registration]): Unit = {
+    CacheGauge.register(registry, "kinowo_worker_cache_entries",
+      "Entries a cache is holding, against `max_entries` where the cache is bounded by count. " +
+        "For an unbounded one the SHAPE is the signal: a count that tracks its corpus is healthy, " +
+        "one that climbs past it has stopped evicting.")(o => Some(o.entries.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_held_bytes",
+      "Bytes a byte-bounded cache is holding, as its own weigher charges them. Against `max_bytes` " +
+        "this says whether it is evicting at all: a corpus that fits sits flat under the budget, " +
+        "a larger one rides at it.", Some(PrometheusUnit.BYTES))(_.heldBytes.map(_.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_max_bytes",
+      "A byte-bounded cache's budget, published so a dashboard reads the fraction rather than " +
+        "hard-coding a number that goes stale when the budget is retuned. Absent for count-bounded " +
+        "and unbounded caches.", Some(PrometheusUnit.BYTES))(_.maxBytes.map(_.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_max_entries",
+      "A count-bounded cache's maximum entries. Absent for byte-bounded and unbounded caches, " +
+        "which have no entry ceiling to report.")(_.maxEntries.map(_.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_evictions_total",
+      "Entries evicted since boot. A cache evicting steadily is one whose working set no longer " +
+        "fits its budget; whether that matters depends on what a miss costs it.")(_.evictions.map(_.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_hit_ratio",
+      "Share of lookups served from the cache. Read it against what each cache is FOR: on " +
+        "`task_dedup` a high ratio is the point, since every hit is a Mongo enqueue round-trip " +
+        "not made, and a fall means the dedup is being evicted.")(_.hitRatio, registrations)
+  }
+}

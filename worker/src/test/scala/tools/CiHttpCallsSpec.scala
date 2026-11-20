@@ -3,7 +3,7 @@ package tools
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.WorkerHttpMetrics
+import services.metrics.worker.WorkerHttpMetrics
 
 class CiHttpCallsSpec extends AnyFlatSpec with Matchers {
 

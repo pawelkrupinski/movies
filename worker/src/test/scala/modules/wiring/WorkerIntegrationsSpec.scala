@@ -2,7 +2,7 @@ package modules.wiring
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.EnvGatedFeature
+import services.metrics.worker.EnvGatedFeature
 import settings.{GatedIntegration, MissingSetting, ProcessConfiguration}
 
 /** The external integrations the worker quietly runs without when a secret is missing — each

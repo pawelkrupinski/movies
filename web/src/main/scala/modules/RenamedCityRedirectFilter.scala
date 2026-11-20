@@ -1,7 +1,7 @@
 package modules
 
 import models.Country
-import services.metrics.{LegacyAddressKind, LegacyAddressMetrics}
+import services.metrics.web.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
 

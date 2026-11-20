@@ -4,7 +4,7 @@ import play.api.mvc._
 import services.UptimeHistory
 import services.UptimeMonitor.RecentTotals
 import services.fallback.{FallbackState, FallbackStore}
-import services.metrics.WebJvmMetrics
+import services.metrics.web.WebJvmMetrics
 
 /**
  * Prometheus exposition endpoint (`GET /metrics`), scraped over the pod's
@@ -46,7 +46,7 @@ import services.metrics.WebJvmMetrics
  * JVM's heap against its `-Xmx384m` rather than inferring it from the machine's
  * free RAM); the `kinowo_web_http_*` request rate / latency families that
  * [[modules.HttpMetricsFilter]] records; and the `kinowo_web_host_*` gauges
- * ([[services.metrics.WebHostMetrics]]) reporting the machine's free RAM and
+ * ([[services.metrics.web.WebHostMetrics]]) reporting the machine's free RAM and
  * free disk. All three replace series that died with Fly's managed-Prometheus
  * token — `fly_app_http_*`, `fly_instance_memory_*`, `fly_volume_*` — and are
  * now the tier's ONLY signal for request rate, latency, and how close the box

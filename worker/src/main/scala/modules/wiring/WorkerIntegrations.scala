@@ -1,6 +1,6 @@
 package modules.wiring
 
-import services.metrics.EnvGatedFeature
+import services.metrics.worker.EnvGatedFeature
 import settings.{GatedIntegration, ProcessConfiguration}
 
 /**

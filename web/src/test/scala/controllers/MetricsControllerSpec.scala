@@ -7,7 +7,7 @@ import play.api.test.{FakeRequest, Helpers}
 import services.UptimeMonitor
 import services.UptimeMonitor.RecentTotals
 import services.fallback.{FallbackState, InMemoryFallbackStore}
-import services.metrics.WebJvmMetrics
+import services.metrics.web.WebJvmMetrics
 import services.readmodel.TestReadModel
 
 import java.time.Instant

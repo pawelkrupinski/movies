@@ -1,7 +1,7 @@
 package services.corpus
 
 import models.MovieRecord
-import services.metrics.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.worker.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
 import services.movies.LatestTitleYear
 
 /** The census's series names: the corpus subsets of the [[CorpusCensus]] — those that do not move with the clock

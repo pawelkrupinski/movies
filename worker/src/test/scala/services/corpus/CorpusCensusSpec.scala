@@ -2,23 +2,23 @@ package services.corpus
 
 import models.CacheKey
 
-import services.metrics.CorpusMetricsFixtures
+import services.metrics.worker.CorpusMetricsFixtures
 import services.metrics.{ExpositionSamples, PrometheusExposition}
-import services.metrics.ReferenceCensus
-import services.metrics.WorkerCitySeasonMetrics
-import services.metrics.WorkerCorpusMetrics
-import services.metrics.WorkerCorpusScan
-import services.metrics.WorkerShowtimesMetrics
-import services.metrics.WorkerSlotFanoutMetrics
-import services.metrics.WorkerSourceFilmsMetrics
+import services.metrics.worker.ReferenceCensus
+import services.metrics.worker.WorkerCitySeasonMetrics
+import services.metrics.worker.WorkerCorpusMetrics
+import services.metrics.worker.WorkerCorpusScan
+import services.metrics.worker.WorkerShowtimesMetrics
+import services.metrics.worker.WorkerSlotFanoutMetrics
+import services.metrics.worker.WorkerSourceFilmsMetrics
 import tools.SpecClock.given
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaShowing, City, Country, Helios, HeliosMagnolia, Imdb, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.CorpusMetricsFixtures.{cacheOver, censusOver, now, ready, row, splitRepository, tomorrow, warsaw}
-import services.metrics.WorkerCorpusMetrics.Subset
+import services.metrics.worker.CorpusMetricsFixtures.{cacheOver, censusOver, now, ready, row, splitRepository, tomorrow, warsaw}
+import services.metrics.worker.WorkerCorpusMetrics.Subset
 import services.movies.{FilmWriteFence, InMemoryMovieRepository, SingleCountryNormalizer}
 
 import java.time.{Duration, LocalDateTime}

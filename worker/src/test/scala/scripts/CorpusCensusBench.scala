@@ -4,7 +4,7 @@ package scripts
 import services.corpus.CorpusCensus
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
-import services.metrics.{ReferenceCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.worker.{ReferenceCensus, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.CaffeineMovieCache
 import services.titles.TitleNormalizer
 import services.MongoConnection

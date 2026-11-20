@@ -1,0 +1,62 @@
+package services.metrics.worker
+
+import services.metrics.{ExpositionSamples, PrometheusExposition}
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.Helios
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.metrics.worker.CorpusMetricsFixtures._
+
+/**
+ * Locks the worker-side per-city `kinowo_worker_showtimes` gauge — the slot-volume
+ * complement to `kinowo_worker_movies_served`. The load-bearing behaviour: it counts
+ * INDIVIDUAL upcoming showtimes (not distinct films), drops past slots, and honours the
+ * `readyToProject` gate; the per-city series sum to the general total. Records mirror
+ * [[WorkerSourceFilmsMetricsSpec]] so the two gauges are visibly apples-to-apples — a
+ * film shown in a city there is one film here becomes N slots.
+ */
+class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
+
+  private def gauge(text: String, city: String): Option[Double] =
+    ExpositionSamples.sample(text, WorkerShowtimesMetrics.Name, s"""city="$city",country="pl"""")
+
+  "The corpus census" should "sum upcoming showtimes per city, dropping past slots" in {
+    val counts = reading(upcomingCorpus).showtimes
+
+    // Poznań: (today+tomorrow) 2 + (today) 1 = 3; the past-only slot drops out.
+    counts.getOrElse("poznan", 0)  shouldBe 3
+    // Wrocław: a single tomorrow slot.
+    counts.getOrElse("wroclaw", 0) shouldBe 1
+  }
+
+  it should "count individual slots, not films (a film with two upcoming slots counts twice)" in {
+    val counts = reading(Seq(row("Double", ready(Helios, 9, today, tomorrow)))).showtimes
+    counts.getOrElse("poznan", 0) shouldBe 2
+  }
+
+  it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
+    val counts = reading(Seq(pendingInPoznan)).showtimes
+    counts.getOrElse("poznan", 0) shouldBe 0
+  }
+
+  "Its publish" should "publish the per-city showtime counts onto the shared registry" in {
+    val registry = new PrometheusRegistry()
+    val census   = censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry)
+
+    census.seed()
+    census.publish()
+    val text = PrometheusExposition.render(registry)
+
+    gauge(text, "poznan")  shouldBe Some(3.0)
+    gauge(text, "wroclaw") shouldBe Some(1.0)
+  }
+
+  it should "seed every city at 0 before the first sample (a drop-to-zero is a sample, not an absence)" in {
+    val registry = new PrometheusRegistry()
+    censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry) // constructed, not yet published
+
+    val text = PrometheusExposition.render(registry)
+    gauge(text, "krakow") shouldBe Some(0.0)
+    gauge(text, "poznan") shouldBe Some(0.0)
+  }
+}

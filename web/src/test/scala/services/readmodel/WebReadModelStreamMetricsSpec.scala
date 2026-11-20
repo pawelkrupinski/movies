@@ -3,7 +3,8 @@ package services.readmodel
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{PrometheusExposition, WebReadModelStreamMetrics}
+import services.metrics.PrometheusExposition
+import services.metrics.web.WebReadModelStreamMetrics
 
 /** A Mongo blip that ended the read model's change streams was a WARN line only: the pod served
  *  writes late with nothing on a panel. The two series a real model now feeds, per collection. */

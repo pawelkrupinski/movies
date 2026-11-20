@@ -166,7 +166,7 @@ object WorkerMain extends Logging {
       // any integration a missing one has quietly switched off.
       val integrations = modules.wiring.WorkerIntegrations.features(process)
       shared.metrics.envGatedFeatures.recordIntegrations(integrations)
-      services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
+      services.metrics.worker.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
       ws
     } match {
       case Right(ws) => ws
@@ -337,7 +337,7 @@ object WorkerMain extends Logging {
   /** Worker task-pipeline metrics for the VictoriaMetrics scrape (the `[[metrics]]`
    *  block in each worker overlay). Registered on the SAME HttpServer as /health, AFTER
    *  WorkerWiring is up since it reads the live queue + metrics. Served from a
-   *  [[services.metrics.MetricsSnapshotCache]] so the scrape never blocks on the
+   *  [[services.metrics.worker.MetricsSnapshotCache]] so the scrape never blocks on the
    *  Mongo reads taskMetrics.scrape performs — see that class for why. */
   private def addMetricsEndpoint(server: HttpServer, workerMetrics: modules.wiring.WorkerMetrics, wirings: Seq[WorkerWiring]): Unit = {
     // Render the exposition OFF the scrape request path. The per-country scrape
@@ -350,7 +350,7 @@ object WorkerMain extends Logging {
     // One render over the SHARED registry covers every country (each wiring supplies
     // its own country-tagged queue sample) plus the process-level JVM/native series.
     val clock    = wirings.head.clock
-    val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
+    val snapshot = new services.metrics.worker.MetricsSnapshotCache(render = () =>
       workerMetrics.taskSeries.scrape(
         wirings.map(w => services.tasks.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),

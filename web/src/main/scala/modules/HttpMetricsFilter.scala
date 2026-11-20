@@ -1,7 +1,7 @@
 package modules
 
 import play.api.mvc.{EssentialAction, EssentialFilter, Result}
-import services.metrics.{WebHttpMetrics, WebRouteUsageMetrics}
+import services.metrics.web.{WebHttpMetrics, WebRouteUsageMetrics}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal

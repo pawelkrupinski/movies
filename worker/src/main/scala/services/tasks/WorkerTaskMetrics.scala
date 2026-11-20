@@ -2,10 +2,10 @@ package services.tasks
 
 import tools.ChangeStreamLiveness
 
-import services.metrics.ChangeStreamSeries
-import services.metrics.CorpusWriteSeries
+import services.metrics.worker.ChangeStreamSeries
+import services.metrics.worker.CorpusWriteSeries
 import services.metrics.PrometheusExposition
-import services.metrics.ReadModelSeries
+import services.metrics.worker.ReadModelSeries
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 
@@ -27,8 +27,8 @@ import java.time.Instant
  * registry). Every series carries a `country` label so the two countries' rows
  * never collide on the single `/metrics` endpoint. Each wiring binds its country to
  * one family at a time, through the binder of that family's port:
- * [[TaskPipelineBinder]] (the queue and the worker), `services.metrics.ReadModelSeriesBinder`
- * (the projector) and `services.metrics.CorpusSeriesBinder` (the cache's and the
+ * [[TaskPipelineBinder]] (the queue and the worker), `services.metrics.worker.ReadModelSeriesBinder`
+ * (the projector) and `services.metrics.worker.CorpusSeriesBinder` (the cache's and the
  * repositories' writes, and the change-stream cursors).
  *
  * Counters are monotonic since-boot totals — `rate()` handles the reset on each

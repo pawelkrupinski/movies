@@ -127,7 +127,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_route_last_called_seconds",
     "kinowo_web_route_defined",
     // Which legacy city addresses are still served, by kind and client kind —
-    // `services.metrics.LegacyAddressMetrics`; temporary, with the old-owner table.
+    // `services.metrics.web.LegacyAddressMetrics`; temporary, with the old-owner table.
     "kinowo_web_legacy_address_last_called_seconds",
     "kinowo_web_legacy_address_hits",
     // Every atomic user-state write by endpoint and outcome — see
@@ -135,7 +135,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_user_state_writes",
     // Whether `userStates` has its unique userId index — `UserStateIndexMetrics`.
     "kinowo_web_user_state_userid_index_unique",
-    // Heap one listing render allocated — `services.metrics.WebRenderMetrics`.
+    // Heap one listing render allocated — `services.metrics.web.WebRenderMetrics`.
     "kinowo_web_page_render_allocated_bytes",
     // Each web loop's last completed run and period (ScheduledTickMetrics.web), read by
     // scheduled-ticks.rules' `WebScheduledTickStale`.

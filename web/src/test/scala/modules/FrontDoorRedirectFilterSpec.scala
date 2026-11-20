@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.metrics.SpecLegacyAddressMetrics
+import services.metrics.web.SpecLegacyAddressMetrics
 import tools.SpecTimeouts
 
 import scala.concurrent.{Await, Future}

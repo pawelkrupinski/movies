@@ -1,6 +1,6 @@
 package controllers
 
-import services.metrics.WebRenderMetrics
+import services.metrics.web.WebRenderMetrics
 
 /** What a listing render allocates, reported to `record` (`WebRenderMetrics`): the whole page (`listing`) and, within
  *  it, building its schedules (`listing_schedules`), so the histogram says how much of a listing's cost is which. */

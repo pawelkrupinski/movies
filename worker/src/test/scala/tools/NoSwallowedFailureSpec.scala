@@ -192,13 +192,13 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/uk/OdeonAuthHarvester.scala", "meteredBrowserHtml",
       "case NonFatal(e) =>") ->
       "no token: the failure is metered here, and Odeon then throws for want of a token, which falls back to flicks",
-    ("worker/src/main/scala/services/metrics/JvmVitalsSampler.scala", "sample",
+    ("worker/src/main/scala/services/metrics/worker/JvmVitalsSampler.scala", "sample",
       "val committed = parseCommittedByCategory(Try(readNmtSummary()).getOrElse(\"\"))") ->
       "/proc and NMT exist only on Linux with -XX:NativeMemoryTracking; elsewhere the gauges stay unset",
-    ("worker/src/main/scala/services/metrics/JvmVitalsSampler.scala", "sample",
+    ("worker/src/main/scala/services/metrics/worker/JvmVitalsSampler.scala", "sample",
       "val rss = parseVmRssBytes(Try(readProcStatus()).getOrElse(\"\"))") ->
       "/proc and NMT exist only on Linux with -XX:NativeMemoryTracking; elsewhere the gauges stay unset",
-    ("worker/src/main/scala/services/metrics/JvmVitalsSampler.scala", "readProcSelfStatus",
+    ("worker/src/main/scala/services/metrics/worker/JvmVitalsSampler.scala", "readProcSelfStatus",
       "Try(new String(Files.readAllBytes(Paths.get(\"/proc/self/status\")), StandardCharsets.UTF_8)).getOrElse(\"\")") ->
       "/proc and NMT exist only on Linux with -XX:NativeMemoryTracking; elsewhere the gauges stay unset",
     ("worker/src/main/scala/services/schedule/ScheduledRunStore.scala", "claim",

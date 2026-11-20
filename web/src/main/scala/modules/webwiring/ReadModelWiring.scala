@@ -69,7 +69,7 @@ trait ReadModelWiring { self: Wiring =>
     readModelReloadInterval, readModelColdRetryInterval, ticks = ticks, threadPools = threadPools, sleep = sleep))
 
   // Read at scrape time, so the model (forced at boot) is never built by the metric.
-  lazy val webReadModelStreamMetrics = new services.metrics.WebReadModelStreamMetrics(webJvmMetrics.registry, country.code,
+  lazy val webReadModelStreamMetrics = new services.metrics.web.WebReadModelStreamMetrics(webJvmMetrics.registry, country.code,
     collection => readModelStreams.streamLive(collection))
 
   // Reads come straight from the read model; enrichment + projection happen in

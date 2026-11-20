@@ -153,7 +153,7 @@ class ArchiveReplayWiring(
    */
   override lazy val httpFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live",
+      live(phaseFetch(services.metrics.worker.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live",
       replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures),
       keepsExpiredOnFailure = hermetic.isEmpty)
   // Every cinema-egress route (Multikino, biletyna, ck105's Zyte, Flicks, Vue, Odeon) is this chain
@@ -196,7 +196,7 @@ class ArchiveReplayWiring(
     // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
     // exactly like one re-fetching every one of them.
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live",
+      live(phaseFetch(services.metrics.worker.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live",
       replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures),
       keepsExpiredOnFailure = hermetic.isEmpty)
 

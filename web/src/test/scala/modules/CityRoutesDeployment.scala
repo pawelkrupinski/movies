@@ -6,7 +6,7 @@ import org.apache.pekko.stream.Materializer
 import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.metrics.{LegacyAddressMetrics, SpecLegacyAddressMetrics}
+import services.metrics.web.{LegacyAddressMetrics, SpecLegacyAddressMetrics}
 import tools.SpecTimeouts
 
 import scala.concurrent.{Await, Future}

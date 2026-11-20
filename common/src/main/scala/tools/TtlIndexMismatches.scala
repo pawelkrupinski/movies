@@ -4,7 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 
 /** Collections whose TTL expiry is known to disagree with the code, published as
- *  `kinowo_worker_ttl_index_mismatches` by `services.metrics.TtlIndexMetrics`. One instance
+ *  `kinowo_worker_ttl_index_mismatches` by `services.metrics.worker.TtlIndexMetrics`. One instance
  *  per process, built by the worker's metrics bundle and handed to every reconciler — never
  *  a global, so a spec's mismatches stay its own.
  *

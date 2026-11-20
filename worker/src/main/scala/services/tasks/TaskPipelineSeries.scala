@@ -34,7 +34,7 @@ final class TaskPipelineSeries(poolSize: Int, countryCodes: Seq[String], registr
     .name("kinowo_worker_task_duration_seconds")
     .help("Handler wall-clock of fully-worked (done) tasks, by country and type.")
     .labelNames("country", "task_type")
-    .classicUpperBounds(services.metrics.HistogramBuckets.DurationSeconds*)
+    .classicUpperBounds(services.metrics.worker.HistogramBuckets.DurationSeconds*)
     .classicOnly()
     .register(registry)
 

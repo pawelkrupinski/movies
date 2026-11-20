@@ -33,7 +33,7 @@ check "the metric catalogue (a new registration) runs the metric-alert lint" "me
   "$(plan infra/test/app-metrics-catalogue/worker.json)"
 check "...and so does its exemptions file" "metricalerts" "$(plan test/resources/metrics-without-alerts.tsv)"
 check "a metrics source runs the metric-alert lint and the sbt lints" "metricalerts sbt" \
-  "$(plan web/src/main/scala/services/metrics/WebCacheMetrics.scala)"
+  "$(plan web/src/main/scala/services/metrics/web/WebCacheMetrics.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs the gating-checks registry lint, the schedules check, the workflow lints' self-tests, actionlint, and the silenced-read lint" "newchecks schedules scripttests actionlint sbt" "$(plan .github/workflows/ci.yml)"

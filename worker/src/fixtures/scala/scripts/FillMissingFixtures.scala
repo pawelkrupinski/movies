@@ -73,7 +73,7 @@ object FillMissingFixtures {
     val proxy = MissingFixtureFill.residentialProxy(configuration, tls).map(paced)
     // Counted as the convergence leg's own wiring counts its wire, under its own phase, for the run's report of what
     // it asked each service (tools.CiHttpCalls).
-    val calls = new services.metrics.WorkerHttpMetrics(Seq(country.code), new io.prometheus.metrics.model.registry.PrometheusRegistry())
+    val calls = new services.metrics.worker.WorkerHttpMetrics(Seq(country.code), new io.prometheus.metrics.model.registry.PrometheusRegistry())
     tools.CiHttpCalls.track(calls)
     val wire = new RealHttpFetch(tls = tls)
     val live: HttpFetch = new tools.CountingHttpFetch(MissingFixtureFill.route(paced(wire), proxy),

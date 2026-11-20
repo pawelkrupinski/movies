@@ -2,7 +2,7 @@ package deploy
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.WorkerShowtimesMetrics
+import services.metrics.worker.WorkerShowtimesMetrics
 
 /**
  * Guards the alert coverage over SLOT VOLUME, the axis the film-count alerts

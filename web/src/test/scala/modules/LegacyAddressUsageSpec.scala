@@ -9,7 +9,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.mvc.{RequestHeader, Result, Results}
 import play.api.test.FakeRequest
-import services.metrics.{LegacyAddressMetrics, PrometheusExposition}
+import services.metrics.PrometheusExposition
+import services.metrics.web.LegacyAddressMetrics
 import tools.{MutableClock, SpecTimeouts}
 
 import java.time.Instant
@@ -128,7 +129,7 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   it should "not count the synthetic probe" in {
     val uk = new Deployment(Country.UnitedKingdom)
-    uk.get("/uk/kent/", s"${services.metrics.WebHttpMetrics.SyntheticProbeAgent}1.0")
+    uk.get("/uk/kent/", s"${services.metrics.web.WebHttpMetrics.SyntheticProbeAgent}1.0")
     uk.hits shouldBe empty
   }
 }

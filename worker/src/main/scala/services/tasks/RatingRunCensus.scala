@@ -2,7 +2,7 @@ package services.tasks
 
 import models.CacheKey
 
-import services.metrics.SampledCensus
+import services.metrics.worker.SampledCensus
 import tools.ThreadPools
 
 import services.movies.LatestTitleYear

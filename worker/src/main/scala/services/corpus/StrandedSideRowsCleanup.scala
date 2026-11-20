@@ -57,7 +57,7 @@ class StrandedSideRowsCleanup(
   private val RunEveryHours       = 24L
   // Off the boot window, in its own slot past the other whole-collection readers: rows that have sat
   // stranded for weeks can wait a few minutes more.
-  private val StartupDelaySeconds = services.metrics.SampledCensus.firstDelay(services.metrics.SampledCensus.Slots.StrandedSideRows,
+  private val StartupDelaySeconds = services.metrics.worker.SampledCensus.firstDelay(services.metrics.worker.SampledCensus.Slots.StrandedSideRows,
     scala.concurrent.duration.Duration(RunEveryHours, "hours")).toSeconds
 
   /** One sweep. Public so a script or a spec can run it on demand; the tick calls the same

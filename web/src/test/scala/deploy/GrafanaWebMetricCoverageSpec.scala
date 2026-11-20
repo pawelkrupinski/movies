@@ -4,7 +4,7 @@ import testsupport.SourceTrees
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
+import services.metrics.web.{WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
 import services.users.{UserStateIndexMetrics, UserStateWriteMetrics}
 import tools.CacheOccupancy
 
@@ -52,11 +52,11 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new UserStateWriteMetrics(registry, "pl")
     new UserStateIndexMetrics(registry, "pl")
     new WebDecodeFailureMetrics(registry, "pl")
-    new services.metrics.WebReadModelStreamMetrics(registry, "pl", _ => true)
-    new services.metrics.WebRenderMetrics(registry, "pl")
+    new services.metrics.web.WebReadModelStreamMetrics(registry, "pl", _ => true)
+    new services.metrics.web.WebRenderMetrics(registry, "pl")
     tools.MongoWriteErrors.Series.web(registry)
-    new services.metrics.WebRouteUsageMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
-    new services.metrics.LegacyAddressMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
+    new services.metrics.web.WebRouteUsageMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
+    new services.metrics.web.LegacyAddressMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     registry
       .scrape()
       .asScala

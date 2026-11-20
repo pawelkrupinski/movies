@@ -3,7 +3,7 @@ package modules.wiring
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
-import services.metrics.PaidEgressMetrics
+import services.metrics.worker.PaidEgressMetrics
 import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, ProxyProbe, ResidentialProxy, ResidentialProxyProbe, ResidentialShards, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy chains the Cloudflare-blocked
@@ -97,7 +97,7 @@ trait EgressWiring { self: WorkerWiring =>
   private lazy val decodoMeter: HttpOutcomeRecorder =
     workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Decodo)
   private lazy val decodoBreakerMeter: tools.CircuitBreakerMeter =
-    workerMetrics.httpBreakers.meterFor(country.code, services.metrics.HttpBreakerMetrics.Leg.Decodo)
+    workerMetrics.httpBreakers.meterFor(country.code, services.metrics.worker.HttpBreakerMetrics.Leg.Decodo)
 
   // The one JDK client the Zyte route below calls the Zyte API through. Lazy, and
   // handed on by name, so a wiring without ZYTE_API_KEY never builds it.

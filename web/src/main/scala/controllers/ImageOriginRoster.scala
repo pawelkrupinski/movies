@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  *  that drifts would silently stop recording the outage it exists to catch.
  *
  *  So the bound is a CAP WITH A FOLD, the same shape
- *  [[services.metrics.WebHttpMetrics]] uses for unmatched routes: the first
+ *  [[services.metrics.web.WebHttpMetrics]] uses for unmatched routes: the first
  *  [[limit]] well-formed hosts each get their own row, and everything after
  *  them — along with anything that is not shaped like a hostname at all —
  *  collapses into a single [[ImageOriginRoster.Overflow]] bucket. Nothing is

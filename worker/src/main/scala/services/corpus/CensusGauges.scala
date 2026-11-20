@@ -21,7 +21,7 @@ private[corpus] final class CensusGauges(corpus: Gauge, served: Gauge, showtimes
     widest.labelValues(countryCode).set(0.0)
   }
 
-  /** Each city's [[services.metrics.WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
+  /** Each city's [[services.metrics.worker.WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
   def seasons(now: Instant): Unit =
     cities.foreach(c => mayBeDark.labelValues(countryCode, c.slug).set(if (c.mayBeDarkAt(now)) 1.0 else 0.0))
 

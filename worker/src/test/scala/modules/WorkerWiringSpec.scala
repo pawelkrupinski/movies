@@ -13,7 +13,8 @@ import services.MongoConnection
 import services.events.ImdbIdMissing
 import services.tasks.ScrapeReaper
 import services.tasktypes.TaskType
-import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
+import services.metrics.PrometheusExposition
+import services.metrics.worker.WorkerHttpMetrics
 import tools.{ExecutionBudget, HttpFetch, SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._

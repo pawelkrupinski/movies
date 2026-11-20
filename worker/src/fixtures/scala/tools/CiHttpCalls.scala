@@ -4,7 +4,7 @@ import java.nio.file.{Files, Path, StandardCopyOption}
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.jdk.CollectionConverters._
-import services.metrics.WorkerHttpMetrics
+import services.metrics.worker.WorkerHttpMetrics
 
 /**
  * WHAT A CI RUN ASKED THE OUTSIDE WORLD, per service and outcome: every live `kinowo_worker_http_total` cell of every
