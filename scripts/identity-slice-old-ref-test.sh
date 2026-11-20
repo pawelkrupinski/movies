@@ -12,11 +12,17 @@
 # carrying an older IdentityDrift, unseen, since the floor above has no IdentityDrift to break),
 # title-trace into e90d2b498 (2026-10-14, its own first commit: an older ref has no tracer to compare against).
 # Run: bash scripts/identity-slice-old-ref-test.sh   (OLD_REFS="<sha> …" to check both tools at others, e.g. a bisect's range)
+#      bash scripts/identity-slice-old-ref-test.sh --floors   (every floor, one a line: what CI caches the
+#      dependencies of, .github/actions/old-ref-deps, so their compiles need no download)
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-. "$REPO_ROOT/scripts/shell-spec.sh"
 
 floor() { case $1 in identity-slice) echo c2974e3aaea73fb841096a24316fb5e872154de9 9bb54c1a4912644383d5ed2f02686fe0ed720ece ;; title-trace) echo e90d2b498a0f7a26faa55b7d7cdea51d48285df8 ;; esac; }
+if [ "${1:-}" = --floors ]; then
+  for tool in identity-slice title-trace; do floor "$tool" | tr ' ' '\n'; done | sort -u
+  exit 0
+fi
+. "$REPO_ROOT/scripts/shell-spec.sh"
 for tool in identity-slice title-trace; do
   for ref in ${OLD_REFS:-$(floor "$tool")}; do
     printf '\033[36m▸\033[0m %s compiles into %s\n' "$tool" "$ref"

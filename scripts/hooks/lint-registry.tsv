@@ -127,6 +127,7 @@ repochecks:deploy.NoTestRerunSpec	@repo android/*.gradle.kts android/app/build.g
 repochecks:deploy.NodeCpuBudgetSpec	@gitops infra/nix/modules/roles/k3s-server.nix
 repochecks:deploy.NodeMemoryBudgetSpec	@gitops infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix Dockerfile
 repochecks:deploy.NodePodsSpec	@gitops infra/nix/modules/roles/k3s-server.nix
+repochecks:deploy.OldRefDepsCacheSpec	@repo
 repochecks:deploy.OneSbtPathSpec	@repo
 repochecks:deploy.OrderCompareWiringSpec	@repo
 repochecks:deploy.OrderIndependenceSeedSpec	@repo

@@ -415,6 +415,12 @@ jobs:
               uses: ./.github/actions/hook-tools
               with:
                   checks: ${{ steps.share.outputs.checks }}
+            # The old refs' own sbt launcher and libraries (main's dependency cache holds only main's build), over that
+            # cache; on an exact hit the check's JVMs run offline, so Maven Central's 429s (run 44807195909) reach no
+            # check. A miss downloads as before, retried by sbt-guard. (.github/actions/old-ref-deps)
+            - name: Restore the old refs' dependencies
+              if: steps.share.outputs.checks != ''
+              uses: ./.github/actions/old-ref-deps
             - name: Restore identity-slice's compiled old refs
               if: steps.share.outputs.checks != ''
               uses: actions/cache/restore@v5

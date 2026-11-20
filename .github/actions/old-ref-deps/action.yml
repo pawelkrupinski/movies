@@ -1,0 +1,41 @@
+# The old refs' sbt launcher and dependencies, restored from a cache so their compiles download nothing.
+#
+# The oldrefs check (scripts/identity-slice-old-ref-test.sh) compiles the identity tools into pinned old refs, each with
+# its own build: sbt 1.13.0 where main is on 1.13.1, and the libraries of its day, none of which main's dependency cache
+# holds. Every check downloaded them from Maven Central, and its 429s failed the check (run 44807195909, 2026-11-20).
+# Their builds are fixed commits, so one entry keyed by the floors (scripts/ci/old-ref-deps-key.sh) holds all they
+# resolve; tool-self-tests.yml's old-ref compile saves it on main when GitHub has none. Restored through the runner's
+# local mirror, OVER main's dependency cache (same paths: run after setup-sbt-build). On an exact hit the job's JVMs
+# then run offline (scripts/ci/jvm-offline-env.sh): a floor needing anything the entry lacks fails by name, and no
+# check of an old ref waits on Maven Central again. A miss (a new floor not yet saved) downloads as before, retried
+# by sbt-guard. (OldRefDepsCacheSpec)
+name: The old refs' dependency cache
+description: Restore the old-ref floors' sbt launcher and dependencies; on an exact hit, run the job's JVMs offline.
+outputs:
+  cache-hit:
+    description: "'true' on an exact hit: the job's JVMs now run offline."
+    value: ${{ steps.restore.outputs.cache-hit }}
+  key:
+    description: The entry's exact key.
+    value: ${{ steps.key.outputs.key }}
+  paths:
+    description: The cached paths (the dependency cache's own).
+    value: ${{ steps.paths.outputs.paths }}
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      run: '"$GITHUB_WORKSPACE/scripts/ci/old-ref-deps-key.sh" >> "$GITHUB_OUTPUT"'
+    - id: paths
+      uses: ./.github/actions/sbt-deps-key
+    - id: restore
+      uses: ./.github/actions/cache-restore
+      with:
+        path: ${{ steps.paths.outputs.paths }}
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: ${{ steps.key.outputs.prefix }}
+    - name: Run the job's JVMs offline (every old-ref dependency restored)
+      if: steps.restore.outputs.cache-hit == 'true'
+      shell: bash
+      run: '"$GITHUB_WORKSPACE/scripts/ci/jvm-offline-env.sh" >> "$GITHUB_ENV"'

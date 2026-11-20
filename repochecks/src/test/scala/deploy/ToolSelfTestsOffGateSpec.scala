@@ -47,8 +47,10 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
     jobs("plan") should not include "github.ref"
     for (job <- Seq("script-tests", "old-ref-compile")) {
       jobs(job) should include("needs: [ plan ]")
-      jobs(job) should include("if: ${{ needs.plan.outputs.run == 'true' }}")
+      jobs(job) should include("if: ${{ needs.plan.outputs.run == 'true'")
     }
+    // ...or, for the old-ref compile, to save the old refs' dependencies GitHub lacks (OldRefDepsCacheSpec)
+    jobs("script-tests") should include("if: ${{ needs.plan.outputs.run == 'true' }}")
     RepoFile.read("scripts/ci/landing_check_for_tree.py") should include("head_commit.tree_id")
   }
 

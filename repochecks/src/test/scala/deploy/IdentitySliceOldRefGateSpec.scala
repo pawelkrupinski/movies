@@ -49,10 +49,16 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
       withClue(f) { patterns.exists(covers(_, f)) shouldBe true }
   }
 
+  /** Through the run decision, which also runs the compile on main to save the old refs' dependencies
+   *  (OldRefDepsCacheSpec): the gate's answer is still what runs it for a change. */
   it should "be what the compile is conditioned on" in {
-    val verdict = RepoFile.step(RepoFile.read(Workflow), "identity-slice's tool files still compile into a ref from before them")
-    verdict should include("if: steps.slice-tools.outputs.changed == 'true'")
+    val ci      = RepoFile.read(Workflow)
+    val verdict = RepoFile.step(ci, "identity-slice's tool files still compile into a ref from before them")
+    verdict should include("if: steps.old-ref-run.outputs.run == 'true'")
     verdict should include("bash scripts/identity-slice-old-ref-test.sh")
+    val decide = RepoFile.step(ci, "Does the old-ref compile run?")
+    decide should include("CHANGED: ${{ steps.slice-tools.outputs.changed }}")
+    decide should include("""if [ "$RUN" = true ] && [ "$CHANGED" = true ]; then echo "run=true"""")
   }
 
   /** Kept by a step of its own, red or green: an `actions/cache` step saves only on a green job, so a cold tree that
@@ -79,7 +85,7 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     val ci   = RepoFile.read(Workflow)
     val stop = RepoFile.step(ci, "End the old-ref compile's JVMs before its tree is kept")
     stop should include("""scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"""")
-    stop should include("!cancelled() && steps.slice-tools.outputs.changed == 'true'")
+    stop should include("!cancelled() && steps.old-ref-run.outputs.run == 'true'")
     stop should not include ("old-ref-verdict")
     ci.indexOf("End the old-ref compile's JVMs") should be > ci.indexOf("identity-slice-old-ref-test.sh\n")
     ci.indexOf("End the old-ref compile's JVMs") should be < ci.indexOf("Keep identity-slice's compiled old ref")
@@ -102,7 +108,7 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   it should "restore the compiled old ref before the compile, keyed by every tool file" in {
     val ci      = RepoFile.read(Workflow)
     val restore = RepoFile.step(ci, "Restore identity-slice's compiled old ref")
-    restore should include("if: steps.slice-tools.outputs.changed == 'true'")
+    restore should include("if: steps.old-ref-run.outputs.run == 'true'")
     restore should include("path: ${{ runner.temp }}/kinowo-identity/refs")
     ci.indexOf("Restore identity-slice's compiled old ref") should be < ci.indexOf("bash scripts/identity-slice-old-ref-test.sh")
     val hashed = """hashFiles\(([^)]*)\)""".r.findFirstMatchIn(restore).map(_.group(1)).getOrElse(fail("the key hashes no files"))

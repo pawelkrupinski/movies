@@ -21,6 +21,10 @@
 # it downloaded. Before each, coursier's negative records go (coursier-forget-errors.sh): a 404 for a jar whose pom
 # is cached leaves a `.<jar>.error` that coursier answers from without asking again, which would make the retry
 # repeat the failure from disk. A failure naming only a local path, or any other failure, is not retried.
+# A 429 (Maven Central rate-limiting the runner's address: the landing check's oldrefs, run 44807195909, 2026-11-20) waits
+# at least the Retry-After the server gives the URL it refused, asked with one HEAD request, bounded by
+# SBT_GUARD_RETRY_AFTER_MAX (seconds, default 300): a rate limit outlasts a 30 s backoff. What a check should not
+# download at all is cached instead (.github/actions/old-ref-deps: the old refs' sbt launcher and dependencies).
 set -uo pipefail
 
 guard_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
@@ -57,14 +61,43 @@ download_failed() {
   grep -qF 'Error downloading ' "$log" && grep -qE '(not found|forbidden|download error)[^:]*: .*https?://' "$log"
 }
 
+# The URL a 429 named, if the run's log shows one.
+rate_limited_url() {
+  grep -oE 'HTTP response code: 429 for URL: https?://[^ )]+' "$log" | head -1 | sed 's/.*for URL: //'
+}
+
+# The seconds a server's Retry-After asks for that URL (delta-seconds or an HTTP-date), or nothing.
+retry_after_seconds() {
+  local value when
+  value=$(curl -sS -I --max-time 10 "$1" 2>/dev/null | tr -d '\r' \
+    | awk 'tolower($1) == "retry-after:" { $1 = ""; sub(/^ +/, ""); print; exit }')
+  case "$value" in
+    '') return 0 ;;
+    *[!0-9]*) when=$(date -d "$value" +%s 2>/dev/null) || return 0; echo $(( when > $(date +%s) ? when - $(date +%s) : 0 )) ;;
+    *) echo "$value" ;;
+  esac
+}
+
 run "$@"
 status=$?
 read -r -a backoff <<< "${SBT_GUARD_DOWNLOAD_BACKOFF-30 60 120}"
 for wait in ${backoff[@]+"${backoff[@]}"}; do
   if [ "$status" -eq 0 ] || ! download_failed; then break; fi
-  echo "sbt-guard: the run failed downloading a dependency from a remote repository: running it again in ${wait}s" >&2
+  url=$(rate_limited_url)
+  if [ -n "$url" ]; then
+    asked=$(retry_after_seconds "$url")
+    limit=${SBT_GUARD_RETRY_AFTER_MAX:-300}
+    if [ -n "$asked" ]; then
+      capped=$(( asked < limit ? asked : limit ))
+      [ "$capped" -le "$wait" ] || wait=$capped
+    fi
+    host=${url#*://}; host=${host%%/*}
+    echo "sbt-guard: $host rate-limited the download (HTTP 429, Retry-After: ${asked:-none}, at most ${limit}s honoured): running it again in ${wait}s" >&2
+  else
+    echo "sbt-guard: the run failed downloading a dependency from a remote repository: running it again in ${wait}s" >&2
+  fi
   "$guard_dir/../coursier-forget-errors.sh" >&2 || true
-  sleep "$wait"
+  ${SBT_GUARD_SLEEP:-sleep} "$wait"
   run "$@"
   status=$?
 done

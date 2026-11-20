@@ -22,7 +22,9 @@ class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
     Seq("*/target/scala-*", "~/.ivy2/cache", "~/.cache/coursier", "${{ runner.temp }}/jdk-archive",
       "${{ runner.temp }}/actionlint", "${{ runner.temp }}/coursier-launcher",
       // the dependency cache's paths, as .github/actions/sbt-deps-key spells them for every step using it
-      "${{ steps.sbt-deps-key.outputs.paths }}")
+      "${{ steps.sbt-deps-key.outputs.paths }}",
+      // the same paths, as .github/actions/old-ref-deps hands them on (OldRefDepsCacheSpec)
+      "${{ steps.old-ref-deps.outputs.paths }}")
   private val Saving     = Seq("uses: actions/cache@", "uses: actions/cache/save@")
   private val MainOnly   = "github.ref == 'refs/heads/main'"
 

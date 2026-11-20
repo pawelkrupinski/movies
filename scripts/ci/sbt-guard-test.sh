@@ -42,7 +42,20 @@ case "$(sed -n "${n}p" "$FAKE_SBT_DIR/script")" in
 esac
 EOF
 chmod +x "$work/bin/sbt"
-export HOME="$work/home" FAKE_SBT_DIR="$work" COURSIER_CACHE="$work/coursier" SBT_GUARD_DOWNLOAD_BACKOFF="0 0"
+# The stand-in curl: the guard's HEAD request for a 429's Retry-After, answered from $work/headers (no network), the
+# URL asked logged; and a stand-in sleep, logging how long the guard waited instead of waiting.
+cat > "$work/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+echo "${*: -1}" >> "$FAKE_SBT_DIR/curled"
+cat "$FAKE_SBT_DIR/headers" 2>/dev/null
+EOF
+cat > "$work/bin/fake-sleep" <<'EOF'
+#!/usr/bin/env bash
+echo "$1" >> "$FAKE_SBT_DIR/slept"
+EOF
+chmod +x "$work/bin/curl" "$work/bin/fake-sleep"
+export HOME="$work/home" FAKE_SBT_DIR="$work" COURSIER_CACHE="$work/coursier" SBT_GUARD_DOWNLOAD_BACKOFF="0 0" \
+  SBT_GUARD_SLEEP="$work/bin/fake-sleep"
 
 guard() {
   rm -f "$work/calls" "$work/args"
@@ -87,6 +100,28 @@ guard dl404 dl429 dl404
 check "failing on every attempt: one more than its backoffs, then its own status" "3 1" "$(calls) $(cat "$work/status")"
 guard local
 check "a dependency no remote repository was asked for: not retried" "1 1" "$(calls) $(cat "$work/status")"
+
+# A 429: the guard asks the refused URL for its Retry-After and waits at least that long, bounded.
+slept() { paste -sd' ' - < "$work/slept" 2>/dev/null; }
+rm -f "$work/slept" "$work/curled"; printf 'HTTP/2 429\r\nRetry-After: 45\r\n\r\n' > "$work/headers"
+SBT_GUARD_DOWNLOAD_BACKOFF="30 60" guard dl429 dl429 ok
+check "a 429 with Retry-After 45: waits 45 (over the 30 s step), then the 60 s step as is" "45 60" "$(slept)"
+check "...passing on the third run" "3 0" "$(calls) $(cat "$work/status")"
+check "...the Retry-After asked of the URL the 429 named" \
+  "https://repo1.maven.org/maven2/io/sentry/sentry-logback/8.65.0/sentry-logback-8.65.0.pom" "$(sort -u "$work/curled")"
+check "...and it says the host rate-limited it" "2" "$(grep -c 'sbt-guard: repo1.maven.org rate-limited the download (HTTP 429, Retry-After: 45' "$work/stderr")"
+rm -f "$work/slept"; printf 'HTTP/2 429\r\nretry-after: 3600\r\n\r\n' > "$work/headers"
+SBT_GUARD_DOWNLOAD_BACKOFF="30" SBT_GUARD_RETRY_AFTER_MAX=300 guard dl429 ok
+check "a Retry-After past SBT_GUARD_RETRY_AFTER_MAX: waits the bound, not an hour" "300" "$(slept)"
+rm -f "$work/slept"; : > "$work/headers"
+SBT_GUARD_DOWNLOAD_BACKOFF="30" guard dl429 ok
+check "a 429 with no Retry-After: the backoff step" "30" "$(slept)"
+rm -f "$work/slept"; printf 'HTTP/2 429\r\nRetry-After: 5\r\n\r\n' > "$work/headers"
+SBT_GUARD_DOWNLOAD_BACKOFF="30" guard dl429 ok
+check "a Retry-After shorter than the step: the step" "30" "$(slept)"
+rm -f "$work/slept" "$work/curled"
+SBT_GUARD_DOWNLOAD_BACKOFF="30" guard dl404 ok
+check "a 404 asks no Retry-After" "30 none" "$(slept) $([ -e "$work/curled" ] && echo asked || echo none)"
 guard dl404 fail
 check "a retry that fails otherwise keeps that failure, no further retry" "2 1" "$(calls) $(cat "$work/status")"
 rm -f "$work/calls" "$work/args"
