@@ -59,15 +59,18 @@ object Catalogue {
       if (id.source == CatalogueSources.Imdb) Seq((id, linked, CatalogueHit(None, None, Some(id.id), "TMDB's find")))
       else known(catalogue.mapped(id), Question.Catalogue(CatalogueQuestion.Id(id))).getOrElse(Nil).map(hit => (id, linked, hit))
     }
-    if (open) Answer.Unknown
-    else if (hits.isEmpty || !oneFilm(hits.map(_._3))) Answer.Known(None)
+    if (open) Answer.Unknown else Answer.Known(namedBy(hits))
+  }
+
+  /** The one film `hits` name, by the hit naming its item where one does; none where they name none, or two. */
+  private def namedBy(hits: Seq[(CatalogueId, Boolean, CatalogueHit)]): Option[Named] =
+    if (hits.isEmpty || !oneFilm(hits.map(_._3))) None
     else {
       val all  = hits.map(_._3)
       val item = all.flatMap(_.item).headOption
       val (id, linked, hit) = hits.find(_._3.item == item).getOrElse(hits.head)
-      Answer.Known(Some(Named(id, linked, hit, all)))
+      Some(Named(id, linked, hit, all))
     }
-  }
 
   /** What the cluster's catalogue ids name, to take: `Known(None)` for no take, `Unknown` while a question is open — each
    *  one noted in `asked`: a catalogue question, a family's record, TMDB's find of an IMDb id. `stated`: the listings with what their venue's own pages state — the year and director a record must

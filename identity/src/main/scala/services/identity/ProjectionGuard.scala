@@ -39,14 +39,21 @@ object ProjectionGuard {
     // cleanup, so a first projection would otherwise count a day of finished films as lost).
     val vanished = draft.vanished.toSet
     val leaving  = stored.filter(s => vanished(s.id) && upcoming(Seq(s.record)) > 0)
-    val cards    = leaving.size
-    if (corpus.nonEmpty && cards > corpus.size * MaxVanishedShare)
-      Some(s"$cards of ${corpus.size} films would vanish (more than ${percent(MaxVanishedShare)}): " +
-        leaving.map(_.title).sorted.take(NamedFilms).mkString(", ") + (if (cards > NamedFilms) ", …" else ""))
-    else if (before > 0 && after < before * (1 - MaxShowtimeLossShare))
-      Some(s"upcoming showtimes would fall from $before to $after (more than ${percent(MaxShowtimeLossShare)})")
-    else None
+    tooManyVanish(leaving, corpus.size).orElse(tooManyShowtimesLost(before, after))
   }
+
+  /** More than [[MaxVanishedShare]] of the corpus's `films` `leaving` the site, the first [[NamedFilms]] of them named. */
+  private def tooManyVanish(leaving: Seq[StoredMovieRecord], films: Int): Option[String] = {
+    val cards = leaving.size
+    Option.when(films > 0 && cards > films * MaxVanishedShare)(
+      s"$cards of $films films would vanish (more than ${percent(MaxVanishedShare)}): " +
+        leaving.map(_.title).sorted.take(NamedFilms).mkString(", ") + (if (cards > NamedFilms) ", …" else ""))
+  }
+
+  /** The upcoming showtimes falling by more than [[MaxShowtimeLossShare]], `before` to `after`. */
+  private def tooManyShowtimesLost(before: Long, after: Long): Option[String] =
+    Option.when(before > 0 && after < before * (1 - MaxShowtimeLossShare))(
+      s"upcoming showtimes would fall from $before to $after (more than ${percent(MaxShowtimeLossShare)})")
 
   private def percent(share: Double): String = f"${share * 100}%.1f%%"
 }

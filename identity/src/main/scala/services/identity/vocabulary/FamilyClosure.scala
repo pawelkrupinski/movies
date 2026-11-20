@@ -47,22 +47,27 @@ object FamilyClosure {
    *  a function of the key set alone, never of the order `blockKeys` is given in. */
   def families[K](blockKeys: Map[K, Set[String]])(implicit ord: Ordering[K]): Map[K, Int] = {
     val parent = scala.collection.mutable.HashMap.empty[String, String]
-    def find(x: String): String = {
-      var r = parent.getOrElseUpdate(x, x)
-      while (parent(r) != r) r = parent(r)
-      var c = x
-      while (parent(c) != r) { val n = parent(c); parent(c) = r; c = n }
-      r
-    }
-    def union(x: String, y: String): Unit = {
-      val (a, b) = (find(x), find(y))
-      if (a != b) { if (a < b) parent(b) = a else parent(a) = b }
-    }
+    def find(x: String): String = rootOf(parent, x)
     val listings = blockKeys.keys.toSeq.sorted
     val node     = listings.zipWithIndex.map { case (k, i) => k -> s"\u0000$i" }.toMap
-    listings.foreach { k => find(node(k)); blockKeys(k).foreach(union(node(k), _)) }
+    listings.foreach { k => find(node(k)); blockKeys(k).foreach(union(parent, node(k), _)) }
     val number = listings.map(k => find(node(k))).distinct.zipWithIndex.toMap
     listings.map(k => k -> number(find(node(k)))).toMap
+  }
+
+  /** The root of `x`'s set in the union-find `parent` (`x` its own set when new), the path to it compressed. */
+  private def rootOf(parent: scala.collection.mutable.HashMap[String, String], x: String): String = {
+    var r = parent.getOrElseUpdate(x, x)
+    while (parent(r) != r) r = parent(r)
+    var c = x
+    while (parent(c) != r) { val n = parent(c); parent(c) = r; c = n }
+    r
+  }
+
+  /** `x`'s and `y`'s sets in the union-find `parent` made one, under the smaller root. */
+  private def union(parent: scala.collection.mutable.HashMap[String, String], x: String, y: String): Unit = {
+    val (a, b) = (rootOf(parent, x), rootOf(parent, y))
+    if (a != b) { if (a < b) parent(b) = a else parent(a) = b }
   }
 
   /** Every edge that crosses a family boundary, in the edges' own order. O(edges). */

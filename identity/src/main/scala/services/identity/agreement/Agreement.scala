@@ -220,14 +220,18 @@ object Agreement {
     val runs       = runsAsTheListing(listings, records)
     val undirected = runs && records.forall(_.film.directors.forall(_.isEmpty))
     val dated      = listings.filter(listing => listing.year.isDefined && (listing.directors.nonEmpty || undirected))
-    def credits(listing: Listing) =
-      if (undirected) records.exists(_.film.year.exists(listing.year.contains))
-      else records.exists { record =>
-        (FactRelations.yearsAgree(record.film.year, listing.year) || (runs && record.film.year.isEmpty)) &&
-          FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))
-      }
-    if (dated.isEmpty || !dated.forall(credits)) Set.empty else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
+    if (dated.isEmpty || !dated.forall(creditedBy(records, runs, undirected))) Set.empty
+    else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
   }
+
+  /** Does one of `records` credit `listing` ([[listingVotes]]): by its year alone where they are `undirected`, else by
+   *  its director within a year -- a record dating the film nowhere credited too where the running times agree (`runs`)? */
+  private def creditedBy(records: Seq[SourceRecord], runs: Boolean, undirected: Boolean)(listing: Listing): Boolean =
+    if (undirected) records.exists(_.film.year.exists(listing.year.contains))
+    else records.exists { record =>
+      (FactRelations.yearsAgree(record.film.year, listing.year) || (runs && record.film.year.isEmpty)) &&
+        FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))
+    }
 
   /** What the listings' facts vote for the takers' records: the venues' own ([[listingVotes]] over the listings whose
    *  venue states them), else — where no venue's facts vote — ONE vote, [[FeedFacts]], when the facts a feed copied from

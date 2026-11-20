@@ -225,13 +225,20 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     val named = Acceptance.namedAs(work.category("title"))
     // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
     if (named == Acceptance.NamedAsItsOwn || work.category("originalTitle").contains("match")) accepted
-    else ranked.filter(edition => (edition ne work) && !edition.deniedByPin && Acceptance.namedAs(edition.category("title")) > named && (
-      if (named == 0) IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film)
-      else IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film.copy(alternativeTitles = Nil)) && !edition.category("director").contains("different"))) match {
+    else ranked.filter(edition => (edition ne work) && !edition.deniedByPin && namesTheEdition(work, named)(edition)) match {
       case Seq(edition) => edition -> confidence
       case _            => accepted
     }
   }
+
+  /** Does the listing's title, naming `work` as `named` ([[Acceptance.namedAs]]), name `edition` more as its own, the
+   *  record an edition of the work ([[editionNamed]]): by any of the work's titles where the title names it by none of
+   *  them, else by the work's own titles alone and crediting no other person than the listing's? */
+  private def namesTheEdition(work: Scored, named: Int)(edition: Scored): Boolean =
+    Acceptance.namedAs(edition.category("title")) > named && (
+      if (named == 0) IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film)
+      else IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film.copy(alternativeTitles = Nil)) &&
+        !edition.category("director").contains("different"))
 }
 
 private[identity] object Acceptance {

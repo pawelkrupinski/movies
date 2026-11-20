@@ -98,11 +98,12 @@ object PopulationMonotonicity {
   def latticeFlip(n: Int, own: Int, takes: Int => Option[String]): Option[Seq[(Int, String)]] = {
     val vals = subsets(n).filter(m => (m & (1 << own)) != 0).flatMap(m => takes(m).map(m -> _))
     def within(a: Int, b: Int) = a != b && (a & ~b) == 0
-    vals.iterator.flatMap { case (m2, b) =>
-      vals.iterator.filter { case (m1, a) => a != b && within(m1, m2) }.flatMap { case (m1, a) =>
-        vals.find { case (m3, c) => c == a && within(m2, m3) }.map { case (m3, _) => Seq(m1 -> a, m2 -> b, m3 -> a) }
-      }
-    }.nextOption()
+    val flips = for {
+      (m2, b) <- vals.iterator
+      (m1, a) <- vals.iterator if a != b && within(m1, m2)
+      (m3, _) <- vals.find { case (m3, c) => c == a && within(m2, m3) }
+    } yield Seq(m1 -> a, m2 -> b, m3 -> a)
+    flips.nextOption()
   }
 
   /** A corpus's context, built once, for resolving a family's SUBSETS: `present` of `family`'s listings resolved alone

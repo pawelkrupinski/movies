@@ -119,14 +119,17 @@ final case class IdentityCalibration(version: String,
   def withPriorSpread(scale: Double): IdentityCalibration = if (scale == 1.0) this else {
     val listingFilm = model(IdentityMeasures.ListingFilm)
     val spread = listingFilm.signals.map { case (name, weights) =>
-      name -> (if (!PriorSignals(name) || weights.bins.isEmpty) weights else {
-        val positives = weights.bins.map(_.positives).sum.max(1)
-        val centre    = weights.bins.map(bin => bin.positives * bin.weight).sum / positives
-        def scaled(w: Double) = centre + scale * (w - centre)
-        weights.copy(bins = weights.bins.map(bin => bin.copy(weight = scaled(bin.weight))), missing = weights.missing.map { case (k, w) => k -> scaled(w) })
-      })
+      name -> (if (!PriorSignals(name) || weights.bins.isEmpty) weights else spreadAboutItsCentre(weights, scale))
     }
     copy(version = s"$version-spread$scale", scopes = scopes.updated(IdentityMeasures.ListingFilm, listingFilm.copy(signals = spread)))
+  }
+
+  /** `weights`, every bin's weight and every missing value's, scaled by `scale` about their positives-weighted mean. */
+  private def spreadAboutItsCentre(weights: SignalWeights, scale: Double): SignalWeights = {
+    val positives = weights.bins.map(_.positives).sum.max(1)
+    val centre    = weights.bins.map(bin => bin.positives * bin.weight).sum / positives
+    def scaled(w: Double) = centre + scale * (w - centre)
+    weights.copy(bins = weights.bins.map(bin => bin.copy(weight = scaled(bin.weight))), missing = weights.missing.map { case (k, w) => k -> scaled(w) })
   }
 
   /** Is this probability high enough to show the film's ratings? */

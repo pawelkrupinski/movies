@@ -31,12 +31,16 @@ object CatalogueSplits {
    *  film), each listing counted once. */
   def of(takes: Seq[Take]): Seq[Split] =
     takes.distinctBy(_.listing.key).flatMap(t => t.listing.catalogueIds.map(_ -> t)).groupMap(_._1)(_._2).toSeq
-      .sortBy(_._1.key).flatMap { case (id, carrying) =>
-        val byFilm = carrying.groupBy(_.film)
-        if (byFilm.sizeIs < 2) Nil
-        else byFilm.toSeq.sortBy { case (film, ts) => (-ts.size, film) }.map { case (film, ts) =>
-          Split(id, film, ts.head.record.title + ts.head.record.year.fold("")(y => s" ($y)"), ts,
-            byFilm.removed(film).toSeq.map((f, o) => f -> o.size).sortBy { case (f, n) => (-n, f) })
-        }
-      }
+      .sortBy(_._1.key).flatMap((id, carrying) => splitsOf(id, carrying))
+
+  /** `id`'s splits: one per film the takes `carrying` it were taken as, most taken first -- none where they were taken
+   *  as one film. */
+  private def splitsOf(id: CatalogueId, carrying: Seq[Take]): Seq[Split] = {
+    val byFilm = carrying.groupBy(_.film)
+    if (byFilm.sizeIs < 2) Nil
+    else byFilm.toSeq.sortBy { case (film, ts) => (-ts.size, film) }.map { case (film, ts) =>
+      Split(id, film, ts.head.record.title + ts.head.record.year.fold("")(y => s" ($y)"), ts,
+        byFilm.removed(film).toSeq.map((f, o) => f -> o.size).sortBy { case (f, n) => (-n, f) })
+    }
+  }
 }

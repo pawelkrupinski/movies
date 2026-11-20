@@ -45,11 +45,14 @@ object Broadcast {
     else billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
       credited(billing, records, productions).failedAs(Nil) match {
         case Answer.Unknown | Answer.Failed => Left(Nil) // failedAs leaves no Failed
-        case Answer.Known(credited) =>
-          val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct
-          if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records, credited))
+        case Answer.Known(credited) => waitingOn(billing, records, credited, undated).toLeft(chosen(days, billing, records, credited))
       }
     }
+
+  /** The records `take` waits on, if any: those every listing's billing fits but for a day ([[take]]'s `undated`). */
+  private def waitingOn(billing: Seq[Billing], records: Seq[(Int, Film)], credited: Seq[Film], undated: Int => Boolean): Option[Seq[Int]] =
+    Some(records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct)
+      .filter(_.nonEmpty)
 
   /** The films databases' productions, read only for a record every listing's `billing` fits but by its banner. */
   private def credited(billing: Seq[Billing], records: Seq[(Int, Film)], productions: () => Answer[Seq[Film]]): Answer[Seq[Film]] =

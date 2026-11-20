@@ -67,12 +67,13 @@ object IdentityMeasures {
     if (l.certificate.isDefined && !CertifiedRelations(title.value)) Missing("piece")
     else country.flatMap(c => Certificates.Ladders.get(c).map(c -> _)).fold[Measure](Missing("unrated")) { case (c, ladder) =>
       l.certificate.flatMap(ladder.step).fold[Measure](MissingListing) { own =>
-        Certificates.in(f.certificates, c).flatMap(ladder.step).fold[Measure](MissingFilm) { rated =>
-          val gap = rated - own
-          Category(if (gap == 0) "match" else if (math.abs(gap) < Certificates.StepsBelow) "near" else if (gap > 0) "below" else "above")
-        }
+        Certificates.in(f.certificates, c).flatMap(ladder.step).fold[Measure](MissingFilm)(rated => certificateGap(rated - own))
       }
     }
+
+  /** A film rated `gap` steps above the venue's certificate, as [[certificateRelation]] names it. */
+  private def certificateGap(gap: Int): Category =
+    Category(if (gap == 0) "match" else if (math.abs(gap) < Certificates.StepsBelow) "near" else if (gap > 0) "below" else "above")
 
   /** The listing-film measures that read the TITLE itself — how it names the film, and the
    *  instalment numbers it carries: a title alone never vetoes, so none of them is a fact. */
@@ -234,6 +235,16 @@ object IdentityMeasures {
   private def concertCountry(f: Film, country: Measure): Measure =
     if (country == Category("mismatch") && f.concertRecord) ConcertMismatch else country
 
+  /** The listing's directors against the film's credits ([[CreditRelation.of]]), a name that is the film's own house
+   *  left out ([[namesItsHouse]]): the listing-film `director` measure. */
+  private def directorCreditRelation(l: MeasuredListing, f: Film): Measure = {
+    // Each name's and title's tokens read once per listing and film, not per pair ([[MeasuredListing.directorTokens]]).
+    val persons = if (l.directors.isEmpty) l.directors else
+      l.directors.iterator.zip(l.directorTokens).collect { case (name, words) if !namesItsHouse(name, words, f) => name }.toSeq
+    f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
+      CreditRelation.of(if (persons.size == l.directors.size) l.directorCredits else new CreditRelation.Credits(persons), _))
+  }
+
   /** [[listingFilm]] with the title relation already read — `titleRelation(l, f, houses, qualifiers)` —
    *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). `country`: the venue's (ISO-3166-1),
    *  whose cinema releases of the film its year is read against first ([[Film.closestYear]]). */
@@ -250,13 +261,7 @@ object IdentityMeasures {
     slots(4)  = absDelta(l.year, released)
     slots(5)  = filmMinus(f.year, l.titleYear)
     slots(6)  = filmMinus(f.year, l.seasonYear)
-    slots(7)  = {
-                  // Each name's and title's tokens read once per listing and film, not per pair ([[MeasuredListing.directorTokens]]).
-                  val persons = if (l.directors.isEmpty) l.directors else
-                    l.directors.iterator.zip(l.directorTokens).collect { case (name, words) if !namesItsHouse(name, words, f) => name }.toSeq
-                  f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
-                    CreditRelation.of(if (persons.size == l.directors.size) l.directorCredits else new CreditRelation.Credits(persons), _))
-                }
+    slots(7)  = directorCreditRelation(l, f)
     slots(8)  = runtimeDelta(l, f, country, title)
     slots(9)  = concertCountry(f, countryRelation(l.countries, f.countries))
     slots(10) = searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble))

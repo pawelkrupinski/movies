@@ -34,7 +34,11 @@ object SynopsisEvidence {
       val own    = (description ++ people) -- titles
       val theirs = namesakes.map { case (film, words) => film -> (words -- titles) }
       val anyOfTheirs = theirs.foldLeft(ProseWords.None)(_ ++ _._2)
-      if ((said & (own -- anyOfTheirs)).nonEmpty) None
-      else theirs.map { case (film, words) => film -> (said & (words -- own)).size }.filter(_._2 >= Words).maxByOption(_._2)
+      if ((said & (own -- anyOfTheirs)).nonEmpty) None else namedOver(said, own, theirs)
     }
+
+  /** The namesake of `theirs` the synopsis's words `said` name most, sharing [[Words]] or more the agreed film's `own`
+   *  do not: with how many. */
+  private def namedOver(said: ProseWords, own: ProseWords, theirs: Seq[(Int, ProseWords)]): Option[(Int, Int)] =
+    theirs.map { case (film, words) => film -> (said & (words -- own)).size }.filter(_._2 >= Words).maxByOption(_._2)
 }

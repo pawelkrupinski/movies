@@ -68,13 +68,15 @@ private[identity] object TitleShapeMeasures {
     lazy val filed = f.ownTitles.flatMap(editionOf).distinct.filter { case (_, edition) => f.year.forall(FactRelations.yearsNear(edition, _)) }
     val closed = l.ownTitles.flatMap(editionOf).distinct
     if (closed.nonEmpty) closed.forall { case (series, year) => filed.exists(_._1 == series) && !filed.contains(series -> year) }
-    else l.year.exists { year =>
-      // a year stated beside the series' name whole dates a LATER edition only: a feed's year earlier than the edition's
-      // is its guess (US Lark Theater's "Women's Adventure Film Tour" [2025] screens TMDB's "… 2026" tour)
-      val series = l.ownTitles.map(key).toSet
-      filed.exists { case (name, filedYear) => series(name) && filedYear < year } && !filed.exists { case (name, filedYear) => series(name) && filedYear == year }
-    }
+    else l.year.exists(year => statesALaterEdition(l.ownTitles.map(key).toSet, year, filed))
   }
+
+  /** Does `year`, stated beside a title that is a series' name whole (`series`), date a later edition than one of the
+   *  `filed` editions, and none of them its own? A year stated so dates a LATER edition only: a feed's year earlier than
+   *  the edition's is its guess (US Lark Theater's "Women's Adventure Film Tour" [2025] screens TMDB's "… 2026" tour). */
+  private def statesALaterEdition(series: Set[String], year: Int, filed: Seq[(String, Int)]): Boolean =
+    filed.exists { case (name, filedYear) => series(name) && filedYear < year } &&
+      !filed.exists { case (name, filedYear) => series(name) && filedYear == year }
 
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27

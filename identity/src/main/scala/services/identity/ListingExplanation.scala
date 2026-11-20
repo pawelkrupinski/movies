@@ -40,22 +40,28 @@ object ListingExplanation {
       val accepted = blockKeysOf(node.id).toSeq.sorted.filterNot(titled).map(key => key -> "a film it, or a node sharing its keys, accepted")
       val members  = stages.generation.nodes.filter(member => familyOf(member.id) == familyOf(node.id))
       val anchor   = members.minBy(member => (-member.weight, member.id))
-      // Breadth-first over shared keys from the node to the anchor: the links that put it here.
-      val byKey    = members.flatMap(member => blockKeysOf(member.id).map(_ -> member)).groupMap(_._1)(_._2)
-      val via      = scala.collection.mutable.HashMap(node.id -> Option.empty[(String, EvidenceNode)])
-      val queue    = scala.collection.mutable.Queue(node)
-      while (queue.nonEmpty && !via.contains(anchor.id)) {
-        val current = queue.dequeue()
-        blockKeysOf(current.id).toSeq.sorted.foreach(key => byKey.getOrElse(key, Nil).foreach { next =>
-          if (!via.contains(next.id)) { via(next.id) = Some(key -> current); queue.enqueue(next) } })
-      }
-      def path(at: EvidenceNode): List[(String, String)] = via.get(at.id).flatten match {
-        case Some((key, from)) => path(from) :+ (key -> at.label)
-        case None              => Nil
-      }
       val decision = resolution.decisionOf(listing)
       ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
-        if (anchor eq node) Nil else path(anchor), decision, scoredOf(node).map(NodeCandidates.CandidateScore.of(_, calibration)))
+        if (anchor eq node) Nil else chain(node, anchor, members, blockKeysOf), decision, scoredOf(node).map(NodeCandidates.CandidateScore.of(_, calibration)))
     }
+  }
+
+  /** The links that put `node` in its family: breadth-first over the keys `members` share (`keysOf`), from the node to
+   *  the family's `anchor`, each key with the member it leads to. */
+  private def chain(node: EvidenceNode, anchor: EvidenceNode, members: Seq[EvidenceNode],
+                    keysOf: String => Set[String]): List[(String, String)] = {
+    val byKey = members.flatMap(member => keysOf(member.id).map(_ -> member)).groupMap(_._1)(_._2)
+    val via   = scala.collection.mutable.HashMap(node.id -> Option.empty[(String, EvidenceNode)])
+    val queue = scala.collection.mutable.Queue(node)
+    while (queue.nonEmpty && !via.contains(anchor.id)) {
+      val current = queue.dequeue()
+      keysOf(current.id).toSeq.sorted.foreach(key => byKey.getOrElse(key, Nil).foreach { next =>
+        if (!via.contains(next.id)) { via(next.id) = Some(key -> current); queue.enqueue(next) } })
+    }
+    def path(at: EvidenceNode): List[(String, String)] = via.get(at.id).flatten match {
+      case Some((key, from)) => path(from) :+ (key -> at.label)
+      case None              => Nil
+    }
+    path(anchor)
   }
 }

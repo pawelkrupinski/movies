@@ -40,11 +40,7 @@ object StableNames {
   private[identity] def assignWith(previous: Iterable[(Long, Iterable[ListingKey])], next: IndexedSeq[Iterable[ListingKey]],
                                    nextFresh: Long, tieBreak: TieBreak): Named = {
     val smallest = next.map(_.min(using ListingKey.ordering))
-    val pairs    = overlaps(previous, next)
-    val ordered = tieBreak match {
-      case TieBreak.Canonical  => pairs.sortBy { case (name, n, overlap) => (name, -overlap, smallest(n)) }
-      case TieBreak.InputOrder => pairs.sortBy { case (name, n, overlap) => (name, -overlap, n) }
-    }
+    val ordered  = inOfferOrder(overlaps(previous, next), smallest, tieBreak)
     val taken = mutable.Set.empty[Long]
     val names = Array.fill(next.size)(-1L)
     ordered.foreach { case (name, n, _) => if (!taken(name) && names(n) < 0) { taken += name; names(n) = name } }
@@ -54,6 +50,14 @@ object StableNames {
     next.indices.filter(names(_) < 0).sortBy(smallest)(using ListingKey.ordering).foreach { n => names(n) = counter; counter += 1 }
     Named(names.toIndexedSeq, absorbed, counter)
   }
+
+  /** The (previous name, next cluster, overlap) `pairs` in the order each name is offered: by name, then overlap
+   *  descending, then the next cluster's `smallest` listing (by its index, under [[TieBreak.InputOrder]]). */
+  private def inOfferOrder(pairs: Seq[(Long, Int, Int)], smallest: IndexedSeq[ListingKey], tieBreak: TieBreak): Seq[(Long, Int, Int)] =
+    tieBreak match {
+      case TieBreak.Canonical  => pairs.sortBy { case (name, n, overlap) => (name, -overlap, smallest(n)) }
+      case TieBreak.InputOrder => pairs.sortBy { case (name, n, overlap) => (name, -overlap, n) }
+    }
 
   /** Every (previous name, next cluster's index, listings they share) of clusters sharing a listing. Each cluster by its
    *  position, never by the set itself: a set's hash walks every member, and keying maps by the clusters hashed each one

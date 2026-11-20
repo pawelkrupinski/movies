@@ -87,9 +87,15 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val apart    = touching.filter(edge => !edge.must && (ids(edge.a) ^ ids(edge.b))).map(_.reason).distinct.sorted
     val own      = scope.of(node)
     val weighed  = film.flatMap(id => own.find(_.candidate.tmdbId == id)).orElse(own.headOption)
-    val withdrawn = if (accepted.isDefined) None else withdrawnOf(node, scope)
-    val refusals = if (accepted.isDefined) Nil else withdrawn.toSeq ++ acceptance.refusals(own)
-    val searched = if (accepted.isDefined) Nil else searchedBy(node)
+    // A node a rule took is traced by its take; one none took, by what withheld a take: a sibling's withdrawal, the
+    // refusals, the searches.
+    val withheld: (Option[DecisionTrace.Refusal], Seq[DecisionTrace.Refusal], Seq[String]) =
+      if (accepted.isDefined) (None, Nil, Nil)
+      else {
+        val withdrawn = withdrawnOf(node, scope)
+        (withdrawn, withdrawn.toSeq ++ acceptance.refusals(own), searchedBy(node))
+      }
+    val (withdrawn, refusals, searched) = withheld
     // What it weighed: for a node no rule took, its five best candidates; for one a rule took, the runner-up it beat.
     val shown    = if (accepted.isDefined) own.filterNot(scored => weighed.exists(_ eq scored)).take(1) else own.take(5)
     val blocker  = Option.when(accepted.isEmpty)(withdrawn.map(_ => "withdrawn:sibling-denies-film")

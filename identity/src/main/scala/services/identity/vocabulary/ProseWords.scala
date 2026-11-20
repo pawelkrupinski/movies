@@ -57,6 +57,13 @@ object ProseWords {
     def sortedDistinct: Array[Int] = SortedHashes.sortedDistinct(found, count)
   }
 
+  /** Where the word of `text` starting at `start` ends: the first index past its letters. */
+  private def wordEnd(text: String, start: Int): Int = {
+    var j = start
+    while (j < text.length && Character.isLetter(text.charAt(j))) j += 1
+    j
+  }
+
   /** The stem of each word of `text` it counts ([[isCounted]]), added to `stems` as its hash. */
   private def collectStems(text: String, capitalisedOnly: Boolean, sentenceFirst: Boolean, stems: Stems): Unit = {
     var first = true   // the next word opens a sentence
@@ -65,8 +72,7 @@ object ProseWords {
     while (i < n) {
       val c = text.charAt(i)
       if (Character.isLetter(c)) {
-        var j = i
-        while (j < n && Character.isLetter(text.charAt(j))) j += 1
+        val j = wordEnd(text, i)
         if (isCounted(j - i, c, first, capitalisedOnly, sentenceFirst)) stems.add(stemHash(text, i, j))
         first = false
         i = j
