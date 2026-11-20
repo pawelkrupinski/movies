@@ -3,7 +3,7 @@ package tools
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, _}
+import services.identity._
 
 import java.nio.file.Files
 

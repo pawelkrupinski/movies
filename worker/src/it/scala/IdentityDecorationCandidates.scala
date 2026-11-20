@@ -1,7 +1,7 @@
 package integration
 
 import play.api.libs.json.Json
-import services.identity.{MeasuredListing, _}
+import services.identity._
 import models.ListingKey
 import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}

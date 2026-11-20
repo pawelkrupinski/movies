@@ -7,7 +7,7 @@ import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonS
 import org.bson.json.{JsonMode, JsonWriterSettings}
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts}
-import services.identity.{Film, VoterFamily, _}
+import services.identity.{VoterFamily, _}
 import models.ListingKey
 import services.titles.TitleNormalizer
 

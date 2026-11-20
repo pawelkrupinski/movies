@@ -6,7 +6,7 @@ import models.Country
 import org.bson.BsonDocument
 
 import services.identity.agreement.AgreementStage
-import services.identity.{Film, VoterFamily, _}
+import services.identity.{VoterFamily, _}
 import models.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 

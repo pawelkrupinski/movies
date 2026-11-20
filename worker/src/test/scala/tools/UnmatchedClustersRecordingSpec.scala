@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, _}
+import services.identity._
 
 /** A capture's recording gives every answer it noted again, never its live source asked anew: its rounds decide over
  *  what the file holds and the replay reads (Identity capture #2079, UK: a capture that replayed to other takes, now

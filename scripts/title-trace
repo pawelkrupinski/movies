@@ -35,7 +35,8 @@ IDENTITY_TOOL=title-trace
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
 
-TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
+TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/fixtures/scala/tools/OlderRefTypes.scala worker/src/test/scala/services/identity/TitleTrace.scala
+  worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala)
 
 if [ "$1" = "--compiles" ]; then

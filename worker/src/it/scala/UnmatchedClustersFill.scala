@@ -1,7 +1,7 @@
 package integration
 
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
-import services.identity.{Film, _}
+import services.identity._
 
 import tools._
 

@@ -1,7 +1,7 @@
 package scripts
 
 import play.api.libs.json.{Format, Json}
-import services.identity.{Measure, MeasuredListing, _}
+import services.identity._
 import services.identity.IdentityCalibration.{Bin, SignalWeights, Threshold}
 import tools.{CommandLine, UnmatchedClusters}
 

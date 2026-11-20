@@ -10,6 +10,7 @@ import tools.{CinemaSlotInvariants, SearchQueryMarkers}
 import java.text.Normalizer
 import scala.annotation.nowarn
 import java.util.Locale
+import tools.OlderRefTypes
 
 /**
  * Every step a raw billing goes through, in production order, as text (`scripts/title-trace`): the ingest tidy, the
@@ -210,7 +211,7 @@ object TitleTrace {
       s", billsASilentFilm ${yesNo(ListingShape.billsASilentFilm(listing))}, programme slot ${billingReader[Option[String]]("programmeSlot", "ListingShape", "programmeSlotOf")(raw).fold("none")(q)}"
     out += s"  pieces ${IdentityMeasures.pieces(raw).map(q).mkString("[", ", ", "]")}"
     val candidates = SearchTitles.candidates(listing.title, None, Seq(clean))
-    val beside = candidates.flatMap(c => ListingShape.billedBeside(listing, Seq(Film(c))).map(c -> _))
+    val beside = candidates.flatMap(c => ListingShape.billedBeside(listing, Seq(OlderRefTypes.tmdbFilm(c))).map(c -> _))
     out += s"  billedBeside a film titled as each search candidate: ${if (beside.isEmpty) "none" else ""}"
     beside.foreach { case (c, why) => out += s"    ${q(c)}: $why" }
 

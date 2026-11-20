@@ -1,12 +1,13 @@
 package tools
 
 import org.bson.BsonDocument
-import services.identity.{Film, _}
+import services.identity._
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
+import OlderRefTypes.TmdbFilm
 
 /**
  * The answers a recording does not hold that prod and the capture read: the family answers PROD filed
@@ -66,7 +67,7 @@ object FiledAnswers {
   /** `recorded`'s answers, and `filed`'s where the recording has none (`Unknown`): each filed one read noted. */
   final class Lookups(recorded: IdentityLookups, filed: FiledAnswers) extends IdentityLookups {
     val queries = new ConcurrentHashMap[CandidateQuery, Seq[Hit]]()
-    val films   = new ConcurrentHashMap[Int, Option[Film]]()
+    val films   = new ConcurrentHashMap[Int, Option[TmdbFilm]]()
     val details = new ConcurrentHashMap[String, Option[DetailFacts]]()
     val casts   = new ConcurrentHashMap[Int, Option[Seq[String]]]()
     private def orFiled[A](answer: Answer[A], held: Option[A], note: A => Any): Answer[A] = answer match {
@@ -79,8 +80,8 @@ object FiledAnswers {
       orFiled(recorded.detail(listing), filed.capture.details.get(key(listing)), (d: Option[DetailFacts]) => details.put(key(listing), d))
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
       orFiled(recorded.candidates(query), filed.capture.queries.get(query), (h: Seq[Hit]) => queries.put(query, h))
-    override def film(tmdbId: Int): Answer[Option[Film]] =
-      orFiled(recorded.film(tmdbId), filed.capture.films.get(tmdbId), (f: Option[Film]) => films.put(tmdbId, f))
+    override def film(tmdbId: Int): Answer[Option[TmdbFilm]] =
+      orFiled(recorded.film(tmdbId), filed.capture.films.get(tmdbId), (f: Option[TmdbFilm]) => films.put(tmdbId, f))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
       orFiled(recorded.cast(tmdbId), filed.capture.casts.get(tmdbId), (c: Option[Seq[String]]) => casts.put(tmdbId, c))
     override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = recorded.prefetch(qs, ids, pages)
@@ -90,7 +91,7 @@ object FiledAnswers {
   def read(filed: FiledAnswers, families: Map[String, BsonDocument], finds: Map[String, Option[Int]], lookups: Option[Lookups]): FiledAnswers =
     FiledAnswers(filed.capture.copy(listings = Nil, decisions = Nil, families = families, finds = finds,
       queries = lookups.fold(Map.empty[CandidateQuery, Seq[Hit]])(_.queries.asScala.toMap),
-      films = lookups.fold(Map.empty[Int, Option[Film]])(_.films.asScala.toMap),
+      films = lookups.fold(Map.empty[Int, Option[TmdbFilm]])(_.films.asScala.toMap),
       details = lookups.fold(Map.empty[String, Option[DetailFacts]])(_.details.asScala.toMap),
       withDetail = lookups.fold(Set.empty[String])(_.details.keySet.asScala.toSet),
       casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty), filed.source) // the live HTTP answers a slice read are in its own HTTP notes

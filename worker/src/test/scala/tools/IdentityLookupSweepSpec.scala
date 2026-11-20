@@ -3,7 +3,7 @@ package tools
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Film, _}
+import services.identity._
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**

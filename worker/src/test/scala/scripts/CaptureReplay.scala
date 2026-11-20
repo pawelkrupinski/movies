@@ -1,6 +1,6 @@
 package scripts
 
-import services.identity.{Film, _}
+import services.identity._
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import services.titles.TitleNormalizer

@@ -4,7 +4,7 @@ import tools.TempDirectories
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
-import services.identity.{Film, _}
+import services.identity._
 import services.identity.agreement.InMemoryAgreementVerdicts
 import models.ListingKey
 import services.titles.TitleNormalizer
@@ -17,6 +17,7 @@ import java.util.Locale
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import tools.OlderRefTypes.TmdbFilm
 
 /**
  * ONE listing's identity, reproduced from a recording in seconds (docs/design/identity-slice.md;
@@ -215,7 +216,7 @@ object IdentitySlice {
     override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = inner.prefetch(queries, films, details)
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(inner.detail(listing), s"page ${listing.page.getOrElse(listing.key.venue)}")
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(inner.candidates(query), DecisionTrace.renderQuery(query))
-    override def film(tmdbId: Int): Answer[Option[Film]] = noted(inner.film(tmdbId), s"tmdb $tmdbId")
+    override def film(tmdbId: Int): Answer[Option[TmdbFilm]] = noted(inner.film(tmdbId), s"tmdb $tmdbId")
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(inner.cast(tmdbId), s"cast $tmdbId")
   }
 
@@ -412,7 +413,7 @@ object IdentitySlice {
   def filmOf(d: ResolverDecision): String = d.film.map(id => s"tmdb:$id").orElse(d.fallback.map(f => s"${f.source}:${f.id}")).getOrElse("none")
 
   def rows(selector: String, wanted: Seq[ListingKey], decided: Decided, labels: Seq[UnmatchedClusters.Label], country: Country,
-           films: Int => Option[Film]): Seq[TakeRow] = {
+           films: Int => Option[TmdbFilm]): Seq[TakeRow] = {
     val model = UnmatchedClusters.resolutionOf(decided.model)
     wanted.flatMap { key =>
       decided.agreed.decisionOf.get(key).map { d =>

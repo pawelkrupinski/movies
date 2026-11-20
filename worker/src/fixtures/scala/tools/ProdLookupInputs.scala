@@ -6,7 +6,7 @@ import org.bson.BsonDocument
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
-import services.identity.{Film, _}
+import services.identity._
 
 import services.titles.TitleNormalizer
 import services.venuepages.CapturedVenuePages
