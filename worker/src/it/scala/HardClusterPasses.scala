@@ -203,15 +203,24 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
    * open, and the lookup fill asks it again — so once TMDB answers and a fill round has run, the
    * corpus must come out as the undisturbed reference did.
    *
+   * The recovery round drains the model before EVERY fetch it makes (`drainingOn`), as the model's own thread can at any
+   * moment in production: the worst interleaving, the same every run. A drain falling between two filings once left
+   * 359 UK records gaps for good -- a family's own ask filed each, and its filing excused the question the corpus held
+   * open -- on CI 3 runs in 6 and locally ~1 in 8 (Main #2712, #2716, #2717); forced, every run.
+   *
    * Returns the films while TMDB was down, the films after the recovery, and how many TMDB requests the outage refused.
    */
   private def outageRun(country: Country): OutageRun = {
     val down  = new java.util.concurrent.atomic.AtomicBoolean(true)
     val refused = new java.util.concurrent.atomic.AtomicLong()
     val clock = new MutableClock(TestWiring.FixedInstant)
+    // the thread whose every fetch is preceded by a drain of the model: the recovery round's, while it runs
+    val drainingOn = new java.util.concurrent.atomic.AtomicReference[Thread]()
+    var wiring     = Option.empty[ArchiveReplayWiring]
     def flaky(inner: HttpFetch): HttpFetch = new HttpFetch {
       private def check(url: String): Unit =
-        if (down.get && url.contains("themoviedb.org") && (url.## & 1) == 0)
+        if (drainingOn.get eq Thread.currentThread) wiring.foreach(_.identityModel.peek(SpecTimeouts.Run))
+        else if (down.get && url.contains("themoviedb.org") && (url.## & 1) == 0)
           { refused.incrementAndGet(); throw new HttpStatusException(503, "GET", url, retryAfter = None) }
       override def get(url: String): String = { check(url); inner.get(url) }
       override def get(url: String, headers: Map[String, String]): String = { check(url); inner.get(url, headers) }
@@ -220,6 +229,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     }
     val normalizer = TitleNormalizer.forCountry(country)
     val (w, _)     = wiringFor(country, "outage", flaky, Some(clock))
+    wiring = Some(w)
     arrive(w, arrivals(w, new Random(OrderSeed)))
     settle(w)
     val during = films(w, normalizer)
@@ -227,7 +237,8 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     // refresh schedule does, and the projection takes the answers in.
     down.set(false)
     clock.advance(java.time.Duration.ofHours(1))
-    w.lookupFill.round()
+    drainingOn.set(Thread.currentThread)
+    try w.lookupFill.round() finally drainingOn.set(null)
     settle(w)
     OutageRun(during, films(w, normalizer), refused.get)
   }
