@@ -17,8 +17,9 @@ import scala.jdk.CollectionConverters.*
  *   inner-defs  the defs nested in a method, past its limit
  *   method-lines a method's length in lines, past its limit
  *   file-lines  a source's length in lines (key: its path), past its limit
- *   copies      the copies of the clone groups spanning exactly the files `<path>|<path>...` (Clones: PMD CPD, 100
- *               tokens or more), limit 0 -- every clone group is a row
+ *   copies      the copies of the clone groups spanning exactly the files `<path>|<path>...` (Clones: PMD CPD, 50
+ *               tokens or more), limit 0 -- every clone group is a row; limit `clone-tokens` the shortest clone counted
+ *               (a measure counting only longer ones would hide clones: the ratchet holds it like any limit)
  *
  *   quality.QualityReport --root <repository> --rows <out> [--files <out>] [--report <markdown out>]
  *
@@ -31,10 +32,10 @@ object QualityReport {
   val ProductionModules: Seq[String] = Seq("geodata", "base", "http", "common", "identity", "scrapers", "worker", "web")
 
   /** Each measured kind of a method, and its limit (CLAUDE.md, "Code quality ratchets"). */
-  val MethodLimits: Seq[(String, Int)] = Seq("cognitive" -> 15, "cyclomatic" -> 10, "inner-defs" -> 2, "method-lines" -> 50)
+  val MethodLimits: Seq[(String, Int)] = Seq("cognitive" -> 10, "cyclomatic" -> 10, "inner-defs" -> 2, "method-lines" -> 50)
 
   /** Each measured kind of a source, and its limit. */
-  val FileLimits: Seq[(String, Int)] = Seq("file-lines" -> 800)
+  val FileLimits: Seq[(String, Int)] = Seq("file-lines" -> 500)
 
   /** A production source: its path from the repository root, and its text. */
   final case class SourceFile(path: String, text: String)
@@ -108,9 +109,9 @@ object QualityReport {
       FileLimits.flatMap { case (kind, limit) => past(kind, limit, sources.map(s => s.path -> lineCount(s))) }
   }
 
-  /** The clone rows: the limit (none allowed without a row), and one row a file set. */
+  /** The clone rows: the limits (none allowed without a row; the shortest clone counted), and one row a file set. */
   def cloneRows(groups: Seq[Clones.Group]): Seq[String] =
-    "limit\tcopies\t0" +: Clones.rows(groups).map { case (files, copies) => s"copies\t$files\t$copies" }
+    Seq("limit\tcopies\t0", s"limit\tclone-tokens\t${Clones.MinimumTokens}") ++ Clones.rows(groups).map { case (files, copies) => s"copies\t$files\t$copies" }
 
   /** Every clone group, largest first. */
   def cloneReport(groups: Seq[Clones.Group]): Seq[String] =

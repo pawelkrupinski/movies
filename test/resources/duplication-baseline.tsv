@@ -1,9 +1,80 @@
 # THE DUPLICATION BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
-# Every clone group in the production sources (*/src/main of a deployed module; PMD CPD, 100 tokens or more), frozen:
-#   limit   copies 0: a file set without a row holds no clone
+# Every clone group in the production sources (*/src/main of a deployed module; PMD CPD, `package`/`import` lines blanked),
+# frozen:
+#   limit   copies 0: a file set without a row holds no clone; clone-tokens: the shortest token run counted as a clone
+#           (raising it hides clones, so it is held like any limit)
 #   copies  <path>|<path>..., the files a clone group spans (sorted), and the copies of every group spanning exactly
 #           them: a new group adds a row or raises one, a group gaining a copy too; an edit moving a clone's lines
 #           leaves its row
 # A row may only fall (--update records it, no trailer); a row added or raised lands only in a commit carrying
 # `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	copies	0
+limit	clone-tokens	50
+copies	base/src/main/scala/tools/EditDistance.scala	2
+copies	base/src/main/scala/tools/TextNormalization.scala|identity/src/main/scala/services/identity/TitleTextMeasures.scala	2
+copies	common/src/main/scala/models/CinemaMovie.scala|common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers/src/main/scala/services/cinemas/common/CinemaMovieJson.scala	3
+copies	common/src/main/scala/models/GermanRoster.scala|common/src/main/scala/models/SpanishRoster.scala	2
+copies	common/src/main/scala/services/MongoCachingDetailFetch.scala|http/src/main/scala/tools/CachingDetailFetch.scala	2
+copies	common/src/main/scala/services/cadence/RatingCadenceStore.scala	2
+copies	common/src/main/scala/services/movies/MovieCodecs.scala	2
+copies	common/src/main/scala/services/movies/ScreeningsRepository.scala|common/src/main/scala/services/movies/SlotsRepository.scala	12
+copies	common/src/main/scala/services/movies/SlotsRepository.scala	2
+copies	common/src/main/scala/services/readmodel/MongoReadModelRepository.scala	4
+copies	common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers/src/main/scala/services/cinemas/common/CinemaMovieJson.scala	2
+copies	common/src/main/scala/services/titles/TitleWords.scala|common/src/main/scala/services/titles/rules/TitleRuleTable.scala	2
+copies	common/src/main/scala/tools/KeysetScan.scala	2
+copies	geodata/src/main/scala/models/SpanishRosterData.scala|geodata/src/main/scala/models/UsRosterData.scala	2
+copies	identity/src/main/scala/services/identity/ClusterVoting.scala	2
+copies	identity/src/main/scala/services/identity/FamilyScope.scala|identity/src/main/scala/services/identity/ListingScoring.scala	2
+copies	identity/src/main/scala/services/identity/IdentityMeasures.scala|identity/src/main/scala/services/identity/IdentityModel.scala	2
+copies	identity/src/main/scala/services/identity/PinnedGateMeasures.scala|identity/src/main/scala/services/identity/SearchMeasures.scala	2
+copies	identity/src/main/scala/services/identity/StageRelays.scala	4
+copies	scrapers/src/main/scala/services/cinemas/common/FlicksDayPage.scala	2
+copies	scrapers/src/main/scala/services/cinemas/common/FlicksDayPage.scala|scrapers/src/main/scala/services/cinemas/common/FlicksFilmPage.scala	2
+copies	scrapers/src/main/scala/services/cinemas/common/ScraperParse.scala|scrapers/src/main/scala/services/cinemas/pl/KinoKijowClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/common/SlotsToMovies.scala	4
+copies	scrapers/src/main/scala/services/cinemas/common/SlotsToMovies.scala|scrapers/src/main/scala/services/cinemas/pl/AlternatywyClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/common/VueCinemasPlatformParser.scala|scrapers/src/main/scala/services/cinemas/pl/MultikinoParser.scala	4
+copies	scrapers/src/main/scala/services/cinemas/common/WixEventsClient.scala|scrapers/src/main/scala/services/cinemas/de/RexSchifferstadtClient.scala	4
+copies	scrapers/src/main/scala/services/cinemas/common/WixEventsClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoAurumClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoDianaClient.scala|scrapers/src/main/scala/services/cinemas/pl/VisualTicketClient.scala	4
+copies	scrapers/src/main/scala/services/cinemas/common/WixEventsClient.scala|scrapers/src/main/scala/services/cinemas/pl/VisualTicketClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/de/RexSchifferstadtClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoAurumClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoDianaClient.scala	3
+copies	scrapers/src/main/scala/services/cinemas/de/RexSchifferstadtClient.scala|scrapers/src/main/scala/services/cinemas/pl/VisualTicketClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/CytadelaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/MuranowClient.scala	3
+copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/MuranowClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/UjazdowskiClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/CharlieMonroeClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoEvaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/CytadelaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/CytadelaClient.scala|scrapers/src/main/scala/services/cinemas/pl/SdkClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/CytadelaClient.scala|scrapers/src/main/scala/services/cinemas/pl/UjazdowskiClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/DomKulturyLapyClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoNarewClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/EkobiletClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/HeliosRest.scala|scrapers/src/main/scala/services/cinemas/pl/KinoGramClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/NoveKinoClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/IluzjonClient.scala|scrapers/src/main/scala/services/cinemas/pl/UjazdowskiClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoApolloClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoPalacoweClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoBajkaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoZaciszeClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoKikaClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoZorzaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoKikaClient.scala|scrapers/src/main/scala/services/cinemas/pl/OkfIluzjaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoMarzenieClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoZorzaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/KinoPatriaClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/MuranowClient.scala|scrapers/src/main/scala/services/cinemas/pl/UjazdowskiClient.scala	2
+copies	scrapers/src/main/scala/services/cinemas/pl/RialtoClient.scala	8
+copies	scrapers/src/main/scala/services/cinemas/uk/OdeonClient.scala|scrapers/src/main/scala/services/cinemas/us/RegalClient.scala	2
+copies	web/src/main/scala/controllers/MetricsController.scala	2
+copies	web/src/main/scala/modules/webwiring/Wiring.scala|worker/src/main/scala/modules/wiring/WorkerWiring.scala	2
+copies	web/src/main/scala/services/review/MemberClaims.scala	2
+copies	worker/src/main/scala/diagnostics/FilmwebDiffJson.scala	2
+copies	worker/src/main/scala/services/enrichment/ImdbClient.scala	6
+copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/src/main/scala/services/enrichment/RottenTomatoesRatings.scala	2
+copies	worker/src/main/scala/services/identityadapters/CachedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
+copies	worker/src/main/scala/services/identityadapters/CoalescedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
+copies	worker/src/main/scala/services/identityadapters/ModelLookups.scala|worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala	2
+copies	worker/src/main/scala/services/movies/CorpusHydrate.scala|worker/src/main/scala/services/movies/CorpusStreamApplies.scala	2
+copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala|worker/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala	2

@@ -40,9 +40,9 @@
 #                 touches a deployed module's src/main Scala, the `quality` module, a quality baseline or the ratchet
 #                 (quality_paths): `quality/runMain quality.QualityReport` measures every production method's
 #                 complexity from its source (scalameta) and scripts/ci/quality_ratchet.py holds it to
-#                 test/resources/complexity-baseline.tsv -- no new method past a limit (cognitive 15, cyclomatic 10,
+#                 test/resources/complexity-baseline.tsv -- no new method past a limit (cognitive 10, cyclomatic 10,
 #                 inner defs 2), no frozen row rising -- and its length to length-baseline.tsv (method 50 lines, file
-#                 800), and its clone groups (PMD CPD, 100+ tokens, beside the parse: ~7 s together) to
+#                 500), and its clone groups (PMD CPD, 50+ tokens, beside the parse: ~7 s together) to
 #                 duplication-baseline.tsv -- no new group, no group gaining a copy; a baseline grows only in a commit
 #                 carrying its trailer (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`;
 #                 scripts/quality-report --update writes them; falls need no trailer). And THE NAMING LINT

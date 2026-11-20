@@ -6,5 +6,19 @@
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
-limit	file-lines	800
+limit	file-lines	500
 file-lines	common/src/main/scala/models/Cinema.scala	1067
+file-lines	common/src/main/scala/models/City.scala	615
+file-lines	common/src/main/scala/services/movies/MovieCodecs.scala	538
+file-lines	http/src/main/scala/tools/HostPolicies.scala	539
+file-lines	identity/src/main/scala/services/identity/Acceptance.scala	518
+file-lines	identity/src/main/scala/services/identity/IdentityMeasures.scala	719
+file-lines	identity/src/main/scala/services/identity/IdentityModel.scala	750
+file-lines	identity/src/main/scala/services/identity/LiveProjectionIndex.scala	539
+file-lines	identity/src/main/scala/services/identity/StageRelays.scala	666
+file-lines	identity/src/main/scala/services/identity/agreement/Agreement.scala	516
+file-lines	scrapers/src/main/scala/services/cinemas/common/ScraperParse.scala	577
+file-lines	scrapers/src/main/scala/services/cinemas/us/AmcVenueMap.scala	545
+file-lines	worker/src/main/scala/services/enrichment/FilmwebClient.scala	503
+file-lines	worker/src/main/scala/services/enrichment/ImdbClient.scala	539
+file-lines	worker/src/main/scala/services/sharecards/PosterPipeline.scala	506

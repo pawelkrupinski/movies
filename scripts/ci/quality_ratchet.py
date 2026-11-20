@@ -7,6 +7,7 @@
 #   complexity   cognitive / cyclomatic / inner-defs of a method    test/resources/complexity-baseline.tsv   Complexity:
 #   length       method-lines of a method, file-lines of a source   test/resources/length-baseline.tsv       Length:
 #   duplication  copies of the clone groups over a set of files     test/resources/duplication-baseline.tsv  Duplication:
+#                (and clone-tokens, a limit only: the shortest clone counted)
 #
 # A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments. The measure
 # writes a row for each key past its kind's limit. A key with a baseline row may not rise past it; a key without one
@@ -62,10 +63,12 @@ RATCHETS: Dict[str, Ratchet] = {r.name: r for r in (
 # commit carrying `Complexity: <why>` (CLAUDE.md, "Code quality ratchets").""",
             "Split the method (extract the branches, name the inner defs as methods), or record it: scripts/quality-report"
             " --update, committed with a `Complexity: <why>` trailer."),
-    Ratchet("duplication", "test/resources/duplication-baseline.tsv", "Duplication", ("copies",),
+    Ratchet("duplication", "test/resources/duplication-baseline.tsv", "Duplication", ("copies", "clone-tokens"),
             """# THE DUPLICATION BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
-# Every clone group in the production sources (*/src/main of a deployed module; PMD CPD, 100 tokens or more), frozen:
-#   limit   copies 0: a file set without a row holds no clone
+# Every clone group in the production sources (*/src/main of a deployed module; PMD CPD, `package`/`import` lines blanked),
+# frozen:
+#   limit   copies 0: a file set without a row holds no clone; clone-tokens: the shortest token run counted as a clone
+#           (raising it hides clones, so it is held like any limit)
 #   copies  <path>|<path>..., the files a clone group spans (sorted), and the copies of every group spanning exactly
 #           them: a new group adds a row or raises one, a group gaining a copy too; an edit moving a clone's lines
 #           leaves its row

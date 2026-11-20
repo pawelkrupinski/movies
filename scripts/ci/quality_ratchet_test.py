@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """quality_ratchet.py: a measured row past its baseline row fails, and so does a row-less key past its kind's limit (a
 NEW method over a limit) and a measure whose limit rose past the baseline's; a baseline grown in a range passes only
-when a commit changing it carries the ratchet's trailer (`Complexity: <why>`, `Length: <why>`), each ratchet
-judged on its own rows, baseline and trailer; a source moved keeps its rows only when git's rename detection followed it
+when a commit changing it carries the ratchet's trailer (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`), each ratchet
+judged on its own rows, baseline and trailer (a limit lowered, what is past it frozen, is no rise; a clone-tokens limit
+raised -- fewer clones counted -- is one); a source moved keeps its rows only when git's rename detection followed it
 and no value rose; falls pass and are said; `update` writes
 the baseline. QUALITY_RATCHET_UNDER_TEST names another copy of the tool (quality-ratchet-mutation-test.sh's mutants)."""
 
@@ -34,6 +35,7 @@ limit\tfile-lines\t800
 method-lines\ta/src/main/scala/A.scala:A.f\t70
 file-lines\ta/src/main/scala/A.scala\t900
 limit\tcopies\t0
+limit\tclone-tokens\t50
 copies\ta/src/main/scala/A.scala|a/src/main/scala/B.scala\t2
 """
 
@@ -310,6 +312,29 @@ class QualityRatchetTest(unittest.TestCase):
         grown = rows("limit\tcognitive\t25", drop=("limit\tcognitive",))
         head = self.commit({COMPLEXITY: grown}, "looser")
         self.assert_fails(grown, "limit cognitive raised 15 -> 25", rng=f"{self.base}..{head}")
+
+    def test_a_tightened_limit_freezing_what_is_past_it_needs_no_trailer(self):
+        # the limit lowered 15 -> 10 and every method between them frozen (scripts/quality-report --update): no rise
+        tightened = rows("limit\tcognitive\t10", "cognitive\ta/src/main/scala/C.scala:C.h\t13", drop=("limit\tcognitive",))
+        head = self.commit({COMPLEXITY: tightened}, "tighter")
+        self.assert_passes(tightened, rng=f"{self.base}..{head}")
+
+    def test_a_new_method_past_a_tightened_limit_fails_and_its_row_is_growth(self):
+        tightened = rows("limit\tcognitive\t10", drop=("limit\tcognitive",))
+        tighter = self.commit({COMPLEXITY: tightened}, "tighter")
+        grown = tightened + "cognitive\ta/src/main/scala/D.scala:D.k\t11\n"
+        self.assert_fails(grown, "cognitive a/src/main/scala/D.scala:D.k: 11, past the limit 10 (no baseline row)")
+        head = self.commit({COMPLEXITY: grown}, "a method under the old limit")
+        self.assert_fails(grown, "cognitive a/src/main/scala/D.scala:D.k raised <=10 -> 11", rng=f"{tighter}..{head}")
+
+    def test_a_measure_counting_only_longer_clones_fails(self):
+        self.assert_fails(rows("limit\tclone-tokens\t100", drop=("limit\tclone-tokens",)), "DUPLICATION GREW",
+                          "the measure's clone-tokens limit 100 is past the baseline's 50")
+
+    def test_a_raised_clone_token_limit_is_growth(self):
+        grown = rows("limit\tclone-tokens\t100", drop=("limit\tclone-tokens",))
+        head = self.commit({DUPLICATION: grown}, "count only longer clones")
+        self.assert_fails(grown, "limit clone-tokens raised 50 -> 100", rng=f"{self.base}..{head}")
 
     def test_a_grown_length_baseline_needs_the_length_trailer_not_the_complexity_one(self):
         grown = rows("file-lines\ta/src/main/scala/C.scala\t801")

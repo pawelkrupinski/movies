@@ -27,31 +27,34 @@ class QualityReportSpec extends AnyFlatSpec with Matchers {
 
   "the rows" should "hold the limits, and each production method past one; a test source is not measured" in {
     withRoot(
-      "worker/src/main/scala/a/Hairy.scala" -> s"package a\nobject Hairy {\n${nestedIfs("deep", 5)}  def flat(x: Int): Int = x\n}\n",
+      "worker/src/main/scala/a/Hairy.scala" ->
+        s"package a\nobject Hairy {\n${nestedIfs("deep", 5)}${nestedIfs("middling", 4)}${nestedIfs("shallow", 3)}  def flat(x: Int): Int = x\n}\n",
       "worker/src/test/scala/a/HairySpec.scala" -> s"package a\nobject HairySpec {\n${nestedIfs("deep", 5)}}\n",
       "quality/src/main/scala/a/Tool.scala" -> s"package a\nobject Tool {\n${nestedIfs("deep", 5)}}\n",
     ) { root =>
       val sources = QualityReport.productionSources(root)
       sources.map(_.path) shouldBe Seq("worker/src/main/scala/a/Hairy.scala")
       QualityReport.rows(sources, QualityReport.measure(sources)) shouldBe Seq(
-        "limit\tcognitive\t15", "limit\tcyclomatic\t10", "limit\tinner-defs\t2", "limit\tmethod-lines\t50",
-        "limit\tfile-lines\t800",
-        // five nested ifs: 1+2+3+4+5 for the ifs, one per else
+        "limit\tcognitive\t10", "limit\tcyclomatic\t10", "limit\tinner-defs\t2", "limit\tmethod-lines\t50",
+        "limit\tfile-lines\t500",
+        // five nested ifs: 1+2+3+4+5 for the ifs, one per else; four: 10 + 4, past 10 (within the old limit 15);
+        // three: 6 + 3, within it
         "cognitive\tworker/src/main/scala/a/Hairy.scala:Hairy.deep\t20",
+        "cognitive\tworker/src/main/scala/a/Hairy.scala:Hairy.middling\t14",
       )
     }
   }
 
-  "a method past 50 lines and a source past 800" should "each be a length row; a method of 50 lines, a source of 800, none" in {
+  "a method past 50 lines and a source past 500" should "each be a length row; a method of 50 lines, a source of 500, none" in {
     def longMethod(name: String, lines: Int) = s"  def $name: Int = {\n" + "    println(1)\n" * (lines - 3) + "    1\n  }\n"
-    val long = s"package a\nobject Long {\n${longMethod("long", 51)}${longMethod("fits", 50)}" + "  // pad\n" * 697 + "}\n"
-    val fits = s"package a\nobject Fits {\n" + "  // pad\n" * 797 + "}\n"
+    val long = s"package a\nobject Long {\n${longMethod("long", 51)}${longMethod("fits", 50)}" + "  // pad\n" * 397 + "}\n"
+    val fits = s"package a\nobject Fits {\n" + "  // pad\n" * 497 + "}\n"
     withRoot("web/src/main/scala/a/Long.scala" -> long, "web/src/main/scala/a/Fits.scala" -> fits) { root =>
       val sources = QualityReport.productionSources(root)
-      sources.map(_.text.linesIterator.size) shouldBe Seq(800, 801)
+      sources.map(_.text.linesIterator.size) shouldBe Seq(500, 501)
       QualityReport.rows(sources, QualityReport.measure(sources)).filterNot(_.startsWith("limit")) shouldBe Seq(
         "method-lines\tweb/src/main/scala/a/Long.scala:Long.long\t51",
-        "file-lines\tweb/src/main/scala/a/Long.scala\t801",
+        "file-lines\tweb/src/main/scala/a/Long.scala\t501",
       )
     }
   }

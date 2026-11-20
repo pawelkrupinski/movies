@@ -309,10 +309,12 @@ a split goes through the split rule.
 
 **Code quality ratchets**, the same model over the production Scala's text (the `quality` module, scalameta;
 `scripts/quality-report`, held by `scripts/ci/quality_ratchet.py` in the pre-push `sbt` check on a production Scala
-change): every method's cognitive complexity (Sonar's) ≤ 15, cyclomatic ≤ 10, inner defs ≤ 2
-(`test/resources/complexity-baseline.tsv`, trailer `Complexity: <why>`); method ≤ 50 lines, file ≤ 800
-(`length-baseline.tsv`, `Length: <why>`); no new clone group of 100+ tokens (PMD CPD) and no group gaining a copy
-(`duplication-baseline.tsv`, `Duplication: <why>`). Each baseline freezes what is over a limit today; a new method or file over
+change): every method's cognitive complexity (Sonar's) ≤ 10, cyclomatic ≤ 10, inner defs ≤ 2
+(`test/resources/complexity-baseline.tsv`, trailer `Complexity: <why>`); method ≤ 50 lines, file ≤ 500
+(`length-baseline.tsv`, `Length: <why>`); no new clone group of 50+ tokens (PMD CPD, `package`/`import` lines not
+counted) and no group gaining a copy (`duplication-baseline.tsv`, `Duplication: <why>`). Tightened 2026-11-20 (from
+cognitive 15, file 800, clones 100 tokens) once every row was within the old limits: what was past the new ones is
+frozen, the next work list. Each baseline freezes what is over a limit today; a new method or file over
 one, or a frozen row rising, fails until split or recorded (`scripts/quality-report --update`, committed with the
 trailer); a fall needs none. A moved source keeps its rows only when git sees the rename (`git diff -M`) and no value
 rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `quality-hotspots` release's
