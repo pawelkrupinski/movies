@@ -55,3 +55,33 @@ private[identity] final class TitleRuleChange(was: TitleNormalizer, now: TitleNo
     members.forall(l => was.firedRules(l.cinema, l.rawTitle, firedWas) == now.firedRules(l.cinema, l.rawTitle, firedNow))
   }
 }
+
+/** What the model reads of a title-rule change, in one place: the rules it records, how they moved since its store's
+ *  record, what a region read of them and what a family's members read as. */
+private[identity] object TitleRuleChange {
+
+  /** `normalizer`'s rules as the store records them ([[TitleRuleRecord]]). */
+  def record(normalizer: TitleNormalizer): String = TitleRuleRecord.of(normalizer.rules)
+
+  /** How the title rules moved since `stored` was recorded: `Some(None)` not at all; `Some(change)` they did, and the
+   *  record rebuilds the rules the stored families were decided under; `None` when there is no record this code can
+   *  read, under which no stored family can be told to stand. */
+  def since(stored: Option[String], normalizer: TitleNormalizer): Option[Option[TitleRuleChange]] = stored match {
+    case Some(record) if record == TitleRuleChange.record(normalizer) => Some(None)
+    case Some(record) => TitleRuleRecord.normalizer(record, normalizer).map(was => Some(new TitleRuleChange(was, normalizer)))
+    case None         => None
+  }
+
+  /** `resolve` over `forms`, with what it read of them ([[TitleFormInputs]]). */
+  def recorded[A](forms: TitleForms)(resolve: TitleForms => A): (A, TitleFormInputs) = {
+    val recording = new RecordingTitleForms(forms)
+    val result    = resolve(recording)
+    (result, recording.inputs)
+  }
+
+  /** A family's members as the model reads them ([[FamilyIndex.modelDigest]]), in no order: what a restore under other
+   *  title rules compares, since the archive builds every listing's fields by the rules ([[Listing.of]]). */
+  def membersDigest(members: Iterable[Listing]): Long =
+    services.identity.vocabulary.ContentHash.of(members.iterator.map(FamilyIndex.modelDigest).toSet)
+}
+
