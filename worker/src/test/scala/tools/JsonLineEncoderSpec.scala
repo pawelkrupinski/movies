@@ -95,4 +95,15 @@ class JsonLineEncoderSpec extends AnyFlatSpec with Matchers {
     }
     json.keys should not contain "runner_up"
   }
+
+  it should "write the line's own fields, then the context's, the MDC's and the pairs', leaving out logback's own context properties" in {
+    val json = encoded(build = Some("0e41a4812")) { context =>
+      context.putProperty("HOSTNAME", "worker-7f9c")
+      val e = event(context, "text", Level.WARN, new IllegalStateException("bus down"))
+      e.setMDCPropertyMap(java.util.Map.of("projection_id", "p1"))
+      e.addKeyValuePair(new KeyValuePair("kind", "lost"))
+      e
+    }
+    json.fields.map(_._1) shouldBe Seq("level", "logger", "thread", "message", "build", "projection_id", "kind", "stack_trace")
+  }
 }

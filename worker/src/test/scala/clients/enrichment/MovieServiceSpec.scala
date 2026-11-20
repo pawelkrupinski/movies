@@ -103,6 +103,29 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     svc.withFilmDetails(MovieRecord(), 311).flatMap(_.runtimeMinutes) shouldBe Some(229)
   }
 
+  // A re-resolve whose answer lacks a field keeps the slot's own -- but its LOCALIZED text (title, synopsis, countries,
+  // genres, poster) only when the slot was fetched in the language asked now: a slot in another language is the very
+  // text the re-resolve came to replace. Language-neutral fields carry over either way.
+  it should "carry the slot's localized text over an answer lacking it only when the slot is in the language asked now" in {
+    val fetch = tools.RoutingHttpFetch.getOnly(Map(
+      "/movie/311/external_ids"   -> """{"imdb_id":"tt0087843"}""",
+      "/movie/311/images"         -> """{"posters":[]}""",
+      "/movie/311?language=pl-PL" -> """{"id":311}""",
+      "/movie/311?language=en-US" -> """{"id":311}"""))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val svc = new MovieService(cache, new InProcessEventBus(),
+      new HttpTmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key"))), freshness = new services.freshness.InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned)
+    def slotIn(language: String) = SourceData(title = Some("Dawno temu w Ameryce"), originalTitle = Some("Once Upon a Time in America"),
+      synopsis = Some("Opis"), cast = Seq("Robert De Niro"), director = Seq("Sergio Leone"), runtimeMinutes = Some(229),
+      releaseYear = Some(1984), countries = Seq("USA"), genres = Seq("Dramat"), posterUrl = Some("https://img/p.jpg"),
+      ageRating = Some("16"), language = Some(language))
+    def resolvedOver(language: String) =
+      svc.withFilmDetails(MovieRecord(tmdbId = Some(311), data = Map[Source, SourceData](Tmdb -> slotIn(language))), 311).get.data(Tmdb)
+    resolvedOver("pl-PL").copy(englishTitle = None, titleSearches = Nil) shouldBe slotIn("pl-PL")
+    resolvedOver("en-US").copy(englishTitle = None, titleSearches = Nil) shouldBe
+      slotIn("pl-PL").copy(title = None, synopsis = None, countries = Nil, genres = Nil, posterUrl = None)
+  }
+
   private val pradyEnrichment = MovieRecord(
     imdbId        = Some("tt33612209"),
     imdbRating    = Some(6.7),

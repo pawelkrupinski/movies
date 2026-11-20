@@ -114,18 +114,20 @@ object FilmwebDiff {
       case Some(first) if first.toIntOption.exists(_ >= 0) => (first.toIntOption, args.drop(1))
       case _                                               => (Options().daysAhead, args)
     }
-    rest.foldLeft(Right(Options(daysAhead = days)): Either[String, Options]) { (read, arg) =>
-      read.flatMap { o =>
-        def path(taken: Boolean, set: Options => Options, kind: String) =
-          if (taken) Left(s"a second $kind report path: $arg") else Right(set(o))
-        val defaults = Options()
-        if (arg.endsWith(".txt"))       path(o.txt != defaults.txt, _.copy(txt = arg), "text")
-        else if (arg.endsWith(".csv"))  path(o.csv != defaults.csv, _.copy(csv = arg), "CSV")
-        else if (arg.endsWith(".json")) path(o.json != defaults.json, _.copy(json = arg), "JSON")
-        else if (knownSlugs(arg))       Right(o.copy(cities = o.cities + arg))
-        else Left(s"'$arg' is no report path (*.txt, *.csv, *.json), Polish city slug, or leading days count / `all`")
-      }
-    }
+    rest.foldLeft(Right(Options(daysAhead = days)): Either[String, Options])((read, arg) =>
+      read.flatMap(withArgument(_, arg, knownSlugs)))
+  }
+
+  /** `o` with one more argument read into it: a report path, by its extension and each kind at most once, or a city. */
+  private def withArgument(o: Options, arg: String, knownSlugs: Set[String]): Either[String, Options] = {
+    def path(taken: Boolean, set: Options => Options, kind: String) =
+      if (taken) Left(s"a second $kind report path: $arg") else Right(set(o))
+    val defaults = Options()
+    if (arg.endsWith(".txt"))       path(o.txt != defaults.txt, _.copy(txt = arg), "text")
+    else if (arg.endsWith(".csv"))  path(o.csv != defaults.csv, _.copy(csv = arg), "CSV")
+    else if (arg.endsWith(".json")) path(o.json != defaults.json, _.copy(json = arg), "JSON")
+    else if (knownSlugs(arg))       Right(o.copy(cities = o.cities + arg))
+    else Left(s"'$arg' is no report path (*.txt, *.csv, *.json), Polish city slug, or leading days count / `all`")
   }
 
   /** The text report as it is printed: every line echoed to stdout and kept for the `*.txt` file. */
@@ -221,7 +223,7 @@ object FilmwebDiff {
 
     var consecutiveFwFailures = 0
     ourScrapers.zipWithIndex.map { case (scraper, i) =>
-      if (i > 0) Thread.sleep(if (consecutiveFwFailures >= 3) 8000L else 1500L)
+      Thread.sleep(filmwebPauseMillis(i, consecutiveFwFailures))
       val cinema = scraper.cinema
       emit(s"… ${cinema.displayName}")
       val fwTry = Try(new FilmwebShowtimesClient(run.http, fwIdByCinema(cinema), cinema).fetch())
@@ -230,6 +232,11 @@ object FilmwebDiff {
       diffFor(cinema, r.filmwebId, r.source, ourResults(cinema), fwTry, run.now, run.windowEnd, run.titles)
     }
   }
+
+  /** The pause before the `index`th Filmweb fetch: none before the first, and a longer one once 3 in a row failed —
+   *  Filmweb soft-blocks a caller it finds aggressive by holding its sockets open. */
+  private[diagnostics] def filmwebPauseMillis(index: Int, consecutiveFailures: Int): Long =
+    if (index == 0) 0L else if (consecutiveFailures >= 3) 8000L else 1500L
 
   private def emitSummaryAndDetail(run: Run, diffs: Seq[CinemaDiff]): Unit = {
     import run.emit
@@ -413,29 +420,27 @@ object FilmwebDiff {
 
   /** Per-film breakdown: matched films with their time deltas, then films only
    *  on one side. */
-  private def perFilmDetail(
+  private[diagnostics] def perFilmDetail(
     oursByFilm: Map[String, Seq[LocalDateTime]],
     fwByFilm:   Map[String, Seq[LocalDateTime]]
   ): String = {
-    val sb = new StringBuilder
-    val matched = (oursByFilm.keySet & fwByFilm.keySet).toSeq.sorted
+    val matched       = (oursByFilm.keySet & fwByFilm.keySet).toSeq.sorted
     val oursOnlyFilms = (oursByFilm.keySet -- fwByFilm.keySet).toSeq.sorted
     val fwOnlyFilms   = (fwByFilm.keySet -- oursByFilm.keySet).toSeq.sorted
+    val lines = matched.flatMap(title => matchedFilmLines(title, oursByFilm(title), fwByFilm(title))) ++
+      oursOnlyFilms.map(t => s"  - [ours only] $t  (${oursByFilm(t).size} slots)") ++
+      fwOnlyFilms.map(t => s"  + [fw only]   $t  (${fwByFilm(t).size} slots)")
+    if (lines.isEmpty) "  (no screenings in window on either side)" else lines.mkString("\n")
+  }
 
-    matched.foreach { title =>
-      val o = oursByFilm(title); val f = fwByFilm(title)
-      val oOnly = multisetDiff(o, f); val fOnly = multisetDiff(f, o)
-      if (oOnly.isEmpty && fOnly.isEmpty)
-        sb.append(s"  = $title  (${o.size} slots, identical)\n")
-      else {
-        sb.append(s"  ~ $title  ours=${o.size} fw=${f.size}\n")
-        if (oOnly.nonEmpty) sb.append(s"      ours-only: ${fmtTimes(oOnly)}\n")
-        if (fOnly.nonEmpty) sb.append(s"      fw-only:   ${fmtTimes(fOnly)}\n")
-      }
-    }
-    oursOnlyFilms.foreach(t => sb.append(s"  - [ours only] $t  (${oursByFilm(t).size} slots)\n"))
-    fwOnlyFilms.foreach(t => sb.append(s"  + [fw only]   $t  (${fwByFilm(t).size} slots)\n"))
-    if (sb.isEmpty) "  (no screenings in window on either side)" else sb.toString.stripLineEnd
+  /** A film both sides list: `=` when their slots agree, else `~` and each side's extra slots. */
+  private def matchedFilmLines(title: String, ours: Seq[LocalDateTime], fw: Seq[LocalDateTime]): Seq[String] = {
+    val oursOnly = multisetDiff(ours, fw)
+    val fwOnly   = multisetDiff(fw, ours)
+    if (oursOnly.isEmpty && fwOnly.isEmpty) Seq(s"  = $title  (${ours.size} slots, identical)")
+    else s"  ~ $title  ours=${ours.size} fw=${fw.size}" +:
+      (Option.when(oursOnly.nonEmpty)(s"      ours-only: ${fmtTimes(oursOnly)}") ++
+        Option.when(fwOnly.nonEmpty)(s"      fw-only:   ${fmtTimes(fwOnly)}")).toSeq
   }
 
   private def fmtTimes(times: Seq[LocalDateTime]): String =

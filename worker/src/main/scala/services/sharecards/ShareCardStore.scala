@@ -89,18 +89,21 @@ class ShareCardStore(val root: Path, val room: ShareCardRoom = ShareCardRoom.Unl
   /** When the film whose card is at `path` was first published, if the card records it. */
   def published(path: Path): Option[Instant] = stamp(path).get("p").flatMap(_.toLongOption).map(Instant.ofEpochSecond)
 
+  /** The stamp [[stamped]] wrote into the file at `path`, as its `key=value` fields; empty for a file with none. An
+   *  absent or unreadable card reads as unstamped, which re-renders it — the costly-but-safe direction. */
   private def stamp(path: Path): Map[String, String] =
-    Try(Using.resource(Files.newInputStream(path))(_.readNBytes(StampReadBytes))).toOption.fold(Map.empty[String, String]) { head =>
-      if (head.length < 6 || (head(2) & 0xff) != 0xff || (head(3) & 0xff) != 0xfe) Map.empty
-      else {
-        val length = ((head(4) & 0xff) << 8) | (head(5) & 0xff)
-        val text   = new String(head.slice(6, 4 + length), StandardCharsets.US_ASCII)
-        if (!text.startsWith(StampPrefix)) Map.empty
-        else text.stripPrefix(StampPrefix).split(';').toSeq.flatMap(_.split("=", 2) match {
-          case Array(key, value) => Some(key -> value)
-          case _                 => None
-        }).toMap
-      }
+    Try(Using.resource(Files.newInputStream(path))(_.readNBytes(StampReadBytes))).toOption
+      .flatMap(leadingComment).filter(_.startsWith(StampPrefix))
+      .fold(Map.empty[String, String])(_.stripPrefix(StampPrefix).split(';').toSeq.flatMap(_.split("=", 2) match {
+        case Array(key, value) => Some(key -> value)
+        case _                 => None
+      }).toMap)
+
+  /** The text of the comment segment a JPEG's `head` opens with, right after its start-of-image, if it has one. */
+  private def leadingComment(head: Array[Byte]): Option[String] =
+    Option.when(head.length >= 6 && (head(2) & 0xff) == 0xff && (head(3) & 0xff) == 0xfe) {
+      val length = ((head(4) & 0xff) << 8) | (head(5) & 0xff)
+      new String(head.slice(6, 4 + length), StandardCharsets.US_ASCII)
     }
 
   /** Every file in the directory, its poster cache and its bases, with the facts the janitor decides

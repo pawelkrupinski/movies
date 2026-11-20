@@ -53,31 +53,35 @@ class ChunkScrapePlanner(
    *  active, or when the plan was published directly as empty/failed). */
   def plan(cinema: String): Int = chunkScrapers.get(cinema) match {
     case None => 0
+    // Bail BEFORE planChunks() when a run is already active. The store's `startRun` is
+    // the real mutex, but reaching it costs a nav fetch of the venue's programme
+    // page purely to discover keys we are about to throw away — and a duplicate
+    // ScrapeCinema is the COMMON case, not a rare race, because a chunked venue
+    // stays due for its whole run (see [[ScrapeInFlight]]). Prod 2026-07-29: ~90-110
+    // such no-ops an hour on the UK worker, each paying that fetch.
+    case Some(_) if store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter.value)) => 0
     case Some(scraper) =>
-      // Bail BEFORE planChunks() when a run is already active. `startRun` below is
-      // the real mutex, but reaching it costs a nav fetch of the venue's programme
-      // page purely to discover keys we are about to throw away — and a duplicate
-      // ScrapeCinema is the COMMON case, not a rare race, because a chunked venue
-      // stays due for its whole run (see [[ScrapeInFlight]]). Prod 2026-07-29: ~90-110
-      // such no-ops an hour on the UK worker, each paying that fetch.
-      if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter.value))) return 0
-
-      val (plan, planReads) =
-        try ListingReads.during(scraper.planSchedule())
-        catch { case e: Exception => failedPlan.publish(scraper, e); return 0 }
-      val keys = plan.keys
-
-      if (keys.isEmpty) { emptyPlan.publishEmpty(scraper, plan, planReads.complete); return 0 }
-
-      val now = clock.instant()
-      store.startRun(cinema, keys, now, staleAfter.value) match {
-        case None => 0 // a run is already active for this cinema
-        case Some(runId) =>
-          if (!planReads.complete) store.markPlanIncomplete(cinema, runId, now)
-          val n = fanOut.enqueue(scraper, cinema, runId, keys, now)
-          runStarted(ChunkRun(cinema, runId, keys, now))
-          n
+      val planned =
+        try Right(ListingReads.during(scraper.planSchedule()))
+        catch { case e: Exception => Left(e) }
+      planned match {
+        case Left(e)                                   => failedPlan.publish(scraper, e); 0
+        case Right((plan, reads)) if plan.keys.isEmpty => emptyPlan.publishEmpty(scraper, plan, reads.complete); 0
+        case Right((plan, reads))                      => startRun(scraper, cinema, plan.keys, planComplete = reads.complete)
       }
+  }
+
+  /** Start a run over the plan's `keys` and enqueue a chunk task for each — 0 when a run is already active. */
+  private def startRun(scraper: ChunkedCinemaScraper, cinema: String, keys: Seq[String], planComplete: Boolean): Int = {
+    val now = clock.instant()
+    store.startRun(cinema, keys, now, staleAfter.value) match {
+      case None => 0
+      case Some(runId) =>
+        if (!planComplete) store.markPlanIncomplete(cinema, runId, now)
+        val n = fanOut.enqueue(scraper, cinema, runId, keys, now)
+        runStarted(ChunkRun(cinema, runId, keys, now))
+        n
+    }
   }
 }
 

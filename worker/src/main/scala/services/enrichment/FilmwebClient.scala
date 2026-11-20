@@ -103,36 +103,28 @@ class FilmwebClient(http: HttpFetch) {
       // `/preview` carries both directors AND genres; we fold both onto the
       // candidate in one shot so director-verification + genre extraction
       // share the same round-trip.
-      val candidates =
-        if (directors.isEmpty) infoCandidates
-        else infoCandidates.map { c =>
-          preview(c.id) match {
-            case Some(p) => c.copy(directors = p.directors, genres = p.genres, plot = p.plot)
-            case None    => c
-          }
-        }
-      pickBest(candidates, query, year, directors, referenceSynopsis, aliases).map { c =>
-        val url = models.FilmwebPages.url(c.id, c.kind, c.title, c.year)
-        // Fall back to a winner-only /preview when director verification was
-        // skipped (caller didn't supply directors) so the Filmweb slot carries
-        // its full content (directors + genres + plot) — single extra round-trip,
-        // only on the winner. Skipped when `c` already carries that data from the
-        // director-verification path.
-        val winnerPreview =
-          if (c.directors.nonEmpty || c.genres.nonEmpty || c.plot.isDefined) None
-          else preview(c.id)
+      val candidates = if (directors.isEmpty) infoCandidates else infoCandidates.map(withPreview)
+      pickBest(candidates, query, year, directors, referenceSynopsis, aliases).map { picked =>
+        // A winner-only /preview when director verification was skipped (caller
+        // didn't supply directors), so the Filmweb slot carries its full content
+        // (directors + genres + plot) — one extra round-trip, only on the winner.
+        val c = if (picked.directors.nonEmpty || picked.genres.nonEmpty || picked.plot.isDefined) picked else withPreview(picked)
         FilmwebInfo(
-          url           = url,
+          url           = models.FilmwebPages.url(c.id, c.kind, c.title, c.year),
           rating        = rating(c.id),
-          genres        = if (c.genres.nonEmpty) c.genres else winnerPreview.map(_.genres).getOrElse(Seq.empty),
+          genres        = c.genres,
           title         = Some(c.title),
           originalTitle = c.originalTitle,
           year          = c.year,
-          directors     = (if (c.directors.nonEmpty) c.directors else winnerPreview.map(_.directors).getOrElse(Set.empty)).toSeq.sorted,
-          plot          = c.plot.orElse(winnerPreview.flatMap(_.plot))
+          directors     = c.directors.toSeq.sorted,
+          plot          = c.plot
         )
       }
   }
+
+  /** `c` with the directors, genres and plot its `/preview` carries, when it answers. */
+  private def withPreview(c: Candidate): Candidate =
+    preview(c.id).fold(c)(p => c.copy(directors = p.directors, genres = p.genres, plot = p.plot))
 
   /** Returns search hits (id + kind) in the order Filmweb ranks them.
    *  Both `film` and `serial` types are kept — some content cinemas screen
@@ -313,22 +305,21 @@ class FilmwebClient(http: HttpFetch) {
     // (legacy behaviour) stands.
     sorted.headOption.flatMap { top =>
       val tied = sorted.takeWhile(c => sortKey(c) == sortKey(top))
-      if (tied.lengthCompare(1) > 0)
-        // Multiple candidates tie at the best (film-first, year-distance) key. A
-        // confident synopsis match breaks the tie; otherwise, when we ALSO have no
-        // year and no director to disambiguate, the pick is a coin-flip among
-        // same-title UNRELATED films (a 2012, a 2021 and Hosoda's 2025 are all exact
-        // "Scarlet") — DROP rather than guess: a wrong rating is worse than none, and
-        // the row heals once a year/director arrives (from the cinema or a TMDB
-        // resolution). With a year OR director the tie is already narrowed, so the
-        // stable-sort head stands (legacy behaviour).
-        referenceSynopsis
-          .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.plot.getOrElse(""))))
-          .map(tied)
-          .orElse(if (year.isEmpty && directors.isEmpty) None else Some(top))
+      if (tied.lengthCompare(1) > 0) brokenTie(tied, referenceSynopsis, narrowed = year.nonEmpty || directors.nonEmpty)
       else Some(top)
     }
   }
+
+  /** Several candidates tie at the best (film-first, year-distance) key. A confident synopsis match breaks the tie;
+   *  otherwise, when the tie is not `narrowed` by a year or a director either, the pick is a coin-flip among
+   *  same-title UNRELATED films (a 2012, a 2021 and Hosoda's 2025 are all exact "Scarlet") — DROP rather than guess:
+   *  a wrong rating is worse than none, and the row heals once a year/director arrives (from the cinema or a TMDB
+   *  resolution). A narrowed tie keeps its stable-sort head (legacy behaviour). */
+  private def brokenTie(tied: Seq[Candidate], referenceSynopsis: Option[String], narrowed: Boolean): Option[Candidate] =
+    referenceSynopsis
+      .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.plot.getOrElse(""))))
+      .map(tied)
+      .orElse(Option.when(narrowed)(tied.head))
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
     val normalizedQuery = TitleMatch.fold(query)

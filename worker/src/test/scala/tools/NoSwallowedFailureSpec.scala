@@ -115,9 +115,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/sharecards/ShareCardBackfill.scala", "enqueueWithinBacklog",
       "Try(queue.waitingCount(TaskType.RenderShareCard)).toOption.fold(0) { backlog =>") ->
       "0 is the number of renders ENQUEUED, not the backlog: an unreadable backlog admits nothing until the next finished render or prune pass (eebd3eef9's rule)",
-    ("worker/src/main/scala/services/sharecards/ShareCardStore.scala", "stamp",
-      "Try(Using.resource(Files.newInputStream(path))(_.readNBytes(StampReadBytes))).toOption.fold(Map.empty[String, String]) { head =>") ->
-      "an absent or unreadable card reads as unstamped, which re-renders it — the costly-but-safe direction",
     ("common/src/main/scala/services/UptimeSync.scala", "poll",
       "Try(document.get(\"durationSumMs\").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",

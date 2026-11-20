@@ -72,12 +72,6 @@ cognitive	web/src/main/scala/controllers/ShowingsMarkup.scala:ShowingsMarkup.wri
 cognitive	web/src/main/scala/controllers/UptimeRows.scala:UptimeBarPayload.writeData	13
 cognitive	web/src/main/scala/modules/FrontDoorRedirectFilter.scala:FrontDoorRedirectFilter.answer	15
 cognitive	web/src/main/scala/services/review/LabelsExport.scala:LabelsExport.Summary.render	15
-cognitive	worker/src/main/scala/diagnostics/FilmwebDiff.scala:FilmwebDiff.compared	11
-cognitive	worker/src/main/scala/diagnostics/FilmwebDiff.scala:FilmwebDiff.parse	13
-cognitive	worker/src/main/scala/diagnostics/FilmwebDiff.scala:FilmwebDiff.perFilmDetail	12
-cognitive	worker/src/main/scala/services/corpus/MovieService.scala:MovieService.detailsSlot	13
-cognitive	worker/src/main/scala/services/enrichment/FilmwebClient.scala:FilmwebClient.lookupWithQuery	15
-cognitive	worker/src/main/scala/services/enrichment/FilmwebClient.scala:FilmwebClient.pickBest	12
 cognitive	worker/src/main/scala/services/identityadapters/AgreementAsker.scala:AgreementAsker.asking	13
 cognitive	worker/src/main/scala/services/identityadapters/LookupFill.scala:LookupFillLiveFetch.around	11
 cognitive	worker/src/main/scala/services/identityadapters/ModelInputGate.scala:ModelInputGate.promote	15
@@ -87,8 +81,3 @@ cognitive	worker/src/main/scala/services/identityadapters/TmdbStore.scala:TmdbSt
 cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	11
 cognitive	worker/src/main/scala/services/movies/CorpusHydrate.scala:CorpusHydrate.rehydrateFrom	11
 cognitive	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanRows	12
-cognitive	worker/src/main/scala/services/sharecards/ShareCardStore.scala:ShareCardStore.stamp	12
-cognitive	worker/src/main/scala/services/tasks/ChunkScrapePlanner.scala:ChunkScrapePlanner.plan	12
-cognitive	worker/src/main/scala/tools/JsonLineEncoder.scala:JsonLineEncoder.encode	14
-cognitive	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.drawBadges	14
-cognitive	worker/src/main/scala/tools/OgCardRenderer.scala:OgCardRenderer.wrapAll	11

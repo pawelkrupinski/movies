@@ -70,8 +70,6 @@ copies	scrapers/src/main/scala/services/cinemas/uk/OdeonClient.scala|scrapers/sr
 copies	web/src/main/scala/controllers/MetricsController.scala	2
 copies	web/src/main/scala/modules/webwiring/Wiring.scala|worker/src/main/scala/modules/wiring/WorkerWiring.scala	2
 copies	web/src/main/scala/services/review/MemberClaims.scala	2
-copies	worker/src/main/scala/diagnostics/FilmwebDiffJson.scala	2
-copies	worker/src/main/scala/services/enrichment/ImdbClient.scala	6
 copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/src/main/scala/services/enrichment/RottenTomatoesRatings.scala	2
 copies	worker/src/main/scala/services/identityadapters/CachedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
 copies	worker/src/main/scala/services/identityadapters/CoalescedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2

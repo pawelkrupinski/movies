@@ -260,13 +260,7 @@ class ImdbClient(http: HttpFetch) {
    *  Requires director data on the IMDb side; skips candidates with empty director
    *  lists so an undocumented entry doesn't accidentally match. */
   private def disambiguateByDirector(js: JsValue, directors: Set[String]): Option[String] = {
-    val candidates = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap { entry =>
-        for {
-          id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
-          qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-        } yield id
-      }.distinct.take(5)
+    val candidates = suggested(movieSuggestions(js))
     if (candidates.isEmpty) return None
     val matching = candidates.filter { id =>
       details(id) match {
@@ -469,7 +463,7 @@ object ImdbClient {
   /** Real film candidates: tt-id, qid "movie". Document order — IMDb returns the best query match
    *  first, popularity padding after. */
   private[services] def movieSuggestions(js: JsValue): Seq[Suggestion] =
-    (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    suggestionEntries(js)
       .flatMap { entry =>
         for {
           id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
@@ -508,7 +502,7 @@ object ImdbClient {
    *  (1967)": the profession IMDb knows them for first, then their best-known title), in IMDb's order. A query naming a
    *  director suggests them: DE Caligari's "ES (ULRICH SCHAMONI)" suggests Ulrich Schamoni ahead of any film. */
   private[services] def directorSuggestions(js: JsValue): Seq[String] =
-    (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap { entry =>
+    suggestionEntries(js).flatMap { entry =>
       for {
         id   <- (entry \ "id").asOpt[String] if id.startsWith("nm")
         role <- (entry \ "s").asOpt[String] if DirectingRole.matches(role)
@@ -516,6 +510,9 @@ object ImdbClient {
       } yield name
     }.distinct
   private val DirectingRole = """(?s)Director\b.*""".r
+
+  /** A suggestion answer's entries — movies, people and the rest — in IMDb's order. */
+  private def suggestionEntries(js: JsValue): Seq[JsValue] = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 
   /** How many of IMDb's movie suggestions the identity resolver follows — the old pipeline's director rung read as many. */
   val SuggestedMovies = 5

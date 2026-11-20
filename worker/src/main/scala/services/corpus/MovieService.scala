@@ -181,41 +181,41 @@ class MovieService(
     // Whether the slot we're merging onto was fetched in the language we're
     // fetching in NOW. When it wasn't — the stale-language re-resolve
     // the since-deleted `UnresolvedTmdbReaper` existed to drive — its LOCALIZED text (title,
-    // synopsis, genres, poster) is exactly the wrong-language content we came
-    // to replace, so it must not survive as an `.orElse` fallback. Letting it
+    // synopsis, countries, genres, poster) is exactly the wrong-language content we came
+    // to replace, so it is not `carried` as a fallback. Letting it
     // through while stamping the slot with the new language would seal the row
     // in: it reads as correctly-localised, and the reaper never looks again.
     // Language-neutral fields (runtime, year, cast, director) carry over as before.
-    val existingMatchesLanguage = existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag
-    def carriedLocalized[A](existing: Option[A]): Option[A] =
-      if (existingMatchesLanguage) existing else None
+    val carried =
+      if (existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag) existingTmdbSlot
+      else existingTmdbSlot.copy(title = None, synopsis = None, countries = Nil, genres = Nil, posterUrl = None)
     SourceData(
-      title          = d.title.orElse(carriedLocalized(existingTmdbSlot.title)),
-      originalTitle  = d.originalTitle.orElse(existingTmdbSlot.originalTitle),
-      synopsis       = d.synopsis.orElse(carriedLocalized(existingTmdbSlot.synopsis)),
-      cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
-      director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
-      runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-      releaseYear    = d.releaseYear.orElse(existingTmdbSlot.releaseYear),
+      title          = d.title.orElse(carried.title),
+      originalTitle  = d.originalTitle.orElse(carried.originalTitle),
+      synopsis       = d.synopsis.orElse(carried.synopsis),
+      cast           = nonEmptyOr(d.cast, carried.cast),
+      director       = nonEmptyOr(d.director, carried.director),
+      runtimeMinutes = d.runtimeMinutes.orElse(carried.runtimeMinutes),
+      releaseYear    = d.releaseYear.orElse(carried.releaseYear),
       // Canonicalise TMDB's country names in the SAME language TMDB returned
       // them (the client's deployment language): Poland folds "United States
       // of America" → "USA" to match the strings cinemas write; a non-Polish
       // deployment keeps TMDB's already-localised name ("United Kingdom") so
       // it isn't mislabelled with a Polish one.
-      countries      = if (d.countries.nonEmpty) SlotFields.countries(d.countries, tmdb.language)
-                       else if (existingMatchesLanguage) existingTmdbSlot.countries else Seq.empty,
-      genres         = if (d.genres.nonEmpty) d.genres
-                       else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
-      posterUrl      = d.posterUrl.orElse(carriedLocalized(existingTmdbSlot.posterUrl)),
+      countries      = if (d.countries.nonEmpty) SlotFields.countries(d.countries, tmdb.language) else carried.countries,
+      genres         = nonEmptyOr(d.genres, carried.genres),
+      posterUrl      = d.posterUrl.orElse(carried.posterUrl),
       // Per-country age rating (TMDB's certification for the deployment country) —
       // the fallback beneath any cinema-scraped rating (MovieRecord.ageRating is
       // cinema-first). Carried forward if a re-resolve returns none.
-      ageRating      = d.ageRating.orElse(existingTmdbSlot.ageRating),
+      ageRating      = d.ageRating.orElse(carried.ageRating),
       // Stamp the language these fields were fetched in, so a slot frozen by a
       // pre-locale-fix resolve is detectable rather than silently Polish forever.
       language       = Some(tmdb.language.toLanguageTag)
     )
   }
+
+  private def nonEmptyOr[A](fetched: Seq[A], carried: Seq[A]): Seq[A] = if (fetched.nonEmpty) fetched else carried
 
   /** `PinnedGateMeasures.titleSearch` (the live gate's frozen measurement: a resolver change in
    *  shadow never moves a stored row) for every distinct listing title of `row` the same film's slot

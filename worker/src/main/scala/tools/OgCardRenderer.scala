@@ -2,7 +2,7 @@ package tools
 
 import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
-import java.awt.{Color, Font, GradientPaint, Graphics2D, RenderingHints}
+import java.awt.{Color, Font, FontMetrics, GradientPaint, Graphics2D, RenderingHints}
 import java.io.ByteArrayOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
 
@@ -390,42 +390,50 @@ object OgCardRenderer {
    *  pills: the city card draws them at the site's 25px, five sixths of the film card's. */
   private[tools] def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, paint: Boolean = true,
                                 scale: Float = 1f): Int = {
-    val labelFont = bold.deriveFont(30f * scale)
-    val valueFont = regular.deriveFont(30f * scale)
-    def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
-    def padX(s: Seg)     = math.round(s.padX * scale)
-    val padY  = math.round(11 * scale)
-    val gap   = math.round(14 * scale)
-    val arcD  = 16f * scale
-    // Uniform height across every badge, from the (taller) bold metrics.
-    val refFm = g.getFontMetrics(labelFont)
-    val height      = refFm.getAscent + refFm.getDescent + padY * 2
+    val pill   = new PillMetrics(g, scale)
     var xPosition = x0
     var yPosition = top
     for (b <- badges) {
-      val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
-      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + padX(s) * 2 }
-      val width     = segW.sum
-      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + 12 }
-      if (paint) {
-      val outer = new RoundRectangle2D.Float(xPosition.toFloat, yPosition.toFloat, width.toFloat, height.toFloat, arcD, arcD)
-      val saved = g.getClip
-      g.setClip(outer) // rounds the outer corners; the per-segment fills keep a square seam
-      var sx = xPosition
-      for (((s, fm), sw) <- b.segs.zip(fms).zip(segW)) {
-        g.setColor(s.bg)
-        g.fillRect(sx, yPosition, sw, height)
-        g.setColor(s.fg)
-        g.setFont(fontFor(s))
-        val ty = yPosition + (height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
-        g.drawString(s.text, sx + padX(s), ty)
-        sx += sw
-      }
-      g.setClip(saved)
-      }
-      xPosition += width + gap
+      val segmentWidths = b.segs.map(pill.width)
+      val width         = segmentWidths.sum
+      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += pill.height + 12 }
+      if (paint) paintBadge(g, pill, b, segmentWidths, xPosition, yPosition)
+      xPosition += width + pill.gap
     }
-    yPosition + height
+    yPosition + pill.height
+  }
+
+  /** A rating pill's fonts and spacing at `scale`, measured on `g`; every pill is as tall as the bold metrics. */
+  private final class PillMetrics(g: Graphics2D, scale: Float) {
+    private val labelFont = bold.deriveFont(30f * scale)
+    private val valueFont = regular.deriveFont(30f * scale)
+    def font(s: Seg): Font            = if (s.bold) labelFont else valueFont
+    def metrics(s: Seg): FontMetrics  = g.getFontMetrics(font(s))
+    def padX(s: Seg): Int             = math.round(s.padX * scale)
+    def width(s: Seg): Int            = metrics(s).stringWidth(s.text) + padX(s) * 2
+    val gap: Int                      = math.round(14 * scale)
+    val arc: Float                    = 16f * scale
+    val height: Int = {
+      val reference = g.getFontMetrics(labelFont)
+      reference.getAscent + reference.getDescent + math.round(11 * scale) * 2
+    }
+  }
+
+  /** One badge at (x, y), its segments filled side by side while clipped to its rounded outer rect. */
+  private def paintBadge(g: Graphics2D, pill: PillMetrics, badge: Badge, segmentWidths: Seq[Int], x: Int, y: Int): Unit = {
+    val saved = g.getClip
+    g.setClip(new RoundRectangle2D.Float(x.toFloat, y.toFloat, segmentWidths.sum.toFloat, pill.height.toFloat, pill.arc, pill.arc))
+    var segmentX = x
+    for ((s, segmentWidth) <- badge.segs.zip(segmentWidths)) {
+      val fm = pill.metrics(s)
+      g.setColor(s.bg)
+      g.fillRect(segmentX, y, segmentWidth, pill.height)
+      g.setColor(s.fg)
+      g.setFont(pill.font(s))
+      g.drawString(s.text, segmentX + pill.padX(s), y + (pill.height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent)
+      segmentX += segmentWidth
+    }
+    g.setClip(saved)
   }
 
   /** Greedy word-wrap to `maxLines`; if more lines remain, the last kept line
@@ -436,18 +444,18 @@ object OgCardRenderer {
     else all.take(maxLines - 1) :+ ellipsize(g, all.drop(maxLines - 1).mkString(" "), maxW)
   }
 
+  /** Greedy word-wrap: each word joins the line before it while that still fits `maxW`, else starts a line (a word
+   *  wider than `maxW` gets a line of its own). */
   private def wrapAll(g: Graphics2D, text: String, maxW: Int): Seq[String] = {
     val fm    = g.getFontMetrics
-    val words = text.trim.split("\\s+").filter(_.nonEmpty)
-    val lines = scala.collection.mutable.ArrayBuffer.empty[String]
-    var cur   = ""
-    for (w <- words) {
-      val cand = if (cur.isEmpty) w else s"$cur $w"
-      if (cur.isEmpty || fm.stringWidth(cand) <= maxW) cur = cand
-      else { lines += cur; cur = w }
+    val words = text.trim.split("\\s+").filter(_.nonEmpty).toSeq
+    val lines = words.foldLeft(Vector.empty[String]) { (lines, word) =>
+      lines.lastOption.map(last => s"$last $word").filter(fm.stringWidth(_) <= maxW) match {
+        case Some(longer) => lines.init :+ longer
+        case None         => lines :+ word
+      }
     }
-    if (cur.nonEmpty) lines += cur
-    if (lines.isEmpty) Seq("") else lines.toSeq
+    if (lines.isEmpty) Seq("") else lines
   }
 
   /** Trim `s` with a trailing ellipsis until it fits `maxW`. */

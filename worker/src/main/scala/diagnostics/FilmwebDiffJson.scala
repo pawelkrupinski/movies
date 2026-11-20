@@ -118,21 +118,19 @@ object FilmwebDiffJson {
   // Multiset ops over LocalDateTime: count duplicates correctly. Shared with
   // FilmwebDiff's text/CSV path so all three outputs agree — a duplicate slot on
   // one side is a diff.
-  private[diagnostics] def multisetIntersect(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] = {
-    val bCounts = scala.collection.mutable.HashMap[LocalDateTime, Int]()
-    b.foreach(x => bCounts.update(x, bCounts.getOrElse(x, 0) + 1))
-    a.flatMap { x =>
-      val c = bCounts.getOrElse(x, 0)
-      if (c > 0) { bCounts.update(x, c - 1); Some(x) } else None
-    }
-  }
+  private[diagnostics] def multisetIntersect(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] =
+    matchedAgainst(a, b)._1
 
-  private[diagnostics] def multisetDiff(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] = {
-    val bCounts = scala.collection.mutable.HashMap[LocalDateTime, Int]()
-    b.foreach(x => bCounts.update(x, bCounts.getOrElse(x, 0) + 1))
-    a.flatMap { x =>
-      val c = bCounts.getOrElse(x, 0)
-      if (c > 0) { bCounts.update(x, c - 1); None } else Some(x)
+  private[diagnostics] def multisetDiff(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] =
+    matchedAgainst(a, b)._2
+
+  /** `a` split, in its order, into the slots `b` has a copy of left over (each copy matching once) and the rest. */
+  private def matchedAgainst(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): (Seq[LocalDateTime], Seq[LocalDateTime]) = {
+    val left = scala.collection.mutable.HashMap.from(b.groupMapReduce(identity)(_ => 1)(_ + _))
+    a.partition { x =>
+      val copies = left.getOrElse(x, 0)
+      if (copies > 0) left.update(x, copies - 1)
+      copies > 0
     }
   }
 }

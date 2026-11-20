@@ -2,8 +2,10 @@ package tools
 
 import ch.qos.logback.classic.spi.{ILoggingEvent, ThrowableProxyUtil}
 import ch.qos.logback.core.encoder.EncoderBase
+import org.slf4j.event.KeyValuePair
 
 import java.nio.charset.StandardCharsets
+import scala.jdk.CollectionConverters.*
 
 /**
  * The worker's stdout format: ONE JSON object per log line — `level`, `logger`, `thread`, `message`, then the logger
@@ -34,12 +36,7 @@ final class JsonLineEncoder extends EncoderBase[ILoggingEvent] {
     field(line, "thread", event.getThreadName)
     val stackTrace = Option(event.getThrowableProxy).map(ThrowableProxyUtil.asString)
     field(line, "message", message(Option(event.getFormattedMessage).filterNot(_.isBlank), stackTrace))
-    val context = Option(event.getLoggerContextVO).map(_.getPropertyMap).orNull
-    if (context != null) context.forEach((k, v) => if (!Reserved(k) && !ContextLeftOut(k)) field(line, k, v))
-    val mdc = event.getMDCPropertyMap
-    if (mdc != null) mdc.forEach((k, v) => if (!Reserved(k)) field(line, k, v))
-    val pairs = event.getKeyValuePairs
-    if (pairs != null) pairs.forEach(pair => if (pair.key != null && !Reserved(pair.key) && pair.value != null) field(line, pair.key, pair.value))
+    addedFields(event).foreach((key, value) => field(line, key, value))
     stackTrace.foreach(field(line, "stack_trace", _))
     line.append("}\n").toString.getBytes(StandardCharsets.UTF_8)
   }
@@ -50,6 +47,16 @@ object JsonLineEncoder {
   private val Reserved = Set("level", "logger", "thread", "message", "stack_trace")
   /** Context properties logback keeps for itself: the pod's name is the shipper's `pod` already. */
   private val ContextLeftOut = Set("HOSTNAME", "CONTEXT_NAME")
+
+  /** What a line carries besides its own fields, in order: the logger context's properties (logback's own left out),
+   *  the MDC, and the log call's key-value pairs (a null value left out) — none named like one of the line's own. */
+  private def addedFields(event: ILoggingEvent): Seq[(String, Any)] = {
+    val context = Option(event.getLoggerContextVO).flatMap(vo => Option(vo.getPropertyMap)).fold(Seq.empty[(String, String)])(_.asScala.toSeq)
+    val mdc     = Option(event.getMDCPropertyMap).fold(Seq.empty[(String, String)])(_.asScala.toSeq)
+    val pairs   = Option(event.getKeyValuePairs).fold(Seq.empty[KeyValuePair])(_.asScala.toSeq.filter(pair => pair.key != null && pair.value != null))
+    (context.filterNot((key, _) => ContextLeftOut(key)) ++ mdc ++ pairs.map(pair => pair.key -> pair.value))
+      .filterNot((key, _) => Reserved(key))
+  }
 
   /** `message` is `_msg`, the field a bare LogsQL word searches, so a thrown exception's trace goes there too — as it
    *  did when each trace line was a text row of its own — besides its `stack_trace` field. It is never empty: an empty
