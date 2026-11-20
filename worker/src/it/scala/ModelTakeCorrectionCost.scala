@@ -61,8 +61,8 @@ object ModelTakeCorrectionCost {
         services.identity.agreement.AgreementStageComposition(services.identity.agreement.AgreementStageComposition.Sources(
           UnmatchedClusters.familiesOf(l.c.country).map(f => f -> store.answers(f)).toMap, venuePages = l.lookups, tmdb = l.lookups,
           tmdbOf = tmdbOf, stored = verdicts, clock = SpecClock.Pinned, normalizer = l.c.normalizer,
-          identities = modules.wiring.IdentityProjectionWiring.identities(l.c.country.code),
-          listedOn = modules.wiring.IdentityProjectionWiring.listedOn(l.c.country.code), changes = store,
+          identities = modules.wiring.AgreementWiring.identities(l.c.country.code),
+          listedOn = modules.wiring.AgreementWiring.listedOn(l.c.country.code), changes = store,
           posters = new PosterAnswerStore(store, SpecClock.Pinned),
           catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages), attempted = _ => false, givenUp = _ => true,
           attemptsMarked = Some(() => 0L), keys = new services.identity.agreement.InMemoryAgreementKeys),

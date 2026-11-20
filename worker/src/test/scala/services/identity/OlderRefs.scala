@@ -50,11 +50,12 @@ object OlderRefs {
     }).asInstanceOf[T]
 
   /** The worker wiring's agreement policy object (`identities`, `listedOn`), under the name the ref gives it:
-   *  `IdentityProjectionWiring`, `IdentityCutoverWiring` before 2026-10-18. */
+   *  `AgreementWiring` (2026-11-20), `IdentityProjectionWiring` before, `IdentityCutoverWiring` before 2026-10-18. */
   lazy val projectionWiring: AnyRef =
-    Seq("modules.wiring.IdentityProjectionWiring$", "modules.wiring.IdentityCutoverWiring$").iterator
-      .flatMap(name => scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption).nextOption()
-      .getOrElse(throw new IllegalStateException("this ref has neither IdentityProjectionWiring nor IdentityCutoverWiring"))
+    Seq("modules.wiring.AgreementWiring$", "modules.wiring.IdentityProjectionWiring$", "modules.wiring.IdentityCutoverWiring$").iterator
+      .flatMap(name => scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption)
+      .filter(_.getClass.getMethods.exists(_.getName == "listedOn")).nextOption()
+      .getOrElse(throw new IllegalStateException("this ref has no AgreementWiring, IdentityProjectionWiring nor IdentityCutoverWiring"))
 
   /** The listing set the identity model resolves off `byCinema`: `ModelRead.corpus`, prod's lean read, where the ref has
    *  it; read whole (`Listing.corpus`) in a ref from before it (2026-10-21), as that ref's own replays read them. */

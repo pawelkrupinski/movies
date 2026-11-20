@@ -470,7 +470,7 @@ object AgreementStage {
 
   /** The stage's configuration as a verdict's rules name it: the families it asks, those a film may stand on, the site
    *  whose programmes it joins and the calibration. The worker picks them per country in code no rules version digests
-   *  (`IdentityProjectionWiring.agreementFamilies`, `identities`, `listedOn`): a verdict decided without Filmweb stood
+   *  (`AgreementWiring.agreementFamilies`, `identities`, `listedOn`): a verdict decided without Filmweb stood
    *  as it was once Filmweb was asked, since a receipt names only the answers its verdict read. */
   private[agreement] def configured(families: Set[VoterFamily], identities: Seq[VoterFamily], listedOn: Option[VoterFamily],
                                     calibration: IdentityCalibration): String =

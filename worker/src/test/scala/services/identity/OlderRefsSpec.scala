@@ -54,11 +54,12 @@ class OlderRefsSpec extends AnyFlatSpec with Matchers {
     passing.film(577285) shouldBe Answer.Known(None)
   }
 
-  // The wiring object the slice reads its agreement policy from was IdentityCutoverWiring before 2026-10-18: a slice
+  // The wiring object the slice reads its agreement policy from was IdentityProjectionWiring before 2026-11-20, and
+  // IdentityCutoverWiring before 2026-10-18: a slice
   // dropped into either kind of ref reaches it by name, and gets the same answers the worker wires.
   "the projection wiring" should "be found under this ref's name and answer as the worker's agreement does" in {
-    OlderRefs.projectionWiring shouldBe modules.wiring.IdentityProjectionWiring
-    OlderRefs.call(OlderRefs.projectionWiring, "identities", "pl") shouldBe Some(modules.wiring.IdentityProjectionWiring.identities("pl"))
+    OlderRefs.projectionWiring shouldBe modules.wiring.AgreementWiring
+    OlderRefs.call(OlderRefs.projectionWiring, "identities", "pl") shouldBe Some(modules.wiring.AgreementWiring.identities("pl"))
     OlderRefs.call(OlderRefs.projectionWiring, "listedOn", "de") shouldBe Some(None)
   }
 

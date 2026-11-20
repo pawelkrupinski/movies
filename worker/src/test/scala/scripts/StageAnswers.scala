@@ -76,8 +76,12 @@ class StageAnswers(answering: StageAnswers.Sources, docs: StageAnswers.Documents
             askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never): AgreementStage =
     AgreementStageComposition(AgreementStageComposition.Sources(answering.families.map(f => f -> store.answers(f)).toMap,
       venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf, stored = verdicts, clock = clock, normalizer = answering.normalizer,
-      identities = modules.wiring.IdentityProjectionWiring.identities(answering.country.code),
-      listedOn = modules.wiring.IdentityProjectionWiring.listedOn(answering.country.code), changes = store, posters = posters,
+      // the wiring's agreement policy by name: it moved from IdentityProjectionWiring to AgreementWiring (2026-11-20),
+      // and this tool file compiles into refs from before
+      identities = services.identity.OlderRefs.call(services.identity.OlderRefs.projectionWiring, "identities", answering.country.code)
+        .get.asInstanceOf[Seq[VoterFamily]],
+      listedOn = services.identity.OlderRefs.call(services.identity.OlderRefs.projectionWiring, "listedOn", answering.country.code)
+        .get.asInstanceOf[Option[VoterFamily]], changes = store, posters = posters,
       catalogue = catalogue.answers, attempted = attempted, givenUp = givenUp, attemptsMarked = Some(() => marks.get), keys = keys),
       AgreementStageComposition.Effects(askNow = askNow), overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
   /** The family questions the stage's last apply left open, none given up as unreachable. */

@@ -4,7 +4,7 @@ import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, Identit
 import services.titles.TitleNormalizer
 
 /**
- * THE ONE WAY AN AGREEMENT STAGE IS BUILT: the worker's (`IdentityProjectionWiring.newAgreementStage`) and every harness's
+ * THE ONE WAY AN AGREEMENT STAGE IS BUILT: the worker's (`AgreementWiring.newAgreementStage`) and every harness's
  * — the convergence harness and the live drift check (`scripts.IdentityDrift`), the capture (`tools.UnmatchedClusters`),
  * the dumps — each handing it its [[Sources]], the worker's live, a harness's recorded. Every role is filled the same
  * way whoever builds it: the venues' pages and TMDB apart (a harness handing one lookups for both hid that the worker's

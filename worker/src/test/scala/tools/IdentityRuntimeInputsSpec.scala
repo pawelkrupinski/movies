@@ -35,9 +35,9 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   private val IdentityRoots = SourceTrees("identity/src/main", "worker/src/main/scala/services/identityadapters")
   private val Wiring        = SourceTrees("worker/src/main/scala/modules")
 
-  /** The wiring that builds the identity path: all of the identity projection's, and the identity model wiring's
-   *  definitions that build the model and its lookups. */
-  private val IdentityWiring     = Wiring.file("wiring/IdentityProjectionWiring.scala")
+  /** The wiring that builds the identity path: all of the identity projection's and the agreement's, and the identity
+   *  model wiring's definitions that build the model and its lookups. */
+  private val IdentityWiring     = Seq("IdentityProjectionWiring", "AgreementWiring").map(name => Wiring.file(s"wiring/$name.scala"))
   private val ModelWiring        = Wiring.file("wiring/IdentityModelWiring.scala")
   private val WorkerIdentityDefs = Seq("identityModel", "storedLookups", "cutoverLookups", "venueDetailLookups", "identityQuestionMemory",
     "identityTmdbLayer", "venuePageIndex", "newVenuePageStore")
@@ -65,7 +65,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
     val worker = definitions(codeOf(ModelWiring)).toMap
     val missing = WorkerIdentityDefs.filterNot(worker.contains)
     require(missing.isEmpty, s"IdentityModelWiring defines none of ${missing.mkString(", ")}: name the definitions that build the identity path")
-    val wiring = codeOf(IdentityWiring) +: WorkerIdentityDefs.map(worker)
+    val wiring = IdentityWiring.map(codeOf) ++ WorkerIdentityDefs.map(worker)
     val named  = wiring.flatMap(text => """\b([a-z]\w*)\b""".r.findAllMatchIn(text).map(_.group(1))).distinct
     scalaFiles(IdentityRoots).map(codeOf) ++ wiring ++ named.flatMap(wiredStores.getOrElse(_, Nil))
   }

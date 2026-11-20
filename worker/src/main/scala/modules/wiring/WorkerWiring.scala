@@ -5,7 +5,7 @@ import settings.MongoTuning
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, ClosureWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityModelWiring, IdentityProjectionWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
+import modules.wiring.{AgreementWiring, AlertingWiring, ChunkScrapeWiring, ClosureWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityModelWiring, IdentityProjectionWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -76,7 +76,8 @@ class WorkerWiring(
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with AlertingWiring with OperatorWiring with ShareCardWiring
-    with InvariantAuditWiring with IdentityProjectionWiring with IdentityModelWiring with ClosureWiring {
+    with InvariantAuditWiring with IdentityProjectionWiring with AgreementWiring with IdentityModelWiring
+    with ClosureWiring {
 
   /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
    *  production, an empty one in a test wiring), so a flip installed into that Env reaches

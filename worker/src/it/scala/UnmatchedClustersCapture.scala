@@ -116,8 +116,8 @@ object UnmatchedClustersCapture {
     // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
     (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
     def agree() = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-      modules.wiring.IdentityProjectionWiring.identities(c.country.code), catalogue.answers,
-        modules.wiring.IdentityProjectionWiring.listedOn(c.country.code))
+      modules.wiring.AgreementWiring.identities(c.country.code), catalogue.answers,
+        modules.wiring.AgreementWiring.listedOn(c.country.code))
     // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next capture
     val asked = new AgreementQuestionRounds(store, sources, c.label).run(() => agree())(o => Question.families(o.stage.wanted),
       pending = o => o.stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false },

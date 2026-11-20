@@ -292,7 +292,7 @@ object IdentitySlice {
         tools.ConcurrentAsks.each(wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
         catalogue.file(wantedCatalogue)
       }))
-    // a changed projection: the worker's ONE stage (IdentityProjectionWiring's agreementStage, which the periodic projection
+    // a changed projection: the worker's ONE stage (AgreementWiring's agreementStage, which the periodic projection
     // applied before it) handed every listing, the re-scraped venues' read again
     val changed = (venues: Set[String]) => {
       val read = services.identity.IdentitySlicing.changedRead(core, venues)

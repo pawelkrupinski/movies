@@ -721,7 +721,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned).decidedUnder)
   }
 
-  // The worker picks the families a country asks in code no rules version digests (`IdentityProjectionWiring.FilmwebVoting`),
+  // The worker picks the families a country asks in code no rules version digests (`AgreementWiring.FilmwebVoting`),
   // and a receipt names only the answers its verdict read: a verdict decided before Filmweb was asked stood once it was,
   // never reading Filmweb's answer, where a whole resolve with Filmweb asked reads it.
   it should "decide a kept verdict again when the stage is configured with other families, as a whole resolve with them would" in {

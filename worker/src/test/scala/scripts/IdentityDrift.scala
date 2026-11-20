@@ -501,7 +501,7 @@ object IdentityDrift {
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard,
       regionThreads = RegionThreads, takeUpThreads = RegionThreads)
     var model: IncrementalResolver = newModel()
-    /** A stage wired to the answer feed as the worker wires the live one (IdentityProjectionWiring.agreementStage): the
+    /** A stage wired to the answer feed as the worker wires the live one (AgreementWiring.agreementStage): the
      *  TMDB finds and records it waits on, and the records and searches it read, move its answers' version when filed. */
     private def newStage() = {
       val made = answers.stage(gate, verdicts, budgets = true, keys, askNow = answers.inline(releaseFamily))
