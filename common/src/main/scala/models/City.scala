@@ -114,13 +114,15 @@ sealed abstract class City(
   def cinemaPillMap: Map[String, String]       = cinemas.map(c => c.displayName -> c.pillName).toMap
 }
 
-// Its parameters keep `City`'s field names (-Wshadow:all would rename them): the 41 declarations below name their
-// arguments `slug = ..., lat = ...` like the data they are, and build_pages.py reads them by those names.
+// Its parameters keep `City`'s field names (-Wshadow:all would rename them): the 41 declarations name their arguments
+// `slug = ..., lat = ...` like the data they are, and build_pages.py reads them by those names.
 /** One of the 41 major Polish cities: hand-declined labels, and only the venues inside it
  *  ([[PolishPages.majorCinemas]], filed under its slug). Every other Polish page is a
- *  generated [[PolishPage]]. `data/pl/scripts/build_pages.py` reads these declarations. */
+ *  generated [[PolishPage]]. The 41 are declared in `MajorPolishCities.scala`, where
+ *  `data/pl/scripts/build_pages.py` reads them; not `sealed`, so they can sit there, but its
+ *  constructor is the package's alone. */
 @annotation.nowarn("msg=shadows field")
-sealed abstract class MajorPolishCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
+abstract class MajorPolishCity private[models] (slug: String, labels: CityLabels, lat: Double, lon: Double)
   extends City(slug, labels, lat, lon, TimeZones.Poland) {
   val cinemas: Seq[Cinema] = PolishPages.majorCinemas(slug)
 }
