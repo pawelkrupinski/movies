@@ -44,36 +44,38 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Boolean =
     evidenceDenial(listing, film, measures, country).isDefined
 
-  /** [[evidenceDenies]], saying which of its reasons rules the film out. `country`: the venue's (ISO-3166-1). */
+  /** [[evidenceDenies]], saying which of its reasons rules the film out: the season its title names first, then the first
+   *  of [[evidenceRefusals]] that holds, then a learned cannot-link. `country`: the venue's (ISO-3166-1). */
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Option[Denial] =
     ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year)
       .filterNot(_ => StageRelays.itsHousesRecording(listing, film) || RelayStage.airsItsRelay(listing, film))
       .map(link => Denial(link.toString))
-      .orElse(Option.when(StageRelays.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(
-        Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason)))
-      // a credit the venue publishes names its staging's record whatever TMDB titles it
-      .orElse(Option.when(StageRelays.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
-        Denial("a screen namesake of the work its stage house's billing names", Denial.Kind.NotTheWork(creditOverrules = true))))
-      // a credit or a running time never holds a record of another work: a screen director films many
-      .orElse(Option.when(StageRelays.namesAnotherWork(listing, film))(
-        Denial("a record of another work than its stage house's billing names")))
-      .orElse(Option.when(StageRelays.anotherProduction(listing, film, country))(
-        Denial("another production of its work than the season its screenings fall in")))
-      .orElse(Option.when(ListingShape.festivalsCatalogueNamesake(listing, film))(
-        Denial("a catalogue namesake of a bare billing under a film festival's banner")))
-      .orElse(Option.when(MultiFilmBill.slashesAnotherWork(listing, film))(
-        Denial("one work of a \"//\" double bill, whose other piece none of its titles holds")))
-      .orElse(Option.when(IdentityMeasures.titlesAnotherPart(listing, film))(
-        Denial("a part its title gives a subtitle none of the film's titles holds")))
-      .orElse(Option.when(IdentityMeasures.numbersAnotherSubtitle(listing, film))(
-        Denial("an instalment its title numbers, whose subtitle none of the film's titles holds")))
-      .orElse(Option.when(IdentityMeasures.datesAnotherEdition(listing, film))(
-        Denial("another year's edition of the series its title dates")))
+      .orElse(evidenceRefusals.collectFirst { case (denial, holds) if holds(listing, film, measures, country) => denial })
       // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
       // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it. Nor of the record of the
       // very season a relay's screenings broadcast its work in ([[StageRelays.screenedSeasonRecord]]), under a banner naming
       // no house in particular: ES Ocine's "Carmen (OPERA LIVE)", screening the day the RBO's 2026/27 Carmen airs
       .orElse(Option.unless(RelayStage.particularRecordOf(listing, film) || StageRelays.screenedSeasonRecord(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
+
+  /** The reasons of the listing's own billing to rule a film out ([[evidenceDenial]]), in the order they are asked: each the
+   *  denial it gives — its text what the trace names it by — and the question of the listing, the film, their measures
+   *  and the venue's country that gives it. */
+  private val evidenceRefusals: List[(Denial, CandidateScoring.Question)] = List(
+    (Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason),
+      (l, f, _, _) => StageRelays.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)),
+    // a credit the venue publishes names its staging's record whatever TMDB titles it
+    (Denial("a screen namesake of the work its stage house's billing names", Denial.Kind.NotTheWork(creditOverrules = true)),
+      (l, f, measures, _) => StageRelays.screenNamesake(l, f) && !IdentityMeasures.sameDirector(measures)),
+    // a credit or a running time never holds a record of another work: a screen director films many
+    (Denial("a record of another work than its stage house's billing names"), (l, f, _, _) => StageRelays.namesAnotherWork(l, f)),
+    (Denial("another production of its work than the season its screenings fall in"),
+      (l, f, _, country) => StageRelays.anotherProduction(l, f, country)),
+    (Denial("a catalogue namesake of a bare billing under a film festival's banner"), (l, f, _, _) => ListingShape.festivalsCatalogueNamesake(l, f)),
+    (Denial("one work of a \"//\" double bill, whose other piece none of its titles holds"), (l, f, _, _) => MultiFilmBill.slashesAnotherWork(l, f)),
+    (Denial("a part its title gives a subtitle none of the film's titles holds"), (l, f, _, _) => IdentityMeasures.titlesAnotherPart(l, f)),
+    (Denial("an instalment its title numbers, whose subtitle none of the film's titles holds"),
+      (l, f, _, _) => IdentityMeasures.numbersAnotherSubtitle(l, f)),
+    (Denial("another year's edition of the series its title dates"), (l, f, _, _) => IdentityMeasures.datesAnotherEdition(l, f)))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
@@ -136,6 +138,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
 }
 
 private[identity] object CandidateScoring {
+  /** A question [[CandidateScoring.evidenceDenial]] asks of a listing and a film, beside their measures and the venue's
+   *  country. */
+  type Question = (IdentityMeasures.Listing, IdentityMeasures.Film, Map[String, Measure], Option[String]) => Boolean
   /** How [[CandidateScoring.evidenceDenial]] names a season production its listing's banner is not the house of: a denial
    *  about the banner, which says nothing of another listing billing the record's own house ([[Families.deniedBySibling]]). */
   val AnotherHousesSeason = "another house's season production"
