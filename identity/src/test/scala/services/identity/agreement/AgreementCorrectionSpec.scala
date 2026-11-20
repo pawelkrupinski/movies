@@ -35,7 +35,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
 
   private def stage(families: Map[VoterFamily, FamilyAnswers], posters: PosterAnswers, lookups: FilmTable = table(),
                     listedOn: Option[VoterFamily] = None, changes: AnswerChanges = AnswerChanges.Unknown) =
-    new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = changes, posters = posters, tmdb = Some(lookups), listedOn = listedOn)
   private def decided(s: AgreementStage, version: Long = 1) = s.apply(model, listingOf, version).decisions.head
 
@@ -57,7 +57,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   it should "stand unread on a cluster that is an event, not a film: no poster hashed, no family asked" in {
     val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val concert = listing.copy(rawTitle = "Koncert: Lalka", title = "Koncert: Lalka", cleanTitle = "Koncert: Lalka")
-    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val s = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
     s.apply(model, Map(listing.key -> concert).get, 1).decisions.head.basis shouldBe ResolverDecision.Basis.OwnMatch
     (s.wanted, handed.toSeq) shouldBe ((Set.empty, Seq.empty))
@@ -66,7 +66,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   it should "read the other candidates' posters only when the take's own are far from the venue's, and ask the families only then" in {
     val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     // nothing hashed: the venue's poster and the take's are asked for, no other candidate's
-    val waiting = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val waiting = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
     decided(waiting).basis shouldBe ResolverDecision.Basis.OwnMatch
     waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Venue(venuePoster), PosterQuestion.Film(1001))
@@ -132,7 +132,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val lookups = new ForwardingIdentityLookups(table()) {
       override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (id == 1001 && !answered) Answer.Unknown else super.film(id)
     }
-    val s = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    val s = AgreementStageFixture(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(Set.empty), posters = hasPoster, tmdb = Some(lookups))
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
     answered = true
@@ -149,7 +149,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val lookups = new ForwardingIdentityLookups(table()) {
       override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = if (!answered) Answer.Unknown else super.candidates(query)
     }
-    val s = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    val s = AgreementStageFixture(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(Set.empty), posters = hasPoster, tmdb = Some(lookups))
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
     answered = true
@@ -161,7 +161,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   it should "be trusted as stored after a restart, reading no answer, and read at its first apply whatever the budget" in {
     val verdicts = new InMemoryAgreementVerdicts
     def stageOver(posters: PosterAnswers, perApply: Int = AgreementStage.CorrectionsPerApply) =
-      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
         clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table()), correctionsPerApply = perApply)
     decided(stageOver(hasPoster)).basis shouldBe ResolverDecision.Basis.Corrected
     var read = 0
@@ -173,7 +173,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     read shouldBe 0
     // a take never read is read with the apply's budget spent: served as the model took it meanwhile, it was corrected
     // at a later apply none of its inputs moved at — a flip (the drift replay's UK "The Ties That Bind Us", run 3656)
-    decided(new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    decided(AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.Corrected
   }
 
@@ -188,9 +188,9 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       def venue(url: String): Answer[Option[PosterHash]] = { read += 1; hasPoster.venue(url) }
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = { read += 1; hasPoster.film(tmdbId) }
     }
-    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+    val s = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed.toSet), posters = counting, tmdb = Some(table()), correctionsPerApply = 0)
-    val fresh = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+    val fresh = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()))
     decided(fresh).basis shouldBe ResolverDecision.Basis.Corrected
     verdicts.all().flatMap(_.reads.keys).exists { case services.identity.Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false } shouldBe true   // its receipt names a search
@@ -206,7 +206,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   // and a correction has no reading again but afresh — so none stood an apply, and the budget never caught up
   it should "stand when a question another cluster waits on was attempted, its own receipt naming no attempt" in {
     val verdicts = new InMemoryAgreementVerdicts
-    decided(new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+    decided(AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()))).basis shouldBe ResolverDecision.Basis.Corrected
     val other  = FilmTable.listing(models.KinoMuza, "Akira")
     val both   = Resolution(model.decisions :+ ResolverDecision(Seq(other.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)(), 2,
@@ -214,7 +214,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val listed = Map(listing.key -> listing, other.key -> other).get
     var tried  = false
     val rtOpen = takingHas + (VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty, unanswered = true))
-    val s = new AgreementStage(rtOpen, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+    val s = AgreementStageFixture(rtOpen, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0, attempted = _ => tried)
     s.apply(both, listed, 1).decisions.head.basis shouldBe ResolverDecision.Basis.Corrected
     s.wanted should not be empty   // the other cluster waits on Rotten Tomatoes
@@ -240,7 +240,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   private val both = Resolution(model.decisions :+ ResolverDecision(Seq(relay.key), Some(cumberbatch.id), 0.17, ResolverDecision.Basis.OwnMatch,
     Seq(s"own match ${cumberbatch.id}"))(), 2, Map(listing.key -> 0, relay.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
   private val bothListed = Map(listing.key -> listing, relay.key -> relay).get
-  private def relayStage(verdicts: AgreementVerdicts, perApply: Int) = new AgreementStage(takingHas, relayed, normalizer, IdentityCalibration.resolver,
+  private def relayStage(verdicts: AgreementVerdicts, perApply: Int) = AgreementStageFixture(takingHas, relayed, normalizer, IdentityCalibration.resolver,
     tmdbOf = _ => Answer.Known(None), verdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(relayed), correctionsPerApply = perApply)
 
   it should "read every take never read at its shape at its first apply, past the apply's budget" in {
@@ -272,7 +272,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
     }
     var filed = Set.empty[String]
-    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    val s = AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed), posters = posters, tmdb = Some(table()), correctionsPerApply = 0)
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
     s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(PosterQuestion.Film(1002))
@@ -289,7 +289,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     // back, the changed projection's apply 20 s later corrected it to the 2025 film again — 18 flips, one a pod start
     val verdicts = new InMemoryAgreementVerdicts
     def stageOver(perApply: Int) =
-      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
         clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply)
     decided(stageOver(AgreementStage.CorrectionsPerApply)).basis shouldBe ResolverDecision.Basis.Corrected
     verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "the previous deploy's")))
@@ -310,7 +310,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val verdicts = new InMemoryAgreementVerdicts
     val keys     = new InMemoryAgreementKeys
     def stageOver(perApply: Int, keyStore: AgreementKeys) =
-      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      AgreementStageFixture(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
         clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply, clusterKeys = new ClusterKeys(keyStore))
     // a cluster sorting before the take's, keyed first, then gone: the take's key is the counter's second
     val before  = FilmTable.listing(Multikino, "Akira")
@@ -335,7 +335,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       def candidates(q: CandidateQuery) = record.candidates(q)
       def film(id: Int) = record.film(id)
     }
-    def stageOver(stored: AgreementVerdicts) = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    def stageOver(stored: AgreementVerdicts) = AgreementStageFixture(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       stored, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(lookups), changes = _ => Some(filed.toSet))
     val running = stageOver(new InMemoryAgreementVerdicts)
     decided(running).basis shouldBe ResolverDecision.Basis.OwnMatch
@@ -499,7 +499,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       override def fresh(question: String) = held.fresh(question)
     }
     var filed = Set.empty[String]
-    val s = new AgreementStage(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
+    val s = AgreementStageFixture(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed),
       posters = hasPoster, tmdb = Some(table()), attempted = { case Question.Family(VoterFamily.RottenTomatoes, _) => rtFailed; case _ => false })
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch            // waiting on RT, never asked
@@ -520,7 +520,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   // take is read at its first apply now, whatever another take spent of the budget: its waits are its new shape's.
   it should "read a reshaped take at its first apply, though another take spent the budget, waiting on its new shape's questions" in {
     val rt = new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("x" -> has), unanswered = true)
-    val s = new AgreementStage(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
+    val s = AgreementStageFixture(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster,
       tmdb = Some(table()), correctionsPerApply = 1)
     val waited = decided(s)

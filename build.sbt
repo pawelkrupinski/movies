@@ -360,9 +360,9 @@ lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/Manual
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
 
-// The identity stores' in-memory fakes, in testkit beside the rest, compiled into identity's own test config as the
+// The identity stores' in-memory fakes and the specs' agreement-stage builder, in testkit beside the rest, compiled into identity's own test config as the
 // time doubles are.
-lazy val identityTestDoubles = Def.setting(Seq("InMemoryIdentityTraceStore", "InMemoryPinStore").map { name =>
+lazy val identityTestDoubles = Def.setting(Seq("InMemoryIdentityTraceStore", "InMemoryPinStore", "agreement/AgreementStageFixture").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / "services" / "identity" / s"$name.scala"
 })
 

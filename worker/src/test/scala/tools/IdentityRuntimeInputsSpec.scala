@@ -166,10 +166,12 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
     definitions(codeOf(Paths.get(path))).collectFirst { case (`name`, text) => text }
       .getOrElse(throw new NoSuchElementException(s"$path defines no $name"))
 
-  private val Stage = "identity/src/main/scala/services/identity/agreement/AgreementStage.scala"
+  private val Stage    = "identity/src/main/scala/services/identity/agreement/AgreementStage.scala"
+  private val Pipeline = "identity/src/main/scala/services/identity/agreement/AgreementPipeline.scala"
 
-  /** Each of the agreement stage's parameters, and how it can move a verdict. */
-  private val StageParameters: Map[String, StageParameter] = {
+  /** Each of the agreement pipeline's parameters -- what the stage decides by, built whole by its builders -- and how it
+   *  can move a verdict. */
+  private val PipelineParameters: Map[String, StageParameter] = {
     import StageParameter.*
     Map(
       "families"    -> Versioned, "identities" -> Versioned, "listedOn" -> Versioned, "calibration" -> Versioned, "rules" -> Versioned,
@@ -183,11 +185,19 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       "clock"       -> Read("the year it reads is in the receipt (YearRead)"),
       "stored"      -> Read("the verdicts: the cache this key keeps"),
       "changes"     -> Inert("which answers were filed: when to read a receipt again, never what it decides"),
+      "askNow"      -> Inert("asking, inline"),
+      "tmdbReads"   -> Inert("which TMDB filings reach the stage: when to read a take again, never what it decides"))
+  }
+
+  /** Each of the agreement stage's own parameters, and how it can move a verdict. */
+  private val StageParameters: Map[String, StageParameter] = {
+    import StageParameter.*
+    Map(
+      "pipeline"    -> Read("what each decision is taken as: its own parameters are classified apart (PipelineParameters)"),
       "givenUp"     -> Inert("what the typed outcome reads a settled question as -- given up on or still pending; no verdict reads it"),
       "attemptsMarked" -> Inert("how many attempts were marked: when to read the receipts again"),
-      "ask"         -> Inert("asking"), "askNow" -> Inert("asking, inline"), "metrics" -> Inert("metrics"),
+      "ask"         -> Inert("asking"), "metrics" -> Inert("metrics"),
       "staging"     -> Inert("the staging screen"), "clusterKeys" -> Inert("names: no verdict is found by its key"),
-      "tmdbReads"   -> Inert("which TMDB filings reach the stage: when to read a take again, never what it decides"),
       "correctionPostersAtOnce" -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "correctionsPerApply"     -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "backfillPerApply"        -> Inert("a budget: delays a decision, never moves its result"),
@@ -196,16 +206,18 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   }
 
   "The agreement stage's parameters" should "each say how they can move a verdict" in {
-    val declared = parameters(Stage, "final class AgreementStage")
-    withClue("AgreementStage takes a parameter this spec does not classify (or no longer takes one it does): say whether " +
-      "it is in decidedUnder (Versioned), read into the receipt or listings' digest (Read), or decides nothing (Inert)\n") {
-      declared.toSet shouldBe StageParameters.keySet
-    }
+    Seq((Stage, "final class AgreementStage", StageParameters), (Pipeline, "final class AgreementPipeline", PipelineParameters))
+      .foreach { case (path, header, classified) =>
+        withClue(s"$header takes a parameter this spec does not classify (or no longer takes one it does): say whether " +
+          "it is in decidedUnder (Versioned), read into the receipt or listings' digest (Read), or decides nothing (Inert)\n") {
+          parameters(path, header).toSet shouldBe classified.keySet
+        }
+      }
   }
 
   they should "be named where decidedUnder is built, each one versioned" in {
-    val version   = definitionOf(Stage, "decidedUnder")
-    val unnamed   = StageParameters.collect { case (name, StageParameter.Versioned) if !s"\\b$name\\b".r.findFirstIn(version).isDefined => name }
+    val version   = definitionOf(Pipeline, "decidedUnder")
+    val unnamed   = PipelineParameters.collect { case (name, StageParameter.Versioned) if !s"\\b$name\\b".r.findFirstIn(version).isDefined => name }
     withClue(s"Versioned, yet decidedUnder does not read: ${unnamed.toSeq.sorted.mkString(", ")}\n") { unnamed shouldBe empty }
   }
 

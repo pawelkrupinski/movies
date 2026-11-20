@@ -48,7 +48,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
                             counted: () => Unit = () => (), askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never) {
     var tried = true
     val told  = scala.collection.mutable.ArrayBuffer.empty[StagingEvent]
-    val stage = new AgreementStage(families(counted), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(families(counted), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       verdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow, staging = Some(told ++= _), clusterKeys = new ClusterKeys(keys),
       attempted = { case Question.Family(VoterFamily.RottenTomatoes, _) => tried; case _ => false })
     def apply(resolution: Resolution, version: Long): Seq[ResolverDecision] = stage.apply(resolution, listingOf, version).decisions

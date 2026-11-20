@@ -49,7 +49,7 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String): Answer[Seq[SourceHit]] = Answer.Known(Nil)
       def record(id: String): Answer[Option[SourceRecord]] = World.this.family.get(id).fold[Answer[Option[SourceRecord]]](Answer.Unknown)(r => Answer.Known(Some(r)))
     }
-    val stage = new AgreementStage(Map(VoterFamily.Imdb -> answers), venues, SingleCountryNormalizer.titleNormalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(Map(VoterFamily.Imdb -> answers), venues, SingleCountryNormalizer.titleNormalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb),
       attempted = q => tried(q))
     stage.pipeline.evidence.yearNow = 2026

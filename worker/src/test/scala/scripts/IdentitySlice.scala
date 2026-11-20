@@ -5,7 +5,7 @@ import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
 import services.identity._
-import services.identity.agreement.{AgreementStage, InMemoryAgreementVerdicts, VoterFamily}
+import services.identity.agreement.{InMemoryAgreementVerdicts, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
@@ -277,10 +277,10 @@ object IdentitySlice {
       case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown) { found => findsRead.put(imdb, found); Answer.Known(found) }
       case known          => known
     }
-    val periodic = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
+    val periodic = OlderRefs.agreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
       tmdbOf = tmdbOf, stored = storedOf(reads.prod), clock = reads.clock,
-      posters = posters, tmdb = Some(reads.lookups), identities = OlderRefs.call(OlderRefs.projectionWiring, "identities", reads.country.code).get.asInstanceOf[Seq[VoterFamily]],
-      catalogue = catalogue.answers, listedOn = OlderRefs.call(OlderRefs.projectionWiring, "listedOn", reads.country.code).get.asInstanceOf[Option[VoterFamily]],
+      posters = posters, tmdb = Some(reads.lookups), identities = OlderRefs.call(OlderRefs.projectionWiring, "identities", reads.country.code).get,
+      catalogue = catalogue.answers, listedOn = OlderRefs.call(OlderRefs.projectionWiring, "listedOn", reads.country.code).get,
       correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
     val byKey      = core.map(l => l.key -> l).toMap
     val resolution = UnmatchedClusters.resolutionOf(model)

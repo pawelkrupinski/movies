@@ -15,10 +15,11 @@ class AgreementStageCompositionSpec extends AnyFlatSpec with Matchers {
   /** Where a stage may be constructed directly, and why. */
   private val Constructs = Map(
     "identity/src/main/scala/services/identity/agreement/AgreementStageComposition.scala" -> "the composition itself",
-    // identity-slice lays this file into refs older than the composition (its TOOL_FILES), where it must compile
-    "worker/src/test/scala/scripts/IdentitySlice.scala" -> "compiled into refs that predate the composition")
+    // the identity specs' stage over hand-made sources; identity-slice reaches it by name (OlderRefs.agreementStage), as it
+    // reaches the stage's own constructor in refs that predate the composition, where its tool files must compile
+    "testkit/src/main/scala/services/identity/agreement/AgreementStageFixture.scala" -> "the specs' builder, and the slice tool's")
 
-  private val Roots = SourceTrees("identity/src/main", "worker/src/main", "worker/src/fixtures", "worker/src/test", "worker/src/it", "web/src/main")
+  private val Roots = SourceTrees("identity/src/main", "testkit/src/main", "worker/src/main", "worker/src/fixtures", "worker/src/test", "worker/src/it", "web/src/main")
   private def sources: Seq[Path] = Roots.scalaFiles.filterNot(_.getFileName.toString.endsWith("Spec.scala"))
   private val Constructor = """new\s+(services\.identity\.agreement\.)?AgreementStage\s*\(""".r
 

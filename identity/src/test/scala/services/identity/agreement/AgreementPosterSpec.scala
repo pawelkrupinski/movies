@@ -26,7 +26,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
 
   private def stage(posters: PosterAnswers, families: Map[VoterFamily, FamilyAnswers] = silentFamilies, ask: Set[Question] => Unit = _ => ()) =
-    new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table))
 
   "an unmatched cluster's venue poster" should "take the one candidate it matches, no other as near" in {
@@ -51,7 +51,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
       def film(id: Int) = now.film(id)
     }
     val posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))))
-    def stageOver() = new AgreementStage(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    def stageOver() = AgreementStageFixture(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(lookups), changes = _ => Some(filed.toSet))
     val listing = lalka()
     val running = stageOver()
@@ -75,7 +75,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   it should "speak for no film of a stage relay's listing, nor where the venue shows none" in {
     val relay = FilmTable.listing(KinoMuza, "The Royal Ballet: The Nutcracker").copy(poster = Some(venuePoster))
     val nutcracker = new FilmTable(Seq(FilmTable.F(2001, "The Royal Ballet: The Nutcracker", 2024, "", 0)), normalizer)
-    val relayStage = new AgreementStage(silentFamilies, nutcracker, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val relayStage = AgreementStageFixture(silentFamilies, nutcracker, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(2001 -> Seq(shown))),
       tmdb = Some(nutcracker))
     relayStage.apply(resolutionOf(relay), Map(relay.key -> relay).get, version = 1).decisions.head.film shouldBe None
@@ -92,7 +92,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
       def film(tmdbId: Int) = table.film(tmdbId)
     }
     val listing = lalka()
-    val voting = new AgreementStage(silentFamilies, searching, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val voting = AgreementStageFixture(silentFamilies, searching, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(searching),
       posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L)))))
     voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
@@ -130,7 +130,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
       def film(tmdbId: Int) = table.film(tmdbId)
     }
     val listing = lalka()
-    val voting = new AgreementStage(silentFamilies, blind, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val voting = AgreementStageFixture(silentFamilies, blind, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(blind),
       posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L)))))
     voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1)
@@ -193,7 +193,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val vetoed = decidedWith(Map(1001 -> Seq(near(2)), 1002 -> Seq(PosterHash(-1L))))
     (vetoed.film, vetoed.basis) shouldBe ((Some(1001), ResolverDecision.Basis.Poster))   // vetoed, and the poster's own vote takes the 2026 film
     val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
-    new AgreementStage(silentFamilies ++ agreeing, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    AgreementStageFixture(silentFamilies ++ agreeing, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned,
       posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(2)), 1002 -> Seq(PosterHash(-1L)))), tmdb = Some(table))
       .apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1)
@@ -212,7 +212,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
       def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(Some(shown))
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
     }
-    val voting = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val voting = AgreementStageFixture(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table),
       attempted = { case Question.Poster(PosterQuestion.Film(1002)) => failed; case _ => false })
     def decided(version: Long) = voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version).decisions.head
@@ -246,7 +246,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   it should "hand the posters it asks again a few at a time, as the corrections' posters" in {
     val listing = lalka()
     val films   = Seq(1001, 1002).map(PosterQuestion.Film(_))
-    val renewing = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val renewing = AgreementStageFixture(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), correctionPostersAtOnce = 1,
       posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))), stale = films.toSet),
       attempted = { case Question.Poster(_) => true; case _ => false })

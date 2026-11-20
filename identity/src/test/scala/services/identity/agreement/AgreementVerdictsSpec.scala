@@ -48,7 +48,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
       services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val stored = new InMemoryAgreementVerdicts
-    new AgreementStage(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.Answer.Known(None),
+    AgreementStageFixture(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.Answer.Known(None),
       stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
       rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
       .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1)

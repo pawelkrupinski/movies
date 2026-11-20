@@ -1,9 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, IdentityCalibration, IdentityLookups,
-  Listing, Memo, PosterAnswers, Question, Resolution, ResolverDecision}
+import services.identity.{IdentityCalibration, Listing, Question, Resolution, ResolverDecision}
 import models.ListingKey
-import services.titles.TitleNormalizer
 
 import scala.collection.mutable
 
@@ -87,18 +85,15 @@ import scala.collection.mutable
  * TMDB leans to, all its fill reads, the year — each answered or not), which a filing of any of it reopens; a cluster
  * settles on what the question memory says, never on its own past, and a merge carries no memory with its key.
  */
-final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
-                           private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
+final class AgreementStage private[agreement] (
+                           /** What each model decision is taken as ([[AgreementPipeline]]): the stage runs it over each
+                            *  resolution, an apply at a time — what is read when, kept how long, served how. Built with
+                            *  everything it reads by the stage's builders ([[AgreementStageComposition]]). */
+                           private[agreement] val pipeline: AgreementPipeline,
                            private[agreement] val ask: Set[Question] => Unit = _ => (), private[agreement] val metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
-                           private[agreement] val clock: java.time.Clock, private[agreement] val changes: AnswerChanges = AnswerChanges.Unknown, private[agreement] val posters: PosterAnswers = PosterAnswers.Silent,
-                           private[agreement] val tmdb: Option[IdentityLookups] = None, private[agreement] val identities: Seq[VoterFamily] = Nil,
-                           private[agreement] val rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver,
-                           private[agreement] val catalogue: CatalogueAnswers = CatalogueAnswers.Silent, private[agreement] val listedOn: Option[VoterFamily] = None,
                            private[agreement] val correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce,
                            private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,
                            private[agreement] val backfillPerApply: Int = AgreementStage.BackfillPerApply,
-                           private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
-                           private[agreement] val attempted: Question => Boolean = _ => false,
                            /** A question attempted and given up on for good (the question memory's durable non-answer, or
                             *  its give-up after its failures in a row): absent, not pending. One failed and in its backoff
                             *  is attempted -- the settle rule decides without it -- but still pending (P1): what
@@ -106,21 +101,17 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val givenUp: Question => Boolean = _ => true,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
                            private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
-                           private[agreement] val clusterKeys: ClusterKeys = new ClusterKeys(new InMemoryAgreementKeys),
-                           private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking,
+                           private[agreement] val clusterKeys: ClusterKeys,
                            private[agreement] val pressed: () => Boolean = () => false,
                            private[agreement] val fullValidationEvery: Int = AgreementStage.FullValidationEvery) {
 
-  /** What a stored verdict was decided under: the stage's code, the selected rules' version, and what the composition
-   *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
-   *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
-  private[agreement] val decidedUnder: String =
-    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(families.keySet, identities, listedOn, calibration)}"
+  /** The clock the pipeline reads: the year, the takes' holds, the staging screen's times. */
+  private def clock: java.time.Clock = pipeline.clock
+  /** The TMDB records and searches this apply read, published at its end. */
+  private def tmdbReads: TmdbReadTracking = pipeline.tmdbReads
 
-  /** What each model decision is taken as ([[AgreementPipeline]]): the stage runs it over each resolution, an apply at a
-   *  time — what is read when, kept how long, served how. */
-  private[agreement] val pipeline = new AgreementPipeline(families, venuePages, normalizer, calibration, tmdbOf, stored, clock,
-    changes, tmdb, identities, rules, catalogue, listedOn, askNow, attempted, tmdbReads, decidedUnder)
+  /** What a stored verdict was decided under ([[AgreementPipeline.decidedUnder]]). */
+  private[agreement] def decidedUnder: String = pipeline.decidedUnder
 
   /** Every question the last [[apply]] met unanswered or stale, one each: the families' questions, TMDB's finds of agreed
    *  IMDb ids, the posters not hashed yet (the corrections' a few at a time), the catalogue ids not mapped and venue pages
@@ -133,14 +124,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it ([[ClusterKeys.keyOf]]): read from any thread. */
   def keyOf(decision: ResolverDecision): String = clusterKeys.keyOf(decision)
 
-  /** The verdicts kept, by their cluster's key: each a cache of its receipt ([[Memo]]), standing while none of it moved —
-   *  checked at a version under its listings' digest, and indexed by every TMDB record and search it read, what [[reads]]
-   *  tells the filing thread. */
-  private[agreement] def held: Memo[String, StoredVerdict] = pipeline.held
-
   /** Does a verdict the stage keeps read the TMDB record or search a filing under `id` comes as? Then that filing must
-   *  reach the stage, as every answer it read does: the verdict is a cache of what it read. Read from any thread. */
-  def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
+   *  reach the stage, as every answer it read does: the verdict is a cache of what it read — each kept verdict a cache of
+   *  its receipt ([[AgreementPipeline.held]]), indexed by every TMDB record and search it read. Read from any thread. */
+  def reads(id: String): Boolean = pipeline.reads(id)
 
   /** The `version` the stored verdicts were loaded at: what this worker's families answered cannot have moved while it
    *  was down — it alone files them — so a verdict kept under these rules, its listings as they were, stands then without
@@ -222,7 +209,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  ([[ClusterKeys.assign]]), on the stage's first pass every verdict stored under these rules trusted ([[AgreementPipeline.opened]]),
    *  TMDB's reads begun afresh, and the full validation's turn taken ([[validating]]). */
   private def opened(resolution: Resolution, version: Long): AgreementPass = {
-    val pass = new AgreementPass(version, correctionsPerApply, new AgreementPass.Read(posters, listedOn.flatMap(families.get)), backfillPerApply)
+    val pass = new AgreementPass(version, correctionsPerApply, pipeline.reading(), backfillPerApply)
     clusterKeys.assign(resolution, first = loadedAt.isEmpty, pass.keys, pass.merged)
     val first = loadedAt.isEmpty
     if (first) loadedAt = Some(version)
@@ -262,7 +249,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** The questions `listing`'s own facts lead the stage to ask ([[AgreementPipeline.questionsOf]]): what the model's input
    *  gate waits on before a listing's version is taken in. */
-  def questionsOf(listing: Listing): Set[Question] = pipeline.questionsOf(listing, posters)
+  def questionsOf(listing: Listing): Set[Question] = pipeline.questionsOf(listing)
 
   /** Makes every `fullValidationEvery`th apply that reads anything, unless the heap is `pressed`, a FULL VALIDATION: up to
    *  [[AgreementStage.FullValidationBudget]] of the kept verdicts the dirty index calls standing ([[Memo.clean]]) are read
@@ -273,7 +260,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     appliesSinceValidation += 1
     if (appliesSinceValidation >= fullValidationEvery && !pressed()) {
       appliesSinceValidation = 0
-      if (validatedFrom >= held.size) validatedFrom = 0
+      if (validatedFrom >= pipeline.heldCount) validatedFrom = 0
       pass.validateFrom(validatedFrom, AgreementStage.FullValidationBudget)
       validatedFrom += AgreementStage.FullValidationBudget
     }
@@ -311,7 +298,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** What the apply came to, for [[metrics]]. */
   private[agreement] def report(decisions: Seq[ResolverDecision], pass: AgreementPass, started: tools.Stopwatch.Started): Unit =
-    metrics.applied(AgreementStage.Applied.of(decisions, questions.wanted, pipeline.waitingClusters, () => held.values, decidedUnder, pass,
+    metrics.applied(AgreementStage.Applied.of(decisions, questions.wanted, pipeline.waitingClusters, () => pipeline.heldVerdicts(), decidedUnder, pass,
       standingTakes.held(), started.seconds))
 
 

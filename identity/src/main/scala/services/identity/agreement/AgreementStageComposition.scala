@@ -49,14 +49,15 @@ object AgreementStageComposition {
 
   def apply(sources: Sources, effects: Effects = Effects(), overrides: Set[Override] = Set.empty): AgreementStage = {
     val unbudgeted = overrides(Override.Unbudgeted)
-    new AgreementStage(sources.families, sources.venuePages, sources.normalizer, sources.calibration, sources.tmdbOf, sources.stored,
-      ask = effects.ask, metrics = effects.metrics, clock = sources.clock, changes = sources.changes, posters = sources.posters,
-      tmdb = Some(sources.tmdb), identities = sources.identities, catalogue = sources.catalogue, listedOn = sources.listedOn,
+    val pipeline   = new AgreementPipeline(sources.families, sources.venuePages, sources.normalizer, sources.calibration,
+      sources.tmdbOf, sources.stored, sources.changes, tmdb = Some(sources.tmdb), sources.identities, services.identity.UnifiedRules.resolver,
+      sources.catalogue, sources.listedOn, effects.askNow, sources.attempted, sources.posters, sources.clock)
+    new AgreementStage(pipeline, ask = effects.ask, metrics = effects.metrics,
       correctionPostersAtOnce = if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionPostersAtOnce,
       correctionsPerApply = overrides.collectFirst { case Override.CorrectionsPerApply(n) => n }
         .getOrElse(if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionsPerApply),
       backfillPerApply = if (unbudgeted) Int.MaxValue else AgreementStage.BackfillPerApply,
-      askNow = effects.askNow, attempted = sources.attempted, givenUp = sources.givenUp, attemptsMarked = sources.attemptsMarked,
+      givenUp = sources.givenUp, attemptsMarked = sources.attemptsMarked,
       staging = effects.staging, clusterKeys = new ClusterKeys(sources.keys), pressed = effects.pressed)
   }
 }

@@ -37,7 +37,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   private def decidedIn(table: FilmTable)(listing: Listing): ResolverDecision = {
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
   }
 
@@ -104,7 +104,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val families = silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, records))
     val resolution = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
   }
   private def rbo(work: String, director: Option[String], days: String*): Listing =
@@ -164,7 +164,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
       def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
       def film(id: Int): Answer[Option[IdentityMeasures.Film]]  = table.film(id)
     }
-    val stage = new AgreementStage(families, unread, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage = AgreementStageFixture(families, unread, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(unread))
     def model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 1.0, ResolverDecision.Basis.Vetoed, Nil)()),
       listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
@@ -200,7 +200,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val lookups = new Paged(page)
-    new AgreementStage(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(lookups)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
   }
 
@@ -219,7 +219,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   private def corrected(listing: Listing, film: Int): ResolverDecision = {
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), Some(film), 0.99, ResolverDecision.Basis.OwnMatch, Seq(s"own match $film"))()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+    AgreementStageFixture(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
   }
 
@@ -262,7 +262,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id, metMacbeth.id))
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
-    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage   = AgreementStageFixture(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored))
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
@@ -285,7 +285,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))
     val filed   = scala.collection.mutable.Set.empty[String]
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
-    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage   = AgreementStageFixture(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
       changes = _ => Some(filed.toSet))
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), Some(film1949.id), 0.99, ResolverDecision.Basis.PooledMatch,
@@ -310,7 +310,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val listing = screening("Samson i Dalila", "2027-03-02")   // the RBO's broadcast day
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))
     var reread  = false
-    def stageOver() = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    def stageOver() = AgreementStageFixture(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
       attempted = { case Question.Record(id) => reread && id == metSamson.id; case _ => false })
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
@@ -326,7 +326,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   "a stage relay whose days could not be read" should "wait, asking nothing, and be taken once a read gives its days" in {
     val unread  = FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.Unknown)
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
-    val stage   = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage   = AgreementStageFixture(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table))
     def decided(listing: Listing, version: Long) = stage.apply(Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1,
       ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty),
@@ -344,7 +344,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))   // never gains its day
     var reread  = false
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
-    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage   = AgreementStageFixture(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
       attempted = { case Question.Record(id) => reread && id == metSamson.id; case _ => false })
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
@@ -370,7 +370,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))
     var failed  = false
     val clock   = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-01T12:00:00Z"))
-    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage   = AgreementStageFixture(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = clock, tmdb = Some(stored), changes = _ => Some(Set.empty),
       attempted = { case Question.Record(id) => failed && id == metSamson.id; case _ => false })
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),

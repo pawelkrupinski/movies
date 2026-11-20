@@ -35,7 +35,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       val listings = venues.map(venue => listing(venue, title))
       val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
         listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(imdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      AgreementStageFixture(imdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules).apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
     }
     val selected = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current"))
@@ -68,7 +68,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
       listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     def decided(families: Map[VoterFamily, FamilyAnswers]) =
-      new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
         rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
         .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
@@ -97,7 +97,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
       listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val stored = new InMemoryAgreementVerdicts
-    val stage  = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), stored,
+    val stage  = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), stored,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
     val byKey = listings.map(l => l.key -> l).toMap
     val blind = stage.apply(model, byKey.get, version = 1).decisions.head
@@ -126,7 +126,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       override def withZone(zone: java.time.ZoneId): java.time.Clock = this
       def instant(): java.time.Instant = now
     }
-    def stageOn(stored: AgreementVerdicts) = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    def stageOn(stored: AgreementVerdicts) = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       stored, clock = clock, tmdb = Some(NoVenueDetails), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
     val byKey  = listings.map(l => l.key -> l).toMap
     val stored = new InMemoryAgreementVerdicts
@@ -150,7 +150,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
       Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     def decided(year: Int, rules: services.identity.UnifiedRules) =
-      new AgreementStage(families(year), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(1220564)),
+      AgreementStageFixture(families(year), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(1220564)),
         new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules)
         .apply(model, Map(one.key -> one).get, version = 1).decisions.head
     val shipped = services.identity.UnifiedRules.resolver
@@ -172,7 +172,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(one: services.identity.Listing, rules: services.identity.UnifiedRules) = {
       val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.14, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
         new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules)
         .apply(model, Map(one.key -> one).get, version = 1).decisions.head
     }
@@ -218,7 +218,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(one: Listing, lookups: IdentityLookups, rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver) = {
       val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.3, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      AgreementStageFixture(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(lookups), rules = rules).apply(model, Map(one.key -> one).get, version = 1).decisions.head
     }
     val bare   = listing(KinoMuza, "Lalka")
@@ -248,7 +248,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   "a listing's own questions" should "be every gap the families meet over it alone, none once answered, and none for an event" in {
     // docs/design/identity-structural-fixes.md fix 1: what the model's input gate waits on before taking a version in
-    def stageOver(unanswered: Boolean) = new AgreementStage(
+    def stageOver(unanswered: Boolean) = AgreementStageFixture(
       Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = unanswered)), NoVenueDetails, normalizer,
       IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val waiting = stageOver(unanswered = true).questionsOf(bare)
@@ -270,7 +270,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def candidates(query: services.identity.CandidateQuery): Answer[Seq[services.identity.Hit]] = asked(query.toString)
       def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = asked(s"film $tmdbId")
     }
-    val stage = new AgreementStage(
+    val stage = AgreementStageFixture(
       Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true)), NoVenueDetails, normalizer,
       IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       tmdb = Some(NoLookup))
@@ -292,7 +292,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // docs/design/identity-structural-fixes.md fix 4c: the one collapse of a not-yet-answered question is typed, so a
     // reader decides on it only through Answer.failedAs
     val poster = Question.Poster(PosterQuestion.Venue("https://example.org/p.jpg"))
-    def stage(tried: Boolean) = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    def stage(tried: Boolean) = AgreementStageFixture(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = _ => tried)
     stage(tried = true).pipeline.evidence.settled(poster, Answer.Unknown) shouldBe Answer.Failed
     stage(tried = false).pipeline.evidence.settled(poster, Answer.Unknown) shouldBe Answer.Unknown
@@ -304,7 +304,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val decided = stage.apply(resolution, listingOf, version = 1)
     val klondikeDecision = decided.decisions.head
@@ -342,7 +342,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       val billed = listing(KinoMuza, "Binti")
       val model  = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.5, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
         Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver,
+      AgreementStageFixture(families, lookups, normalizer, IdentityCalibration.resolver,
         tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt11867140")(855156)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
         tmdb = Some(lookups)).apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
     }
@@ -361,7 +361,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       val billed = listing(KinoMuza, title, year)
       val model  = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
         Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
         tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
         .apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
     }
@@ -380,7 +380,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val model    = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
       Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val verdicts = new InMemoryAgreementVerdicts
-    val decided  = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val decided  = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
       .apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
     val why = "no agreement on 'Klondike' (2022): 'Klondike 2026' bills 2026"
@@ -401,7 +401,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(candidate: Option[ResolverDecision.Leaning]) = {
       val model = resolution.copy(decisions = resolution.decisions.updated(0,
         ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = candidate)()))
-      new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts,
+      AgreementStageFixture(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb)).apply(model, listingOf, version = 1).decisions.head
     }
     decided(None).film shouldBe None
@@ -425,12 +425,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     val model = resolution.copy(decisions = resolution.decisions.updated(0,
       ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
-    val taken = new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val taken = AgreementStageFixture(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb)).apply(model, listingOf, version = 1).decisions.head
     (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
     taken.explanation.last should include ("corroborated by tmdb")
     // handed TMDB's records as its venues' lookups, as every harness handed them, the stage reads none of them there
-    val venuesOnly = new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val venuesOnly = AgreementStageFixture(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, listingOf, version = 1).decisions.head
     venuesOnly.film shouldBe None
   }
@@ -451,7 +451,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     val model = resolution.copy(decisions = resolution.decisions.updated(0,
       ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
-    def stageOver(stored: AgreementVerdicts) = new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    def stageOver(stored: AgreementVerdicts) = AgreementStageFixture(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb))
     val stored = new InMemoryAgreementVerdicts
     val stage  = stageOver(stored)
@@ -479,7 +479,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(facts: Option[services.identity.DetailFacts]) = {
       val model = Resolution(Seq(ResolverDecision(Seq(undated.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
         Map(undated.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(alone, page(facts), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      AgreementStageFixture(alone, page(facts), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
         new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, Map(undated.key -> undated).get, version = 1).decisions.head
     }
     decided(None).film shouldBe None
@@ -502,7 +502,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     val model = Resolution(Seq(ResolverDecision(Seq(flicks.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
       Map(flicks.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    val taken = new AgreementStage(alone, page, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val taken = AgreementStageFixture(alone, page, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, Map(flicks.key -> flicks).get, version = 1).decisions.head
     taken.explanation.mkString("\n") should not include "corroborated by listing"
   }
@@ -525,7 +525,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val model = resolution.copy(decisions = resolution.decisions.updated(0, ResolverDecision(Seq(billed.key), None, 0.7,
       ResolverDecision.Basis.BelowThreshold, Nil, candidate = vote)()))
     val verdicts = new InMemoryAgreementVerdicts
-    val stage = new AgreementStage(reviews, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, verdicts,
+    val stage = AgreementStageFixture(reviews, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, verdicts,
       clock = _root_.tools.SpecClock.Pinned, identities = Seq(VoterFamily.Wiki, VoterFamily.Filmweb))
     (stage, verdicts, stage.apply(model, Map(billed.key -> billed, matched.key -> matched).get, version = 1).decisions.head)
   }
@@ -546,7 +546,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val model = resolution
     val first = stage.apply(model, listingOf, version = 1).decisions.head
@@ -561,7 +561,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String) = { reads += 1; answers.directedBy(name) }
       def record(id: String)       = { reads += 1; answers.record(id) }
     } }
-    val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val model = resolution
     val first = stage.apply(model, listingOf, version = 1)
@@ -573,13 +573,13 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "report each pass: clusters waiting and agreed, films taken, questions open, clusters resolved" in {
     val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
-    val stage  = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage  = AgreementStageFixture(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1)
     val waitingPass = passes.last
     (waitingPass.waiting, waitingPass.agreed, waitingPass.takenTmdb, waitingPass.resolves) shouldBe ((1, 0, 0, 1))
     waitingPass.open.get(VoterFamily.RottenTomatoes) shouldBe Some(1)
-    val agreeingStage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val agreeingStage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
     agreeingStage.apply(resolution, listingOf, version = 1)
     val agreedPass = passes.last
@@ -591,7 +591,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "let a kept verdict stand when its receipt is read again after a filing elsewhere, and across a restart" in {
     val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
     val stored = new InMemoryAgreementVerdicts
-    def stage() = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    def stage() = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), stored, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
     val live = stage()
     live.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
@@ -621,7 +621,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       override def fresh(question: String) = held.fresh(question)
     }: FamilyAnswers) }
     var filed = Set.empty[String]
-    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned,
       changes = _ => Some(filed))
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
@@ -635,7 +635,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "take the agreed IMDb id as its fallback film when TMDB holds none" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))
   }
 
@@ -647,7 +647,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       VoterFamily.Filmweb        -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("10105049" -> SourceRecord(klondike, Map("filmweb" -> "10105049")))),
       VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike, Map("rt" -> "klondike_2022")))))
     def taken(identities: Seq[VoterFamily]) =
-      new AgreementStage(noImdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      AgreementStageFixture(noImdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, identities = identities).apply(resolution, listingOf, version = 1).decisions.head
     // with the film's title and year, that a link to its page is built of
     taken(Seq(VoterFamily.Wiki, VoterFamily.Filmweb)).fallback shouldBe Some(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0, Some("Klondike"), Some(2022)))
@@ -658,7 +658,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "keep the families' own ids with the decision, and its verdict across a restart without asking them again" in {
     val verdicts = new InMemoryAgreementVerdicts
-    val first = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
+    val first = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     first.apply(resolution, listingOf, version = 1).decisions.head.agreed shouldBe
       Map("imdb" -> "tt16315948", "wiki" -> "Q1", "filmweb" -> "880000", "rt" -> "klondike_2022")
     verdicts.all().filter(_.correction.isEmpty).map(_.agreed.map(_.families)) shouldBe Seq(Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes)))
@@ -669,7 +669,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String) = { asked += 1; answers.directedBy(name) }
       def record(id: String)       = { asked += 1; answers.record(id) }
     } }
-    val restarted = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
+    val restarted = AgreementStageFixture(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     restarted.apply(resolution, listingOf, version = 0).decisions.head.film shouldBe Some(913760)
     asked shouldBe 0   // its families' answers cannot have moved while it was down: no answer read again, no resolve
   }
@@ -693,7 +693,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def all(): Seq[StoredVerdict] = kept.all().map(v => AgreementVerdicts.decode(AgreementVerdicts.encode(v)))
       def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = kept.replace(removed, added)
     }
-    def stage() = new AgreementStage(three, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    def stage() = AgreementStageFixture(three, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt0047395")(122769)), stored, clock = _root_.tools.SpecClock.Pinned)
     val fresh = stage().apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
     fresh.film shouldBe None
@@ -704,7 +704,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "decide again a verdict stored under other rules" in {
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
     verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
     var asked = 0
@@ -714,10 +714,10 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String) = { asked += 1; answers.directedBy(name) }
       def record(id: String)       = { asked += 1; answers.record(id) }
     } }
-    new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    AgreementStageFixture(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 0)
     asked should be > 0
-    verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(new AgreementStage(counting, NoVenueDetails, normalizer,
+    verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(AgreementStageFixture(counting, NoVenueDetails, normalizer,
       IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned).decidedUnder)
   }
 
@@ -726,7 +726,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // never reading Filmweb's answer, where a whole resolve with Filmweb asked reads it.
   it should "decide a kept verdict again when the stage is configured with other families, as a whole resolve with them would" in {
     val verdicts = new InMemoryAgreementVerdicts
-    def stageOf(families: Map[VoterFamily, FamilyAnswers]) = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    def stageOf(families: Map[VoterFamily, FamilyAnswers]) = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     val withoutFilmweb = agreeing() - VoterFamily.Filmweb
     stageOf(withoutFilmweb).apply(resolution, listingOf, version = 1)
@@ -754,11 +754,11 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       listings.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val byKey    = listings.map(l => l.key -> l).toMap
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(model, byKey.get, version = 1).decisions.map(_.film) shouldBe Seq.fill(3)(Some(913760))
     verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
     val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete, backfillPerApply = 1)
     (1 to 3).foreach { i =>
       stage.apply(model, byKey.get, version = 1).decisions.map(_.film) shouldBe Seq.fill(3)(Some(913760))   // standing meanwhile
@@ -776,7 +776,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def model(in: Seq[Listing]) = Resolution(in.map(l => ResolverDecision(Seq(l.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 3,
       in.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val decided = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), decided,
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), decided,
       clock = _root_.tools.SpecClock.Pinned).apply(model(listings), byKey.get, version = 1)
     // stored under an older build, as taking nothing: one decided again takes the film
     val older = decided.all().filter(_.correction.isEmpty).map(_.copy(rules = "an older build", agreed = None, filled = None))
@@ -784,7 +784,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       val verdicts = new InMemoryAgreementVerdicts
       verdicts.replace(Set.empty, stored)
       val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
-      val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
         verdicts, clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete, backfillPerApply = 1)
       val takes = stage.apply(model(order), byKey.get, version = 1).decisions.map(d => d.members -> d.film).toMap
       (takes, left.toSeq)
@@ -803,12 +803,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       listings.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val byKey    = listings.map(l => l.key -> l).toMap
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(model, byKey.get, version = 1)
     verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
     val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
     // Rotten Tomatoes not answered under the new rules: each cluster decided again waits on it
-    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete,
       backfillPerApply = 1)
     val applies = (1 to 3).map(_ => stage.apply(model, byKey.get, version = 1).decisions)
@@ -826,10 +826,10 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // and, once it was spent, stood as it was — read again on every apply, the backlog never cleared
   it should "decide a verdict under these rules whose answers moved again, whatever the backfill's budget" in {
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
     val dissent = agreeing() ++ Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    val again = AgreementStageFixture(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned, backfillPerApply = 0)
     again.apply(resolution, listingOf, version = 1)
     again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
@@ -839,7 +839,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
+    AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
       .apply(resolution, listingOf, version = 1)
     val dissent = agreeing() ++ Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     // Filmweb's and RT's answers refiled after the restart (version 1 → 2): only a verdict that read them is decided again.
@@ -847,7 +847,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def changedSince(version: Long): Option[Set[String]] =
         Some(if (version < 2) verdicts.all().filter(_.correction.isEmpty).head.reads.keySet.map(services.identity.Dependency.encode).filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
     }
-    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+    val again = AgreementStageFixture(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = refiled)
     again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the restart trusts what it kept
     again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
@@ -858,20 +858,20 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ask TMDB about the agreed IMDb id before taking it as a fallback" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
     stage.wanted.collect { case Question.Find(tt) => tt } shouldBe Set("tt16315948")
   }
 
   it should "hand the questions it meets unanswered to the queue at once, and a stale answer's too while it uses it" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    AgreementStageFixture(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
     asked.flatten should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     val staleRt = agreeing() + (VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes,
       Map("klondike_2022" -> SourceRecord(klondike)), stale = true))
     val refreshed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val stage = new AgreementStage(staleRt, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(staleRt, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, ask = refreshed += _, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the stale answers still count
     refreshed.flatten should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
@@ -913,7 +913,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       VoterFamily.RottenTomatoes -> new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-04T21:00:00Z"))
     val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = clock,
       attempted = { case Question.Family(VoterFamily.Filmweb, _) => filmwebFailed; case _ => false })
     val model = resolution
@@ -940,12 +940,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val beforeScrape = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 3, republished = None).decisions.head.film shouldBe Some(913760)
     resolves should be > beforeScrape
-    stage.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
+    stage.pipeline.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
     filmwebAnswered = true
     val beforeAnswer = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 4).decisions.head.film shouldBe Some(913760)   // its answer came: read again
     resolves should be > beforeAnswer
-    stage.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).toSeq shouldBe empty
+    stage.pipeline.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).toSeq shouldBe empty
   }
 
   // A quiet apply (nothing filed) reads what it waits on again only once the memory behind `attempted` marked something:
@@ -955,7 +955,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     var marks, reads  = 0L
     val families = agreeing() ++ Map(
       VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), unanswered = true))
-    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val stage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       attempted = { question => reads += 1; question match { case Question.Family(VoterFamily.Filmweb, _) => filmwebFailed; case _ => false } },
       attemptsMarked = Some(() => marks))
@@ -985,14 +985,14 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       case Question.Family(VoterFamily.Filmweb | VoterFamily.RottenTomatoes, _) => true
       case _                                                                    => false
     }
-    val first = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val first = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       verdicts, clock = _root_.tools.SpecClock.Pinned, attempted = failed)
     val settled = first.apply(resolution, listingOf, version = 1).decisions.head
     settled.film shouldBe None                                      // settled on IMDb and Wikidata alone: no agreement, no film
     first.waits.waitingOn(settled).settled shouldBe true
     // a worker restarted: the settled verdict stands, and what none answered is asked again on every pass
     val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val again = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+    val again = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       verdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, attempted = failed)
     again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None
     handed.flatten.collect { case Question.Family(family, _) => family }.toSet shouldBe Set(VoterFamily.Filmweb, VoterFamily.RottenTomatoes)
@@ -1014,7 +1014,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val askNow: AgreementStage.AskNow = (questions, _) => { asked += questions; rtAnswered = true }
-    val stage = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
     val known = resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0))
     stage.apply(known, listingOf, version = 1)                                     // the first pass: nothing new to it
@@ -1046,7 +1046,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       asked += questions
       questions.foreach { case Question.Family(VoterFamily.RottenTomatoes, question) => answered += question; case _ => () }
     }
-    val stage = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
     val known = resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0))
     stage.apply(known, listingOf, version = 1)                                     // the first pass: nothing new to it
@@ -1066,7 +1066,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       case Question.Family(_, question) if question.startsWith("title|") => answeredTitles += question.stripPrefix("title|")
       case _                                                             => ()
     }
-    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the first pass: agreed
     stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
@@ -1083,7 +1083,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // Newness is the shape's, never the key's (docs/design/identity-no-drift.md, "One dependency index"): a key only names a
   // cluster, and a shape a verdict, a wait or an inline ask holds under one key is no new cluster under another.
   it should "count as new only a shape no verdict, wait or inline ask holds, under whichever key" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       askNow = (_, _) => ())
     stage.loadedAt = Some(1L)
@@ -1101,7 +1101,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // filed with no family answer between (the drift replay's steps 7 and 8) left every apply a first one, and a take that
   // moved had its correction's questions left on the queue (UK Chichester's "The Ties That Bind Us", drift slice seed 3).
   it should "ask inline from its second apply on, whether or not a family answer was filed since the first" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       askNow = (_, _) => ())
     stage.apply(resolution, listingOf, version = 1)
@@ -1116,7 +1116,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "wait on nothing of a cluster's earlier shape once it is back to a shape whose verdict stands" in {
     val answeredTitles = scala.collection.mutable.Set("Klondike")
     val families = agreeing().map { case (family, answers) => family -> new TitledOnly(answers, answeredTitles) }
-    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
     // a scrape adds a listing billed under a title no family answered yet: the reshaped cluster waits on it
@@ -1147,7 +1147,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     var rtAnswered = false
     val rt = new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered)
-    val waits = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val waits = AgreementStageFixture(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = clock, staging = Some(told ++= _))
     id = waits.keyOf(waits.apply(resolution, listingOf, version = 1).decisions.head)   // RT unanswered: it waits
     ofBare.collect { case StagingEvent.Waiting(_, began, questions) =>
@@ -1166,7 +1166,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     told.clear()
     var inlineAnswered = false
     val inlineRt = new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), inlineAnswered)
-    val inline = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> inlineRt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val inline = AgreementStageFixture(agreeing() + (VoterFamily.RottenTomatoes -> inlineRt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = clock,
       askNow = (_, _) => { clock.advanceSeconds(2); inlineAnswered = true }, staging = Some(told ++= _))
     inline.apply(resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0)), listingOf, version = 1)
@@ -1183,7 +1183,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "ask nothing inline of a cluster met on its first pass, which meets every cluster" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    val stage = AgreementStageFixture(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = (q, _) => asked += q)
     stage.apply(resolution, listingOf, version = 1)
     stage.apply(resolution, listingOf, version = 2)
@@ -1192,7 +1192,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay as the model left it while a family has not answered, and name the question" in {
-    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+    val stage = AgreementStageFixture(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val decision = stage.apply(resolution, listingOf, version = 1).decisions.head
     decision shouldBe resolution.decisions.head
     stage.wanted should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
@@ -1207,7 +1207,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "take an agreed film on its IMDb id once TMDB's find of it was attempted, and TMDB's film once the find answers" in {
     var found: Answer[Option[Int]] = Answer.Unknown
     var attempted = false
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => found,
+    val stage = AgreementStageFixture(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => found,
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = { case Question.Find(_) => attempted; case _ => false })
     stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head   // the find never asked: held
     attempted = true
@@ -1222,7 +1222,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   // every verdict, and an attempt marked anywhere read again every verdict whose receipt named one
   it should "read again, on an attempt, only the verdicts whose receipt read that question as not attempted" in {
     var tried = Set.empty[Question]
-    val stage = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+    val stage = AgreementStageFixture(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = q => tried(q))
     val (record, other) = (Question.Record(913760), Question.Record(7))
     val D = services.identity.Dependency
@@ -1231,11 +1231,11 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val read     = verdict("read", D.Attempted(record) -> D.digest(D.attemptRead(true)))
     val elsewise = verdict("elsewise", D.Attempted(other) -> D.digest(D.attemptRead(false)))
     val none     = verdict("none", D.Year -> D.digest(D.yearRead(2026)))
-    Seq(waiting, read, elsewise, none).foreach { v => stage.held.put(v.id, v); stage.held.check(v.id, 1L, 1L) }
+    Seq(waiting, read, elsewise, none).foreach { v => stage.pipeline.held.put(v.id, v); stage.pipeline.held.check(v.id, 1L, 1L) }
     tried = Set(record)
     stage.uncheckAttempted()
-    stage.held.isChecked("waiting") shouldBe false
-    Seq("read", "elsewise", "none").foreach(id => withClue(id)(stage.held.isChecked(id) shouldBe true))
+    stage.pipeline.held.isChecked("waiting") shouldBe false
+    Seq("read", "elsewise", "none").foreach(id => withClue(id)(stage.pipeline.held.isChecked(id) shouldBe true))
     stage.attemptUnchecked shouldBe 1
   }
 }

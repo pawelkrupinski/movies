@@ -104,7 +104,7 @@ object SearchRefreshHoldReplaySpec {
       VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt39000001" -> SourceRecord(record, Map("imdb" -> "tt39000001"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     val listings: Seq[Listing] = Seq(KinoMuza, Multikino, KinoPalacowe).map(venue => FilmTable.listing(venue, "Game").copy(poster = Some(venuePoster)))
-    private def fresh(): AgreementStage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+    private def fresh(): AgreementStage = AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(Game)), new InMemoryAgreementVerdicts, clock = clock, posters = posters, tmdb = Some(lookups),
       changes = _ => Some(filed.toSet), rules = UnifiedRules("t", UnifiedEvidence.Guards, Seq("venues.current")))
     val stage: AgreementStage = fresh()

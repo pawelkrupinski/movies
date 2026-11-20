@@ -12,16 +12,29 @@ import scala.collection.mutable
  * no-match by its families' VERDICT ([[ClusterVerdicts]]) and that verdict by its TAKE ([[AgreementTakes]]) — an event no
  * film database holds ([[NonFilmEvents]]) by none of them. Each stage is handed the evidence it reads
  * ([[AgreementEvidence]]) and what else it needs, never the pipeline; [[AgreementStage]] runs the pipeline over each
- * resolution, an apply at a time. Each verdict is decided under `decidedUnder` ([[AgreementStage.decidedUnder]]).
+ * resolution, an apply at a time. Each verdict is decided under [[decidedUnder]]. Built by the stage's builders
+ * ([[AgreementStageComposition]], the specs' `AgreementStageFixture`) and handed to the stage whole: the stage keeps
+ * only what an apply does with it.
  */
 private[agreement] final class AgreementPipeline(families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups,
                                                  normalizer: TitleNormalizer, calibration: IdentityCalibration,
                                                  tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
-                                                 clock: java.time.Clock, changes: AnswerChanges, tmdb: Option[IdentityLookups],
+                                                 changes: AnswerChanges, tmdb: Option[IdentityLookups],
                                                  identities: Seq[VoterFamily], rules: services.identity.UnifiedRules,
                                                  catalogue: CatalogueAnswers, listedOn: Option[VoterFamily],
                                                  askNow: AgreementStage.AskNow, attempted: Question => Boolean,
-                                                 tmdbReads: TmdbReadTracking, decidedUnder: String) {
+                                                 private[agreement] val posters: PosterAnswers,
+                                                 private[agreement] val clock: java.time.Clock,
+                                                 private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking) {
+
+  /** What a stored verdict was decided under: the stage's code, the selected rules' version, and what the composition
+   *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
+   *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
+  private[agreement] val decidedUnder: String =
+    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(families.keySet, identities, listedOn, calibration)}"
+
+  /** What one apply reads of the posters' hashes and of `listedOn`'s programmes, afresh each apply ([[AgreementPass.Read]]). */
+  def reading(): AgreementPass.Read = new AgreementPass.Read(posters, listedOn.flatMap(families.get))
 
   /** What every stage of the pipeline reads, through the receipt being made ([[AgreementEvidence]]). */
   private[agreement] val evidence = new AgreementEvidence(families, venuePages, tmdb, normalizer, calibration, tmdbOf, attempted, tmdbReads)
@@ -131,7 +144,7 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
    *  take waited on it, and the model's "no film" stood until the poster was filed seconds later (prod 11-07..11-10: UK
    *  "Hadoota" x14 and ES "DUNE" x6 on their own venue posters; US "Parkway Drive: Home" x83 and UK "Touché" x5 on a
    *  candidate film's). */
-  def questionsOf(listing: Listing, posters: PosterAnswers): Set[Question] =
+  def questionsOf(listing: Listing): Set[Question] =
     if (NonFilmEvents.of(listing).isDefined) Set.empty
     else {
       val gaps = mutable.Set.empty[Question]
@@ -175,6 +188,13 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
 
   /** The verdicts kept, by their cluster's key ([[VerdictIndex.memo]]). */
   def held: services.identity.Memo[String, StoredVerdict] = verdicts.memo
+
+  /** Does a verdict kept, or this apply's TMDB reads, read the TMDB record or search a filing under `id` comes as? */
+  def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
+  /** How many verdicts are kept. */
+  def heldCount: Int = held.size
+  /** The verdicts kept, read afresh at each call. */
+  def heldVerdicts(): Iterator[StoredVerdict] = held.values
 
   /** What each cluster waits on, as the last apply left it ([[StageWaits]]): the waits the pipeline's stages keep, each
    *  cluster named by `keyOf`, and the takes standing meanwhile (`standingTakes`). */

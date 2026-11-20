@@ -58,7 +58,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
 
   private def stage(catalogue: CatalogueAnswers, fams: Map[VoterFamily, FamilyAnswers] = families(), tmdbOf: String => Answer[Option[Int]] = finds,
                     ask: Set[Question] => Unit = _ => (), venues: IdentityLookups = table) =
-    new AgreementStage(fams, venues, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, new InMemoryAgreementVerdicts,
+    AgreementStageFixture(fams, venues, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), catalogue = catalogue)
 
   private def decided(stage: AgreementStage, l: Listing) = stage.apply(resolutionOf(l), Map(l.key -> l).get, version = 1).decisions.head
@@ -90,7 +90,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     val l     = FilmTable.listing(Multikino, "To The Bone", Some(2014), Some("Erin Li"), Some(8)).copy(catalogueIds = Seq(bone))
     val tmdb  = new FilmTable(Seq(FilmTable.F(424, "To the Bone", 2017, "Marti Noxon", 107, popularity = 5.06),
       FilmTable.F(900665, "To the Bone", 2014, "Erin Li", 8, popularity = 0.3)), normalizer)
-    def bones(film: Int) = new AgreementStage(families(wiki = Map("Q1" -> short)), table, normalizer, IdentityCalibration.resolver,
+    def bones(film: Int) = AgreementStageFixture(families(wiki = Map("Q1" -> short)), table, normalizer, IdentityCalibration.resolver,
       tmdbOf = Map("tt3249100" -> film).get.andThen(Answer.Known(_)), new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), catalogue = held)
     val d = decided(bones(900665), l)
@@ -103,7 +103,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     val held = new HeldCatalogue(Map.empty, Map(fantasy -> Seq(fantasyHit)))
     val none = new FilmTable(Nil, normalizer)
     def taken(listings: Seq[Listing]) = {
-      val s = new AgreementStage(families(), none, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
+      val s = AgreementStageFixture(families(), none, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
         clock = _root_.tools.SpecClock.Pinned, tmdb = Some(none), catalogue = held)
       val resolution = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
         listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
@@ -203,7 +203,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
       def linked(page: String): Answer[Seq[CatalogueId]]    = Answer.Known(Nil)
       def mapped(id: CatalogueId): Answer[Seq[CatalogueHit]] = hits.get(id).fold[Answer[Seq[CatalogueHit]]](Answer.Unknown)(Answer.Known(_))
     }
-    val s = new AgreementStage(families(), table, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
+    val s = AgreementStageFixture(families(), table, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), catalogue = catalogue,
       attempted = { case Question.Catalogue(CatalogueQuestion.Id(`other`)) => failed; case _ => false })
     val l = listing(ids = Seq(fantasy, other))

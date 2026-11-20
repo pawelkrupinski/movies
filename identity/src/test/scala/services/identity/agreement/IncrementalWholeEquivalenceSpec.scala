@@ -397,7 +397,7 @@ object IncrementalWholeEquivalenceSpec {
     }
     private def newModel() = new IncrementalResolver(noted, normalizer, calibration, decorations = TitleDecorations.None, store = modelStore, rules = "r")
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys, perApply: Int) =
-      new AgreementStage(world.families, world.lookups, normalizer, IdentityCalibration.resolver, world.tmdbOf, stored, clock = world.clock,
+      AgreementStageFixture(world.families, world.lookups, normalizer, IdentityCalibration.resolver, world.tmdbOf, stored, clock = world.clock,
         posters = world.posters, tmdb = Some(world.lookups), identities = Seq(VoterFamily.Wiki), rules = of.rules, correctionsPerApply = perApply,
         attempted = world.tried, givenUp = if (everythingGivenUp) _ => true else world.gaveUp, clusterKeys = new ClusterKeys(keyStore))
     private var model = newModel()

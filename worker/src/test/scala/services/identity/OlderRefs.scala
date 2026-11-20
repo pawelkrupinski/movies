@@ -112,6 +112,31 @@ object OlderRefs {
     constructor.newInstance(args.map(_.asInstanceOf[AnyRef])*).asInstanceOf[clients.TmdbClient]
   }
 
+  /** An agreement stage over these sources, every other role at its default: through the specs' builder
+   *  (`agreement.AgreementStageFixture`, testkit) where the ref has it (2026-11-20, when the stage came to take its
+   *  pipeline whole), else the stage's own constructor, which took them itself. Both take them at the same positions (the
+   *  builder keeps the constructor's order), so each is called by position, every argument not given its own default. */
+  def agreementStage(families: AnyRef, venuePages: AnyRef, normalizer: AnyRef, calibration: AnyRef, tmdbOf: String => Answer[Option[Int]], stored: AnyRef,
+                     clock: AnyRef, posters: AnyRef, tmdb: AnyRef, identities: AnyRef, catalogue: AnyRef, listedOn: AnyRef,
+                     correctionPostersAtOnce: Int, correctionsPerApply: Int): agreement.AgreementStage = {
+    val passed = Map(0 -> families, 1 -> venuePages, 2 -> normalizer, 3 -> calibration, 4 -> tmdbOf, 5 -> stored, 8 -> clock,
+      10 -> posters, 11 -> tmdb, 12 -> identities, 14 -> catalogue, 15 -> listedOn,
+      16 -> Int.box(correctionPostersAtOnce), 17 -> Int.box(correctionsPerApply))
+    def module(name: String): Option[AnyRef] = scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption
+    def arguments(count: Int, owner: AnyRef, defaultGetter: String): Array[AnyRef] = Array.tabulate(count) { i =>
+      passed.getOrElse(i, owner.getClass.getMethod(s"$defaultGetter${i + 1}").invoke(owner))
+    }
+    module("services.identity.agreement.AgreementStageFixture$") match {
+      case Some(builder) =>
+        val build = builder.getClass.getMethods.filter(_.getName == "apply").maxBy(_.getParameterCount)
+        build.invoke(builder, arguments(build.getParameterCount, builder, "apply$default$")*).asInstanceOf[agreement.AgreementStage]
+      case None =>
+        val construct = classOf[agreement.AgreementStage].getConstructors.maxBy(_.getParameterCount)
+        construct.newInstance(arguments(construct.getParameterCount, module("services.identity.agreement.AgreementStage$").get,
+          "$lessinit$greater$default$")*).asInstanceOf[agreement.AgreementStage]
+    }
+  }
+
   /** The lookups added after the oldest ref a tool runs under, which its wrappers pass to their source ([[passing]]). */
   val NewerLookups: Set[String] = Set("overview", "numbersFilmsByTmdbId")
 }
