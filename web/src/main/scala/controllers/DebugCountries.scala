@@ -38,7 +38,7 @@ final class DebugStack(
   val mirrorFreshness:        MirrorFreshness = MirrorFreshness.notMirrored,
   corpusListing:              Option[() => DebugSnapshot[CorpusListing]] = None,
   ratingCadenceSnapshot:      Option[() => DebugSnapshot[Seq[(String, models.RatingChangeStats)]]] = None,
-)(using services.movies.LatestTitleYear) {
+)(using services.evidence.LatestTitleYear) {
   /** The `movies` corpus without showtimes — the `/debug` table, and the titles
    *  `/debug/cadence` names its films by. */
   val listing: () => DebugSnapshot[CorpusListing] =
@@ -60,7 +60,7 @@ final class DebugStack(
 final case class DebugCorpusTable(size: Int, rows: String)
 
 object DebugCorpusTable {
-  def of(records: Seq[StoredMovieRecord], normalizer: services.titles.TitleNormalizer)(implicit city: models.City, latestYear: services.movies.LatestTitleYear): DebugCorpusTable =
+  def of(records: Seq[StoredMovieRecord], normalizer: services.titles.TitleNormalizer)(implicit city: models.City, latestYear: services.evidence.LatestTitleYear): DebugCorpusTable =
     // Flattened to ONE string: a `fill`ed `Html` is a tree of thousands of fragments that
     // every page render walks again to rebuild the same text.
     DebugCorpusTable(records.size,
@@ -71,7 +71,7 @@ object DebugCorpusTable {
 final case class CorpusListing(table: DebugCorpusTable, titleByTmdb: Map[Int, String])
 
 object CorpusListing {
-  def read(movieRepository: MovieRepositoryReader)(using latestYear: services.movies.LatestTitleYear): CorpusListing = {
+  def read(movieRepository: MovieRepositoryReader)(using latestYear: services.evidence.LatestTitleYear): CorpusListing = {
     val records = movieRepository.findAllForListing()
     // The table is the global corpus; its only use for a city is the /movie fallback
     // link on a row with no live showtimes anywhere — the default city, as before.

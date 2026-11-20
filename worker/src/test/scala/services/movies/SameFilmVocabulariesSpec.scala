@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.MixedFilmDetector
 import tools.SpecClock.given
 
 import models._

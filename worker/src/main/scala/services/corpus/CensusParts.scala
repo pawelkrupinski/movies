@@ -1,7 +1,7 @@
 package services.corpus
 
 import models.{CacheKey, City, StoredMovieRecord}
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 import play.api.Logging
 

@@ -1,8 +1,7 @@
-package services.movies
+package models
 
 import tools.SpecClock.given
 
-import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -2,7 +2,7 @@ package services.identity
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.ListingKey
 import services.titles.TitleNormalizer

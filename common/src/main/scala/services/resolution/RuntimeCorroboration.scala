@@ -12,7 +12,7 @@ package services.resolution
  *     folded on a shared imdbId should keep.
  *
  * Runtime is the right evidence for both, and the same evidence
- * [[services.movies.MixedFilmDetector]] already trusts to tell two films apart: it survives
+ * [[services.evidence.MixedFilmDetector]] already trusts to tell two films apart: it survives
  * translation, and two prints of one film agree on it while two different films do
  * not. Crucially it is published by the CINEMAS, so an answer drawn from it is not
  * derived from the resolution being questioned (see

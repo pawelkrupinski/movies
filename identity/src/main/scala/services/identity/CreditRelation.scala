@@ -22,7 +22,7 @@ object CreditRelation {
   /** Credit lists as the director relation compares them, each written form found once. */
   final class Credits(raw: Iterable[String]) {
     val names: Seq[String] = credits(raw)
-    lazy val keys: Set[String]              = names.map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
+    lazy val keys: Set[String]              = names.map(services.titles.PersonKey.of).filter(_.nonEmpty).toSet
     lazy val words: Seq[Seq[String]]        = names.map(TitleContainment.tokens).filter(_.nonEmpty)
     lazy val isLatin: Boolean               = names.exists(tools.LatinScript.hasLetter)
     // ASCII names are their own Latin form ("Any-Latin; Latin-ASCII" leaves them as they are): no transliteration —
@@ -31,7 +31,7 @@ object CreditRelation {
     def isEmpty: Boolean = keys.isEmpty
 
     /** Some credit names the same person as some credit of `other`: the same words in any order
-     *  ([[services.movies.PersonKey]]) or the same letters split otherwise ([[sameLetters]]). */
+     *  ([[services.titles.PersonKey]]) or the same letters split otherwise ([[sameLetters]]). */
     def samePerson(other: Credits): Boolean =
       (keys intersect other.keys).nonEmpty ||
         words.exists(a => other.words.exists(b => sameLetters(a, b) || spelledAlike(a, b) || mononymRespelled(a, b)))

@@ -2,7 +2,7 @@ package services.corpus
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import models.{MovieRecord, Source}
 import services.movies.StoredMovieDto
 import services.titles.TitleNormalizer

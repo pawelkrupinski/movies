@@ -1,4 +1,4 @@
-package services.movies
+package services.evidence
 
 import services.titles.TitleNormalizer
 
@@ -7,7 +7,7 @@ import tools.SpecClock.given
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ListingConstraints.{CannotLink, ListingEvidence}
+import services.evidence.ListingConstraints.{CannotLink, ListingEvidence}
 
 /**
  * The constraint model names WHY two pieces of evidence cannot be one film — the reason the

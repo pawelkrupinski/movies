@@ -4,7 +4,8 @@ import models.CacheKey
 
 import models.MovieRecord
 import play.api.Logging
-import services.movies.{LatestTitleYear, MovieCache}
+import services.movies.MovieCache
+import services.evidence.LatestTitleYear
 
 /**
  * Recovers one row's missing IMDb id: the id the ladder names ([[ImdbIdLadder]]), written back to the cached row —

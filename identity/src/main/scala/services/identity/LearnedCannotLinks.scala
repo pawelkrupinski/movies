@@ -1,9 +1,9 @@
 package services.identity
 
-import services.movies.ListingConstraints.CannotLink
+import services.evidence.ListingConstraints.CannotLink
 
 /** The identity resolver's LEARNED cannot-links: the rules of the calibration artefact (`identity-weights.json`) and its
- *  certified probability cuts, beside the hand-written ones of [[services.movies.ListingConstraints]]. */
+ *  certified probability cuts, beside the hand-written ones of [[services.evidence.ListingConstraints]]. */
 object LearnedCannotLinks {
 
   /** Are these two pieces of evidence — measured by `IdentityMeasures` for `scope` ("listing-film"

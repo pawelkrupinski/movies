@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.LatestTitleYear
 import models.{CacheKey, StoredMovieRecord}
 
 import models.{MovieRecord, SourceData}

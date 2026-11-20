@@ -255,7 +255,7 @@ object StageRelays {
   def anotherProduction(listing: Listing, film: Film, country: Option[String]): Boolean =
     listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
-        if (billsAHouseInParticular(listing)) services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
+        if (billsAHouseInParticular(listing)) services.evidence.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
         else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))))
   /** Does the listing's banner name a house in particular ([[namesAHouseInParticular]])? */
   private def billsAHouseInParticular(listing: Listing): Boolean = listing.relay.houses.exists(namesAHouseInParticular)

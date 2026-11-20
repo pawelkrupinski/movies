@@ -1,6 +1,7 @@
 package services.enrichment
 
-import services.movies.{LatestTitleYear, MovieCache}
+import services.movies.MovieCache
+import services.evidence.LatestTitleYear
 
 import java.time.Clock
 

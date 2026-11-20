@@ -25,7 +25,7 @@ class DebugStreamController(
   // set carries the selection here, since an EventSource sends no query string).
   debugCountries:   DebugCountries,
   environment:      Mode
-)(using mat: Materializer, latestYear: services.movies.LatestTitleYear) extends AbstractController(cc) {
+)(using mat: Materializer, latestYear: services.evidence.LatestTitleYear) extends AbstractController(cc) {
 
   def stream: Action[AnyContent] = Action { request =>
     DevMode.gate(environment)(Ok.chunked(eventSource(request)).as("text/event-stream"))

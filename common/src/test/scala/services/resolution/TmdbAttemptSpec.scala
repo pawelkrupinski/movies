@@ -1,6 +1,6 @@
 package services.resolution
 
-import services.movies.FilmEvidence
+import services.evidence.FilmEvidence
 
 import models.TmdbAttempt
 import org.scalatest.flatspec.AnyFlatSpec

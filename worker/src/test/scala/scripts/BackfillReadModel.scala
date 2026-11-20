@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import services.MongoConnection
 import services.movies.SingleCountryNormalizer.titleNormalizer

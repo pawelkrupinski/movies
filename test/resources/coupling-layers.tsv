@@ -28,6 +28,7 @@ layer	5	diagnostics	command-line programs run beside the app (FilmwebDiff, Roste
 rank	0	clients	the external services' clients: they know a film, no service
 rank	0	services	the Mongo plumbing every store stands on: connections, write concerns, uptime
 rank	0	services.config	the admin overrides of the environment
+rank	0	services.evidence	what the cinemas published about a film row: its slot per venue, the evidence a resolution searches from, and the rules that say two listings are not one film
 rank	0	services.tasktypes	the task types, by name: the queue's vocabulary
 rank	0	services.titles	the title text: normalising, reading and classifying a listing's title
 rank	1	services.cadence	when a rating is due again, and its report

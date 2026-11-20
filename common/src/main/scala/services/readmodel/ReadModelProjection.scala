@@ -1,6 +1,6 @@
 package services.readmodel
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models._
 import services.titles.TitleNormalizer
@@ -12,7 +12,7 @@ import services.titles.TitleNormalizer
  * screens in.
  *
  * No clock, no I/O — every value is a deterministic function of the input row
- * and the [[services.movies.LatestTitleYear]] its caller hands in (the cap on a
+ * and the [[services.evidence.LatestTitleYear]] its caller hands in (the cap on a
  * year read out of a title, which only New Year moves), so the same row always
  * projects to identical documents. That determinism is
  * what the projector's minimal-write diff relies on: a row whose metadata is

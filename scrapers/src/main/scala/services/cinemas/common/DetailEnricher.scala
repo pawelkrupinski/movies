@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import services.movies.ScreeningTokens
 import models.{Cinema, MovieRecord, Showtime, Source, SourceData}

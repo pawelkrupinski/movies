@@ -2,7 +2,7 @@ package tools
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.{ArchivedScrape, Cinema, CinemaMovie, CinemaShowing, CityScreening, Country, ResolvedMovie, Showtime}
 import services.movies.ScrapeListing
@@ -220,12 +220,12 @@ object ServedCorpusInvariants {
     records.filter(_.record.tmdbId.isDefined).flatMap { r =>
       r.record.data.get(models.Tmdb).toSeq.flatMap { film =>
         r.record.cinemaSlots.collect {
-          case (source, sd) if services.movies.ListingConstraints.slotDeniesFilm(sd, film, normalizer).isDefined =>
+          case (source, sd) if services.evidence.ListingConstraints.slotDeniesFilm(sd, film, normalizer).isDefined =>
             r.key(normalizer) ->
               (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
                s"(${film.releaseYear.getOrElse("—")}, ${film.director.mkString("/")}) at " +
                s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${sd.title.getOrElse("—")}' " +
-               s"${sd.releaseYear.orElse(models.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, services.movies.LatestTitleYear.current)).getOrElse("—")}, " +
+               s"${sd.releaseYear.orElse(models.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, services.evidence.LatestTitleYear.current)).getOrElse("—")}, " +
                sd.director.mkString("/"))
         }
       }

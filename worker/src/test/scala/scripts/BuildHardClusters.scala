@@ -1,7 +1,7 @@
 package scripts
 
 import models.Country
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import tools.{CommandLine, CorpusFixture, HardClusters}
 
 import java.nio.charset.StandardCharsets

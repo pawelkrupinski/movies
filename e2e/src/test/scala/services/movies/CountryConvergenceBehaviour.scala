@@ -418,7 +418,7 @@ abstract class CountryConvergenceBehaviour(
   private lazy val clock = new tools.MutableClock(TestWiring.FixedInstant)
 
   /** Day one's input-changing writes and enrichment asks, in order (`NextDayReask`). */
-  private lazy val dayOneAsks = new NextDayReask.Recorder(using services.movies.LatestTitleYear(clock))
+  private lazy val dayOneAsks = new NextDayReask.Recorder(using services.evidence.LatestTitleYear(clock))
 
   private lazy val shared: (ArchiveReplayWiring, ScrapeArchiveRepository) = {
     // In-memory archive: the leg no longer needs a Mongo at all.

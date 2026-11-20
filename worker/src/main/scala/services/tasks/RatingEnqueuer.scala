@@ -2,7 +2,7 @@ package services.tasks
 
 import models.CacheKey
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.{Country, MovieRecord}
 import services.freshness.FreshnessStore

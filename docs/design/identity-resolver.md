@@ -149,7 +149,7 @@ unchanged. Rating lookups are per-film, not per-listing, and have nothing to do 
 
 ## 3. The constraint model
 
-There is one module, `services.movies.ListingConstraints` (prerequisite b), and one solver.
+There is one module, `services.evidence.ListingConstraints` (prerequisite b), and one solver.
 
 **Edges** are drawn only between two nodes that share a block key (§5):
 

@@ -2,7 +2,7 @@ package scripts
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 
 import clients.HttpTmdbClient

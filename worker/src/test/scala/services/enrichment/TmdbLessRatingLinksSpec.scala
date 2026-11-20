@@ -29,10 +29,10 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
   }
 
   "a film TMDB could not match" should "be linked only when it publishes a year or a director" in {
-    services.movies.TmdbLessEligibility.eligible(unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))._3) shouldBe true
-    services.movies.TmdbLessEligibility.eligible(unmatched("A Festival 2026 | Zmiana pierwszeństwa", None, Nil)._3) shouldBe false
+    services.evidence.TmdbLessEligibility.eligible(unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))._3) shouldBe true
+    services.evidence.TmdbLessEligibility.eligible(unmatched("A Festival 2026 | Zmiana pierwszeństwa", None, Nil)._3) shouldBe false
     // Nor before TMDB was asked: a row still resolving is not a TMDB-less one.
-    services.movies.TmdbLessEligibility.eligible(unmatched("NADZY", Some(2026), Seq("Mike Leigh"))._3.copy(tmdbAttempt = None)) shouldBe false
+    services.evidence.TmdbLessEligibility.eligible(unmatched("NADZY", Some(2026), Seq("Mike Leigh"))._3.copy(tmdbAttempt = None)) shouldBe false
     // The rating tasks queue it: RT and Metacritic everywhere, Filmweb where it is enabled.
     val row = unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))._3
     RatingSources.all.filter(_.eligible(row)).map(_.taskType.toString) should contain allOf ("RtRating", "McRating", "FilmwebRating")
@@ -43,16 +43,16 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     // were searched on Metacritic and RT — live requests for nothing, in production too.
     Seq("12. SPLAT! FilmFest | karnet", "Avengers: Doomsday RealD 3D Fan Event", "Blumfest Presents Other Mommy Fan Event Screening",
       "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL", "Basia. Humor w paski mam + Kocia Szajka")
-      .foreach(title => withClue(title)(services.movies.TmdbLessEligibility.eligible(unmatched(title, Some(2026), Seq("Someone"))._3) shouldBe false))
+      .foreach(title => withClue(title)(services.evidence.TmdbLessEligibility.eligible(unmatched(title, Some(2026), Seq("Someone"))._3) shouldBe false))
     // A film whose title merely contains such a word stays eligible, and so does one film plus a
     // discussion or a meeting: Warsaw's "Wśród nocnej ciszy + dyskusja" is Chmielewski's 1978 film.
-    services.movies.TmdbLessEligibility.eligible(unmatched("Passengers", Some(2016), Seq("Morten Tyldum"))._3) shouldBe true
+    services.evidence.TmdbLessEligibility.eligible(unmatched("Passengers", Some(2016), Seq("Morten Tyldum"))._3) shouldBe true
     // A word of a live event in a FILM's title is not one: PL prod's "Neneh: Gwiazda baletu", and a silent
     // film shown with live music ("Carmilla – pokaz z muzyką na żywo").
     Seq("Wśród nocnej ciszy + dyskusja | Kino (nie)jawne: queerowe kody PRL-u", "Zygfryd + spotkanie z reżyserem", "Pan's Labyrinth + Q&A",
       "Neneh: Gwiazda baletu", "Carmilla – pokaz z muzyką na żywo + spotkanie z Izabelą Trojanowską",
       "Siesta – Trylogia Afrykańska | Spotkanie autorskie z Marcinem Kydryńskim i koncert muzyki na żywo")
-      .foreach(title => withClue(title)(services.movies.TmdbLessEligibility.eligible(unmatched(title, Some(1978), Seq("Tadeusz Chmielewski"))._3) shouldBe true))
+      .foreach(title => withClue(title)(services.evidence.TmdbLessEligibility.eligible(unmatched(title, Some(1978), Seq("Tadeusz Chmielewski"))._3) shouldBe true))
   }
 
   it should "be searched under its stripped titles" in {

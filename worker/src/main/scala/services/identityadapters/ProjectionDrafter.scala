@@ -1,7 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 
 import models.{ListingKey, MovieRecord}

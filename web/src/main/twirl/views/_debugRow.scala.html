@@ -14,8 +14,8 @@
  * expand. Rendering every row's breakdown up front built one giant HTML string
  * that OOM'd the view on the full corpus.
  *@
-@(row: StoredMovieRecord, normalizer: services.titles.TitleNormalizer, latestYear: services.movies.LatestTitleYear)(implicit city: models.City)
-@import services.movies.CinemaSlotReadings.*
+@(row: StoredMovieRecord, normalizer: services.titles.TitleNormalizer, latestYear: services.evidence.LatestTitleYear)(implicit city: models.City)
+@import services.evidence.CinemaSlotReadings.*
 @defining(row.id.value) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>

@@ -1,7 +1,7 @@
 package services.enrichment
 
 import models.{EmbeddedYear, MovieRecord}
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 /**
  * What an IMDb id lookup for one film asks with, read off its row once: the search title and the key's year; every

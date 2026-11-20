@@ -49,7 +49,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     // every piece logs under the projection's own logger, as its lines always have
     val logger  = play.api.Logger(classOf[IdentityProjection])
     val metrics = workerMetrics.identityProjection.forCountry(country.code)
-    given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+    given services.evidence.LatestTitleYear = services.evidence.LatestTitleYear(clock)
     // how a film's venue slots are built from the venues' rows: what the draft builds and the write completes them by
     val slotSource = new services.identity.VenueSlots.FromArchive(titleNormalizer,
       new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts), screeningTokens, identityListingIntake.rowsOf)

@@ -1,11 +1,11 @@
-package services.movies
+package services.evidence
 
 import models.SlotFields
 
 import services.titles.TitleContainment
 import services.titles.TitleNormalizer
 
-import models.{Cinema, Filmweb, Imdb, MovieRecord, Source, SourceData, Tmdb}
+import models.{Cinema, Filmweb, Imdb, MovieRecord, MovieRecordMerge, Source, SourceData, Tmdb}
 
 /**
  * A record's readings built on its ONE representative slot per venue ([[cinemaData]]): the evidence a resolution
@@ -16,7 +16,7 @@ import models.{Cinema, Filmweb, Imdb, MovieRecord, Source, SourceData, Tmdb}
  * Extension methods, members of [[LatestTitleYear]] (which mixes this in): every reading needs that year to tell a
  * sequel's number from a year, so wherever one is given -- `record.cinemaData` already asked for it -- the readings are
  * in scope with no import. Where the year is a plain value (a Twirl template's parameter), import
- * `services.movies.CinemaSlotReadings.*`.
+ * `services.evidence.CinemaSlotReadings.*`.
  */
 trait CinemaSlotReadings {
 
@@ -146,7 +146,7 @@ object CinemaSlotReadings extends CinemaSlotReadings {
    *  themselves. Structural rather than rule-driven, so it needs no country's
    *  normalizer. Several slots carrying that one spelling are one listing and settle
    *  field by field (`MovieRecordMerge.mergeSlots`), so no order picks among them. */
-  private[movies] def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int], latestYear: Int): SourceData = {
+  private[evidence] def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int], latestYear: Int): SourceData = {
     val spelled = slots.map(sd => sd -> TitleContainment.tokens(sd.title.getOrElse("")))
     val best = spelled.map(_._2).distinct.minBy { tokens =>
       (spelled.exists { case (_, other) => TitleContainment.decorates(other, tokens, latestYear) },

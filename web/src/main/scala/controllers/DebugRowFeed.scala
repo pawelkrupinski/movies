@@ -7,7 +7,7 @@ import play.api.libs.json.Json
 /** One country's `movies` changes as the /debug live view's SSE frames: each upserted row rendered
  *  server-side through the same `_debugRow` partial the page uses, so a live-inserted row is
  *  byte-identical to the initial render, and a delete as the `_id` the page drops. */
-final class DebugRowFeed(stack: DebugStack, country: models.Country)(using latestYear: services.movies.LatestTitleYear) {
+final class DebugRowFeed(stack: DebugStack, country: models.Country)(using latestYear: services.evidence.LatestTitleYear) {
 
   // The stack's own title rules: a row keys as its own corpus keyed it.
   private val normalizer = stack.movieRepository.normalizer

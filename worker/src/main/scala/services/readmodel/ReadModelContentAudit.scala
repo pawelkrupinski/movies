@@ -2,7 +2,7 @@ package services.readmodel
 
 import models.FilmId
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.{CityScreening, ResolvedMovie}
 import services.readmodel.RatingGate

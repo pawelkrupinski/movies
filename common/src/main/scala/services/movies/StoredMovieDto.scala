@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.LatestTitleYear
 import models.{MovieRecord, Source, SourceData, StoredMovieRecord, TmdbAttempt}
 import services.titles.TitleNormalizer
 

@@ -13,5 +13,5 @@ object SpecClock {
 
   /** The latest year a title may name, read off [[Pinned]] — what a spec's title readers and record accessors cap a
    *  year by. `import tools.SpecClock.given`. */
-  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(Pinned)
+  given latestTitleYear: services.evidence.LatestTitleYear = services.evidence.LatestTitleYear(Pinned)
 }

@@ -1,5 +1,6 @@
 package services.movies
 
+import models.MovieRecordMerge
 import models.{CacheKey, FilmId, StoredMovieRecord}
 
 import models.{MovieRecord, ShowtimesDigest}

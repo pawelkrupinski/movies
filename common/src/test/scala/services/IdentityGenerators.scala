@@ -2,10 +2,11 @@ package services
 
 import models._
 import org.scalacheck.Gen
-import services.movies.{MovieRecordMerge, SingleCountryNormalizer}
+import services.movies.SingleCountryNormalizer
+import models.MovieRecordMerge
 import services.titles.TitleNormalizer
 import services.resolution.Candidate
-import services.movies.FilmEvidence
+import services.evidence.FilmEvidence
 
 import java.time.LocalDateTime
 import java.util.Locale

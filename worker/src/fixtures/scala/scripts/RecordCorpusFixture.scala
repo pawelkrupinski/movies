@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository

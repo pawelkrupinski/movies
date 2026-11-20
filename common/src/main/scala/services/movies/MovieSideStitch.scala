@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.LatestTitleYear
 import models.{FilmId, StoredMovieRecord}
 
 import services.titles.TitleNormalizer

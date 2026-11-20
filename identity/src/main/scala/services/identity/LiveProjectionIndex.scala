@@ -3,7 +3,7 @@ package services.identity
 import models.{LeanRecords, StoredMovieRecord}
 
 import models.{Source, SourceData, ListingKey}
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 
 import scala.collection.mutable

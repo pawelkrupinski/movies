@@ -4,7 +4,7 @@ import models.CacheKey
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 
 /**

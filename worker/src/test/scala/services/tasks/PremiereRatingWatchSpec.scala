@@ -5,7 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cadence.InMemoryRatingCadenceStore
 import services.freshness.FreshnessKind
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, LatestTitleYear, ListingSeed}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, ListingSeed}
+import services.evidence.LatestTitleYear
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.{Clock, Instant, LocalDate, ZoneOffset}

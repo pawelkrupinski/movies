@@ -35,8 +35,8 @@ object IdentityRulesSources {
     "identity/src/main/scala/services/identity/VenueSlots.scala",
     "common/src/main/scala/services/movies/CinemaSlotBuilder.scala",
     "common/src/main/scala/services/movies/ScrapeListing.scala",
-    "common/src/main/scala/services/movies/MixedFilmDetector.scala",
-    "common/src/main/scala/services/movies/MovieRecordMerge.scala",
+    "common/src/main/scala/services/evidence/MixedFilmDetector.scala",
+    "common/src/main/scala/models/MovieRecordMerge.scala",
     "common/src/main/scala/models/ShowtimesDigest.scala",
     "common/src/main/scala/models/ListingKey.scala",
     "common/src/main/scala/services/movies/ScreeningTokens.scala",
@@ -50,7 +50,7 @@ object IdentityRulesSources {
    *  fold asks `ListingConstraints` only `venueCreditsApart`, which reads `MixedFilmDetector`, a root. */
   val VenueSlotLeaves: Set[String] = Set(
     "identity/src/main/scala/services/identity/VenueSlots.scala",
-    "common/src/main/scala/services/movies/ListingConstraints.scala")
+    "common/src/main/scala/services/evidence/ListingConstraints.scala")
 
   def closure(roots: Set[String], depends: String => Set[String]): Set[String] = {
     var seen = roots; var frontier = roots
@@ -76,7 +76,7 @@ object IdentityRulesSources {
     require(missing.isEmpty, s"versioned roots not compiled: ${missing.mkString(", ")}")
     val rootClasses = all.flatMap { case (m, r) => r.classes.all.collect { case (src, cls) if roots(rel(m, src)) => cls } }.toSet
     // Another module's classes are recorded by their binary names ("services.movies.ScrapeHealth$",
-    // "services.movies.ListingConstraints$CannotLink", a file's top-level definitions "services.movies.Foo$package"), its
+    // "services.evidence.ListingConstraints$CannotLink", a file's top-level definitions "services.movies.Foo$package"), its
     // own by their source names: the module that compiled the class maps one to the other.
     val sourceNameOf: Map[String, String] = all.flatMap { case (_, r) =>
       r.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap

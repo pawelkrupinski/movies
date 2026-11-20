@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.{FilmEvidence, LatestTitleYear}
 import services.titles.SequelMarker
 import services.titles.TitleContainment
 import services.titles.SamePerson

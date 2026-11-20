@@ -36,7 +36,7 @@ object PinnedGateMeasures {
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
 
   private def people(names: Iterable[String]): Set[String] =
-    names.iterator.flatMap(_.split(",")).map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
+    names.iterator.flatMap(_.split(",")).map(services.titles.PersonKey.of).filter(_.nonEmpty).toSet
 
   /** How two credit lists relate: one person in common, a shared name word only (a surname, a
    *  transliteration), nobody in common, or incomparable (one side not in Latin script). */

@@ -17,7 +17,7 @@ private[readmodel] final class CardProjection(
   metrics:       ReadModelProjectionMetrics,
   cpuClock:      tools.ThreadCpuClock,
   stopwatch:     tools.Stopwatch
-)(using services.movies.LatestTitleYear) {
+)(using services.evidence.LatestTitleYear) {
   import ReadModelProjectionMetrics.ProjectTrigger
   import memo.lastMetadata
 

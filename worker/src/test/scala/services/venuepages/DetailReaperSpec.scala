@@ -65,7 +65,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     var derived = 0
     val perVenue = new DetailPages.PerVenue(Seq(enricher))
     val counting = new DetailPages {
-      def of(key: CacheKey, record: MovieRecord)(using services.movies.LatestTitleYear) = {
+      def of(key: CacheKey, record: MovieRecord)(using services.evidence.LatestTitleYear) = {
         derived += 1; perVenue.of(key, record)
       }
     }

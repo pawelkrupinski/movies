@@ -1,5 +1,4 @@
-package services.movies
-
+package services.evidence
 
 import testsupport.SourceTrees
 import org.scalatest.flatspec.AnyFlatSpec
@@ -24,8 +23,8 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
 
   /** The files allowed to name the predicates: where they are defined, and the model itself. */
   private val Owners = Set(
-    "common/src/main/scala/services/movies/MixedFilmDetector.scala",
-    "common/src/main/scala/services/movies/ListingConstraints.scala")
+    "common/src/main/scala/services/evidence/MixedFilmDetector.scala",
+    "common/src/main/scala/services/evidence/ListingConstraints.scala")
 
   private val Vetoes = Seq("deniesFilm", "wouldAddASecondFilm", "describeDifferentFilms")
   private val Direct = s"""MixedFilmDetector\\s*\\.\\s*(${Vetoes.mkString("|")})\\b""".r
@@ -48,7 +47,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
   it should "find the files it guards" in {
     // A positive control: a moved tree would make the guard pass vacuously.
     Roots.scalaFiles.map(_.toString) should contain allOf (
-      "common/src/main/scala/services/movies/ListingConstraints.scala",
+      "common/src/main/scala/services/evidence/ListingConstraints.scala",
       "worker/src/main/scala/services/corpus/MovieService.scala",
       "worker/src/fixtures/scala/tools/ServedCorpusInvariants.scala")
   }

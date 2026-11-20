@@ -51,8 +51,8 @@ class MovieRecordCitiesSpec extends AnyFlatSpec with Matchers {
     record.cities shouldBe City.all.filter(c => venues.exists(c.cinemaSet.contains))
 
     assume(tools.ThreadAllocation.supported, "this JVM cannot say what a call allocated")
-    given services.movies.LatestTitleYear =
-      services.movies.LatestTitleYear(java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T00:00:00Z"), java.time.ZoneOffset.UTC))
+    given services.evidence.LatestTitleYear =
+      services.evidence.LatestTitleYear(java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T00:00:00Z"), java.time.ZoneOffset.UTC))
     def allocated(work: => Any): Long = { work; tools.ThreadAllocation.of(work)._2 }
     val oneBuild = allocated(record.cinemaData)
     val cities   = allocated(record.cities)

@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{MovieRecord, Showtime, Source, SourceData}
 /**
  * Pure merge primitive — combines a `victim` row's per-source data onto a
  * `canonical` row. Used by:
@@ -152,7 +151,7 @@ object MovieRecordMerge {
    *  time. Fields neither side has stay empty, and a field only one side has now
    *  SURVIVES the fold instead of being dropped with the losing slot — the merge
    *  gained data as well as determinism. */
-  private[services] def mergeSlot(a: SourceData, b: SourceData): SourceData = mergeSlots(Seq(a, b))
+  private[models] def mergeSlot(a: SourceData, b: SourceData): SourceData = mergeSlots(Seq(a, b))
 
   /** Settle any number of slots of ONE source into one, richest first: every field
    *  takes the richest slot that published it. A total order over the slots, so the
@@ -346,6 +345,6 @@ object MovieRecordMerge {
     if (showtimes.sizeIs < 2) showtimes
     else showtimes.map(s => (showtimeOrder(s), s)).sortBy(_._1).map(_._2)
 
-  private[movies] def showtimeOrder(s: Showtime): (String, String, String, String) =
+  private[models] def showtimeOrder(s: Showtime): (String, String, String, String) =
     (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse(""))
 }

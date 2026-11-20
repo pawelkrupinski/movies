@@ -1,7 +1,7 @@
 package services.enrichment
 
-import services.movies.LatestTitleYear
-import services.movies.CinemaSlotReadings.evidence
+import services.evidence.LatestTitleYear
+import services.evidence.CinemaSlotReadings.evidence
 
 import models.MovieRecord
 
@@ -30,7 +30,7 @@ object RatingPageIdentity {
    *  cinemas' credit? Then a year decades apart is a retrospective's screening year ("Przekleństwa
    *  niewinności" 2026 is Coppola's 1999 film), not another film's, as Filmweb's own pick reads it. */
   def directorsAgree(row: MovieRecord, pageDirectors: Set[String], tmdbDirectors: Int => Set[String])(using LatestTitleYear): Boolean = {
-    val ours = directorsOf(row, tmdbDirectors) ++ services.movies.TmdbLessEligibility.directorsOf(row)
+    val ours = directorsOf(row, tmdbDirectors) ++ services.evidence.TmdbLessEligibility.directorsOf(row)
     ours.nonEmpty && pageDirectors.nonEmpty && MetacriticClient.directorsCompatible(ours, pageDirectors)
   }
 

@@ -2,7 +2,7 @@ package services.identity
 
 import models.{CacheKey, FilmId, StoredMovieRecord}
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 
 /** Step 4 of THE IDENTITY PROJECTION's decisions ([[IdentityProjectionPlan]]), once the details of a new film are

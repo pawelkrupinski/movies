@@ -1,7 +1,8 @@
 package services.enrichment
 
 import models.MovieRecord
-import services.movies.{LatestTitleYear, MovieCache}
+import services.movies.MovieCache
+import services.evidence.LatestTitleYear
 import services.resolution.ResolutionCache
 
 import java.util.concurrent.ScheduledExecutorService

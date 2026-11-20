@@ -13,5 +13,5 @@ trait TimeSources {
 
   /** The latest year a title may name, read off [[clock]] at each ask: what every title reader the wiring builds (and
    *  the record accessors they reach, the debug pages' display titles among them) caps a year by. */
-  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+  given latestTitleYear: services.evidence.LatestTitleYear = services.evidence.LatestTitleYear(clock)
 }

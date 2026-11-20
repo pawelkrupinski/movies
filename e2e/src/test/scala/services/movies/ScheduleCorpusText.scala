@@ -1,5 +1,6 @@
 package services.movies
 
+import services.evidence.LatestTitleYear
 import tools.SpecClock.given
 
 import controllers.{FilmSchedule, MovieControllerService}

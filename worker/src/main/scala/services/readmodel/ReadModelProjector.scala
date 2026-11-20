@@ -2,7 +2,7 @@ package services.readmodel
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.ResolvedMovie
 import play.api.Logging

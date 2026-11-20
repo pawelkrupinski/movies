@@ -1,6 +1,4 @@
-package services.movies
-
-import services.titles.TitleContainment
+package services.titles
 
 /** A person's name as an order-insensitive whole-name key: accents folded, lowercased, its
  *  words sorted, so "Makoto Shinkai" = "Shinkai Makoto". One definition for every place that

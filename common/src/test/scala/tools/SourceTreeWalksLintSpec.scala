@@ -202,7 +202,7 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
       "worker/src/test/scala/tools/ScalaSourceScan.scala", "scrapers/src/test/scala/services/cinemas/NoWallClockInClientsSpec.scala",
       "worker/src/test/scala/tools/ListingCompletenessSpec.scala", "common/src/test/scala/testsupport/ModuleSources.scala")
     readersOf("worker/src/main/scala/services/corpus/MovieService.scala") should contain (
-      "worker/src/test/scala/services/movies/ListingConstraintsRoutingSpec.scala")
+      "worker/src/test/scala/services/evidence/ListingConstraintsRoutingSpec.scala")
     readersOf("identity/src/main/scala/services/identity/Authority.scala") should contain (
       "identity/src/test/scala/services/identity/ProvenanceSpec.scala")
     readersOf("repochecks/src/test/scala/deploy/RepoFileSpec.scala") should contain (

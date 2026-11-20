@@ -1,6 +1,6 @@
 package controllers
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 
 import services.movies.SingleCountryNormalizer

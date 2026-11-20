@@ -1,4 +1,4 @@
-package services.movies
+package models
 
 import scala.util.matching.Regex
 

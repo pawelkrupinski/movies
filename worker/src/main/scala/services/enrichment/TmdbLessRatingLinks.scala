@@ -5,14 +5,14 @@ import models.CacheKey
 import java.util.Locale
 
 import models.{MovieRecord, EmbeddedYear}
-import services.movies.{LatestTitleYear, TmdbLessEligibility}
+import services.evidence.{LatestTitleYear, TmdbLessEligibility}
 import services.titles.TitleNormalizer
 import services.titles.SearchTitles
 
 /**
  * Rating-site links for a film TMDB has no record of — asked only once TMDB was asked and found
  * nothing (`MovieRecord.tmdbNoMatch`), and only for a row that publishes a year or a director to
- * check a page against (which rows: [[services.movies.TmdbLessEligibility]]).
+ * check a page against (which rows: [[services.evidence.TmdbLessEligibility]]).
  *
  * Measured 2026-09-30 on the 174 TMDB-less cards live in production: every correct Metacritic, RT
  * and Filmweb page found belonged to a row publishing a year or a director, and every wrong one

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.ListingConstraints
+import services.evidence.ListingConstraints
 
 /** Whether two nodes' own evidence keeps them apart ([[ConstraintEdges]]): the seasons their titles name, or the learned
  *  "listing-listing" scope over a fact both publish, as each node's scope reads its facts; and the film-less event each

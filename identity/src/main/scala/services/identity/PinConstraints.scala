@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.FamilyClosure.Edge
-import services.movies.ListingConstraints.{CannotLink, MustLink}
+import services.evidence.ListingConstraints.{CannotLink, MustLink}
 import models.ListingKey
 
 /**

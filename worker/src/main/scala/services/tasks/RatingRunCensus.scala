@@ -5,7 +5,7 @@ import models.CacheKey
 import services.metrics.worker.SampledCensus
 import tools.ThreadPools
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry

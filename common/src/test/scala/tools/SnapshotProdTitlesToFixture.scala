@@ -1,6 +1,6 @@
 package tools
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import services.MongoConnection
 import services.movies.MongoMovieRepository

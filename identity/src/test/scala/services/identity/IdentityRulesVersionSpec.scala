@@ -49,7 +49,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   // The title readers cap a year at next year in UTC; read through VenueClock, every venue-timezone fix moved the
   // rules and re-resolved every worker's corpus. They read it through `LatestTitleYear`, which reaches no venue.
   it should "leave out the venue clock, reading only the year a title may name" in {
-    digested should contain ("common/src/main/scala/services/movies/LatestTitleYear.scala")
+    digested should contain ("common/src/main/scala/services/evidence/LatestTitleYear.scala")
     digested should not contain "common/src/main/scala/models/VenueClock.scala"
   }
 

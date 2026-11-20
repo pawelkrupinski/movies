@@ -2,10 +2,11 @@ package services.identity
 
 import models.StoredMovieRecord
 
-import services.movies.LatestTitleYear
+import services.evidence.LatestTitleYear
 
 import models.{CinemaShowing, MovieRecord, Source, SourceData, EmbeddedYear, ListingKey}
-import services.movies.{ListingConstraints, ScrapeListing}
+import services.movies.ScrapeListing
+import services.evidence.ListingConstraints
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
 

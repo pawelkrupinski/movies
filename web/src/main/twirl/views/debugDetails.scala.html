@@ -4,8 +4,8 @@
 @import java.time.{Instant, ZoneOffset}
 @import models.AttemptOutcome
 @import controllers.SourceAttemptStatus
-@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.titles.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear, now: Instant)
-@import services.movies.CinemaSlotReadings.*
+@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.titles.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.evidence.LatestTitleYear, now: Instant)
+@import services.evidence.CinemaSlotReadings.*
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 

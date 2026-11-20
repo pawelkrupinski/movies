@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.FamilyClosure.Edge
 import services.identity.KnownCasePins._
-import services.movies.ListingConstraints
+import services.evidence.ListingConstraints
 /**
  * Pins as HARD constraints: what the resolver reads from the pin set through
  * `PinConstraints`.

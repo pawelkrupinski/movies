@@ -71,7 +71,7 @@ private[identity] final class ProjectionWorld(
     def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
   }
   private val logger = play.api.Logger(classOf[IdentityProjection])
-  private given services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+  private given services.evidence.LatestTitleYear = services.evidence.LatestTitleYear(clock)
   private val slotSource = new VenueSlots.FromArchive(normalizer, slots, ScreeningTokens.of(Country.Poland),
     venues => { rowsRead ++= venues; intake.rowsOf(venues) })
   val projection = new IdentityProjection(

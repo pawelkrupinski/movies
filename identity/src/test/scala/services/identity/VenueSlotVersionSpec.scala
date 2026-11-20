@@ -16,7 +16,7 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
 
   "the venue slot version" should "digest the code that builds a slot" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/VenueSlots.scala", "common/src/main/scala/services/movies/CinemaSlotBuilder.scala",
-      "common/src/main/scala/services/movies/ScrapeListing.scala", "common/src/main/scala/services/movies/MovieRecordMerge.scala",
+      "common/src/main/scala/services/movies/ScrapeListing.scala", "common/src/main/scala/models/MovieRecordMerge.scala",
       "common/src/main/scala/models/ShowtimesDigest.scala", "common/src/main/scala/services/titles/TitleNormalizer.scala", "common/src/main/scala/models/SourceData.scala")
   }
 

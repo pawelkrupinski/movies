@@ -37,7 +37,7 @@ class DebugController(cc: ControllerComponents,
                       clock: java.time.Clock,
                      ) extends AbstractController(cc) {
   // The latest year a title may name, read off this controller's clock: what the row details cap a title's year by.
-  private val latestYear = services.movies.LatestTitleYear(clock)
+  private val latestYear = services.evidence.LatestTitleYear(clock)
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 

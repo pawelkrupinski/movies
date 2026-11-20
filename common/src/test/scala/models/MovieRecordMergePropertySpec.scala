@@ -1,6 +1,5 @@
-package services.movies
+package models
 
-import models.{Helios, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators._

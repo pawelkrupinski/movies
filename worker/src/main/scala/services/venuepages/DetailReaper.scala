@@ -7,7 +7,8 @@ import settings.DetailMaxEnqueuePerTick
 import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.cinemas.common.DetailEnricher
-import services.movies.{LatestTitleYear, MovieCacheReader}
+import services.movies.MovieCacheReader
+import services.evidence.LatestTitleYear
 import services.tasks.Enqueued
 
 import java.time.{Clock, Instant}

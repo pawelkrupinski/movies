@@ -4,7 +4,8 @@ import models.Country
 import play.api.Logging
 import services.attempts.RatingKeys
 import services.cadence.{RatingCadence, RatingCadenceStore}
-import services.movies.{LatestTitleYear, MovieCacheReader}
+import services.movies.MovieCacheReader
+import services.evidence.LatestTitleYear
 
 import java.time.{Clock, Instant, LocalDate}
 import scala.concurrent.duration._

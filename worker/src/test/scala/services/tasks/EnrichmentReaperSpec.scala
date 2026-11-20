@@ -23,7 +23,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   /** The reaper over its own enqueuer, as the wiring builds the pair: `queue` and `fresh` behind `dueWindow`. */
   private def reaperOver(cache: CaffeineMovieCache, queue: TaskProducer, fresh: FreshnessStore, dueWindow: DueWindow = new DueWindow(4.hours),
                      maxEnqueuePerTick: => settings.EnrichmentMaxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(Int.MaxValue)) =
-    new EnrichmentReaper(cache, fresh, new RatingEnqueuer(queue, fresh, dueWindow)(using services.movies.LatestTitleYear(_root_.tools.SpecClock.Pinned)),
+    new EnrichmentReaper(cache, fresh, new RatingEnqueuer(queue, fresh, dueWindow)(using services.evidence.LatestTitleYear(_root_.tools.SpecClock.Pinned)),
       maxEnqueuePerTick, clock = _root_.tools.SpecClock.Pinned)
 
   /** `reaper` on the schedule the wiring runs it on: claimed per window in `runStore`, held until it is ready. */
