@@ -6,9 +6,11 @@
 // every change while a fence holds it (mirror.sh skips its re-seed audit then too); a run's fence turns into a `linger`
 // one when it ends, so the next what-if within the linger finds the copy -- and the base side it kept -- unchanged.
 //
-// A fence holds the change while it has not expired, but never past a lag: a `run` fence for at most RUN_MAX_LAG_MS
-// (the age past which the mirror is not fresh: scripts/local-mirror/freshness), a `linger` fence for at most
-// LINGER_MAX_LAG_MS -- back-to-back what-ifs never freeze the mirror for good. A change that goes through anyway moves
+// A fence holds the change while it has not expired, but never past a lag: a `run` fence for at most runMaxLagMs
+// (the age past which the mirror is not fresh: scripts/local-mirror/freshness; one run is never torn), a `linger`
+// fence for at most lingerMaxLagMs, 20 min -- the age at which identity-what-if, before it fences a new run, waits
+// for every other run to end and lets the tail drain its backlog (its mirror_fence). So back-to-back what-ifs never
+// hold the mirror further behind than that lag plus the longest run in flight. A change that goes through anyway moves
 // the tail position, which the what-if refuses its run on (exit 2), so a fence that did not hold is never a wrong
 // answer, only a refused one. An expiry further than MAX_HOLD_MS past its file's write reads as that far (a bad clock
 // or a hand-written file freezes nothing for long).
@@ -17,7 +19,7 @@
 //   mongosh --nodb --quiet --file fence-rule.js --file fence-rule-spec.js
 // Loaded before tail.js and fence-check.js; `fencesIn` alone reads the disk.
 
-const FENCE_LIMITS = { maxHoldMs: 4 * 3600 * 1000, runMaxLagMs: 6 * 3600 * 1000, lingerMaxLagMs: 2 * 3600 * 1000 };
+const FENCE_LIMITS = { maxHoldMs: 4 * 3600 * 1000, runMaxLagMs: 6 * 3600 * 1000, lingerMaxLagMs: 20 * 60 * 1000 };
 
 // One fence file's text -> { name, expiryMs, kind }, or null for a file that is no fence (half-written, foreign).
 function parseFence(name, text, writtenMs) {

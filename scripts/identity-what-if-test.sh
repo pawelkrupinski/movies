@@ -24,14 +24,19 @@ eval "$(sed -n '/^TOOL_FILES=(/,/)/p' "$REPO_ROOT/scripts/identity-what-if")"
 for f in "${TOOL_FILES[@]}"; do mkdir -p "$repo/$(dirname "$f")"; cp "$REPO_ROOT/$f" "$repo/$f"; done
 # THE MIRROR'S GENERATION, as freshness --generation reports it: each call takes the next line of $work/generations
 # (the seed generation) and of $work/tails (the tail position) -- the last one stays --, so a case can seed or tail a
-# write mid-run; `100.1` (one finished seed) and `T0` by default. Each call also notes the fences in force then.
+# write mid-run; `100.1` (one finished seed) and `T0` by default -- and of $work/behind, the seconds the tail's last
+# change lies behind (5 by default). Each call also notes the fences in force then.
 cat > "$repo/scripts/local-mirror/freshness" <<STUB
 #!/usr/bin/env bash
 next() { local v; v=\$(head -1 "\$1" 2>/dev/null); [ "\$(wc -l 2>/dev/null < "\$1" || echo 0)" -le 1 ] || { tail -n +2 "\$1" > "\$1.next"; mv "\$1.next" "\$1"; }; echo "\${v:-\$2}"; }
-gen=\$(next "$work/generations" 100.1) tail=\$(next "$work/tails" T0)
+# (the drain's --tail read takes the next line of $work/behind alone)
+case " \$* " in
+  *" --tail "*) gen="" tail=\$(head -1 "$work/tails" 2>/dev/null); tail=\${tail:-T0}; behind=\$(next "$work/behind" 5) ;;
+  *) gen=\$(next "$work/generations" 100.1) tail=\$(next "$work/tails" T0) behind=\$(head -1 "$work/behind" 2>/dev/null); behind=\${behind:-5} ;;
+esac
 echo "freshness \$*" >> "$work/freshness-calls"
 cat "$work"/fence/kinowo_uk/* >> "$work/fences-seen" 2>/dev/null
-case " \$* " in *" --generation "*) echo "GENERATION \$1 \$gen"; echo "TAIL \$1 \$tail" ;; esac
+case " \$* " in *" --tail "*) echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; *" --generation "*) echo "GENERATION \$1 \$gen"; echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; esac
 exit 0
 STUB
 chmod +x "$repo/scripts/local-mirror/freshness"
@@ -202,6 +207,22 @@ check "the tailer is fenced for the run: each generation read sees the run's fen
   "$rc $(awk '{ print $2 }' "$work/fences-seen" 2>/dev/null | paste -sd' ' -)"
 check "...and the exit leaves it lingering, so a rerun reads the same copy" "linger" \
   "$(cat "$work"/fence/kinowo_uk/what-if-* 2>/dev/null | awk '{ print $2 }' | paste -sd' ' -)"
+# THE DRAIN (back-to-back what-ifs of many agents would hold the tail for good): a mirror more than 20 min behind is
+# let catch up before the run fences -- after every other run holding it has ended
+rm -rf "$work/fence" "$work/fences-seen"; mkdir -p "$work/fence/kinowo_uk"
+sleep 600 & other=$!   # another agent's what-if, mid-run (HUNG STUBS: it must stay alive until the case ends it)
+echo "$(( $(date +%s) + 3600 )) run" > "$work/fence/kinowo_uk/what-if-$other"
+printf '1800\n1800\n60\n' > "$work/behind"
+( KINOWO_WHAT_IF_DRAIN_POLL_SECONDS=0.2 what_if "$c0" "$c4" 2026-11-06T15:50:00Z --no-serve > "$work/drain-out"; echo $? > "$work/drain-rc" ) &
+wait_until "the run waits for the other run holding the tail" grep -q 'waiting for the runs holding the tail to end: what-if-'"$other" "$work/err"
+check "...and has not fenced meanwhile" "run" "$(awk '{ print $2 }' "$work"/fence/kinowo_uk/what-if-* | paste -sd' ' -)"
+kill "$other"; wait "$other" 2>/dev/null
+wait_until "the run goes on once the other ended" test -s "$work/drain-rc"
+check "...drains, then fences and resolves: CLEAN" "0 yes yes" \
+  "$(cat "$work/drain-rc") $(grep -q 'drained (60s behind)' "$work/err" && echo yes || echo "no: $(cat "$work/err")") $(grep -q CLEAN "$work/drain-out" && echo yes || echo no)"
+check "...the generation pinned only after the drain: every read of it sees the run's own fence" "run run run" \
+  "$(awk '{ print $2 }' "$work/fences-seen" | tail -3 | paste -sd' ' -)"
+rm -f "$work/behind"
 # the kept JVM's loaded corpus is keyed by the generation too: a corpus loaded off a torn copy is never served again
 out=$(what_if "$c0" "$c4" 2026-11-06T16:00:00Z)
 check "every side is asked with the mirror generation it must read (the kept JVM's corpus key)" "yes" \

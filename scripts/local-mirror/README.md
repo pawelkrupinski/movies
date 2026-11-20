@@ -96,14 +96,16 @@ in flight, or one that died and left a torn copy), `reseed-due` when `<db>`'s st
 else the last whole seed's `startAtOperationTime` as `<seconds>.<increment>`, which only `seed.js` rewrites (the tailer
 `$set`s its resume token beside it). The what-if refuses to start on `seeding`/`reseed-due` and exits 2 (HARNESS ERROR)
 when the token is not the same before its base, between its sides and after its head; its kept sides are keyed by it.
-The seed generation ignores tailing, so `--generation` also prints `TAIL <cc> <position>` (the resume token of the last
-change tailed, `none` before one), and the what-if pins itself to both. Tailing never stops on its own, so the what-if
+The seed generation ignores tailing, so `--generation` also prints `TAIL <cc> <position> <sync ms>` (the resume token of the
+last change tailed, `none` before one, and its cluster time), and the what-if pins itself to both. Tailing never stops on its own, so the what-if
 FENCES the tailer for its run (`fence-rule.js`): a file `~/.cache/kinowo/mirror-fence/<prod db>/what-if-<pid>`
 (`KINOWO_MIRROR_FENCE_DIR`) reading `<expiry epoch seconds> run|linger`; `tail.js` holds each change unapplied while one
 is in force, and `mirror.sh` holds its re-seed audit (the lag a fence causes is on purpose). A run's fence turns
 `linger` (20 min, `KINOWO_WHAT_IF_FENCE_LINGER_MINUTES`) when it ends, so a rerun reads the same copy and its kept base.
-A fence holds a change at most 6 h old (`run`) or 2 h old (`linger`), and an expiry reads as at most 4 h past its
-write, so back-to-back what-ifs never freeze the mirror for good; a change that goes through anyway moves the tail
+A fence holds a change at most 6 h old (`run`) or 20 min old (`linger`), and an expiry reads as at most 4 h past its
+write. A what-if that finds the mirror more than 20 min behind (`KINOWO_WHAT_IF_DRAIN_MINUTES`) first waits for every
+other run's fence to go and lets the tail drain its backlog, then fences: back-to-back what-ifs from many agents hold
+the mirror at most that far behind plus the longest run in flight; a change that goes through anyway moves the tail
 position, and the what-if refuses (exit 2). 2026-11-20, lane A3: a DE what-if moved a take that a write tailed between
 its sides moved, its own base-vs-base control the same one, and a rerun none.
 That is what lane C's 87k false "takes moved" (2026-11-19) was: freshness WARNed "a seed is in flight", exit 3, and the

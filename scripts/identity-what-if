@@ -220,7 +220,7 @@ mirror_generation() {
   grep -vE '^(GENERATION|TAIL) ' <<< "$report" >&2 || true
   [ "$rc" != 2 ] || { identity_log "$1: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
   gen=$(awk -v cc="$1" '$1 == "GENERATION" && $2 == cc { print $3 }' <<< "$report")
-  tail=$(awk -v cc="$1" '$1 == "TAIL" && $2 == cc { print $3 }' <<< "$report")
+  tail=$(awk -v cc="$1" '$1 == "TAIL" && $2 == cc { print $3 }' <<< "$report") # its position; $4 is its sync moment
   [ -n "$gen" ] || { harness_error "$1: mirror not ready: freshness reported no seed generation"; exit 2; }
   case "$gen" in seeding|reseed-due) printf '%s\n' "$gen"; return 0 ;; esac
   [ -n "$tail" ] || { harness_error "$1: mirror not ready: freshness reported no tail position"; exit 2; }
@@ -229,19 +229,60 @@ mirror_generation() {
 # THE FENCE (scripts/local-mirror/fence-rule.js): mirror_fence <cc> holds <cc>'s tailer for this run -- a `run` fence,
 # its expiry the longest a run takes -- and the exit turns each into a `linger` one (mirror_fence_linger), so a rerun
 # within the linger reads the same copy. A fence of a what-if that died without its exit (its pid gone) is dropped.
+# THE DRAIN: back-to-back what-ifs of many agents would hold the tail for good, so a run that finds the mirror more than
+# $KINOWO_WHAT_IF_DRAIN_MINUTES (20: fence-rule.js's linger lag, past which no linger holds) behind first waits for every
+# other run's fence to go, then for the tail to apply its backlog (behind by under 2 min, or its position standing
+# still: nothing left), and only then fences. Each wait is bounded; one that runs out is said and the run goes on --
+# still one copy for both sides, only an older one.
 fence_root=${KINOWO_MIRROR_FENCE_DIR:-$HOME/.cache/kinowo/mirror-fence}
 fence_linger_minutes=${KINOWO_WHAT_IF_FENCE_LINGER_MINUTES:-20}
+drain_minutes=${KINOWO_WHAT_IF_DRAIN_MINUTES:-20}
+drain_wait_seconds=${KINOWO_WHAT_IF_DRAIN_WAIT_SECONDS:-900}
+drain_poll_seconds=${KINOWO_WHAT_IF_DRAIN_POLL_SECONDS:-10}
 fences=()
-mirror_fence() {
-  local dir f pid kind expiry
-  dir=$fence_root/$([ "$1" = pl ] && echo kinowo || echo "kinowo_$1")
-  mkdir -p "$dir"
-  for f in "$dir"/what-if-*; do
+# tail_state <cc> -> `<tail position> <seconds behind>` (`?` when freshness knows no sync moment)
+tail_state() {
+  scripts/local-mirror/freshness "$1" --quiet --tail 2>/dev/null |
+    awk -v cc="$1" -v now="$(date +%s)" '$1 == "TAIL" && $2 == cc { print $3, ($4 ~ /^[0-9]+$/ ? int(now - $4 / 1000) : "?") }'
+}
+# other_runs <fence dir> -> the live run fences in it but this run's (dropping a dead run's and every expired one)
+other_runs() {
+  local f kind expiry pid
+  for f in "$1"/what-if-*; do
     [ -f "$f" ] || continue
     read -r expiry kind < "$f" 2>/dev/null || continue
     pid=${f##*/what-if-}
-    if [ "${expiry:-0}" -le "$(date +%s)" ] 2>/dev/null || { [ "$kind" = run ] && ! kill -0 "$pid" 2>/dev/null; }; then rm -f "$f"; fi
+    if [ "${expiry:-0}" -le "$(date +%s)" ] 2>/dev/null || { [ "$kind" = run ] && ! kill -0 "$pid" 2>/dev/null; }; then rm -f "$f"; continue; fi
+    if [ "$kind" = run ] && [ "$pid" != $$ ]; then echo "${f##*/}"; fi
   done
+  return 0
+}
+mirror_drain() { # <cc> <fence dir>
+  local state behind started=$SECONDS others last="" position
+  state=$(tail_state "$1"); behind=${state#* }
+  case "$behind" in ''|'?'|*[!0-9]*) return 0 ;; esac
+  [ "$behind" -gt $(( drain_minutes * 60 )) ] || return 0
+  identity_log "$1: the mirror is $(( behind / 60 )) min behind (past $drain_minutes): draining the tail's backlog before fencing"
+  while others=$(other_runs "$2"); [ -n "$others" ]; do
+    [ $(( SECONDS - started )) -lt "$drain_wait_seconds" ] || { identity_log "$1: other runs still hold the tail after ${drain_wait_seconds}s ($(tr "\n" " " <<< "$others")): fencing an undrained copy"; return 0; }
+    identity_log "$1: waiting for the runs holding the tail to end: $(tr "\n" " " <<< "$others")"
+    sleep "$drain_poll_seconds"
+  done
+  while :; do
+    state=$(tail_state "$1"); position=${state% *}; behind=${state#* }
+    case "$behind" in *[!0-9]*|'') return 0 ;; esac
+    if [ "$behind" -lt 120 ] || [ "$position" = "$last" ]; then identity_log "$1: drained (${behind}s behind) in $(( SECONDS - started ))s"; return 0; fi
+    [ $(( SECONDS - started )) -lt "$drain_wait_seconds" ] || { identity_log "$1: the tail did not drain in ${drain_wait_seconds}s (${behind}s behind): fencing as it is"; return 0; }
+    last=$position
+    sleep "$drain_poll_seconds"
+  done
+}
+mirror_fence() {
+  local dir f
+  dir=$fence_root/$([ "$1" = pl ] && echo kinowo || echo "kinowo_$1")
+  mkdir -p "$dir"
+  other_runs "$dir" > /dev/null
+  mirror_drain "$1" "$dir"
   f=$dir/what-if-$$
   echo "$(( $(date +%s) + 4 * 3600 )) run" > "$f.part" && mv "$f.part" "$f"
   fences+=("$f")

@@ -4,7 +4,7 @@
 # --prod-mirror, listing-history, …). Reads only the local mirror, never prod.
 #
 #   scripts/local-mirror/freshness [cc...] [--max-lag-hours N] [--not-before ISO-8601] [--need coll,coll] [--quiet]
-#                                  [--generation]
+#                                  [--generation] [--tail]
 #
 #   cc               countries (pl de uk es us; default: all five)
 #   --max-lag-hours  how far behind the wall clock a database may be synced (default 6)
@@ -13,8 +13,10 @@
 #   --quiet          the per-database line only, not each collection's count and newest write
 #   --generation     also a `GENERATION <cc> <token>` line a country: the seed generation a reader pins its run to --
 #                    `seeding` (a seed in flight, or a torn one), `reseed-due` (its state gone, a re-seed next), else the
-#                    last whole seed's start (`<seconds>.<increment>`), unchanged by tailing -- and a `TAIL <cc> <position>`
-#                    line, the resume token of the last change tailed (`none` before one); identity-what-if fences the
+#                    last whole seed's start (`<seconds>.<increment>`), unchanged by tailing -- and a `TAIL <cc> <position>
+#                    <sync ms>` line, the resume token of the last change tailed (`none` before one) and its cluster
+#                    time;
+#   --tail           the `TAIL` line alone (identity-what-if's drain polls it before it fences) identity-what-if fences the
 #                    tailer for its run and refuses one either is not the same for before, between and after its sides
 #
 # Prints each database's sync moment (the last change the tailer applied, from its resume token) and lag, then each
@@ -24,7 +26,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/tool-conventions.sh
 . "$HERE/../tool-conventions.sh" # usage_from_header, KINOWO_COUNTRIES, local_mongo_uri, local_mongo_port
-ccs=() max_lag_hours=6 not_before="" need="" quiet=false generation=false
+ccs=() max_lag_hours=6 not_before="" need="" quiet=false generation=false tail_only=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --max-lag-hours) flag_value "$@"; max_lag_hours=$2; shift 2 ;;
@@ -32,6 +34,7 @@ while [ "$#" -gt 0 ]; do
     --need) flag_value "$@"; need=$2; shift 2 ;;
     --quiet) quiet=true; shift ;;
     --generation) generation=true; shift ;;
+    --tail) tail_only=true; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) echo "unknown argument $1" >&2; exit 2 ;;
     *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
@@ -51,7 +54,7 @@ print(int(datetime.datetime.fromisoformat(t).timestamp() * 1000))' "$not_before"
 fi
 max_lag_ms=$(python3 -I -c 'import sys; print(int(float(sys.argv[1]) * 3600000))' "$max_lag_hours")
 set +e
-mongosh --nodb --quiet --eval "var LOCAL='$uri'; var CCS=$(js_list "${ccs[@]}"); var MAX_LAG_MS=$max_lag_ms; var NOT_BEFORE_MS=$not_before_ms; var NEED=$(js_list ${needs[@]+"${needs[@]}"}); var QUIET=$quiet; var GENERATION=$generation" \
+mongosh --nodb --quiet --eval "var LOCAL='$uri'; var CCS=$(js_list "${ccs[@]}"); var MAX_LAG_MS=$max_lag_ms; var NOT_BEFORE_MS=$not_before_ms; var NEED=$(js_list ${needs[@]+"${needs[@]}"}); var QUIET=$quiet; var GENERATION=$generation; var TAIL_ONLY=$tail_only" \
   --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/freshness-rule.js" --file "$HERE/freshness.js"
 status=$?
 set -e

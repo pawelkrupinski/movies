@@ -30,7 +30,7 @@ check("an expired fence holds nothing", fenceHolding([fence("what-if-1", "run", 
 check("a linger fence holds the change too (the next what-if finds the same copy)",
   fenceHolding([fence("what-if-1", "linger", NOW + 20 * MIN)], NOW, fresh), "what-if-1");
 check("...but not a change already held past the linger's lag: back-to-back what-ifs never freeze the mirror",
-  fenceHolding([fence("what-if-1", "linger", NOW + 20 * MIN)], NOW, NOW - 2 * HOUR - 1), null);
+  fenceHolding([fence("what-if-1", "linger", NOW + 20 * MIN)], NOW, NOW - 20 * MIN - 1), null);
 check("a run's fence holds past that lag (a run in flight is not torn)",
   fenceHolding([fence("what-if-1", "run", NOW + HOUR)], NOW, NOW - 3 * HOUR), "what-if-1");
 check("...but not past the age the mirror stops being fresh",
