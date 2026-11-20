@@ -238,6 +238,7 @@ identity:services.identity.IdentityResolverCasesSpec	-	identity's spec: the iden
 identity:services.identity.IdentityResolverPropertiesSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.IncrementalResolverSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.IncrementalResolverStoreSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
+identity:services.identity.IncrementalResolverTitleRulesSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.IncrementalWholeDivergenceSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.SourceDigestSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.VenueSlotVersionSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
