@@ -83,7 +83,7 @@ object WhatIfAnswers {
     private val imdb      = new services.enrichment.ImdbClient(counted)
     val live: IdentityLookups = new TmdbIdentityLookups(tmdb, imdb, Nil)
     private val venueClock = new models.VenueClock(clock)
-    val stage: scripts.StageAnswers.Sources = sources(country, Seq(new ImdbFamily(new services.enrichment.ImdbClient(throttled), new services.enrichment.ImdbSearch(throttled)),
+    val stage: scripts.StageAnswers.Sources = sources(country, Seq(OlderRefs.imdbFamily(throttled),
       new WikiFamily(new services.enrichment.WikidataClient(throttled), country.language.getLanguage),
       new FilmwebFamily(new services.enrichment.FilmwebClient(throttled),
         services.cinemas.pl.FilmwebProgrammes.resolving(throttled, () => venueClock.todayInPoland).of),

@@ -14,6 +14,16 @@ object OlderRefs {
   // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
   import agreement.*
 
+  /** IMDb as a voting family over `fetch`: its client, and beside it -- since 2026-11-20 -- IMDb's own search
+   *  (`services.enrichment.ImdbSearch`), which an older ref's family reads off the client. */
+  def imdbFamily(fetch: tools.HttpFetch): services.identityadapters.FamilySource = {
+    val client      = new services.enrichment.ImdbClient(fetch)
+    val constructor = classOf[services.identityadapters.ImdbFamily].getConstructors.maxBy(_.getParameterCount)
+    val search      = Option.when(constructor.getParameterCount == 2)(
+      Class.forName("services.enrichment.ImdbSearch").getConstructor(classOf[tools.HttpFetch]).newInstance(fetch))
+    constructor.newInstance((client +: search.toSeq)*).asInstanceOf[services.identityadapters.FamilySource]
+  }
+
   /** The value of `record`'s case-class field `name`, where its class has one. */
   def field(record: Product, name: String): Option[Any] =
     record.productElementNames.zip(record.productIterator).collectFirst { case (`name`, value) => value }
