@@ -199,7 +199,7 @@ object IdentitySlice {
     /** Prod's filed find of `imdb`, read noted. */
     def filedFind(imdb: String): Option[Option[Int]] = { val found = filed.finds.get(imdb); found.foreach(findsRead.put(imdb, _)); found }
     val families: Seq[VoterFamily] = UnmatchedClusters.familiesOf(country)
-    val sources: Map[VoterFamily, FamilySource] = Seq(OlderRefs.imdbFamily(fetch),
+    val sources: Map[VoterFamily, FamilySource] = Seq(OlderRefs.imdbFamily[FamilySource](fetch),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),
       new FilmwebFamily(new services.enrichment.FilmwebClient(fetch),
         services.cinemas.pl.FilmwebProgrammes.resolving(fetch, () => venueClock.todayInPoland).of),
