@@ -13,7 +13,7 @@ import services.users.InMemoryUserRepository
  *  for the server log; the client only needs "that did not sign you in". */
 class AuthTokenErrorSpec extends AnyFlatSpec with Matchers {
 
-  private val ctl = new AuthController(Helpers.stubControllerComponents(), Map.empty, new InMemoryUserRepository,
+  private val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, new InMemoryUserRepository,
     new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   private def token(provider: String) =

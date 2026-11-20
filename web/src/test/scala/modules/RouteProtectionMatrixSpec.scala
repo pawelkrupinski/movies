@@ -144,7 +144,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
       build = settings.CommitSha("unknown"))
     val rehydrate   = new RehydrateController(cc, cityRoutes, null, adminAction)
     val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
-    val auth        = new AuthController(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+    val auth        = AuthControllerFixture(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val sso         = new SsoController(cc, users, codes, models.Country.Poland)
     val userState   = new UserStateController(cc, null, null,
       users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))

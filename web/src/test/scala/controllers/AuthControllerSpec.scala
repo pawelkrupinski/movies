@@ -55,7 +55,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
     val byName = providers.map(p => p.name -> p).toMap
-    val ctl  = new AuthController(
+    val ctl  = AuthControllerFixture(
       Helpers.stubControllerComponents(),
       byName,
       repository,
@@ -147,7 +147,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val updatedProfile = Profile.copy(displayName = Some("Alice (married)"))
     val provider2     = new FakeProvider("google", updatedProfile)
     val (ctl2, repository2) = (
-      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repository,
+      AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> provider2), repository,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk),
       repository
     )
@@ -344,7 +344,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val sibling = store
 
     def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthController =
-      new AuthController(
+      AuthControllerFixture(
         Helpers.stubControllerComponents(), provider.map(p => p.name -> p).toMap, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland,
         clock = fixedClk)
@@ -489,7 +489,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryUserRepository {
       override def findById(id: String): Option[models.User] = throw new RuntimeException("mongo down")
     }
-    val ctl = new AuthController(Helpers.stubControllerComponents(), Map.empty, repository,
+    val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, repository,
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk)
     val result = ctl.logout()(FakeRequest("POST", "/auth/logout").withSession("userId" -> "alice@example.com"))
 
@@ -510,7 +510,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       }
     }
     val repository = new RevokedMidSignIn
-    val ctl = new AuthController(Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google", Profile)),
+    val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google", Profile)),
       repository, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk)
     signedIn(repository, "alice@example.com", Now)
     val started = session(ctl.start("google")(FakeRequest("GET", "/auth/google/start")))

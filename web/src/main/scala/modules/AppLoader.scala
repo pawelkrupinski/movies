@@ -215,7 +215,7 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
       .orElse(ConstructByType.grouped[Routes](httpErrorHandler, assets, metricsController,
-        siteRouted, cityPagesRouted, debugRouted, usersRouted, adminRouted, reviewRouted)
+        siteRouted, cityPagesRouted, debugRouted, authRouted, usersRouted, adminRouted, reviewRouted)
         .withPrefix(httpConfiguration.context))
 
   // Every metric family's series from boot, the routes seeded off the router: the inventory the "longest uncalled

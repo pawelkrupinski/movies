@@ -49,7 +49,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
   /** A deployment serving `country`. */
   private def podFor(country: Country, provider: OauthProvider = new FakeProvider("google")) =
-    new AuthController(
+    AuthControllerFixture(
       Helpers.stubControllerComponents(), Map(provider.name -> provider),
       new InMemoryUserRepository,
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk),
@@ -268,7 +268,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   private def podWith(country: Country): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
-    (new AuthController(Helpers.stubControllerComponents(), Map.empty, repository, codes, country, clock = fixedClk),
+    (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, repository, codes, country, clock = fixedClk),
      repository, codes)
   }
 
@@ -336,7 +336,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   it should "end with the visitor signed in on both domains and back where they were going" in {
     val repository = new InMemoryUserRepository
     val store      = new InMemoryAuthExchangeCodeStore
-    def pod(country: Country) = new AuthController(
+    def pod(country: Country) = AuthControllerFixture(
       Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google")), repository,
       new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
     def ssoPod(country: Country) = new SsoController(

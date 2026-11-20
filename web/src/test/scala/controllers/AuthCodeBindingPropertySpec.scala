@@ -41,7 +41,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
 
   private def fixture(): (AuthController, AuthExchangeCodes) = {
     val (users, codes) = stores()
-    (new AuthController(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
+    (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
   }
 
   private def ssoFixture(): (SsoController, AuthExchangeCodes) = {
@@ -145,7 +145,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
         services.auth.OauthProfile(sub = "G-1", email = Some(UserId), displayName = None, avatarUrl = None)
     }
     forAll(Table(("challenge", "verifier"), (for { c <- Challenges; v <- Verifiers } yield (c, v))*)) { (challenge, verifier) =>
-      val ctl = new AuthController(Helpers.stubControllerComponents(), Map("google" -> google), new InMemoryUserRepository,
+      val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> google), new InMemoryUserRepository,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
       val start = ctl.start("google")(FakeRequest("GET",
         s"/auth/google/start?platform=ios${challenge.fold("")(c => s"&challenge=$c")}"))

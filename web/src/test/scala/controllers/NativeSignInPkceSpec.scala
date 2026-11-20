@@ -39,7 +39,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
   private val Verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
   private def controller() =
-    new AuthController(Helpers.stubControllerComponents(), Map("google" -> Google), new InMemoryUserRepository,
+    AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> Google), new InMemoryUserRepository,
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   /** Start (with `startQuery`) and finish a native flow; the deep-link code. */

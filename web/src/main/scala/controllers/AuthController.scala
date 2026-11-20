@@ -55,6 +55,8 @@ class AuthController(
   cc:                     ControllerComponents,
   providers:              Map[String, OauthProvider],
   userRepository:         UserRepository,
+  // The account a provider's profile signs in as.
+  accounts:               OauthAccounts,
   // One-shot codes for the two handoffs a session cookie cannot make: the
   // native apps' `kinowo://` deep link, and the cross-domain country switch.
   exchangeCodes:          AuthExchangeCodes,
@@ -75,9 +77,6 @@ class AuthController(
   // (state is single-use and tied to a random UUID), but bounding it
   // is hygiene.
   private val OauthStateTtl = java.time.Duration.ofMinutes(10)
-
-  // Composed from the collaborators above: the account a profile signs in as.
-  private val accounts = new OauthAccounts(userRepository, clock)
 
   def start(provider: String): Action[AnyContent] = Action { request =>
     providers.get(provider).fold(NotFound(s"Provider not configured: $provider"))(startFlow(_, provider, request))

@@ -1,7 +1,7 @@
 package modules.webwiring
 
-import controllers.{AccountController, AuthController, FacebookDataDeletionController, SsoController, UserStateController}
-import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, NativeTokenVerifier, OauthProvider}
+import controllers.{AccountController, FacebookDataDeletionController, UserStateController}
+import services.auth.{AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateChangeStream, UserStateRepository}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
 import tools.{HttpFetch, RealHttpFetch, TlsTrust}
@@ -9,9 +9,9 @@ import services.MonitoringHttpFetch
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
  *  The signed-in visitor: the users + user-state repositories on the shared
- *  users database, the OAuth providers and native-app token validators that
- *  sign a visitor in, the one-shot exchange codes that carry a sign-in across a
- *  domain hop, and the controllers that serve all of it. */
+ *  users database, the one-shot exchange codes kept there that carry a sign-in
+ *  across a domain hop, the outbound fetches, and the account controllers. How a
+ *  visitor signs in is [[AuthWiring]]'s. */
 trait UsersWiring { self: Wiring =>
 
   // OAuth providers + token validators make outbound HTTP; the monitoring
@@ -52,33 +52,6 @@ trait UsersWiring { self: Wiring =>
   // (same split as `MovieCache`'s trait vs. its `Stoppable` real impl).
   lazy val userChangeTimeCache: CaffeineUserChangeTimeCache = managedResources.stopping(new CaffeineUserChangeTimeCache(userStateRepository))
 
-  // ── OAuth providers ──────────────────────────────────────────────────────
-  // Each provider is wired only when its env vars are present. Missing keys →
-  // provider absent → start route 404s and the navbar hides the login button.
-  lazy val oauthProviders: Map[String, OauthProvider] = {
-    val google = for {
-      id     <- processConfiguration.googleClientId
-      secret <- processConfiguration.googleClientSecret
-    } yield new GoogleOauthProvider(httpFetch, id, secret)
-    val facebook = for {
-      id     <- processConfiguration.facebookAppId
-      secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookOauthProvider(facebookHttpFetch, id, secret)
-    Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
-  }
-
-  lazy val googleTokenValidator: Option[GoogleTokenValidator] =
-    processConfiguration.googleClientId.map(id => new GoogleTokenValidator(httpFetch, id))
-
-  lazy val facebookTokenValidator: Option[FacebookTokenValidator] =
-    for {
-      id     <- processConfiguration.facebookAppId
-      secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookTokenValidator(facebookHttpFetch, id, secret)
-
-  lazy val appleTokenValidator: Option[AppleTokenValidator] =
-    Some(new AppleTokenValidator(httpFetch, processConfiguration.appleBundleId, clock))
-
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
   // the native apps' `kinowo://` deep link, and the country switch across the
   // kinowo.net / showtimes.cc domain boundary. They live in the SHARED users
@@ -91,15 +64,12 @@ trait UsersWiring { self: Wiring =>
     usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore)(
       database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, country, clock,
-    new NativeTokenVerifier(oauthProviders, googleTokenValidator, facebookTokenValidator, appleTokenValidator))
-  lazy val ssoController    = new SsoController(controllerComponents, userRepository, authExchangeCodes, country)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, userChangeTimeCache, userRepository, clock)
   lazy val accountController = new AccountController(controllerComponents, accountDeletion, userRepository)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, country, processConfiguration.facebookAppSecret, userRepository, accountDeletion)
 
-  /** The controllers the router serves the sign-in, account and per-user routes with ([[modules.AppComponents.router]]). */
-  lazy val usersRouted = (ssoController, authController, userStateController, accountController, facebookDataDeletionController)
+  /** The controllers the router serves the account and per-user routes with ([[modules.AppComponents.router]]). */
+  lazy val usersRouted = (userStateController, accountController, facebookDataDeletionController)
 }
