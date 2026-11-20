@@ -133,6 +133,11 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   /** The build's own stamps, generated beside the closure (`build.sbt`): the version, and the paths it digests. */
   private val Generated    = """[\w-]+-(?:version|sources)\.txt""".r
 
+  /** The resources a closure reads but its version leaves out because the model versions them itself
+   *  (`IdentityRulesSources.RuntimeVersioned`): the title-rule table, recorded per country with the stored families
+   *  (`TitleRuleRecord`), a change to it re-resolving the families that read what moved (IncrementalResolverTitleRulesSpec). */
+  private val RuntimeVersioned: Map[String, Set[String]] = Map("identity-rules" -> Set("title-rules.tsv"))
+
   "Every resource a rules closure's source names" should "be digested by that closure" in {
     closures.values.foreach(_ should not be empty)
     val undigested = closures.toSeq.flatMap { case (closure, paths) =>
@@ -140,7 +145,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       // a source outside the repository's module trees (a dependency's, recorded by Zinc as it found it) is not ours to read
       paths.filter(p => p.endsWith(".scala") && java.nio.file.Files.exists(Paths.get(p))).flatMap { source =>
         ResourceName.findAllMatchIn(codeOf(Paths.get(source))).map(_.group(1))
-          .filterNot(name => Generated.matches(name) || resources(name))
+          .filterNot(name => Generated.matches(name) || resources(name) || RuntimeVersioned.getOrElse(closure, Set.empty)(name))
           .map(name => s"$closure: $source names $name")
       }
     }.distinct

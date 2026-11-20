@@ -38,7 +38,8 @@ private[identity] final class TitleRuleChange(was: TitleNormalizer, now: TitleNo
   // words by many.
   private val keyAlike    = new ConcurrentHashMap[String, java.lang.Boolean]()
   private val searchAlike = new ConcurrentHashMap[String, java.lang.Boolean]()
-  private val firedWas, firedNow = scala.collection.mutable.HashMap.empty[String, Seq[String]]
+  private val firedWas = scala.collection.mutable.HashMap.empty[String, Seq[String]]
+  private val firedNow = scala.collection.mutable.HashMap.empty[String, Seq[String]]
 
   /** Does a family that read `inputs` over `members` (as the model holds them now) read the title rules as it did? */
   def readsAlike(inputs: TitleFormInputs, members: Iterable[Listing]): Boolean =
