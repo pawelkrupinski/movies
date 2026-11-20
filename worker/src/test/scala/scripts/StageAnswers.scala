@@ -4,7 +4,6 @@ import models.Country
 import services.identity._
 
 import services.identity.agreement.{AgreementStage, AgreementStageComposition}
-import services.identity.VoterFamily
 import tools.CatalogueFill
 
 import java.util.concurrent.ConcurrentHashMap
@@ -27,6 +26,8 @@ class StageAnswers(answering: StageAnswers.Sources, docs: StageAnswers.Documents
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
+  // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
+  import services.identity.agreement.*
 
   val store     = new FamilyAnswerStore(docs, clock)
   val posters   = new PosterAnswerStore(store, clock)
@@ -141,6 +142,8 @@ object StageAnswers {
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
+  // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
+  import services.identity.agreement.*
 
   /** The store the family answers are filed in (a type alias: the constructor's signature sits outside both scopes). */
   type Documents = TmdbDocuments

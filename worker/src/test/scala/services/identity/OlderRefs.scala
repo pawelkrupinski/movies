@@ -8,7 +8,10 @@ package services.identity
  * 2026-10-17/18). Read through these, such a member is None where the ref has none; scripts/identity-slice-old-ref-test.sh
  * compiles both tools into refs from before them.
  */
+@scala.annotation.nowarn("msg=unused import")
 object OlderRefs {
+  // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
+  import agreement.*
 
   /** The value of `record`'s case-class field `name`, where its class has one. */
   def field(record: Product, name: String): Option[Any] =

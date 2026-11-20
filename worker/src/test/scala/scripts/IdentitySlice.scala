@@ -6,7 +6,6 @@ import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
 import services.identity._
 import services.identity.agreement.InMemoryAgreementVerdicts
-import services.identity.VoterFamily
 import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
@@ -45,6 +44,8 @@ object IdentitySlice {
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
+  // VoterFamily, in either package a ref keeps it: services.identity.agreement before 2026-11-20, services.identity since.
+  import services.identity.agreement.*
 
 
   final case class Selector(venue: Option[String], title: Option[String], exact: Boolean) {

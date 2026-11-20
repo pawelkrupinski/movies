@@ -93,8 +93,8 @@ RULE_FILES = re.compile(
     rf"^({_ID}/(IdentityResolver|FeedLink|FamilyScope|Acceptance[A-Za-z]*|CandidateScoring|CandidateGeneration|ClusterVoting"
     r"|ConstraintEdges|ConstraintSolver|Corroboration|EvidenceWeights|EvidenceRatingGate|ReleaseVeto|LearnedCannotLinks"
     r"|IdentityCalibration|VenueBacking|SourceReliability|FilmNess|MultiFilmBill|CatalogueLinks|TitleLinks|TitleCredit"
-    rf"|CreditRelation|FactRelations)\.scala|{_ID}/agreement/(Agreement|AgreementCandidates|Broadcast|Catalogue|Correction"
-    r"|FamilyVerdicts|NonFilmEvents|SynopsisEvidence)\.scala|common/src/main/resources/title-(rules|words)\.tsv"
+    rf"|CreditRelation|FactRelations|NonFilmEvents)\.scala|{_ID}/agreement/(Agreement|AgreementCandidates|Broadcast|Catalogue|Correction"
+    r"|FamilyVerdicts|SynopsisEvidence)\.scala|common/src/main/resources/title-(rules|words)\.tsv"
     r"|common/src/main/scala/services/titles/rules/.*)$")
 HARNESS_FILES = re.compile(
     r"^(worker/src/test/scala/scripts/IdentityDrift\.scala|worker/src/test/scala/scripts/IdentityLiveDrift\.scala"
