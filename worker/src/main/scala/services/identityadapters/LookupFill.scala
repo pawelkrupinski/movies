@@ -191,11 +191,10 @@ final class LookupFill(
     // host that read went to (an IMDb suggestion's is IMDb's), whose recovery releases it.
     def outcome[A](answer: => Answer[A]): (LookupFill.Asked, Option[String]) = {
       val (deferred, failed) = (budget.deferred.get, budget.failed.get)
-      val requested = new RequestedHost.Recording
-      val known     = RequestedHost.within(requested)(answer.isAnswered)
+      val (known, failedAt) = AgreementQuestions.hostsNoted(answer.isAnswered)
       // A read that failed wins over the deferrals its back-off then caused within the same question.
       if (known) (LookupFill.Asked.Answered, None)
-      else if (budget.failed.get != failed) (LookupFill.Asked.Failed, AgreementQuestions.hostOf(budget.lastFailure.orNull, requested.last))
+      else if (budget.failed.get != failed) (LookupFill.Asked.Failed, failedAt(budget.lastFailure.orNull))
       else if (budget.deferred.get != deferred) (LookupFill.Asked.Settled, None)
       else (LookupFill.Asked.Unanswered, None)
     }

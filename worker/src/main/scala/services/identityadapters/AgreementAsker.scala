@@ -6,7 +6,7 @@ import services.identity.vocabulary.VoterFamily
 import services.tasks.HandlerOutcome.{Done, Skipped}
 import services.tasks.{HandlerOutcome, Task, TaskHandler}
 import services.tasktypes.TaskType
-import tools.{CircuitOpenException, RequestedHost}
+import tools.CircuitOpenException
 import services.identity.vocabulary.{CatalogueQuestion, Question}
 import services.identity.vocabulary.PosterAnswers
 
@@ -120,16 +120,16 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
    *  reaching its give-up count is given up on, and a projection asked for too: the questions were attempted. Counted
    *  under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or [[AgreementQuestionMetrics.Failed]]. */
   private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome = {
-    val requested = new RequestedHost.Recording
+    val (asked, failedAt) = AgreementQuestions.hostsNoted(scala.util.Try(ask))
     try {
-      val outcome = RequestedHost.within(requested)(ask)
+      val outcome = asked.get
       // attempted: what the memory answers of it from now on — an empty answer filed is a durable non-answer
       if (outcome == AgreementQuestionMetrics.Nothing) memory.unanswered(questions) else memory.answered(questions)
       filed(); metrics.asked(label, outcome); Done
     }
     catch {
       case scala.util.control.NonFatal(e) =>
-        val failures = remembered(questions, label, e, AgreementQuestions.hostOf(e, requested.last))
+        val failures = remembered(questions, label, e, failedAt(e))
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
         givenUpPosters(failures)
         // attempted, though nothing was filed: a cluster waiting on it may settle now (AgreementStage.settles)

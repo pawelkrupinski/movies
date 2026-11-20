@@ -49,7 +49,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
    *  answers as the store holds it (popularity to its bucket), as every later ask of it will: answered as TMDB stated
    *  it, a take-up decided on one input and its next drain on another. The live answer only when the store took none.
    *  A gap still in its backoff is not asked; one asked and left unanswered is remembered, failed or not — a failure
-   *  against the host its read went to ([[LiveAsks.failedHost]]: an IMDb suggestion's is IMDb's), whose recovery releases it. */
+   *  against the host its read went to ([[LiveAsks.LiveRead.failedHost]]: an IMDb suggestion's is IMDb's), whose recovery releases it. */
   private def storedFirst[A](question: Question, fromStore: => Answer[A], asked: => Answer[A]): Answer[A] =
     unlessGivenUp(question, fromStore.orElse {
       if (!asks.due(question)) Answer.Unknown
@@ -106,22 +106,19 @@ object LiveAsks {
    *  live ask's failure from TMDB's durable non-answer. */
   def failures: Long = failed.get
 
-  /** The host this thread's latest failed read went to: the one its failure names, else the last host requested within
-   *  `requested` ([[AgreementQuestions.hostOf]], as the agreement's asks name theirs). */
-  def failedHost(requested: tools.RequestedHost.Recording): Option[String] = AgreementQuestions.hostOf(lastFailure.get, requested.last)
-
-  /** `asked`, read on the live path (`tools.HttpPath.Live`) with each request's host noted (`tools.RequestedHost`). */
+  /** `asked`, read on the live path (`tools.HttpPath.Live`) with each request's host noted
+   *  ([[AgreementQuestions.hostsNoted]], as the agreement's asks note theirs). */
   def read[A](asked: => A): LiveRead[A] = {
-    val failedBefore = failures
-    val requested    = new tools.RequestedHost.Recording
-    new LiveRead(tools.RequestedHost.within(requested)(tools.HttpPath.within(tools.HttpPath.Live)(asked)), failedBefore, requested)
+    val failedBefore       = failures
+    val (answer, failedAt) = AgreementQuestions.hostsNoted(tools.HttpPath.within(tools.HttpPath.Live)(asked))
+    new LiveRead(answer, failedBefore, failedAt)
   }
 
-  /** A live read's `answer`, and whether a read on this thread failed since it began ([[failures]]) -- against
-   *  [[failedHost]] -- as the thread stands when asked. */
-  final class LiveRead[A](val answer: A, failedBefore: Long, requested: tools.RequestedHost.Recording) {
+  /** A live read's `answer`, and whether a read on this thread failed since it began ([[failures]]) -- against the host
+   *  this thread's latest failed read went to (`failedAt` it) -- as the thread stands when asked. */
+  final class LiveRead[A](val answer: A, failedBefore: Long, failedAt: Throwable => Option[String]) {
     def failed: Boolean            = failures != failedBefore
-    def failedHost: Option[String] = LiveAsks.failedHost(requested)
+    def failedHost: Option[String] = failedAt(lastFailure.get)
   }
 
   /** `fetch`, its failed reads counted on the requesting thread ([[failures]]) and each request's host noted

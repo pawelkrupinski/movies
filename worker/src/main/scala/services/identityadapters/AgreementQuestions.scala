@@ -87,6 +87,14 @@ object AgreementQuestions {
     named(failure, 0).orElse(requested).map(_.toLowerCase(java.util.Locale.ROOT))
   }
 
+  /** `ask` run with each host it requests noted (`tools.RequestedHost`): what it came to, and the host a failure of it
+   *  went to -- [[hostOf]] the failure, else the last host it requested. ONE noting for the agreement's asks, the fill's
+   *  and the model's live ones. */
+  def hostsNoted[A](ask: => A): (A, Throwable => Option[String]) = {
+    val requested = new tools.RequestedHost.Recording
+    (tools.RequestedHost.within(requested)(ask), hostOf(_, requested.last))
+  }
+
   /** What a question is counted under ([[AgreementQuestionMetrics]]): its family's label, else its kind's. */
   def labelOf(question: Question): String = question match {
     case Question.Family(family, _) => family.label
