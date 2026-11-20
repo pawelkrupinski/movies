@@ -21,19 +21,17 @@ TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
 COUNTRIES = ("pl", "de", "uk", "es", "us")
 
-# The build's stamps, stood in for: a digest a stamp of the commit's tree (the real maker compiles the tree; what a row
+# The build's stamps, stood in for: a digest a stamp of the commit (the real maker compiles the commit's tree; what a row
 # must match is the same -- a digest the tool makes itself from the commit, never one a row names).
 FAKE_STAMPS = """#!/usr/bin/env python3
-import hashlib, subprocess, sys
-tree = subprocess.run(["git", "rev-parse", sys.argv[2] + "^{tree}"], capture_output=True, text=True, check=True).stdout.strip()
+import hashlib, sys
 for stamp in ("identity-rules", "venue-slot", "agreement-rules"):
-    print(stamp + "\\t" + hashlib.sha256((stamp + tree).encode()).hexdigest())
+    print(stamp + "\\t" + hashlib.sha256((stamp + sys.argv[2]).encode()).hexdigest())
 """
 
 
-def fake_stamp(repo: Repo, sha: str, stamp: str) -> str:
-    tree = repo.git("rev-parse", f"{sha}^{{tree}}").strip()
-    return hashlib.sha256((stamp + tree).encode()).hexdigest()
+def fake_stamp(_repo: Repo, sha: str, stamp: str) -> str:
+    return hashlib.sha256((stamp + sha).encode()).hexdigest()
 
 
 class StampCarryTest(unittest.TestCase):
