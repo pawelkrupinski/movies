@@ -17,7 +17,7 @@ copies	common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers
 copies	common/src/main/scala/tools/KeysetScan.scala	2
 copies	identity/src/main/scala/services/identity/ClusterVoting.scala	2
 copies	identity/src/main/scala/services/identity/FamilyScope.scala|identity/src/main/scala/services/identity/ListingScoring.scala	2
-copies	identity/src/main/scala/services/identity/IdentityMeasures.scala|identity/src/main/scala/services/identity/IdentityModel.scala	2
+copies	identity/src/main/scala/services/identity/IdentityModel.scala|identity/src/main/scala/services/identity/MeasuredListing.scala	2
 copies	identity/src/main/scala/services/identity/PinnedGateMeasures.scala|identity/src/main/scala/services/identity/SearchMeasures.scala	2
 copies	scrapers/src/main/scala/services/cinemas/common/SlotsToMovies.scala	4
 copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2

@@ -38,7 +38,7 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	512
+module-edge	identity->common	514
 module-edge	identity->http	6
 module-edge	scrapers->base	51
 module-edge	scrapers->common	1532
@@ -53,7 +53,7 @@ module-edge	web->identity	41
 module-edge	worker->base	80
 module-edge	worker->common	1664
 module-edge	worker->http	175
-module-edge	worker->identity	534
+module-edge	worker->identity	537
 module-edge	worker->scrapers	150
 ce	clients	3
 ce	controllers	23
