@@ -24,7 +24,7 @@ import sys
 
 def checkout_paths(root):
     listed = subprocess.run(["git", "-C", root, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                            capture_output=True)
+                            capture_output=True, env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
     if listed.returncode != 0:
         sys.exit(f"linux-tree-sync: {root} is not a git checkout: {listed.stderr.decode(errors='replace').strip()}")
     return {p for p in listed.stdout.decode().split("\0") if p and os.path.lexists(os.path.join(root, p))}

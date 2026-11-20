@@ -11,15 +11,24 @@ import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).with_name("linux-tree-sync.py")
+SCRATCH_GIT = pathlib.Path(__file__).with_name("scratch-git.sh")
+# under the pre-push hook a GIT_DIR would point the tool at the shared repository, not the scratch one
+CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
+def scratch(helper, repo, *args):
+    """scripts/scratch-git.sh's helpers, never a raw git (SharedMachineStateLintSpec)."""
+    subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", str(SCRATCH_GIT), helper, str(repo), *args],
+                   check=True, capture_output=True, text=True)
 
 
 def git(repo, *args):
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True,
-                   env={**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"})
+    scratch("scratch_git", repo, *args)
 
 
 def sync(root, dest):
-    return subprocess.run([sys.executable, str(SCRIPT), str(root), str(dest)], capture_output=True, text=True, timeout=60)
+    return subprocess.run([sys.executable, str(SCRIPT), str(root), str(dest)], capture_output=True, text=True, timeout=60,
+                          env=CLEAN_ENV)
 
 
 def files(tree):
@@ -30,9 +39,7 @@ class LinuxTreeSyncTest(unittest.TestCase):
     def setUp(self):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         self.repo, self.dest = self.tmp / "repo", self.tmp / "slot"
-        self.repo.mkdir()
-        git(self.repo, "init", "-q")
-        git(self.repo, "config", "user.email", "t@t"), git(self.repo, "config", "user.name", "t")
+        scratch("scratch_repo", self.repo, "-q")
         (self.repo / "scripts").mkdir()
         (self.repo / "scripts/a.sh").write_text("echo a\n")
         (self.repo / "scripts/a.sh").chmod(0o755)
