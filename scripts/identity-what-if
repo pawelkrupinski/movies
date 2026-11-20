@@ -413,19 +413,47 @@ PY
 }
 
 # whole_side <sha> <cc> <snapshot> -> the directory of <sha>'s every family resolved at <snapshot> (takes, families,
-# prod, final), KEPT per (sha, tool files, answers, snapshot): resolved here only when it is not
+# prod, final), KEPT per (sha, tool files, answers, snapshot): resolved here only when it is not.
+# ONE PRODUCER (2026-11-20: two lanes' what-ifs of one base and snapshot shared `<dir>.part`, and the first to finish
+# moved it away under the other, which failed): a run takes `<dir>.lock` (mkdir: atomic) before it resolves, into a
+# `.part` of its own (pid and a random suffix), renamed whole into <dir>; a run finding the lock held waits for it
+# and then reads the side the holder kept. A lock whose holder died is broken.
+side_lock_wait=${KINOWO_WHAT_IF_SIDE_LOCK_WAIT_SECONDS:-3600}
+side_lock_poll=${KINOWO_WHAT_IF_SIDE_LOCK_POLL_SECONDS:-2}
+side_complete() { [ -f "$1/prod.tsv" ] && { [ "$final" = 0 ] || [ -f "$1/final.tsv" ]; }; }
+side_lock() { # <dir> -> 0 holding <dir>.lock, 2 when it stayed held past the wait
+  local lock=$1.lock holder started=$SECONDS said=0
+  mkdir -p "$(dirname "$1")"
+  until mkdir "$lock" 2>/dev/null; do
+    holder=$(cat "$lock/pid" 2>/dev/null || true)
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+      identity_log "breaking the lock of $(basename "$1") left by $holder (no longer running)"; rm -rf "$lock"; continue
+    fi
+    [ $(( SECONDS - started )) -lt "$side_lock_wait" ] || { harness_error "$cc: another what-if (pid ${holder:-?}) has been resolving this side for ${side_lock_wait}s ($lock)"; return 2; }
+    [ "$said" = 1 ] || { identity_log "$cc: another what-if (pid ${holder:-?}) is resolving this side: waiting to read it"; said=1; }
+    sleep "$side_lock_poll"
+  done
+  echo $$ > "$lock/pid"
+}
 whole_side() {
   # a JVM of its own, never a kept one: the side it resolves is kept on disk and never asked of that JVM again, which
   # would only have held a JVM slot idle for its 10 minutes (2026-11-15: a what-if queued 390 s behind two such)
-  local sha=$1 cc=$2 snapshot=$3 dir tree serve=0
+  local sha=$1 cc=$2 snapshot=$3 dir tree serve=0 part
   dir=$(side_root "$cc" "$sha")/$snapshot
-  if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
-    tree=$(tree_of "$sha") || { harness_error "$cc: laying out ${sha:0:12} for its whole side failed (exit $?)"; return 2; }
-    identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
-    resolve "$tree" "$cc" "$dir.part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
-      --mirror-generation "$mirror_gen" >&2 || return 2
-    answers_ok "$dir.part" "${sha:0:12}" || { rm -rf "$dir.part"; return 2; }
-    rm -rf "$dir"; mv "$dir.part" "$dir"
+  if ! side_complete "$dir"; then
+    side_lock "$dir" || return 2
+    if side_complete "$dir"; then
+      identity_log "$cc: reading ${sha:0:12}'s side at $snapshot another what-if just resolved"
+    else
+      part=$dir.part-$$-$RANDOM
+      tree=$(tree_of "$sha") || { rm -rf "$dir.lock"; harness_error "$cc: laying out ${sha:0:12} for its whole side failed (exit $?)"; return 2; }
+      identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
+      resolve "$tree" "$cc" "$part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
+        --mirror-generation "$mirror_gen" >&2 || { rm -rf "$part" "$dir.lock"; return 2; }
+      answers_ok "$part" "${sha:0:12}" || { rm -rf "$part" "$dir.lock"; return 2; }
+      rm -rf "$dir"; mv "$part" "$dir"
+    fi
+    rm -rf "$dir.lock"
   fi
   answers_ok "$dir" "${sha:0:12}" || { rm -rf "$dir"; return 2; }
   printf '%s\n' "$dir"

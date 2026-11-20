@@ -231,6 +231,26 @@ rm -rf "$work/fence" "$work/fences-seen" "$work/fences-seen-de"
 out=$(what_if "$c0" "$c4" 2026-11-06T15:55:00Z --no-serve de); rc=$?
 check "two countries: de's fence lingers while uk's sides resolve" "0 linger" \
   "$rc $(awk '{ print $2 }' "$work/fences-seen-de" 2>/dev/null | tail -1)"
+# TWO RUNS OF ONE BASE AT ONCE (2026-11-20: two lanes' what-ifs of one base and snapshot shared the side's `.part`, and
+# the first to finish moved it away under the other, which failed): one resolves the side, the other reads it. Each
+# round a new snapshot, so the base side is cold for both
+concurrent() { # <snapshot> <run> -> its exit in $work/conc-<run>.rc
+  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" \
+      KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_GOVERNOR=0 KINOWO_JVM_SLOTS=0 KINOWO_MEMORY_GATE=0 TMDB_API_KEY=stub \
+      KINOWO_WHAT_IF_SIDE_LOCK_POLL_SECONDS=0.2 spec_bounded scripts/identity-what-if --base "$c0" --head "$c4" --at "$1" \
+      --out "$work/conc-out-$2" --no-serve --judgements "$REPO_ROOT/test/resources/fixtures/identity-judgements.tsv" uk \
+      > "$work/conc-$2.out" 2> "$work/conc-$2.err"; echo $? > "$work/conc-$2.rc" )
+}
+conc_rounds=""
+for round in 1 2 3; do
+  rm -f "$work/calls" "$work"/conc-*.rc
+  concurrent "2026-11-06T21:0${round}:00Z" a & concurrent "2026-11-06T21:0${round}:00Z" b & wait
+  conc_rounds="$conc_rounds $(cat "$work/conc-a.rc")$(cat "$work/conc-b.rc")/$(grep -c "java-start $c0" "$work/calls")/$(cat "$work"/conc-a.out "$work"/conc-b.out | grep -c CLEAN)"
+done
+check "two runs of one base at once, 3 rounds: both exit 0, the base side resolved once, both CLEAN" " 00/1/4 00/1/4 00/1/4" \
+  "$conc_rounds$( [ "$conc_rounds" = " 00/1/4 00/1/4 00/1/4" ] || cat "$work"/conc-*.err)"
+check "...and no lock or part is left beside the kept side" "" \
+  "$(find "$work/cache/what-if/uk" -maxdepth 2 \( -name '*.lock' -o -name '*.part*' \) | head -3)"
 # the kept JVM's loaded corpus is keyed by the generation too: a corpus loaded off a torn copy is never served again
 out=$(what_if "$c0" "$c4" 2026-11-06T16:00:00Z)
 check "every side is asked with the mirror generation it must read (the kept JVM's corpus key)" "yes" \
