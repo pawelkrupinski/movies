@@ -24,6 +24,3 @@ copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|sc
 copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
 copies	scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
 copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/src/main/scala/services/enrichment/RottenTomatoesRatings.scala	2
-copies	worker/src/main/scala/services/identityadapters/CachedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
-copies	worker/src/main/scala/services/identityadapters/CoalescedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
-copies	worker/src/main/scala/services/identityadapters/ModelLookups.scala|worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala	2
