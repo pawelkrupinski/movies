@@ -223,16 +223,18 @@ case class MovieRecord(
 
   /** Every poster URL we know about, de-duplicated, in source-priority order
    *  — Multikino, the rest of `Cinema.all`, then `Tmdb`, then `Imdb` — except
-   *  that known "coming soon" placeholders (see [[PlaceholderPoster]]) are
-   *  demoted to the very end. So a placeholder is only ever picked when no
-   *  real poster (any cinema's or TMDB's) exists. A URL that is no poster at all
+   *  that a copy its URL names as small ([[ResizedPoster]]) follows every
+   *  full-size poster and known "coming soon" placeholders (see
+   *  [[PlaceholderPoster]]) are demoted to the very end. So a cinema's thumbnail
+   *  is picked only when no source has the film at size, and a placeholder only
+   *  when no real poster (any cinema's or TMDB's) exists. A URL that is no poster at all
    *  ([[PlaceholderPoster.isAbsent]]) is left out. `posterUrl` takes the head;
    *  `fallbackPosterUrls` is the rest. */
   private def postersByPreference: Seq[String] =
     SourceMerge.postersByPreference(prioritized.iterator.flatMap(_._2.posterUrl))
 
-  /** Best poster URL across sources: first real poster in priority order,
-   *  falling back to a "coming soon" placeholder only when that's all we have. */
+  /** Best poster URL across sources: first full-size poster in priority order,
+   *  then a small resized copy, a "coming soon" placeholder only when that's all we have. */
   def posterUrl: Option[String] = postersByPreference.headOption
 
   /** Every poster URL we know about *except* the primary, in preference

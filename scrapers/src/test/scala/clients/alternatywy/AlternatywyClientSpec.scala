@@ -57,6 +57,10 @@ class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     zemsta.posterUrl.value should startWith("https://alternatywy.art/")
   }
 
+  it should "read each poster's full-size original, not the listing's small WordPress copy" in {
+    movies.flatMap(_.posterUrl).filter(models.ResizedPoster.isSmall) shouldBe empty
+  }
+
   "cleanTitle" should "strip the Okładka prefix and typographic quotes" in {
     AlternatywyClient.cleanTitle("Okładka „Zemsta”", titleNormalizer) shouldBe "Zemsta"
     AlternatywyClient.cleanTitle("Okładka Wielkie Artystki", titleNormalizer) shouldBe "Wielkie Artystki"

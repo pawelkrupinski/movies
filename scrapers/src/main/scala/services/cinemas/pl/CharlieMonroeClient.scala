@@ -102,7 +102,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
         }
         val filmUrl   = Option(article.selectFirst("a[href*=/movies/]")).map(_.attr("href"))
         val synopsis  = Option(article.selectFirst("p.desc")).map(_.text().replaceAll("\\.{3,}$", "").trim).filter(_.nonEmpty)
-        val posterUrl = Option(article.selectFirst("img[data-src]")).map(_.attr("data-src"))
+        val posterUrl = Option(article.selectFirst("img[data-src]")).map(_.attr("data-src")).map(ResizedPoster.fullSize)
         val genres    = Option(article.selectFirst("div.meta")).map(_.text()).map(parseMetaGenres).getOrElse(Seq.empty)
         title -> ArticleDetails(filmUrl, synopsis, posterUrl, genres)
       }

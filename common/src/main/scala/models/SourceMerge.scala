@@ -7,13 +7,16 @@ import java.util.Locale
  *  ([[countries]]). The record picks which slots feed each; the rule is here. */
 private[models] object SourceMerge {
 
-  /** Every poster URL, de-duplicated, in the order given — except that known "coming soon" placeholders (see
-   *  [[PlaceholderPoster]]) are demoted to the very end, so a placeholder is only ever picked when no real poster
-   *  exists. A URL that is no poster at all ([[PlaceholderPoster.isAbsent]]) is left out. */
+  /** Every poster URL, de-duplicated, in the order given — except that a copy its URL names as small
+   *  ([[ResizedPoster.isSmall]]) follows every full-size poster, and a known "coming soon" placeholder (see
+   *  [[PlaceholderPoster]]) comes last of all: a cinema's 120x120 thumbnail is shown only when no other source has the
+   *  film at size, a placeholder only when no real poster exists. A URL that is no poster at all
+   *  ([[PlaceholderPoster.isAbsent]]) is left out. */
   def postersByPreference(urls: Iterator[String]): Seq[String] = {
     val all = urls.filterNot(PlaceholderPoster.isAbsent).distinct.toSeq
     val (placeholders, real) = all.partition(PlaceholderPoster.matches)
-    real ++ placeholders
+    val (small, full)        = real.partition(ResizedPoster.isSmall)
+    full ++ small ++ placeholders
   }
 
   /** `names`, spelled the way TMDB's slot (`tmdb`) spells every name it knows: see [[tools.CreditSpelling]]. */

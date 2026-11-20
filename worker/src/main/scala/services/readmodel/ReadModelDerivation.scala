@@ -79,7 +79,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("127928f91657330c"), DerivationScope.Cards),
     // A '(re-release)' marker folds onto the film's own card and slug (`xtra-canonical-rerelease-paren-suffix`):
     // "Podziemny krąg (re-release)" is Podziemny krąg, no longer a card of its own.
-    Derivation(DerivationVersion("28fba8b0a9f6dae1"), DerivationScope.Full))
+    Derivation(DerivationVersion("28fba8b0a9f6dae1"), DerivationScope.Full),
+    // A card's poster passes over a cinema's small resized copy (`ResizedPoster.isSmall`: WordPress's `-120x120`
+    // thumbnail) for a full-size one, TMDB's among them.
+    Derivation(DerivationVersion("b0935cfe4f554a57"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

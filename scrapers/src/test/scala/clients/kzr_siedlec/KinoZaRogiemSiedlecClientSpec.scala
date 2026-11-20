@@ -64,6 +64,7 @@ class KinoZaRogiemSiedlecClientSpec extends AnyFlatSpec with Matchers with Optio
 
   it should "resolve a poster from the lazy-loaded `data-src`, not the placeholder `src`" in {
     val film = movies.find(_.movie.title == "Pojedynek").value
-    film.posterUrl.value should endWith("Plakat-1-300x225.jpg")
+    // the lazy image is WordPress's 300x225 copy; the poster is its original, the name without the size
+    film.posterUrl.value should endWith("/Plakat-1.jpg")
   }
 }

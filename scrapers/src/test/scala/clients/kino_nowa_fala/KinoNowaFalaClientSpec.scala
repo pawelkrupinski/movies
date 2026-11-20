@@ -35,6 +35,10 @@ class KinoNowaFalaClientSpec extends AnyFlatSpec with Matchers with OptionValues
     film.posterUrl should not be empty
   }
 
+  it should "read each poster's full-size original, not the listing's small WordPress copy" in {
+    movies.flatMap(_.posterUrl).filter(models.ResizedPoster.isSmall) shouldBe empty
+  }
+
   it should "merge repeated screenings of the same film across days into one row" in {
     // "TEDI I MAGICZNA LAMPA" screens 25/26/27 września at several times — all
     // must fold onto the same film's showtimes, not one row per day.

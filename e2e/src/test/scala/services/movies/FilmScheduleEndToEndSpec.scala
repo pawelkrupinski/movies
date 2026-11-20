@@ -151,11 +151,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers with StopsItsWi
       regular.movie.releaseYear    shouldBe Some(2026)
 
       // posterUrl: no Multikino slot scrapes the anchor in this Poznań-centric
-      // corpus, so the Charlie Monroe (Kino Malta) poster wins the merge.
+      // corpus, so the Charlie Monroe (Kino Malta) poster wins the merge: the original of the 200x288 copy
+      // the listing shows (`ResizedPoster.fullSize`).
       // Specific URL nailed down — a parser regression dropping the poster
       // field would shift this.
       regular.posterUrl shouldBe Some(
-        "https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg"
+        "https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu.jpg"
       )
 
       // City-scoped synopsis (`ResolvedMovie.synopsisFor(Poznań)`, since these

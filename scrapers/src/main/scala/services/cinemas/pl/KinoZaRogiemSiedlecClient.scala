@@ -123,7 +123,7 @@ object KinoZaRogiemSiedlecClient {
       title      = title,
       dateTime   = date.atTime(time),
       bookingUrl = Option(li.selectFirst("a.ast-loop-product__link")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      poster     = Option(li.selectFirst("img[data-src]")).map(_.attr("data-src")).filter(_.nonEmpty)
+      poster     = Option(li.selectFirst("img[data-src]")).map(_.attr("data-src")).filter(_.nonEmpty).map(ResizedPoster.fullSize)
     )
   }
 }

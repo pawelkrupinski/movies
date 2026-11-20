@@ -121,7 +121,7 @@ class AlternatywyClient(
       dateTime    = date.atTime(time)
     } yield {
       val room      = Some(roomStr.split(":", 2).last.trim).filter(_.nonEmpty)
-      val posterUrl = Some(img.attr("data-src")).map(_.trim).filter(_.nonEmpty)
+      val posterUrl = Some(img.attr("data-src")).map(_.trim).filter(_.nonEmpty).map(ResizedPoster.fullSize)
       val filmUrl   = img.parents().asScala.find(_.tagName == "a").map(_.attr("href")).filter(_.nonEmpty)
       Screening(title, rawTitle, Showtime(dateTime, bookingUrl = None, room = room), posterUrl, filmUrl)
     }

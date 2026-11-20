@@ -106,6 +106,18 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     posters("Wpatrując się w słońce")       shouldBe Some("http://kinobulgarska19.pl/wp-content/uploads/2025/12/1766741798010.jpg")
   }
 
+  it should "read a PNG poster's full-size original, not the listing's 120x120 thumbnail" in {
+    // Captured from http://kinobulgarska19.pl/repertuar on 2026-11-20: every listing image is the
+    // WordPress `attachment-thumbnail` (120x120) copy, `<name>-120x120.<ext>`. Only `.jpg` ones were
+    // mapped back to the original, so "Pieśni lasu" showed a 120x120 PNG scaled up to a 480x720 card.
+    val live = new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska-png-thumbnail"), today = java.time.LocalDate.of(2026, 11, 20)).fetch()
+    val posters = live.flatMap(_.posterUrl)
+    posters should contain("http://kinobulgarska19.pl/wp-content/uploads/2026/10/Pieśni-lasu_plakat_net.png")
+    posters.filter(_.matches(".*-120x120\\.[a-zA-Z]+$")) shouldBe empty
+    withClue("an original whose own name carries a size keeps it: ")(
+      posters should contain("http://kinobulgarska19.pl/wp-content/uploads/2026/08/Pucio-kocha-zwierzaki-PLAKAT-online-B1-834x1200.jpg"))
+  }
+
   // ── Film URLs ─────────────────────────────────────────────────────────────
 
   it should "return correct film URL for every movie" in {

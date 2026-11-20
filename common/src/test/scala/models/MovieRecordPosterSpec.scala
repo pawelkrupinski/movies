@@ -186,4 +186,27 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     record.posterUrl          shouldBe Some(placeholder)
     record.fallbackPosterUrls shouldBe empty
   }
+
+  it should "rank a cinema poster its URL names as a small resized copy below a full-size one" in {
+    // Kino Malta's listing poster is WordPress's 200x288 copy (prod pl, 2026-11-20): upscaled into a 480x720
+    // card it is a blur, while TMDB holds the same film at w500.
+    val thumbnail = "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg"
+    val tmdb      = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val record = MovieRecord(data = Map[Source, SourceData](
+      CharlieMonroe -> SourceData(posterUrl = Some(thumbnail)),
+      Tmdb                   -> SourceData(posterUrl = Some(tmdb))))
+    record.posterUrl          shouldBe Some(tmdb)
+    record.fallbackPosterUrls shouldBe Seq(thumbnail)
+    withClue("still shown when it is the only poster: ")(
+      MovieRecord(data = Map[Source, SourceData](CharlieMonroe -> SourceData(posterUrl = Some(thumbnail)))).posterUrl shouldBe Some(thumbnail))
+  }
+
+  "ResizedPoster.isSmall" should "read a resized copy's size from its name, never an aspect ratio or a large copy" in {
+    ResizedPoster.isSmall("http://kinobulgarska19.pl/wp-content/uploads/2026/10/Pieśni-lasu_plakat_net-120x120.png") shouldBe true
+    ResizedPoster.isSmall("https://kinoamondo.pl/wp-content/uploads/2026/05/Mikey-i-Nicky-plakat-270x340.png")        shouldBe true
+    ResizedPoster.isSmall("https://kinobajka.pl/wp-content/uploads/2026/07/plazma-1080x1920-1-169x300.jpg")         shouldBe true
+    ResizedPoster.isSmall("https://gcf.org.pl/wp-content/uploads/2026/10/MUNCH_plakat_B1-400x566.jpg")              shouldBe false
+    ResizedPoster.isSmall("https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/1718/piesni-lasu-4x5.jpg") shouldBe false
+    ResizedPoster.isSmall("https://image.tmdb.org/t/p/w500/x.jpg")                                                  shouldBe false
+  }
 }

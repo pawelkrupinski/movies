@@ -443,7 +443,7 @@ cinemaTitles:      Bez wyjścia | Plenerowe Pałacowe: Bez wyjścia
 runtimeMinutes:    139
 releaseYear:       2025
 countries:         Korea Południowa, Francja
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu.jpg
 synopsis.length:   356
 cast:              Lee Byung-hun, Son Ye-jin, Park Hee-soon, Lee Sung-min, Yeom Hye-ran, Cha Seung-won
 director:          Chan-wook Park
@@ -1659,7 +1659,7 @@ cinemaTitles:      DRAMA | Drama
 runtimeMinutes:    106
 releaseYear:       2026
 countries:         USA
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/robert-pattinson-i-zendaya-zapraszaja-na-slub-drama-w-kinach-w-kwietniu-2026-zobacz-plakat-i-zwiastun-unknown-1-200x288.webp
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/robert-pattinson-i-zendaya-zapraszaja-na-slub-drama-w-kinach-w-kwietniu-2026-zobacz-plakat-i-zwiastun-unknown-1.webp
 synopsis.length:   1158
 cast:              Zendaya, Robert Pattinson, Mamoudou Athie, Alana Haim, Jordyn Curet
 director:          Kristoffer Borgli
@@ -2155,7 +2155,7 @@ cinemaTitles:      Dziewczyna z igłą
 runtimeMinutes:    123
 releaseYear:       2024
 countries:         Dania, Polska, Szwecja, Francja, Belgia
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/01/Dziewczyna-z-igla_plakat-PL_LQ-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/01/Dziewczyna-z-igla_plakat-PL_LQ.jpg
 synopsis.length:   437
 cast:              Vic Carmen Sonne, Trine Dyrholm, Besir Zeciri, Joachim Fjelstrup, Tessa Hoder
 director:          Magnus von Horn
@@ -2543,7 +2543,7 @@ cinemaTitles:      ERUPCJA | Erupcja | Erupcja (pokaz jednorazowy) | Erupcja | K
 runtimeMinutes:    71
 releaseYear:       2026
 countries:         USA, Polska
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ERUPCJA_B1_PL-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ERUPCJA_B1_PL-po-zmniejszeniu.jpg
 synopsis.length:   845
 cast:              Lena Góra, Charli xcx, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
 director:          Pete Ohs
@@ -3341,7 +3341,7 @@ cinemaTitles:      Głos Hind Rajab
 runtimeMinutes:    89
 releaseYear:       2025
 countries:         Francja, USA, Wielka Brytania, Włochy, Holandia
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu.jpg
 synopsis.length:   299
 cast:              هند رامي إياد  رجب, Motaz Malhees, Saja Kilani, Amer Hlehel, Clara Khoury
 director:          Kaouther Ben Hania
@@ -4124,7 +4124,7 @@ cinemaTitles:      KLĄTWA DOLINY WĘŻY | Klątwa Doliny Węży | Klątwa Dolin
 runtimeMinutes:    105
 releaseYear:       1988
 countries:         Polska, ZSRR
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/KLATWA-DOLINY-WEZY_AUTORSKA-NARRACJA-LONA_plakat-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/KLATWA-DOLINY-WEZY_AUTORSKA-NARRACJA-LONA_plakat.jpg
 synopsis.length:   462
 cast:              Krzysztof Kolberger, Ewa Sałacka, Roman Wilhelmi, Lan Bich, Zygmunt Bielawski, Henryk Bista, Zbigniew Lesień
 director:          Marek Piestrak
@@ -4236,7 +4236,7 @@ cinemaTitles:      Kopnęłabym cię, gdybym mogła
 runtimeMinutes:    113
 releaseYear:       2025
 countries:         USA
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu.jpg
 synopsis.length:   273
 cast:              Rose Byrne, Conan O'Brien, A$AP Rocky, Danielle Macdonald, Delaney Quinn
 director:          Mary Bronstein
@@ -4525,7 +4525,7 @@ cinemaTitles:      La Grazia | La grazia | Plenerowe Pałacowe: La Grazia
 runtimeMinutes:    133
 releaseYear:       2025
 countries:         Włochy
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/LaGrazia_plakat-B1_HQ-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/LaGrazia_plakat-B1_HQ-po-zmniejszeniu.jpg
 synopsis.length:   317
 cast:              Toni Servillo, Anna Ferzetti, Orlando Cinque, Massimo Venturiello, Milvia Marigliano, Giuseppe Gaiani
 director:          Paolo Sorrentino
@@ -6947,7 +6947,7 @@ cinemaTitles:      Bez wyjścia | Plenerowe Pałacowe: Bez wyjścia
 runtimeMinutes:    139
 releaseYear:       2025
 countries:         Korea Południowa, Francja
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu.jpg
 synopsis.length:   609
 cast:              Lee Byung-hun, Son Ye-jin, Park Hee-soon, Lee Sung-min, Yeom Hye-ran, Cha Seung-won
 director:          Chan-wook Park
@@ -7177,7 +7177,7 @@ cinemaTitles:      La Grazia | La grazia | Plenerowe Pałacowe: La Grazia
 runtimeMinutes:    133
 releaseYear:       2025
 countries:         Włochy
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/LaGrazia_plakat-B1_HQ-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/LaGrazia_plakat-B1_HQ-po-zmniejszeniu.jpg
 synopsis.length:   1065
 cast:              Toni Servillo, Anna Ferzetti, Orlando Cinque, Massimo Venturiello, Milvia Marigliano, Giuseppe Gaiani
 director:          Paolo Sorrentino
@@ -7433,7 +7433,7 @@ cinemaTitles:      Plenerowe Pałacowe: Wartość sentymentalna | WARTOŚĆ SENT
 runtimeMinutes:    133
 releaseYear:       2025
 countries:         Turcja, Norwegia, Francja, Dania, Szwecja, Niemcy, Wielka Brytania
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu.jpg
 synopsis.length:   939
 cast:              Renate Reinsve, Stellan Skarsgård, Inga Ibsdotter Lilleaas, Elle Fanning, Anders Danielsen Lie
 director:          Joachim Trier
@@ -7568,7 +7568,7 @@ cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny
 runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/Podziemny-krag_online_cut-200x288.webp
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/04/Podziemny-krag_online_cut.webp
 synopsis.length:   1167
 cast:              Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf, Jared Leto
 director:          David Fincher
@@ -8223,7 +8223,7 @@ cinemaTitles:      FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania | Prawo pożąd
 runtimeMinutes:    102
 releaseYear:       1987
 countries:         Hiszpania
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat.jpg
 synopsis.length:   281
 cast:              Eusebio Poncela, Carmen Maura, Antonio Banderas, Miguel Molina, Fernando Guillén
 director:          Pedro Almodóvar
@@ -8306,7 +8306,7 @@ cinemaTitles:      Prosta historia
 runtimeMinutes:    113
 releaseYear:       1999
 countries:         USA, Wielka Brytania, Francja
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/06/prosta-historia-WEB_01_680-x-980-1-200x288.webp
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/06/prosta-historia-WEB_01_680-x-980-1.webp
 synopsis.length:   328
 cast:              Richard Farnsworth, Sissy Spacek, Jane Galloway Heitz, Joseph A. Carpenter, Donald Wiegert
 director:          David Lynch
@@ -8603,7 +8603,7 @@ cinemaTitles:      Rocznica
 runtimeMinutes:    112
 releaseYear:       2025
 countries:         USA, Irlandia
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/rocznica-rocznica-plakat-finalny-scaled-1-200x288.webp
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/rocznica-rocznica-plakat-finalny-scaled-1.webp
 synopsis.length:   509
 cast:              Diane Lane, Kyle Chandler, Madeline Brewer, Zoey Deutch, Phoebe Dynevor
 director:          Jan Komasa
@@ -10225,7 +10225,7 @@ cinemaTitles:      Plenerowe Pałacowe: Wartość sentymentalna | WARTOŚĆ SENT
 runtimeMinutes:    133
 releaseYear:       2025
 countries:         Turcja, Norwegia, Francja, Dania, Szwecja, Niemcy, Wielka Brytania
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu.jpg
 synopsis.length:   768
 cast:              Renate Reinsve, Stellan Skarsgård, Inga Ibsdotter Lilleaas, Elle Fanning, Anders Danielsen Lie
 director:          Joachim Trier
@@ -10813,7 +10813,7 @@ cinemaTitles:      ZAWODOWCY | ZAWODOWCY - 2D napisy - Premiera Krajowa | Zawodo
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu.jpg
 synopsis.length:   1367
 cast:              Henry Cavill, Jake Gyllenhaal, Eiza González, Rosamund Pike, Fisher Stevens, Emmett J Scanlan
 director:          Guy Ritchie
@@ -11024,7 +11024,7 @@ cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki Pana Śliwki 
 runtimeMinutes:    72
 releaseYear:       2026
 countries:         Polska
-posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ZNAKI-PANA-SLIWKI-POSTER-jpg-po-zmniejszeniu-200x288.jpg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ZNAKI-PANA-SLIWKI-POSTER-jpg-po-zmniejszeniu.jpg
 synopsis.length:   1036
 cast:              Karol Śliwka, Dariusz Dłużewski
 director:          Urszula Morga, Bartosz Mikołajczyk

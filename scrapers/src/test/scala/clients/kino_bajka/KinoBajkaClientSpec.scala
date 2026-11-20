@@ -57,4 +57,9 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     minionki should have size 1
     minionki.head.showtimes.map(_.dateTime.toLocalDate).distinct.size should be > 1
   }
+
+  it should "read each poster's full-size original, not the listing's small WordPress copy" in {
+    new KinoBajkaClient(http, KinoBajka, titles = titleNormalizer).fetch().flatMap(_.posterUrl)
+      .filter(models.ResizedPoster.isSmall) shouldBe empty
+  }
 }

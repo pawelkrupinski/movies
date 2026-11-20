@@ -98,7 +98,7 @@ object KinoBajkaClient {
     val title   = (film \ "t").asOpt[String]
                     .map(t => titles.cinemaClean("kino-bajka", t.trim)).filter(_.nonEmpty)
     val filmUrl = (film \ "u").asOpt[String].filter(_.nonEmpty)
-    val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty)
+    val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty).map(ResizedPoster.fullSize)
     val runtime = (film \ "m").asOpt[String]
                     .flatMap(DurationPat.findFirstMatchIn).map(_.group(1).toInt)
 

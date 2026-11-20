@@ -40,6 +40,10 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
     d.synopsis.getOrElse("").length should be > 20
   }
 
+  it should "read each poster's full-size original, not the listing's small WordPress copy" in {
+    results.flatMap(_.posterUrl).filter(models.ResizedPoster.isSmall) shouldBe empty
+  }
+
   it should "carry the room and booking URL on each showtime" in {
     byTitle("Aftersun").showtimes.head shouldBe
       Showtime(

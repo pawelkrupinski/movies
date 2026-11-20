@@ -116,9 +116,8 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   }
 
   private def filmFacts(section: Element, title: String): FilmFacts = {
-    val posterUrl = Option(section.selectFirst("img[src]")).map { img =>
-      img.attr("src").replaceAll("-\\d+x\\d+(\\.jpg)", "$1")
-    }
+    // the listing shows WordPress's 120x120 `attachment-thumbnail` copy of the poster
+    val posterUrl = Option(section.selectFirst("img[src]")).map(img => ResizedPoster.fullSize(img.attr("src")))
     val synopsis                             = Option(section.selectFirst("p:not(.movie-meta)")).map(_.text()).filter(_.nonEmpty)
     val (director, countries, year, runtime) = extractMeta(section)
     (title, posterUrl, synopsis, director, countries, year, runtime)
